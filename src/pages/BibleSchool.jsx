@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, Plus, Trash2, Pencil, Users, FolderOpen, Play, Square, ChevronLeft, ChevronRight, Eye, EyeOff, Wifi } from "lucide-react";
+import { BookOpen, Plus, Trash2, Pencil, Users, FolderOpen, Square, ChevronLeft, ChevronRight, Eye, EyeOff, Wifi } from "lucide-react";
 import PagePanel from "@/components/layout/PagePanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPageUrl } from "@/utils";

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Maximize2, Film } from "lucide-react";
 import { motion } from "framer-motion";
-import { createPageUrl } from "@/utils";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { openProjectionWindow, sendToProjection } from "@/lib/projectionWindow";
 

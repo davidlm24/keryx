@@ -1,15 +1,18 @@
 {
-  "name": "base44-app",
+  "name": "keryx",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "base44 dev",
+    "dev:remote": "base44 dev --remote",
+    "dev:ui": "vite",
+    "build": "base44 build",
+    "build:vite": "vite build",
+    "preview": "vite preview",
+    "deploy": "base44 deploy",
     "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.52",
@@ -98,5 +101,6 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
     "vite": "^6.1.0"
-  }
+  },
+  "description": "KERYX — church worship projection and service planning (lyrics, Bible, media, multi-screen live projection)."
 }

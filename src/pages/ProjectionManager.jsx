@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Monitor, Cast, Layers, Trash2, Copy, Check, Info } from "lucide-react";
+import { Plus, Monitor, Layers, Trash2, Check, Info } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import DeviceCard from "@/components/projection/DeviceCard";
 import DeviceForm from "@/components/projection/DeviceForm";

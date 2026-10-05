@@ -1,8 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Palette, Save, Trash2, Plus, X, Type, Image, Square } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { Palette, Trash2, Plus, X, Type, Image, Square } from "lucide-react";
 import { useThemeColors } from "@/hooks/useThemeColors";
 
 const ELEMENT_TYPES = {

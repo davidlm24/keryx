@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { bibleBooks, VERSION_API_MAP, BOOK_API_MAP } from "./bibleData";
 import { base44 } from "@/api/base44Client";
-import { Loader2, ChevronLeft, ChevronRight, Type, Moon, Sun, BookOpen, List } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Type, Moon, Sun, BookOpen } from "lucide-react";
 
 const FONT_SIZES = { sm: "text-base", md: "text-lg", lg: "text-xl", xl: "text-2xl", xxl: "text-3xl" };
 

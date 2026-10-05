@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { useLiveSessionChannel } from "@/hooks/useLiveSessionChannel";
 import { useProjectionReconnect } from "@/hooks/useProjectionReconnect";
-import { isYouTubeUrl, getYouTubeEmbedUrl, getYouTubeId } from "@/utils/youtube";
+import { isYouTubeUrl, getYouTubeId } from "@/utils/youtube";
 
 export default function VideoProjection() {
     const [videoUrl, setVideoUrl] = useState("");

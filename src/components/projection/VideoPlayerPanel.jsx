@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, X, Maximize2, Maximize } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { base44 } from "@/api/base44Client";
 

@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Palette, Save, Plus, Trash2, Check } from "lucide-react";
+import { Palette, Save, Plus, Trash2 } from "lucide-react";
 import ThemeEditor from "@/components/projection/ThemeEditor";
 import { useThemeColors } from "@/hooks/useThemeColors";
 

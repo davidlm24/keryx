@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Wand2, Music, Upload, Video, Clock } from "lucide-react";
+import { X, Wand2, Upload, Video, Clock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import LyricSyncEditor from "./LyricSyncEditor";
 import ThemePicker from "./ThemePicker";

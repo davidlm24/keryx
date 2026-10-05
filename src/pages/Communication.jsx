@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Maximize2, Play } from "lucide-react";
 import PagePanel from "@/components/layout/PagePanel";
 import { openProjectionWindow, sendToProjection } from "@/lib/projectionWindow";
 import { AnimatePresence, motion } from "framer-motion";
-import { createPageUrl } from "@/utils";
 import { useThemeColors } from "@/hooks/useThemeColors";
 
 import CommunicationVideoForm from "../components/communication/CommunicationVideoForm";

@@ -9,6 +9,8 @@ export default [
     files: [
       "src/components/**/*.{js,mjs,cjs,jsx}",
       "src/pages/**/*.{js,mjs,cjs,jsx}",
+      "src/hooks/**/*.{js,mjs,cjs,jsx}",
+      "src/utils/**/*.{js,mjs,cjs,jsx}",
       "src/Layout.jsx",
     ],
     ignores: ["src/lib/**/*", "src/components/ui/**/*"],
@@ -55,6 +57,10 @@ export default [
         { ignore: ["cmdk-input-wrapper", "toast-close"] },
       ],
       "react-hooks/rules-of-hooks": "error",
+      // Advisory only. The generated effects often omit deps deliberately and
+      // some carry eslint-disable comments for this rule, which only parse when
+      // the rule is registered here.
+      "react-hooks/exhaustive-deps": "warn",
     },
   },
 ];

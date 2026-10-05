@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { CalendarPlus, Check, ChevronDown } from "lucide-react";
+import { CalendarPlus, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function AddToServiceButton({ itemType, contentId, title, ensureContent, variant = "ghost", size = "icon", className = "" }) {

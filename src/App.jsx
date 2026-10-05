@@ -30,6 +30,15 @@ import GlobalSearch from './pages/GlobalSearch';
 import Analytics from './pages/Analytics';
 import AnnouncementCarouselPage from './pages/AnnouncementCarouselPage';
 
+// Public routes. These render OUTSIDE AuthenticatedApp: that component
+// redirects to the login page whenever auth fails, so a /login route nested
+// inside it would never render and the redirect would loop.
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import OAuthConsent from './pages/OAuthConsent';
+
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}><PageTransition>{children}</PageTransition></Layout>
   : <PageTransition>{children}</PageTransition>;
@@ -134,7 +143,19 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <NavigationTracker />
-          <AuthenticatedApp />
+          <Routes>
+            {/* The paths here are the ones the auth pages link to each other
+                by, and the ones Base44 custom auth redirects to. Keep them in
+                sync with the app's auth settings on the server. */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            {/* Must match `consent_path` in the app's MCP config on the
+                server, or AI clients land on a 404 during the grant flow. */}
+            <Route path="/oauth-consent" element={<OAuthConsent />} />
+            <Route path="/*" element={<AuthenticatedApp />} />
+          </Routes>
         </Router>
         <Toaster />
         <VisualEditAgent />

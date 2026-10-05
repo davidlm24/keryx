@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings as SettingsIcon, Upload, ImageIcon, Globe, Smartphone, Trash, AlertTriangle, Loader2 } from "lucide-react";
+import { Settings as SettingsIcon, Upload, ImageIcon, Globe, Trash, AlertTriangle, Loader2 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { createPageUrl } from "@/utils";
 import ThemeEditorSection from "@/components/settings/ThemeEditorSection";
