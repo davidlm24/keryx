@@ -1,0 +1,169 @@
+{
+  "name": "CommunicationVideo",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo do v\u00eddeo"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "countdown",
+        "timer",
+        "announcement",
+        "image_text"
+      ],
+      "description": "Tipo: Contagem Regressiva, Cron\u00f3metro, An\u00fancio ou Imagem+Texto"
+    },
+    "duration": {
+      "type": "number",
+      "description": "Dura\u00e7\u00e3o em segundos"
+    },
+    "text": {
+      "type": "string",
+      "description": "Texto principal"
+    },
+    "subtext": {
+      "type": "string",
+      "description": "Subtexto/mensagem adicional"
+    },
+    "background_image": {
+      "type": "string",
+      "description": "URL da imagem de fundo"
+    },
+    "background_video": {
+      "type": "string",
+      "description": "URL do v\u00eddeo de fundo"
+    },
+    "background_color": {
+      "type": "string",
+      "description": "Cor de fundo (gradiente ou cor s\u00f3lida)"
+    },
+    "background_audio": {
+      "type": "string",
+      "description": "URL do \u00e1udio de fundo"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video",
+              "audio"
+            ]
+          },
+          "duration": {
+            "type": "number",
+            "description": "Dura\u00e7\u00e3o em segundos (para imagens)"
+          }
+        }
+      },
+      "description": "Lista de ficheiros para reproduzir em loop"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#ffffff",
+      "description": "Cor do texto"
+    },
+    "text_color_2": {
+      "type": "string",
+      "description": "Segunda cor para gradiente de texto (opcional)"
+    },
+    "font_size": {
+      "type": "string",
+      "enum": [
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge"
+      ],
+      "default": "large",
+      "description": "Tamanho da fonte"
+    },
+    "font_family": {
+      "type": "string",
+      "enum": [
+        "sans",
+        "serif",
+        "mono",
+        "cursive",
+        "arial",
+        "georgia",
+        "times",
+        "verdana"
+      ],
+      "default": "sans",
+      "description": "Tipo de fonte"
+    },
+    "text_effect": {
+      "type": "string",
+      "enum": [
+        "shadow",
+        "glow",
+        "outline",
+        "double-shadow",
+        "3d",
+        "neon",
+        "none"
+      ],
+      "default": "shadow",
+      "description": "Efeito visual do texto"
+    },
+    "text_position_h": {
+      "type": "string",
+      "enum": [
+        "left",
+        "center",
+        "right"
+      ],
+      "default": "center",
+      "description": "Posi\u00e7\u00e3o horizontal do texto"
+    },
+    "text_position_v": {
+      "type": "string",
+      "enum": [
+        "top",
+        "middle",
+        "bottom"
+      ],
+      "default": "middle",
+      "description": "Posi\u00e7\u00e3o vertical do texto"
+    },
+    "show_logo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Mostrar logo da igreja"
+    },
+    "logo_position": {
+      "type": "string",
+      "enum": [
+        "top-left",
+        "top-right",
+        "bottom-left",
+        "bottom-right",
+        "center"
+      ],
+      "default": "top-left",
+      "description": "Posi\u00e7\u00e3o do logo"
+    },
+    "sound_alert": {
+      "type": "boolean",
+      "default": false,
+      "description": "Tocar som de alerta"
+    }
+  },
+  "required": [
+    "title",
+    "type",
+    "duration"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "language": {
+      "type": "string",
+      "enum": [
+        "pt",
+        "en",
+        "es",
+        "fr"
+      ],
+      "default": "pt",
+      "description": "Idioma da interface"
+    },
+    "background_url": {
+      "type": "string",
+      "description": "URL da imagem de fundo"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL do logo"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#84cc16",
+      "description": "Cor prim\u00e1ria (hex)"
+    },
+    "secondary_color": {
+      "type": "string",
+      "default": "#10b981",
+      "description": "Cor secund\u00e1ria (hex)"
+    },
+    "navbar_primary_color": {
+      "type": "string",
+      "default": "#84cc16",
+      "description": "Cor prim\u00e1ria da barra de navega\u00e7\u00e3o (hex)"
+    },
+    "navbar_secondary_color": {
+      "type": "string",
+      "default": "#10b981",
+      "description": "Cor secund\u00e1ria da barra de navega\u00e7\u00e3o (hex)"
+    },
+    "submenu_primary_color": {
+      "type": "string",
+      "default": "#6366f1",
+      "description": "Cor prim\u00e1ria do submenu / menu de navega\u00e7\u00e3o (hex)"
+    },
+    "submenu_secondary_color": {
+      "type": "string",
+      "default": "#a855f7",
+      "description": "Cor secund\u00e1ria do submenu / menu de navega\u00e7\u00e3o (hex)"
+    },
+    "device_mode": {
+      "type": "string",
+      "enum": [
+        "mobile",
+        "tablet",
+        "desktop"
+      ],
+      "default": "desktop",
+      "description": "Modo de visualiza\u00e7\u00e3o"
+    }
+  },
+  "required": []
+}

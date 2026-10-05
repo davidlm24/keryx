@@ -1,0 +1,83 @@
+{
+  "name": "ServiceTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do template"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descricao do template"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "SONG",
+              "BIBLE",
+              "VIDEO",
+              "IMAGE",
+              "PDF",
+              "POWERPOINT",
+              "BANNER",
+              "ANNOUNCEMENT",
+              "TEXT",
+              "POLL",
+              "QUIZ",
+              "TIMER",
+              "FREE_CONTENT"
+            ],
+            "description": "Tipo do item"
+          },
+          "title": {
+            "type": "string",
+            "description": "Titulo sugerido do item"
+          },
+          "order": {
+            "type": "number",
+            "description": "Ordem do item"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Duracao estimada em segundos"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notas do item"
+          }
+        }
+      },
+      "description": "Estrutura de itens do template (sem contentId - o operador escolhe o conteudo na edicao)"
+    },
+    "isDefault": {
+      "type": "boolean",
+      "default": false,
+      "description": "Template predefinido do sistema"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

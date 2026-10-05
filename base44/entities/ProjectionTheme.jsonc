@@ -1,0 +1,133 @@
+{
+  "name": "ProjectionTheme",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do tema"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#ffffff",
+      "description": "Cor do texto"
+    },
+    "text_color_2": {
+      "type": "string",
+      "description": "Segunda cor para gradiente"
+    },
+    "font_family": {
+      "type": "string",
+      "enum": [
+        "sans",
+        "serif",
+        "mono",
+        "cursive",
+        "arial",
+        "georgia",
+        "times",
+        "verdana"
+      ],
+      "default": "sans",
+      "description": "Tipo de fonte"
+    },
+    "font_size": {
+      "type": "string",
+      "enum": [
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge"
+      ],
+      "default": "large",
+      "description": "Tamanho da fonte"
+    },
+    "text_effect": {
+      "type": "string",
+      "enum": [
+        "shadow",
+        "glow",
+        "outline",
+        "double-shadow",
+        "3d",
+        "neon",
+        "none"
+      ],
+      "default": "shadow",
+      "description": "Efeito visual do texto"
+    },
+    "background_image": {
+      "type": "string",
+      "description": "URL da imagem de fundo"
+    },
+    "elements": {
+      "type": "array",
+      "description": "Elementos posicion\u00e1veis do tema (layout visual)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador \u00fanico do elemento"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "title",
+              "lyrics",
+              "image",
+              "background"
+            ],
+            "description": "Tipo de elemento"
+          },
+          "x": {
+            "type": "number",
+            "description": "Posi\u00e7\u00e3o X em percentagem (0-100)",
+            "default": 0
+          },
+          "y": {
+            "type": "number",
+            "description": "Posi\u00e7\u00e3o Y em percentagem (0-100)",
+            "default": 0
+          },
+          "width": {
+            "type": "number",
+            "description": "Largura em percentagem (0-100)",
+            "default": 100
+          },
+          "height": {
+            "type": "number",
+            "description": "Altura em percentagem (0-100)",
+            "default": 100
+          },
+          "z_index": {
+            "type": "number",
+            "default": 1
+          },
+          "alignment": {
+            "type": "string",
+            "enum": [
+              "left",
+              "center",
+              "right"
+            ],
+            "default": "center"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Propriedades espec\u00edficas do elemento (cor, opacidade, etc.)"
+          }
+        }
+      }
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Tema predefinido (sistema)"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

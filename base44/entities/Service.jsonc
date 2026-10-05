@@ -1,0 +1,127 @@
+{
+  "name": "Service",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Nome do culto"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do culto"
+    },
+    "time": {
+      "type": "string",
+      "description": "Horario do culto (legado - use startTime)"
+    },
+    "startTime": {
+      "type": "string",
+      "description": "Horario de inicio do culto"
+    },
+    "location": {
+      "type": "string",
+      "description": "Local do culto"
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "ID da organizacao/igreja"
+    },
+    "templateId": {
+      "type": "string",
+      "description": "ID do template usado para criar o culto"
+    },
+    "service_type": {
+      "type": "string",
+      "enum": [
+        "culto",
+        "evento"
+      ],
+      "default": "culto",
+      "description": "Tipo: Culto ou Evento"
+    },
+    "event_description": {
+      "type": "string",
+      "description": "Descricao do evento (quando tipo = evento)"
+    },
+    "worship_team": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "member_id": {
+            "type": "string",
+            "description": "ID do membro da equipe de louvor"
+          },
+          "member_name": {
+            "type": "string",
+            "description": "Nome do membro"
+          },
+          "role": {
+            "type": "string",
+            "description": "Funcao no culto"
+          }
+        }
+      },
+      "description": "Escala da equipe de louvor"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "song",
+              "bible",
+              "media",
+              "announcement"
+            ]
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "order": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Itens do culto (legado - use entidade ServiceItem)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas gerais do culto"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "READY",
+        "LIVE",
+        "COMPLETED",
+        "ARCHIVED",
+        "planning",
+        "ready",
+        "completed"
+      ],
+      "default": "DRAFT",
+      "description": "Status do culto"
+    }
+  },
+  "required": [
+    "title",
+    "date"
+  ],
+  "rls": {
+    "read": {},
+    "update": {},
+    "delete": {}
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "name": "ServiceItem",
+  "type": "object",
+  "properties": {
+    "serviceId": {
+      "type": "string",
+      "description": "ID do culto ao qual este item pertence"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Ordem do item no culto"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "SONG",
+        "BIBLE",
+        "VIDEO",
+        "IMAGE",
+        "PDF",
+        "POWERPOINT",
+        "BANNER",
+        "ANNOUNCEMENT",
+        "TEXT",
+        "POLL",
+        "QUIZ",
+        "TIMER",
+        "FREE_CONTENT"
+      ],
+      "default": "SONG",
+      "description": "Tipo do item - determina a entidade de origem do conteudo"
+    },
+    "title": {
+      "type": "string",
+      "description": "Titulo de exibicao do item"
+    },
+    "contentId": {
+      "type": "string",
+      "description": "ID do conteudo original na entidade de origem (Song, BiblePassage, Media, BannerTemplate, Poll, Quiz). Vazio para tipos sem referencia (TEXT, TIMER, FREE_CONTENT, ANNOUNCEMENT)"
+    },
+    "duration": {
+      "type": "number",
+      "description": "Duracao estimada em segundos (opcional)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas do operador para este item"
+    },
+    "sceneId": {
+      "type": "string",
+      "description": "ID da cena de projecao associada (ProjectionScene)"
+    },
+    "autoAdvance": {
+      "type": "boolean",
+      "default": false,
+      "description": "Avancar automaticamente para o proximo item quando a duracao terminar"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Item ativo no culto (itens desativados sao pulados mas mantidos)"
+    }
+  },
+  "required": [
+    "serviceId",
+    "type",
+    "title"
+  ],
+  "rls": {
+    "read": {},
+    "update": {},
+    "delete": {}
+  }
+}

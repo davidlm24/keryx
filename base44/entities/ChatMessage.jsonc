@@ -1,0 +1,46 @@
+{
+  "name": "ChatMessage",
+  "type": "object",
+  "properties": {
+    "sender_name": {
+      "type": "string",
+      "description": "Nome do remetente"
+    },
+    "message": {
+      "type": "string",
+      "description": "Texto da mensagem"
+    },
+    "channel": {
+      "type": "string",
+      "default": "worship",
+      "description": "Canal do chat (worship = equipe de louvor -> operador)"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL do arquivo anexado"
+    },
+    "file_type": {
+      "type": "string",
+      "enum": [
+        "audio",
+        "image",
+        "document",
+        "other"
+      ],
+      "description": "Tipo de arquivo"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Nome do arquivo"
+    }
+  },
+  "required": [
+    "sender_name"
+  ],
+  "rls": {
+    "read": {},
+    "create": {},
+    "update": {},
+    "delete": {}
+  }
+}

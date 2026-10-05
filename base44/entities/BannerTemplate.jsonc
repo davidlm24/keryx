@@ -1,0 +1,276 @@
+{
+  "name": "BannerTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do banner"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "opening",
+        "closing",
+        "announcement",
+        "countdown"
+      ],
+      "default": "opening",
+      "description": "Categoria: Abertura, Encerramento, An\u00fancio ou Contagem Regressiva"
+    },
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo principal"
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "Subt\u00edtulo"
+    },
+    "phrases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Frases para exibir em sequ\u00eancia"
+    },
+    "event_date": {
+      "type": "string",
+      "description": "Data do evento"
+    },
+    "event_time": {
+      "type": "string",
+      "description": "Hora do evento"
+    },
+    "location": {
+      "type": "string",
+      "description": "Local do evento"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do an\u00fancio"
+    },
+    "countdown_duration": {
+      "type": "number",
+      "default": 60,
+      "description": "Dura\u00e7\u00e3o da contagem regressiva em segundos"
+    },
+    "background_type": {
+      "type": "string",
+      "enum": [
+        "celestial",
+        "worship",
+        "premium",
+        "modern",
+        "custom"
+      ],
+      "default": "celestial",
+      "description": "Categoria do fundo animado"
+    },
+    "background_id": {
+      "type": "string",
+      "description": "ID do fundo animado espec\u00edfico"
+    },
+    "custom_image": {
+      "type": "string",
+      "description": "URL de imagem de fundo personalizada"
+    },
+    "background_speed": {
+      "type": "number",
+      "default": 1,
+      "description": "Velocidade da anima\u00e7\u00e3o de fundo (0.5 lento a 3 r\u00e1pido)"
+    },
+    "background_intensity": {
+      "type": "number",
+      "default": 0.5,
+      "description": "Intensidade/densidade dos efeitos de fundo (0 a 1)"
+    },
+    "background_overlay": {
+      "type": "number",
+      "default": 0.3,
+      "description": "Escurid\u00e3o do overlay sobre o fundo (0 a 1)"
+    },
+    "animation": {
+      "type": "string",
+      "enum": [
+        "fade_in",
+        "fade_out",
+        "zoom",
+        "slide_up",
+        "slide_down",
+        "slide_left",
+        "slide_right",
+        "blur_reveal",
+        "glow",
+        "rotate",
+        "flip",
+        "bounce",
+        "elastic",
+        "scale_pulse",
+        "shimmer",
+        "typewriter"
+      ],
+      "default": "fade_in",
+      "description": "Anima\u00e7\u00e3o de entrada do texto"
+    },
+    "animation_speed": {
+      "type": "number",
+      "default": 1,
+      "description": "Dura\u00e7\u00e3o da transi\u00e7\u00e3o de anima\u00e7\u00e3o em segundos (0.3 a 3)"
+    },
+    "phrase_duration": {
+      "type": "number",
+      "default": 3,
+      "description": "Dura\u00e7\u00e3o de cada frase em segundos"
+    },
+    "text_color": {
+      "type": "string",
+      "default": "#ffffff",
+      "description": "Cor do texto"
+    },
+    "text_color_2": {
+      "type": "string",
+      "description": "Segunda cor para gradiente (opcional)"
+    },
+    "font_family": {
+      "type": "string",
+      "enum": [
+        "sans",
+        "serif",
+        "mono",
+        "cursive",
+        "arial",
+        "georgia",
+        "times",
+        "verdana",
+        "trebuchet",
+        "impact",
+        "palatino",
+        "garamond",
+        "helvetica",
+        "courier_new"
+      ],
+      "default": "sans",
+      "description": "Tipo de fonte"
+    },
+    "font_size": {
+      "type": "string",
+      "enum": [
+        "xsmall",
+        "small",
+        "medium",
+        "large",
+        "xlarge",
+        "xxlarge",
+        "xxxlarge"
+      ],
+      "default": "xlarge",
+      "description": "Tamanho da fonte"
+    },
+    "text_weight": {
+      "type": "string",
+      "enum": [
+        "light",
+        "normal",
+        "medium",
+        "semibold",
+        "bold",
+        "extrabold",
+        "black"
+      ],
+      "default": "bold",
+      "description": "Peso da fonte"
+    },
+    "text_letter_spacing": {
+      "type": "number",
+      "default": 0,
+      "description": "Espa\u00e7amento entre letras em px (-5 a 20)"
+    },
+    "text_line_height": {
+      "type": "number",
+      "default": 1.2,
+      "description": "Altura da linha (0.8 a 2.5)"
+    },
+    "text_align_h": {
+      "type": "string",
+      "enum": [
+        "left",
+        "center",
+        "right"
+      ],
+      "default": "center",
+      "description": "Alinhamento horizontal do texto"
+    },
+    "text_align_v": {
+      "type": "string",
+      "enum": [
+        "top",
+        "middle",
+        "bottom"
+      ],
+      "default": "middle",
+      "description": "Alinhamento vertical do texto"
+    },
+    "text_effect": {
+      "type": "string",
+      "enum": [
+        "none",
+        "shadow",
+        "glow",
+        "outline",
+        "3d",
+        "neon",
+        "double_shadow",
+        "emboss"
+      ],
+      "default": "shadow",
+      "description": "Efeito visual do texto"
+    },
+    "text_effect_color": {
+      "type": "string",
+      "description": "Cor do efeito (sombra/brilho/contorno)"
+    },
+    "text_transform": {
+      "type": "string",
+      "enum": [
+        "none",
+        "uppercase",
+        "lowercase",
+        "capitalize"
+      ],
+      "default": "none",
+      "description": "Transforma\u00e7\u00e3o do texto (mai\u00fasculas, etc)"
+    },
+    "text_padding": {
+      "type": "number",
+      "default": 8,
+      "description": "Padding do bloco de texto (0 a 20)"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "URL do \u00e1udio MP3"
+    },
+    "audio_volume": {
+      "type": "number",
+      "default": 0.7,
+      "description": "Volume do \u00e1udio (0 a 1)"
+    },
+    "audio_fade_in": {
+      "type": "boolean",
+      "default": false,
+      "description": "Fade in no \u00e1udio"
+    },
+    "audio_fade_out": {
+      "type": "boolean",
+      "default": false,
+      "description": "Fade out no \u00e1udio"
+    },
+    "audio_loop": {
+      "type": "boolean",
+      "default": true,
+      "description": "Repetir \u00e1udio em loop"
+    }
+  },
+  "required": [
+    "name",
+    "category"
+  ]
+}

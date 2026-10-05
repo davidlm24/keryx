@@ -1,0 +1,50 @@
+{
+  "name": "LiveSession",
+  "type": "object",
+  "properties": {
+    "serviceId": {
+      "type": "string",
+      "description": "ID do culto associado a sessao (vazio para projecao ad-hoc)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "active",
+        "paused",
+        "ended"
+      ],
+      "default": "idle",
+      "description": "Estado da sessao ao vivo"
+    },
+    "currentItemId": {
+      "type": "string",
+      "description": "ID do ServiceItem atualmente em execucao"
+    },
+    "currentSlideIndex": {
+      "type": "number",
+      "default": 0,
+      "description": "Indice do slide atual dentro do item"
+    },
+    "startedAt": {
+      "type": "number",
+      "description": "Timestamp de inicio da sessao (Unix ms)"
+    },
+    "endedAt": {
+      "type": "number",
+      "description": "Timestamp de fim da sessao (Unix ms)"
+    },
+    "channel": {
+      "type": "string",
+      "description": "Canal de sincronizacao para projecao remota"
+    }
+  },
+  "required": [],
+  "rls": {
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
