@@ -1,6 +1,7 @@
 # KERYX as an offline-first desktop app
 
-Status: draft for discussion, 2026-10-06. Nothing here is implemented.
+Status: decisions settled 2026-10-06. Phase 0 (shell) is done; the rest is not
+implemented.
 
 ## Why
 
@@ -70,10 +71,10 @@ The swap happens behind that surface; **pages don't change**.
   like the Supabase one was. Text ids (imported rows keep theirs, new rows
   get UUIDs), `jsonb` columns become JSON text, `created_date`/`updated_date`
   kept. The `church_id` column from the cloud branch is not needed locally.
-- **Transport:** the renderer calls `window.keryx.db.<op>` exposed by the
+- **Transport:** the renderer calls `window.keryxDesktop.db.<op>` exposed by the
   preload script; the main process runs the query. Network screens use the
   same operations over HTTP/WebSocket. The adapter picks the transport at
-  startup (`window.keryx` present → IPC, else → network).
+  startup (`window.keryxDesktop` present → IPC, else → network).
 - **Filters and sort:** the adapter's Mongo-shaped filter (`$in`, `$gte`,
   `$regex`, …) and `"-field"` sort compile to SQL `WHERE`/`ORDER BY`. Same
   semantics the pages rely on today, including the two read shapes
@@ -206,15 +207,16 @@ electron/
   db/          schema, migrations, query compiler for the adapter's filters
   server/      HTTP + WebSocket (loopback full app, LAN screens), /media
   media/       library import, thumbnails
-  preload.js   exposes window.keryx (db, projection, settings, media)
+  preload.cjs  exposes window.keryxDesktop (db, projection, settings, media)
 src/           the React app, as today; src/api/client.js gets a
                transport layer (ipc | network) under the same surface
 resources/     bundled Bibles, default backgrounds
 supabase/      kept for the future cloud sync; not used by the desktop app
 ```
 
-Build: `electron-vite` (one config for main, preload and renderer), the
-current Vite setup moves under it unchanged. `BrowserRouter` keeps working
+Build: the renderer keeps the plain Vite setup; the main and preload files are
+unbundled CommonJS (`.cjs`), which needs no extra build tool until they grow
+dependencies that must be bundled. `BrowserRouter` keeps working
 because windows load from `http://127.0.0.1:7700/…`, not `file://`.
 
 ## 10. Phases
@@ -224,7 +226,7 @@ development time, not calendar time.
 
 | # | Phase | Result | Effort |
 | --- | --- | --- | --- |
-| 0 | Scaffold | Electron shell opens the current UI from the embedded server; dead dependencies removed (Stripe, Leaflet, three, Quill, lodash, moment, …) | 1–2 days |
+| 0 | Scaffold | **Done.** Electron shell opens the current UI from a loopback server; 13 dead dependencies removed (Stripe, Leaflet, three, Quill, lodash, moment, …) | 1–2 days |
 | 1 | Local data | SQLite schema, adapter over IPC, change events, import script from Supabase/Base44. Whole app works with Wi-Fi off. | 4–5 days |
 | 2 | Outputs | Display manager, fullscreen output windows, `window.open` interception, "Ecrãs" settings | 2–3 days |
 | 3 | Media + Bible | Media library on disk, thumbnails, bundled Bibles, offline verse lookup, bundled backgrounds | 2–3 days |

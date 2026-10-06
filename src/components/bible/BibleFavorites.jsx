@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Star, Highlighter, StickyNote, Trash2, BookOpen, Loader2 } from "lucide-react";
-import moment from "moment";
+import { format } from "date-fns";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
 import AddToServiceButton from "@/components/service/AddToServiceButton";
@@ -182,7 +182,7 @@ export default function BibleFavorites({ onProjectVerse }) {
                                         {n.highlight_color && activeTab === "highlight" && (
                                             <div className="flex items-center gap-1 mt-1">
                                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: n.highlight_color }} />
-                                                <span className="text-xs text-gray-400">{moment(n.updated_date || n.created_date).format("DD/MM/YYYY")}</span>
+                                                <span className="text-xs text-gray-400">{format(new Date(n.updated_date || n.created_date), "dd/MM/yyyy")}</span>
                                             </div>
                                         )}
                                     </div>

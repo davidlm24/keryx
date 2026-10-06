@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Clock, TrendingUp, Music, Calendar } from "lucide-react";
-import moment from "moment";
+import { format, isAfter, startOfDay, subDays } from "date-fns";
 import { useThemeColors } from "@/hooks/useThemeColors";
 
 export default function SongHistoryPage() {
@@ -37,13 +37,13 @@ export default function SongHistoryPage() {
     }, [history]);
 
     const todayCount = useMemo(() => {
-        const today = moment().startOf("day");
-        return history.filter(h => moment(h.played_at).isAfter(today)).length;
+        const today = startOfDay(new Date());
+        return history.filter(h => isAfter(new Date(h.played_at), today)).length;
     }, [history]);
 
     const weekCount = useMemo(() => {
-        const week = moment().subtract(7, "days");
-        return history.filter(h => moment(h.played_at).isAfter(week)).length;
+        const week = subDays(new Date(), 7);
+        return history.filter(h => isAfter(new Date(h.played_at), week)).length;
     }, [history]);
 
     return (
@@ -174,7 +174,7 @@ export default function SongHistoryPage() {
                                                 </p>
                                             </div>
                                             <p className="text-gray-400 text-xs shrink-0">
-                                                {moment(h.played_at).format("DD/MM HH:mm")}
+                                                {format(new Date(h.played_at), "dd/MM HH:mm")}
                                             </p>
                                         </div>
                                     ))}

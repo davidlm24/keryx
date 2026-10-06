@@ -35,6 +35,15 @@ npm run dev               # http://localhost:5173
 | `npm run build` / `npm run preview` | production build to `./dist` and a local server for it |
 | `npm run lint` / `npm run lint:fix` | ESLint, errors only; warnings are advisory |
 | `npm run db:migrate` | one-off import of the old Base44 data (see below) |
+| `npm run desktop:dev` | the desktop shell (Electron) on the Vite dev server, hot reload; F12 opens devtools |
+| `npm run desktop:start` | build, then open the desktop shell on the built app |
+| `npm run desktop:smoke` | build, open the shell, check the app rendered, exit (exit code 0 = OK) |
+
+The desktop shell lives in `electron/` (main process, loopback server for `dist/`,
+preload exposing `window.keryxDesktop`). It still talks to Supabase; the local
+database is phase 1 of the [plan](docs/desktop-architecture.md). If `npm install`
+did not download the Electron binary (`node_modules/electron/dist` missing), run
+`node node_modules/electron/install.js`.
 
 There is no local database: dev runs against the real project. Anonymous
 reads are allowed by design (see Security posture), so the app renders with

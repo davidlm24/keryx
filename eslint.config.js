@@ -5,6 +5,17 @@ import pluginReactHooks from "eslint-plugin-react-hooks";
 import pluginUnusedImports from "eslint-plugin-unused-imports";
 
 export default [
+  { ignores: [".claude/**", "dist/**", "node_modules/**"] },
+  {
+    files: ["electron/**/*.cjs"],
+    ...pluginJs.configs.recommended,
+    languageOptions: { sourceType: "commonjs", ecmaVersion: 2022, globals: globals.node },
+  },
+  {
+    files: ["scripts/**/*.mjs"],
+    ...pluginJs.configs.recommended,
+    languageOptions: { sourceType: "module", ecmaVersion: 2022, globals: globals.node },
+  },
   {
     files: [
       "src/components/**/*.{js,mjs,cjs,jsx}",

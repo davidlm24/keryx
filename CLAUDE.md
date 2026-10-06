@@ -38,6 +38,8 @@ npm run dev         # vite against the project in .env (http://localhost:5173)
 npm run lint        # gates on errors only; ~90 warnings are advisory
 npm run build
 npm run db:migrate  # one-off Base44 data import; needs secrets, see the script
+npm run desktop:dev    # Electron shell on the Vite dev server (see electron/)
+npm run desktop:smoke  # build + open the shell + assert the app rendered
 ```
 
 Secrets (`SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, Base44 tokens) are
