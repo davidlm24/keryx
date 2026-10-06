@@ -316,7 +316,7 @@ export const auth = {
             unwrap(await supabase.auth.verifyOtp({ token_hash: resetToken, type: "recovery" }), 400);
         }
         if (!(await currentSession())) {
-            throw new ClientError("Ligação de recuperação inválida ou expirada. Pede uma nova.", 400);
+            throw new ClientError("Link de recuperação inválido ou expirado. Peça um novo.", 400);
         }
         unwrap(await supabase.auth.updateUser({ password: newPassword }));
         return { success: true };
@@ -327,7 +327,7 @@ export const auth = {
     async deleteAccount(userId) {
         const session = await currentSession();
         if (!session?.user) throw new ClientError("Não autenticado", 401);
-        if (userId && userId !== session.user.id) throw new ClientError("Só podes eliminar a tua própria conta.", 403);
+        if (userId && userId !== session.user.id) throw new ClientError("Você só pode excluir a própria conta.", 403);
         unwrap(await supabase.functions.invoke("delete-account", { body: {} }));
         return { success: true };
     },
@@ -343,7 +343,7 @@ const safeName = (name) =>
     String(name || "file").normalize("NFKD").replace(/[^\w.-]+/g, "_").slice(-100);
 
 async function UploadFile({ file }) {
-    if (!file) throw new ClientError("Nenhum ficheiro fornecido.", 400);
+    if (!file) throw new ClientError("Nenhum arquivo fornecido.", 400);
     const path = `uploads/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName(file.name)}`;
     unwrap(await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type || undefined, upsert: false }));
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -377,7 +377,7 @@ export const integrations = {
         SendEmail: notAvailable("Envio de email"),
         SendSMS: notAvailable("Envio de SMS"),
         GenerateImage: notAvailable("Geração de imagens"),
-        ExtractDataFromUploadedFile: notAvailable("Extração de dados de ficheiros"),
+        ExtractDataFromUploadedFile: notAvailable("Extração de dados de arquivos"),
     },
 };
 

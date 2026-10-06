@@ -146,9 +146,9 @@ export default function ProjectionManager() {
               <div>
                 <h3 className="text-white font-semibold mb-1">Como conectar cada dispositivo</h3>
                 <ul className="list-disc list-inside space-y-2 text-accent">
-                  <li><strong className="text-white">Projetor (HDMI):</strong> No ecrã principal, ao projetar uma música abre-se uma janela separada — arraste-a para o ecrã do projetor. Ou ligue via QR/URL como outros dispositivos.</li>
-                  <li><strong className="text-white">Smart TV:</strong> Abra o browser da TV, clique em <em>QR</em> no cartão do dispositivo e aponte a câmara do telemóvel para abrir a URL na TV.</li>
-                  <li><strong className="text-white">Tablet:</strong> Clique em <em>QR</em> no cartão e aponte a câmara do tablet para ligar.</li>
+                  <li><strong className="text-white">Projetor (HDMI):</strong> Na tela principal, ao projetar uma música abre-se uma janela separada — arraste-a para o tela do projetor. Ou ligue via QR/URL como outros dispositivos.</li>
+                  <li><strong className="text-white">Smart TV:</strong> Abra o navegador da TV, clique em <em>QR</em> no cartão do dispositivo e aponte a câmera do celular para abrir a URL na TV.</li>
+                  <li><strong className="text-white">Tablet:</strong> Clique em <em>QR</em> no cartão e aponte a câmera do tablet para ligar.</li>
                   <li>O dispositivo aparece como <strong>"Online"</strong> no painel do operador.</li>
                   <li>No <strong>Painel do Operador</strong>, escolha o dispositivo e envie o conteúdo apropriado (letras/bíblia para projetor, vídeos/imagens para TV, etc.).</li>
                 </ul>

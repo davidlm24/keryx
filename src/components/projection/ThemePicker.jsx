@@ -72,17 +72,17 @@ export default function ThemePicker({ formData, onApply }) {
             setShowSave(false);
             loadThemes();
         } catch (e) {
-            console.error("Erro ao guardar tema:", e);
+            console.error("Erro ao salvar tema:", e);
         }
     };
 
     const deleteTheme = async (id) => {
-        if (!confirm("Eliminar este tema?")) return;
+        if (!confirm("Excluir este tema?")) return;
         try {
             await keryx.entities.ProjectionTheme.delete(id);
             loadThemes();
         } catch (e) {
-            console.error("Erro ao eliminar:", e);
+            console.error("Erro ao excluir:", e);
         }
     };
 
@@ -111,7 +111,7 @@ export default function ThemePicker({ formData, onApply }) {
                     className="text-muted-foreground hover:text-foreground"
                 >
                     <Plus className="w-4 h-4 mr-1" />
-                    Guardar atual
+                    Salvar atual
                 </Button>
             </div>
 
@@ -150,7 +150,7 @@ export default function ThemePicker({ formData, onApply }) {
                 <p className="text-xs text-muted-foreground">Carregando temas...</p>
             ) : themes.length === 0 ? (
                 <p className="text-xs text-muted-foreground/60">
-                    Nenhum tema guardado. Personalize o estilo e clique em "Guardar atual".
+                    Nenhum tema salvo. Personalize o estilo e clique em "Salvar atual".
                 </p>
             ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">

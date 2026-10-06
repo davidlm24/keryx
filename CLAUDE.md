@@ -7,9 +7,11 @@ wiring, the data model and the known gaps.
 
 ## Ground rules
 
-- **UI language is Portuguese (pt-PT).** All user-facing strings, labels and
-  toasts are Portuguese. Match that; do not introduce English UI copy. Code
-  identifiers and comments are English.
+- **UI language is Brazilian Portuguese (pt-BR).** All user-facing strings,
+  labels and toasts are pt-BR (tela, salvar, arquivo, excluir, celular,
+  cronômetro, usuário) — the church is Brazilian; do not use pt-PT forms
+  (ecrã, guardar, ficheiro, eliminar, telemóvel). Do not introduce English UI
+  copy. Code identifiers and comments are English.
 - **`src/components/ui/` is generated shadcn/ui.** It is excluded from lint and
   from editor type checking. Don't hand-edit it; add components with the
   shadcn CLI (`components.json` is configured) or wrap them instead.

@@ -149,7 +149,7 @@ export default function Communication() {
                             Nenhuma comunicação criada
                         </h3>
                         <p style={{ color: colors.primary }}>
-                            Crie contagens regressivas, cronómetros ou anúncios
+                            Crie contagens regressivas, cronômetros ou anúncios
                         </p>
                     </motion.div>
                 ) : (

@@ -50,7 +50,7 @@ export default function RemoteProjectionDialog({ open, onClose, title }) {
                                 Projeção Remota
                             </h2>
                             <p className="mt-1 text-sm text-gray-400 leading-relaxed">
-                                {title ? `"${title}"` : "Esta funcionalidade"} não abre em uma janela no telemóvel.
+                                {title ? `"${title}"` : "Esta funcionalidade"} não abre em uma janela no celular.
                                 Use a projeção remota para enviar para tablets, TVs ou projetores.
                             </p>
                         </div>

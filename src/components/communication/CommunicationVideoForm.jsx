@@ -131,7 +131,7 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
             }
         } catch (error) {
             console.error("Erro ao fazer upload:", error);
-            alert("Erro ao fazer upload dos ficheiros");
+            alert("Erro ao fazer upload dos arquivos");
         } finally {
             setIsUploading(false);
         }
@@ -195,7 +195,7 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
                             <SelectItem value="timer">
                                 <div className="flex items-center gap-2">
                                     <Timer className="w-4 h-4" />
-                                    Cronómetro
+                                    Cronômetro
                                 </div>
                             </SelectItem>
                             <SelectItem value="announcement">
@@ -599,10 +599,10 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
                     <div className="space-y-3 pt-4 border-t border-orange-500/30">
                         <label className="text-sm text-orange-300 flex items-center gap-2">
                             <Upload className="w-4 h-4" />
-                            Adicionar Múltiplos Ficheiros (Loop)
+                            Adicionar Múltiplos Arquivos (Loop)
                         </label>
                         <p className="text-xs text-orange-400">
-                            Carregue vários ficheiros (imagens, vídeos, áudios) que serão reproduzidos em loop durante a comunicação
+                            Carregue vários arquivos (imagens, vídeos, áudios) que serão reproduzidos em loop durante a comunicação
                         </p>
                         <Input
                             type="file"
@@ -615,14 +615,14 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
                         
                         {uploadedFiles.length > 0 && (
                             <div className="space-y-2 max-h-40 overflow-y-auto">
-                                <p className="text-sm text-orange-300">{uploadedFiles.length} ficheiro(s) adicionado(s)</p>
+                                <p className="text-sm text-orange-300">{uploadedFiles.length} arquivo(s) adicionado(s)</p>
                                 {uploadedFiles.map((file, idx) => (
                                     <div key={idx} className="flex items-center gap-3 p-2 bg-orange-500/10 rounded border border-orange-500/30">
                                         {file.type === "video" && <span className="text-2xl">🎥</span>}
                                         {file.type === "image" && <span className="text-2xl">🖼️</span>}
                                         {file.type === "audio" && <span className="text-2xl">🎵</span>}
                                         <div className="flex-1">
-                                            <p className="text-sm text-white">{file.name || `Ficheiro ${idx + 1}`}</p>
+                                            <p className="text-sm text-white">{file.name || `Arquivo ${idx + 1}`}</p>
                                             <p className="text-xs text-orange-300">{file.type}</p>
                                         </div>
                                         <Button

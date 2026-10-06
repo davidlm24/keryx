@@ -281,7 +281,7 @@ export default function VideoProjection() {
                     className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-20 gap-4"
                 >
                     <span className="text-7xl">⛶</span>
-                    <span className="text-white text-2xl font-bold">Toque para Ecrã Inteiro</span>
+                    <span className="text-white text-2xl font-bold">Toque para Tela Cheia</span>
                 </button>
             )}
         </div>

@@ -3,7 +3,7 @@ import AnnouncementCarousel from "@/components/projection/AnnouncementCarousel";
 
 /**
  * Página de projeção — carousel de anúncios em loop automático.
- * Abrir em ecrã separado / tablet remoto.
+ * Abrir em tela separada / tablet remoto.
  */
 export default function AnnouncementCarouselPage() {
     return <AnnouncementCarousel intervalSec={8} />;

@@ -319,7 +319,7 @@ export default function YouTubeProjectionPanel({ onClose }) {
                                 </button>
                             </div>
                             <div className="flex items-center gap-1">
-                                <button onClick={requestFullscreen} className="text-gray-400 hover:text-yellow-400 transition-colors p-1" title="Ecrã inteiro nos dispositivos">
+                                <button onClick={requestFullscreen} className="text-gray-400 hover:text-yellow-400 transition-colors p-1" title="Tela cheia nos dispositivos">
                                     <Maximize2 className="w-4 h-4" />
                                 </button>
                                 <button onClick={handleStop} className="text-gray-400 hover:text-red-400 transition-colors p-1" title="Parar">

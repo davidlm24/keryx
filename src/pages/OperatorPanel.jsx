@@ -294,7 +294,7 @@ export default function OperatorPanel() {
               {/* Send Media */}
               <Card className="bg-card/50 border-border">
                 <CardContent className="p-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2"><Video className="w-4 h-4" /> Enviar Multimédia</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2"><Video className="w-4 h-4" /> Enviar Multimídia</h3>
                   <div className="flex gap-2">
                     <Input value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} placeholder="URL do vídeo ou imagem" className="bg-white/10 border-border flex-1" />
                     <Button variant="outline" className="border-border" onClick={() => sendMedia("video")}><Video className="w-4 h-4" /></Button>

@@ -46,7 +46,7 @@ class Boundary extends React.Component {
                 <div className="max-w-md text-center space-y-4">
                     <h1 className="text-2xl font-heading font-semibold">Algo correu mal</h1>
                     <p className="text-muted-foreground">
-                        Esta página encontrou um erro inesperado. Os dados guardados não foram afetados.
+                        Esta página encontrou um erro inesperado. Os dados salvos não foram afetados.
                     </p>
                     <div className="flex gap-3 justify-center">
                         <button

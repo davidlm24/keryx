@@ -58,8 +58,8 @@ export default function PastorView() {
         return () => { unsub(); window.removeEventListener("message", handleMessage); };
     }, []);
 
-    const formatTime = (d) => d.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const formatDate = (d) => d.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
+    const formatTime = (d) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const formatDate = (d) => d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
     const formatElapsed = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60; return `${h > 0 ? String(h).padStart(2, "0") + ":" : ""}${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`; };
 
     const currentContent = slides[currentSlide];
@@ -90,7 +90,7 @@ export default function PastorView() {
                 <div className="lg:col-span-2 flex flex-col">
                     <div className="flex items-center gap-2 mb-3">
                         <Eye className="w-5 h-5 text-accent" />
-                        <h2 className="text-sm uppercase tracking-widest text-accent">A projetar agora</h2>
+                        <h2 className="text-sm uppercase tracking-widest text-accent">Projetando agora</h2>
                     </div>
                     <div className="flex-1 bg-black/30 rounded-2xl border border-white/10 p-8 flex items-center justify-center">
                         {currentContent ? (

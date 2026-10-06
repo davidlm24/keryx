@@ -86,7 +86,7 @@ export default function SceneForm({ open, scene, devices, onSave, onClose }) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} className="border-border">Cancelar</Button>
-          <Button onClick={handleSave}>Guardar</Button>
+          <Button onClick={handleSave}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

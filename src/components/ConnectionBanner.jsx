@@ -12,7 +12,7 @@ export default function ConnectionBanner({ isOnline }) {
                     className="fixed top-0 left-0 right-0 z-[100] bg-amber-600 text-white text-center py-2 text-sm font-medium flex items-center justify-center gap-2"
                 >
                     <WifiOff className="w-4 h-4" />
-                    Sem ligação — a tentar reconectar...
+                    Sem conexão — tentando reconectar...
                 </motion.div>
             )}
         </AnimatePresence>

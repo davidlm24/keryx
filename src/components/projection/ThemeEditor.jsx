@@ -14,7 +14,7 @@ const ELEMENT_TYPES = {
 /**
  * Editor visual de temas — permite posicionar elementos (título, letra, imagem)
  * arrastando numa área 16:9, com controlo de z-index e alinhamento.
- * Os elementos posicionados são guardados no ProjectionTheme.
+ * Os elementos posicionados são salvos no ProjectionTheme.
  *
  * Props:
  *  - theme: tema atual (ProjectionTheme)

@@ -21,7 +21,7 @@ export default function Projection() {
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [isSequencePlaying, setIsSequencePlaying] = useState(false);
 
-    // Modos de ferramentas: relógio, cronómetro, temporizador, tela preta, texto livre
+    // Modos de ferramentas: relógio, cronômetro, temporizador, tela preta, texto livre
     const [toolMode, setToolMode] = useState(null); // "clock" | "stopwatch" | "timer" | "black" | "freetext" | null
     const [toolData, setToolData] = useState({}); // { text, endTime, startTime, text_color, font_size }
     const [toolTick, setToolTick] = useState(0); // força re-render a cada segundo
@@ -37,10 +37,10 @@ export default function Projection() {
         }
     };
 
-    // Tentar ecrã inteiro ao carregar (silencioso se o navegador exigir gesto)
+    // Tentar tela cheia ao carregar (silencioso se o navegador exigir gesto)
     useEffect(() => { goFullscreen(); }, []);
 
-    // Tick para relógio/cronómetro/temporizador
+    // Tick para relógio/cronômetro/temporizador
     useEffect(() => {
         if (!toolMode || toolMode === "black" || toolMode === "freetext") return;
         const interval = setInterval(() => setToolTick(t => t + 1), 1000);
@@ -236,8 +236,8 @@ export default function Projection() {
 
     if (toolMode === "clock") {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        const dateStr = now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        const dateStr = now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
         const fontSizeMap = { small: "text-5xl", medium: "text-7xl", large: "text-8xl", xlarge: "text-9xl" };
         const fs = fontSizeMap[toolData.font_size] || "text-8xl";
         const bg = toolData.background_image;
@@ -275,7 +275,7 @@ export default function Projection() {
                 style={isImg ? { backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}>
                 {isImg && <div className="absolute inset-0 bg-black/50" />}
                 <div className="relative z-10 text-center">
-                    <p className="text-xl md:text-2xl text-white/50 mb-4 uppercase tracking-widest">Cronómetro</p>
+                    <p className="text-xl md:text-2xl text-white/50 mb-4 uppercase tracking-widest">Cronômetro</p>
                     <p className={`${fs} font-bold font-mono`}
                         style={{ color: toolData.text_color || "#ffffff", textShadow: "4px 4px 12px rgba(0,0,0,0.8)" }}>
                         {timeStr}

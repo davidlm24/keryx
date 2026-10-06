@@ -286,7 +286,7 @@ export default function Services() {
         // Abrir balão de controlo de letras para músicas e bíblia imediatamente
         if (projType === "song" || projType === "bible") {
             setActiveLyricSong(fullItem);
-            // Criar registo LyricSync em segundo plano (não bloqueia o painel)
+            // Criar registro LyricSync em segundo plano (não bloqueia o painel)
             const slides = projType === "song"
                 ? (fullItem.slides || [{ text: fullItem.lyrics, duration: fullItem.duration || 30 }])
                 : (fullItem.slides || [{ text: fullItem.text, duration: 10 }]);
@@ -305,7 +305,7 @@ export default function Services() {
                 timestamp: Date.now()
             }).then(lyricRecord => {
                 setActiveLyricSyncId(lyricRecord.id);
-                // Limpar registos antigos em segundo plano
+                // Limpar registros antigos em segundo plano
                 keryx.entities.LyricSync.list().then(oldRecords => {
                     for (const old of oldRecords) {
                         if (old.id !== lyricRecord.id && Date.now() - old.timestamp > 10000) {
@@ -344,7 +344,7 @@ export default function Services() {
     };
 
     const stopProjection = () => {
-        // Parar projeção de letras/bíblia (janela única partilhada)
+        // Parar projeção de letras/bíblia (janela única compartilhada)
         sendToSharedProjection({ type: "STOP_PROJECTION" });
         sendToSharedProjection({ type: "PROJECTION_TOOL", mode: "stop" });
         if (videoWindow && !videoWindow.closed) {
@@ -391,7 +391,7 @@ export default function Services() {
         if (type === "song") {
             const isVideo = data.audio_url && (data.audio_url.includes('.mp4') || data.audio_url.includes('video') || data.audio_url.startsWith('data:video'));
 
-            // Enviar letra para o projetor principal (janela única partilhada)
+            // Enviar letra para o projetor principal (janela única compartilhada)
             sendToSharedProjection({
                 type: "PROJECTION_DATA",
                 title: data.title,

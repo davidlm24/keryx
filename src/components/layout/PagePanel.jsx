@@ -1,7 +1,7 @@
 import React from "react";
 
 /**
- * Painel Lateral — estrutura de comandos lateral partilhada,
+ * Painel Lateral — estrutura de comandos lateral compartilhada,
  * com a mesma linguagem visual da página Músicas (estilos mc-* globais).
  *
  * Props:

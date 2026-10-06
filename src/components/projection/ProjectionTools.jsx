@@ -73,7 +73,7 @@ export default function ProjectionTools() {
 
     const tools = [
         { key: "clock", label: "Relógio", icon: Clock, action: handleClock },
-        { key: "stopwatch", label: "Cronómetro", icon: Timer, action: handleStopwatch },
+        { key: "stopwatch", label: "Cronômetro", icon: Timer, action: handleStopwatch },
         { key: "timer", label: "Temporizador", icon: Timer, action: handleTimer },
         { key: "freetext", label: "Texto Livre", icon: Type, action: handleFreeText },
         { key: "black", label: "Tela Preta", icon: MonitorOff, action: handleBlack },
@@ -95,7 +95,7 @@ export default function ProjectionTools() {
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* Configurações de estilo partilhadas */}
+                {/* Configurações de estilo compartilhadas */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-black/20 rounded-lg">
                     <div>
                         <label className="text-xs text-muted-foreground mb-1 block">Cor do Texto</label>

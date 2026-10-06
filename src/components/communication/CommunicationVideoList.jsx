@@ -15,7 +15,7 @@ export default function CommunicationVideoList({ videos, onPlay, onEdit, onDelet
 
     const typeLabels = {
         countdown: "Contagem Regressiva",
-        timer: "Cronómetro",
+        timer: "Cronômetro",
         announcement: "Anúncio",
         image_text: "Imagem + Texto"
     };

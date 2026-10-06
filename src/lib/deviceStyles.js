@@ -47,7 +47,7 @@ export const DEVICE_TYPE_LABELS = {
 
 export const DEVICE_ROLE_LABELS = {
   lyrics: "Letras / Bíblia",
-  media: "Multimédia",
+  media: "Multimídia",
   control: "Controlo Remoto",
   bible: "Bíblia",
   announcements: "Avisos",
@@ -61,7 +61,7 @@ export const CONTENT_TYPE_LABELS = {
   image: "Imagem",
   announcement: "Aviso",
   countdown: "Contagem",
-  blank: "Ecrã Vazio",
+  blank: "Tela Vazia",
   logo: "Logo",
 };
 

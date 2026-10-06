@@ -3,7 +3,7 @@ import { keryx } from "@/api/keryxClient";
 
 /**
  * Envia um heartbeat periódico para ProjectionDevice, atualizando last_seen.
- * O operador pode assim ver quais ecrãs estão realmente online.
+ * O operador pode assim ver quais telas estão realmente online.
  *
  * @param {string|null} deviceId - ID do dispositivo atual (se conhecido)
  * @param {string} deviceName - nome do dispositivo para criar/registrar

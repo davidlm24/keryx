@@ -45,7 +45,7 @@ export function useOfflineCache(key, fetchFn, deps = []) {
 }
 
 /**
- * Guarda um item individual no cache offline.
+ * Salva um item individual no cache offline.
  */
 export function cacheItem(key, item) {
     try {

@@ -158,7 +158,7 @@ export default function VideoPlayerPanel({ song, onClose, onSendToProjection, vi
                     <button
                         onClick={requestRemoteFullscreen}
                         className="text-gray-400 hover:text-yellow-400 transition-colors p-1"
-                        title="Ecrã inteiro nos dispositivos QR"
+                        title="Tela cheia nos dispositivos QR"
                     >
                         <Maximize className="w-4 h-4" />
                     </button>

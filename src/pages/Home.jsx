@@ -276,7 +276,7 @@ export default function Home() {
     };
 
     const handlePlay = async (song) => {
-        // Enviar letra para o projetor (janela única partilhada)
+        // Enviar letra para o projetor (janela única compartilhada)
         sendToProjection(song);
 
         // Registar no histórico
@@ -332,7 +332,7 @@ export default function Home() {
                 timestamp: Date.now()
             });
             setActiveLyricSyncId(lyricRecord.id);
-            // Limpar registos antigos em segundo plano
+            // Limpar registros antigos em segundo plano
             keryx.entities.LyricSync.list().then(oldRecords => {
                 for (const old of oldRecords) {
                     if (old.id !== lyricRecord.id && Date.now() - old.timestamp > 10000) {
@@ -449,7 +449,7 @@ export default function Home() {
     };
 
     const stopProjection = () => {
-        // Parar projeção de letras/bíblia (janela única partilhada)
+        // Parar projeção de letras/bíblia (janela única compartilhada)
         sendToSharedProjection({ type: "STOP_PROJECTION" });
         sendToSharedProjection({ type: "PROJECTION_TOOL", mode: "stop" });
         // Parar stage view
@@ -551,7 +551,7 @@ export default function Home() {
                     <p>${(s.text || "").replace(/</g, "&lt;")}</p>
                 </div>
             `).join("")}
-            <div class="footer">KERYX — ${new Date().toLocaleDateString("pt-PT")}</div>
+            <div class="footer">KERYX — ${new Date().toLocaleDateString("pt-BR")}</div>
             </body></html>
         `);
         win.document.close();

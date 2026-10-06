@@ -4,7 +4,7 @@ import { Zap, Square, Image as ImageIcon, Clock, MessageSquare, Monitor, X, Baby
 
 /**
  * Dock flutuante de acesso rápido durante o culto ao vivo.
- * Botões de 1 toque para: tela vazia, logo, cronómetro, anúncio, tela preta,
+ * Botões de 1 toque para: tela vazia, logo, cronômetro, anúncio, tela preta,
  * alerta de berçário, mensagem livre, edição ao vivo, carousel de anúncios.
  */
 export default function QuickAccessDock({ onBlank, onLogo, onCountdown, onAnnouncement, onBlack, onAlert, onMessage, onLiveEdit, onCarousel }) {
@@ -13,7 +13,7 @@ export default function QuickAccessDock({ onBlank, onLogo, onCountdown, onAnnoun
     const actions = [
         { icon: Square, label: "Vazio", color: "bg-gray-600", onClick: onBlank },
         { icon: ImageIcon, label: "Logo", color: "bg-blue-600", onClick: onLogo },
-        { icon: Clock, label: "Cronómetro", color: "bg-amber-600", onClick: onCountdown },
+        { icon: Clock, label: "Cronômetro", color: "bg-amber-600", onClick: onCountdown },
         { icon: MessageSquare, label: "Aviso", color: "bg-green-600", onClick: onAnnouncement },
         { icon: Baby, label: "Berçário", color: "bg-rose-600", onClick: onAlert },
         { icon: Pencil, label: "Editar slide", color: "bg-cyan-600", onClick: onLiveEdit },

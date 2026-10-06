@@ -78,14 +78,14 @@ export default function ThemeEditorSection({ isMobile }) {
     };
 
     const handleDelete = async (id) => {
-        if (!confirm("Eliminar este tema?")) return;
+        if (!confirm("Excluir este tema?")) return;
         try {
             await keryx.entities.ProjectionTheme.delete(id);
             const updated = themes.filter((t) => t.id !== id);
             setThemes(updated);
             if (selectedTheme?.id === id) setSelectedTheme(updated[0] || null);
         } catch (e) {
-            console.error("Erro ao eliminar tema:", e);
+            console.error("Erro ao excluir tema:", e);
         }
     };
 
@@ -105,7 +105,7 @@ export default function ThemeEditorSection({ isMobile }) {
                 {/* Seletor de temas + criar novo */}
                 <div className="flex flex-wrap gap-2 items-center">
                     {isLoading ? (
-                        <span className="text-xs text-muted-foreground">A carregar temas...</span>
+                        <span className="text-xs text-muted-foreground">Carregando temas...</span>
                     ) : (
                         themes.map((t) => (
                             <button

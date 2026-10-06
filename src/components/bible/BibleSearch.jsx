@@ -90,7 +90,7 @@ export default function BibleSearch({ onProjectVerse }) {
                 note_type: "favorite",
             });
         } catch (e) {
-            console.error("Erro ao guardar favorito:", e);
+            console.error("Erro ao salvar favorito:", e);
         } finally {
             setSavingId(null);
         }
@@ -199,7 +199,7 @@ export default function BibleSearch({ onProjectVerse }) {
                                                     onClick={() => handleSaveFavorite(r, i)}
                                                     disabled={savingId === i}
                                                     className="text-amber-400 hover:bg-amber-500/20 h-8 px-2"
-                                                    title="Guardar como favorito"
+                                                    title="Salvar como favorito"
                                                 >
                                                     <Star className={`w-4 h-4 ${savingId === i ? "animate-pulse" : ""}`} />
                                                 </Button>

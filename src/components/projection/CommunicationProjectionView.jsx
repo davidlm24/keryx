@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { keryx } from "@/api/keryxClient";
 
 /**
- * Vista de projeção de Comunicação Visual (contagens regressivas, cronómetros,
+ * Vista de projeção de Comunicação Visual (contagens regressivas, cronômetros,
  * anúncios, imagem+texto). Props-driven — usada pela janela única /Projection.
  */
 export default function CommunicationProjectionView({ video: initialVideo, playlist: initialPlaylist, isSequence }) {

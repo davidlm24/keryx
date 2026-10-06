@@ -45,7 +45,7 @@ export default function SongDatabase({ songs }) {
             const data = JSON.parse(text);
             const songList = Array.isArray(data) ? data : data.songs;
             if (!Array.isArray(songList) || songList.length === 0) {
-                alert("Ficheiro inválido: nenhum música encontrada.");
+                alert("Arquivo inválido: nenhum música encontrada.");
                 return;
             }
             const valid = songList.filter(s => s.title && s.lyrics);
@@ -59,7 +59,7 @@ export default function SongDatabase({ songs }) {
             setMessage(`${count} músicas importadas com sucesso!`);
         } catch (err) {
             console.error("Erro ao importar:", err);
-            alert("Erro ao importar o ficheiro. Verifique o formato JSON.");
+            alert("Erro ao importar o arquivo. Verifique o formato JSON.");
         } finally {
             setImporting(false);
             e.target.value = "";
@@ -78,7 +78,7 @@ export default function SongDatabase({ songs }) {
                 <Download />
                 Exportar
             </button>
-            <label className="mc-control" title="Importar músicas de ficheiro JSON">
+            <label className="mc-control" title="Importar músicas de arquivo JSON">
                 {importing ? <Loader2 className="animate-spin" /> : <Upload />}
                 {importing ? "Importando..." : "Importar"}
                 <input type="file" accept=".json" className="hidden" onChange={handleImport} />

@@ -124,7 +124,7 @@ export default function MediaUpload({ onMediaUploaded }) {
                 />
                 {selectedFiles.length > 0 && (
                     <div className="text-sm" style={{ color: colors.primary }}>
-                        {selectedFiles.length} ficheiro(s) selecionado(s)
+                        {selectedFiles.length} arquivo(s) selecionado(s)
                     </div>
                 )}
                 <Button
@@ -136,7 +136,7 @@ export default function MediaUpload({ onMediaUploaded }) {
                     {isUploading ? (
                         <>
                             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                            A carregar...
+                            Carregando...
                         </>
                     ) : (
                         <>
@@ -158,7 +158,7 @@ export default function MediaUpload({ onMediaUploaded }) {
                     </div>
                 )}
                 <p className="text-xs" style={{ color: colors.primary }}>
-                    Formatos aceitos: Vídeos, Imagens, GIF, PDF, PowerPoint • Múltiplos ficheiros suportados
+                    Formatos aceitos: Vídeos, Imagens, GIF, PDF, PowerPoint • Múltiplos arquivos suportados
                 </p>
             </CardContent>
         </Card>

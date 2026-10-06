@@ -32,7 +32,7 @@ export default function LyricProjection() {
     }, "LyricSync");
 
     useEffect(() => {
-        // Buscar o registo ativo mais recente ao carregar
+        // Buscar o registro ativo mais recente ao carregar
         const checkDatabase = async () => {
             try {
                 if (localModeRef.current) return;
@@ -124,7 +124,7 @@ export default function LyricProjection() {
         // Sinalizar que está pronto
         window.opener?.postMessage({ type: "PROJECTION_READY" }, "*");
 
-        // Rede de segurança caso o realtime perca um evento. Só aplica registos
+        // Rede de segurança caso o realtime perca um evento. Só aplica registros
         // mais recentes do que o último visto, para não reverter slides.
         const interval = setInterval(checkDatabase, 15000);
 
@@ -136,7 +136,7 @@ export default function LyricProjection() {
         };
     }, []);
 
-    // Logo da igreja para ecrã idle (retroprojetor de identidade)
+    // Logo da igreja para tela idle (retroprojetor de identidade)
     const [idleLogo, setIdleLogo] = useState(() => localStorage.getItem("idleLogoUrl") || "");
 
     useEffect(() => {

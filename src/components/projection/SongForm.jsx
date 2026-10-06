@@ -184,7 +184,7 @@ export default function SongForm({ song, onSubmit, onCancel }) {
                             Vídeo MP4 (Enviado para dispositivo separado)
                         </h3>
                         <p className="text-xs text-muted-foreground">
-                            Ao projetar, a letra vai para o projetor e o vídeo para o tablet/telemóvel conectado
+                            Ao projetar, a letra vai para o projetor e o vídeo para o tablet/celular conectado
                         </p>
                         
                         {formData.audio_url && (formData.audio_url.includes('.mp4') || formData.audio_url.includes('video') || formData.audio_url.startsWith('data:video')) ? (
@@ -209,7 +209,7 @@ export default function SongForm({ song, onSubmit, onCancel }) {
                                 <div className="flex items-center gap-3 p-3 bg-primary/10 rounded border border-border">
                                     <Video className="w-5 h-5 text-accent" />
                                     <div className="flex-1">
-                                        <p className="text-sm text-muted-foreground">Ficheiro: {pendingVideo.name}</p>
+                                        <p className="text-sm text-muted-foreground">Arquivo: {pendingVideo.name}</p>
                                         <p className="text-xs text-muted-foreground/70">Tamanho: {(pendingVideo.size / (1024 * 1024)).toFixed(2)} MB</p>
                                     </div>
                                 </div>
@@ -232,7 +232,7 @@ export default function SongForm({ song, onSubmit, onCancel }) {
                                         disabled={isUploadingVideo}
                                         className="flex-1 bg-green-600 hover:bg-green-700"
                                     >
-                                        {isUploadingVideo ? "A enviar..." : "✓ OK - Aceitar Vídeo"}
+                                        {isUploadingVideo ? "Enviando..." : "✓ OK - Aceitar Vídeo"}
                                     </Button>
                                     <Button
                                         type="button"

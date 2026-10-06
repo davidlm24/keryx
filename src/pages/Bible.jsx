@@ -74,7 +74,7 @@ export default function Bible() {
 
         // Enviar para a janela única de projeção (abre-a se ainda não existir)
         sendPassageToProjection(passageData);
-        // Guardar na base de dados em background (não bloqueia a projeção)
+        // Salvar na base de dados em background (não bloqueia a projeção)
         createPassageMutation.mutate(passageData);
     };
 

@@ -128,7 +128,7 @@ export default function BibleSchool() {
         if (!projWindow || projWindow.closed) {
             const w = window.open(url, "bibleProjection", "width=1280,height=720,menubar=no,toolbar=no,location=no");
             setProjWindow(w);
-            // esperar a janela carregar e enviar primeiro registo
+            // esperar a janela carregar e enviar primeiro registro
             setTimeout(() => sendSync(payload), 1500);
         } else {
             projWindow.focus();
@@ -199,7 +199,7 @@ export default function BibleSchool() {
                         <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                                <span className="text-white font-medium">A projetar: {activeMaterial.title}</span>
+                                <span className="text-white font-medium">Projetando: {activeMaterial.title}</span>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                                 {(activeMaterial.type === "slides" || activeMaterial.type === "text") && (
@@ -245,7 +245,7 @@ export default function BibleSchool() {
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                        <MaterialList materials={materials} classes={classes} onProject={projectMaterial} onEdit={(m) => { setEditingMaterial(m); setShowMaterialForm(true); }} onDelete={(id) => { if (confirm("Eliminar este material?")) deleteMaterialM.mutate(id); }} />
+                        <MaterialList materials={materials} classes={classes} onProject={projectMaterial} onEdit={(m) => { setEditingMaterial(m); setShowMaterialForm(true); }} onDelete={(id) => { if (confirm("Excluir este material?")) deleteMaterialM.mutate(id); }} />
                     </>
                 )}
 
@@ -276,7 +276,7 @@ export default function BibleSchool() {
                                             {students.length > 0 && (<div className="flex flex-wrap gap-1.5">{students.map((s, i) => <span key={i} className="text-xs px-2 py-1 rounded bg-white/10 text-white/70">{s.name}</span>)}</div>)}
                                             <div className="flex gap-2">
                                                 <Button onClick={submitForm} disabled={!formData.name.trim()} className="text-white flex-1" style={{ background: `linear-gradient(to right, ${colors.primary}, ${colors.secondary})` }}>
-                                                    {editingId ? "Guardar alterações" : "Criar turma"}
+                                                    {editingId ? "Salvar alterações" : "Criar turma"}
                                                 </Button>
                                                 <Button variant="outline" onClick={resetForm} className="border-white/20 text-white">Cancelar</Button>
                                             </div>

@@ -14,7 +14,7 @@ export default function BibleMaterialProjection() {
     const channel = urlParams.get("channel");
     const liveChannelRef = useLiveSessionChannel();
 
-    // Subscrição da LiveSession — limpa o ecrã quando a sessão termina (com filtro por canal)
+    // Subscrição da LiveSession — limpa a tela quando a sessão termina (com filtro por canal)
     useEffect(() => {
         const unsubscribe = keryx.entities.LiveSession.subscribe((event) => {
             if (event.type === 'create' && event.data?.status === "active" && !liveChannelRef.current) {

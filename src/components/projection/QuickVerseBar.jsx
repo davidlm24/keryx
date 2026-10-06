@@ -64,7 +64,7 @@ Se for uma passagem com múltiplos versículos, junta o texto todo numa string s
 
                 onProject?.(passageData);
 
-                // Guardar nos recentes
+                // Salvar nos recentes
                 const updated = [reference, ...recent.filter(r => r !== reference)].slice(0, 5);
                 setRecent(updated);
                 localStorage.setItem("quickVerseRecent", JSON.stringify(updated));

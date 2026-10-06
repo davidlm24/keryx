@@ -14,7 +14,7 @@ const TYPES = [
 ];
 const ROLES = [
   { value: "lyrics", label: "Letras / Bíblia" },
-  { value: "media", label: "Multimédia (Vídeo/Imagem)" },
+  { value: "media", label: "Multimídia (Vídeo/Imagem)" },
   { value: "control", label: "Controlo Remoto" },
   { value: "bible", label: "Bíblia" },
   { value: "announcements", label: "Avisos" },
@@ -119,7 +119,7 @@ export default function DeviceForm({ open, device, onSave, onClose }) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} className="border-accent/30">Cancelar</Button>
-          <Button onClick={handleSave}>Guardar</Button>
+          <Button onClick={handleSave}>Salvar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

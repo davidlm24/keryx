@@ -119,7 +119,7 @@ export default function DeviceView() {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-black flex items-center justify-center text-accent">A conectar...</div>;
+    return <div className="min-h-screen bg-black flex items-center justify-center text-accent">Conectando...</div>;
   }
   if (!device) {
     return <div className="min-h-screen bg-black flex items-center justify-center text-red-400">Dispositivo não encontrado.</div>;

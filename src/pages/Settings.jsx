@@ -48,7 +48,7 @@ export default function Settings() {
                 try {
                     await keryx.entities.User.delete(authUser.id);
                 } catch (e) {
-                    console.error("Erro ao eliminar conta no servidor:", e);
+                    console.error("Erro ao excluir conta no servidor:", e);
                 }
             }
             localStorage.removeItem("gerar_projection_settings");
@@ -117,7 +117,7 @@ export default function Settings() {
             logo_url: logoUrl?.trim() || "",
         };
 
-        // Só guarda cores de submenu personalizadas se diferirem das cores da barra
+        // Só salva cores de submenu personalizadas se diferirem das cores da barra
         if ((submenuPrimaryColor || "#7d8470") !== (navbarPrimaryColor || "#7d8470")) {
             updateData.submenu_primary_color = submenuPrimaryColor || "#7d8470";
         } else {
@@ -603,7 +603,7 @@ export default function Settings() {
                                     }`}
                                 >
                                     <div className={`${isMobile ? 'text-2xl mb-1' : 'text-3xl mb-2'}`}>📱</div>
-                                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-green-200 font-semibold`}>Telemóvel</div>
+                                    <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-green-200 font-semibold`}>Celular</div>
                                 </button>
                                 <button
                                     onClick={() => setDeviceMode("tablet")}
@@ -639,7 +639,7 @@ export default function Settings() {
                         </CardHeader>
                         <CardContent className={`space-y-4 ${isMobile ? 'p-4 pt-0' : ''}`}>
                             <p className={`text-foreground ${isMobile ? 'text-sm' : 'text-base'}`}>
-                                Conecte um tablet, telemóvel ou iPad para exibir vídeos MP4 separadamente enquanto a letra fica no projetor.
+                                Conecte um tablet, celular ou iPad para exibir vídeos MP4 separadamente enquanto a letra fica no projetor.
                             </p>
                             
                             <div className="p-6 bg-primary/5 border border-border rounded-lg">
@@ -712,7 +712,7 @@ export default function Settings() {
                         </CardHeader>
                         <CardContent className={isMobile ? 'p-4 pt-0' : ''}>
                             <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-red-300 mb-4`}>
-                                A eliminação da conta remove permanentemente os seus dados e termina a sessão. Esta ação não pode ser desfeita.
+                                A exclusão da conta remove permanentemente seus dados e encerra a sessão. Esta ação não pode ser desfeita.
                             </p>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -724,21 +724,21 @@ export default function Settings() {
                                         {isDeletingAccount ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                A eliminar...
+                                                Excluindo...
                                             </>
                                         ) : (
                                             <>
                                                 <Trash className="w-4 h-4 mr-2" />
-                                                Eliminar Conta
+                                                Excluir Conta
                                             </>
                                         )}
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle>Eliminar a sua conta?</AlertDialogTitle>
+                                        <AlertDialogTitle>Excluir sua conta?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Tem a certeza absoluta? Todos os seus dados serão removidos permanentemente e não poderão ser recuperados. Será redirecionado para o início de sessão.
+                                            Tem certeza absoluta? Todos os seus dados serão removidos permanentemente e não poderão ser recuperados. Você será redirecionado para o login.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -747,7 +747,7 @@ export default function Settings() {
                                             onClick={handleDeleteAccount}
                                             className="bg-red-600 hover:bg-red-700 text-white"
                                         >
-                                            Sim, eliminar
+                                            Sim, excluir
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>

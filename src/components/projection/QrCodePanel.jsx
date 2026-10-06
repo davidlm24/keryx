@@ -3,7 +3,7 @@ import QRCode from "react-qr-code";
 import { QrCode, X } from "lucide-react";
 
 /**
- * Painel de QR Code — gera QR code para a congregação aceder à letra no telemóvel.
+ * Painel de QR Code — gera QR code para a congregação acessar a letra no celular.
  * A URL aponta para a página de projeção de letras com o canal da sessão.
  */
 export default function QrCodePanel({ channel, songTitle }) {
@@ -34,7 +34,7 @@ export default function QrCodePanel({ channel, songTitle }) {
                             <QRCode value={qrUrl} size={200} />
                         </div>
                         <p className="text-xs text-gray-500">
-                            A congregação pode ler este código para ver a letra no telemóvel em tempo real.
+                            A congregação pode ler este código para ver a letra no celular em tempo real.
                         </p>
                     </div>
                 </div>

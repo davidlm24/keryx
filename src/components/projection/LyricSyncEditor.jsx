@@ -4,7 +4,7 @@ import { Play, Pause, SkipBack, Clock, Check, ChevronLeft, ChevronRight } from "
 
 /**
  * LyricSyncEditor
- * Permite ao utilizador marcar o tempo exato de cada slide da letra
+ * Permite ao usuário marcar o tempo exato de cada slide da letra
  * enquanto o vídeo está a ser reproduzido.
  * 
  * Props:
@@ -240,7 +240,7 @@ export default function LyricSyncEditor({ videoUrl, slides, onSyncDone, onCancel
                     disabled={!allMarked}
                     className="flex-1 text-white font-semibold">
                     <Check className="w-4 h-4 mr-2" />
-                    {allMarked ? "Guardar Sincronização" : `Faltam ${syncedSlides.length - markedCount} estrofes`}
+                    {allMarked ? "Salvar Sincronização" : `Faltam ${syncedSlides.length - markedCount} estrofes`}
                 </Button>
             </div>
         </div>

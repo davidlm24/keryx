@@ -482,7 +482,7 @@ export default function BibleSelector({ onPassageFound, onProjectDirect }) {
                                     <div className="flex items-center gap-2">
                                         <label className="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded bg-white/10 text-xs hover:bg-white/20 transition-colors" style={{ border: `1px solid ${colors.primary}50`, color: colors.primary }}>
                                             {bgUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>📁</span>}
-                                            {bgUploading ? "A carregar..." : bgImageUrl ? "Alterar imagem" : "Escolher JPG/PNG"}
+                                            {bgUploading ? "Carregando..." : bgImageUrl ? "Alterar imagem" : "Escolher JPG/PNG"}
                                             <input
                                                 type="file"
                                                 accept="image/jpeg,image/png,image/webp"
@@ -529,7 +529,7 @@ export default function BibleSelector({ onPassageFound, onProjectDirect }) {
                                 {isLoading && loadingMode === "save" ? (
                                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Buscando...</>
                                 ) : (
-                                    <><Book className="w-4 h-4 mr-2" />Guardar</>
+                                    <><Book className="w-4 h-4 mr-2" />Salvar</>
                                 )}
                             </Button>
                         </div>

@@ -76,7 +76,7 @@ export default function BibleFavorites({ onProjectVerse }) {
             setNewNote({ reference: "", text: "", note_text: "" });
             queryClient.invalidateQueries({ queryKey: ["bibleNotes"] });
         } catch (err) {
-            console.error("Erro ao guardar anotação:", err);
+            console.error("Erro ao salvar anotação:", err);
         } finally {
             setSavingNote(false);
         }
@@ -153,13 +153,13 @@ export default function BibleFavorites({ onProjectVerse }) {
                             style={{ background: `linear-gradient(to right, ${colors.primary}, ${colors.secondary})` }}
                         >
                             {savingNote ? <Loader2 className="w-4 h-4 animate-spin" /> : <StickyNote className="w-4 h-4" />}
-                            Guardar Anotação
+                            Salvar Anotação
                         </Button>
                     </div>
                 )}
 
                 {isLoading ? (
-                    <p className="text-gray-400 text-center py-6">A carregar...</p>
+                    <p className="text-gray-400 text-center py-6">Carregando...</p>
                 ) : filtered.length === 0 ? (
                     <p className="text-gray-400 text-center py-6">
                         Nenhum {activeTabInfo.label.toLowerCase()} ainda

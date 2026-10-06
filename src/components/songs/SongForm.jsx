@@ -218,7 +218,7 @@ export default function SongForm({ song, onSubmit, onCancel, isLoading }) {
             className="border-white/10 text-white hover:bg-white/10">Cancelar</Button>
           <Button type="submit" disabled={isLoading}
             className="bg-gradient-to-r from-emerald-600 to-lime-500 hover:from-emerald-700 hover:to-lime-600 text-white">
-            {isLoading ? 'A guardar...' : song ? 'Atualizar' : 'Criar Música'}
+            {isLoading ? 'Salvando...' : song ? 'Atualizar' : 'Criar Música'}
           </Button>
         </div>
       </form>

@@ -98,7 +98,7 @@ export default function MaterialForm({ classes, onSave, onCancel, editing }) {
         try {
             const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             set(field, file_url);
-        } catch (e) { console.error(e); alert("Erro ao enviar ficheiro"); }
+        } catch (e) { console.error(e); alert("Erro ao enviar arquivo"); }
         setUploading(false);
     };
 
@@ -223,9 +223,9 @@ export default function MaterialForm({ classes, onSave, onCancel, editing }) {
                     <div className="space-y-2">
                         <Label className="text-white/60 text-sm">URL do vídeo (MP4/YouTube)</Label>
                         <Input placeholder="https://..." value={form.video_url} onChange={e => set("video_url", e.target.value)} className="bg-white/10 border-white/20 text-white" />
-                        <p className="text-xs text-white/40">ou enviar ficheiro de vídeo:</p>
+                        <p className="text-xs text-white/40">ou enviar arquivo de vídeo:</p>
                         <label className="flex items-center gap-2 cursor-pointer text-sm text-accent">
-                            <Upload className="w-4 h-4" /> {uploading ? "A enviar..." : "Enviar vídeo"}
+                            <Upload className="w-4 h-4" /> {uploading ? "Enviando..." : "Enviar vídeo"}
                             <input type="file" accept="video/*" className="hidden" onChange={e => e.target.files[0] && uploadFile(e.target.files[0], "video_url")} disabled={uploading} />
                         </label>
                     </div>
@@ -236,7 +236,7 @@ export default function MaterialForm({ classes, onSave, onCancel, editing }) {
                         <Label className="text-white/60 text-sm">Imagem</Label>
                         <Input placeholder="URL da imagem..." value={form.image_url} onChange={e => set("image_url", e.target.value)} className="bg-white/10 border-white/20 text-white" />
                         <label className="flex items-center gap-2 cursor-pointer text-sm text-accent">
-                            <Upload className="w-4 h-4" /> {uploading ? "A enviar..." : "Enviar imagem"}
+                            <Upload className="w-4 h-4" /> {uploading ? "Enviando..." : "Enviar imagem"}
                             <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && uploadFile(e.target.files[0], "image_url")} disabled={uploading} />
                         </label>
                         {form.image_url && <img src={form.image_url} alt="preview" className="max-h-40 rounded" />}
@@ -257,7 +257,7 @@ export default function MaterialForm({ classes, onSave, onCancel, editing }) {
                     <Label className="text-white/60 text-sm">Imagem de fundo (opcional - sobrepõe a cor)</Label>
                     <Input placeholder="URL da imagem de fundo..." value={form.background_image || ""} onChange={e => set("background_image", e.target.value)} className="bg-white/10 border-white/20 text-white" />
                     <label className="flex items-center gap-2 cursor-pointer text-sm text-accent">
-                        <Upload className="w-4 h-4" /> {uploading ? "A enviar..." : "Enviar imagem de fundo"}
+                        <Upload className="w-4 h-4" /> {uploading ? "Enviando..." : "Enviar imagem de fundo"}
                         <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files[0] && uploadFile(e.target.files[0], "background_image")} disabled={uploading} />
                     </label>
                 </div>
@@ -266,7 +266,7 @@ export default function MaterialForm({ classes, onSave, onCancel, editing }) {
 
                 <div className="flex gap-2">
                     <Button onClick={handleSubmit} className="text-white flex-1" style={{ background: "linear-gradient(to right, #7d8470, #c9a86a)" }}>
-                        {editing ? "Guardar" : "Criar material"}
+                        {editing ? "Salvar" : "Criar material"}
                     </Button>
                     <Button variant="outline" onClick={onCancel} className="border-white/20 text-white">Cancelar</Button>
                 </div>

@@ -54,7 +54,7 @@ export default function DeviceCard({ device, onEdit, onDelete, onCopyUrl }) {
               <X className="w-4 h-4" />
             </button>
             <QRCode value={deviceUrl} size={140} bgColor="#ffffff" fgColor="#1e1b4b" />
-            <p className="text-xs text-gray-600 text-center">Aponte a câmara do tablet/TV<br />para abrir este dispositivo</p>
+            <p className="text-xs text-gray-600 text-center">Aponte a câmera do tablet/TV<br />para abrir este dispositivo</p>
             <div className="flex items-center gap-1.5 w-full bg-gray-100 rounded-lg px-2 py-1.5">
               <span className="text-xs text-gray-500 truncate flex-1">{deviceUrl}</span>
               <button onClick={copyUrl} className="text-accent hover:text-accent/80">

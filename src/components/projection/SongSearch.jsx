@@ -152,7 +152,7 @@ REGRAS IMPORTANTES:
                         <div className="flex gap-2 pt-1">
                             <Button size="sm" onClick={handleSave}
                                 className="bg-green-600 hover:bg-green-700 text-white">
-                                ✓ Guardar Música
+                                ✓ Salvar Música
                             </Button>
                             <Button size="sm" variant="outline"
                                 onClick={() => setFoundResult(null)}
