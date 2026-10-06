@@ -4,7 +4,7 @@ Church worship projection and service planning — song lyrics, Bible passages,
 media and announcements driven onto one or more live screens, in the vein of
 Holyrics and sPresenter.
 
-The UI is in **Portuguese (pt-PT)**. Entity field descriptions are Portuguese too.
+The UI is in **Brazilian Portuguese (pt-BR)**. Entity field descriptions are Portuguese too.
 
 - **Stack:** Vite 6 · React 18 · React Router 6 · TanStack Query 5 · Tailwind 3 · shadcn/ui (Radix) · Framer Motion
 - **Backend:** [Supabase](https://supabase.com) — Postgres + RLS, Auth, Storage, Realtime, Edge Functions
@@ -12,6 +12,12 @@ The UI is in **Portuguese (pt-PT)**. Entity field descriptions are Portuguese to
 
 This started as a Base44 export and was migrated off it; see [How the backend
 is wired](#how-the-backend-is-wired) for what that left behind.
+
+**Direction:** KERYX is becoming an offline-first desktop app (Electron,
+SQLite, local outputs). The plan is in
+[docs/desktop-architecture.md](docs/desktop-architecture.md). The Supabase
+backend described below is the current state, not the destination; the
+cloud access-control work is parked on the `cloud-security-model` branch.
 
 ---
 
