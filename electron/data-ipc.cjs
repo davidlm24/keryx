@@ -3,6 +3,7 @@
 //   keryx:db-change     event   store change, sent to every window
 //   keryx:media-import  invoke  { sourcePath | bytes, name } -> { fileName }
 //   keryx:config        sync    { mediaBaseUrl }
+//   keryx:displays:*    invoke  list / set / close / identify for output windows
 
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -14,7 +15,7 @@ function safeExtension(name) {
     return /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : "";
 }
 
-function registerDataIpc({ store, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
+function registerDataIpc({ store, outputs, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
 
     ipcMain.handle("keryx:db", (event, payload) => {
@@ -50,6 +51,19 @@ function registerDataIpc({ store, mediaDir, mediaBaseUrl, isTrustedSender, log }
             return { error: { message: `Não foi possível salvar o arquivo: ${err && err.message}`, status: 500 } };
         }
     });
+
+    const outputsOp = (fn) => (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        try {
+            return { data: fn(payload || {}) };
+        } catch (err) {
+            return { error: { message: err.message, status: 400 } };
+        }
+    };
+    ipcMain.handle("keryx:displays:list", outputsOp(() => outputs.list()));
+    ipcMain.handle("keryx:displays:set", outputsOp(({ key, assignment }) => outputs.setAssignment(key, assignment)));
+    ipcMain.handle("keryx:displays:close", outputsOp(({ key }) => { outputs.close(key); return outputs.list(); }));
+    ipcMain.handle("keryx:displays:identify", outputsOp(() => { outputs.identify(); return true; }));
 
     ipcMain.on("keryx:config", (event) => {
         event.returnValue = { mediaBaseUrl };

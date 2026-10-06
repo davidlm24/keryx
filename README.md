@@ -39,7 +39,7 @@ npm run desktop:dev       # the desktop app, hot reload
 | `npm run db:migrate:supabase` | the older Base44 → Supabase import, for the web build |
 | `npm run desktop:dev` | the desktop shell (Electron) on the Vite dev server, hot reload; F12 opens devtools |
 | `npm run desktop:start` | build, then open the desktop shell on the built app |
-| `npm run desktop:smoke` | build, open the shell on a throwaway data folder, check it rendered and that data flows, exit (0 = OK). `KERYX_SMOKE=1 npm run desktop:dev` runs the same checks plus the renderer adapter end to end |
+| `npm run desktop:smoke` (`KERYX_SMOKE_FULLSCREEN=1` also opens a real fullscreen output on your primary display for a moment) | build, open the shell on a throwaway data folder, check it rendered and that data flows, exit (0 = OK). `KERYX_SMOKE=1 npm run desktop:dev` runs the same checks plus the renderer adapter end to end |
 
 If `npm install` did not download the Electron binary
 (`node_modules/electron/dist` missing), run `node node_modules/electron/install.js`.

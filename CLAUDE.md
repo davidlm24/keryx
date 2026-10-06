@@ -53,6 +53,10 @@ npm run db:import      # one-off Base44 -> local import; needs the user's token
 npm run dev            # web build in a browser, against Supabase
 ```
 
+Smoke runs use a free port and a temp data folder, so they never collide with a KERYX that is open. In Git Bash set `KERYX_START_PATH=Settings` (no leading slash; `/Settings` is rewritten to a Windows path), and `KERYX_SCREENSHOT=file.png` with `KERYX_SCREENSHOT_TEXT="some heading"` to capture a page.
+
+Outputs (projector, stage, ...) are windows the *pages* open with `window.open`; the main process only places them (`electron/outputs*.cjs`). Don't open an output from the main process: it would have no `postMessage` handle.
+
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.
 

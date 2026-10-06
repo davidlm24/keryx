@@ -9,6 +9,7 @@ import { Settings as SettingsIcon, Upload, ImageIcon, Globe, Trash, AlertTriangl
 import QRCode from "react-qr-code";
 import { createPageUrl } from "@/utils";
 import ThemeEditorSection from "@/components/settings/ThemeEditorSection";
+import DisplaysSection from "@/components/settings/DisplaysSection";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -692,6 +693,8 @@ export default function Settings() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {keryx.isDesktop && <DisplaysSection isMobile={isMobile} />}
 
                     <ThemeEditorSection isMobile={isMobile} />
 

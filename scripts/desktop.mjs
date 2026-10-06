@@ -25,7 +25,7 @@ if (!["dev", "start", "smoke"].includes(mode)) {
 
 const smoke = mode === "smoke" || process.env.KERYX_SMOKE === "1";
 const smokeEnv = smoke
-    ? { KERYX_SMOKE: "1", KERYX_DATA_DIR: process.env.KERYX_DATA_DIR || mkdtempSync(path.join(os.tmpdir(), "keryx-smoke-")) }
+    ? { KERYX_SMOKE: "1", KERYX_PORT: "0", KERYX_DATA_DIR: process.env.KERYX_DATA_DIR || mkdtempSync(path.join(os.tmpdir(), "keryx-smoke-")) }
     : {};
 
 function run(env) {

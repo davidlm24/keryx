@@ -1,13 +1,18 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Menu, dialog, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, screen, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
+const { createOutputManager } = require("./outputs-manager.cjs");
+const { createSettings } = require("./settings.cjs");
+const { outputKeyForUrl } = require("./outputs.cjs");
 const schema = require("./db/schema.json");
 
 const HOST = "127.0.0.1";
-const PORT = 7700;
+// KERYX_PORT=0 picks a free port; smoke runs do, so a test never collides with
+// a KERYX that is open on the same machine.
+const PORT = process.env.KERYX_PORT !== undefined ? Number(process.env.KERYX_PORT) : 7700;
 const BG = "#1a1714";
 
 // KERYX_DEV_URL: a running Vite dev server (npm run desktop:dev).
@@ -15,6 +20,8 @@ const BG = "#1a1714";
 // KERYX_SMOKE: load the app, run the checks in smoke.cjs, print, exit.
 const DEV_URL = process.env.KERYX_DEV_URL || "";
 const SMOKE = process.env.KERYX_SMOKE === "1";
+// KERYX_START_PATH: open the main window on this page (e.g. /Settings).
+const START_PATH = process.env.KERYX_START_PATH ? "/" + process.env.KERYX_START_PATH.replace(/^\/+/, "") : "";
 const DEVTOOLS = Boolean(DEV_URL) || process.env.KERYX_DEVTOOLS === "1";
 
 // Everything the app keeps lives here: keryx.db, media/, and Chromium's own
@@ -28,6 +35,7 @@ let appUrl = "";
 let appOrigin = "";
 let mainWindow = null;
 let store = null;
+let outputs = null;
 
 // Same database, same port: a second launch just focuses the first.
 if (!app.requestSingleInstanceLock()) {
@@ -63,11 +71,15 @@ function guardWindow(win) {
     // anything else (YouTube, docs links) goes to the system browser.
     webContents.setWindowOpenHandler(({ url }) => {
         if (isAppUrl(url) || url === "about:blank") {
+            // Outputs (projector, stage, ...) land on the display the operator
+            // chose; any other popup opens where the page asked.
+            const key = outputKeyForUrl(url, appOrigin);
             return {
                 action: "allow",
                 overrideBrowserWindowOptions: {
                     backgroundColor: "#000000",
                     autoHideMenuBar: true,
+                    ...(key && outputs ? outputs.windowOptions(key) : {}),
                     webPreferences,
                 },
             };
@@ -82,7 +94,10 @@ function guardWindow(win) {
         if (/^https?:/i.test(url)) shell.openExternal(url);
     });
 
-    webContents.on("did-create-window", guardWindow);
+    webContents.on("did-create-window", (child, details) => {
+        guardWindow(child);
+        if (outputs) outputs.track(child, details.url);
+    });
 
     if (DEVTOOLS) {
         webContents.on("before-input-event", (event, input) => {
@@ -110,12 +125,22 @@ function createMainWindow() {
     guardWindow(mainWindow);
     mainWindow.once("ready-to-show", () => mainWindow.show());
     mainWindow.on("closed", () => { mainWindow = null; });
-    mainWindow.loadURL(appUrl);
+    mainWindow.loadURL(appUrl + START_PATH).catch((err) => {
+        // Also what a bad KERYX_START_PATH looks like (Git Bash rewrites "/Settings"
+        // to a Windows path; use MSYS_NO_PATHCONV=1 or "Settings" without a slash).
+        console.error(`[keryx] não foi possível abrir ${appUrl + START_PATH}: ${err.message}`);
+        if (SMOKE) {
+            console.log(`SMOKE FAIL ${JSON.stringify({ load: err.message })}`);
+            app.exit(1);
+        }
+    });
     return mainWindow;
 }
 
 function fatal(title, message) {
-    dialog.showErrorBox(title, message);
+    // A dialog would block a test run forever; report instead.
+    if (SMOKE) console.log(`SMOKE FAIL ${JSON.stringify({ fatal: title, message })}`);
+    else dialog.showErrorBox(title, message);
     app.exit(1);
 }
 
@@ -146,8 +171,16 @@ app.whenReady().then(async () => {
     appUrl = DEV_URL || serverUrl;
     appOrigin = new URL(appUrl).origin;
 
+    outputs = createOutputManager({
+        screen,
+        settings: createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m)),
+        getOrigin: () => appOrigin,
+        log: (m) => console.warn(m),
+    });
+
     registerDataIpc({
         store,
+        outputs,
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
@@ -155,7 +188,7 @@ app.whenReady().then(async () => {
     });
 
     const win = createMainWindow();
-    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL) });
+    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen });
 });
 
 app.on("window-all-closed", () => app.quit());

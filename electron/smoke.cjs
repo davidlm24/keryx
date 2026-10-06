@@ -5,7 +5,7 @@
 // data dir (scripts/desktop.mjs sets KERYX_DATA_DIR).
 
 const fs = require("node:fs");
-const { app } = require("electron");
+const { app, BrowserWindow } = require("electron");
 
 const RENDERED = `(() => {
     const root = document.getElementById("root");
@@ -74,6 +74,76 @@ const ADAPTER = `(async () => {
     return out;
 })()`;
 
+// Outputs: pages open them with window.open; the main process places them.
+const OPEN_OUTPUT = (path, name) => `(async () => {
+    const w = window.open(location.origin + "${path}", "${name}", "width=1280,height=720");
+    await new Promise((r) => setTimeout(r, 1500));
+    return { opened: Boolean(w) && !w.closed };
+})()`;
+const PICK_PRIMARY = `(async () => {
+    const res = await window.keryxDesktop.displays.list();
+    const primary = res.data.displays.find((d) => d.primary);
+    return { id: primary.id, label: primary.label, width: primary.width, height: primary.height, bounds: primary.bounds };
+})()`;
+const ASSIGN = (target) => `window.keryxDesktop.displays.set("/Projection", { target: ${JSON.stringify(target)} }).then((r) => Boolean(r.data))`;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function checkOutputs(webContents, outputs, screen, { fullscreen }) {
+    const result = {
+        displays: screen.getAllDisplays().length,
+        defaultPlacement: null,
+        popupIgnored: null,
+        fullscreen: "skipped (KERYX_SMOKE_FULLSCREEN=1 to run)",
+        ok: true,
+    };
+
+    // Default placement with the displays this machine has: one display opens
+    // a normal window, an external display takes the main projection.
+    const listing = outputs.list();
+    const planned = listing.outputs.find((o) => o.key === "/Projection").placement;
+    const expectFullScreen = planned.mode === "fullscreen";
+    const plannedBounds = expectFullScreen ? listing.displays.find((d) => d.id === planned.displayId).bounds : null;
+    const first = await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
+    const tracked = outputs.trackedWindows().find((w) => w.key === "/Projection");
+    result.defaultPlacement = {
+        expectFullScreen,
+        opened: first.opened,
+        tracked: Boolean(tracked),
+        fullScreen: tracked ? tracked.fullScreen : null,
+        onPlannedDisplay: !expectFullScreen || Boolean(tracked && ["x", "y", "width", "height"].every((k) => tracked.bounds[k] === plannedBounds[k])),
+    };
+    outputs.close("/Projection");
+    await sleep(300);
+
+    // A window.open that is not an output must not be tracked or moved.
+    await webContents.executeJavaScript(`window.open("about:blank", "_blank"); 1`, true);
+    await sleep(300);
+    result.popupIgnored = outputs.trackedWindows().length === 0;
+
+    if (fullscreen) {
+        const primary = await webContents.executeJavaScript(PICK_PRIMARY);
+        await webContents.executeJavaScript(ASSIGN({ id: primary.id, label: primary.label, width: primary.width, height: primary.height }));
+        const second = await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
+        const t = outputs.trackedWindows().find((w) => w.key === "/Projection");
+        result.fullscreen = {
+            opened: second.opened,
+            fullScreen: t ? t.fullScreen : null,
+            onPrimary: t ? t.bounds.x === primary.bounds.x && t.bounds.y === primary.bounds.y : null,
+        };
+        outputs.close("/Projection");
+        await webContents.executeJavaScript(ASSIGN("auto"));
+        await sleep(300);
+    }
+
+    for (const w of BrowserWindow.getAllWindows()) {
+        if (w.webContents !== webContents && !w.isDestroyed()) w.close();
+    }
+    const d = result.defaultPlacement;
+    result.ok = Boolean(d.opened && d.tracked && d.fullScreen === d.expectFullScreen && d.onPlannedDisplay && result.popupIgnored
+        && (!fullscreen || (result.fullscreen.opened && result.fullscreen.fullScreen === true && result.fullscreen.onPrimary === true)));
+    return result;
+}
+
 function expectAdapter(a) {
     return a.isDesktop === true
         && a.page === true
@@ -88,7 +158,10 @@ function expectAdapter(a) {
         && a.llm === 501;
 }
 
-function runSmokeTest(win, { dev }) {
+const VERBOSE = process.env.KERYX_SMOKE_VERBOSE === "1";
+const step = (name) => { if (VERBOSE) console.log(`smoke: ${name}`); };
+
+function runSmokeTest(win, { dev, outputs, screen }) {
     const errors = [];
     const { webContents } = win;
     const finish = (ok, details) => {
@@ -96,6 +169,10 @@ function runSmokeTest(win, { dev }) {
         app.exit(ok ? 0 : 1);
     };
 
+    for (const name of ["did-start-loading", "did-stop-loading", "dom-ready", "did-finish-load", "did-navigate", "did-navigate-in-page", "unresponsive", "responsive", "render-process-gone"]) {
+        webContents.on(name, (_e, ...rest) => step(`event ${name} ${name.startsWith("did-navigate") ? rest[0] : ""}`));
+    }
+    webContents.on("render-process-gone", (_e, details) => step(`render-process-gone ${JSON.stringify(details)}`));
     webContents.on("console-message", (event) => {
         if (event.level === "error") errors.push(String(event.message).slice(0, 200));
     });
@@ -105,6 +182,7 @@ function runSmokeTest(win, { dev }) {
     const poll = async () => {
         let rendered;
         try {
+            step("polling render");
             rendered = await webContents.executeJavaScript(RENDERED);
         } catch { /* still loading */ }
         if (!rendered || !(rendered.rootChildren > 0 && rendered.text.trim())) {
@@ -113,17 +191,30 @@ function runSmokeTest(win, { dev }) {
             return;
         }
         try {
+            step("rendered; checking bridge");
             const bridge = await webContents.executeJavaScript(BRIDGE);
             const bridgeOk = rendered.desktop && rendered.supabaseRequests === 0 && bridge.created && bridge.listed === 1 && bridge.badStatus === 400
                 && bridge.events.join(",") === "create,delete" && Array.isArray(bridge.slides);
             const adapter = dev ? await webContents.executeJavaScript(ADAPTER) : "skipped (dev mode only)";
             const adapterOk = !dev || expectAdapter(adapter);
 
+            step("outputs ok; screenshot");
             if (process.env.KERYX_SCREENSHOT) {
+                // KERYX_SCREENSHOT_TEXT: scroll to the first element containing this text.
+                const text = process.env.KERYX_SCREENSHOT_TEXT;
+                if (text) {
+                    await webContents.executeJavaScript(`(() => {
+                        const el = [...document.querySelectorAll("body *")].find((n) => [...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.includes(${JSON.stringify(text)})));
+                        if (el) el.scrollIntoView({ block: "center" });
+                    })()`);
+                    await sleep(500);
+                }
                 const image = await webContents.capturePage();
                 fs.writeFileSync(process.env.KERYX_SCREENSHOT, image.toPNG());
             }
-            finish(bridgeOk && adapterOk, { rendered, bridge, adapter });
+            step("bridge ok; checking outputs");
+            const outputsResult = await checkOutputs(webContents, outputs, screen, { fullscreen: process.env.KERYX_SMOKE_FULLSCREEN === "1" });
+            finish(bridgeOk && adapterOk && outputsResult.ok, { rendered, bridge, adapter, outputs: outputsResult });
         } catch (err) {
             finish(false, { rendered, exception: String(err && err.message) });
         }

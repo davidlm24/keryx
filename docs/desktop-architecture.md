@@ -131,6 +131,15 @@ control logic.
   places them on the configured display instead of a popup. `postMessage`
   between opener and output works in Electron, so phase 1 needs no page
   changes here either. The live-state redesign retires it.
+- **As built (phase 2):** the main process places windows, it does not open
+  them. Pages hold the `window.open` handle and `postMessage` through it
+  (`/Projection` receives slides only that way), so a window the main
+  process opened itself would be deaf. Opening outputs automatically at
+  launch therefore waits for the live-state engine in phase 6. Settings has
+  "Testar" and "Fechar" per output; Ctrl+W closes a fullscreen output; the
+  numbers are primary display first. Unit tests cover the placement rules
+  (`electron/outputs.test.cjs`), and the smoke run opens a real output
+  (`KERYX_SMOKE_FULLSCREEN=1` also tests an explicit assignment).
 - **Keyboard and safety:** outputs ignore input; Esc in the operator window
   blanks all outputs; outputs survive the operator window being closed and
   reopened.
@@ -230,7 +239,7 @@ development time, not calendar time.
 | --- | --- | --- | --- |
 | 0 | Scaffold | **Done.** Electron shell opens the current UI from a loopback server; 13 dead dependencies removed (Stripe, Leaflet, three, Quill, lodash, moment, …) | 1–2 days |
 | 1 | Local data | **Done.** SQLite store with Base44 query semantics (20 tests), adapter over IPC, change events, local operator profile, uploads to `media/`, import script from Base44. No Supabase requests in the desktop build. | 4–5 days |
-| 2 | Outputs | Display manager, fullscreen output windows, `window.open` interception, "Ecrãs" settings | 2–3 days |
+| 2 | Outputs | **Done**, except opening outputs at launch (see section 3). Display placement of the windows pages open, hot-plug re-placement, "Telas e saídas" settings, identify, test/close | 2–3 days |
 | 3 | Media + Bible | Media library on disk, thumbnails, bundled Bibles, offline verse lookup, bundled backgrounds | 2–3 days |
 | 4 | Ship it | Backups, export/import, updater, installer, logs, install on the booth PC and run a service with it | 2 days |
 | 5 | Network screens | LAN server, screen routes, PIN, QR code in Settings | 2–3 days |
