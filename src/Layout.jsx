@@ -2,10 +2,13 @@ import React from "react";
 import { keryx } from "@/api/keryxClient";
 import TopHeader from "@/components/layout/TopHeader";
 import BottomTabBar from "@/components/layout/BottomTabBar";
+import { defaultLogoUrl } from "@/lib/backgrounds";
+
+const DEFAULT_LOGO = defaultLogoUrl();
 
 export default function Layout({ children, currentPageName }) {
     const [userSettings, setUserSettings] = React.useState({
-        logo_url: "https://media.base44.com/images/public/69388756d10163d1050a1fd7/134ea9bea_IMG-20260802-WA0009.jpg",
+        logo_url: DEFAULT_LOGO,
         background_url: "",
         language: "pt",
         primary_color: "#7d8470",
@@ -37,7 +40,7 @@ export default function Layout({ children, currentPageName }) {
         const loadSettings = async () => {
             const SETTINGS_KEY = "gerar_projection_settings";
             const defaults = {
-                logo_url: "https://media.base44.com/images/public/69388756d10163d1050a1fd7/134ea9bea_IMG-20260802-WA0009.jpg",
+                logo_url: DEFAULT_LOGO,
                 background_url: "",
                 language: "pt",
                 primary_color: "#7d8470",

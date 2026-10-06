@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { bibleBooks, VERSION_API_MAP, BOOK_API_MAP } from "./bibleData";
-import { keryx } from "@/api/keryxClient";
+import { bibleBooks, BIBLE_VERSIONS } from "@/lib/bibleBooks";
+import { getChapter } from "@/lib/bibleText";
 import { Loader2, ChevronLeft, ChevronRight, Type, Moon, Sun, BookOpen } from "lucide-react";
 
 const FONT_SIZES = { sm: "text-base", md: "text-lg", lg: "text-xl", xl: "text-2xl", xxl: "text-3xl" };
@@ -22,44 +22,13 @@ export default function BibleReader() {
     const chapters = book ? Array.from({ length: book.chapters }, (_, i) => i + 1) : [];
 
     const fetchChapter = async (bName, ch, ver) => {
-        const cacheKey = `bible_${ver}_${bName}_${ch}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-            try { setVerses(JSON.parse(cached)); return; } catch {}
-        }
         setLoading(true);
         setVerses([]);
         try {
-            const apiVersion = VERSION_API_MAP[ver] || "nvi";
-            const bookSlug = BOOK_API_MAP[bName];
-            let data = null;
-            if (bookSlug) {
-                try {
-                    const resp = await fetch(`https://www.abibliadigital.com.br/api/chapters/${apiVersion}/${bookSlug}/${ch}`);
-                    if (resp.ok) data = await resp.json();
-                } catch {}
-            }
-            if (data?.verses?.length) {
-                const parsed = data.verses.map(v => ({ number: v.number, text: v.text }));
-                setVerses(parsed);
-                localStorage.setItem(cacheKey, JSON.stringify(parsed));
-            } else {
-                const result = await keryx.integrations.Core.InvokeLLM({
-                    prompt: `Forneça o texto bíblico COMPLETO de ${bName} ${ch} na versão ${ver}. Retorne APENAS os versículos numerados no formato "1 texto\n2 texto".`,
-                    response_json_schema: { type: "object", properties: { text: { type: "string" } } }
-                });
-                const parsed = [];
-                const regex = /(\d+)\s+([\s\S]*?)(?=\s+\d+\s|$)/g;
-                let m;
-                while ((m = regex.exec(result.text || "")) !== null) {
-                    parsed.push({ number: parseInt(m[1]), text: m[2].trim() });
-                }
-                const finalVerses = parsed.length ? parsed : [{ number: 1, text: result.text || "Não foi possível obter o texto." }];
-                setVerses(finalVerses);
-                localStorage.setItem(cacheKey, JSON.stringify(finalVerses));
-            }
+            const { verses: loaded } = await getChapter(ver, bName, ch);
+            setVerses(loaded);
         } catch (e) {
-            setVerses([{ number: 0, text: "Erro ao carregar o capítulo." }]);
+            setVerses([{ number: 0, text: e.message || "Erro ao carregar o capítulo." }]);
         } finally {
             setLoading(false);
         }
@@ -91,7 +60,7 @@ export default function BibleReader() {
                 <Select value={version} onValueChange={setVersion}>
                     <SelectTrigger className="w-24 h-8 bg-white/10 border-0 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                        {Object.keys(VERSION_API_MAP).map(v => <SelectItem key={v} value={v}>{v === "BKJ1611" ? "BKJ 1611" : v}</SelectItem>)}
+                        {BIBLE_VERSIONS.map(v => <SelectItem key={v.id} value={v.id}>{v.id === "BKJ1611" ? "BKJ 1611" : v.id}</SelectItem>)}
                     </SelectContent>
                 </Select>
                 <div className="flex items-center gap-1 ml-auto">

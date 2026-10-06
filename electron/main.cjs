@@ -157,7 +157,13 @@ app.whenReady().then(async () => {
     // The loopback server runs in dev too: it serves the media library.
     let serverUrl;
     try {
-        ({ url: serverUrl } = await startStaticServer({ root: path.join(app.getAppPath(), "dist"), mediaDir, host: HOST, port: PORT }));
+        ({ url: serverUrl } = await startStaticServer({
+            root: path.join(app.getAppPath(), "dist"),
+            mediaDir,
+            bundledDir: path.join(app.getAppPath(), "resources"),
+            host: HOST,
+            port: PORT,
+        }));
     } catch (err) {
         fatal(
             "KERYX não conseguiu iniciar",

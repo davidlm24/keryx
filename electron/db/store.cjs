@@ -17,6 +17,12 @@ const { DatabaseSync } = require("node:sqlite");
 const SYSTEM_FIELDS = new Set(["id", "created_date", "updated_date", "created_by", "created_by_id"]);
 const SQL_TYPES = { text: "TEXT", real: "REAL", integer: "INTEGER", boolean: "INTEGER", json: "TEXT" };
 
+// Lookups the pages make often enough to need an index: a Bible chapter by
+// version, book and chapter (31k verses per installed version).
+const INDEXES = {
+    bible_verse: [["version", "book", "chapter", "verse"]],
+};
+
 const PROFILE_ID = "local";
 // The operator profile starts on the KERYX palette, not the lime defaults in
 // User.jsonc.
@@ -88,11 +94,12 @@ function createStore({ file, schema, log = console.warn }) {
     const db = new DatabaseSync(file);
     db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;");
 
-    // Case- and accent-case-insensitive substring match for $regex, as the
-    // Supabase adapter's ilike did; SQLite's LIKE folds ASCII only.
+    // Substring match for $regex that ignores case and accents, so "coracao"
+    // finds "Coração" (SQLite's LIKE folds ASCII case only).
+    const fold = (text) => String(text).normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase("pt-BR");
     db.function("keryx_contains", { deterministic: true }, (value, needle) => {
         if (value === null || needle === null) return 0;
-        return String(value).toLocaleLowerCase("pt-BR").includes(String(needle).toLocaleLowerCase("pt-BR")) ? 1 : 0;
+        return fold(value).includes(fold(needle)) ? 1 : 0;
     });
 
     const statements = new Map();
@@ -117,6 +124,10 @@ function createStore({ file, schema, log = console.warn }) {
         const existing = new Set(db.prepare(`PRAGMA table_info(${quote(def.table)})`).all().map((r) => r.name));
         for (const [name, col] of Object.entries(def.columns)) {
             if (!existing.has(name)) db.exec(`ALTER TABLE ${quote(def.table)} ADD COLUMN ${quote(name)} ${SQL_TYPES[col.type]}`);
+        }
+        for (const columns of INDEXES[def.table] || []) {
+            const name = `${def.table}_${columns.join("_")}`;
+            db.exec(`CREATE INDEX IF NOT EXISTS ${quote(name)} ON ${quote(def.table)} (${columns.map(quote).join(", ")})`);
         }
     }
 
@@ -393,9 +404,18 @@ function createStore({ file, schema, log = console.warn }) {
     db.prepare(`INSERT OR IGNORE INTO ${quote(schema.entities.User.table)} (id, created_date, updated_date, ${Object.keys(PROFILE_DEFAULTS).map(quote).join(", ")}) VALUES (?, ?, ?, ${Object.keys(PROFILE_DEFAULTS).map(() => "?").join(", ")})`)
         .run(PROFILE_ID, new Date().toISOString(), new Date().toISOString(), ...Object.values(PROFILE_DEFAULTS));
 
+    // { value: rowCount } for one column, e.g. installed Bible versions.
+    function countBy(entity, column) {
+        const def = entityDef(entity);
+        if (!def.columns[column]) throw new StoreError(`Campo '${column}' não existe em ${entity}.`, 400);
+        const rows = prepare(`SELECT ${quote(column)} AS value, COUNT(*) AS n FROM ${quote(def.table)} GROUP BY ${quote(column)}`).all();
+        return Object.fromEntries(rows.filter((r) => r.value !== null).map((r) => [r.value, r.n]));
+    }
+
     return {
         call,
         importRows,
+        countBy,
         onChange(listener) {
             listeners.add(listener);
             return () => listeners.delete(listener);

@@ -1,0 +1,133 @@
+// Where Bible text comes from, for every component that shows or projects it.
+//
+//   1. The local database (desktop, once a version is installed): instant,
+//      offline, exact.
+//   2. abibliadigital.com.br, when online and the version exists there.
+//   3. The AI, in the web build only, as the pages did before.
+//
+// The desktop build never asks the AI for scripture.
+
+import { keryx } from "@/api/keryxClient";
+import { ClientError } from "@/api/errors";
+import { BIBLE_VERSIONS, BOOK_API_MAP } from "@/lib/bibleBooks";
+
+const ONLINE_CACHE_PREFIX = "bible_";
+
+const versionInfo = (id) => BIBLE_VERSIONS.find((v) => v.id === id);
+
+// Versions installed on this computer: { NVI: 31105, ... }. Empty on web.
+let installedCache = null;
+export async function installedVersions({ refresh = false } = {}) {
+    if (!keryx.isDesktop) return {};
+    if (!installedCache || refresh) {
+        const res = await window.keryxDesktop.bible.status();
+        installedCache = res.error ? {} : res.data;
+    }
+    return installedCache;
+}
+
+// `wanted` if it is installed (or on web), else the first installed version,
+// else `wanted` (it may still be found online).
+export async function preferredVersion(wanted) {
+    const installed = Object.keys(await installedVersions());
+    if (!installed.length || installed.includes(wanted)) return wanted;
+    return installed[0];
+}
+
+export function forgetInstalledVersions() {
+    installedCache = null;
+}
+
+async function fetchOnline(version, book, chapter) {
+    const key = `${ONLINE_CACHE_PREFIX}${version}_${book}_${chapter}`;
+    try {
+        const cached = JSON.parse(localStorage.getItem(key) || "null");
+        if (Array.isArray(cached) && cached.length) return cached;
+    } catch { /* ignore a bad cache entry */ }
+
+    const api = versionInfo(version)?.api;
+    const slug = BOOK_API_MAP[book];
+    if (!api || !slug || !navigator.onLine) return null;
+    try {
+        const resp = await fetch(`https://www.abibliadigital.com.br/api/chapters/${api}/${slug}/${chapter}`, {
+            headers: { Accept: "application/json" },
+        });
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        const verses = (data.verses || []).map((v) => ({ number: v.number, text: v.text }));
+        if (!verses.length) return null;
+        localStorage.setItem(key, JSON.stringify(verses));
+        return verses;
+    } catch {
+        return null;
+    }
+}
+
+// The web build's last resort, kept as it was.
+async function fetchFromAi(version, book, chapter) {
+    const result = await keryx.integrations.Core.InvokeLLM({
+        prompt: `Forneça o texto bíblico COMPLETO de ${book} ${chapter} na versão ${version}. Retorne APENAS os versículos numerados no formato "1 texto\n2 texto".`,
+        response_json_schema: { type: "object", properties: { text: { type: "string" } } },
+    });
+    const verses = [];
+    const regex = /(\d+)\s+([\s\S]*?)(?=\s+\d+\s|$)/g;
+    let m;
+    while ((m = regex.exec(result.text || "")) !== null) {
+        const text = m[2].trim();
+        if (text) verses.push({ number: Number(m[1]), text });
+    }
+    return verses;
+}
+
+// { verses: [{ number, text }], source: "local" | "online" | "ai" }
+export async function getChapter(version, book, chapter) {
+    const local = await keryx.entities.BibleVerse.filter({ version, book, chapter: Number(chapter) }, "verse");
+    if (local.length) return { verses: local.map((v) => ({ number: v.verse, text: v.text })), source: "local" };
+
+    const online = await fetchOnline(version, book, chapter);
+    if (online) return { verses: online, source: "online" };
+
+    if (!keryx.isDesktop) {
+        const verses = await fetchFromAi(version, book, chapter);
+        if (verses.length) return { verses, source: "ai" };
+    }
+
+    const installable = versionInfo(version)?.install;
+    throw new ClientError(
+        keryx.isDesktop && installable
+            ? `A ${version} não está instalada neste computador. Baixe-a em Bíblia › Mais › Bíblias instaladas.`
+            : keryx.isDesktop
+                ? `A ${version} só está disponível com internet. Use uma versão instalada (NVI, ACF ou AA) para projetar sem internet.`
+                : `Não foi possível obter ${book} ${chapter} na ${version}.`,
+        404,
+    );
+}
+
+// Verses verseStart..verseEnd of a chapter (the whole chapter without them).
+export async function getPassage(version, book, chapter, verseStart, verseEnd) {
+    const { verses, source } = await getChapter(version, book, chapter);
+    if (!verseStart) return { verses, source };
+    const end = verseEnd || verseStart;
+    const picked = verses.filter((v) => v.number >= verseStart && v.number <= end);
+    if (!picked.length) throw new ClientError(`${book} ${chapter}:${verseStart} não existe na ${version}.`, 404);
+    return { verses: picked, source };
+}
+
+// Verses containing the words, ignoring case and accents, in canonical order:
+// [{ book, chapter, verse, text, version }]. Searches `version` when it is
+// installed, otherwise the first installed one. Desktop only: returns null on
+// the web build, where callers keep their AI search.
+export async function searchVerses(query, version, limit = 20) {
+    if (!keryx.isDesktop) return null;
+    const q = String(query || "").trim();
+    if (q.length < 3) return [];
+    const installed = Object.keys(await installedVersions());
+    if (!installed.length) {
+        throw new ClientError("Nenhuma Bíblia instalada. Baixe uma em Bíblia › Mais › Bíblias instaladas.", 404);
+    }
+    const target = installed.includes(version) ? version : installed[0];
+    const rows = await keryx.entities.BibleVerse.filter({ version: target, text: { $regex: q } }, "id", limit);
+    return rows.map((r) => ({ book: r.book, chapter: r.chapter, verse: r.verse, text: r.text, version: target }));
+}
+
+export const versesToText = (verses) => verses.map((v) => `${v.number} ${v.text}`).join("\n");

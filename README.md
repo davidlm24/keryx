@@ -33,7 +33,7 @@ npm run desktop:dev       # the desktop app, hot reload
 | `npm run dev` | the web build in a browser, against the Supabase project in `.env` (copy `.env.example`) |
 | `npm run build` / `npm run preview` | production build to `./dist` and a local server for it |
 | `npm run lint` / `npm run lint:fix` | ESLint, errors only; warnings are advisory |
-| `npm test` | unit tests (`node --test`): the local store's query semantics and schema drift |
+| `npm test` | unit tests (`node --test`): store query semantics, schema drift, output placement, Bible install and references, media import |
 | `npm run db:import` | one-off import of the Base44 data into the local database (see below) |
 | `npm run db:schema` | regenerate `electron/db/schema.json` after changing `base44/entities/*.jsonc` |
 | `npm run db:migrate:supabase` | the older Base44 → Supabase import, for the web build |
@@ -43,6 +43,14 @@ npm run desktop:dev       # the desktop app, hot reload
 
 If `npm install` did not download the Electron binary
 (`node_modules/electron/dist` missing), run `node node_modules/electron/install.js`.
+
+### Bible text
+
+Nothing ships with the app: NVI, ACF and AA are copyrighted editions. On
+first use the Bible page offers to download one (≈4 MB each); after that,
+lookups, the reader and word search run from the local database with no
+internet. Other versions (ARA, ARC, NAA, NTLH, BKJ 1611) still work online
+only. All Bible text goes through `src/lib/bibleText.js`.
 
 ### Where the desktop app keeps its data
 
@@ -84,8 +92,9 @@ Base44 into the desktop app's `keryx.db`, keeping ids and timestamps so
 cross-references survive, plus the Base44 user's branding into the local
 profile. It needs `npm i --no-save @base44/sdk` and a Base44 session token
 (see the comment at the top of the script). Close KERYX first, run with
-`--dry-run` first. Uploaded files are not copied; rows keep their Base44 CDN
-URLs, which work online.
+`--dry-run` first. It then downloads the files rows point at on Base44's CDN
+into the media folder and repoints the rows (`--no-media` to skip); any that
+fail are listed and keep their online URL.
 
 ---
 

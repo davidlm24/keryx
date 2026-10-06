@@ -94,10 +94,11 @@ test("filter operators follow Base44/Mongo semantics", () => {
     assert.equal(f({ status: { $eq: null } }), 1);
 });
 
-test("$regex is a case-insensitive substring match that folds accents' case", () => {
+test("$regex is a substring match that ignores case and accents", () => {
     const s = fresh();
     s.call("Song", "bulkCreate", [[{ title: "CORAÇÃO Valente" }, { title: "Outra" }]]);
     assert.equal(s.call("Song", "filter", [{ title: { $regex: "coração" } }]).length, 1);
+    assert.equal(s.call("Song", "filter", [{ title: { $regex: "coracao" } }]).length, 1, "accents optional");
     assert.equal(s.call("Song", "filter", [{ title: { $regex: "valente", $options: "i" } }]).length, 1);
 });
 

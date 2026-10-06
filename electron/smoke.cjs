@@ -71,6 +71,23 @@ const ADAPTER = `(async () => {
     out.mediaRead = media.file_url === file_url;
 
     try { await keryx.integrations.Core.InvokeLLM({ prompt: "x" }); out.llm = "no error"; } catch (e) { out.llm = e.status; }
+
+    // Bible: two verses as an installed ACF, read the way the components do.
+    await window.keryxDesktop.db.call("BibleVerse", "bulkCreate", [[
+        { version: "ACF", book: "João", chapter: 3, verse: 16, text: "Porque Deus amou o mundo de tal maneira" },
+        { version: "ACF", book: "João", chapter: 3, verse: 17, text: "Porque Deus enviou o seu Filho ao mundo" },
+    ]]);
+    const bibleText = await import("/src/lib/bibleText.js");
+    const bibleBooks = await import("/src/lib/bibleBooks.js");
+    const passage = await bibleText.getPassage("ACF", "João", 3, 16, 17);
+    out.bible = {
+        passage: passage.verses.map((v) => v.number).join(","),
+        source: passage.source,
+        preferred: await bibleText.preferredVersion("NVI"),
+        search: (await bibleText.searchVerses("ENVIOU", "NVI", 5)).map((r) => r.version + " " + r.verse).join(","),
+        parsed: bibleBooks.parseReference("jo 3:16").book,
+    };
+    try { await bibleText.getChapter("AA", "João", 3); out.bible.missing = "no error"; } catch (e) { out.bible.missing = e.status; }
     return out;
 })()`;
 
@@ -155,7 +172,9 @@ function expectAdapter(a) {
         && a.uploadFetch === 200
         && /^keryx-media:\/\/[0-9a-f-]{36}\.png$/.test(a.mediaStored)
         && a.mediaRead === true
-        && a.llm === 501;
+        && a.llm === 501
+        && a.bible.passage === "16,17" && a.bible.source === "local" && a.bible.preferred === "ACF"
+        && a.bible.search === "ACF 17" && a.bible.parsed === "João" && a.bible.missing === 404;
 }
 
 const VERBOSE = process.env.KERYX_SMOKE_VERBOSE === "1";
@@ -200,6 +219,19 @@ function runSmokeTest(win, { dev, outputs, screen }) {
 
             step("outputs ok; screenshot");
             if (process.env.KERYX_SCREENSHOT) {
+                // KERYX_SCREENSHOT_CLICK: click the first button/tab/link with exactly this text.
+                const click = process.env.KERYX_SCREENSHOT_CLICK;
+                if (click) {
+                    await webContents.executeJavaScript(`(() => {
+                        const el = [...document.querySelectorAll("button,[role=tab],a")].find((n) => n.textContent.trim() === ${JSON.stringify(click)});
+                        if (!el) return;
+                        // Radix tabs switch on mousedown/focus, not on click.
+                        el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+                        el.focus();
+                        el.click();
+                    })()`);
+                    await sleep(2500);
+                }
                 // KERYX_SCREENSHOT_TEXT: scroll to the first element containing this text.
                 const text = process.env.KERYX_SCREENSHOT_TEXT;
                 if (text) {
@@ -209,6 +241,7 @@ function runSmokeTest(win, { dev, outputs, screen }) {
                     })()`);
                     await sleep(500);
                 }
+                await sleep(1000); // let page transitions finish
                 const image = await webContents.capturePage();
                 fs.writeFileSync(process.env.KERYX_SCREENSHOT, image.toPNG());
             }

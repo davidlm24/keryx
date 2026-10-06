@@ -5,6 +5,7 @@ import { Upload, Loader2, Film } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useThemeColors } from "@/hooks/useThemeColors";
+import { keryx } from "@/api/keryxClient";
 
 export default function MediaUpload({ onMediaUploaded }) {
     const colors = useThemeColors();
@@ -33,12 +34,10 @@ export default function MediaUpload({ onMediaUploaded }) {
                     idx === i ? { ...item, status: 'uploading' } : item
                 ));
 
-                const reader = new FileReader();
-                const file_url = await new Promise((resolve) => {
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.readAsDataURL(file);
-                });
-                
+                // The file goes to the media library (on desktop, copied to disk);
+                // the row only keeps its URL.
+                const { file_url } = await keryx.integrations.Core.UploadFile({ file });
+
                 let mediaType = "other";
                 if (file.type.startsWith("video/")) {
                     mediaType = "video";

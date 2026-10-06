@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Clock, Timer, Bell, Upload, Image } from "lucide-react";
 import { keryx } from "@/api/keryxClient";
+import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
 
 export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
     const [formData, setFormData] = useState(video || {
@@ -294,18 +295,9 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
                         </div>
 
                         <div>
-                            <p className="text-xs text-orange-400 mb-2">Imagens Worship do Unsplash</p>
+                            <p className="text-xs text-orange-400 mb-2">Imagens de fundo</p>
                             <div className="grid grid-cols-4 gap-2">
-                                {[
-                                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80",
-                                    "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=1920&q=80",
-                                    "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=1920&q=80",
-                                    "https://images.unsplash.com/photo-1502139214982-d0ad755818d8?w=1920&q=80",
-                                    "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=1920&q=80",
-                                    "https://images.unsplash.com/photo-1476610182048-b716b8518aae?w=1920&q=80",
-                                    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80",
-                                    "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80",
-                                ].map((url, idx) => (
+                                {BACKGROUNDS["Comunicação"].map(backgroundUrl).map((url, idx) => (
                                     <button
                                         key={idx}
                                         type="button"

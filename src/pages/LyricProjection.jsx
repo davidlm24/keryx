@@ -7,6 +7,7 @@ import { FONT_MAP, SIZE_MAP, getTextEffect } from "@/lib/deviceStyles";
 import SlideTransition from "@/components/projection/SlideTransition";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
 import TabletVideoReceiver from "@/components/projection/TabletVideoReceiver";
+import { defaultLogoUrl } from "@/lib/backgrounds";
 
 export default function LyricProjection() {
     const [lyricData, setLyricData] = useState(null);
@@ -137,7 +138,7 @@ export default function LyricProjection() {
     }, []);
 
     // Logo da igreja para tela idle (retroprojetor de identidade)
-    const [idleLogo, setIdleLogo] = useState(() => localStorage.getItem("idleLogoUrl") || "");
+    const [idleLogo, setIdleLogo] = useState(() => localStorage.getItem("idleLogoUrl") || defaultLogoUrl());
 
     useEffect(() => {
         keryx.auth.me().then(u => {

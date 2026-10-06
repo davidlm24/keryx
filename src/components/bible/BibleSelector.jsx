@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Book, Loader2, Search, Monitor, ChevronDown, ChevronUp } from "lucide-react";
 import { keryx } from "@/api/keryxClient";
-import { bibleBooks, VERSION_API_MAP, BOOK_API_MAP } from "./bibleData";
+import { bibleBooks, BIBLE_VERSIONS } from "@/lib/bibleBooks";
+import { getPassage, versesToText } from "@/lib/bibleText";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { getBibleProjectionStyle, setBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
 
@@ -142,68 +143,11 @@ export default function BibleSelector({ onPassageFound, onProjectDirect }) {
         setFetchedPassage(null);
 
         try {
-            const apiVersion = VERSION_API_MAP[version] || "nvi";
-            const bookSlug = BOOK_API_MAP[selectedBook.name];
-            const chapter = selectedChapter;
             const start = verseStart;
             const end = verseEnd || verseStart;
-
-            let rawText = "";
-            let generatedSlides = [];
-
-            if (bookSlug && version !== "BKJ1611") {
-                try {
-                    const resp = await fetch(
-                        `https://www.abibliadigital.com.br/api/chapters/${apiVersion}/${bookSlug}/${chapter}`,
-                        { headers: { "Accept": "application/json" } }
-                    );
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        if (data.verses?.length) {
-                            const filtered = data.verses.filter(v => v.number >= start && v.number <= end);
-                            if (filtered.length > 0) {
-                                rawText = filtered.map(v => `${v.number} ${v.text}`).join("\n");
-                                generatedSlides = buildSlidesFromVerses(filtered);
-                            }
-                        }
-                    }
-                } catch (apiErr) {
-                    console.warn("API abibliadigital falhou, usando LLM:", apiErr);
-                }
-            }
-
-            if (!rawText) {
-                const versionLabel = version === "BKJ1611"
-                    ? "King James Fiel 1611 em português (BKJ 1611), tradução literal portuguesa fiel ao texto original"
-                    : version;
-                const result = await keryx.integrations.Core.InvokeLLM({
-                    prompt: `Forneça o texto bíblico COMPLETO e EXATO de ${reference} na versão ${versionLabel}. Retorne APENAS o texto dos versículos numerados, sem introduções ou comentários. Formato: "1 texto do versículo\n2 texto do versículo"`,
-                    response_json_schema: {
-                        type: "object",
-                        properties: {
-                            text: { type: "string", description: "Texto completo da passagem com versículos numerados" }
-                        }
-                    }
-                });
-                rawText = result.text || "";
-
-                // Regex global: extrai TODOS os versículos mesmo se o texto vier tudo junto
-                const verseRegex = /(\d+)\s+([\s\S]*?)(?=\s+\d+\s|$)/g;
-                const parsedVerses = [];
-                let m;
-                while ((m = verseRegex.exec(rawText)) !== null) {
-                    const num = parseInt(m[1]);
-                    const txt = m[2].trim();
-                    if (txt) parsedVerses.push({ number: num, text: txt });
-                }
-                if (parsedVerses.length > 0) {
-                    generatedSlides = buildSlidesFromVerses(parsedVerses);
-                } else {
-                    generatedSlides = [{ text: rawText, duration: 12 }];
-                }
-            }
-
-            if (generatedSlides.length === 0) generatedSlides = [{ text: rawText, duration: 12 }];
+            const { verses } = await getPassage(version, selectedBook.name, selectedChapter, start, end);
+            const rawText = versesToText(verses);
+            const generatedSlides = buildSlidesFromVerses(verses);
 
             const passage = {
                 reference,
@@ -229,7 +173,7 @@ export default function BibleSelector({ onPassageFound, onProjectDirect }) {
             }
         } catch (error) {
             console.error("Erro ao buscar passagem:", error);
-            alert("Erro ao buscar passagem. Tente novamente.");
+            alert(error.message || "Erro ao buscar passagem. Tente novamente.");
         } finally {
             setIsLoading(false);
             setLoadingMode("");
@@ -249,12 +193,9 @@ export default function BibleSelector({ onPassageFound, onProjectDirect }) {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="NVI">NVI</SelectItem>
-                            <SelectItem value="ARC">ARC</SelectItem>
-                            <SelectItem value="ARA">ARA</SelectItem>
-                            <SelectItem value="NAA">NAA</SelectItem>
-                            <SelectItem value="NTLH">NTLH</SelectItem>
-                            <SelectItem value="BKJ1611">BKJ 1611</SelectItem>
+                            {BIBLE_VERSIONS.map(v => (
+                                <SelectItem key={v.id} value={v.id}>{v.id === "BKJ1611" ? "BKJ 1611" : v.id}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>

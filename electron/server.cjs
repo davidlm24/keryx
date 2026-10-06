@@ -35,6 +35,9 @@ const MIME = {
 };
 
 const MEDIA_PREFIX = "/media/";
+// Files shipped with the app (backgrounds, default logo) live under the media
+// URL space too, so the database can reference them the same way.
+const BUNDLED_PREFIX = "/media/bundled/";
 
 // Resolve `pathname` inside `dir`, refusing anything that escapes it.
 function within(dir, pathname) {
@@ -68,9 +71,10 @@ function sendFile(req, res, file, stat, headers) {
     else fs.createReadStream(file).pipe(res);
 }
 
-function startStaticServer({ root, mediaDir, host, port }) {
+function startStaticServer({ root, mediaDir, bundledDir, host, port }) {
     const rootDir = path.resolve(root);
     const media = mediaDir ? path.resolve(mediaDir) : null;
+    const bundled = bundledDir ? path.resolve(bundledDir) : null;
 
     const server = http.createServer((req, res) => {
         if (req.method !== "GET" && req.method !== "HEAD") {
@@ -87,7 +91,9 @@ function startStaticServer({ root, mediaDir, host, port }) {
         }
 
         if (media && pathname.startsWith(MEDIA_PREFIX)) {
-            const file = within(media, pathname.slice(MEDIA_PREFIX.length - 1));
+            const file = bundled && pathname.startsWith(BUNDLED_PREFIX)
+                ? within(bundled, pathname.slice(BUNDLED_PREFIX.length - 1))
+                : within(media, pathname.slice(MEDIA_PREFIX.length - 1));
             if (!file) {
                 res.writeHead(403).end();
                 return;

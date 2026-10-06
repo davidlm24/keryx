@@ -1,7 +1,7 @@
 # KERYX as an offline-first desktop app
 
-Status: decisions settled 2026-10-06. Phases 0 (shell) and 1 (local data) are
-done; the rest is not implemented.
+Status: decisions settled 2026-10-06. Phases 0–3 (shell, local data, outputs,
+media and Bible) are done; the rest is not implemented.
 
 ## Why
 
@@ -152,37 +152,58 @@ control logic.
   `<video>` tag.
 - `MediaUpload` and `BackgroundGallery` stop writing base64 data URLs into
   rows (today a 200 MB video becomes a 270 MB database row).
-- Thumbnails for videos are generated on import (ffmpeg via
-  `ffmpeg-static`, or a canvas frame grab in the renderer).
+- **As built (phase 3):** both upload through `UploadFile` into the media
+  folder. Rows store `keryx-media://<file>`. Files shipped with the app
+  (`resources/`: 19 backgrounds, the church logo) are served under
+  `/media/bundled/…` and referenced the same way, so they pass the pages'
+  `startsWith("http")` checks. Three Unsplash photos the old lists used no
+  longer exist and were dropped. The import (`npm run db:import`) downloads
+  files from Base44's CDN into the media folder and points known Unsplash
+  URLs at the bundled copies (`scripts/localize-media.cjs`).
+- Thumbnails: **not built.** Nothing displays `thumbnail_url` (the media list
+  shows icons; `MediaCard`, which would, is unused). Revisit with the UI
+  redesign.
 - `powerpoint` as a media type can't be rendered offline by Electron; v1
   accepts PDF exports and says so in the UI.
 
-## 5. Bible: bundled, not fetched
+## 5. Bible: installed once, then local
 
-Nothing reads the `bible_verse` table today. Every verse comes from
-`abibliadigital.com.br` with the LLM as fallback, so **the Bible is offline
-today's biggest gap**.
+Before phase 3 nothing read the `bible_verse` table; every verse came from
+`abibliadigital.com.br` with the AI as fallback.
 
-- Ship translations inside the installer as JSON and load them into
-  `bible_verse` on first run (the `BibleImporter` already parses the
-  `thiagobodruk/biblia` format: NVI, ACF, AA). The reader, selector,
-  compare view and `QuickVerseBar` then query SQLite.
-- Decided: Brazilian translations. The importer already knows NVI, ACF and
-  AA (`thiagobodruk/biblia`). NVI is a modern copyrighted translation; check
-  its licence for redistribution inside an installer used by one church, or
-  ship ACF/AA (public-domain lineage) as the defaults and let NVI be an
-  optional download.
-- Free-text search ("the verse about the lilies") stays an optional AI
-  feature; reference lookup never needs the internet.
+- **Not bundled.** NVI (Biblica), ACF (Sociedade Bíblica Trinitariana do
+  Brasil) and AA (Imprensa Bíblica Brasileira) are all copyrighted editions.
+  An earlier draft of this plan called ACF/AA public domain; that was wrong.
+  KERYX ships no Bible text. Each church downloads a version once (≈4 MB,
+  from `thiagobodruk/biblia`, the source the web app already used) or
+  installs it from that JSON file; it lands in `bible_verse` (31k verses,
+  under a second) and works offline from then on.
+  Bíblia › Mais › Bíblias instaladas, and a prompt above the verse search
+  while none is installed (`BibleInstaller`, `electron/bible.cjs`).
+- **One source of verse text:** `src/lib/bibleText.js` (`getChapter`,
+  `getPassage`, `searchVerses`). Order: local database → abibliadigital
+  online → AI (web build only). The reader, selector, compare view,
+  `QuickVerseBar`, word search and the Home search all use it. The desktop
+  build never asks the AI for scripture.
+- **References and books:** `src/lib/bibleBooks.js` parses "Jo 3:16",
+  "1Co 13:4-7", "salmo 23" (accents optional), and holds the version list.
+  Its verse-count table was wrong in ~165 chapters (Levítico 23 listed 9
+  verses instead of 44); it is now taken from the texts.
+- Word search runs locally, ignoring case and accents ("coracao" finds
+  "coração"), ~0.4 s over a whole version; an FTS index can make it instant
+  if that matters.
+- AA marks explanatory phrases with `{…}` (286 verses); the text is stored
+  and shown exactly as published.
 
 ## 6. Internet-dependent features, kept optional
 
 | Feature | v1 behaviour |
 | --- | --- |
-| Verse lookup, lyrics import from URL, song search, Bible compare (AI) | Work only when online and an Anthropic API key is set in Settings (stored with Electron `safeStorage`); calls go from the main process, no Supabase function. Clear "sem ligação" state otherwise. |
+| Verse lookup and Bible search | **Local** once a version is installed (section 5); other versions online only. |
+| Lyrics import from URL, song search (AI) | Out of v1 (decision 4). |
 | YouTube projection | Needs internet by nature; unchanged. |
-| Unsplash backgrounds (30 hard-coded URLs) | Replaced by bundled backgrounds in the media library. |
-| Base44 CDN logo in `Layout.jsx` | Replaced by the church logo in settings. |
+| Unsplash backgrounds (30 hard-coded URLs) | **Done:** bundled (`resources/backgrounds`, 7 MB). |
+| Base44 CDN logo in `Layout.jsx` | **Done:** bundled default (`resources/branding`); the profile logo overrides it. |
 
 ## 7. Network screens (tablets, stage monitor, smart TVs)
 
@@ -240,7 +261,7 @@ development time, not calendar time.
 | 0 | Scaffold | **Done.** Electron shell opens the current UI from a loopback server; 13 dead dependencies removed (Stripe, Leaflet, three, Quill, lodash, moment, …) | 1–2 days |
 | 1 | Local data | **Done.** SQLite store with Base44 query semantics (20 tests), adapter over IPC, change events, local operator profile, uploads to `media/`, import script from Base44. No Supabase requests in the desktop build. | 4–5 days |
 | 2 | Outputs | **Done**, except opening outputs at launch (see section 3). Display placement of the windows pages open, hot-plug re-placement, "Telas e saídas" settings, identify, test/close | 2–3 days |
-| 3 | Media + Bible | Media library on disk, thumbnails, bundled Bibles, offline verse lookup, bundled backgrounds | 2–3 days |
+| 3 | Media + Bible | **Done** (thumbnails skipped, Bibles installed rather than bundled; sections 4–5). Media library on disk, offline verse lookup and search, bundled backgrounds and logo | 2–3 days |
 | 4 | Ship it | Backups, export/import, updater, installer, logs, install on the booth PC and run a service with it | 2 days |
 | 5 | Network screens | LAN server, screen routes, PIN, QR code in Settings | 2–3 days |
 | 6 | Redesign | Live-state projection engine, one control module, then the UI/UX work | separate plan |
@@ -253,8 +274,9 @@ Settled on 2026-10-06:
 
 1. **Windows only** for v1.
 2. **Language and Bible:** Brazilian Portuguese throughout (UI copy was
-   standardized to pt-BR the same day); bundled translations NVI/ACF/AA, see
-   the licence note in section 5.
+   standardized to pt-BR the same day); Bible versions NVI/ACF/AA, installed
+   by the church rather than bundled because all three are copyrighted
+   (section 5).
 3. **Outputs:** HDMI displays, tablets and Wi-Fi screens are all in v1, so the
    network-screens phase (section 7, phase 5) is **in** v1, not deferrable.
 4. **AI features: out of v1.** Most AI calls fetch Bible text, which the

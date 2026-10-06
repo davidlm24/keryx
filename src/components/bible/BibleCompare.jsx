@@ -3,17 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Book, Loader2, Layers } from "lucide-react";
-import { keryx } from "@/api/keryxClient";
-import { bibleBooks, VERSION_API_MAP, BOOK_API_MAP } from "./bibleData";
+import { BIBLE_VERSIONS, formatReference, parseReference } from "@/lib/bibleBooks";
+import { getPassage, versesToText } from "@/lib/bibleText";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
 
-const ALL_VERSIONS = ["NVI", "ARC", "ARA", "NAA", "NTLH"];
+const ALL_VERSIONS = BIBLE_VERSIONS.map((v) => v.id);
 
 export default function BibleCompare({ onProjectVerse }) {
     const colors = useThemeColors();
     const [reference, setReference] = useState("");
-    const [selectedVersions, setSelectedVersions] = useState(["NVI", "ARA"]);
+    const [selectedVersions, setSelectedVersions] = useState(["NVI", "ACF"]);
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -23,65 +23,21 @@ export default function BibleCompare({ onProjectVerse }) {
         );
     };
 
-    const parseReference = (ref) => {
-        // Aceita: "João 3:16", "João 3:16-17", "Jo 3:16"
-        const match = ref.trim().match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
-        if (!match) return null;
-        const [, bookName, chapter, verseStart, verseEnd] = match;
-        const book = bibleBooks.find(b =>
-            b.name.toLowerCase() === bookName.toLowerCase() ||
-            b.short.toLowerCase() === bookName.toLowerCase()
-        );
-        if (!book) return null;
-        return {
-            book: book.name,
-            chapter: parseInt(chapter),
-            verseStart: parseInt(verseStart),
-            verseEnd: verseEnd ? parseInt(verseEnd) : parseInt(verseStart)
-        };
-    };
-
+    // A failing version shows its reason instead of sinking the comparison.
     const fetchVersion = async (parsed, version) => {
         const { book, chapter, verseStart, verseEnd } = parsed;
-        const apiVersion = VERSION_API_MAP[version] || "nvi";
-        const bookSlug = BOOK_API_MAP[book];
-
-        if (bookSlug) {
-            try {
-                const resp = await fetch(
-                    `https://www.abibliadigital.com.br/api/chapters/${apiVersion}/${bookSlug}/${chapter}`,
-                    { headers: { "Accept": "application/json" } }
-                );
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data.verses?.length) {
-                        const filtered = data.verses.filter(v => v.number >= verseStart && v.number <= verseEnd);
-                        if (filtered.length > 0) {
-                            return filtered.map(v => `${v.number} ${v.text}`).join("\n");
-                        }
-                    }
-                }
-            } catch (e) { /* fallback to LLM */ }
+        try {
+            const { verses } = await getPassage(version, book, chapter, verseStart, verseEnd);
+            return { version, text: versesToText(verses), verses };
+        } catch (err) {
+            return { version, text: `(${err.message})`, verses: [] };
         }
-
-        // LLM fallback
-        const refStr = verseEnd !== verseStart
-            ? `${book} ${chapter}:${verseStart}-${verseEnd}`
-            : `${book} ${chapter}:${verseStart}`;
-        const result = await keryx.integrations.Core.InvokeLLM({
-            prompt: `Forneça o texto bíblico COMPLETO e EXATO de ${refStr} na versão ${version}. Retorne APENAS o texto dos versículos numerados, sem introduções. Formato: "1 texto\n2 texto"`,
-            response_json_schema: {
-                type: "object",
-                properties: { text: { type: "string" } }
-            }
-        });
-        return result.text || "";
     };
 
     const handleCompare = async () => {
         const parsed = parseReference(reference);
         if (!parsed) {
-            alert("Referência inválida. Use o formato: João 3:16 ou João 3:16-17");
+            alert("Referência inválida. Exemplos: João 3:16, Jo 3:16-18, Salmos 23.");
             return;
         }
         if (selectedVersions.length === 0) {
@@ -93,10 +49,7 @@ export default function BibleCompare({ onProjectVerse }) {
         setResults([]);
         try {
             const fetched = await Promise.all(
-                selectedVersions.map(async (v) => ({
-                    version: v,
-                    text: await fetchVersion(parsed, v)
-                }))
+                selectedVersions.map((v) => fetchVersion(parsed, v))
             );
             setResults(fetched);
         } catch (err) {
@@ -107,40 +60,28 @@ export default function BibleCompare({ onProjectVerse }) {
         }
     };
 
-    const handleProject = (version, text) => {
-        if (!onProjectVerse) return;
+    // Slides come from the structured verses: re-parsing the joined text
+    // would split any verse that contains a number ("viveu 930 anos").
+    const handleProject = (version, text, verses) => {
+        if (!onProjectVerse || !verses.length) return;
         const parsed = parseReference(reference);
-        const refStr = parsed.verseEnd !== parsed.verseStart
-            ? `${parsed.book} ${parsed.chapter}:${parsed.verseStart}-${parsed.verseEnd}`
-            : `${parsed.book} ${parsed.chapter}:${parsed.verseStart}`;
-
-        const verseRegex = /(\d+)\s+([\s\S]*?)(?=\s+\d+\s|$)/g;
-        const slides = [];
-        let m;
-        const verses = [];
-        while ((m = verseRegex.exec(text)) !== null) {
-            if (m[2].trim()) verses.push({ number: m[1], text: m[2].trim() });
-        }
-        if (verses.length === 0) {
-            slides.push({ text, duration: 12, is_bible: true, bible_reference: refStr });
-        } else {
-            verses.forEach(v => {
-                const wc = v.text.split(/\s+/).filter(Boolean).length;
-                slides.push({
-                    text: `${v.number} ${v.text}`,
-                    duration: Math.min(25, Math.max(5, 4 + wc * 0.5)),
-                    is_bible: true,
-                    bible_reference: refStr
-                });
-            });
-        }
+        const refStr = formatReference(parsed);
+        const slides = verses.map((v) => {
+            const wc = v.text.split(/\s+/).filter(Boolean).length;
+            return {
+                text: `${v.number} ${v.text}`,
+                duration: Math.min(25, Math.max(5, 4 + wc * 0.5)),
+                is_bible: true,
+                bible_reference: refStr,
+            };
+        });
 
         const style = getBibleProjectionStyle();
         onProjectVerse({
             reference: refStr,
             book: parsed.book,
             chapter: parsed.chapter,
-            verses: parsed.verseEnd !== parsed.verseStart ? `${parsed.verseStart}-${parsed.verseEnd}` : String(parsed.verseStart),
+            verses: !parsed.verseStart ? "" : parsed.verseEnd !== parsed.verseStart ? `${parsed.verseStart}-${parsed.verseEnd}` : String(parsed.verseStart),
             text,
             version,
             slides,
@@ -206,7 +147,7 @@ export default function BibleCompare({ onProjectVerse }) {
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => handleProject(r.version, r.text)}
+                                        onClick={() => handleProject(r.version, r.text, r.verses)}
                                         className="h-7 text-xs"
                                         style={{ borderColor: `${colors.primary}50`, color: colors.primary }}
                                     >

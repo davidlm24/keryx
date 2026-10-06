@@ -11,6 +11,7 @@ import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
 import BibleSelector from "../components/bible/BibleSelector";
 import BibleReader from "../components/bible/BibleReader";
 import BibleImporter from "../components/bible/BibleImporter";
+import BibleInstaller from "../components/bible/BibleInstaller";
 import BibleSearch from "../components/bible/BibleSearch";
 import BibleFavorites from "../components/bible/BibleFavorites";
 import BibleCompare from "../components/bible/BibleCompare";
@@ -149,6 +150,7 @@ export default function Bible() {
                     </TabsList>
                     <TabsContent value="selector">
                         <div className="space-y-4">
+                            {keryx.isDesktop && <BibleInstaller onlyWhenEmpty />}
                             <BibleSelector onPassageFound={handlePassageFound} onProjectDirect={handleProjectDirect} />
                             <BibleSearch onProjectVerse={handleProjectDirect} />
                         </div>
@@ -163,7 +165,7 @@ export default function Bible() {
                                     <Star className="w-4 h-4 mr-1.5" /> Favoritos
                                 </TabsTrigger>
                                 <TabsTrigger value="import" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-gray-400 rounded-lg">
-                                    <Upload className="w-4 h-4 mr-1.5" /> Importar
+                                    <Upload className="w-4 h-4 mr-1.5" /> {keryx.isDesktop ? "Bíblias instaladas" : "Importar"}
                                 </TabsTrigger>
                                 <TabsTrigger value="compare" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-gray-400 rounded-lg">
                                     <Layers className="w-4 h-4 mr-1.5" /> Comparar
@@ -173,7 +175,9 @@ export default function Bible() {
                                 <BibleFavorites onProjectVerse={handleProjectDirect} />
                             </TabsContent>
                             <TabsContent value="import">
-                                <BibleImporter onImportComplete={() => queryClient.invalidateQueries({ queryKey: ["biblePassages"] })} />
+                                {keryx.isDesktop
+                                    ? <BibleInstaller />
+                                    : <BibleImporter onImportComplete={() => queryClient.invalidateQueries({ queryKey: ["biblePassages"] })} />}
                             </TabsContent>
                             <TabsContent value="compare">
                                 <BibleCompare onProjectVerse={handleProjectDirect} />

@@ -18,8 +18,11 @@
 //
 // Also imported: the logged-in Base44 user's branding (logo, colours,
 // background) into the local operator profile.
-// Not imported: uploaded files. Rows keep their media.base44.com URLs, which
-// work online for as long as Base44 serves them.
+//
+// Media: files on media.base44.com are then downloaded into the media folder
+// and the rows pointed at the local copies; backgrounds the app ships are
+// pointed at the bundled copy. Pass --no-media to skip (needs internet).
+// Downloads that fail are listed and keep their online URL.
 
 import { createRequire } from "node:module";
 import fs from "node:fs";
@@ -123,6 +126,25 @@ if (!only || only.has("User")) {
     } catch (err) {
         console.error(`\nProfile: could not read the Base44 user — ${err.message}`);
     }
+}
+
+if (store && !flag("--no-media")) {
+    const { localizeMedia } = require("./localize-media.cjs");
+    const { bundledBackgroundId } = await import("../src/lib/backgrounds.js");
+    const mapUrl = (url) => {
+        const id = bundledBackgroundId(url);
+        return id ? `keryx-media://bundled/backgrounds/${id}.webp` : null;
+    };
+    console.log("\nMídia: baixando arquivos do Base44 para o computador...");
+    const media = await localizeMedia({
+        store,
+        entities: Object.keys(schema.entities),
+        mediaDir: path.join(path.dirname(dbFile), "media"),
+        mapUrl,
+        log: (m) => console.log(m),
+    });
+    console.log(`Mídia: ${media.downloaded} baixados, ${media.mapped} trocados por cópias incluídas no app, ${media.rowsUpdated} registros atualizados.`);
+    for (const { url, reason } of media.failed) console.log(`  falhou (${reason}): ${url}`);
 }
 
 if (store) store.close();

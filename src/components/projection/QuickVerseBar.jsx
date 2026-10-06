@@ -5,11 +5,52 @@ import { Button } from "@/components/ui/button";
 import { BookOpen, Loader2, Send, X } from "lucide-react";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { reflowBibleText } from "@/utils/bibleReflow";
+import { formatReference, parseReference } from "@/lib/bibleBooks";
+import { getPassage, preferredVersion } from "@/lib/bibleText";
+import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
 
-/**
- * Barra de versículo rápido — o operador cola "João 3:16" e projeta instantaneamente.
- * Usa InvokeLLM com contexto de internet para buscar o texto do versículo.
- */
+// A reference the parser understands is read from the installed Bible (or
+// online). Anything else goes to the AI only in the web build, as before.
+async function lookup(reference) {
+    const parsed = parseReference(reference);
+    if (parsed) {
+        const version = await preferredVersion(getBibleProjectionStyle().version || "NVI");
+        const { verses } = await getPassage(version, parsed.book, parsed.chapter, parsed.verseStart, parsed.verseEnd);
+        return {
+            reference: `${formatReference(parsed)} (${version})`,
+            text: verses.map((v) => v.text).join(" "),
+            book: parsed.book,
+            chapter: parsed.chapter,
+            verse: parsed.verseStart ? (parsed.verseEnd !== parsed.verseStart ? `${parsed.verseStart}-${parsed.verseEnd}` : String(parsed.verseStart)) : "",
+        };
+    }
+    if (keryx.isDesktop) return null;
+    return keryx.integrations.Core.InvokeLLM({
+        prompt: `Busca o versículo bíblico "${reference}" na versão Almeida Revista e Corrigida (ARC).
+Retorna em JSON:
+- reference: a referência formatada (ex: "João 3:16")
+- text: o texto completo do versículo ou passagem
+- book: nome do livro
+- chapter: número do capítulo
+- verse: número do versículo (ou range)
+
+Se for uma passagem com múltiplos versículos, junta o texto todo numa string separada por espaço.`,
+        add_context_from_internet: true,
+        response_json_schema: {
+            type: "object",
+            properties: {
+                reference: { type: "string" },
+                text: { type: "string" },
+                book: { type: "string" },
+                chapter: { type: "number" },
+                verse: { type: "string" },
+            },
+            required: ["reference", "text"],
+        },
+    });
+}
+
+// Barra de versículo rápido: o operador digita "João 3:16" e projeta na hora.
 export default function QuickVerseBar({ onProject, deviceId }) {
     const colors = useThemeColors();
     const [ref, setRef] = useState("");
@@ -22,29 +63,11 @@ export default function QuickVerseBar({ onProject, deviceId }) {
         if (!reference.trim()) return;
         setLoading(true);
         try {
-            const result = await keryx.integrations.Core.InvokeLLM({
-                prompt: `Busca o versículo bíblico "${reference}" na versão Almeida Revista e Corrigida (ARC).
-Retorna em JSON:
-- reference: a referência formatada (ex: "João 3:16")
-- text: o texto completo do versículo ou passagem
-- book: nome do livro
-- chapter: número do capítulo
-- verse: número do versículo (ou range)
-
-Se for uma passagem com múltiplos versículos, junta o texto todo numa string separada por espaço.`,
-                add_context_from_internet: true,
-                response_json_schema: {
-                    type: "object",
-                    properties: {
-                        reference: { type: "string" },
-                        text: { type: "string" },
-                        book: { type: "string" },
-                        chapter: { type: "number" },
-                        verse: { type: "string" }
-                    },
-                    required: ["reference", "text"]
-                }
-            });
+            const result = await lookup(reference);
+            if (!result) {
+                alert("Referência não reconhecida. Exemplos: João 3:16, Sl 23, 1Co 13:4-7.");
+                return;
+            }
 
             if (result?.text) {
                 const refLabel = result.reference || reference;
@@ -71,6 +94,7 @@ Se for uma passagem com múltiplos versículos, junta o texto todo numa string s
             }
         } catch (e) {
             console.error("Erro ao buscar versículo:", e);
+            alert(e.message || "Não foi possível buscar o versículo.");
         } finally {
             setLoading(false);
         }

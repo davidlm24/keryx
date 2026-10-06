@@ -34,6 +34,11 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         close: (key) => ipcRenderer.invoke("keryx:displays:close", { key }),
         identify: () => ipcRenderer.invoke("keryx:displays:identify"),
     },
+    bible: {
+        status: () => ipcRenderer.invoke("keryx:bible:status"),
+        install: (version) => ipcRenderer.invoke("keryx:bible:install", { version }),
+        installFromFile: (version) => ipcRenderer.invoke("keryx:bible:install-file", { version }),
+    },
     media: {
         // Files picked from disk are copied by path in the main process, so a
         // large video never travels over IPC; anything else is sent as bytes.

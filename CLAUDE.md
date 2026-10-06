@@ -34,6 +34,18 @@ wiring, the data model and the known gaps.
 - **No login on desktop.** `auth.me()` is one local operator profile
   (`entities.User` maps to it whatever id is passed). Don't add features that
   assume accounts; cloud sync is a later phase.
+- **Bible text goes through `src/lib/bibleText.js`** (`getChapter`,
+  `getPassage`, `searchVerses`): local database, then abibliadigital, then
+  the AI on the web build only. Don't fetch verses or call the AI for
+  scripture anywhere else. References parse with `parseReference` in
+  `src/lib/bibleBooks.js`. Never bundle Bible text: the editions are
+  copyrighted; churches install them (`electron/bible.cjs`).
+- **Files shipped with the app** (backgrounds, default logo) are in
+  `resources/` and served as `/media/bundled/…`; reference them through
+  `src/lib/backgrounds.js`, not by hard-coded URL.
+- **`window.keryxDesktop.*` returns a fresh object on every access**
+  (contextBridge). In a component, read it once into a ref; using it as an
+  effect or callback dependency directly re-runs the effect on every render.
 - **Media URLs:** the store keeps `keryx-media://<file>`; pages get
   `http://127.0.0.1:7700/media/<file>` from the adapter. Never write the http
   form into the database by other means, and keep checks like

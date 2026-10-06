@@ -1,43 +1,15 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Image as ImageIcon, Upload, Search } from "lucide-react";
+import { Image as ImageIcon, Upload, Search, Loader2 } from "lucide-react";
+import { keryx } from "@/api/keryxClient";
+import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
 
-/**
- * Galeria de fundos curada — imagens categorizadas do Unsplash + gradientes.
- * Substitui as listas hardcoded espalhadas pelo app.
- */
-const CATEGORIES = {
-    "Adoração": [
-        "https://images.unsplash.com/photo-1518192368985-c6c31d1037f8?w=1920&q=80",
-        "https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=1920&q=80",
-        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80",
-        "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80",
-        "https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?w=1920&q=80",
-        "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80",
-    ],
-    "Natureza": [
-        "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=1920&q=80",
-        "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80",
-        "https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?w=1920&q=80",
-        "https://images.unsplash.com/photo-1490604001847-b712b0172b94?w=1920&q=80",
-        "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1920&q=80",
-        "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1920&q=80",
-    ],
-    "Abstrato": [
-        "https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?w=1920&q=80",
-        "https://images.unsplash.com/photo-1451187580459-434d6216065f?w=1920&q=80",
-        "https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?w=1920&q=80",
-        "https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=1920&q=80",
-        "https://images.unsplash.com/photo-1451187580459-434d6216065f?w=1920&q=80",
-        "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80",
-    ],
-    "Céu/Luz": [
-        "https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?w=1920&q=80",
-        "https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?w=1920&q=80",
-        "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80",
-        "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80",
-    ],
-};
+// Galeria de fundos: gradientes + imagens incluídas no app (src/lib/backgrounds.js).
+const CATEGORIES = Object.fromEntries(
+    Object.entries(BACKGROUNDS)
+        .filter(([cat]) => cat !== "Comunicação")
+        .map(([cat, ids]) => [cat, ids.map(backgroundUrl)]),
+);
 
 const GRADIENTS = [
     { name: "Roxo/Índigo", value: "linear-gradient(to br, #581c87, #312e81)" },
@@ -52,6 +24,21 @@ const GRADIENTS = [
 
 export default function BackgroundGallery({ value, onChange }) {
     const [activeCat, setActiveCat] = useState("Adoração");
+    const [uploading, setUploading] = useState(false);
+
+    // Saved to the media library, not inlined as base64 into every row that uses it.
+    const handleFile = async (file) => {
+        if (!file) return;
+        setUploading(true);
+        try {
+            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
+            onChange(file_url);
+        } catch (err) {
+            alert("Erro ao enviar a imagem: " + err.message);
+        } finally {
+            setUploading(false);
+        }
+    };
     const [search, setSearch] = useState("");
 
     const filteredUrls = search.trim()
@@ -141,16 +128,15 @@ export default function BackgroundGallery({ value, onChange }) {
                 <Input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = (event) => onChange(event.target.result);
-                        reader.readAsDataURL(file);
-                    }}
+                    disabled={uploading}
+                    onChange={(e) => handleFile(e.target.files?.[0])}
                     className="bg-white/10 border-border text-white file:bg-primary file:text-white file:border-0 file:px-4 file:py-2 file:rounded file:mr-4"
                 />
             </div>
+
+            {uploading && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Enviando imagem...</p>
+            )}
 
             {value && (
                 <div className="flex items-center gap-2">

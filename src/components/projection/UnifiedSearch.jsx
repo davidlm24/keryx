@@ -4,6 +4,7 @@ import { Search, Music, Book, Loader2, Cast } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { keryx } from "@/api/keryxClient";
 import { useThemeColors } from "@/hooks/useThemeColors";
+import { searchVerses } from "@/lib/bibleText";
 
 /**
  * Busca unificada — pesquisa músicas (local) e versículos bíblicos (LLM)
@@ -34,7 +35,7 @@ export default function UnifiedSearch({ songs = [], onSelectSong, onSelectVerse 
             .slice(0, 6);
     }, [query, songs]);
 
-    // Busca bíblica via LLM — debounced
+    // Busca bíblica: na Bíblia instalada (desktop) ou via IA (web) — com debounce
     React.useEffect(() => {
         if (!query.trim() || query.trim().length < 3) {
             setBibleResults([]);
@@ -46,6 +47,11 @@ export default function UnifiedSearch({ songs = [], onSelectSong, onSelectVerse 
             setIsSearchingBible(true);
             setBibleSearched(true);
             try {
+                const local = await searchVerses(query, "NVI", 5);
+                if (local) {
+                    setBibleResults(local);
+                    return;
+                }
                 const result = await keryx.integrations.Core.InvokeLLM({
                     prompt: `Pesquise na Bíblia por versículos que contenham a palavra ou frase: "${query}". Retorne até 5 resultados mais relevantes. Para cada resultado retorne: book (nome do livro em português), chapter (número), verse (número), text (texto completo do versículo). Priorize versículos onde a palavra aparece literalmente.`,
                     response_json_schema: {
@@ -72,7 +78,7 @@ export default function UnifiedSearch({ songs = [], onSelectSong, onSelectVerse 
             } finally {
                 setIsSearchingBible(false);
             }
-        }, 800);
+        }, keryx.isDesktop ? 350 : 800);
 
         return () => clearTimeout(timer);
     }, [query]);
@@ -88,7 +94,7 @@ export default function UnifiedSearch({ songs = [], onSelectSong, onSelectVerse 
             chapter: r.chapter,
             verses: String(r.verse),
             text: `${r.verse} ${r.text}`,
-            version: "NVI",
+            version: r.version || "NVI",
             slides: [{ text: `${r.verse} ${r.text}`, duration: 12 }],
             text_color: "#ffffff",
             font_size: "large",

@@ -4,11 +4,13 @@
 //   keryx:media-import  invoke  { sourcePath | bytes, name } -> { fileName }
 //   keryx:config        sync    { mediaBaseUrl }
 //   keryx:displays:*    invoke  list / set / close / identify for output windows
+//   keryx:bible:*       invoke  installed versions, install from the web or a file
 
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
-const { BrowserWindow, ipcMain } = require("electron");
+const { BrowserWindow, dialog, ipcMain } = require("electron");
+const bible = require("./bible.cjs");
 
 function safeExtension(name) {
     const ext = path.extname(String(name || "")).toLowerCase();
@@ -64,6 +66,27 @@ function registerDataIpc({ store, outputs, mediaDir, mediaBaseUrl, isTrustedSend
     ipcMain.handle("keryx:displays:set", outputsOp(({ key, assignment }) => outputs.setAssignment(key, assignment)));
     ipcMain.handle("keryx:displays:close", outputsOp(({ key }) => { outputs.close(key); return outputs.list(); }));
     ipcMain.handle("keryx:displays:identify", outputsOp(() => { outputs.identify(); return true; }));
+
+    const bibleOp = (fn) => async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        try {
+            return { data: await fn(event, payload || {}) };
+        } catch (err) {
+            if (!err.status) log(`[keryx-bible] ${err && err.stack}`);
+            return { error: { message: err.message, status: err.status || 500 } };
+        }
+    };
+    ipcMain.handle("keryx:bible:status", bibleOp(() => bible.installedVersions(store)));
+    ipcMain.handle("keryx:bible:install", bibleOp((_e, { version }) => bible.installFromSource(store, version)));
+    ipcMain.handle("keryx:bible:install-file", bibleOp(async (event, { version }) => {
+        const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+            title: `Escolha o arquivo JSON da ${version}`,
+            filters: [{ name: "Bíblia (JSON)", extensions: ["json"] }],
+            properties: ["openFile"],
+        });
+        if (canceled || !filePaths[0]) return null;
+        return bible.installFromJson(store, version, await fs.promises.readFile(filePaths[0], "utf8"));
+    }));
 
     ipcMain.on("keryx:config", (event) => {
         event.returnValue = { mediaBaseUrl };

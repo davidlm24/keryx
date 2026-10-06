@@ -7,6 +7,7 @@ import { Search, Loader2, Cast, Star, Inbox } from "lucide-react";
 import { keryx } from "@/api/keryxClient";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
+import { searchVerses } from "@/lib/bibleText";
 
 export default function BibleSearch({ onProjectVerse }) {
     const colors = useThemeColors();
@@ -22,6 +23,13 @@ export default function BibleSearch({ onProjectVerse }) {
         setResults([]);
 
         try {
+            // Desktop: the installed Bible, instant and offline. Web: the AI, as before.
+            const local = await searchVerses(query, getBibleProjectionStyle().version || "NVI", 30);
+            if (local) {
+                setResults(local);
+                return;
+            }
+
             const prompt = `Pesquise na Bíblia por versículos que contenham a palavra ou frase: "${query}".
             Retorne até 12 resultados dos versículos mais relevantes.
             Para cada resultado, retorne: book (nome do livro em português), chapter (número), verse (número), text (texto completo do versículo).
@@ -51,6 +59,7 @@ export default function BibleSearch({ onProjectVerse }) {
             setResults(result.results || []);
         } catch (err) {
             console.error("Erro na pesquisa:", err);
+            alert(err.message || "Erro na pesquisa.");
         } finally {
             setIsLoading(false);
         }
@@ -66,7 +75,7 @@ export default function BibleSearch({ onProjectVerse }) {
             chapter: r.chapter,
             verses: String(r.verse),
             text: `${r.verse} ${r.text}`,
-            version: style.version || "NVI",
+            version: r.version || style.version || "NVI",
             slides: [{ text: `${r.verse} ${r.text}`, duration: 12 }],
             text_color: style.text_color,
             background_image: style.background_image,
