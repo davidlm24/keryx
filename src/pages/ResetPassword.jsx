@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,16 @@ import AuthLayout from "@/components/AuthLayout";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
-  const resetToken = searchParams.get("token");
+  // Supabase recovery emails link here with ?code=... which the client turns
+  // into a session on load; a ?token_hash=... (custom template) or the old
+  // ?token=... are verified at submit time instead.
+  const resetToken = searchParams.get("token_hash") || searchParams.get("token");
+  const hasCode = Boolean(searchParams.get("code"));
+  const [hasSession, setHasSession] = useState(null); // null = still checking
+
+  useEffect(() => {
+    base44.auth.isAuthenticated().then(setHasSession).catch(() => setHasSession(false));
+  }, []);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,7 +43,11 @@ export default function ResetPassword() {
     }
   };
 
-  if (!resetToken) {
+  if (hasSession === null) {
+    return null;
+  }
+
+  if (!resetToken && !hasCode && !hasSession) {
     return (
       <AuthLayout
         icon={AlertTriangle}

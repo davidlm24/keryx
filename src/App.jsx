@@ -2,8 +2,6 @@ import './App.css'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import VisualEditAgent from '@/lib/VisualEditAgent'
-import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
@@ -37,7 +35,6 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import OAuthConsent from './pages/OAuthConsent';
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}><PageTransition>{children}</PageTransition></Layout>
@@ -142,7 +139,6 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <NavigationTracker />
           <Routes>
             {/* The paths here are the ones the auth pages link to each other
                 by, and the ones Base44 custom auth redirects to. Keep them in
@@ -151,14 +147,10 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            {/* Must match `consent_path` in the app's MCP config on the
-                server, or AI clients land on a 404 during the grant flow. */}
-            <Route path="/oauth-consent" element={<OAuthConsent />} />
             <Route path="/*" element={<AuthenticatedApp />} />
           </Routes>
         </Router>
         <Toaster />
-        <VisualEditAgent />
       </QueryClientProvider>
     </AuthProvider>
   )

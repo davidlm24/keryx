@@ -4,120 +4,140 @@ Church worship projection and service planning — song lyrics, Bible passages,
 media and announcements driven onto one or more live screens, in the vein of
 Holyrics and sPresenter.
 
-The UI is in **Portuguese (pt-BR)**. Entity field descriptions are Portuguese too.
+The UI is in **Portuguese (pt-PT)**. Entity field descriptions are Portuguese too.
 
 - **Stack:** Vite 6 · React 18 · React Router 6 · TanStack Query 5 · Tailwind 3 · shadcn/ui (Radix) · Framer Motion
-- **Backend:** [Base44](https://base44.com) — hosted entities, auth, file storage, realtime, LLM/email/SMS integrations
-- **Size:** ~25.6k LOC across 27 pages, 31 entities
+- **Backend:** [Supabase](https://supabase.com) — Postgres + RLS, Auth, Storage, Realtime, Edge Functions
+- **Size:** ~25k LOC across 26 pages, 31 tables
 
-This repo started as a Base44 export. See [Backend coupling](#backend-coupling)
-for what that means in practice.
+This started as a Base44 export and was migrated off it; see [How the backend
+is wired](#how-the-backend-is-wired) for what that left behind.
 
 ---
 
 ## Running it
 
-The app cannot render real data without a Base44 backend: `src/api/base44Client.js`
-builds its client from an app id and server URL, and every page reads through
-`base44.entities.*`. Three ways to run, in order of usefulness:
-
 ```bash
 npm install
-npx base44 login        # one-time, opens a browser; see below
-npm run dev             # app + throwaway LOCAL backend
+cp .env.example .env      # fill in the two VITE_ values
+npm run dev               # http://localhost:5173
 ```
 
-| Command | Backend | Use for |
-| --- | --- | --- |
-| `npm run dev` | local, throwaway data | day-to-day feature work |
-| `npm run dev:remote` | **real production data** | reproducing live bugs — treat as production |
-| `npm run dev:ui` | none | pure UI/styling work; every API call 404s |
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Vite dev server against the Supabase project in `.env` |
+| `npm run build` / `npm run preview` | production build to `./dist` and a local server for it |
+| `npm run lint` / `npm run lint:fix` | ESLint, errors only; warnings are advisory |
+| `npm run db:migrate` | one-off import of the old Base44 data (see below) |
 
-`npm run dev:ui` is plain `vite` with no app id, so the auth pages and layout
-render but all data is empty and the console fills with Base44 404s. That is
-expected, not a bug.
+There is no local database: dev runs against the real project. Anonymous
+reads are allowed by design (see Security posture), so the app renders with
+no login; sign in to create or edit anything.
 
-### First-time setup
+### Supabase project
 
-`npx base44 login` and `npx base44 link` are interactive and need your Base44
-account, so run them yourself:
+- **Project:** `keryx` (ref `rgldwchaozsjkrfycdtr`, eu-west-3 Paris) in org "davidlm24's Org"
+- **URL:** `https://rgldwchaozsjkrfycdtr.supabase.co`
+- **Schema:** `supabase/migrations/` — already applied to the project. Apply
+  new migrations with the Supabase CLI (`supabase db push`) or the dashboard
+  SQL editor, and commit the file.
+- **Edge Functions:** `supabase/functions/` — already deployed. Redeploy with
+  `supabase functions deploy <name>`.
 
-```bash
-npx base44 login
-npx base44 link
-```
+### One-time setup still needed in the Supabase dashboard
 
-`link` writes `base44/.app.jsonc` (gitignored) with the app id, which the CLI
-then injects for you. The app id appears to be `69388756d10163d1050a1fd7` —
-that is the namespace in the hardcoded logo URL in `src/Layout.jsx:8` — but
-confirm it from `base44/.app.jsonc` rather than trusting that.
+These can't be done from code:
 
-To run plain `vite` against a real backend instead of using the CLI, copy
-`.env.example` to `.env` and fill it in.
+1. **Anthropic API key** — Edge Functions > Secrets: `ANTHROPIC_API_KEY`.
+   Without it the verse lookup, lyrics import and song search return an error.
+   Optional `ANTHROPIC_MODEL` (defaults to `claude-opus-5-5`).
+2. **Email OTP on sign-up** — Authentication > Email Templates > *Confirm
+   signup*: the body must include `{{ .Token }}`. The Register page asks for
+   a 6-digit code, and the default template sends a link instead.
+3. **Google / Facebook login** — Authentication > Providers: enable each,
+   and add the app's origin(s) under Authentication > URL Configuration >
+   Redirect URLs. The buttons are already wired.
+4. **Site URL** — Authentication > URL Configuration: set it to where the
+   app is served, so password-recovery links land on `/reset-password`.
 
-### Other commands
+### Importing the old data
 
-```bash
-npm run build       # production build with the app id injected (base44 build)
-npm run build:vite  # plain vite build; warns about the missing app id
-npm run preview     # serve ./dist
-npm run deploy      # push entities, functions and site to Base44
-npm run lint        # errors only; warnings are advisory
-npm run lint:fix
-```
-
-Useful CLI commands beyond those: `npx base44 entities`, `npx base44 secrets`,
-`npx base44 logs`, `npx base44 types` (generates TypeScript types for the
-entities — the obvious first step if this codebase ever gains a type layer).
+`scripts/migrate-from-base44.mjs` pulls every entity from Base44 and upserts
+it with the original ids, so cross-references survive. It needs a Base44
+session token and the project's service-role key — both are secrets; see the
+comment block at the top of the script and `.env.example`. Run it with
+`--dry-run` first. User accounts and uploaded files are **not** migrated
+(passwords can't be exported; media keeps pointing at Base44's CDN).
 
 ---
 
-## Backend coupling
+## How the backend is wired
 
-Worth understanding before planning any work, because it sets the cost of ever
-leaving Base44:
+The pages were generated against Base44's SDK, and sixty-odd files still
+import `base44` from `src/api/base44Client.js`. That module is now a one-line
+re-export of **`src/api/client.js`**, which implements the same surface on
+`supabase-js`:
 
-- **Entities.** Pages call `base44.entities.<Name>.list/filter/create/update/delete`
-  directly inside TanStack Query hooks. There is no repository or service layer;
-  `src/api/entities.js` exports only `Query` and `User`.
-- **Realtime.** Multi-screen sync relies on `base44.entities.<Name>.subscribe(cb)`
-  (socket.io under the hood) in 10+ places — `LiveSession`, `LyricSync`,
-  `VideoSync`, `VideoControl`, `ProjectionDevice`, `BibleProjectionSync`,
-  `AlertMessage`, `ChatMessage`. This is the hardest part to replace: it is the
-  mechanism that makes the operator panel drive remote screens.
-- **Auth.** `src/lib/AuthContext.jsx` talks to `/api/apps/public/...` directly
-  and the app serves its own `/login`, `/register`, `/forgot-password`,
-  `/reset-password` pages against `base44.auth.*` (custom-auth mode).
-- **Storage + integrations.** File uploads, `InvokeLLM`, `SendEmail`, `SendSMS`,
-  `GenerateImage`, `ExtractDataFromUploadedFile` all come from
-  `base44.integrations.Core` (`src/api/integrations.js`).
+| Surface | Backed by |
+| --- | --- |
+| `entities.<Name>.list / filter / get / create / update / delete / bulkCreate / bulkUpdate` | PostgREST on `public.<snake_case_name>` |
+| `entities.<Name>.subscribe(cb)` | Realtime `postgres_changes`, mapped to `{ type: 'create'\|'update'\|'delete', data, id }` |
+| `entities.User.*` | `public.profile` (one row per `auth.users` row, created by trigger) |
+| `auth.*` (login, register + OTP, OAuth, reset, `me()`) | Supabase Auth; `me()` merges the auth user with its profile row |
+| `integrations.Core.UploadFile` | Storage bucket `media` (public read) |
+| `integrations.Core.InvokeLLM` | Edge Function `invoke-llm` → Anthropic API with web search/fetch |
+| `integrations.Core.SendEmail / SendSMS / GenerateImage / ExtractDataFromUploadedFile` | not implemented; reject with a message (no page uses them) |
 
-Replacing Base44 means reimplementing all four, the subscriptions above all.
-A thin adapter layer in `src/api/` would be the place to start if that is ever
-the plan.
+Renaming the `base44` identifier across the codebase is a mechanical follow-up
+that was deliberately left out of the migration so the diff stayed reviewable.
 
 Projection windows on the **same machine** do not go through the backend —
 `src/lib/projectionWindow.js` holds a single named `window.open` target and
-`postMessage`s slides to it.
+`postMessage`s slides to it. Remote screens (TVs, tablets) go through the
+realtime tables.
+
+### Security posture
+
+The original app was effectively public: projection screens run on TVs with
+no login. The RLS policies in `supabase/migrations/20261006000002_profile_rls.sql`
+reproduce that:
+
+- **Signed-in users** (`authenticated`): full read/write on every content table.
+  There is no admin role yet; `profile.role` exists but nothing checks it.
+- **Anonymous** (`anon`): read on every content table, plus the four writes
+  the unattended screens perform — `projection_device` update (heartbeat),
+  `video_sync` update, `live_session` update, `chat_message` insert.
+- **Profiles:** a user can read and update only their own row.
+- **Edge Functions** require a valid session JWT.
+
+This is the loosest part of the system. Before exposing the project widely,
+replace the anonymous writes with per-device tokens and decide whether the
+song/service library should really be world-readable.
 
 ---
 
 ## Layout
 
 ```
-base44/
-  config.jsonc          app name + build commands
-  entities/*.jsonc      31 entity schemas (JSON Schema); source of truth for the data model
+supabase/
+  migrations/           schema, RLS, realtime publication, storage bucket (applied)
+  functions/
+    invoke-llm/         InvokeLLM on the Anthropic API
+    delete-account/     self-service account deletion (needs the service role)
+base44/entities/*.jsonc 31 JSON Schemas the tables were generated from; readable field docs
+scripts/
+  migrate-from-base44.mjs
 src/
-  api/                  Base44 client, entity + integration re-exports
-  pages/                27 route components
+  api/client.js         the Supabase-backed client (entities / auth / integrations)
+  api/base44Client.js   re-export of the above under the old name
+  pages/                26 route components
   pages.config.js       the 9 layout-wrapped pages; the rest are routed in App.jsx
   components/
     ui/                 shadcn/ui primitives — generated, not linted, avoid editing
     projection/         operator-side panels: song/lyric/video/theme/device control
     bible/ bible-school/ service/ songs/ media/ communication/ banners/ worship/ layout/
   hooks/                device heartbeat, live-session channel, offline cache, online status
-  lib/                  auth context, projection window bridge, query client, VisualEditAgent
+  lib/                  auth context, projection window bridge, query client
   utils/                chord transpose, Bible reflow, song sections, PDF export, YouTube
 ```
 
@@ -126,12 +146,12 @@ src/
 Two tiers, both in `src/App.jsx`:
 
 - **Public** (outside the auth gate): `/login`, `/register`, `/forgot-password`,
-  `/reset-password`, `/oauth-consent`.
-- **Everything else** goes through `AuthenticatedApp`, which blocks on auth and
-  wraps pages in `Layout`. Projection-target pages (`/Projection`,
-  `/BannerProjection`, `/StageView`, `/DeviceView`, `/LyricProjection`,
-  `/VideoProjection`, `/BibleMaterialProjection`, `/AnnouncementCarousel`) are
-  routed bare, without `Layout` — they are meant to fill a second screen.
+  `/reset-password`.
+- **Everything else** goes through `AuthenticatedApp`, which wraps pages in
+  `Layout`. Projection-target pages (`/Projection`, `/BannerProjection`,
+  `/StageView`, `/DeviceView`, `/LyricProjection`, `/VideoProjection`,
+  `/BibleMaterialProjection`, `/AnnouncementCarousel`) are routed bare,
+  without `Layout` — they are meant to fill a second screen.
 
 `createPageUrl(name)` (`src/utils/index.ts`) is just `'/' + name`, so page keys
 and URL paths are the same string. Note that **`/Home` is the songs library**
@@ -139,41 +159,40 @@ and URL paths are the same string. Note that **`/Home` is the songs library**
 
 ### Data model
 
-Grouped by what they serve (field counts in `base44/entities/`):
+Tables are the entities in snake_case; columns are the entity fields verbatim
+(quoted, so camelCase like `"serviceId"` survives). Every table has `id`
+(text — Base44's 24-hex ids were kept), `created_date`, `updated_date`,
+`created_by`, `created_by_id`.
 
-| Area | Entities |
+| Area | Tables |
 | --- | --- |
-| Songs | `Song`, `SongHistory`, `Playlist`, `WorshipTeam` |
-| Services | `Service`, `ServiceItem`, `ServiceTemplate`, `VolunteerSchedule` |
-| Bible | `BibleVerse`, `BiblePassage`, `BibleNote`, `BibleMaterial`, `BibleSchoolClass` |
-| Projection | `ProjectionState`, `ProjectionDevice`, `ProjectionScene`, `ProjectionTheme`, `BannerTemplate` |
-| Live sync | `LiveSession`, `LyricSync`, `VideoSync`, `VideoControl`, `BibleProjectionSync` |
-| Media | `Media`, `CommunicationVideo` |
-| Engagement | `ChatMessage`, `AlertMessage`, `Poll`, `Quiz`, `Raffle` |
-| Settings | `User` (per-user theme colors, logo, background, device mode) |
-
-`User` carries the app's theming, read through `useThemeColors`.
+| Songs | `song`, `song_history`, `playlist`, `worship_team` |
+| Services | `service`, `service_item`, `service_template`, `volunteer_schedule` |
+| Bible | `bible_verse`, `bible_passage`, `bible_note`, `bible_material`, `bible_school_class` |
+| Projection | `projection_state`, `projection_device`, `projection_scene`, `projection_theme`, `banner_template` |
+| Live sync | `live_session`, `lyric_sync`, `video_sync`, `video_control`, `bible_projection_sync` |
+| Media | `media`, `communication_video` |
+| Engagement | `chat_message`, `alert_message`, `poll`, `quiz`, `raffle` |
+| Users | `profile` (theme colors, logo, background, device mode, role) |
 
 ---
 
 ## Known gaps
 
-Things found while getting this running, not yet addressed:
-
-1. **`/oauth-consent` path is a guess.** `src/pages/OAuthConsent.jsx` must be
-   served at whatever `consent_path` the app's MCP config specifies on the
-   server. That config was not part of the export. Verify before relying on the
-   MCP grant flow.
-2. **`ProtectedRoute` is unused.** `src/components/ProtectedRoute.jsx` exists but
-   nothing imports it; the gate lives inline in `AuthenticatedApp`. Either wire
-   it up or delete it.
-3. **No tests.** No test runner, no test files.
-4. **No type layer.** Everything is untyped `.jsx`; `checkJs` is off because it
-   produced ~1000 phantom errors on untyped JSX. `npx base44 types` is the way in.
-5. **Hardcoded logo URL** at `src/Layout.jsx:8` points at one church's asset on
-   Base44's CDN. Fine for a single tenant, wrong the moment there are two.
-6. **91 advisory lint warnings** — mostly unused locals and
-   `react-hooks/exhaustive-deps`. `npm run lint` only gates on errors.
-7. **Four large pages** (`Home` 785, `Projection` 776, `Settings` 760,
-   `Services` 739 lines) mix data access, projection control and presentation.
-   First candidates for decomposition.
+1. **Dashboard setup above is not done yet** — the LLM features and OAuth
+   buttons fail until it is.
+2. **Security posture is permissive** (see above).
+3. **`ProtectedRoute` is unused.** `src/components/ProtectedRoute.jsx` exists
+   but nothing imports it; the gate lives inline in `AuthenticatedApp`.
+4. **No tests.** The verification loop is `npm run lint`, `npm run build`,
+   then look at the page.
+5. **No type layer.** Everything is untyped `.jsx`. `supabase gen types` is
+   the way in.
+6. **Auth pages are in English** while the rest of the app is Portuguese —
+   they came from the Base44 template.
+7. **Hardcoded logo URL** at `src/Layout.jsx:8` points at one church's asset
+   on Base44's CDN.
+8. **~90 advisory lint warnings**, mostly unused locals and
+   `react-hooks/exhaustive-deps`.
+9. **Four large pages** (`Home`, `Projection`, `Settings`, `Services`, each
+   ~750 lines) mix data access, projection control and presentation.
