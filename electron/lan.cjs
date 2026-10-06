@@ -4,8 +4,8 @@
 //
 //   - it serves the app only for the screen pages (NETWORK_SCREENS) and "/";
 //     the operator pages are never reachable from the network
-//   - /api/db is read-only except for the two writes a screen performs
-//     (ProjectionDevice heartbeat, VideoSync "played")
+//   - /api/db is read-only except for the one write a screen performs
+//     (the ProjectionDevice heartbeat of DeviceView)
 //   - an optional PIN, remembered by a cookie, rate-limited per address
 //   - /api/events (Server-Sent Events) pushes every store change, and the
 //     whole live state as "live" events, which is what keeps screens in step;
@@ -34,7 +34,7 @@ const SCREEN_PATHS = new Set(NETWORK_SCREENS.map((s) => s.path));
 
 // A screen may read everything and write only these.
 const READ_OPS = new Set(["list", "filter", "get"]);
-const SCREEN_WRITES = { ProjectionDevice: new Set(["update"]), VideoSync: new Set(["update"]) };
+const SCREEN_WRITES = { ProjectionDevice: new Set(["update"]) };
 
 const COOKIE = "keryx_lan";
 const MAX_BODY = 1024 * 1024;

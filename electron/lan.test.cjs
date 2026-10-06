@@ -86,6 +86,7 @@ test("the database is read-only except for the screen writes", async (t) => {
         ["User", "update", ["local", { logo_url: "x" }]],
         ["ProjectionDevice", "delete", [device.id]],
         ["VideoSync", "create", [{ video_url: "x" }]],
+        ["VideoSync", "update", ["x", { status: "played" }]],
     ]) {
         const res = await f.db({ entity, op, args });
         assert.equal(res.status, 403, `${entity}.${op}`);

@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Maximize2, Film } from "lucide-react";
 import { motion } from "framer-motion";
 import { useThemeColors } from "@/hooks/useThemeColors";
-import { openProjectionWindow, sendToProjection } from "@/lib/projectionWindow";
+import { openProjectionWindow } from "@/lib/projectionWindow";
+import { projection } from "@/lib/projection";
+import { useToast } from "@/components/ui/use-toast";
 
 import MediaUpload from "../components/media/MediaUpload";
 import MediaList from "../components/media/MediaList";
@@ -18,6 +20,10 @@ export default function Media() {
     const isMobileDevice = useIsMobileDevice();
     const colors = useThemeColors();
     const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const report = (err) => toast({ title: "Não foi possível projetar", description: err?.message, variant: "destructive" });
+    // A Media row as the projector's media layer takes it.
+    const asItem = (m) => ({ kind: m.type, url: m.file_url, title: m.title || "", id: m.id });
 
     const interceptWindowOpen = (title, action) => {
         if (isMobileDevice) {
@@ -52,12 +58,8 @@ export default function Media() {
 
     const handlePlay = (media) => {
         interceptWindowOpen("Tela de Projeção", () => {
-            sendToProjection({
-                type: "MEDIA_PROJECTION",
-                mediaType: media.type,
-                title: media.title,
-                fileUrl: media.file_url,
-            });
+            openProjectionWindow();
+            projection.showMedia(asItem(media)).catch(report);
         });
     };
 
@@ -68,7 +70,8 @@ export default function Media() {
             return;
         }
         interceptWindowOpen("Tela de Projeção", () => {
-            sendToProjection({ type: "MEDIA_SEQUENCE", playlist });
+            openProjectionWindow();
+            projection.showPlaylist(playlist.map(asItem)).catch(report);
         });
     };
 

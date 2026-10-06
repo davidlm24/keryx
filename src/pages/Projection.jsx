@@ -2,25 +2,21 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CommunicationProjectionView from "@/components/projection/CommunicationProjectionView";
 import TabletVideoReceiver from "@/components/projection/TabletVideoReceiver";
+import LiveMediaView from "@/components/projection/LiveMediaView";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import { useLiveState } from "@/hooks/useLiveState";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { currentSlide as slideOf } from "@shared/live-state.mjs";
 
-// The main projector. Lyrics and Bible passages come from the live state
-// (shared/live-state.mjs); media, tools and communication still arrive by
+// The main projector. Lyrics, Bible passages and media come from the live
+// state (shared/live-state.mjs); tools and communication still arrive by
 // postMessage from the operator window until they move there too.
 export default function Projection() {
     const live = useLiveState();
     const content = live?.content || null;
+    const media = live?.media || null;
     const logo = useChurchLogo();
-    const [mediaMode, setMediaMode] = useState(null);
-    const [mediaUrl, setMediaUrl] = useState("");
-    const [mediaTitle, setMediaTitle] = useState("");
-    const [playlist, setPlaylist] = useState([]);
-    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-    const [isSequencePlaying, setIsSequencePlaying] = useState(false);
 
     // Modos de ferramentas: relógio, cronômetro, temporizador, tela preta, texto livre
     const [toolMode, setToolMode] = useState(null); // "clock" | "stopwatch" | "timer" | "black" | "freetext" | null
@@ -48,17 +44,6 @@ export default function Projection() {
         return () => clearInterval(interval);
     }, [toolMode]);
 
-    // Auto-advance images in sequence mode
-    useEffect(() => {
-        if (!isSequencePlaying || playlist.length === 0) return;
-        const currentMedia = playlist[currentMediaIndex];
-        if (currentMedia?.type !== "image" && currentMedia?.type !== "gif") return;
-        const timer = setTimeout(() => {
-            setCurrentMediaIndex((prev) => (prev + 1) % playlist.length);
-        }, 5000);
-        return () => clearTimeout(timer);
-    }, [currentMediaIndex, isSequencePlaying, playlist]);
-
     useEffect(() => {
         // Notify parent window that projection is ready
         if (window.opener) {
@@ -68,32 +53,13 @@ export default function Projection() {
         // Listen for messages from the control window
         const handleMessage = (event) => {
             if (!event.data || !event.data.type) return;
-            if (event.data.type === "MEDIA_PROJECTION") {
+            if (event.data.type === "STOP_PROJECTION") {
                 setCommPayload(null);
-                setIsSequencePlaying(false);
-                setPlaylist([]);
-                setMediaMode(event.data.mediaType);
-                setMediaUrl(event.data.fileUrl);
-                setMediaTitle(event.data.title || "");
-            } else if (event.data.type === "MEDIA_SEQUENCE") {
-                setCommPayload(null);
-                setPlaylist(event.data.playlist);
-                setCurrentMediaIndex(0);
-                setIsSequencePlaying(true);
-            } else if (event.data.type === "STOP_PROJECTION") {
-                setCommPayload(null);
-                setMediaMode(null);
-                setIsSequencePlaying(false);
-                setPlaylist([]);
             } else if (event.data.type === "COMMUNICATION_DATA") {
-                setMediaMode(null);
-                setIsSequencePlaying(false);
-                setPlaylist([]);
                 setToolMode(null);
                 setCommPayload({ video: event.data.video });
                 setCommKey((k) => k + 1);
             } else if (event.data.type === "COMMUNICATION_SEQUENCE") {
-                setMediaMode(null);
                 setToolMode(null);
                 setCommPayload({ playlist: event.data.playlist, isSequence: true });
                 setCommKey((k) => k + 1);
@@ -106,9 +72,6 @@ export default function Projection() {
                 } else {
                     setToolMode(event.data.mode);
                     setToolData(event.data.payload || {});
-                    setMediaMode(null);
-                    setIsSequencePlaying(false);
-                    setPlaylist([]);
                 }
             }
         };
@@ -117,21 +80,19 @@ export default function Projection() {
         return () => window.removeEventListener("message", handleMessage);
     }, []);
 
-    // Showing a song or passage takes down whatever postMessage put up.
-    const contentKey = content?.startedAt ?? null;
+    // Showing a song, passage or media takes down whatever postMessage put up.
+    const shownKey = `${content?.startedAt ?? ""}|${media?.shownAt ?? ""}`;
     useEffect(() => {
-        if (contentKey === null) return;
+        if (shownKey === "|") return;
         setToolMode(null);
         setToolData({});
         setCommPayload(null);
-        setMediaMode(null);
-        setIsSequencePlaying(false);
-        setPlaylist([]);
-    }, [contentKey]);
+    }, [shownKey]);
 
     // Arrows, space and clicks move the live slide (every screen follows).
     // Slides change only when the operator moves them: no timer here.
-    const hasContent = Boolean(content);
+    // Not while media covers the slides.
+    const hasContent = Boolean(content) && !media;
     useEffect(() => {
         if (!keryx.isDesktop || !hasContent) return undefined;
         const fail = (err) => console.error("[keryx] slide:", err);
@@ -279,131 +240,8 @@ export default function Projection() {
         return <CommunicationProjectionView key={commKey} {...commPayload} />;
     }
 
-    // Sequence/Playlist mode
-    if (isSequencePlaying && playlist.length > 0) {
-        const currentMedia = playlist[currentMediaIndex];
-
-        const handleMediaEnded = () => {
-            setCurrentMediaIndex((prev) => (prev + 1) % playlist.length);
-        };
-
-        if (currentMedia.type === "video") {
-            return (
-                <div className="min-h-screen bg-black flex flex-col items-center justify-center">
-                    <div className="absolute top-4 right-4 text-white bg-black/50 px-4 py-2 rounded">
-                        {currentMediaIndex + 1} / {playlist.length}
-                    </div>
-                    <video
-                        key={currentMedia.id}
-                        src={currentMedia.file_url}
-                        autoPlay
-                        onEnded={handleMediaEnded}
-                        className="w-full h-full object-contain"
-                    />
-                </div>
-            );
-        } else if (currentMedia.type === "image" || currentMedia.type === "gif") {
-            return (
-                <div className="min-h-screen bg-black flex flex-col items-center justify-center">
-                    <div className="absolute top-4 right-4 text-white bg-black/50 px-4 py-2 rounded">
-                        {currentMediaIndex + 1} / {playlist.length}
-                    </div>
-                    <img
-                        key={currentMedia.id}
-                        src={currentMedia.file_url}
-                        alt={currentMedia.title}
-                        className="max-w-full max-h-screen object-contain"
-                    />
-                </div>
-            );
-        } else if (currentMedia.type === "pdf") {
-            return (
-                <div className="min-h-screen bg-black flex flex-col">
-                    <div className="absolute top-4 right-4 text-white bg-black/50 px-4 py-2 rounded z-10">
-                        {currentMediaIndex + 1} / {playlist.length}
-                    </div>
-                    <iframe
-                        key={currentMedia.id}
-                        src={currentMedia.file_url}
-                        title={currentMedia.title}
-                        className="w-full h-screen border-0"
-                    />
-                </div>
-            );
-        }
-    }
-
-    // Media projection mode
-    if (mediaMode === "video") {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <video
-                    src={mediaUrl}
-                    controls
-                    autoPlay
-                    loop
-                    className="w-full h-full object-contain"
-                />
-            </div>
-        );
-    }
-
-    if (mediaMode === "image") {
-        return (
-            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8">
-                <h2 className="text-3xl font-semibold text-white mb-4">{mediaTitle}</h2>
-                <img
-                    src={mediaUrl}
-                    alt={mediaTitle}
-                    className="max-w-full max-h-[85vh] object-contain"
-                />
-            </div>
-        );
-    }
-
-    if (mediaMode === "gif") {
-        return (
-            <div className="min-h-screen bg-black flex flex-col items-center justify-center">
-                <img
-                    src={mediaUrl}
-                    alt={mediaTitle}
-                    className="max-w-full max-h-screen object-contain"
-                />
-            </div>
-        );
-    }
-
-    if (mediaMode === "pdf") {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <iframe
-                    src={mediaUrl}
-                    title={mediaTitle}
-                    className="w-full h-screen border-0"
-                />
-            </div>
-        );
-    }
-
-    if (mediaMode === "powerpoint") {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-background via-primary/20 to-accent/20 flex flex-col items-center justify-center p-8">
-                <h2 className="text-3xl font-semibold text-white mb-4">{mediaTitle}</h2>
-                <div className="bg-white/10 p-8 rounded-lg backdrop-blur-sm">
-                    <p className="text-2xl text-blue-300 mb-4">
-                        PowerPoint carregado
-                    </p>
-                    <a
-                        href={mediaUrl}
-                        download
-                        className="text-blue-400 hover:text-blue-300 underline"
-                    >
-                        Baixar apresentação
-                    </a>
-                </div>
-            </div>
-        );
-    }
+    // Mídia (vídeos, imagens, PDFs; uma ou em sequência)
+    if (media) return <LiveMediaView media={media} />;
 
     if (!content) {
         return (

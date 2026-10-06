@@ -192,7 +192,13 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
    The smoke run clicks through Músicas (Projetar, arrow key, Parar
    Projeção) and checks the projector; `KERYX_SMOKE_SHOTS=<folder>` saves
    screenshots of projector, stage and operator page.
-3. Video, media, YouTube: `VideoSync`/`VideoControl` go.
+3. Video, media, YouTube. **Done.** One player, `LiveVideo`, follows the
+   shared playback (`playbackPlan` in the rules: late joiners seek, small
+   drift is left alone, a finished video rests on its last frame). Video
+   screens, the tablet overlay, the projector media layer (`LiveMediaView`,
+   playlists advanced by the desktop projector) and the operator panels'
+   muted previews all use it. Nothing writes `VideoSync`/`VideoControl`;
+   network screens no longer write anything but the DeviceView heartbeat.
 4. Tools, communication, overlays, alert, black/logo. `CommunicationProjection`
    becomes a view of the communication layer.
 5. Escola bíblica: `BibleProjectionSync` goes; no more `?channel=`.
@@ -412,7 +418,7 @@ development time, not calendar time.
 | 3 | Media + Bible | **Done** (thumbnails skipped, Bibles installed rather than bundled; sections 4–5). Media library on disk, offline verse lookup and search, bundled backgrounds and logo | 2–3 days |
 | 4 | Ship it | **Built.** Backups, export/import, updater (off until a release repo exists), unsigned NSIS installer, logs and diagnostics. Not yet done: install on the booth PC and run a service with it | 2 days |
 | 5 | Network screens | **Built.** LAN server (off until enabled), screen routes only, read-only API, PIN, QR code in Settings, auto-reconnect, StageView fed from the database | 2–3 days |
-| 6 | Redesign | Live-state projection engine (section 2; steps 1–2 of 6 built), one control module, then the UI/UX work | separate plan |
+| 6 | Redesign | Live-state projection engine (section 2; steps 1–3 of 6 built), one control module, then the UI/UX work | separate plan |
 
 Phases 1 and 2 are the risk; after them, nothing depends on the internet.
 

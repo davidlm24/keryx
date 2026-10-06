@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, LiveError, OP_NAMES,
+    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, LiveError, OP_NAMES,
 } from "./live-state.mjs";
 
 const T0 = 1_000_000;
@@ -97,6 +97,30 @@ test("video transport: one shared position every screen can compute", () => {
     assert.equal(s.video.playback.volume, 1);
     assert.throws(() => applyOp(s, "transport", { action: "explode" }, T0), LiveError);
     assert.throws(() => applyOp(emptyState(), "transport", { action: "play", layer: "media" }, T0), (e) => e.status === 409);
+});
+
+test("fullscreen request and shownAt: a new item is told apart from a pause", () => {
+    let s = run([["video.show", { kind: "youtube", url: "https://youtu.be/dQw4w9WgXcQ" }, T0]]);
+    assert.equal(s.video.shownAt, T0);
+    s = applyOp(s, "transport", { action: "pause" }, T0 + 10);
+    assert.equal(s.video.shownAt, T0, "pausing is the same item");
+    s = applyOp(s, "transport", { action: "fullscreen" }, T0 + 20);
+    assert.equal(s.video.fullscreenAt, T0 + 20);
+    s = applyOp(s, "video.show", { kind: "video", url: "keryx-media://b.mp4" }, T0 + 30);
+    assert.equal(s.video.shownAt, T0 + 30);
+    assert.equal(s.video.fullscreenAt, undefined);
+});
+
+test("playbackPlan: how a video element follows the shared position", () => {
+    const pb = { paused: false, position: 10, at: T0, volume: 0.5 };
+    const el = (o) => ({ currentTime: 0, paused: true, ended: false, duration: 120, ...o });
+    assert.deepEqual(playbackPlan(el({ currentTime: 0 }), pb, T0 + 2000), { volume: 0.5, seek: 12, play: true }, "late joiner seeks and plays");
+    assert.deepEqual(playbackPlan(el({ currentTime: 12.4, paused: false }), pb, T0 + 2000), { volume: 0.5 }, "small drift is left alone");
+    assert.deepEqual(playbackPlan(el({ currentTime: 12, paused: false }), { ...pb, paused: true }, T0), { volume: 0.5, seek: 10, pause: true });
+    assert.deepEqual(playbackPlan(el({ currentTime: 30, paused: false }), pb, T0 + 200000), { volume: 0.5, seek: 120 }, "past the end: rest at the end, no replay");
+    assert.deepEqual(playbackPlan(el({ currentTime: 120, ended: true }), pb, T0 + 200000), { volume: 0.5 });
+    assert.equal(playbackPlan(el({ currentTime: 0 }), pb, T0 + 200000, { loop: true }).seek, 210 % 120, "a loop wraps");
+    assert.deepEqual(playbackPlan({ currentTime: 0, paused: true, ended: false, duration: NaN }, pb, T0), { volume: 0.5, seek: 10, play: true }, "unknown duration");
 });
 
 test("playlists advance once even when several outputs report the same end", () => {

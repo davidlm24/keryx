@@ -32,7 +32,6 @@ import { generateSlides as generateSectionSlides } from "@/utils/songSections";
 export default function Home() {
     const [showForm, setShowForm] = useState(false);
     const [editingSong, setEditingSong] = useState(null);
-    const [videoWindow, setVideoWindow] = useState(null);
     const [selectedArtist, setSelectedArtist] = useState("all");
     const [selectedLetter, setSelectedLetter] = useState(null);
     const [searchText, setSearchText] = useState("");
@@ -188,12 +187,12 @@ export default function Home() {
 
     const handleSubmit = (songData) => {
         console.log("Submetendo música:", songData);
-        
+
         if (!songData.title || !songData.lyrics) {
             alert("Preencha o título e a letra da música");
             return;
         }
-        
+
         if (editingSong) {
             updateSongMutation.mutate({ id: editingSong.id, songData });
         } else {
@@ -227,13 +226,11 @@ export default function Home() {
     const openVideoWindow = () => {
         return interceptWindowOpen("Tela de Vídeo", () => {
             const videoUrl = createPageUrl("VideoProjection");
-            const newWindow = window.open(
+            return window.open(
                 videoUrl,
                 "videoProjection",
                 "width=1920,height=1080,menubar=no,toolbar=no,location=no"
             );
-            setVideoWindow(newWindow);
-            return newWindow;
         });
     };
 
@@ -286,42 +283,10 @@ export default function Home() {
             text_effect: song.text_effect || "shadow",
         });
 
-        // Mostrar player interno se tiver vídeo MP4
+        // Vídeo da música (MP4): tela de vídeo e player flutuante
         if (isVideoUrl(song.audio_url)) {
+            projection.showVideo({ kind: "video", url: song.audio_url, title: song.title || "" }).catch(report);
             setActiveVideoSong(song);
-        }
-
-        // Enviar vídeo para dispositivo remoto (se tiver audio_url que seja vídeo)
-        if (isVideoUrl(song.audio_url)) {
-            try {
-                // Criar novo registro PRIMEIRO para a tablet receber instantaneamente
-                await keryx.entities.VideoSync.create({
-                    video_url: song.audio_url,
-                    title: song.title,
-                    timestamp: Date.now(),
-                    status: "active"
-                });
-                // Limpar vídeos antigos em segundo plano (não bloqueia a notificação)
-                keryx.entities.VideoSync.list().then(oldVideos => {
-                    for (const old of oldVideos) {
-                        if (Date.now() - old.timestamp > 10000) {
-                            keryx.entities.VideoSync.delete(old.id).catch(() => {});
-                        }
-                    }
-                }).catch(() => {});
-            } catch (error) {
-                console.error("Erro ao sincronizar vídeo:", error);
-            }
-
-            // Também enviar para janela local se existir
-            if (videoWindow && !videoWindow.closed) {
-                videoWindow.postMessage({
-                    type: "VIDEO_DATA",
-                    videoUrl: song.audio_url,
-                    title: song.title
-                }, "*");
-                videoWindow.focus();
-            }
         }
     };
 
@@ -337,20 +302,8 @@ export default function Home() {
     };
 
     const stopProjection = () => {
-        // Letra, bíblia e palco: o estado ao vivo
+        // Letra, bíblia, vídeo e mídia: o estado ao vivo
         stop();
-        // Parar vídeo local
-        if (videoWindow && !videoWindow.closed) {
-            videoWindow.postMessage({ type: "VIDEO_STOP" }, "*");
-        }
-        // Parar vídeos remotos (marcar como played e enviar stop)
-        try {
-            keryx.entities.VideoSync.list().then(videos => {
-                for (const v of videos) {
-                    if (v.status === "active") keryx.entities.VideoSync.update(v.id, { status: "played" }).catch(() => {});
-                }
-            });
-        } catch {}
         // Limpar todos os dispositivos remotos (projetor, TV, tablet, PC)
         if (projectionDevices && projectionDevices.length > 0) {
             for (const device of projectionDevices) {
@@ -618,7 +571,6 @@ export default function Home() {
             {activeVideoSong && (
                 <VideoPlayerPanel
                     song={activeVideoSong}
-                    videoWindow={videoWindow}
                     onClose={() => setActiveVideoSong(null)}
                     onSendToProjection={(s) => playSong(s)}
                 />

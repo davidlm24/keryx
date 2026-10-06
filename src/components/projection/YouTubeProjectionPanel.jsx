@@ -2,8 +2,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { Youtube, X, Send, Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { keryx } from "@/api/keryxClient";
-import { isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from "@/utils/youtube";
+import { projection } from "@/lib/projection";
+import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { livePosition } from "@shared/live-state.mjs";
+import { isYouTubeUrl, getYouTubeThumbnail } from "@/utils/youtube";
+import LiveVideo from "@/components/projection/LiveVideo";
 
 function formatTime(s) {
     if (!s || isNaN(s)) return "0:00";
@@ -12,92 +15,24 @@ function formatTime(s) {
     return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
+// Sends a YouTube link to the screens (the live state's video channel) and
+// controls it there; the preview here is muted and follows the screens.
 export default function YouTubeProjectionPanel({ onClose }) {
+    const live = useLiveState((st) => st?.video);
+    const video = live && live.kind === "youtube" ? live : null;
+    const now = useLiveNow(500);
     const [url, setUrl] = useState("");
     const [title, setTitle] = useState("");
-    const [sent, setSent] = useState(false);
-    const [playing, setPlaying] = useState(true);
-    const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [volume, setVolume] = useState(1);
-    const [muted, setMuted] = useState(false);
-    const ytPlayerRef = useRef(null);
-    const ytContainerRef = useRef(null);
+    const [seekValue, setSeekValue] = useState(null);
+    const [volumeValue, setVolumeValue] = useState(null);
+    const lastVolume = useRef(1);
     const dragRef = useRef(null);
     const [pos, setPos] = useState({ x: null, y: null });
     const dragging = useRef(false);
     const dragOffset = useRef({ x: 0, y: 0 });
 
     const valid = isYouTubeUrl(url);
-
-    // Load YouTube API
-    useEffect(() => {
-        if (!window.YT) {
-            const tag = document.createElement("script");
-            tag.src = "https://www.youtube.com/iframe_api";
-            document.head.appendChild(tag);
-        }
-    }, []);
-
-    // Create local preview player when sent
-    useEffect(() => {
-        if (!sent || !valid || !window.YT || !ytContainerRef.current) return;
-
-        const createPlayer = () => {
-            if (ytPlayerRef.current) {
-                try { ytPlayerRef.current.loadVideoById(getYouTubeId(url)); } catch (e) {}
-                return;
-            }
-            ytPlayerRef.current = new window.YT.Player(ytContainerRef.current, {
-                videoId: getYouTubeId(url),
-                playerVars: { autoplay: 1, controls: 0, modestbranding: 1, rel: 0, playsinline: 1 },
-                events: {
-                    onReady: (e) => {
-                        e.target.playVideo();
-                        setDuration(e.target.getDuration());
-                    },
-                    onStateChange: (e) => {
-                        setPlaying(e.data === window.YT.PlayerState.PLAYING);
-                    },
-                },
-            });
-        };
-
-        if (window.YT && window.YT.Player) {
-            createPlayer();
-        } else {
-            const interval = setInterval(() => {
-                if (window.YT && window.YT.Player) {
-                    clearInterval(interval);
-                    createPlayer();
-                }
-            }, 200);
-            return () => clearInterval(interval);
-        }
-    }, [sent, url, valid]);
-
-    // Time update polling
-    useEffect(() => {
-        if (!sent || !ytPlayerRef.current) return;
-        const interval = setInterval(() => {
-            try {
-                if (ytPlayerRef.current?.getCurrentTime) {
-                    setCurrentTime(ytPlayerRef.current.getCurrentTime());
-                    setDuration(ytPlayerRef.current.getDuration());
-                }
-            } catch (e) {}
-        }, 500);
-        return () => clearInterval(interval);
-    }, [sent]);
-
-    // Cleanup
-    useEffect(() => {
-        return () => {
-            if (ytPlayerRef.current) {
-                try { ytPlayerRef.current.destroy(); } catch (e) {}
-            }
-        };
-    }, []);
 
     const startDrag = (clientX, clientY) => {
         dragging.current = true;
@@ -139,94 +74,36 @@ export default function YouTubeProjectionPanel({ onClose }) {
         };
     }, []);
 
-    const sendControl = async (payload) => {
-        try {
-            await keryx.entities.VideoControl.create({ ...payload, timestamp: Date.now() });
-        } catch (e) {
-            console.error("Erro ao enviar controlo:", e);
-        }
-    };
+    const fail = (err) => console.error("[keryx] YouTube:", err);
 
-    const handleSend = async () => {
+    const handleSend = () => {
         if (!valid) return;
-        try {
-            await keryx.entities.VideoSync.create({
-                video_url: url.trim(),
-                title: title.trim() || "YouTube",
-                timestamp: Date.now(),
-                status: "active",
-            });
-            setSent(true);
-        } catch (e) {
-            console.error("Erro ao enviar vídeo:", e);
-        }
+        projection.showVideo({ kind: "youtube", url: url.trim(), title: title.trim() || "YouTube" }).catch(fail);
     };
 
-    const handleStop = async () => {
-        try {
-            await keryx.entities.VideoSync.create({
-                video_url: "",
-                title: "",
-                timestamp: Date.now(),
-                status: "active",
-            });
-        } catch (e) {}
-        if (ytPlayerRef.current) {
-            try { ytPlayerRef.current.destroy(); } catch (e) {}
-            ytPlayerRef.current = null;
-        }
-        setSent(false);
+    const handleStop = () => {
+        projection.clearVideo().catch(fail);
         setUrl("");
         setTitle("");
-        setCurrentTime(0);
         setDuration(0);
     };
 
-    const togglePlay = () => {
-        if (!ytPlayerRef.current) return;
-        if (playing) {
-            ytPlayerRef.current.pauseVideo();
-            setPlaying(false);
-            sendControl({ action: "pause" });
-        } else {
-            ytPlayerRef.current.playVideo();
-            setPlaying(true);
-            sendControl({ action: "play" });
-        }
-    };
+    const playback = video?.playback;
+    const position = playback ? livePosition(playback, now) : 0;
+    const currentTime = seekValue ?? (duration ? Math.min(position, duration) : position);
+    const playing = Boolean(playback && !playback.paused && (!duration || position < duration));
+    const volume = volumeValue ?? playback?.volume ?? 1;
+    const muted = volume === 0;
 
-    const handleSeek = (val) => {
-        if (!ytPlayerRef.current) return;
-        ytPlayerRef.current.seekTo(val[0], true);
-        setCurrentTime(val[0]);
-        sendControl({ action: "seek", time: val[0] });
+    const togglePlay = () => (playing ? projection.transport.pause() : projection.transport.play()).catch(fail);
+    const seek = (t) => projection.transport.seek(Math.max(0, duration ? Math.min(duration, t) : t)).catch(fail);
+    const skip = (secs) => seek(position + secs);
+    const setVolume = (v) => {
+        if (v > 0) lastVolume.current = v;
+        projection.transport.volume(v).catch(fail);
     };
-
-    const skip = (secs) => {
-        if (!ytPlayerRef.current) return;
-        const newTime = Math.max(0, Math.min(duration, currentTime + secs));
-        ytPlayerRef.current.seekTo(newTime, true);
-        sendControl({ action: "seek", time: newTime });
-    };
-
-    const handleVolume = (val) => {
-        const v = val[0];
-        if (ytPlayerRef.current) ytPlayerRef.current.setVolume(Math.round(v * 100));
-        setVolume(v);
-        setMuted(v === 0);
-        sendControl({ action: "volume", volume: v });
-    };
-
-    const toggleMute = () => {
-        const newMuted = !muted;
-        if (ytPlayerRef.current) ytPlayerRef.current.setVolume(newMuted ? 0 : Math.round(volume * 100));
-        setMuted(newMuted);
-        sendControl({ action: "volume", volume: newMuted ? 0 : volume });
-    };
-
-    const requestFullscreen = async () => {
-        await sendControl({ action: "fullscreen" });
-    };
+    const toggleMute = () => setVolume(muted ? lastVolume.current || 1 : 0);
+    const requestFullscreen = () => projection.transport.fullscreen().catch(fail);
 
     const panelStyle = pos.x !== null
         ? { position: "fixed", left: pos.x, top: pos.y, zIndex: 50 }
@@ -244,7 +121,7 @@ export default function YouTubeProjectionPanel({ onClose }) {
                 </button>
             </div>
 
-            {!sent ? (
+            {!video ? (
                 <div className="p-4 space-y-3">
                     <input
                         type="text"
@@ -283,29 +160,41 @@ export default function YouTubeProjectionPanel({ onClose }) {
                 </div>
             ) : (
                 <>
-                    {/* YouTube preview */}
-                    <div className="relative">
-                        <div ref={ytContainerRef} className="w-full aspect-video bg-black" />
-                    </div>
+                    {/* Prévia (sem som) */}
+                    <LiveVideo item={video} muted className="w-full aspect-video bg-black" onDuration={(d) => setDuration(Number.isFinite(d) ? d : 0)} />
 
                     {/* Title */}
                     <div className="px-3 py-1.5 bg-black/40">
-                        <p className="text-white text-xs font-medium truncate">{title || "YouTube"}</p>
+                        <p className="text-white text-xs font-medium truncate">{video.title || "YouTube"}</p>
                     </div>
 
                     {/* Controls */}
                     <div className="px-4 py-3 space-y-2">
                         <div className="flex items-center gap-2">
                             <span className="text-gray-400 text-xs w-9 shrink-0">{formatTime(currentTime)}</span>
-                            <Slider value={[currentTime]} max={duration || 1} step={0.5} onValueChange={handleSeek} className="flex-1" />
+                            <Slider
+                                value={[currentTime]}
+                                max={duration || 1}
+                                step={0.5}
+                                onValueChange={(v) => setSeekValue(v[0])}
+                                onValueCommit={(v) => { setSeekValue(null); seek(v[0]); }}
+                                className="flex-1"
+                            />
                             <span className="text-gray-400 text-xs w-9 text-right shrink-0">{formatTime(duration)}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1">
                                 <button onClick={toggleMute} className="text-gray-400 hover:text-white transition-colors p-1">
-                                    {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                                    {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                                 </button>
-                                <Slider value={[muted ? 0 : volume]} max={1} step={0.05} onValueChange={handleVolume} className="w-20" />
+                                <Slider
+                                    value={[volume]}
+                                    max={1}
+                                    step={0.05}
+                                    onValueChange={(v) => setVolumeValue(v[0])}
+                                    onValueCommit={(v) => { setVolumeValue(null); setVolume(v[0]); }}
+                                    className="w-20"
+                                />
                             </div>
                             <div className="flex items-center gap-2">
                                 <button onClick={() => skip(-10)} className="text-gray-400 hover:text-white transition-colors p-1">
@@ -319,7 +208,7 @@ export default function YouTubeProjectionPanel({ onClose }) {
                                 </button>
                             </div>
                             <div className="flex items-center gap-1">
-                                <button onClick={requestFullscreen} className="text-gray-400 hover:text-yellow-400 transition-colors p-1" title="Tela cheia nos dispositivos">
+                                <button onClick={requestFullscreen} className="text-gray-400 hover:text-yellow-400 transition-colors p-1" title="Tela cheia nas telas">
                                     <Maximize2 className="w-4 h-4" />
                                 </button>
                                 <button onClick={handleStop} className="text-gray-400 hover:text-red-400 transition-colors p-1" title="Parar">

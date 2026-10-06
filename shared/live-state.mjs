@@ -227,7 +227,7 @@ const OPS = {
 
     "media.show": (_s, a, now) => ({
         ...reveal(["tool", "communication"]),
-        media: { ...mediaItem(a), playlist: null, playlistIndex: 0, playback: freshPlayback(now) },
+        media: { ...mediaItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: freshPlayback(now) },
     }),
     "media.playlist": (_s, a, now) => {
         const items = list(a.items, "Lista de mídias").map(mediaItem);
@@ -235,7 +235,7 @@ const OPS = {
         const i = clampIndex(a.index, items.length);
         return {
             ...reveal(["tool", "communication"]),
-            media: { ...items[i], playlist: items, playlistIndex: i, playback: freshPlayback(now) },
+            media: { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: freshPlayback(now) },
         };
     },
     // Reported by the output when an item ends. Several outputs may report
@@ -244,13 +244,13 @@ const OPS = {
         const media = need(s.media, "em reprodução");
         if (!media.playlist || Number(fromIndex) !== media.playlistIndex) return null;
         const i = (media.playlistIndex + 1) % media.playlist.length;
-        return { media: { ...media, ...media.playlist[i], playlistIndex: i, playback: freshPlayback(now, media.playback.volume) } };
+        return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) } };
     },
     "media.clear": (s) => (s.media ? { media: null } : null),
 
     // The video channel: video screens and tablets (VideoProjection). It does
     // not cover the main projector.
-    "video.show": (_s, a, now) => ({ video: { ...mediaItem(a), playback: freshPlayback(now) } }),
+    "video.show": (_s, a, now) => ({ video: { ...mediaItem(a), shownAt: now, playback: freshPlayback(now) } }),
     "video.clear": (s) => (s.video ? { video: null } : null),
 
     "transport": (s, { layer = "video", action, time, volume }, now) => {
@@ -263,6 +263,8 @@ const OPS = {
         else if (action === "pause") playback = pb.paused ? null : { ...pb, paused: true, position, at: now };
         else if (action === "seek") playback = { ...pb, position: count(time, "Posição"), at: now };
         else if (action === "volume") playback = { ...pb, volume: Math.min(1, count(volume, "Volume")) };
+        // Screens try to go fullscreen (tablets need a tap; they show a button).
+        else if (action === "fullscreen") return { [layer]: { ...current, fullscreenAt: now } };
         else throw new LiveError(`Comando de vídeo inválido: ${action}.`);
         return playback ? { [layer]: { ...current, playback } } : null;
     },
@@ -405,6 +407,26 @@ export function livePosition(playback, now) {
     if (!playback) return 0;
     if (playback.paused) return playback.position;
     return playback.position + Math.max(0, now - playback.at) / 1000;
+}
+
+// What a <video> (or YouTube player) should do to follow the shared
+// playback: el = { currentTime, paused, ended, duration } of the element.
+// Returns { seek?: seconds, play?: true, pause?: true, volume }.
+// Small drift is left alone (seeking stutters); a looping item wraps.
+export function playbackPlan(el, playback, now, { loop = false, tolerance = 1.5 } = {}) {
+    const plan = { volume: playback.volume ?? 1 };
+    const duration = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : null;
+    let target = livePosition(playback, now);
+    if (duration) target = loop ? target % duration : Math.min(target, duration);
+    const finished = !loop && duration && target >= duration;
+    // Finished (no loop): rest on the last frame rather than replay.
+    if (Math.abs((el.currentTime || 0) - target) > tolerance) plan.seek = target;
+    if (playback.paused) {
+        if (!el.paused) plan.pause = true;
+    } else if (el.paused && !finished && !(el.ended && !loop)) {
+        plan.play = true;
+    }
+    return plan;
 }
 
 export const currentSlide = (content) => (content && content.slides[content.index]) || null;

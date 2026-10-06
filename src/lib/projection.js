@@ -40,6 +40,8 @@ export const projection = {
         pause: (layer = "video") => keryx.live.call("transport", { layer, action: "pause" }),
         seek: (time, layer = "video") => keryx.live.call("transport", { layer, action: "seek", time }),
         volume: (volume, layer = "video") => keryx.live.call("transport", { layer, action: "volume", volume }),
+        // Screens try to go fullscreen; a tablet shows a "tap" button instead.
+        fullscreen: (layer = "video") => keryx.live.call("transport", { layer, action: "fullscreen" }),
     },
 
     // Clock, stopwatch, timer ({ durationMs }) or free text, over the content.

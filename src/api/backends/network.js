@@ -64,9 +64,9 @@ export function createNetworkBridge() {
             } catch { /* a torn frame; the next one carries the whole state again */ }
         });
         source.onopen = () => {
-            // Back after a drop: changes made meanwhile were missed. The screen
-            // pages already refetch on "online" (useProjectionReconnect); the
-            // live state is read again here.
+            // Back after a drop: changes made meanwhile were missed. Pages that
+            // read the database refetch on "online"; the live state is read
+            // again here.
             if (wasOpen) {
                 window.dispatchEvent(new Event("online"));
                 getJson("/api/live").then((res) => { if (res.data) emitLive(res.data); });

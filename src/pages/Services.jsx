@@ -7,7 +7,7 @@ import { Plus, ArrowLeft, Maximize2, Calendar, Square, FileDown, Eye } from "luc
 import { AnimatePresence, motion } from "framer-motion";
 import { createPageUrl } from "@/utils";
 import { useThemeColors } from "@/hooks/useThemeColors";
-import { openProjectionWindow as openSharedProjection, sendToProjection as sendToSharedProjection } from "@/lib/projectionWindow";
+import { openProjectionWindow as openSharedProjection } from "@/lib/projectionWindow";
 import { projection } from "@/lib/projection";
 import { useProjectionControl, isVideoUrl, songContent, passageContent } from "@/hooks/useProjectionControl";
 
@@ -32,7 +32,6 @@ export default function Services() {
     const [editingService, setEditingService] = useState(null);
     const { id: serviceId } = useParams();
     const navigate = useNavigate();
-    const [videoWindow, setVideoWindow] = useState(null);
     const colors = useThemeColors();
     const [activeVideoSong, setActiveVideoSong] = useState(null);
     const [lyricPanelOpen, setLyricPanelOpen] = useState(false);
@@ -184,13 +183,11 @@ export default function Services() {
     const openVideoWindow = () => {
         return interceptWindowOpen("Tela de Vídeo", () => {
             const videoUrl = createPageUrl("VideoProjection");
-            const newWindow = window.open(
+            return window.open(
                 videoUrl,
                 "videoProjection",
                 "width=1920,height=1080,menubar=no,toolbar=no,location=no"
             );
-            setVideoWindow(newWindow);
-            return newWindow;
         });
     };
 
@@ -260,10 +257,10 @@ export default function Services() {
             }
         }
 
-        // Música com vídeo MP4: player flutuante e tela de vídeo
+        // Música com vídeo MP4: tela de vídeo e player flutuante
         if (projType === "song" && isVideoUrl(fullItem.audio_url)) {
+            projection.showVideo({ kind: "video", url: fullItem.audio_url, title: fullItem.title || "" }).catch(() => {});
             setActiveVideoSong(fullItem);
-            sendSongVideo(fullItem);
         }
 
         // Letra e bíblia: todas as telas seguem o estado ao vivo
@@ -274,30 +271,17 @@ export default function Services() {
             if (projType === "song") playSong(fullItem, ref);
             else playPassage(fullItem, ref);
         } else {
-            // Mídia ainda vai à janela de projeção por postMessage
-            if (!live?.session) projection.startSession(serviceId).catch(() => {});
-            sendToSharedProjection({
-                type: "MEDIA_PROJECTION",
-                mediaType: fullItem.type,
-                title: fullItem.title,
-                fileUrl: fullItem.file_url,
-            });
+            // Mídia: a camada de mídia do projetor principal
+            openSharedProjection();
+            const showMedia = () => projection.showMedia({ kind: fullItem.type, url: fullItem.file_url, title: fullItem.title || "", id: fullItem.id });
+            (live?.session ? showMedia() : projection.startSession(serviceId).then(showMedia))
+                .catch((err) => toast({ title: "Não foi possível projetar", description: err?.message, variant: "destructive" }));
         }
     };
 
     const stopProjection = () => {
-        // Letra, bíblia e palco: o estado ao vivo
+        // Letra, bíblia, vídeo e mídia: o estado ao vivo
         stop();
-        if (videoWindow && !videoWindow.closed) {
-            videoWindow.postMessage({ type: "VIDEO_STOP" }, "*");
-        }
-        try {
-            keryx.entities.VideoSync.list().then(videos => {
-                for (const v of videos) {
-                    if (v.status === "active") keryx.entities.VideoSync.update(v.id, { status: "played" }).catch(() => {});
-                }
-            });
-        } catch {}
         // Limpar todos os dispositivos remotos (projetor, TV, tablet, PC)
         try {
             keryx.entities.ProjectionDevice.list().then(devices => {
@@ -311,36 +295,6 @@ export default function Services() {
         setLyricPanelOpen(false);
         setRehearsal(null);
         setActiveVideoSong(null);
-    };
-
-    // A song's video clip goes to the video screen (VideoSync until it moves
-    // to the live state).
-    const sendSongVideo = async (data) => {
-        try {
-            // Criar novo registro PRIMEIRO para a tablet receber instantaneamente
-            await keryx.entities.VideoSync.create({
-                video_url: data.audio_url,
-                title: data.title,
-                timestamp: Date.now(),
-                status: "active"
-            });
-            // Limpar vídeos antigos em segundo plano (não bloqueia a notificação)
-            keryx.entities.VideoSync.list().then(oldVideos => {
-                for (const old of oldVideos) {
-                    if (Date.now() - old.timestamp > 10000) {
-                        keryx.entities.VideoSync.delete(old.id).catch(() => {});
-                    }
-                }
-            }).catch(() => {});
-        } catch (e) {
-            console.error("Erro ao sincronizar vídeo:", e);
-        }
-
-        // Também enviar para janela local se existir
-        if (videoWindow && !videoWindow.closed) {
-            videoWindow.postMessage({ type: "VIDEO_DATA", videoUrl: data.audio_url, title: data.title }, "*");
-            videoWindow.focus();
-        }
     };
 
     const handleSubmit = (serviceData) => {
@@ -511,7 +465,6 @@ export default function Services() {
                         song={activeVideoSong}
                         onClose={() => setActiveVideoSong(null)}
                         onSendToProjection={(song) => playSong(song)}
-                        videoWindow={videoWindow}
                     />
                 )}
                 {lyricPanelOpen && (

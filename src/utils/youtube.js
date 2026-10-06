@@ -35,3 +35,22 @@ export function getYouTubeThumbnail(url) {
     if (!id) return null;
     return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
 }
+// The YouTube IFrame API, loaded once (it needs the internet).
+let apiPromise = null;
+export function loadYouTubeApi() {
+    if (typeof window === "undefined") return Promise.reject(new Error("sem janela"));
+    if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+    if (!apiPromise) {
+        apiPromise = new Promise((resolve) => {
+            const previous = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = () => {
+                if (typeof previous === "function") previous();
+                resolve(window.YT);
+            };
+            const tag = document.createElement("script");
+            tag.src = "https://www.youtube.com/iframe_api";
+            document.head.appendChild(tag);
+        });
+    }
+    return apiPromise;
+}

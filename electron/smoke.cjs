@@ -319,10 +319,94 @@ async function checkOperatorFlow(webContents, { live }) {
     return result;
 }
 
+// Video and media through the live state: a short real video recorded in
+// the page, a video screen that opens after it started (it must join), pause
+// and play from the operator, and a playlist the projector moves on by itself.
+const RECORD_VIDEO = `(async () => {
+    const c = document.createElement("canvas");
+    c.width = 64; c.height = 36;
+    const g = c.getContext("2d");
+    const rec = new MediaRecorder(c.captureStream(15), { mimeType: "video/webm" });
+    const chunks = [];
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    let i = 0;
+    const paint = setInterval(() => { g.fillStyle = i++ % 2 ? "#c33" : "#33c"; g.fillRect(0, 0, 64, 36); }, 60);
+    // Long enough that the checks below finish before it ends, even on a slow run.
+    rec.start(250);
+    await new Promise((r) => setTimeout(r, 8000));
+    const stopped = new Promise((r) => { rec.onstop = r; });
+    rec.stop();
+    await stopped;
+    clearInterval(paint);
+    const res = await window.keryxDesktop.media.importFile(new File(chunks, "smoke.webm", { type: "video/webm" }));
+    return res.data && res.data.fileName;
+})()`;
+const VIDEO_STATE = `(() => {
+    const v = document.querySelector("video");
+    return v ? { src: v.src, paused: v.paused, ended: v.ended, time: v.currentTime, duration: v.duration, ready: v.readyState, error: v.error && v.error.code } : null;
+})()`;
+
+async function checkVideo(webContents, { live }) {
+    const result = { ok: false };
+    const stateOf = (win) => (win ? win.webContents.executeJavaScript(VIDEO_STATE).catch(() => null) : null);
+    const waitState = async (win, test, ms = 6000) => {
+        const end = Date.now() + ms;
+        let last = null;
+        while (Date.now() < end) {
+            last = await stateOf(win);
+            if (last && test(last)) return true;
+            await sleep(250);
+        }
+        result.lastState = last;
+        return false;
+    };
+
+    const fileName = await webContents.executeJavaScript(RECORD_VIDEO);
+    result.recorded = Boolean(fileName);
+    result.fileName = fileName;
+    live.call("video.show", { kind: "video", url: `keryx-media://${fileName}`, title: "Vídeo de teste" });
+    await sleep(500);
+    // Opened after the video started: it joins (the old VideoSync screens missed it).
+    await webContents.executeJavaScript(OPEN_OUTPUT("/VideoProjection", "videoProjection"), true);
+    const screenWin = windowFor("/VideoProjection");
+    result.lateJoin = await waitState(screenWin, (v) => v.src.endsWith(`/media/${fileName}`) && !v.paused);
+    result.title = (await bodyText(screenWin)).includes("Vídeo de teste");
+    live.call("transport", { action: "pause" });
+    result.paused = await waitState(screenWin, (v) => v.paused);
+    live.call("transport", { action: "play" });
+    result.resumed = await waitState(screenWin, (v) => !v.paused);
+    live.call("video.clear");
+    result.cleared = await (async () => {
+        const end = Date.now() + 5000;
+        while (Date.now() < end) {
+            if ((await bodyText(screenWin)).includes("Dispositivo de Vídeo")) return true;
+            await sleep(250);
+        }
+        return false;
+    })();
+    if (screenWin) screenWin.close();
+
+    // A playlist of two images on the projector: it reports the end of each.
+    const img = (name) => ({ kind: "image", url: `keryx-media://bundled/backgrounds/${name}`, duration: 1 });
+    live.call("media.playlist", { items: [img("1418065460487-3e41a6c84dc5.webp"), img("1419242902214-272b3f66ee7a.webp")] });
+    await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
+    const projector = windowFor("/Projection");
+    await sleep(3000);
+    const media = live.get().media;
+    result.playlistAdvanced = Boolean(media && media.shownAt > Date.now() - 2500);
+    result.projectorImage = projector ? await projector.webContents.executeJavaScript(`Boolean(document.querySelector("img[src*='/media/bundled/backgrounds/']"))`) : false;
+    live.call("clear");
+    if (projector) projector.close();
+
+    result.ok = result.recorded && result.lateJoin && result.title && result.paused && result.resumed && result.cleared
+        && result.playlistAdvanced && result.projectorImage;
+    return result;
+}
+
 // Backups, logs and the Settings bridge, as the packaged app runs them.
 // A tablet on the network: a plain browser window (no preload, no desktop
 // bridge) opening screen pages from the LAN server, fed by store changes.
-async function checkNetwork({ network, live }) {
+async function checkNetwork({ network, live, videoFile }) {
     const result = { started: false, lyrics: false, stage: false, live: null, operatorPageBlocked: false, pinForm: false, tabletErrors: [], ok: false };
     await network.ops.setPin(null, ""); // start open, whatever the data folder had
     await network.ops.setEnabled(null, true);
@@ -374,6 +458,15 @@ async function checkNetwork({ network, live }) {
         result.stageDuringBlack = (await textOf(stage)).includes("Segunda linha da letra");
         live.call("screen.set", { mode: "show" });
 
+        // A tablet's video screen: media from the KERYX computer, on its network address.
+        live.call("video.show", { kind: "video", url: `keryx-media://${videoFile}`, title: "Na rede" });
+        const videoTablet = tablet();
+        await videoTablet.loadURL(`${base}/VideoProjection`);
+        await sleep(1500);
+        result.videoSrc = await videoTablet.webContents.executeJavaScript(`(document.querySelector("video") || {}).src || ""`);
+        videoTablet.close();
+        live.call("video.clear");
+
         // The live state reaches a tablet as a read and as "live" events, and the tablet can't change it.
         await lyrics.webContents.executeJavaScript(`(() => {
             window.__live = [];
@@ -409,6 +502,7 @@ async function checkNetwork({ network, live }) {
     const l = result.live;
     result.ok = result.started && result.isNetworkScreen && result.lyrics && result.stage && result.lyricsAdvanced
         && result.stageChords && result.lyricsBlack && result.stageDuringBlack
+        && result.videoSrc === `${base}/media/${videoFile}`
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0;
     return result;
@@ -532,10 +626,11 @@ function runSmokeTest(win, { dev, outputs, screen, system, network, live, dataDi
             const systemResult = await checkSystem(webContents, { dataDir, system });
             const liveResult = await checkLive(webContents, { live });
             const operatorResult = await checkOperatorFlow(webContents, { live });
+            const videoResult = await checkVideo(webContents, { live });
             // The LAN server serves the built app (dist/), so this runs in built mode only.
-            const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live });
-            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && operatorResult.ok && !importOutcome && (dev || networkResult.ok),
-                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, operator: operatorResult, network: networkResult });
+            const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live, videoFile: videoResult.fileName });
+            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && operatorResult.ok && videoResult.ok && !importOutcome && (dev || networkResult.ok),
+                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, operator: operatorResult, video: videoResult, network: networkResult });
         } catch (err) {
             finish(false, { rendered, exception: String(err && (err.stack || err.message)).slice(0, 800) });
         }
