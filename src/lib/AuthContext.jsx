@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAppState();
-    const { data: { subscription } } = keryx.supabase.auth.onAuthStateChange((event) => {
+    const subscription = keryx.auth.onAuthStateChange((event) => {
       // TOKEN_REFRESHED carries no change the UI cares about; the others do.
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
         checkAppState();

@@ -1,7 +1,7 @@
 # KERYX as an offline-first desktop app
 
-Status: decisions settled 2026-10-06. Phase 0 (shell) is done; the rest is not
-implemented.
+Status: decisions settled 2026-10-06. Phases 0 (shell) and 1 (local data) are
+done; the rest is not implemented.
 
 ## Why
 
@@ -65,8 +65,10 @@ behind `src/api/client.js`.
 `keryx.entities.<Name>.list/filter/get/create/update/delete/bulk*/subscribe`.
 The swap happens behind that surface; **pages don't change**.
 
-- **Engine:** `better-sqlite3` in the main process. Synchronous, fast, one
-  file, no server.
+- **Engine:** `node:sqlite` (built into Electron 44's Node 24 and into the
+  Node that runs the scripts), synchronous, one file. Chosen over
+  `better-sqlite3` because it needs no native rebuild for Electron, so the
+  same store module runs in the app, the import script and `node --test`.
 - **Schema:** the same 31 tables, generated from `base44/entities/*.jsonc`
   like the Supabase one was. Text ids (imported rows keep theirs, new rows
   get UUIDs), `jsonb` columns become JSON text, `created_date`/`updated_date`
@@ -227,7 +229,7 @@ development time, not calendar time.
 | # | Phase | Result | Effort |
 | --- | --- | --- | --- |
 | 0 | Scaffold | **Done.** Electron shell opens the current UI from a loopback server; 13 dead dependencies removed (Stripe, Leaflet, three, Quill, lodash, moment, …) | 1–2 days |
-| 1 | Local data | SQLite schema, adapter over IPC, change events, import script from Supabase/Base44. Whole app works with Wi-Fi off. | 4–5 days |
+| 1 | Local data | **Done.** SQLite store with Base44 query semantics (20 tests), adapter over IPC, change events, local operator profile, uploads to `media/`, import script from Base44. No Supabase requests in the desktop build. | 4–5 days |
 | 2 | Outputs | Display manager, fullscreen output windows, `window.open` interception, "Ecrãs" settings | 2–3 days |
 | 3 | Media + Bible | Media library on disk, thumbnails, bundled Bibles, offline verse lookup, bundled backgrounds | 2–3 days |
 | 4 | Ship it | Backups, export/import, updater, installer, logs, install on the booth PC and run a service with it | 2 days |

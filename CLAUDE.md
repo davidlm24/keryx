@@ -1,7 +1,9 @@
 # KERYX — working notes
 
 Church worship projection app (lyrics, Bible, media, multi-screen live
-projection). Vite + React 18 + Tailwind + shadcn/ui on Supabase.
+projection). Vite + React 18 + Tailwind + shadcn/ui, packaged as an
+offline-first Electron desktop app with a local SQLite store; the same UI in a
+plain browser runs on Supabase instead. Plan: `docs/desktop-architecture.md`.
 Read `README.md` first — it covers the stack, how to run it, the backend
 wiring, the data model and the known gaps.
 
@@ -15,32 +17,44 @@ wiring, the data model and the known gaps.
 - **`src/components/ui/` is generated shadcn/ui.** It is excluded from lint and
   from editor type checking. Don't hand-edit it; add components with the
   shadcn CLI (`components.json` is configured) or wrap them instead.
-- **The schema lives in `supabase/migrations/`.** A schema change is a new
-  migration file, applied to the project and committed. Never alter a table
-  from the dashboard without writing the migration down. The JSON Schemas in
-  `base44/entities/` are the readable field docs the tables were generated
-  from; keep them in step when you add a column.
+- **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
+  field: edit the jsonc, run `npm run db:schema` (regenerates
+  `electron/db/schema.json`; the local store adds new columns on next launch),
+  and for the web build add a migration in `supabase/migrations/`. `npm test`
+  fails if schema.json and the jsonc drift apart.
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
-  `keryx` is re-exported from `src/api/keryxClient.js`; the client itself is
-  `src/api/client.js`, which keeps the old Base44 SDK surface on supabase-js. Add to that client when a page needs a new
-  method; don't call `supabase.from()` from a page.
+  `src/api/client.js` is a facade over two backends with the same surface:
+  `backends/desktop.js` (IPC to `electron/db/store.cjs`) and
+  `backends/supabase.js` (web build). A new method goes into both; pages never
+  talk to SQLite, IPC or Supabase directly. Query semantics follow Base44 and
+  are pinned by `electron/db/store.test.cjs`; change them there first.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
-  unsubscribe function — always call it in the effect cleanup. Events carry
-  the whole row in `data` only for tables with `REPLICA IDENTITY FULL`
-  (the eight the app subscribes to); add that when subscribing to a new one.
-- **Anonymous users are a normal state, not an error.** TV screens run with no
-  login. Anything a screen needs must be readable by `anon` under RLS.
+  unsubscribe function — always call it in the effect cleanup. On desktop every
+  write reaches every window with the whole row, deletes included.
+- **No login on desktop.** `auth.me()` is one local operator profile
+  (`entities.User` maps to it whatever id is passed). Don't add features that
+  assume accounts; cloud sync is a later phase.
+- **Media URLs:** the store keeps `keryx-media://<file>`; pages get
+  `http://127.0.0.1:7700/media/<file>` from the adapter. Never write the http
+  form into the database by other means, and keep checks like
+  `startsWith("http")` working.
 
 ## Commands
 
 ```bash
-npm run dev         # vite against the project in .env (http://localhost:5173)
-npm run lint        # gates on errors only; ~90 warnings are advisory
+npm run desktop:dev    # the desktop app on the Vite dev server (hot reload, F12 devtools)
+npm test               # store query semantics + schema drift (node --test)
+npm run lint           # gates on errors only; ~90 warnings are advisory
 npm run build
-npm run db:migrate  # one-off Base44 data import; needs secrets, see the script
-npm run desktop:dev    # Electron shell on the Vite dev server (see electron/)
-npm run desktop:smoke  # build + open the shell + assert the app rendered
+npm run desktop:smoke  # build + run the app on a temp data dir + in-app checks
+KERYX_SMOKE=1 npm run desktop:dev   # same checks + the renderer adapter end to end
+npm run db:schema      # after editing base44/entities/*.jsonc
+npm run db:import      # one-off Base44 -> local import; needs the user's token
+npm run dev            # web build in a browser, against Supabase
 ```
+
+The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
+it; smoke runs use a temp `KERYX_DATA_DIR`.
 
 Secrets (`SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, Base44 tokens) are
 the user's to set — in the Supabase dashboard or their shell. Don't ask for
@@ -48,9 +62,10 @@ their values and don't write them into tracked files.
 
 ## Verifying a change
 
-There are no tests, so the loop is: `npm run lint`, then `npm run build`, then
-look at the page. Dev runs against the real project, so a seeded row you add
-while testing must be deleted afterwards.
+The loop is: `npm test`, `npm run lint`, `npm run desktop:smoke` (or
+`KERYX_SMOKE=1 npm run desktop:dev` when touching `src/api`), then look at
+the page. `KERYX_SCREENSHOT=<file.png>` makes a smoke run save a screenshot.
+The page tests cover only the store; UI has no automated tests.
 
 Projection features need two windows to verify: the operator page drives a
 second window opened via `src/lib/projectionWindow.js` (same machine,
@@ -76,3 +91,5 @@ realtime). A change that looks right in one window may not be in the other.
   (`"serviceId"`, `"startedAt"`). Quote them in SQL.
 - **Ids are text, not uuid.** Imported Base44 rows keep 24-hex ids; new rows
   get a uuid string. Never cast `id` to uuid.
+- **Unknown fields are dropped on write** (logged once per field in the main
+  process), not rejected. Unknown fields in a filter or sort are errors.

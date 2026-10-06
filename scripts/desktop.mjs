@@ -2,10 +2,14 @@
 // Runs the desktop shell.
 //   node scripts/desktop.mjs dev     Vite dev server + Electron on it (hot reload)
 //   node scripts/desktop.mjs start   Electron on the built app in dist/
-//   node scripts/desktop.mjs smoke   like start, but exits after checking it rendered
+//   node scripts/desktop.mjs smoke   like start, but exits after the checks in electron/smoke.cjs
+//   KERYX_SMOKE=1 node scripts/desktop.mjs dev   the same checks against the dev server,
+//                                                plus the renderer adapter end to end
+// Smoke runs use a throwaway data dir, never the real database.
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync } from "node:fs";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -18,6 +22,11 @@ if (!["dev", "start", "smoke"].includes(mode)) {
     console.error(`Unknown mode "${mode}". Use dev, start or smoke.`);
     process.exit(2);
 }
+
+const smoke = mode === "smoke" || process.env.KERYX_SMOKE === "1";
+const smokeEnv = smoke
+    ? { KERYX_SMOKE: "1", KERYX_DATA_DIR: process.env.KERYX_DATA_DIR || mkdtempSync(path.join(os.tmpdir(), "keryx-smoke-")) }
+    : {};
 
 function run(env) {
     return new Promise((resolve) => {
@@ -37,7 +46,7 @@ if (mode === "dev") {
         process.exit(1);
     }
     console.log(`Vite on ${url}; starting Electron`);
-    const code = await run({ KERYX_DEV_URL: url });
+    const code = await run({ KERYX_DEV_URL: url, ...smokeEnv });
     await vite.close();
     process.exit(code);
 } else {
@@ -45,5 +54,5 @@ if (mode === "dev") {
         console.error("dist/ is missing. Run `npm run build` first.");
         process.exit(1);
     }
-    process.exit(await run(mode === "smoke" ? { KERYX_SMOKE: "1" } : {}));
+    process.exit(await run(smokeEnv));
 }

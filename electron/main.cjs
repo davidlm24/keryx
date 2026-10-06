@@ -1,22 +1,35 @@
+const fs = require("node:fs");
 const path = require("node:path");
 const { app, BrowserWindow, Menu, dialog, shell } = require("electron");
-const { startStaticServer } = require("./server.cjs");
+const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
+const { createStore } = require("./db/store.cjs");
+const { registerDataIpc } = require("./data-ipc.cjs");
+const schema = require("./db/schema.json");
 
 const HOST = "127.0.0.1";
 const PORT = 7700;
 const BG = "#1a1714";
 
 // KERYX_DEV_URL: a running Vite dev server (npm run desktop:dev).
-// KERYX_SMOKE: load the app, check it rendered, print the result and exit.
+// KERYX_DATA_DIR: where the database and media live (tests use a temp dir).
+// KERYX_SMOKE: load the app, run the checks in smoke.cjs, print, exit.
 const DEV_URL = process.env.KERYX_DEV_URL || "";
 const SMOKE = process.env.KERYX_SMOKE === "1";
 const DEVTOOLS = Boolean(DEV_URL) || process.env.KERYX_DEVTOOLS === "1";
 
+// Everything the app keeps lives here: keryx.db, media/, and Chromium's own
+// profile (localStorage). Back up this folder and nothing is lost.
+const dataDir = process.env.KERYX_DATA_DIR || path.join(app.getPath("appData"), "KERYX");
+const mediaDir = path.join(dataDir, "media");
+fs.mkdirSync(mediaDir, { recursive: true });
+app.setPath("userData", dataDir);
+
 let appUrl = "";
 let appOrigin = "";
 let mainWindow = null;
+let store = null;
 
-// Same page, same origin, so a second launch just focuses the first.
+// Same database, same port: a second launch just focuses the first.
 if (!app.requestSingleInstanceLock()) {
     app.quit();
 }
@@ -49,7 +62,7 @@ function guardWindow(win) {
     // Pages open projection windows with window.open. Keep those in the app;
     // anything else (YouTube, docs links) goes to the system browser.
     webContents.setWindowOpenHandler(({ url }) => {
-        if (isAppUrl(url)) {
+        if (isAppUrl(url) || url === "about:blank") {
             return {
                 action: "allow",
                 overrideBrowserWindowOptions: {
@@ -101,70 +114,51 @@ function createMainWindow() {
     return mainWindow;
 }
 
-// Loads the app, waits for React to mount, reports, exits. Lets us verify the
-// shell without looking at a window.
-function runSmokeTest(win) {
-    const errors = [];
-    win.webContents.on("console-message", (event) => {
-        if (event.level === "error") errors.push(String(event.message).slice(0, 200));
-    });
-    win.webContents.on("did-fail-load", (_e, code, desc, url) => {
-        console.log("SMOKE FAIL", JSON.stringify({ code, desc, url }));
-        app.exit(1);
-    });
-
-    const deadline = Date.now() + 20000;
-    const poll = async () => {
-        try {
-            const state = await win.webContents.executeJavaScript(`({
-                path: location.pathname,
-                desktop: Boolean(window.keryxDesktop && window.keryxDesktop.isDesktop),
-                rootChildren: document.getElementById("root") ? document.getElementById("root").children.length : -1,
-                text: document.body.innerText.slice(0, 80),
-            })`);
-            if (state.rootChildren > 0 && state.text.trim()) {
-                console.log("SMOKE OK", JSON.stringify({ ...state, errors }));
-                app.exit(state.desktop ? 0 : 1);
-                return;
-            }
-        } catch { /* page still loading */ }
-        if (Date.now() > deadline) {
-            console.log("SMOKE TIMEOUT", JSON.stringify({ errors }));
-            app.exit(1);
-            return;
-        }
-        setTimeout(poll, 400);
-    };
-    win.webContents.once("did-finish-load", poll);
-}
-
-async function resolveAppUrl() {
-    if (DEV_URL) return DEV_URL;
-    try {
-        const { url } = await startStaticServer({ root: path.join(app.getAppPath(), "dist"), host: HOST, port: PORT });
-        return url;
-    } catch (err) {
-        const inUse = err && err.code === "EADDRINUSE";
-        dialog.showErrorBox(
-            "KERYX não conseguiu iniciar",
-            inUse
-                ? `A porta ${PORT} já está em uso por outro programa. Feche-o e abra o KERYX novamente.`
-                : `Não foi possível iniciar o servidor local: ${err && err.message}`,
-        );
-        return "";
-    }
+function fatal(title, message) {
+    dialog.showErrorBox(title, message);
+    app.exit(1);
 }
 
 app.whenReady().then(async () => {
     Menu.setApplicationMenu(null);
-    appUrl = await resolveAppUrl();
-    if (!appUrl) {
-        app.exit(1);
+
+    try {
+        store = createStore({ file: path.join(dataDir, "keryx.db"), schema, log: (m) => console.warn(m) });
+    } catch (err) {
+        fatal("KERYX não conseguiu abrir os dados", `Não foi possível abrir ${path.join(dataDir, "keryx.db")}:\n${err.message}`);
         return;
     }
+
+    // The loopback server runs in dev too: it serves the media library.
+    let serverUrl;
+    try {
+        ({ url: serverUrl } = await startStaticServer({ root: path.join(app.getAppPath(), "dist"), mediaDir, host: HOST, port: PORT }));
+    } catch (err) {
+        fatal(
+            "KERYX não conseguiu iniciar",
+            err && err.code === "EADDRINUSE"
+                ? `A porta ${PORT} já está em uso por outro programa. Feche-o e abra o KERYX novamente.`
+                : `Não foi possível iniciar o servidor local: ${err && err.message}`,
+        );
+        return;
+    }
+
+    appUrl = DEV_URL || serverUrl;
     appOrigin = new URL(appUrl).origin;
+
+    registerDataIpc({
+        store,
+        mediaDir,
+        mediaBaseUrl: serverUrl + MEDIA_PREFIX,
+        isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
+        log: (m) => console.error(m),
+    });
+
     const win = createMainWindow();
-    if (SMOKE) runSmokeTest(win);
+    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL) });
 });
 
 app.on("window-all-closed", () => app.quit());
+app.on("will-quit", () => {
+    if (store) store.close();
+});

@@ -7,17 +7,17 @@ Holyrics and sPresenter.
 The UI is in **Brazilian Portuguese (pt-BR)**. Entity field descriptions are Portuguese too.
 
 - **Stack:** Vite 6 · React 18 · React Router 6 · TanStack Query 5 · Tailwind 3 · shadcn/ui (Radix) · Framer Motion
-- **Backend:** [Supabase](https://supabase.com) — Postgres + RLS, Auth, Storage, Realtime, Edge Functions
+- **Desktop app:** Electron 44, data in a local SQLite file (`node:sqlite`), no login, works offline
+- **Web build:** the same UI in a browser talks to [Supabase](https://supabase.com) instead (kept for the import source and future sync)
 - **Size:** ~25k LOC across 26 pages, 31 tables
 
 This started as a Base44 export and was migrated off it; see [How the backend
 is wired](#how-the-backend-is-wired) for what that left behind.
 
-**Direction:** KERYX is becoming an offline-first desktop app (Electron,
-SQLite, local outputs). The plan is in
-[docs/desktop-architecture.md](docs/desktop-architecture.md). The Supabase
-backend described below is the current state, not the destination; the
-cloud access-control work is parked on the `cloud-security-model` branch.
+**Direction:** KERYX is an offline-first desktop app for one church. The plan
+and its phases are in [docs/desktop-architecture.md](docs/desktop-architecture.md);
+phases 0 (shell) and 1 (local data) are done. The cloud access-control work is
+parked on the `cloud-security-model` branch for a future sync feature.
 
 ---
 
@@ -25,31 +25,33 @@ cloud access-control work is parked on the `cloud-security-model` branch.
 
 ```bash
 npm install
-cp .env.example .env      # fill in the two VITE_ values
-npm run dev               # http://localhost:5173
+npm run desktop:dev       # the desktop app, hot reload
 ```
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` | Vite dev server against the Supabase project in `.env` |
+| `npm run dev` | the web build in a browser, against the Supabase project in `.env` (copy `.env.example`) |
 | `npm run build` / `npm run preview` | production build to `./dist` and a local server for it |
 | `npm run lint` / `npm run lint:fix` | ESLint, errors only; warnings are advisory |
-| `npm run db:migrate` | one-off import of the old Base44 data (see below) |
+| `npm test` | unit tests (`node --test`): the local store's query semantics and schema drift |
+| `npm run db:import` | one-off import of the Base44 data into the local database (see below) |
+| `npm run db:schema` | regenerate `electron/db/schema.json` after changing `base44/entities/*.jsonc` |
+| `npm run db:migrate:supabase` | the older Base44 → Supabase import, for the web build |
 | `npm run desktop:dev` | the desktop shell (Electron) on the Vite dev server, hot reload; F12 opens devtools |
 | `npm run desktop:start` | build, then open the desktop shell on the built app |
-| `npm run desktop:smoke` | build, open the shell, check the app rendered, exit (exit code 0 = OK) |
+| `npm run desktop:smoke` | build, open the shell on a throwaway data folder, check it rendered and that data flows, exit (0 = OK). `KERYX_SMOKE=1 npm run desktop:dev` runs the same checks plus the renderer adapter end to end |
 
-The desktop shell lives in `electron/` (main process, loopback server for `dist/`,
-preload exposing `window.keryxDesktop`). It still talks to Supabase; the local
-database is phase 1 of the [plan](docs/desktop-architecture.md). If `npm install`
-did not download the Electron binary (`node_modules/electron/dist` missing), run
-`node node_modules/electron/install.js`.
+If `npm install` did not download the Electron binary
+(`node_modules/electron/dist` missing), run `node node_modules/electron/install.js`.
 
-There is no local database: dev runs against the real project. Anonymous
-reads are allowed by design (see Security posture), so the app renders with
-no login; sign in to create or edit anything.
+### Where the desktop app keeps its data
 
-### Supabase project
+Everything is in `%APPDATA%\KERYX` (override with `KERYX_DATA_DIR`):
+`keryx.db` (SQLite, all 31 entities plus the operator profile), `media/`
+(uploaded files) and Chromium's own profile (`localStorage`). Backing up that
+folder backs up KERYX. Smoke runs never touch it; they use a temp folder.
+
+### Supabase project (web build and future sync)
 
 - **Project:** `keryx` (ref `rgldwchaozsjkrfycdtr`, eu-west-3 Paris) in org "davidlm24's Org"
 - **URL:** `https://rgldwchaozsjkrfycdtr.supabase.co`
@@ -77,22 +79,37 @@ These can't be done from code:
 
 ### Importing the old data
 
-`scripts/migrate-from-base44.mjs` pulls every entity from Base44 and upserts
-it with the original ids, so cross-references survive. It needs a Base44
-session token and the project's service-role key — both are secrets; see the
-comment block at the top of the script and `.env.example`. Run it with
-`--dry-run` first. User accounts and uploaded files are **not** migrated
-(passwords can't be exported; media keeps pointing at Base44's CDN).
+`npm run db:import` (`scripts/import-base44.mjs`) pulls every entity from
+Base44 into the desktop app's `keryx.db`, keeping ids and timestamps so
+cross-references survive, plus the Base44 user's branding into the local
+profile. It needs `npm i --no-save @base44/sdk` and a Base44 session token
+(see the comment at the top of the script). Close KERYX first, run with
+`--dry-run` first. Uploaded files are not copied; rows keep their Base44 CDN
+URLs, which work online.
 
 ---
 
 ## How the backend is wired
 
 The pages were generated against Base44's SDK and import `keryx` from
-`src/api/keryxClient.js`, a one-line re-export of **`src/api/client.js`**, which implements the same surface on
-`supabase-js`:
+`src/api/keryxClient.js`, a re-export of **`src/api/client.js`**. That facade
+picks one of two backends with the same surface, so pages never know which
+one they run on:
 
-| Surface | Backed by |
+- **Desktop** (`src/api/backends/desktop.js`, when `window.keryxDesktop` exists):
+  calls go over IPC (`electron/preload.cjs` → `electron/data-ipc.cjs`) to the
+  store in the main process (`electron/db/store.cjs`, SQLite via `node:sqlite`).
+  Writes broadcast change events to every window, which is what `subscribe()`
+  listens to. `auth.me()` is the single local operator profile; there is no
+  login. `UploadFile` copies the file into `media/`; the database stores
+  `keryx-media://<file>` and the adapter hands pages
+  `http://127.0.0.1:7700/media/<file>`. AI features reject with 501 (out of v1).
+- **Web** (`src/api/backends/supabase.js`, in a plain browser): the table below.
+
+Query semantics (filters, sort, paging) follow Base44 in both; the desktop
+ones are pinned by `electron/db/store.test.cjs`.
+
+| Surface (web build) | Backed by |
 | --- | --- |
 | `entities.<Name>.list / filter / get / create / update / delete / bulkCreate / bulkUpdate` | PostgREST on `public.<snake_case_name>` |
 | `entities.<Name>.subscribe(cb)` | Realtime `postgres_changes`, mapped to `{ type: 'create'\|'update'\|'delete', data, id }` |
@@ -107,9 +124,10 @@ Projection windows on the **same machine** do not go through the backend —
 `postMessage`s slides to it. Remote screens (TVs, tablets) go through the
 realtime tables.
 
-### Security posture
+### Security posture (web build)
 
-The original app was effectively public: projection screens run on TVs with
+The desktop app has no network surface beyond its loopback server. For the
+Supabase project: the original app was effectively public: projection screens run on TVs with
 no login. The RLS policies in `supabase/migrations/20261006000002_profile_rls.sql`
 reproduce that:
 
@@ -130,6 +148,13 @@ song/service library should really be world-readable.
 ## Layout
 
 ```
+electron/
+  main.cjs              app lifecycle, windows, data folder, loopback server
+  preload.cjs           window.keryxDesktop (db, media, config)
+  data-ipc.cjs          IPC between windows and the store; change broadcast
+  server.cjs            serves dist/ and media/ on 127.0.0.1:7700 (with Range)
+  smoke.cjs             in-app checks for npm run desktop:smoke
+  db/                   store.cjs, schema.json (generated), tests
 supabase/
   migrations/           schema, RLS, realtime publication, storage bucket (applied)
   functions/
@@ -139,7 +164,7 @@ base44/entities/*.jsonc 31 JSON Schemas the tables were generated from; readable
 scripts/
   migrate-from-base44.mjs
 src/
-  api/client.js         the Supabase-backed client (entities / auth / integrations)
+  api/client.js         facade choosing the desktop or Supabase backend (api/backends/)
   api/keryxClient.js    re-export of the above as `keryx`
   pages/                26 route components
   pages.config.js       the 9 layout-wrapped pages; the rest are routed in App.jsx

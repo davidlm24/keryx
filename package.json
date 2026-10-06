@@ -10,10 +10,13 @@
     "preview": "vite preview",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "db:migrate": "node scripts/migrate-from-base44.mjs",
+    "db:import": "node scripts/import-base44.mjs",
+    "db:migrate:supabase": "node scripts/migrate-from-base44.mjs",
     "desktop:dev": "node scripts/desktop.mjs dev",
     "desktop:start": "vite build && node scripts/desktop.mjs start",
-    "desktop:smoke": "vite build && node scripts/desktop.mjs smoke"
+    "desktop:smoke": "vite build && node scripts/desktop.mjs smoke",
+    "test": "node --test electron/**/*.test.cjs",
+    "db:schema": "node scripts/gen-sqlite-schema.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",

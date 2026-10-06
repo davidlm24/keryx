@@ -703,6 +703,8 @@ export default function Settings() {
                         {isSaving ? "Salvando..." : "Salvar Configurações"}
                     </Button>
 
+                    {/* No accounts in the desktop build, so nothing to delete. */}
+                    {!keryx.isDesktop && (
                     <Card className="bg-gradient-to-br from-red-900/20 to-rose-900/20 border-red-500/30">
                         <CardHeader className={isMobile ? 'p-4' : ''}>
                             <CardTitle className={`text-red-100 flex items-center gap-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
@@ -754,6 +756,7 @@ export default function Settings() {
                             </AlertDialog>
                         </CardContent>
                     </Card>
+                    )}
                 </div>
             </div>
         </div>

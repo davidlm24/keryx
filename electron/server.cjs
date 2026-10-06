@@ -1,6 +1,6 @@
-// Serves the built web app (dist/) on loopback so every window loads it from
-// a real http origin. BrowserRouter, localStorage and window.open all behave
-// as they do in a browser, which `file://` would not give us.
+// Serves the built web app (dist/) and the media library on loopback, so
+// every window loads from a real http origin: BrowserRouter, localStorage and
+// window.open behave as in a browser, which `file://` would not give us.
 
 const fs = require("node:fs");
 const http = require("node:http");
@@ -23,14 +23,54 @@ const MIME = {
     ".woff2": "font/woff2",
     ".ttf": "font/ttf",
     ".mp4": "video/mp4",
+    ".m4v": "video/mp4",
+    ".mov": "video/quicktime",
     ".webm": "video/webm",
     ".mp3": "audio/mpeg",
+    ".m4a": "audio/mp4",
+    ".ogg": "audio/ogg",
     ".wav": "audio/wav",
+    ".pdf": "application/pdf",
     ".map": "application/json",
 };
 
-function startStaticServer({ root, host, port }) {
+const MEDIA_PREFIX = "/media/";
+
+// Resolve `pathname` inside `dir`, refusing anything that escapes it.
+function within(dir, pathname) {
+    const resolved = path.resolve(dir, "." + pathname);
+    return resolved === dir || resolved.startsWith(dir + path.sep) ? resolved : null;
+}
+
+function sendFile(req, res, file, stat, headers) {
+    const type = MIME[path.extname(file).toLowerCase()] || "application/octet-stream";
+    const base = { "Content-Type": type, "Accept-Ranges": "bytes", ...headers };
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
+
+    // Videos seek with Range requests; without 206 support they can't scrub.
+    if (range && (range[1] || range[2])) {
+        let start = range[1] ? Number(range[1]) : stat.size - Number(range[2]);
+        let end = range[1] && range[2] ? Number(range[2]) : stat.size - 1;
+        start = Math.max(0, start);
+        end = Math.min(end, stat.size - 1);
+        if (start > end) {
+            res.writeHead(416, { "Content-Range": `bytes */${stat.size}` }).end();
+            return;
+        }
+        res.writeHead(206, { ...base, "Content-Range": `bytes ${start}-${end}/${stat.size}`, "Content-Length": end - start + 1 });
+        if (req.method === "HEAD") res.end();
+        else fs.createReadStream(file, { start, end }).pipe(res);
+        return;
+    }
+
+    res.writeHead(200, { ...base, "Content-Length": stat.size });
+    if (req.method === "HEAD") res.end();
+    else fs.createReadStream(file).pipe(res);
+}
+
+function startStaticServer({ root, mediaDir, host, port }) {
     const rootDir = path.resolve(root);
+    const media = mediaDir ? path.resolve(mediaDir) : null;
 
     const server = http.createServer((req, res) => {
         if (req.method !== "GET" && req.method !== "HEAD") {
@@ -46,37 +86,49 @@ function startStaticServer({ root, host, port }) {
             return;
         }
 
-        const resolved = path.resolve(rootDir, "." + pathname);
-        if (resolved !== rootDir && !resolved.startsWith(rootDir + path.sep)) {
-            res.writeHead(403).end();
-            return;
-        }
-
-        const serve = (file, immutable) => {
-            fs.readFile(file, (err, data) => {
-                if (err) {
+        if (media && pathname.startsWith(MEDIA_PREFIX)) {
+            const file = within(media, pathname.slice(MEDIA_PREFIX.length - 1));
+            if (!file) {
+                res.writeHead(403).end();
+                return;
+            }
+            fs.stat(file, (err, stat) => {
+                if (err || !stat.isFile()) {
                     res.writeHead(404).end();
                     return;
                 }
-                res.writeHead(200, {
-                    "Content-Type": MIME[path.extname(file).toLowerCase()] || "application/octet-stream",
-                    "Content-Length": data.length,
-                    "Cache-Control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
+                // Readable from the Vite dev origin too, and by canvas exports.
+                sendFile(req, res, file, stat, {
+                    "Cache-Control": "public, max-age=31536000, immutable",
+                    "Access-Control-Allow-Origin": "*",
                 });
-                res.end(req.method === "HEAD" ? undefined : data);
             });
-        };
+            return;
+        }
 
+        const resolved = within(rootDir, pathname);
+        if (!resolved) {
+            res.writeHead(403).end();
+            return;
+        }
         fs.stat(resolved, (err, stat) => {
             if (!err && stat.isFile()) {
-                serve(resolved, pathname.startsWith("/assets/"));
-            } else if (path.extname(pathname)) {
+                sendFile(req, res, resolved, stat, {
+                    "Cache-Control": pathname.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "no-cache",
+                });
+                return;
+            }
+            if (path.extname(pathname)) {
                 // A missing asset is a 404, not the app shell.
                 res.writeHead(404).end();
-            } else {
-                // Client-side route (/Home, /Bible, ...): hand it to the SPA.
-                serve(path.join(rootDir, "index.html"), false);
+                return;
             }
+            // Client-side route (/Home, /Bible, ...): hand it to the SPA.
+            const index = path.join(rootDir, "index.html");
+            fs.stat(index, (indexErr, indexStat) => {
+                if (indexErr) res.writeHead(404).end();
+                else sendFile(req, res, index, indexStat, { "Cache-Control": "no-cache" });
+            });
         });
     });
 
@@ -89,4 +141,4 @@ function startStaticServer({ root, host, port }) {
     });
 }
 
-module.exports = { startStaticServer };
+module.exports = { startStaticServer, MEDIA_PREFIX };
