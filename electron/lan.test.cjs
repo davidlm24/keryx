@@ -40,12 +40,12 @@ const page = (base, p, headers = {}) => fetch(base + p, { redirect: "manual", he
 test("serves only screen pages and '/', with the network flag injected", async (t) => {
     const f = await started();
     t.after(() => f.lan.stop());
-    for (const p of ["/", "/LyricProjection", "/StageView/", "/DeviceView?device=x"]) {
+    for (const p of ["/", "/Projection", "/LyricProjection", "/StageView/", "/PastorView", "/CommunicationProjection", "/DeviceView?device=x"]) {
         const res = await page(f.base, p);
         assert.equal(res.status, 200, p);
         assert.match(await res.text(), /<head><script>window\.keryxLan=true;<\/script>/, p);
     }
-    for (const p of ["/Home", "/Settings", "/Services", "/Projection", "/login"]) {
+    for (const p of ["/Home", "/Settings", "/Services", "/Media", "/OperatorPanel", "/login"]) {
         const res = await page(f.base, p);
         assert.equal(res.status, 404, `${p} must not be reachable from the network`);
         assert.match(await res.text(), /computador do operador/);

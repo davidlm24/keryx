@@ -2,15 +2,15 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Monitor, Play, Square, ScanEye } from "lucide-react";
-import { openProjectionWindow } from "@/lib/projectionWindow";
 
 const POLL_MS = 3000;
-const WINDOW_FEATURES = "width=1280,height=720,menubar=no,toolbar=no,location=no";
 
-// Desktop only: which display each output (projector, stage, ...) opens on.
-// The window itself is still opened by the page that projects; this decides
-// where it lands. Plugging in a monitor shows up here within a few seconds.
+// Desktop only: which display each output (projector, stage, ...) opens on,
+// and which ones open by themselves when KERYX starts. Outputs show the live
+// state, so they work however they were opened. Plugging in a monitor shows
+// up here within a few seconds.
 export default function DisplaysSection({ isMobile }) {
     // contextBridge hands out a fresh object on every property access, so read
     // it once; a new reference each render would re-run the effect forever.
@@ -68,11 +68,8 @@ export default function DisplaysSection({ isMobile }) {
         return "Abre numa janela.";
     };
 
-    const test = (output) => {
-        if (output.key === "/Projection") openProjectionWindow();
-        else window.open(window.location.origin + output.key, output.windowName, WINDOW_FEATURES);
-        setTimeout(refresh, 800);
-    };
+    const test = (output) => bridge.open(output.key).then(apply);
+    const setOpenAtLaunch = (output, on) => bridge.set(output.key, { openAtLaunch: on }).then(apply);
 
     return (
         <Card className="bg-card border-border">
@@ -84,7 +81,7 @@ export default function DisplaysSection({ isMobile }) {
             </CardHeader>
             <CardContent className={`space-y-4 ${isMobile ? "p-4 pt-0" : ""}`}>
                 <p className="text-sm text-muted-foreground">
-                    Escolha em que tela cada saída aparece. As saídas abrem quando você projeta; aqui define-se onde.
+                    Escolha em que tela cada saída aparece e quais abrem sozinhas quando o KERYX inicia.
                     Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou o botão Fechar abaixo.
                 </p>
 
@@ -127,6 +124,14 @@ export default function DisplaysSection({ isMobile }) {
                                     )}
                                 </SelectContent>
                             </Select>
+                            <label className="flex items-center gap-2 text-xs text-muted-foreground whitespace-nowrap">
+                                <Switch
+                                    checked={output.assignment.openAtLaunch === true}
+                                    onCheckedChange={(on) => setOpenAtLaunch(output, on)}
+                                    aria-label={`Abrir ${output.label} ao iniciar`}
+                                />
+                                Abrir ao iniciar
+                            </label>
                             {output.open ? (
                                 <Button variant="outline" size="sm" onClick={() => bridge.close(output.key).then(apply)}>
                                     <Square className="w-4 h-4 mr-2" /> Fechar

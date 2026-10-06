@@ -208,6 +208,17 @@ const LIVE_DRIVE = `(async () => {
 })()`;
 
 const windowFor = (path) => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes(path));
+// The window showing this path, once it has one (dev mode compiles pages on first load).
+const waitWindow = async (path, ms = 8000) => {
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+        const w = windowFor(path);
+        if (w) return w;
+        await sleep(200);
+    }
+    return undefined;
+};
+
 // win: a BrowserWindow or its webContents.
 const bodyText = (win) => {
     const wc = win && (win.webContents || win);
@@ -369,7 +380,16 @@ async function checkVideo(webContents, { live }) {
     // Opened after the video started: it joins (the old VideoSync screens missed it).
     await webContents.executeJavaScript(OPEN_OUTPUT("/VideoProjection", "videoProjection"), true);
     const screenWin = windowFor("/VideoProjection");
-    result.lateJoin = await waitState(screenWin, (v) => v.src.endsWith(`/media/${fileName}`) && !v.paused);
+    // It lands where the shared playback is (however long it took to load)...
+    const sharedPosition = () => {
+        const pb = live.get().video.playback;
+        return pb.position + (pb.paused ? 0 : (Date.now() - pb.at) / 1000);
+    };
+    result.lateJoin = await waitState(screenWin, (v) => v.src.endsWith(`/media/${fileName}`) && v.ready >= 1
+        && Math.abs(v.time - Math.min(sharedPosition(), v.duration || Infinity)) < 2);
+    // ...then plays from the start when the operator seeks there.
+    live.call("transport", { action: "seek", time: 0 });
+    result.playing = await waitState(screenWin, (v) => !v.paused && v.time < 4);
     result.title = (await bodyText(screenWin)).includes("Vídeo de teste");
     live.call("transport", { action: "pause" });
     result.paused = await waitState(screenWin, (v) => v.paused);
@@ -398,8 +418,101 @@ async function checkVideo(webContents, { live }) {
     live.call("clear");
     if (projector) projector.close();
 
-    result.ok = result.recorded && result.lateJoin && result.title && result.paused && result.resumed && result.cleared
+    result.ok = result.recorded && result.lateJoin && result.playing && result.title && result.paused && result.resumed && result.cleared
         && result.playlistAdvanced && result.projectorImage;
+    return result;
+}
+
+// The other layers, driven straight through the live state: tools,
+// communication (and a sequence that moves on by itself), alert, overlays,
+// logo, Escola bíblica; outputs the main process opens, and "Abrir ao iniciar".
+async function checkLayers(webContents, { live, outputs }) {
+    const result = { ok: false };
+    // KERYX_SMOKE_SHOTS=<folder>: screenshots of the projector at each layer.
+    const shot = async (win, name) => {
+        const dir = process.env.KERYX_SMOKE_SHOTS;
+        if (!dir || !win) return;
+        await sleep(800);
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(require("node:path").join(dir, `${name}.png`), (await win.webContents.capturePage()).toPNG());
+    };
+    const waitText = async (win, needle, present = true, ms = 6000) => {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {
+            if ((await bodyText(win)).includes(needle) === present) return true;
+            await sleep(250);
+        }
+        return false;
+    };
+    // Windows the earlier checks closed may still be on their way out.
+    for (const path of ["/Projection", "/CommunicationProjection", "/BibleMaterialProjection", "/StageView"]) {
+        const end = Date.now() + 5000;
+        while (windowFor(path) && Date.now() < end) await sleep(200);
+    }
+    // Opened by the main process this time (the earlier checks used window.open).
+    outputs.open("/Projection");
+    const main = await waitWindow("/Projection");
+    result.projectorErrors = [];
+    if (main) main.webContents.on("console-message", (e) => { if (e.level === "error") result.projectorErrors.push(String(e.message).slice(0, 300)); });
+    outputs.open("/CommunicationProjection");
+    outputs.open("/BibleMaterialProjection");
+    const comm = await waitWindow("/CommunicationProjection");
+    const school = await waitWindow("/BibleMaterialProjection");
+    result.mainOpened = Boolean(main && comm && school);
+    try {
+        live.call("tool.show", { mode: "freetext", text: "Texto livre de teste" });
+        result.freetext = await waitText(main, "Texto livre de teste");
+        live.call("tool.show", { mode: "timer", durationMs: 125000 });
+        result.timer = await waitText(main, "02:0");
+        await shot(main, "temporizador");
+
+        live.call("communication.show", { item: { type: "announcement", text: "Aviso de teste", duration: 30, text_color: "#ffffff", font_size: "large" } });
+        result.communication = await waitText(main, "Aviso de teste") && await waitText(comm, "Aviso de teste");
+        await shot(main, "comunicacao");
+        live.call("communication.show", { playlist: [
+            { type: "countdown", text: "Primeiro aviso", duration: 1, text_color: "#ffffff", font_size: "large" },
+            { type: "announcement", text: "Segundo aviso", duration: 30, text_color: "#ffffff", font_size: "large" },
+        ] });
+        result.sequence = await waitText(main, "Segundo aviso");
+        result.sequenceIndex = live.get().communication && live.get().communication.playlistIndex;
+
+        live.call("alert.show", { message: "Alerta de teste", type: "message" });
+        result.alert = await waitText(main, "Alerta de teste");
+        live.call("alert.clear");
+
+        live.call("content.show", { title: "Camadas", slides: [{ text: "Letra sob a camada" }] });
+        live.call("overlays.set", { overlays: [{ id: "o1", type: "text", content: "Sobreposição de teste", x: 5, y: 5, width: 30 }] });
+        result.overlay = await waitText(main, "Sobreposição de teste") && await waitText(main, "Letra sob a camada");
+        await shot(main, "sobreposicao");
+        live.call("screen.set", { mode: "logo" });
+        result.logoCovers = await waitText(main, "Letra sob a camada", false) && !(await bodyText(main)).includes("Sobreposição de teste");
+        live.call("screen.set", { mode: "show" });
+        live.call("overlays.set", { overlays: [] });
+
+        live.call("school.show", { content_type: "quiz", title: "Lição", quiz_questions: [{ question: "Quem construiu a arca?", options: ["Noé", "Moisés"], correct: 0 }] });
+        result.school = await waitText(school, "Quem construiu a arca?");
+        live.call("school.update", { quiz_reveal: true });
+        await sleep(300);
+
+        // Abrir ao iniciar: what the main process opens when KERYX starts.
+        outputs.setAssignment("/StageView", { openAtLaunch: true });
+        const launched = outputs.openAtLaunch().join(",");
+        result.openAtLaunch = launched === "/StageView" && Boolean(await waitWindow("/StageView"));
+        result.keptTarget = outputs.list().outputs.find((o) => o.key === "/StageView").assignment.target === "auto";
+        outputs.setAssignment("/StageView", { openAtLaunch: false });
+    } finally {
+        live.call("clear");
+        live.call("school.clear");
+        live.call("alert.clear");
+        live.call("overlays.set", { overlays: [] });
+        live.call("screen.set", { mode: "show" });
+        for (const path of ["/Projection", "/CommunicationProjection", "/BibleMaterialProjection", "/StageView"]) {
+            const w = windowFor(path);
+            if (w) w.close();
+        }
+    }
+    result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.sequence && result.sequenceIndex === 1
+        && result.alert && result.overlay && result.logoCovers && result.school && result.openAtLaunch && result.keptTarget;
     return result;
 }
 
@@ -452,6 +565,12 @@ async function checkNetwork({ network, live, videoFile }) {
         result.stage = await waitFor(stage, "Segunda linha da letra");
         result.stageChords = (await textOf(stage)).includes("Sol maior");
         result.lyricsAdvanced = await waitFor(lyrics, "Segunda linha da letra");
+        const projectorTablet = tablet();
+        await projectorTablet.loadURL(`${base}/Projection`);
+        result.projectorScreen = await waitFor(projectorTablet, "Segunda linha da letra");
+        await projectorTablet.loadURL(`${base}/PastorView`);
+        result.pastorScreen = await waitFor(projectorTablet, "Segunda linha da letra");
+        projectorTablet.close();
         live.call("screen.set", { mode: "black" });
         await sleep(500);
         result.lyricsBlack = !(await textOf(lyrics)).includes("Segunda linha da letra");
@@ -503,6 +622,7 @@ async function checkNetwork({ network, live, videoFile }) {
     result.ok = result.started && result.isNetworkScreen && result.lyrics && result.stage && result.lyricsAdvanced
         && result.stageChords && result.lyricsBlack && result.stageDuringBlack
         && result.videoSrc === `${base}/media/${videoFile}`
+        && result.projectorScreen && result.pastorScreen
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0;
     return result;
@@ -627,10 +747,11 @@ function runSmokeTest(win, { dev, outputs, screen, system, network, live, dataDi
             const liveResult = await checkLive(webContents, { live });
             const operatorResult = await checkOperatorFlow(webContents, { live });
             const videoResult = await checkVideo(webContents, { live });
+            const layersResult = await checkLayers(webContents, { live, outputs });
             // The LAN server serves the built app (dist/), so this runs in built mode only.
             const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live, videoFile: videoResult.fileName });
-            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && operatorResult.ok && videoResult.ok && !importOutcome && (dev || networkResult.ok),
-                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, operator: operatorResult, video: videoResult, network: networkResult });
+            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && operatorResult.ok && videoResult.ok && layersResult.ok && !importOutcome && (dev || networkResult.ok),
+                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, operator: operatorResult, video: videoResult, layers: layersResult, network: networkResult });
         } catch (err) {
             finish(false, { rendered, exception: String(err && (err.stack || err.message)).slice(0, 800) });
         }

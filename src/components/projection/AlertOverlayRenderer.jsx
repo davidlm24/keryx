@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { keryx } from "@/api/keryxClient";
+import { useLiveState } from "@/hooks/useLiveState";
 
 /**
  * Renderiza um overlay de alerta/mensagem sobre qualquer projeção.
- * Subscreve a AlertMessage e mostra a mensagem mais recente ativa.
- * Incluído em LyricProjection, BibleMaterialProjection, StageView, VideoProjection.
+ * The live state's alert (projection.alert) comes first; the AlertMessage
+ * table, which the current Painel do operador still writes, is the fallback.
  */
 export default function AlertOverlayRenderer() {
-    const [alert, setAlert] = useState(null);
+    const liveAlert = useLiveState((s) => s?.alert);
+    const [stored, setAlert] = useState(null);
+    const alert = liveAlert || stored;
 
     useEffect(() => {
         // Buscar alerta ativo ao carregar

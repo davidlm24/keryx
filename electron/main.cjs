@@ -137,6 +137,22 @@ function guardWindow(win) {
     }
 }
 
+// An output the main process opens itself (open at launch, or on request
+// from a page): the same window a page's window.open would get.
+function openOutputWindow(url, placement) {
+    const win = new BrowserWindow({
+        width: 1280,
+        height: 720,
+        backgroundColor: "#000000",
+        autoHideMenuBar: true,
+        ...placement,
+        webPreferences,
+    });
+    guardWindow(win);
+    win.loadURL(url).catch((err) => logger.error(`[keryx-outputs] não foi possível abrir ${url}: ${err.message}`));
+    return win;
+}
+
 function createMainWindow() {
     mainWindow = new BrowserWindow({
         width: 1440,
@@ -217,6 +233,7 @@ app.whenReady().then(async () => {
         screen,
         settings,
         getOrigin: () => appOrigin,
+        openWindow: openOutputWindow,
         log: (m) => console.warn(m),
     });
 
@@ -263,6 +280,8 @@ app.whenReady().then(async () => {
     });
 
     const win = createMainWindow();
+    // Outputs set to "Abrir ao iniciar" in Telas e saídas.
+    win.once("ready-to-show", () => outputs.openAtLaunch());
     if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, network, live, dataDir, importOutcome });
 });
 

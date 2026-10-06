@@ -21,13 +21,17 @@ const os = require("node:os");
 const path = require("node:path");
 const { MEDIA_PREFIX, BUNDLED_PREFIX, within, sendFile } = require("./server.cjs");
 
-// Pages that work from the database alone (no window.opener to talk to).
+// Pages that work from the live state and the database alone (no
+// window.opener to talk to).
 const NETWORK_SCREENS = [
+    { path: "/Projection", label: "Projeção principal", hint: "O mesmo que o projetor: letras, Bíblia, mídia e avisos" },
     { path: "/LyricProjection", label: "Letras", hint: "Tablet ou TV com a letra da música" },
     { path: "/StageView", label: "Palco", hint: "Monitor do palco: letra atual, próxima e relógio" },
     { path: "/VideoProjection", label: "Vídeo", hint: "Recebe os vídeos enviados pelo operador" },
     { path: "/BibleMaterialProjection", label: "Material bíblico", hint: "Escola bíblica: slides, imagens e quiz" },
     { path: "/AnnouncementCarousel", label: "Anúncios", hint: "Carrossel de avisos" },
+    { path: "/CommunicationProjection", label: "Comunicação", hint: "Contagens regressivas e anúncios" },
+    { path: "/PastorView", label: "Tela do pastor", hint: "O que está projetado, relógio e tempo do culto" },
     { path: "/DeviceView", label: "Saída configurada", hint: "Mostra uma saída criada no Gestor de Projeção" },
 ];
 const SCREEN_PATHS = new Set(NETWORK_SCREENS.map((s) => s.path));

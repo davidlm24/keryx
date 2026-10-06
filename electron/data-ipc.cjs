@@ -3,7 +3,7 @@
 //   keryx:db-change     event   store change, sent to every window
 //   keryx:media-import  invoke  { sourcePath | bytes, name } -> { fileName }
 //   keryx:config        sync    { mediaBaseUrl }
-//   keryx:displays:*    invoke  list / set / close / identify for output windows
+//   keryx:displays:*    invoke  list / set / open / close / identify for output windows
 //   keryx:bible:*       invoke  installed versions, install from the web or a file
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 //   keryx:network       invoke  { op, args } screens on the church network
@@ -70,6 +70,7 @@ function registerDataIpc({ store, outputs, system, network, live, mediaDir, medi
     ipcMain.handle("keryx:displays:list", outputsOp(() => outputs.list()));
     ipcMain.handle("keryx:displays:set", outputsOp(({ key, assignment }) => outputs.setAssignment(key, assignment)));
     ipcMain.handle("keryx:displays:close", outputsOp(({ key }) => { outputs.close(key); return outputs.list(); }));
+    ipcMain.handle("keryx:displays:open", outputsOp(({ key }) => outputs.open(key)));
     ipcMain.handle("keryx:displays:identify", outputsOp(() => { outputs.identify(); return true; }));
 
     const bibleOp = (fn) => async (event, payload) => {

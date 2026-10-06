@@ -140,11 +140,14 @@ const AuthenticatedApp = () => {
 // (the server refuses the rest too) and a picker at "/". No Layout, no auth.
 const NetworkApp = () => (
   <Routes>
+    <Route path="/Projection" element={<Pages.Projection />} />
     <Route path="/LyricProjection" element={<LyricProjection />} />
     <Route path="/StageView" element={<StageView />} />
     <Route path="/VideoProjection" element={<Pages.VideoProjection />} />
     <Route path="/BibleMaterialProjection" element={<BibleMaterialProjection />} />
     <Route path="/AnnouncementCarousel" element={<AnnouncementCarouselPage />} />
+    <Route path="/CommunicationProjection" element={<Pages.CommunicationProjection />} />
+    <Route path="/PastorView" element={<PastorView />} />
     <Route path="/DeviceView" element={<DeviceView />} />
     <Route path="*" element={<NetworkHome />} />
   </Routes>

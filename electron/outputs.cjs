@@ -12,6 +12,7 @@ const OUTPUTS = [
     { key: "/StageView", label: "Palco", windowName: "stageView" },
     { key: "/PastorView", label: "Tela do pastor", windowName: "pastorView" },
     { key: "/BibleMaterialProjection", label: "Material bíblico", windowName: "bibleProjection" },
+    { key: "/CommunicationProjection", label: "Comunicação", windowName: "communicationProjection" },
 ];
 
 const WINDOWED = { width: 1280, height: 720 };
@@ -79,11 +80,13 @@ function windowedBounds(displays) {
     return { x: area.x + Math.round((area.width - width) / 2), y: area.y + Math.round((area.height - height) / 2), width, height };
 }
 
-// Accept only shapes the app writes; anything else means "auto".
+// Accept only shapes the app writes; anything else means "auto", closed at launch.
+// openAtLaunch: the main process opens this output when KERYX starts.
 function normalizeAssignment(value) {
-    if (!value || typeof value !== "object") return { target: "auto" };
+    if (!value || typeof value !== "object") return { target: "auto", openAtLaunch: false };
     const { target } = value;
-    if (target === "auto" || target === "window") return { target };
+    const openAtLaunch = value.openAtLaunch === true;
+    if (target === "auto" || target === "window") return { target, openAtLaunch };
     if (target && typeof target === "object" && Number.isFinite(target.id)) {
         return {
             target: {
@@ -92,9 +95,10 @@ function normalizeAssignment(value) {
                 width: Number(target.width) || 0,
                 height: Number(target.height) || 0,
             },
+            openAtLaunch,
         };
     }
-    return { target: "auto" };
+    return { target: "auto", openAtLaunch };
 }
 
 module.exports = {

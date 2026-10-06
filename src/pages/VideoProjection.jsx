@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useLiveState } from "@/hooks/useLiveState";
 import LiveVideo from "@/components/projection/LiveVideo";
+import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
 
 // The video screen (a TV or tablet for clips and YouTube): the live state's
 // video channel, in step with every other screen. A screen that opens late
@@ -43,6 +44,7 @@ export default function VideoProjection() {
                 </div>
             )}
             <LiveVideo item={video} className="w-full h-screen" />
+            <AlertOverlayRenderer />
         </div>
     );
 }

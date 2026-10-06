@@ -1,14 +1,40 @@
 import React, { useState, useEffect } from "react";
 import { keryx } from "@/api/keryxClient";
 import { useLiveSessionEnded } from "@/hooks/useLiveSessionEnded";
+import { useLiveState } from "@/hooks/useLiveState";
+import { projection } from "@/lib/projection";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
 
 const FONT_SIZES = { xsmall: "1.6rem", small: "2.2rem", medium: "3rem", large: "4rem", xlarge: "5rem", xxlarge: "6.5rem" };
 const FONT_FAMILIES = { sans: "Inter, sans-serif", serif: "Georgia, serif", mono: "Courier New, monospace", cursive: "'Brush Script MT', cursive", arial: "Arial, sans-serif", georgia: "Georgia, serif", times: "'Times New Roman', serif", verdana: "Verdana, sans-serif" };
 
+// The live state's school layer (shared/live-state.mjs) in the shape this
+// page renders.
+function fromSchool(school) {
+    const q = school.quiz_questions[school.quiz_index] || {};
+    return {
+        content_type: school.content_type,
+        title: school.title,
+        slides: school.slides,
+        slide_index: school.index,
+        quiz_questions: school.quiz_questions,
+        quiz_index: school.quiz_index,
+        quiz_reveal: school.quiz_reveal,
+        quiz_question: q.question,
+        quiz_options: q.options,
+        quiz_correct: q.correct,
+        media_url: school.media_url,
+        ...school.style,
+    };
+}
+
+// Escola bíblica screen: the live state's school layer; the current
+// BibleSchool page still sends its material by channel (?channel=), which
+// shows while the live state has none.
 export default function BibleMaterialProjection() {
-    const [state, setState] = useState(null);
-    const [slideIndex, setSlideIndex] = useState(0);
+    const school = useLiveState((s) => s?.school);
+    const [stored, setState] = useState(null);
+    const [storedIndex, setSlideIndex] = useState(0);
     const [isOnline, setIsOnline] = useState(true);
     const urlParams = new URLSearchParams(window.location.search);
     const channel = urlParams.get("channel");
@@ -39,6 +65,9 @@ export default function BibleMaterialProjection() {
         return () => { unsubscribe(); document.removeEventListener("visibilitychange", handleVisibility); window.removeEventListener("online", handleOnline); };
     }, [channel]);
 
+    const state = school ? fromSchool(school) : stored;
+    const slideIndex = school ? school.index : storedIndex;
+
     const applyState = (rec) => {
         if (rec.action === "stop") { setState(null); setSlideIndex(0); return; }
         if (rec.action === "slide") { setSlideIndex(rec.slide_index || 0); return; }
@@ -50,12 +79,17 @@ export default function BibleMaterialProjection() {
         const onKey = (e) => {
             if (!state || state.content_type !== "slides") return;
             const slides = state.slides || [];
-            if (e.key === "ArrowRight" || e.key === "ArrowDown") setSlideIndex(i => Math.min(i + 1, slides.length - 1));
-            if (e.key === "ArrowLeft" || e.key === "ArrowUp") setSlideIndex(i => Math.max(i - 1, 0));
+            const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+            if (!step) return;
+            if (school) {
+                // Live: move it for every screen (from the KERYX computer only).
+                if (keryx.isDesktop) projection.school.update({ index: school.index + step }).catch(() => {});
+            } else if (step > 0) setSlideIndex(i => Math.min(i + 1, slides.length - 1));
+            else setSlideIndex(i => Math.max(i - 1, 0));
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [state]);
+    }, [state, school]);
 
     useEffect(() => {
         const tryFs = () => { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); };
@@ -64,17 +98,13 @@ export default function BibleMaterialProjection() {
         return () => document.removeEventListener("click", onFirstClick);
     }, []);
 
-    if (!channel) {
-        return <div className="fixed inset-0 bg-black flex items-center justify-center text-white/50 text-xl">Canal de projeção não especificado</div>;
-    }
-
     if (!state) {
         return (
             <div className="fixed inset-0 flex flex-col items-center justify-center text-white" style={{ background: "#0f172a" }}>
                 <div className="text-6xl mb-4">📖</div>
                 <h1 className="text-3xl font-bold mb-2">Escola Bíblica</h1>
-                <p className="text-white/50">A aguardar conteúdo do operador...</p>
-                <p className="text-white/30 text-xs mt-6">Canal: {channel.slice(0, 8)}...</p>
+                <p className="text-white/50">Aguardando conteúdo do operador...</p>
+                {channel && <p className="text-white/30 text-xs mt-6">Canal: {channel.slice(0, 8)}...</p>}
             </div>
         );
     }

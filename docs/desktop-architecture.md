@@ -199,16 +199,34 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
    playlists advanced by the desktop projector) and the operator panels'
    muted previews all use it. Nothing writes `VideoSync`/`VideoControl`;
    network screens no longer write anything but the DeviceView heartbeat.
-4. Tools, communication, overlays, alert, black/logo. `CommunicationProjection`
-   becomes a view of the communication layer.
-5. Escola bíblica: `BibleProjectionSync` goes; no more `?channel=`.
-6. Retire the old paths (postMessage queue, dead listeners, the sync
-   entities), open outputs at launch, add `/Projection`, `/PastorView` and
-   `/CommunicationProjection` to the network screens.
+4. The rest of the engine and outputs. **Done** (decided 2026-10-06: engine
+   and outputs only; today's operator pages are not rewired, because the
+   redesign replaces them).
+   - `/Projection` renders every layer: tools on the shared clock,
+     communication (`CommunicationProjectionView` live mode: counted from
+     `startedAt`, sequences advanced by the desktop projector), media,
+     content over the background layer (image, colour or video loop),
+     overlays (`LiveOverlays`) and the alert on top, black/logo over all.
+   - `CommunicationProjection` is a view of the communication layer;
+     `BibleMaterialProjection` of the school layer (no `?channel=` needed);
+     the alert renderer and the video screen show the live alert.
+   - Outputs can be opened by the main process (`keryx:displays:open`,
+     `outputs.open`), and each has "Abrir ao iniciar" in Telas e saídas
+     (`openAtLaunch` in the assignment). Comunicação is an output too.
+   - Network screens: `/Projection`, `/PastorView` and
+     `/CommunicationProjection` join the list.
+   - Still on the old paths, until the redesign replaces their pages: the
+     Ferramentas and Comunicação pages (postMessage to a projector window
+     they opened; it shows until the live state shows something new), the
+     Painel do operador's alerts (`AlertMessage`, shown when the live state
+     has no alert) and BibleSchool (`BibleProjectionSync` by channel, shown
+     when the live state has no school layer). Their tables and the
+     postMessage queue go with those pages.
 
 Not in part 1: devices and scenes (`ProjectionDevice.current_output`,
 `DeviceView`, `OperatorPanel`) and `BannerProjection` wait for the UI
-redesign.
+redesign. **Next: mock up the whole operator app with the user before any
+UI code** (Holyrics/Spresenter-style dashboard on `src/lib/projection.js`).
 
 ## 3. Outputs and displays
 
@@ -227,8 +245,9 @@ redesign.
 - **As built (phase 2):** the main process places windows, it does not open
   them. Pages hold the `window.open` handle and `postMessage` through it
   (`/Projection` receives slides only that way), so a window the main
-  process opened itself would be deaf. Opening outputs automatically at
-  launch therefore waits for the live-state engine in phase 6. Settings has
+  process opened itself would be deaf. **Phase 6:** outputs render the live
+  state, so the main process opens them too: "Abrir ao iniciar" per output,
+  and `keryx:displays:open` (Testar uses it). Settings has
   "Testar" and "Fechar" per output; Ctrl+W closes a fullscreen output; the
   numbers are primary display first. Unit tests cover the placement rules
   (`electron/outputs.test.cjs`), and the smoke run opens a real output
@@ -414,11 +433,11 @@ development time, not calendar time.
 | --- | --- | --- | --- |
 | 0 | Scaffold | **Done.** Electron shell opens the current UI from a loopback server; 13 dead dependencies removed (Stripe, Leaflet, three, Quill, lodash, moment, …) | 1–2 days |
 | 1 | Local data | **Done.** SQLite store with Base44 query semantics (20 tests), adapter over IPC, change events, local operator profile, uploads to `media/`, import script from Base44. No Supabase requests in the desktop build. | 4–5 days |
-| 2 | Outputs | **Done**, except opening outputs at launch (see section 3). Display placement of the windows pages open, hot-plug re-placement, "Telas e saídas" settings, identify, test/close | 2–3 days |
+| 2 | Outputs | **Done** (opening at launch came with phase 6, section 3). Display placement of the windows pages open, hot-plug re-placement, "Telas e saídas" settings, identify, test/close | 2–3 days |
 | 3 | Media + Bible | **Done** (thumbnails skipped, Bibles installed rather than bundled; sections 4–5). Media library on disk, offline verse lookup and search, bundled backgrounds and logo | 2–3 days |
 | 4 | Ship it | **Built.** Backups, export/import, updater (off until a release repo exists), unsigned NSIS installer, logs and diagnostics. Not yet done: install on the booth PC and run a service with it | 2 days |
 | 5 | Network screens | **Built.** LAN server (off until enabled), screen routes only, read-only API, PIN, QR code in Settings, auto-reconnect, StageView fed from the database | 2–3 days |
-| 6 | Redesign | Live-state projection engine (section 2; steps 1–3 of 6 built), one control module, then the UI/UX work | separate plan |
+| 6 | Redesign | Live-state projection engine (section 2; engine and outputs built), one control module, then the UI/UX work | separate plan |
 
 Phases 1 and 2 are the risk; after them, nothing depends on the internet.
 

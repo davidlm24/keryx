@@ -32,10 +32,13 @@ wiring, the data model and the known gaps.
   `electron/live.cjs`). Operator pages change it only through
   `src/lib/projection.js`; outputs read it with `useLiveState()`. A new kind
   of content is a new op in `shared/live-state.mjs` with a test there, not a
-  new sync table or postMessage type. Being migrated (docs, section 2):
-  lyrics and Bible are on it; video, media, tools, communication and Escola
-  bíblica still use their sync tables and postMessage. Going live from an
-  operator page goes through `useProjectionControl()`.
+  new sync table or postMessage type. Every output renders it; outputs can be
+  opened by the main process (`keryx:displays:open`, "Abrir ao iniciar").
+  Today's Ferramentas, Comunicação, Painel do operador alerts and BibleSchool
+  pages still use their old paths (postMessage, `AlertMessage`,
+  `BibleProjectionSync`) as fallbacks until the redesign replaces them; don't
+  extend those. Going live from Músicas/Cultos goes through
+  `useProjectionControl()`.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. On desktop every
   write reaches every window with the whole row, deletes included.
@@ -86,7 +89,7 @@ npm run dev            # web build in a browser, against Supabase
 
 Smoke runs use a free port and a temp data folder, so they never collide with a KERYX that is open. In Git Bash set `KERYX_START_PATH=Settings` (no leading slash; `/Settings` is rewritten to a Windows path), and `KERYX_SCREENSHOT=file.png` with `KERYX_SCREENSHOT_TEXT="some heading"` to capture a page.
 
-Outputs (projector, stage, ...) are windows the *pages* open with `window.open`; the main process only places them (`electron/outputs*.cjs`). Don't open an output from the main process: it would have no `postMessage` handle.
+Outputs (projector, stage, ...) render the live state, so either a page (`window.open`) or the main process (`outputs.open`, `keryx:displays:open`, "Abrir ao iniciar") can open them; `electron/outputs*.cjs` places and tracks them. Only the old Ferramentas/Comunicação pages still need a projector they opened themselves (postMessage).
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.

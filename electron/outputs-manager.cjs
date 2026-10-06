@@ -1,9 +1,10 @@
 // Applies the placement rules in outputs.cjs to real windows.
 //
-// Pages open outputs themselves with window.open and keep the returned handle
-// to postMessage to it, so the main process never opens an output on its own:
-// it only decides where the page's window lands (windowOptions), tracks it
-// (track), and moves it when monitors change or the operator reassigns it.
+// Outputs render the live state, so either side can open one: a page with
+// window.open (the main process decides where it lands: windowOptions), or the
+// main process itself (open, and openAtLaunch for those set to open when
+// KERYX starts). Either way it is tracked (track) and moved when monitors
+// change or the operator reassigns it.
 
 const { BrowserWindow } = require("electron");
 const {
@@ -13,7 +14,7 @@ const {
 const SETTINGS_KEY = "outputs";
 const HIDE_CURSOR_CSS = "html, body, * { cursor: none !important; }";
 
-function createOutputManager({ screen, settings, getOrigin, log = console.warn }) {
+function createOutputManager({ screen, settings, getOrigin, openWindow = null, log = console.warn }) {
     const windows = new Map(); // output key -> BrowserWindow
 
     // Primary first, then left to right, so "Tela 1" is always the operator's own screen
@@ -62,9 +63,13 @@ function createOutputManager({ screen, settings, getOrigin, log = console.warn }
         const previous = windows.get(key);
         if (previous && previous !== win && !previous.isDestroyed()) previous.close();
         windows.set(key, win);
-        win.on("closed", () => {
+        // Forget it as soon as it starts closing, so opening the output again
+        // right away makes a new window instead of focusing the closing one.
+        const forget = () => {
             if (windows.get(key) === win) windows.delete(key);
-        });
+        };
+        win.on("close", forget);
+        win.on("closed", forget);
 
         const placement = placementFor(key);
         const { webContents } = win;
@@ -118,12 +123,43 @@ function createOutputManager({ screen, settings, getOrigin, log = console.warn }
         };
     }
 
+    // A partial change ({ target } or { openAtLaunch }) keeps the rest.
     function setAssignment(key, assignment) {
         if (!outputForKey(key)) throw new Error(`Saída desconhecida: ${key}`);
-        settings.set(SETTINGS_KEY, { ...assignments(), [key]: normalizeAssignment(assignment) });
+        const next = normalizeAssignment({ ...assignmentFor(key), ...(assignment || {}) });
+        settings.set(SETTINGS_KEY, { ...assignments(), [key]: next });
         const win = windows.get(key);
         if (win && !win.isDestroyed()) present(win, placementFor(key));
         return list();
+    }
+
+    // Opens (or brings forward) an output from the main process.
+    function open(key) {
+        if (!outputForKey(key)) throw new Error(`Saída desconhecida: ${key}`);
+        const existing = windows.get(key);
+        if (existing && !existing.isDestroyed()) {
+            existing.focus();
+            return list();
+        }
+        if (!openWindow) throw new Error("Abrir saídas não está disponível.");
+        const url = getOrigin() + key;
+        const win = openWindow(url, windowOptions(key));
+        track(win, url);
+        return list();
+    }
+
+    function openAtLaunch() {
+        const opened = [];
+        for (const o of OUTPUTS) {
+            if (!assignmentFor(o.key).openAtLaunch) continue;
+            try {
+                open(o.key);
+                opened.push(o.key);
+            } catch (err) {
+                log(`[keryx-outputs] não foi possível abrir ${o.key}: ${err.message}`);
+            }
+        }
+        return opened;
     }
 
     function close(key) {
@@ -151,6 +187,8 @@ function createOutputManager({ screen, settings, getOrigin, log = console.warn }
         track,
         list,
         setAssignment,
+        open,
+        openAtLaunch,
         close,
         identify,
         // For tests and the smoke run.

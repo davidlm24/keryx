@@ -73,10 +73,16 @@ test("windowed bounds are centred in the primary work area and never larger than
 });
 
 test("normalizeAssignment accepts what the app writes and nothing else", () => {
-    assert.deepEqual(normalizeAssignment({ target: "window" }), { target: "window" });
-    assert.deepEqual(normalizeAssignment({ target: displayRef(tv) }), { target: displayRef(tv) });
-    assert.deepEqual(normalizeAssignment({ target: { id: "x" } }), { target: "auto" });
-    assert.deepEqual(normalizeAssignment({ target: "fullscreen" }), { target: "auto" });
-    assert.deepEqual(normalizeAssignment(null), { target: "auto" });
-    assert.deepEqual(normalizeAssignment({ target: { id: 3, label: "A", width: 10, height: 20, extra: 1 } }), { target: { id: 3, label: "A", width: 10, height: 20 } });
+    const off = { openAtLaunch: false };
+    assert.deepEqual(normalizeAssignment({ target: "window" }), { target: "window", ...off });
+    assert.deepEqual(normalizeAssignment({ target: displayRef(tv) }), { target: displayRef(tv), ...off });
+    assert.deepEqual(normalizeAssignment({ target: { id: "x" } }), { target: "auto", ...off });
+    assert.deepEqual(normalizeAssignment({ target: "fullscreen" }), { target: "auto", ...off });
+    assert.deepEqual(normalizeAssignment(null), { target: "auto", ...off });
+    assert.deepEqual(normalizeAssignment({ target: { id: 3, label: "A", width: 10, height: 20, extra: 1 } }), { target: { id: 3, label: "A", width: 10, height: 20 }, ...off });
+    // Opening at launch is kept only when it is exactly true.
+    assert.deepEqual(normalizeAssignment({ target: "auto", openAtLaunch: true }), { target: "auto", openAtLaunch: true });
+    assert.deepEqual(normalizeAssignment({ target: displayRef(tv), openAtLaunch: true }), { target: displayRef(tv), openAtLaunch: true });
+    assert.deepEqual(normalizeAssignment({ target: "window", openAtLaunch: "yes" }), { target: "window", ...off });
+    assert.deepEqual(normalizeAssignment({ openAtLaunch: true }), { target: "auto", openAtLaunch: true });
 });

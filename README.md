@@ -83,8 +83,9 @@ Settings > "Telas na rede": turn it on and open the address shown (or scan the
 QR code) in the tablet's or TV's browser, on the same Wi-Fi. Windows asks once
 whether KERYX may use the network: allow it on private networks. An optional
 PIN keeps other devices on the Wi-Fi out. Screens can only view: the control
-pages are never served to the network. Available: Letras, Palco, Vídeo,
-Material bíblico, Anúncios, Saída configurada.
+pages are never served to the network. Available: Projeção principal, Letras,
+Palco, Vídeo, Material bíblico, Anúncios, Comunicação, Tela do pastor, Saída
+configurada.
 
 ### Bible text
 

@@ -6,6 +6,7 @@ import { FONT_MAP, SIZE_MAP, getTextEffect } from "@/lib/deviceStyles";
 import SlideTransition from "@/components/projection/SlideTransition";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
 import TabletVideoReceiver from "@/components/projection/TabletVideoReceiver";
+import LiveOverlays from "@/components/projection/LiveOverlays";
 
 // The lyrics screen (tablets, TVs, the "Letras" output): the live content
 // (shared/live-state.mjs) with its overlays; the church logo when idle.
@@ -55,7 +56,11 @@ export default function LyricProjection() {
     const slides = content.slides || [];
     const slideIndex = content.index || 0;
     const currentSlide = slides[slideIndex] || slides[0] || { text: "" };
-    const bgColor = style.background_image;
+    // The song's own background, else the background layer (image, colour or a video loop).
+    const layer = live.background;
+    const bgImage = style.background_image || (layer && layer.kind === "image" ? layer.value : "");
+    const bgColor = !style.background_image && layer?.kind === "color" ? layer.value : "";
+    const bgVideo = !style.background_image && layer?.kind === "video" ? layer.value : "";
 
     const fontSize = SIZE_MAP[style.font_size] || SIZE_MAP.large;
     const fontFamily = FONT_MAP[style.font_family] || FONT_MAP.sans;
@@ -70,9 +75,11 @@ export default function LyricProjection() {
     return (
         <div className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden">
             <TabletVideoReceiver />
-            {bgColor && (
-                <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${bgColor})` }} />
+            {bgImage && (
+                <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${bgImage})` }} />
             )}
+            {bgColor && <div className="absolute inset-0" style={{ background: bgColor }} />}
+            {bgVideo && <video src={bgVideo} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-60" />}
             <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-8 md:px-16">
                 {content.title && (
                     <h2 className="text-lg md:text-xl mb-6 font-light opacity-60" style={{ color: textColor }}>
@@ -100,42 +107,7 @@ export default function LyricProjection() {
             </div>
 
             {/* Overlays (camadas sobrepostas) */}
-            {(live.overlays || []).filter(o => o.enabled !== false).map((overlay) => {
-                const oStyle = {
-                    position: "absolute",
-                    left: `${overlay.x ?? 0}%`,
-                    top: `${overlay.y ?? 0}%`,
-                    width: `${overlay.width ?? 20}%`,
-                    opacity: overlay.opacity ?? 1,
-                    zIndex: overlay.z_index ?? 10,
-                };
-
-                if (overlay.type === "logo" || overlay.type === "image") {
-                    return (
-                        <div key={overlay.id} style={oStyle}>
-                            <img src={overlay.content} alt="" className="w-full h-auto object-contain" />
-                        </div>
-                    );
-                }
-
-                if (overlay.type === "announcement" || overlay.type === "text") {
-                    return (
-                        <div key={overlay.id} style={{
-                            ...oStyle,
-                            padding: "16px 24px",
-                            background: "rgba(0,0,0,0.6)",
-                            borderRadius: "12px",
-                            backdropFilter: "blur(8px)",
-                        }}>
-                            <p className="text-center font-semibold" style={{ color: "#ffffff", fontSize: "1.5rem", lineHeight: 1.3 }}>
-                                {overlay.content}
-                            </p>
-                        </div>
-                    );
-                }
-
-                return null;
-            })}
+            <LiveOverlays />
 
             {/* Alerta/mensagem sobreposta global */}
             <AlertOverlayRenderer />

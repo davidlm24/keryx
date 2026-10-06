@@ -1,12 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { keryx } from "@/api/keryxClient";
+import { useLiveNow } from "@/hooks/useLiveState";
 
 /**
  * Vista de projeção de Comunicação Visual (contagens regressivas, cronômetros,
- * anúncios, imagem+texto). Props-driven — usada pela janela única /Projection.
+ * anúncios, imagem+texto).
+ *
+ * live: the live state's communication layer ({ item, playlist, playlistIndex,
+ * startedAt }); render with key={startedAt}. Times count from startedAt on the
+ * shared clock, so every screen shows the same second; at the end of an item
+ * in a sequence onItemEnd is called (the projector reports it). Without live,
+ * the old props-driven mode (postMessage from the Comunicação page).
  */
-export default function CommunicationProjectionView({ video: initialVideo, playlist: initialPlaylist, isSequence }) {
+export default function CommunicationProjectionView({ video: initialVideo, playlist: initialPlaylist, isSequence, live = null, onItemEnd }) {
+    if (live) initialVideo = live.item;
     const [video, setVideo] = useState(initialVideo || null);
     const [timeRemaining, setTimeRemaining] = useState(initialVideo?.duration || 0);
     const [isRunning, setIsRunning] = useState(true);
@@ -36,8 +44,22 @@ export default function CommunicationProjectionView({ video: initialVideo, playl
         }
     }, [initialVideo]);
 
+    // Live: time from the shared start; the sequence is the live state's.
+    const nowMs = useLiveNow(1000);
+    const liveElapsed = live ? Math.max(0, Math.floor((nowMs - live.startedAt) / 1000)) : 0;
+    const liveDuration = Number(live?.item?.duration) || 0;
+    const liveTime = !live ? 0 : live.item.type === "countdown" ? Math.max(0, liveDuration - liveElapsed) : liveElapsed;
+    const endReported = useRef(false);
     useEffect(() => {
-        if (!isRunning || !video) return;
+        if (!live || !live.playlist || !liveDuration || endReported.current) return;
+        if (liveElapsed >= liveDuration) {
+            endReported.current = true;
+            onItemEnd?.(live.playlistIndex);
+        }
+    }, [liveElapsed]);
+
+    useEffect(() => {
+        if (live || !isRunning || !video) return;
 
         const interval = setInterval(() => {
             setTimeRemaining((prev) => {
@@ -153,6 +175,8 @@ export default function CommunicationProjectionView({ video: initialVideo, playl
         return base;
     };
 
+    const shownTime = live ? liveTime : timeRemaining;
+
     if (!video) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-900 via-orange-900 to-red-900 flex items-center justify-center">
@@ -263,7 +287,11 @@ export default function CommunicationProjectionView({ video: initialVideo, playl
                 />
             )}
 
-            {isSequencePlaying && playlist.length > 0 && (
+            {live?.playlist ? (
+                <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-lg text-white text-sm z-10">
+                    {live.playlistIndex + 1} / {live.playlist.length}
+                </div>
+            ) : isSequencePlaying && playlist.length > 0 && (
                 <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-lg text-white text-sm z-10">
                     {currentIndex + 1} / {playlist.length}
                 </div>
@@ -344,13 +372,13 @@ export default function CommunicationProjectionView({ video: initialVideo, playl
                             <motion.div
                                 className={`${timerSizeClasses[video.font_size]} font-bold tabular-nums`}
                                 style={{ color: video.text_color }}
-                                animate={timeRemaining <= 10 && video.type === "countdown" ? {
+                                animate={shownTime <= 10 && video.type === "countdown" ? {
                                     scale: [1, 1.2, 1],
                                     color: ["#ffffff", "#ff0000", "#ffffff"]
                                 } : {}}
-                                transition={{ duration: 1, repeat: timeRemaining <= 10 ? Infinity : 0 }}
+                                transition={{ duration: 1, repeat: shownTime <= 10 ? Infinity : 0 }}
                             >
-                                {formatTime(timeRemaining)}
+                                {formatTime(shownTime)}
                             </motion.div>
 
                             {video.subtext && (

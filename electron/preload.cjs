@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     displays: {
         list: () => ipcRenderer.invoke("keryx:displays:list"),
         set: (key, assignment) => ipcRenderer.invoke("keryx:displays:set", { key, assignment }),
+        open: (key) => ipcRenderer.invoke("keryx:displays:open", { key }),
         close: (key) => ipcRenderer.invoke("keryx:displays:close", { key }),
         identify: () => ipcRenderer.invoke("keryx:displays:identify"),
     },
