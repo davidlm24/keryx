@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Plus, Maximize2, Search, Heart, Monitor, Square, Video, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createPageUrl } from "@/utils";
-import { openProjectionWindow as openSharedProjection, sendToProjection as sendToSharedProjection } from "@/lib/projectionWindow";
+import { openProjectionWindow as openSharedProjection } from "@/lib/projectionWindow";
+import { projection } from "@/lib/projection";
+import { useProjectionControl, isVideoUrl } from "@/hooks/useProjectionControl";
 
 import SongList from "../components/projection/SongList";
 import SongForm from "../components/projection/SongForm";
@@ -24,7 +26,6 @@ import { useThemeColors } from "@/hooks/useThemeColors";
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import ConnectionBanner from "@/components/ConnectionBanner";
-import { cleanupOrphanSessions } from "@/utils/sessionCleanup";
 import { cacheItem, uncacheItem } from "@/hooks/useOfflineCache";
 import { generateSlides as generateSectionSlides } from "@/utils/songSections";
 
@@ -204,46 +205,20 @@ export default function Home() {
 
     const [activeVideoSong, setActiveVideoSong] = useState(null);
     const [activeYouTube, setActiveYouTube] = useState(false);
-    const [activeLyricSong, setActiveLyricSong] = useState(null);
-    const [activeLyricSyncId, setActiveLyricSyncId] = useState(null);
-    const [liveSessionId, setLiveSessionId] = useState(null);
-    const [stageWindow, setStageWindow] = useState(null);
+    const [lyricPanelOpen, setLyricPanelOpen] = useState(false);
     const [previewContent, setPreviewContent] = useState(null);
-    const [overlays, setOverlays] = useState([]);
+    const { live, isLive, playSong, stop, report } = useProjectionControl({ onEscape: () => stopProjection() });
+    const overlays = live?.overlays || [];
+    const setOverlays = (next) => projection.setOverlays(next).catch(report);
     const { data: projectionDevices } = useQuery({ queryKey: ["projectionDevices"], queryFn: () => keryx.entities.ProjectionDevice.list(), initialData: [] });
 
-    // Obter nome do operador + limpar sessões órfãs no arranque
+    // Obter nome do operador
     useEffect(() => {
         keryx.auth.me().then(u => setOperatorName(u?.full_name || u?.email || "")).catch(() => {});
-        cleanupOrphanSessions();
     }, []);
 
     // Reset paginação quando filtros mudam
     useEffect(() => { setVisibleCount(30); }, [searchText, selectedArtist, selectedLetter, showFavoritesOnly]);
-
-    // Avisar ao fechar com sessão ativa
-    useEffect(() => {
-        if (!liveSessionId) return;
-        const handler = (e) => { e.preventDefault(); e.returnValue = ""; };
-        window.addEventListener("beforeunload", handler);
-        return () => window.removeEventListener("beforeunload", handler);
-    }, [liveSessionId]);
-
-    // Atalho: Esc para parar projeção
-    useEffect(() => {
-        const onKey = (e) => {
-            if (e.key === "Escape" && liveSessionId) { e.preventDefault(); stopProjection(); }
-        };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [liveSessionId]);
-
-    // Atualizar overlays na projeção ativa em tempo real
-    useEffect(() => {
-        if (activeLyricSyncId && overlays) {
-            keryx.entities.LyricSync.update(activeLyricSyncId, { overlays }).catch(() => {});
-        }
-    }, [overlays, activeLyricSyncId]);
 
     const openProjectionWindow = () => {
         return interceptWindowOpen("Letra para Tablet", () => openSharedProjection());
@@ -265,19 +240,19 @@ export default function Home() {
     const openStageWindow = () => {
         return interceptWindowOpen("Palco", () => {
             const stageUrl = createPageUrl("StageView");
-            const newWindow = window.open(
+            return window.open(
                 stageUrl,
                 "stageView",
                 "width=1280,height=720,menubar=no,toolbar=no,location=no"
             );
-            setStageWindow(newWindow);
-            return newWindow;
         });
     };
 
     const handlePlay = async (song) => {
-        // Enviar letra para o projetor (janela única compartilhada)
-        sendToProjection(song);
+        // Todas as telas seguem o estado ao vivo
+        playSong(song);
+        setLyricPanelOpen(true);
+        syncProjectorDevice(song);
 
         // Registar no histórico
         try {
@@ -297,9 +272,6 @@ export default function Home() {
             console.error("Erro ao registar histórico:", e);
         }
 
-        // Mostrar player de letra sempre
-        setActiveLyricSong(song);
-
         // Atualizar pré-visualização
         setPreviewContent({
             type: "lyrics",
@@ -314,66 +286,13 @@ export default function Home() {
             text_effect: song.text_effect || "shadow",
         });
 
-        // Enviar letra para tablet remoto via LyricSync (como o VideoSync faz para vídeos)
-        try {
-            const lyricRecord = await keryx.entities.LyricSync.create({
-                song_title: song.title,
-                artist: song.artist || "",
-                slides: song.slides?.length ? song.slides : generateSectionSlides(song.lyrics),
-                slide_index: 0,
-                text_color: song.text_color || "#ffffff",
-                text_color_2: song.text_color_2 || "",
-                background_image: song.background_image || "",
-                font_size: song.font_size || "large",
-                font_family: song.font_family || "sans",
-                text_effect: song.text_effect || "shadow",
-                overlays,
-                status: "active",
-                timestamp: Date.now()
-            });
-            setActiveLyricSyncId(lyricRecord.id);
-            // Limpar registros antigos em segundo plano
-            keryx.entities.LyricSync.list().then(oldRecords => {
-                for (const old of oldRecords) {
-                    if (old.id !== lyricRecord.id && Date.now() - old.timestamp > 10000) {
-                        keryx.entities.LyricSync.delete(old.id).catch(() => {});
-                    }
-                }
-            }).catch(() => {});
-        } catch (error) {
-            console.error("Erro ao sincronizar letra para tablet:", error);
-        }
-
-        // Atualizar LiveSession
-        try {
-            if (!liveSessionId) {
-                const session = await keryx.entities.LiveSession.create({
-                    status: "active",
-                    currentItemId: song.id,
-                    currentSlideIndex: 0,
-                    startedAt: Date.now(),
-                    channel: crypto?.randomUUID?.() || `ch-${Date.now()}`
-                });
-                setLiveSessionId(session.id);
-            } else {
-                await keryx.entities.LiveSession.update(liveSessionId, {
-                    currentItemId: song.id,
-                    currentSlideIndex: 0
-                });
-            }
-        } catch (e) {
-            console.error("Erro ao atualizar LiveSession:", e);
-        }
-
         // Mostrar player interno se tiver vídeo MP4
-        if (song.audio_url && (song.audio_url.includes('.mp4') || song.audio_url.includes('video') || song.audio_url.startsWith('data:video'))) {
+        if (isVideoUrl(song.audio_url)) {
             setActiveVideoSong(song);
         }
 
         // Enviar vídeo para dispositivo remoto (se tiver audio_url que seja vídeo)
-        if (song.audio_url && (song.audio_url.includes('.mp4') || song.audio_url.includes('video') || song.audio_url.startsWith('data:video'))) {
-            console.log("Enviando vídeo para dispositivo:", song.audio_url);
-
+        if (isVideoUrl(song.audio_url)) {
             try {
                 // Criar novo registro PRIMEIRO para a tablet receber instantaneamente
                 await keryx.entities.VideoSync.create({
@@ -406,39 +325,8 @@ export default function Home() {
         }
     };
 
-    const sendToProjection = (song) => {
-        console.log("Sending to projection:", song);
-
-        // Se o audio_url for vídeo, não enviar para a projeção de letra
-        const isVideo = song.audio_url && (song.audio_url.includes('.mp4') || song.audio_url.includes('video') || song.audio_url.startsWith('data:video'));
-
-        const payload = {
-            type: "PROJECTION_DATA",
-            title: song.title,
-            artist: song.artist || "",
-            slides: song.slides?.length ? song.slides : generateSectionSlides(song.lyrics),
-            audio_url: isVideo ? null : (song.audio_url || null),
-            background_image: song.background_image || null,
-            font_size: song.font_size || "large",
-            font_family: song.font_family || "sans",
-            text_effect: song.text_effect || "shadow",
-            text_color: song.text_color || "#ffffff",
-            text_color_2: song.text_color_2 || "",
-            song_key: song.song_key || "",
-            bpm: song.bpm || null,
-            chords: song.chords || "",
-            musician_notes: song.musician_notes || "",
-        };
-
-        // Janela única de projeção (abre-a se ainda não existir)
-        sendToSharedProjection(payload);
-
-        // Enviar também para o Stage View (monitor do palco)
-        if (stageWindow && !stageWindow.closed) {
-            stageWindow.postMessage(payload, "*");
-        }
-
-        // Sincronizar com dispositivo projetor do ProjectionManager (para TVs/tablets remotas)
+    // Devices from the Gestor de Projeção (DeviceView) keep their own output.
+    const syncProjectorDevice = (song) => {
         const projectorDevice = projectionDevices?.[0];
         if (projectorDevice) {
             const slides = song.slides?.length ? song.slides : generateSectionSlides(song.lyrics);
@@ -449,13 +337,8 @@ export default function Home() {
     };
 
     const stopProjection = () => {
-        // Parar projeção de letras/bíblia (janela única compartilhada)
-        sendToSharedProjection({ type: "STOP_PROJECTION" });
-        sendToSharedProjection({ type: "PROJECTION_TOOL", mode: "stop" });
-        // Parar stage view
-        if (stageWindow && !stageWindow.closed) {
-            stageWindow.postMessage({ type: "STOP_PROJECTION" }, "*");
-        }
+        // Letra, bíblia e palco: o estado ao vivo
+        stop();
         // Parar vídeo local
         if (videoWindow && !videoWindow.closed) {
             videoWindow.postMessage({ type: "VIDEO_STOP" }, "*");
@@ -476,31 +359,9 @@ export default function Home() {
                 }).catch(() => {});
             }
         }
-        // Parar projeção de letra no tablet remoto
-        try {
-            keryx.entities.LyricSync.list().then(records => {
-                for (const r of records) {
-                    if (r.status === "active") keryx.entities.LyricSync.update(r.id, { status: "stopped" }).catch(() => {});
-                }
-            });
-        } catch {}
-        // Encerrar LiveSession
-        if (liveSessionId) {
-            keryx.entities.LiveSession.update(liveSessionId, {
-                status: "ended",
-                endedAt: Date.now()
-            }).then(() => setLiveSessionId(null)).catch(() => {});
-        }
         // Limpar players internos
-        setActiveLyricSong(null);
+        setLyricPanelOpen(false);
         setActiveVideoSong(null);
-        setActiveLyricSyncId(null);
-    };
-
-    const handleSlideChange = (idx) => {
-        if (liveSessionId) {
-            keryx.entities.LiveSession.update(liveSessionId, { currentSlideIndex: idx }).catch(() => {});
-        }
     };
 
     const handleEdit = (song) => {
@@ -566,7 +427,7 @@ export default function Home() {
                     <div className="mc-side-sticky">
                         <div className="mc-brand">
                             <strong>KERYX</strong>
-                            {liveSessionId && <span className="mc-live">LIVE</span>}
+                            {isLive && <span className="mc-live">LIVE</span>}
                         </div>
                         <button className="mc-control" onClick={() => window.location.href = createPageUrl("GlobalSearch")}>
                             <Search />
@@ -759,22 +620,14 @@ export default function Home() {
                     song={activeVideoSong}
                     videoWindow={videoWindow}
                     onClose={() => setActiveVideoSong(null)}
-                    onSendToProjection={(s) => {
-                        sendToProjection(s);
-                    }}
+                    onSendToProjection={(s) => playSong(s)}
                 />
             )}
             {activeYouTube && (
                 <YouTubeProjectionPanel onClose={() => setActiveYouTube(false)} />
             )}
-            {activeLyricSong && (
-                <LyricPlayerPanel
-                    song={activeLyricSong}
-                    stageWindow={stageWindow}
-                    lyricSyncId={activeLyricSyncId}
-                    onSlideChange={handleSlideChange}
-                    onClose={() => setActiveLyricSong(null)}
-                />
+            {lyricPanelOpen && (
+                <LyricPlayerPanel onClose={() => setLyricPanelOpen(false)} />
             )}
             <RemoteProjectionDialog
                 open={remoteDialogOpen}

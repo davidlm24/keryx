@@ -83,7 +83,7 @@ const ADAPTER = `(async () => {
     offLive();
     out.live = {
         index: keryx.live.current().content.index,
-        heard: heard.length,
+        heard: heard.includes(shown.rev) && heard.includes(shown.rev + 1),
         rendered: shown.content.style.background_image === file_url,
         stored: (await window.keryxDesktop.live.get()).data.content.style.background_image,
         clock: Math.abs(keryx.live.now() - Date.now()) < 1000,
@@ -207,21 +207,38 @@ const LIVE_DRIVE = `(async () => {
     };
 })()`;
 
+const windowFor = (path) => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes(path));
+// win: a BrowserWindow or its webContents.
+const bodyText = (win) => {
+    const wc = win && (win.webContents || win);
+    return wc ? wc.executeJavaScript("document.body ? document.body.innerText : ''").catch(() => "") : Promise.resolve("");
+};
+
 async function checkLive(webContents, { live }) {
     const result = { ok: false };
     await webContents.executeJavaScript(LIVE_LISTEN);
     const opened = await webContents.executeJavaScript(OPEN_OUTPUT("/StageView", "stageView"), true);
-    const output = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/StageView"));
-    result.outputOpened = Boolean(opened.opened && output);
+    const projector = await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
+    const output = windowFor("/StageView");
+    const main = windowFor("/Projection");
+    result.outputOpened = Boolean(opened.opened && output && projector.opened && main);
     if (output) await output.webContents.executeJavaScript(LIVE_LISTEN);
 
     const drive = await webContents.executeJavaScript(LIVE_DRIVE);
+    // What the windows show after show + next + black (LIVE_DRIVE ends black).
+    result.stageText = (await bodyText(output)).includes("Segunda");
+    result.projectorBlack = !(await bodyText(main)).includes("Segunda");
+    live.call("screen.set", { mode: "show" });
+    await sleep(500);
+    result.projectorText = (await bodyText(main)).includes("Segunda");
+    live.call("screen.set", { mode: "black" });
     const r0 = drive.startRev;
     const expected = [`${r0 + 1}:show:0`, `${r0 + 2}:show:1`, `${r0 + 3}:black:1`];
     result.drive = drive;
     result.outputSeen = output ? await output.webContents.executeJavaScript("window.__keryxLiveSeen") : null;
     result.mainScreen = live.get().screen;
     if (output) output.close();
+    if (main) main.close();
     live.call("clear");
     live.call("screen.set", { mode: "show" });
 
@@ -230,15 +247,82 @@ async function checkLive(webContents, { live }) {
         && drive.slide === "Segunda" && drive.serverNow === "number"
         && drive.badStatus === 400 && /Operação desconhecida/.test(drive.badMessage)
         && drive.seen.join(",") === expected.join(",")
-        && Array.isArray(result.outputSeen) && result.outputSeen.join(",") === expected.join(",")
-        && result.mainScreen === "black";
+        && Array.isArray(result.outputSeen) && result.outputSeen.slice(0, 3).join(",") === expected.join(",")
+        && result.mainScreen === "black"
+        && result.stageText && result.projectorBlack && result.projectorText;
+    return result;
+}
+
+// The operator flow through the real Músicas page: Projetar on a song puts it
+// on the projector, an arrow key moves every screen, Parar Projeção clears it.
+const CLICK_TEXT = (selector, text) => `(() => {
+    const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((n) => n.textContent.includes(${JSON.stringify(text)}));
+    if (!el) return false;
+    el.click();
+    return true;
+})()`;
+
+async function checkOperatorFlow(webContents, { live }) {
+    const result = { ok: false };
+    const waitText = async (win, needle, present = true, ms = 8000) => {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {
+            if ((await bodyText(win)).includes(needle) === present) return true;
+            await sleep(250);
+        }
+        return false;
+    };
+    const song = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "create", [{
+        title: "Hino da fumaça", artist: "Coral do Teste", lyrics: "Primeira estrofe do hino\\n\\nSegunda estrofe do hino",
+        slides: [{ text: "Primeira estrofe do hino" }, { text: "Segunda estrofe do hino" }],
+    }])`)).data;
+    try {
+        webContents.reload();
+        await sleep(500);
+        result.listed = await waitText(webContents, "Coral do Teste");
+        await webContents.executeJavaScript(CLICK_TEXT("button", "Coral do Teste"));
+        await sleep(500);
+        result.clickedPlay = await webContents.executeJavaScript(CLICK_TEXT("button", "Projetar"));
+        await sleep(1500);
+        const main = windowFor("/Projection");
+        result.projectorOpened = Boolean(main);
+        result.projected = await waitText(main, "Primeira estrofe do hino");
+        result.sessionStarted = Boolean(live.get().session);
+        result.panel = (await bodyText(webContents)).includes("1 / 2");
+
+        await webContents.executeJavaScript(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" })); true`);
+        result.advanced = await waitText(main, "Segunda estrofe do hino");
+        result.liveIndex = live.get().content && live.get().content.index;
+
+        // KERYX_SMOKE_SHOTS=<folder>: what the projector, the stage and the operator page look like now.
+        const shots = process.env.KERYX_SMOKE_SHOTS;
+        if (shots) {
+            await webContents.executeJavaScript(CLICK_TEXT("button", "Palco"));
+            await sleep(2000);
+            fs.mkdirSync(shots, { recursive: true });
+            for (const [name, win] of [["projetor", main], ["palco", windowFor("/StageView")], ["operador", { webContents }]]) {
+                if (win) fs.writeFileSync(require("node:path").join(shots, `${name}.png`), (await win.webContents.capturePage()).toPNG());
+            }
+            const stageWin = windowFor("/StageView");
+            if (stageWin) stageWin.close();
+        }
+
+        result.clickedStop = await webContents.executeJavaScript(CLICK_TEXT("button", "Parar Projeção"));
+        result.cleared = await waitText(main, "Segunda estrofe do hino", false);
+        result.liveCleared = !live.get().content && !live.get().session;
+        if (main) main.close();
+    } finally {
+        await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "delete", ["${song && song.id}"])`);
+    }
+    result.ok = result.listed && result.clickedPlay && result.projectorOpened && result.projected && result.sessionStarted
+        && result.panel && result.advanced && result.liveIndex === 1 && result.clickedStop && result.cleared && result.liveCleared;
     return result;
 }
 
 // Backups, logs and the Settings bridge, as the packaged app runs them.
 // A tablet on the network: a plain browser window (no preload, no desktop
 // bridge) opening screen pages from the LAN server, fed by store changes.
-async function checkNetwork({ network, store, live }) {
+async function checkNetwork({ network, live }) {
     const result = { started: false, lyrics: false, stage: false, live: null, operatorPageBlocked: false, pinForm: false, tabletErrors: [], ok: false };
     await network.ops.setPin(null, ""); // start open, whatever the data folder had
     await network.ops.setEnabled(null, true);
@@ -273,17 +357,22 @@ async function checkNetwork({ network, store, live }) {
         result.isNetworkScreen = await lyrics.webContents.executeJavaScript("window.keryxLan === true && !window.keryxDesktop");
 
         // The operator projects after the screens are open: only the event stream can deliver it.
-        const row = store.call("LyricSync", "create", [{
-            song_title: "Hino de teste",
+        live.call("content.show", {
+            kind: "lyrics",
+            title: "Hino de teste",
             slides: [{ text: "Primeira linha da letra" }, { text: "Segunda linha da letra" }],
-            slide_index: 0,
-            status: "active",
-            timestamp: Date.now(),
-        }]);
+            stage: { song_key: "Sol maior", chords: "G D Em C" },
+        });
         result.lyrics = await waitFor(lyrics, "Primeira linha da letra");
-        store.call("LyricSync", "update", [row.id, { slide_index: 1, timestamp: Date.now() }]);
+        live.call("content.goTo", { index: 1 });
         result.stage = await waitFor(stage, "Segunda linha da letra");
+        result.stageChords = (await textOf(stage)).includes("Sol maior");
         result.lyricsAdvanced = await waitFor(lyrics, "Segunda linha da letra");
+        live.call("screen.set", { mode: "black" });
+        await sleep(500);
+        result.lyricsBlack = !(await textOf(lyrics)).includes("Segunda linha da letra");
+        result.stageDuringBlack = (await textOf(stage)).includes("Segunda linha da letra");
+        live.call("screen.set", { mode: "show" });
 
         // The live state reaches a tablet as a read and as "live" events, and the tablet can't change it.
         await lyrics.webContents.executeJavaScript(`(() => {
@@ -319,6 +408,7 @@ async function checkNetwork({ network, store, live }) {
     }
     const l = result.live;
     result.ok = result.started && result.isNetworkScreen && result.lyrics && result.stage && result.lyricsAdvanced
+        && result.stageChords && result.lyricsBlack && result.stageDuringBlack
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0;
     return result;
@@ -363,7 +453,7 @@ function expectAdapter(a) {
         && /^keryx-media:\/\/[0-9a-f-]{36}\.png$/.test(a.mediaStored)
         && a.mediaRead === true
         && a.llm === 501
-        && a.live.index === 1 && a.live.heard === 3 /* first read, show, next */ && a.live.rendered && /^keryx-media:\/\/[0-9a-f-]{36}\.png$/.test(a.live.stored)
+        && a.live.index === 1 && a.live.heard === true && a.live.rendered && /^keryx-media:\/\/[0-9a-f-]{36}\.png$/.test(a.live.stored)
         && a.live.clock && a.live.bad === 400
         && a.bible.passage === "16,17" && a.bible.source === "local" && a.bible.preferred === "ACF"
         && a.bible.search === "ACF 17" && a.bible.parsed === "João" && a.bible.missing === 404;
@@ -372,7 +462,7 @@ function expectAdapter(a) {
 const VERBOSE = process.env.KERYX_SMOKE_VERBOSE === "1";
 const step = (name) => { if (VERBOSE) console.log(`smoke: ${name}`); };
 
-function runSmokeTest(win, { dev, outputs, screen, system, network, store, live, dataDir, importOutcome }) {
+function runSmokeTest(win, { dev, outputs, screen, system, network, live, dataDir, importOutcome }) {
     const errors = [];
     const { webContents } = win;
     const finish = (ok, details) => {
@@ -441,12 +531,13 @@ function runSmokeTest(win, { dev, outputs, screen, system, network, store, live,
             const outputsResult = await checkOutputs(webContents, outputs, screen, { fullscreen: process.env.KERYX_SMOKE_FULLSCREEN === "1" });
             const systemResult = await checkSystem(webContents, { dataDir, system });
             const liveResult = await checkLive(webContents, { live });
+            const operatorResult = await checkOperatorFlow(webContents, { live });
             // The LAN server serves the built app (dist/), so this runs in built mode only.
-            const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, store, live });
-            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && !importOutcome && (dev || networkResult.ok),
-                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, network: networkResult });
+            const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live });
+            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && operatorResult.ok && !importOutcome && (dev || networkResult.ok),
+                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, operator: operatorResult, network: networkResult });
         } catch (err) {
-            finish(false, { rendered, exception: String(err && err.message) });
+            finish(false, { rendered, exception: String(err && (err.stack || err.message)).slice(0, 800) });
         }
     };
     webContents.once("did-finish-load", poll);

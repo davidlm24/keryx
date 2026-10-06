@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Maximize2, Book, Search, Star, Upload, BookOpen, ChevronUp, ChevronDown, Clock, Layers } from "lucide-react";
 import { motion } from "framer-motion";
 import { useThemeColors } from "@/hooks/useThemeColors";
-import { openProjectionWindow, sendToProjection } from "@/lib/projectionWindow";
+import { openProjectionWindow } from "@/lib/projectionWindow";
+import { projection } from "@/lib/projection";
+import { passageContent } from "@/hooks/useProjectionControl";
+import { useToast } from "@/components/ui/use-toast";
 import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
 
 import BibleSelector from "../components/bible/BibleSelector";
@@ -40,21 +43,13 @@ export default function Bible() {
     const [overlays, setOverlays] = useState([]);
     const [showProjectionTools, setShowProjectionTools] = useState(false);
 
+    const { toast } = useToast();
+
+    // Every screen follows the live state; this opens the projector if needed.
     const sendPassageToProjection = (passage) => {
-        const savedStyle = getBibleProjectionStyle();
-        sendToProjection({
-            type: "PROJECTION_DATA",
-            title: passage.reference,
-            is_bible: true,
-            bible_reference: passage.reference,
-            slides: passage.slides?.length ? passage.slides : [{ text: passage.text, duration: 12 }],
-            background_image: passage.background_image || savedStyle.background_image || null,
-            font_size: passage.font_size || savedStyle.font_size || "large",
-            font_family: passage.font_family || savedStyle.font_family || "sans",
-            text_effect: passage.text_effect || "shadow",
-            text_color: passage.text_color || savedStyle.text_color || "#ffffff",
-            text_color_2: passage.text_color_2 || "",
-        });
+        openProjectionWindow();
+        projection.showBible(passageContent(passage)).catch((err) =>
+            toast({ title: "Não foi possível projetar", description: err?.message, variant: "destructive" }));
     };
 
     const handleProjectDirect = (passageData) => {

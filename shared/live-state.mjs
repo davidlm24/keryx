@@ -197,6 +197,8 @@ const OPS = {
                 index: clampIndex(a.index, items.length),
                 style: style(a.style),
                 stage: loose(a.stage, "Dados do palco") || {},
+                // A song's playback track, played by the main projector.
+                audio: text(a.audio, "Áudio", { max: MAX_URL }) || null,
                 startedAt: now,
             },
         };
@@ -210,6 +212,7 @@ const OPS = {
         if (a.artist !== undefined) next.artist = text(a.artist, "Artista", { max: 500 });
         if (a.style !== undefined) next.style = style(a.style);
         if (a.stage !== undefined) next.stage = loose(a.stage, "Dados do palco") || {};
+        if (a.audio !== undefined) next.audio = text(a.audio, "Áudio", { max: MAX_URL }) || null;
         next.index = clampIndex(a.index ?? current.index, next.slides.length);
         return { content: next };
     },

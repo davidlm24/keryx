@@ -61,6 +61,16 @@ export function sendToProjection(message) {
     }
 }
 
+/**
+ * Like sendToProjection, but only if the window is already open (for "stop":
+ * don't open a window just to clear it).
+ */
+export function postToProjection(message) {
+    if (!win || win.closed) return;
+    pending.push(message);
+    flush();
+}
+
 export function closeProjectionWindow() {
     if (win && !win.closed) {
         try { win.close(); } catch (e) {}

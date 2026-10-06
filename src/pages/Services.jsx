@@ -8,6 +8,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { createPageUrl } from "@/utils";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { openProjectionWindow as openSharedProjection, sendToProjection as sendToSharedProjection } from "@/lib/projectionWindow";
+import { projection } from "@/lib/projection";
+import { useProjectionControl, isVideoUrl, songContent, passageContent } from "@/hooks/useProjectionControl";
 
 import ServiceForm from "../components/service/ServiceForm";
 import ServiceList from "../components/service/ServiceList";
@@ -19,7 +21,6 @@ import RemoteProjectionDialog from "../components/projection/RemoteProjectionDia
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import ConnectionBanner from "@/components/ConnectionBanner";
-import LatencyIndicator from "@/components/projection/LatencyIndicator";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
 import ServiceTimer from "@/components/service/ServiceTimer";
 import ObsIntegration from "@/components/projection/ObsIntegration";
@@ -34,11 +35,11 @@ export default function Services() {
     const [videoWindow, setVideoWindow] = useState(null);
     const colors = useThemeColors();
     const [activeVideoSong, setActiveVideoSong] = useState(null);
-    const [activeLyricSong, setActiveLyricSong] = useState(null);
-    const [activeLyricSyncId, setActiveLyricSyncId] = useState(null);
+    const [lyricPanelOpen, setLyricPanelOpen] = useState(false);
+    // Modo Ensaio: slides stepped through in the panel only, not projected
+    const [rehearsal, setRehearsal] = useState(null);
     const [remoteDialogOpen, setRemoteDialogOpen] = useState(false);
     const [remoteDialogTitle, setRemoteDialogTitle] = useState("");
-    const [liveSessionId, setLiveSessionId] = useState(null);
     const isMobileDevice = useIsMobileDevice();
     const isOnline = useOnlineStatus();
     const [operatorName, setOperatorName] = useState("");
@@ -46,9 +47,9 @@ export default function Services() {
     const [ensaioMode, setEnsaioMode] = useState(false);
     const [preloadedNext, setPreloadedNext] = useState(null);
     const [showObs, setShowObs] = useState(false);
-    const [sessionStartTime, setSessionStartTime] = useState(null);
     const queryClient = useQueryClient();
     const { toast } = useToast();
+    const { live, isLive, playSong, playPassage, stop } = useProjectionControl({ serviceId, onEscape: () => stopProjection() });
 
     // Colaboração em tempo real — subscreve a atualizações do Service por outros operadores
     useEffect(() => {
@@ -172,23 +173,6 @@ export default function Services() {
         keryx.auth.me().then(u => setOperatorName(u?.full_name || u?.email || "")).catch(() => {});
     }, []);
 
-    // Avisar ao fechar com sessão ativa
-    useEffect(() => {
-        if (!liveSessionId) return;
-        const handler = (e) => { e.preventDefault(); e.returnValue = ""; };
-        window.addEventListener("beforeunload", handler);
-        return () => window.removeEventListener("beforeunload", handler);
-    }, [liveSessionId]);
-
-    // Atalho: Esc para parar projeção
-    useEffect(() => {
-        const onKey = (e) => {
-            if (e.key === "Escape" && liveSessionId) { e.preventDefault(); stopProjection(); }
-        };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [liveSessionId]);
-
     const handleRefreshServices = async () => {
         await queryClient.invalidateQueries({ queryKey: ["services"] });
     };
@@ -235,7 +219,8 @@ export default function Services() {
         // Modo ensaio: preview local sem enviar para projeção
         if (ensaioMode) {
             if (projType === "song" || projType === "bible") {
-                setActiveLyricSong(fullItem);
+                setRehearsal(projType === "song" ? songContent(fullItem) : passageContent(fullItem));
+                setLyricPanelOpen(true);
             }
             return;
         }
@@ -275,78 +260,34 @@ export default function Services() {
             }
         }
 
-        // Se for música com vídeo MP4, abrir player flutuante
-        const isVideo = projType === "song" && fullItem.audio_url &&
-            (fullItem.audio_url.includes('.mp4') || fullItem.audio_url.includes('video') || fullItem.audio_url.startsWith('data:video'));
-
-        if (isVideo) {
+        // Música com vídeo MP4: player flutuante e tela de vídeo
+        if (projType === "song" && isVideoUrl(fullItem.audio_url)) {
             setActiveVideoSong(fullItem);
+            sendSongVideo(fullItem);
         }
 
-        // Abrir balão de controlo de letras para músicas e bíblia imediatamente
+        // Letra e bíblia: todas as telas seguem o estado ao vivo
+        const ref = { serviceItemId: item.id };
         if (projType === "song" || projType === "bible") {
-            setActiveLyricSong(fullItem);
-            // Criar registro LyricSync em segundo plano (não bloqueia o painel)
-            const slides = projType === "song"
-                ? (fullItem.slides || [{ text: fullItem.lyrics, duration: fullItem.duration || 30 }])
-                : (fullItem.slides || [{ text: fullItem.text, duration: 10 }]);
-            keryx.entities.LyricSync.create({
-                song_title: projType === "song" ? fullItem.title : fullItem.reference,
-                artist: fullItem.artist || "",
-                slides,
-                slide_index: 0,
-                text_color: fullItem.text_color || "#ffffff",
-                text_color_2: fullItem.text_color_2 || "",
-                background_image: fullItem.background_image || "",
-                font_size: fullItem.font_size || "large",
-                font_family: fullItem.font_family || "sans",
-                text_effect: fullItem.text_effect || "shadow",
-                status: "active",
-                timestamp: Date.now()
-            }).then(lyricRecord => {
-                setActiveLyricSyncId(lyricRecord.id);
-                // Limpar registros antigos em segundo plano
-                keryx.entities.LyricSync.list().then(oldRecords => {
-                    for (const old of oldRecords) {
-                        if (old.id !== lyricRecord.id && Date.now() - old.timestamp > 10000) {
-                            keryx.entities.LyricSync.delete(old.id).catch(() => {});
-                        }
-                    }
-                }).catch(() => {});
-            }).catch(e => console.error("Erro ao sincronizar letra:", e));
+            setRehearsal(null);
+            setLyricPanelOpen(true);
+            if (projType === "song") playSong(fullItem, ref);
+            else playPassage(fullItem, ref);
+        } else {
+            // Mídia ainda vai à janela de projeção por postMessage
+            if (!live?.session) projection.startSession(serviceId).catch(() => {});
+            sendToSharedProjection({
+                type: "MEDIA_PROJECTION",
+                mediaType: fullItem.type,
+                title: fullItem.title,
+                fileUrl: fullItem.file_url,
+            });
         }
-
-        // Atualizar LiveSession
-        try {
-            if (!liveSessionId) {
-                const session = await keryx.entities.LiveSession.create({
-                    serviceId,
-                    status: "active",
-                    currentItemId: item.id,
-                    currentSlideIndex: 0,
-                    startedAt: Date.now(),
-                    channel: crypto?.randomUUID?.() || `ch-${Date.now()}`
-                });
-                setLiveSessionId(session.id);
-                setSessionStartTime(Date.now());
-            } else {
-                await keryx.entities.LiveSession.update(liveSessionId, {
-                    currentItemId: item.id,
-                    currentSlideIndex: 0
-                });
-            }
-        } catch (e) {
-            console.error("Erro ao atualizar LiveSession:", e);
-        }
-
-        // Enviar para a janela única de projeção (abre-a se ainda não existir)
-        sendItemToProjection({ type: projType, data: fullItem });
     };
 
     const stopProjection = () => {
-        // Parar projeção de letras/bíblia (janela única compartilhada)
-        sendToSharedProjection({ type: "STOP_PROJECTION" });
-        sendToSharedProjection({ type: "PROJECTION_TOOL", mode: "stop" });
+        // Letra, bíblia e palco: o estado ao vivo
+        stop();
         if (videoWindow && !videoWindow.closed) {
             videoWindow.postMessage({ type: "VIDEO_STOP" }, "*");
         }
@@ -367,97 +308,38 @@ export default function Services() {
                 }
             });
         } catch {}
-        // Parar projeção de letra no tablet remoto
-        try {
-            keryx.entities.LyricSync.list().then(records => {
-                for (const r of records) {
-                    if (r.status === "active") keryx.entities.LyricSync.update(r.id, { status: "stopped" }).catch(() => {});
-                }
-            });
-        } catch {}
-        // Encerrar LiveSession
-        if (liveSessionId) {
-            keryx.entities.LiveSession.update(liveSessionId, {
-                status: "ended",
-                endedAt: Date.now()
-            }).then(() => setLiveSessionId(null)).catch(() => {});
-        }
-        setActiveLyricSong(null);
+        setLyricPanelOpen(false);
+        setRehearsal(null);
         setActiveVideoSong(null);
-        setActiveLyricSyncId(null);
     };
 
-    const sendItemToProjection = async ({ type, data }) => {
-        if (type === "song") {
-            const isVideo = data.audio_url && (data.audio_url.includes('.mp4') || data.audio_url.includes('video') || data.audio_url.startsWith('data:video'));
-
-            // Enviar letra para o projetor principal (janela única compartilhada)
-            sendToSharedProjection({
-                type: "PROJECTION_DATA",
+    // A song's video clip goes to the video screen (VideoSync until it moves
+    // to the live state).
+    const sendSongVideo = async (data) => {
+        try {
+            // Criar novo registro PRIMEIRO para a tablet receber instantaneamente
+            await keryx.entities.VideoSync.create({
+                video_url: data.audio_url,
                 title: data.title,
-                slides: data.slides || [{ text: data.lyrics, duration: data.duration || 30 }],
-                audio_url: isVideo ? null : (data.audio_url || null),
-                background_image: data.background_image || null,
-                font_size: data.font_size || "large",
-                font_family: data.font_family || "sans",
-                text_effect: data.text_effect || "shadow",
-                text_color: data.text_color || "#ffffff",
-                text_color_2: data.text_color_2 || "",
+                timestamp: Date.now(),
+                status: "active"
             });
-
-            // Se tiver vídeo MP4, enviar para tela de vídeo
-            if (isVideo) {
-                try {
-                    // Criar novo registro PRIMEIRO para a tablet receber instantaneamente
-                    await keryx.entities.VideoSync.create({
-                        video_url: data.audio_url,
-                        title: data.title,
-                        timestamp: Date.now(),
-                        status: "active"
-                    });
-                    // Limpar vídeos antigos em segundo plano (não bloqueia a notificação)
-                    keryx.entities.VideoSync.list().then(oldVideos => {
-                        for (const old of oldVideos) {
-                            if (Date.now() - old.timestamp > 10000) {
-                                keryx.entities.VideoSync.delete(old.id).catch(() => {});
-                            }
-                        }
-                    }).catch(() => {});
-                } catch (e) {
-                    console.error("Erro ao sincronizar vídeo:", e);
+            // Limpar vídeos antigos em segundo plano (não bloqueia a notificação)
+            keryx.entities.VideoSync.list().then(oldVideos => {
+                for (const old of oldVideos) {
+                    if (Date.now() - old.timestamp > 10000) {
+                        keryx.entities.VideoSync.delete(old.id).catch(() => {});
+                    }
                 }
-
-                // Também enviar para janela local se existir
-                if (videoWindow && !videoWindow.closed) {
-                    videoWindow.postMessage({ type: "VIDEO_DATA", videoUrl: data.audio_url, title: data.title }, "*");
-                    videoWindow.focus();
-                }
-            }
-        } else if (type === "bible") {
-            sendToSharedProjection({
-                type: "PROJECTION_DATA",
-                title: data.reference,
-                slides: data.slides || [{ text: data.text, duration: 10 }],
-                background_image: data.background_image || null,
-                font_size: data.font_size || "large",
-                font_family: data.font_family || "sans",
-                text_effect: data.text_effect || "shadow",
-                text_color: data.text_color || "#ffffff",
-                text_color_2: data.text_color_2 || "",
-            });
-        } else if (type === "media") {
-            sendToSharedProjection({
-                type: "MEDIA_PROJECTION",
-                mediaType: data.type,
-                title: data.title,
-                fileUrl: data.file_url,
-            });
+            }).catch(() => {});
+        } catch (e) {
+            console.error("Erro ao sincronizar vídeo:", e);
         }
-    };
 
-    const handleSlideChange = (idx) => {
-        if (liveSessionId) {
-            keryx.entities.LiveSession.update(liveSessionId, { currentSlideIndex: idx }).catch(() => {});
+        // Também enviar para janela local se existir
+        if (videoWindow && !videoWindow.closed) {
+            videoWindow.postMessage({ type: "VIDEO_DATA", videoUrl: data.audio_url, title: data.title }, "*");
+            videoWindow.focus();
         }
     };
 
@@ -525,7 +407,7 @@ export default function Services() {
                                 </Button>
                                 <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
                                     {selectedService.title}
-                                    {liveSessionId && (
+                                    {isLive && (
                                         <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-red-600 text-white animate-pulse">
                                             ● LIVE
                                         </span>
@@ -535,8 +417,7 @@ export default function Services() {
                                             ENSAIO
                                         </span>
                                     )}
-                                    {liveSessionId && <LatencyIndicator liveSessionId={liveSessionId} />}
-                                    <ServiceTimer active={!!liveSessionId} startTime={sessionStartTime} />
+                                    <ServiceTimer active={isLive} startTime={live?.session?.startedAt ?? null} />
                                 </h1>
                                 <p className="mt-1 text-sm text-gray-500">
                                     {selectedService.date} {selectedService.time && `às ${selectedService.time}`}
@@ -581,7 +462,7 @@ export default function Services() {
                                 >
                                     📡 OBS
                                 </Button>
-                                <QrCodePanel channel={liveSessionId} songTitle={activeLyricSong?.title} />
+                                <QrCodePanel songTitle={live?.content?.title} />
                                 <Button
                                     onClick={stopProjection}
                                     variant="destructive"
@@ -600,7 +481,7 @@ export default function Services() {
                                 exit={{ opacity: 0, height: 0 }}
                                 className="mb-6"
                             >
-                                <ObsIntegration channel={liveSessionId} />
+                                <ObsIntegration />
                             </motion.div>
                         )}
 
@@ -629,18 +510,12 @@ export default function Services() {
                     <VideoPlayerPanel
                         song={activeVideoSong}
                         onClose={() => setActiveVideoSong(null)}
-                        onSendToProjection={(song) => sendItemToProjection({ type: "song", data: song })}
+                        onSendToProjection={(song) => playSong(song)}
                         videoWindow={videoWindow}
                     />
                 )}
-                {activeLyricSong && (
-                    <LyricPlayerPanel
-                        song={activeLyricSong}
-                        stageWindow={null}
-                        lyricSyncId={activeLyricSyncId}
-                        onSlideChange={handleSlideChange}
-                        onClose={() => setActiveLyricSong(null)}
-                    />
+                {lyricPanelOpen && (
+                    <LyricPlayerPanel rehearsal={rehearsal} onClose={() => { setLyricPanelOpen(false); setRehearsal(null); }} />
                 )}
                 <RemoteProjectionDialog
                     open={remoteDialogOpen}

@@ -2,21 +2,22 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CommunicationProjectionView from "@/components/projection/CommunicationProjectionView";
 import TabletVideoReceiver from "@/components/projection/TabletVideoReceiver";
+import { keryx } from "@/api/keryxClient";
+import { projection } from "@/lib/projection";
+import { useLiveState } from "@/hooks/useLiveState";
+import { useChurchLogo } from "@/hooks/useChurchLogo";
+import { currentSlide as slideOf } from "@shared/live-state.mjs";
 
+// The main projector. Lyrics and Bible passages come from the live state
+// (shared/live-state.mjs); media, tools and communication still arrive by
+// postMessage from the operator window until they move there too.
 export default function Projection() {
-    const [currentSlide, setCurrentSlide] = useState(0);
-    const [slides, setSlides] = useState([]);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [songTitle, setSongTitle] = useState("");
+    const live = useLiveState();
+    const content = live?.content || null;
+    const logo = useChurchLogo();
     const [mediaMode, setMediaMode] = useState(null);
     const [mediaUrl, setMediaUrl] = useState("");
-    const [audioUrl, setAudioUrl] = useState(null);
-    const [audioRef, setAudioRef] = useState(null);
-    const [backgroundImage, setBackgroundImage] = useState(null);
-    const [manualControl, setManualControl] = useState(false);
-    const [fontSize, setFontSize] = useState("large");
-    const [fontFamily, setFontFamily] = useState("sans");
-    const [textEffect, setTextEffect] = useState("shadow");
+    const [mediaTitle, setMediaTitle] = useState("");
     const [playlist, setPlaylist] = useState([]);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [isSequencePlaying, setIsSequencePlaying] = useState(false);
@@ -66,55 +67,25 @@ export default function Projection() {
 
         // Listen for messages from the control window
         const handleMessage = (event) => {
-            console.log("Projection received message:", event.data);
-            
-            if (event.data.type === "PROJECTION_DATA") {
+            if (!event.data || !event.data.type) return;
+            if (event.data.type === "MEDIA_PROJECTION") {
                 setCommPayload(null);
                 setIsSequencePlaying(false);
                 setPlaylist([]);
-                setMediaMode(null);
-                const slidesWithStyle = (event.data.slides || []).map(slide => ({
-                    ...slide,
-                    text_color: event.data.text_color,
-                    text_color_2: event.data.text_color_2,
-                    text_effect: event.data.text_effect,
-                    is_bible: event.data.is_bible || false,
-                    bible_reference: event.data.bible_reference || null,
-                }));
-                setSlides(slidesWithStyle);
-                setSongTitle(event.data.title || "");
-                setAudioUrl(event.data.audio_url || null);
-                setBackgroundImage(event.data.background_image || null);
-                setFontSize(event.data.font_size || "large");
-                setFontFamily(event.data.font_family || "sans");
-                setTextEffect(event.data.text_effect || "shadow");
-                setCurrentSlide(0);
-                setIsPlaying(true);
-            } else if (event.data.type === "MEDIA_PROJECTION") {
-                setCommPayload(null);
-                setIsSequencePlaying(false);
-                setPlaylist([]);
-                setSlides([]);
-                setIsPlaying(false);
                 setMediaMode(event.data.mediaType);
                 setMediaUrl(event.data.fileUrl);
-                setSongTitle(event.data.title || "");
+                setMediaTitle(event.data.title || "");
             } else if (event.data.type === "MEDIA_SEQUENCE") {
                 setCommPayload(null);
-                setSlides([]);
-                setIsPlaying(false);
                 setPlaylist(event.data.playlist);
                 setCurrentMediaIndex(0);
                 setIsSequencePlaying(true);
             } else if (event.data.type === "STOP_PROJECTION") {
                 setCommPayload(null);
-                setIsPlaying(false);
                 setMediaMode(null);
                 setIsSequencePlaying(false);
                 setPlaylist([]);
             } else if (event.data.type === "COMMUNICATION_DATA") {
-                setSlides([]);
-                setIsPlaying(false);
                 setMediaMode(null);
                 setIsSequencePlaying(false);
                 setPlaylist([]);
@@ -122,15 +93,10 @@ export default function Projection() {
                 setCommPayload({ video: event.data.video });
                 setCommKey((k) => k + 1);
             } else if (event.data.type === "COMMUNICATION_SEQUENCE") {
-                setSlides([]);
-                setIsPlaying(false);
                 setMediaMode(null);
                 setToolMode(null);
                 setCommPayload({ playlist: event.data.playlist, isSequence: true });
                 setCommKey((k) => k + 1);
-            } else if (event.data.type === "SLIDE_INDEX") {
-                setCurrentSlide(event.data.index);
-                setManualControl(true);
             } else if (event.data.type === "PROJECTION_TOOL") {
                 // Ferramentas: clock, stopwatch, timer, black, freetext
                 setCommPayload(null);
@@ -140,9 +106,6 @@ export default function Projection() {
                 } else {
                     setToolMode(event.data.mode);
                     setToolData(event.data.payload || {});
-                    // Limpa modo de slides quando ativa uma ferramenta
-                    setSlides([]);
-                    setIsPlaying(false);
                     setMediaMode(null);
                     setIsSequencePlaying(false);
                     setPlaylist([]);
@@ -154,80 +117,56 @@ export default function Projection() {
         return () => window.removeEventListener("message", handleMessage);
     }, []);
 
+    // Showing a song or passage takes down whatever postMessage put up.
+    const contentKey = content?.startedAt ?? null;
     useEffect(() => {
-        if (!isPlaying || slides.length === 0 || manualControl) return;
+        if (contentKey === null) return;
+        setToolMode(null);
+        setToolData({});
+        setCommPayload(null);
+        setMediaMode(null);
+        setIsSequencePlaying(false);
+        setPlaylist([]);
+    }, [contentKey]);
 
-        const currentSlideDuration = slides[currentSlide]?.duration || 10;
-        const timer = setTimeout(() => {
-            if (currentSlide < slides.length - 1) {
-                setCurrentSlide(currentSlide + 1);
-            } else {
-                setIsPlaying(false);
-                if (audioRef) {
-                    audioRef.pause();
-                }
-            }
-        }, currentSlideDuration * 1000);
-
-        return () => clearTimeout(timer);
-    }, [currentSlide, isPlaying, slides, audioRef, manualControl]);
-
+    // Arrows, space and clicks move the live slide (every screen follows).
+    // Slides change only when the operator moves them: no timer here.
+    const hasContent = Boolean(content);
     useEffect(() => {
-        if (audioUrl && isPlaying && audioRef) {
-            audioRef.play();
-        }
-    }, [audioUrl, isPlaying, audioRef]);
-
-    useEffect(() => {
+        if (!keryx.isDesktop || !hasContent) return undefined;
+        const fail = (err) => console.error("[keryx] slide:", err);
         const handleKeyPress = (e) => {
-            if (slides.length === 0) return;
-
             if (e.key === "ArrowRight" || e.key === " ") {
                 e.preventDefault();
-                if (currentSlide < slides.length - 1) {
-                    setCurrentSlide(currentSlide + 1);
-                    setManualControl(true);
-                }
+                projection.next().catch(fail);
             } else if (e.key === "ArrowLeft") {
                 e.preventDefault();
-                if (currentSlide > 0) {
-                    setCurrentSlide(currentSlide - 1);
-                    setManualControl(true);
-                }
-            } else if (e.key === "a" || e.key === "A") {
-                setManualControl(!manualControl);
+                projection.prev().catch(fail);
             }
         };
-
         const handleClick = (e) => {
-            if (slides.length === 0) return;
-
-            const clickX = e.clientX;
-            const screenWidth = window.innerWidth;
-
-            if (clickX > screenWidth / 2) {
-                // Clique na metade direita - avançar
-                if (currentSlide < slides.length - 1) {
-                    setCurrentSlide(currentSlide + 1);
-                    setManualControl(true);
-                }
-            } else {
-                // Clique na metade esquerda - voltar
-                if (currentSlide > 0) {
-                    setCurrentSlide(currentSlide - 1);
-                    setManualControl(true);
-                }
-            }
+            if (e.clientX > window.innerWidth / 2) projection.next().catch(fail);
+            else projection.prev().catch(fail);
         };
-
         window.addEventListener("keydown", handleKeyPress);
         window.addEventListener("click", handleClick);
-
         return () => {
             window.removeEventListener("keydown", handleKeyPress);
             window.removeEventListener("click", handleClick);
         };
-    }, [currentSlide, slides, manualControl]);
+    }, [hasContent]);
+
+    // The operator's black / logo screen covers everything.
+    if (live?.screen === "black") {
+        return <div className="min-h-screen bg-black" />;
+    }
+    if (live?.screen === "logo") {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                {logo && <img src={logo} alt="" className="max-h-[50vh] max-w-[60vw] object-contain" />}
+            </div>
+        );
+    }
 
     // === Modos de Ferramentas ===
     if (toolMode === "black") {
@@ -343,7 +282,7 @@ export default function Projection() {
     // Sequence/Playlist mode
     if (isSequencePlaying && playlist.length > 0) {
         const currentMedia = playlist[currentMediaIndex];
-        
+
         const handleMediaEnded = () => {
             setCurrentMediaIndex((prev) => (prev + 1) % playlist.length);
         };
@@ -412,10 +351,10 @@ export default function Projection() {
     if (mediaMode === "image") {
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8">
-                <h2 className="text-3xl font-semibold text-white mb-4">{songTitle}</h2>
+                <h2 className="text-3xl font-semibold text-white mb-4">{mediaTitle}</h2>
                 <img
                     src={mediaUrl}
-                    alt={songTitle}
+                    alt={mediaTitle}
                     className="max-w-full max-h-[85vh] object-contain"
                 />
             </div>
@@ -427,7 +366,7 @@ export default function Projection() {
             <div className="min-h-screen bg-black flex flex-col items-center justify-center">
                 <img
                     src={mediaUrl}
-                    alt={songTitle}
+                    alt={mediaTitle}
                     className="max-w-full max-h-screen object-contain"
                 />
             </div>
@@ -439,7 +378,7 @@ export default function Projection() {
             <div className="min-h-screen bg-black flex items-center justify-center">
                 <iframe
                     src={mediaUrl}
-                    title={songTitle}
+                    title={mediaTitle}
                     className="w-full h-screen border-0"
                 />
             </div>
@@ -449,7 +388,7 @@ export default function Projection() {
     if (mediaMode === "powerpoint") {
         return (
             <div className="min-h-screen bg-gradient-to-br from-background via-primary/20 to-accent/20 flex flex-col items-center justify-center p-8">
-                <h2 className="text-3xl font-semibold text-white mb-4">{songTitle}</h2>
+                <h2 className="text-3xl font-semibold text-white mb-4">{mediaTitle}</h2>
                 <div className="bg-white/10 p-8 rounded-lg backdrop-blur-sm">
                     <p className="text-2xl text-blue-300 mb-4">
                         PowerPoint carregado
@@ -466,7 +405,7 @@ export default function Projection() {
         );
     }
 
-    if (slides.length === 0) {
+    if (!content) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-900 via-teal-900 to-lime-900 flex items-center justify-center">
                 <TabletVideoReceiver />
@@ -580,6 +519,16 @@ export default function Projection() {
         };
     };
 
+    const style = content.style || {};
+    const fontSize = style.font_size || "large";
+    const fontFamily = style.font_family || "sans";
+    const textEffect = style.text_effect || "shadow";
+    const backgroundImage = style.background_image || null;
+    const songTitle = content.title;
+    const isBible = content.kind === "bible";
+    const reference = content.ref?.reference || content.title;
+    const slide = { ...(slideOf(content) || { text: "" }), text_color: style.text_color, text_color_2: style.text_color_2, text_effect: textEffect };
+
     const isGradient = backgroundImage && backgroundImage.includes('gradient');
     const isImageUrl = backgroundImage && (backgroundImage.startsWith('http') || backgroundImage.startsWith('data:'));
     const isSolidColor = backgroundImage && !isGradient && !isImageUrl;
@@ -607,10 +556,11 @@ export default function Projection() {
             )}
 
             {/* Audio player (hidden) */}
-            {audioUrl && (
+            {content.audio && (
                 <audio
-                    ref={setAudioRef}
-                    src={audioUrl}
+                    key={content.startedAt}
+                    src={content.audio}
+                    autoPlay
                     className="hidden"
                 />
             )}
@@ -622,7 +572,7 @@ export default function Projection() {
                     <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }}></div>
                 </div>
             )}
-            
+
             {/* Overlay para gradientes (melhor legibilidade) */}
             {isGradient && (
                 <div className="absolute inset-0 bg-black/30"></div>
@@ -637,33 +587,26 @@ export default function Projection() {
                 >
                     <h2 className={`text-2xl font-semibold ${fontFamilyClasses[fontFamily]}`}
                         style={{
-                            color: slides[currentSlide]?.text_color || "#ffffff",
-                            ...getTextEffectStyle(slides[currentSlide]?.text_effect || textEffect)
+                            color: slide.text_color || "#ffffff",
+                            ...getTextEffectStyle(textEffect)
                         }}>
                         {songTitle}
                     </h2>
                 </motion.div>
             )}
 
-            {/* Indicador Modo Manual/Automático — discreto em baixo */}
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
-                <span className="text-xs px-3 py-1 rounded-full bg-black/40 text-white/40 tracking-widest uppercase">
-                    {manualControl ? "● Manual" : "▶ Automático"}
-                </span>
-            </div>
-
             {/* Main slide content */}
             <div className="relative z-10 w-full max-w-6xl px-12">
                 <AnimatePresence mode="wait">
                     <motion.div
-                        key={currentSlide}
+                        key={`${content.startedAt}:${content.index}`}
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -30 }}
                         transition={{ duration: 0.5, ease: "easeInOut" }}
                         className="text-center flex flex-col items-center gap-8"
                     >
-                        {slides[currentSlide]?.is_bible ? (
+                        {isBible ? (
                             <>
                                 {/* Bible reference badge — professional glass style */}
                                 <div className="flex flex-col items-center gap-5">
@@ -686,7 +629,7 @@ export default function Projection() {
                                                 color: "rgba(255,255,255,0.92)",
                                                 textShadow: "0 2px 12px rgba(0,0,0,0.9)",
                                             }}>
-                                            {slides[currentSlide]?.bible_reference}
+                                            {reference}
                                         </span>
                                     </motion.div>
                                     {/* Elegant divider */}
@@ -700,11 +643,11 @@ export default function Projection() {
                                 {/* Bible verse text with verse number badges */}
                                 <div className={`${fontSizeClasses[fontSize]} ${fontFamilyClasses[fontFamily]} font-semibold leading-loose text-center max-h-[58vh] overflow-y-auto`}
                                     style={{
-                                        color: slides[currentSlide]?.text_color || "#ffffff",
-                                        ...getTextEffectStyle(slides[currentSlide]?.text_effect || textEffect)
+                                        color: slide.text_color || "#ffffff",
+                                        ...getTextEffectStyle(textEffect)
                                     }}>
                                     {(() => {
-                                        const text = slides[currentSlide]?.text || "";
+                                        const text = slide.text || "";
                                         const verseRegex = /(\d+)\s+([\s\S]*?)(?=\s+\d+\s|$)/g;
                                         const verses = [];
                                         let m;
@@ -728,7 +671,7 @@ export default function Projection() {
                                                     }}>
                                                     {v.number}
                                                 </span>
-                                                <span style={getGradientTextStyle(slides[currentSlide])} className="text-left flex-1">
+                                                <span style={getGradientTextStyle(slide)} className="text-left flex-1">
                                                     {v.text}
                                                 </span>
                                             </div>
@@ -741,14 +684,14 @@ export default function Projection() {
                                     <div className="h-px w-16 bg-gradient-to-r from-transparent to-white/20"></div>
                                     <span className={`text-sm font-medium tracking-[0.2em] uppercase ${fontFamilyClasses[fontFamily]}`}
                                         style={{ color: "rgba(255,255,255,0.45)", textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
-                                        {slides[currentSlide]?.bible_reference}
+                                        {reference}
                                     </span>
                                     <div className="h-px w-16 bg-gradient-to-l from-transparent to-white/20"></div>
                                 </div>
                             </>
                         ) : (
                             <div className="flex flex-col items-center gap-4">
-                                {slides[currentSlide]?.is_chorus && (
+                                {slide.is_chorus && (
                                     <div className="px-5 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/40">
                                         <span className="text-amber-300 text-sm font-bold uppercase tracking-[0.2em]"
                                             style={{ textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
@@ -756,14 +699,14 @@ export default function Projection() {
                                         </span>
                                     </div>
                                 )}
-                                <p 
-                                    className={`${fontSizeClasses[fontSize]} ${fontFamilyClasses[fontFamily]} font-bold leading-relaxed whitespace-pre-wrap ${slides[currentSlide]?.is_chorus ? "italic" : ""}`}
+                                <p
+                                    className={`${fontSizeClasses[fontSize]} ${fontFamilyClasses[fontFamily]} font-bold leading-relaxed whitespace-pre-wrap ${slide.is_chorus ? "italic" : ""}`}
                                     style={{
-                                        opacity: slides[currentSlide]?.is_chorus ? 0.95 : 1,
-                                        ...getGradientTextStyle(slides[currentSlide])
+                                        opacity: slide.is_chorus ? 0.95 : 1,
+                                        ...getGradientTextStyle(slide)
                                     }}
                                 >
-                                    {slides[currentSlide]?.text}
+                                    {slide.text}
                                 </p>
                             </div>
                         )}

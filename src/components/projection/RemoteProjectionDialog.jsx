@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
  * open a projection pop-up window. Instead of spawning a window (which is
  * blocked or impractical on mobile), it guides the user to use the remote
  * projection feature — pairing a tablet/TV via QR code and syncing through
- * the database (VideoSync / LyricSync entities).
+ * the live state and the database.
  *
  * Props:
  *  - open: boolean

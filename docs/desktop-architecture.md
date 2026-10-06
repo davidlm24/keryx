@@ -170,9 +170,28 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
 **Migration steps:**
 
 1. Engine only (above). No page uses it yet. **Done.**
-2. Lyrics and Bible: a shared `useProjectionControl()` for Home/Services/
-   Bible; `/Projection`, `LyricProjection`, `StageView`, `PastorView` render
-   `content`. `LyricSync`, `LiveSession` and the lyric postMessages go.
+2. Lyrics and Bible. **Done.** Home and Services share
+   `src/hooks/useProjectionControl.js` (go live with a song or passage,
+   Parar, Esc, the close warning; `songContent`/`passageContent` turn rows
+   into content); Bible uses the same content helpers. `LyricPlayerPanel`
+   moves the live slide (Modo Ensaio steps locally). `/Projection`,
+   `LyricProjection`, `StageView` and `PastorView` render `content`;
+   video and Escola bíblica screens clear when the session ends
+   (`useLiveSessionEnded`). Nothing writes `LyricSync`, `LiveSession` or
+   `ProjectionState` any more; `LatencyIndicator`, `useLiveSessionChannel`
+   and `sessionCleanup` are gone. Behaviour changes:
+   - the projector no longer advances slides on its own timer (it used to,
+     every 10 s, until the operator touched a key); the panel's Auto button
+     (Space) advances every screen together;
+   - the stage gets chords, key, BPM and notes on network screens too, and
+     clears on Parar (it used to miss the stop message); its song time counts
+     from when the operator put the song up;
+   - Bible passages from Cultos get the Bible layout (they lost it before);
+   - arrows/clicks on the projector window move the live slide everywhere;
+   - the QR code / OBS links no longer carry a `?ch=` no screen read.
+   The smoke run clicks through Músicas (Projetar, arrow key, Parar
+   Projeção) and checks the projector; `KERYX_SMOKE_SHOTS=<folder>` saves
+   screenshots of projector, stage and operator page.
 3. Video, media, YouTube: `VideoSync`/`VideoControl` go.
 4. Tools, communication, overlays, alert, black/logo. `CommunicationProjection`
    becomes a view of the communication layer.
@@ -393,7 +412,7 @@ development time, not calendar time.
 | 3 | Media + Bible | **Done** (thumbnails skipped, Bibles installed rather than bundled; sections 4–5). Media library on disk, offline verse lookup and search, bundled backgrounds and logo | 2–3 days |
 | 4 | Ship it | **Built.** Backups, export/import, updater (off until a release repo exists), unsigned NSIS installer, logs and diagnostics. Not yet done: install on the booth PC and run a service with it | 2 days |
 | 5 | Network screens | **Built.** LAN server (off until enabled), screen routes only, read-only API, PIN, QR code in Settings, auto-reconnect, StageView fed from the database | 2–3 days |
-| 6 | Redesign | Live-state projection engine (section 2; step 1 of 6 built), one control module, then the UI/UX work | separate plan |
+| 6 | Redesign | Live-state projection engine (section 2; steps 1–2 of 6 built), one control module, then the UI/UX work | separate plan |
 
 Phases 1 and 2 are the risk; after them, nothing depends on the internet.
 

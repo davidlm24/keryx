@@ -32,8 +32,10 @@ wiring, the data model and the known gaps.
   `electron/live.cjs`). Operator pages change it only through
   `src/lib/projection.js`; outputs read it with `useLiveState()`. A new kind
   of content is a new op in `shared/live-state.mjs` with a test there, not a
-  new sync table or postMessage type. Being migrated (docs, section 2): the
-  old sync tables and postMessage still drive what isn't moved yet.
+  new sync table or postMessage type. Being migrated (docs, section 2):
+  lyrics and Bible are on it; video, media, tools, communication and Escola
+  bíblica still use their sync tables and postMessage. Going live from an
+  operator page goes through `useProjectionControl()`.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. On desktop every
   write reaches every window with the whole row, deletes included.

@@ -3,11 +3,11 @@ import { keryx } from "@/api/keryxClient";
 
 /**
  * Reconecta automaticamente a subscrição de projeção quando a conexão volta.
- * Re-busca o estado atual (LyricSync, VideoSync, LiveSession) para que o
+ * Re-busca o estado atual (VideoSync; letras vêm do estado ao vivo) para que o
  * tablet remoto sincronize em vez de ficar em branco após uma queda de rede.
  *
  * @param {function} onReconnect - chamada quando a conexão volta; recebe o estado atual
- * @param {string} entityType - entidade a re-buscar (ex: "LyricSync", "VideoSync")
+ * @param {string} entityType - entidade a re-buscar (ex: "VideoSync")
  */
 export function useProjectionReconnect(onReconnect, entityType) {
     const callbackRef = useRef(onReconnect);

@@ -1,62 +1,26 @@
-import React, { useState, useEffect, useRef } from "react";
-import { keryx } from "@/api/keryxClient";
+import React from "react";
 import { Clock, Bell, Eye, MessageSquare } from "lucide-react";
+import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 
+// The pastor's screen: what the congregation sees now (the live content),
+// the clock and the service time.
 export default function PastorView() {
-    const [currentSlide, setCurrentSlide] = useState(0);
-    const [slides, setSlides] = useState([]);
-    const [songTitle, setSongTitle] = useState("");
-    const [clock, setClock] = useState(new Date());
-    const [elapsed, setElapsed] = useState(0);
-    const [pastorNotes, setPastorNotes] = useState("Bem-vindo à casa do Senhor! 🙏");
-    const [nextItem, setNextItem] = useState("—");
-    const startTimeRef = useRef(Date.now());
+    const live = useLiveState();
+    const content = live?.content || null;
+    const nowMs = useLiveNow(1000);
+    const clock = new Date(nowMs);
+    const startedAt = live?.session?.startedAt;
+    const elapsed = startedAt ? Math.max(0, Math.floor((nowMs - startedAt) / 1000)) : 0;
+    const pastorNotes = "Bem-vindo à casa do Senhor! 🙏";
+    const nextItem = "—";
 
-    useEffect(() => {
-        const timer = setInterval(() => { setClock(new Date()); setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000)); }, 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    useEffect(() => {
-        const unsub = keryx.entities.ProjectionState.subscribe((event) => {
-            if (event.type === "create" || event.type === "update") {
-                const s = event.data;
-                setSlides(s.bible_text ? [{ text: s.bible_text, is_bible: true, bible_reference: s.bible_reference }] : []);
-                setSongTitle(s.bible_reference || s.song_id || "");
-            }
-        });
-
-        // Load initial state
-        const loadInitial = async () => {
-            try {
-                const states = await keryx.entities.ProjectionState.list("-updated_at", 1);
-                if (states.length > 0) {
-                    const s = states[0];
-                    if (s.bible_text) {
-                        setSlides([{ text: s.bible_text, is_bible: true, bible_reference: s.bible_reference }]);
-                        setSongTitle(s.bible_reference || "");
-                    }
-                }
-            } catch (e) {}
-        };
-        loadInitial();
-
-        // Listen for direct messages from control window
-        const handleMessage = (event) => {
-            if (event.data.type === "PROJECTION_DATA") {
-                const slidesData = (event.data.slides || []).map(s => ({ ...s, is_bible: event.data.is_bible, bible_reference: event.data.bible_reference }));
-                setSlides(slidesData);
-                setSongTitle(event.data.title || event.data.bible_reference || "");
-                setCurrentSlide(0);
-            }
-            if (event.data.type === "SLIDE_INDEX") setCurrentSlide(event.data.index);
-            if (event.data.type === "PASTOR_NOTE") setPastorNotes(event.data.text || pastorNotes);
-            if (event.data.type === "PASTOR_NEXT") setNextItem(event.data.text || "—");
-        };
-        window.addEventListener("message", handleMessage);
-
-        return () => { unsub(); window.removeEventListener("message", handleMessage); };
-    }, []);
+    const slides = (content?.slides || []).map((slide) => ({
+        ...slide,
+        is_bible: content.kind === "bible",
+        bible_reference: content.ref?.reference || content.title,
+    }));
+    const currentSlide = content?.index || 0;
+    const songTitle = content?.title || "";
 
     const formatTime = (d) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     const formatDate = (d) => d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });

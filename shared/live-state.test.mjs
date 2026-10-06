@@ -17,6 +17,8 @@ test("showing lyrics: slides normalised, index clamped, rev and updatedAt move",
     assert.deepEqual(s.content.style, { font_size: "large" }, "unknown style keys are dropped");
     assert.equal(s.content.stage.song_key, "G");
     assert.equal(s.content.kind, "lyrics");
+    assert.equal(s.content.audio, null);
+    assert.equal(run([["content.show", { slides: ["x"], audio: "keryx-media://faixa.mp3" }]]).content.audio, "keryx-media://faixa.mp3");
     assert.equal(currentSlide(s.content).text, "três");
     assert.equal(nextSlide(s.content), null);
 });

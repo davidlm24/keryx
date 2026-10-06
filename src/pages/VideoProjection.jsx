@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { keryx } from "@/api/keryxClient";
-import { useLiveSessionChannel } from "@/hooks/useLiveSessionChannel";
+import { useLiveSessionEnded } from "@/hooks/useLiveSessionEnded";
 import { useProjectionReconnect } from "@/hooks/useProjectionReconnect";
 import { isYouTubeUrl, getYouTubeId } from "@/utils/youtube";
 
@@ -13,7 +13,12 @@ export default function VideoProjection() {
     const ytPlayerRef = useRef(null);
     const ytContainerRef = useRef(null);
     const lastControlId = useRef(null);
-    const channelRef = useLiveSessionChannel();
+
+    // Parar on the operator PC ends the session: clear the video.
+    useLiveSessionEnded(() => {
+        setVideoUrl("");
+        setTitle("");
+    });
 
     const isYouTube = isYouTubeUrl(videoUrl);
 
@@ -131,18 +136,6 @@ export default function VideoProjection() {
             }
         });
 
-        const unsubLive = keryx.entities.LiveSession.subscribe((event) => {
-            if (event.type === 'create' && event.data?.status === "active" && !channelRef.current) {
-                channelRef.current = event.data.channel;
-            }
-            if ((event.type === 'create' || event.type === 'update') && event.data?.status === "ended") {
-                if (!channelRef.current || event.data.channel === channelRef.current) {
-                    setVideoUrl("");
-                    setTitle("");
-                }
-            }
-        });
-
         const fetchInitial = async () => {
             try {
                 const [videos, controls] = await Promise.all([
@@ -198,7 +191,6 @@ export default function VideoProjection() {
         return () => {
             unsubVideo();
             unsubControl();
-            unsubLive();
             window.removeEventListener("message", handleMessage);
         };
     }, [isYouTube]);

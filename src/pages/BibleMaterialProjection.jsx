@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { keryx } from "@/api/keryxClient";
-import { useLiveSessionChannel } from "@/hooks/useLiveSessionChannel";
+import { useLiveSessionEnded } from "@/hooks/useLiveSessionEnded";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
 
 const FONT_SIZES = { xsmall: "1.6rem", small: "2.2rem", medium: "3rem", large: "4rem", xlarge: "5rem", xxlarge: "6.5rem" };
@@ -12,23 +12,12 @@ export default function BibleMaterialProjection() {
     const [isOnline, setIsOnline] = useState(true);
     const urlParams = new URLSearchParams(window.location.search);
     const channel = urlParams.get("channel");
-    const liveChannelRef = useLiveSessionChannel();
 
-    // Subscrição da LiveSession — limpa a tela quando a sessão termina (com filtro por canal)
-    useEffect(() => {
-        const unsubscribe = keryx.entities.LiveSession.subscribe((event) => {
-            if (event.type === 'create' && event.data?.status === "active" && !liveChannelRef.current) {
-                liveChannelRef.current = event.data.channel;
-            }
-            if ((event.type === 'create' || event.type === 'update') && event.data?.status === "ended") {
-                if (!liveChannelRef.current || event.data.channel === liveChannelRef.current) {
-                    setState(null);
-                    setSlideIndex(0);
-                }
-            }
-        });
-        return () => unsubscribe();
-    }, []);
+    // Parar on the operator PC ends the session: clear the screen.
+    useLiveSessionEnded(() => {
+        setState(null);
+        setSlideIndex(0);
+    });
 
     useEffect(() => {
         if (!channel) return;

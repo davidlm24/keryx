@@ -1,10 +1,14 @@
 import React, { useRef, useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, SkipBack, SkipForward, Play, Pause } from "lucide-react";
-import { keryx } from "@/api/keryxClient";
-import { sendToProjection } from "@/lib/projectionWindow";
+import { projection } from "@/lib/projection";
+import { useLiveState } from "@/hooks/useLiveState";
 
-export default function LyricPlayerPanel({ song, onClose, projectionWindow, stageWindow, lyricSyncId, onSlideChange }) {
-    const [slideIndex, setSlideIndex] = useState(0);
+// Floating slide control for what is live: every screen follows the live
+// state, so moving here moves them all. With `rehearsal` (Modo Ensaio:
+// { title, slides }) it only steps through the slides locally.
+export default function LyricPlayerPanel({ onClose, rehearsal = null }) {
+    const live = useLiveState((s) => s?.content);
+    const [localIndex, setLocalIndex] = useState(0);
     const [isAuto, setIsAuto] = useState(false);
     const autoTimerRef = useRef(null);
 
@@ -14,10 +18,9 @@ export default function LyricPlayerPanel({ song, onClose, projectionWindow, stag
     const dragging = useRef(false);
     const dragOffset = useRef({ x: 0, y: 0 });
 
-    const slides = song?.slides?.length
-        ? song.slides
-        : [{ text: song?.lyrics || "", duration: 30 }];
-
+    const content = rehearsal || live;
+    const slides = content?.slides?.length ? content.slides : [{ text: "" }];
+    const slideIndex = rehearsal ? localIndex : (live?.index ?? 0);
     const total = slides.length;
     const current = slides[slideIndex] || {};
 
@@ -32,6 +35,12 @@ export default function LyricPlayerPanel({ song, onClose, projectionWindow, stag
         touchStartX.current = null;
     };
 
+    const goTo = (idx) => {
+        const clamped = Math.max(0, Math.min(total - 1, idx));
+        if (rehearsal) setLocalIndex(clamped);
+        else projection.goTo(clamped).catch((err) => console.error("[keryx] slide:", err));
+    };
+
     // Atalhos de teclado: setas para slides, espaço para auto
     useEffect(() => {
         const onKey = (e) => {
@@ -42,55 +51,28 @@ export default function LyricPlayerPanel({ song, onClose, projectionWindow, stag
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [slideIndex, total]);
+    });
 
-    const sendSlide = (idx) => {
-        // Tanto o projetor local como o tablet subscrevem ao LyricSync —
-        // ambos recebem a mudança em simultâneo, sem diferença de tempo.
-        if (lyricSyncId) {
-            keryx.entities.LyricSync.update(lyricSyncId, { slide_index: idx, timestamp: Date.now() }).catch(() => {});
+    // Auto mode: this panel advances the live slide for every screen, each
+    // slide for its own duration (5 s when it has none).
+    useEffect(() => {
+        if (!isAuto) return undefined;
+        if (slideIndex >= total - 1) {
+            setIsAuto(false);
+            return undefined;
         }
-        // Janela única de projeção local (postMessage SLIDE_INDEX)
-        sendToProjection({ type: "SLIDE_INDEX", index: idx });
-        // Stage view (monitor do palco) continua via postMessage
-        if (stageWindow && !stageWindow.closed) {
-            stageWindow.postMessage({ type: "SLIDE_INDEX", index: idx }, "*");
-        }
-        if (onSlideChange) onSlideChange(idx);
-    };
+        autoTimerRef.current = setTimeout(() => goTo(slideIndex + 1), (slides[slideIndex]?.duration || 5) * 1000);
+        return () => clearTimeout(autoTimerRef.current);
+    }, [isAuto, slideIndex, total]);
 
-    const goTo = (idx) => {
-        const clamped = Math.max(0, Math.min(total - 1, idx));
-        setSlideIndex(clamped);
-        sendSlide(clamped);
-    };
-
-    // Auto mode
-    const startAuto = () => {
-        setIsAuto(true);
-        const tick = (currentIdx) => {
-            const next = currentIdx + 1;
-            if (next >= total) {
-                setIsAuto(false);
-                return;
-            }
-            goTo(next);
-            const dur = (slides[next]?.duration || 5) * 1000;
-            autoTimerRef.current = setTimeout(() => tick(next), dur);
-        };
-        const dur = (slides[slideIndex]?.duration || 5) * 1000;
-        autoTimerRef.current = setTimeout(() => tick(slideIndex), dur);
-    };
-
-    const stopAuto = () => {
+    // A new song starts with auto off, and in rehearsal at its first slide.
+    const songKey = content?.startedAt ?? content?.title;
+    useEffect(() => {
         setIsAuto(false);
-        clearTimeout(autoTimerRef.current);
-    };
+        setLocalIndex(0);
+    }, [songKey]);
 
-    const toggleAuto = () => {
-        if (isAuto) stopAuto();
-        else startAuto();
-    };
+    const toggleAuto = () => setIsAuto((on) => !on);
 
     // Drag
     const onMouseDown = (e) => {
@@ -111,13 +93,15 @@ export default function LyricPlayerPanel({ song, onClose, projectionWindow, stag
         return () => {
             window.removeEventListener("mousemove", onMouseMove);
             window.removeEventListener("mouseup", onMouseUp);
-            clearTimeout(autoTimerRef.current);
         };
     }, []);
 
     const panelStyle = pos.x !== null
         ? { position: "fixed", left: pos.x, top: pos.y, zIndex: 50 }
         : { position: "fixed", bottom: 16, left: 16, zIndex: 50 };
+
+    // Nothing live (stopped here or elsewhere): no panel.
+    if (!content) return null;
 
     return (
         <div
@@ -131,7 +115,7 @@ export default function LyricPlayerPanel({ song, onClose, projectionWindow, stag
                 onMouseDown={onMouseDown}
             >
                 <span className="text-white text-sm font-semibold truncate max-w-[200px]">
-                    🎤 {song?.title}
+                    {rehearsal ? "👁 " : "🎤 "}{content?.title}
                 </span>
                 <div onMouseDown={e => e.stopPropagation()}>
                     <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1">
