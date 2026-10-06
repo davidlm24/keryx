@@ -412,10 +412,17 @@ function createStore({ file, schema, log = console.warn }) {
         return Object.fromEntries(rows.filter((r) => r.value !== null).map((r) => [r.value, r.n]));
     }
 
+    // A consistent copy of the whole database while it is in use (VACUUM INTO
+    // takes its own read transaction); the target must not exist.
+    function backupTo(target) {
+        db.prepare("VACUUM INTO ?").run(target);
+    }
+
     return {
         call,
         importRows,
         countBy,
+        backupTo,
         onChange(listener) {
             listeners.add(listener);
             return () => listeners.delete(listener);

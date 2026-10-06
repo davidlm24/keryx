@@ -39,10 +39,43 @@ npm run desktop:dev       # the desktop app, hot reload
 | `npm run db:migrate:supabase` | the older Base44 → Supabase import, for the web build |
 | `npm run desktop:dev` | the desktop shell (Electron) on the Vite dev server, hot reload; F12 opens devtools |
 | `npm run desktop:start` | build, then open the desktop shell on the built app |
+| `npm run dist` | build the Windows installer, `release/KERYX-Setup-<version>.exe` (unsigned; `dist:dir` builds just the unpacked app) |
 | `npm run desktop:smoke` (`KERYX_SMOKE_FULLSCREEN=1` also opens a real fullscreen output on your primary display for a moment) | build, open the shell on a throwaway data folder, check it rendered and that data flows, exit (0 = OK). `KERYX_SMOKE=1 npm run desktop:dev` runs the same checks plus the renderer adapter end to end |
 
 If `npm install` did not download the Electron binary
 (`node_modules/electron/dist` missing), run `node node_modules/electron/install.js`.
+
+### Backups, moving data, updates
+
+Settings > "Dados, backup e atualizações" (desktop):
+
+- **Backup automático:** a copy of the database on launch and on close, one per
+  day, the last 14 kept, in `%APPDATA%\KERYX\backups` or a folder you choose
+  (OneDrive, Google Drive and USB folders work, and give you a copy off this
+  computer). Backups do not include media files.
+- **Exportar tudo / Importar:** one zip with the database and all media, to move
+  to another computer or keep as a full backup. Importing replaces the current
+  data and restarts KERYX; what was replaced stays in a `before-import-…`
+  folder inside the data folder until you delete it.
+- **Salvar diagnóstico:** a zip with recent logs and system info for support.
+- **Atualizações:** see "Releasing" below; off until a release repository is set.
+
+### Releasing a new version
+
+```bash
+# bump "version" in package.json, then
+npm run dist          # release/KERYX-Setup-<version>.exe
+```
+
+Copy the installer to the church computer and run it; data in `%APPDATA%\KERYX`
+is kept. Windows shows "Windows protected your PC" for the unsigned installer:
+More info > Run anyway.
+
+For in-app updates, create a GitHub repository for the releases, add
+`"publish": { "provider": "github", "owner": "<owner>", "repo": "<repo>" }` to the
+`build` section of `package.json`, and release with
+`GH_TOKEN=<token> npx electron-builder --win --publish always`. Installed copies
+then offer the new version in Settings; installing is always a click.
 
 ### Bible text
 

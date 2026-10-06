@@ -94,7 +94,7 @@ async function installFromSource(store, version, fetchImpl = fetch) {
     try {
         response = await fetchImpl(sourceUrl(version));
     } catch {
-        throw new BibleError("Sem ligação à internet. Tente de novo quando estiver online, ou instale a partir de um arquivo.", 503);
+        throw new BibleError("Sem conexão com a internet. Tente de novo quando estiver online, ou instale a partir de um arquivo.", 503);
     }
     if (!response.ok) throw new BibleError(`Não foi possível baixar a ${version} (HTTP ${response.status}).`, 502);
     return installFromJson(store, version, await response.text());

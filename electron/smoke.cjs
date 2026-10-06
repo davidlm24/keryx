@@ -161,6 +161,34 @@ async function checkOutputs(webContents, outputs, screen, { fullscreen }) {
     return result;
 }
 
+// Backups, logs and the Settings bridge, as the packaged app runs them.
+async function checkSystem(webContents, { dataDir, system }) {
+    const info = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("info")`)).data;
+    const made = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("backupNow")`)).data;
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const logs = fs.existsSync(path.join(dataDir, "logs")) ? fs.readdirSync(path.join(dataDir, "logs")).length : 0;
+    const result = {
+        version: info.version,
+        packaged: info.packaged,
+        backupsAfterLaunch: info.backup.count,
+        backupsAfterManual: made.backup.count,
+        backupOpens: false,
+        logs,
+        update: info.update.status,
+        ok: false,
+    };
+    try {
+        const { DatabaseSync } = require("node:sqlite");
+        const db = new DatabaseSync(path.join(made.backup.dir, made.backup.last.name), { readOnly: true });
+        result.backupOpens = db.prepare("SELECT COUNT(*) AS n FROM profile").get().n === 1;
+        db.close();
+    } catch { /* stays false */ }
+    result.ok = info.dataDir === dataDir && result.backupsAfterLaunch >= 1 && result.backupsAfterManual >= 1
+        && result.backupOpens && logs >= 1 && Boolean(system.info);
+    return result;
+}
+
 function expectAdapter(a) {
     return a.isDesktop === true
         && a.page === true
@@ -180,7 +208,7 @@ function expectAdapter(a) {
 const VERBOSE = process.env.KERYX_SMOKE_VERBOSE === "1";
 const step = (name) => { if (VERBOSE) console.log(`smoke: ${name}`); };
 
-function runSmokeTest(win, { dev, outputs, screen }) {
+function runSmokeTest(win, { dev, outputs, screen, system, dataDir, importOutcome }) {
     const errors = [];
     const { webContents } = win;
     const finish = (ok, details) => {
@@ -247,7 +275,8 @@ function runSmokeTest(win, { dev, outputs, screen }) {
             }
             step("bridge ok; checking outputs");
             const outputsResult = await checkOutputs(webContents, outputs, screen, { fullscreen: process.env.KERYX_SMOKE_FULLSCREEN === "1" });
-            finish(bridgeOk && adapterOk && outputsResult.ok, { rendered, bridge, adapter, outputs: outputsResult });
+            const systemResult = await checkSystem(webContents, { dataDir, system });
+            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && !importOutcome, { rendered, bridge, adapter, outputs: outputsResult, system: systemResult });
         } catch (err) {
             finish(false, { rendered, exception: String(err && err.message) });
         }

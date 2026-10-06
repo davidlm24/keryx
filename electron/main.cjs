@@ -7,6 +7,10 @@ const { registerDataIpc } = require("./data-ipc.cjs");
 const { createOutputManager } = require("./outputs-manager.cjs");
 const { createSettings } = require("./settings.cjs");
 const { outputKeyForUrl } = require("./outputs.cjs");
+const { createLogger, captureConsole } = require("./logger.cjs");
+const { applyPendingImport } = require("./archive.cjs");
+const { createUpdater } = require("./updater.cjs");
+const { createSystem } = require("./system.cjs");
 const schema = require("./db/schema.json");
 
 const HOST = "127.0.0.1";
@@ -27,20 +31,39 @@ const DEVTOOLS = Boolean(DEV_URL) || process.env.KERYX_DEVTOOLS === "1";
 // Everything the app keeps lives here: keryx.db, media/, and Chromium's own
 // profile (localStorage). Back up this folder and nothing is lost.
 const dataDir = process.env.KERYX_DATA_DIR || path.join(app.getPath("appData"), "KERYX");
+fs.mkdirSync(dataDir, { recursive: true });
+app.setPath("userData", dataDir);
+
+// Logs go to <dataDir>/logs (kept 7 days); "Salvar diagnóstico" bundles them.
+const logger = createLogger({ dir: path.join(dataDir, "logs") });
+captureConsole(logger);
+process.on("uncaughtException", (err) => logger.error("uncaughtException:", err && err.stack ? err.stack : err));
+process.on("unhandledRejection", (reason) => logger.error("unhandledRejection:", reason && reason.stack ? reason.stack : reason));
+
+// An import prepared by Settings > Importar is swapped in now, before the
+// database is opened (an open database file cannot be replaced on Windows).
+let importOutcome = null;
+try {
+    importOutcome = applyPendingImport(dataDir);
+    if (importOutcome) logger.info(`[keryx-import] aplicado; dados anteriores em ${importOutcome.archived}`);
+} catch (err) {
+    logger.error(`[keryx-import] não foi possível aplicar: ${err.stack || err.message}`);
+    importOutcome = { error: err.message };
+}
+
 const mediaDir = path.join(dataDir, "media");
 fs.mkdirSync(mediaDir, { recursive: true });
-app.setPath("userData", dataDir);
 
 let appUrl = "";
 let appOrigin = "";
 let mainWindow = null;
 let store = null;
 let outputs = null;
+let system = null;
 
 // Same database, same port: a second launch just focuses the first.
-if (!app.requestSingleInstanceLock()) {
-    app.quit();
-}
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) app.quit();
 app.on("second-instance", () => {
     if (!mainWindow) return;
     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -144,8 +167,16 @@ function fatal(title, message) {
     app.exit(1);
 }
 
+app.on("render-process-gone", (_e, contents, details) => logger.error(`render-process-gone: ${details.reason} (${contents.getURL()})`));
+app.on("child-process-gone", (_e, details) => logger.error(`child-process-gone: ${details.type} ${details.reason}`));
+
 app.whenReady().then(async () => {
+    if (!gotLock) return;
     Menu.setApplicationMenu(null);
+    logger.info(`KERYX ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
+    if (importOutcome && importOutcome.error) {
+        dialog.showErrorBox("Importação não aplicada", `Os dados anteriores foram mantidos.\n\n${importOutcome.error}`);
+    }
 
     try {
         store = createStore({ file: path.join(dataDir, "keryx.db"), schema, log: (m) => console.warn(m) });
@@ -177,16 +208,26 @@ app.whenReady().then(async () => {
     appUrl = DEV_URL || serverUrl;
     appOrigin = new URL(appUrl).origin;
 
+    const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
     outputs = createOutputManager({
         screen,
-        settings: createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m)),
+        settings,
         getOrigin: () => appOrigin,
         log: (m) => console.warn(m),
     });
 
+    const updater = createUpdater({ app, log: (m) => logger.info(m) });
+    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen });
+    try {
+        system.backupNow("ao abrir");
+    } catch { /* logged; the app still opens */ }
+    // Never installs by itself: it only finds out, and Settings says so.
+    if (updater.enabled() && !SMOKE && !DEV_URL) setTimeout(() => updater.check(), 8000);
+
     registerDataIpc({
         store,
         outputs,
+        system,
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
@@ -194,10 +235,15 @@ app.whenReady().then(async () => {
     });
 
     const win = createMainWindow();
-    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen });
+    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, dataDir, importOutcome });
 });
 
 app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
+    if (system) {
+        try {
+            system.backupNow("ao fechar");
+        } catch { /* logged */ }
+    }
     if (store) store.close();
 });

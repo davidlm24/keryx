@@ -1,7 +1,9 @@
 # KERYX as an offline-first desktop app
 
-Status: decisions settled 2026-10-06. Phases 0–3 (shell, local data, outputs,
-media and Bible) are done; the rest is not implemented.
+Status: decisions settled 2026-10-06. Phases 0–4 (shell, local data, outputs,
+media and Bible, shipping) are built; network screens and the redesign are
+not. Installing on the booth PC and running a real service is the last step of
+phase 4 and is the church's to do.
 
 ## Why
 
@@ -219,6 +221,35 @@ Before phase 3 nothing read the `bible_verse` table; every verse came from
 
 ## 8. Backups, updates, packaging
 
+**As built (phase 4):**
+
+- **Backups** (`electron/backup.cjs`): `VACUUM INTO` a consistent copy of
+  `keryx.db` on launch and on close, one file per day
+  (`keryx-YYYY-MM-DD.db`), the newest 14 kept, written under a temporary name
+  so a full disk never replaces a good backup. The folder is configurable in
+  Settings; an unplugged USB falls back to `%APPDATA%\KERYX\backups` rather
+  than skipping. Backups hold the database only (not media).
+- **Exportar tudo / Importar** (`electron/archive.cjs`): a zip with a
+  manifest, the database and `media/`. Import validates the zip (only
+  expected names, so a path-traversal entry is refused; the database must pass
+  `quick_check` and have KERYX tables), unpacks to `pending-import/`, and the
+  next launch swaps it in *before* the database opens (Windows cannot replace
+  an open file). Replaced data is moved to `before-import-<time>/`, never
+  deleted; a swap that fails halfway puts the old data back.
+- **Logs and diagnostics** (`electron/logger.cjs`, `system.cjs`): a daily log
+  in `%APPDATA%\KERYX\logs` (7 days) including crashes; "Salvar diagnóstico"
+  saves a zip of the recent logs plus system info (versions, displays, output
+  assignments, installed Bibles, backup state). Nothing is sent anywhere.
+- **Updates** (`electron/updater.cjs`, electron-updater): checks on launch,
+  never downloads or installs without a click. **Disabled** until a build has a
+  `publish` target (no GitHub repository exists yet); Settings says so.
+- **Installer:** `npm run dist` → `release/KERYX-Setup-<version>.exe` (NSIS,
+  per user, pt-BR, desktop and Start-menu shortcuts, unsigned: Windows shows
+  the "Run anyway" prompt once). Uninstalling does not delete
+  `%APPDATA%\KERYX`. `npm run dist:dir` builds the unpacked app only.
+
+Original plan, for reference:
+
 - **Backups:** SQLite online backup to `<backup folder>/keryx-YYYY-MM-DD.db`
   on launch and on close, keeping the last 14; the folder is configurable
   (USB stick, network share, OneDrive folder). "Exportar tudo" produces a
@@ -262,7 +293,7 @@ development time, not calendar time.
 | 1 | Local data | **Done.** SQLite store with Base44 query semantics (20 tests), adapter over IPC, change events, local operator profile, uploads to `media/`, import script from Base44. No Supabase requests in the desktop build. | 4–5 days |
 | 2 | Outputs | **Done**, except opening outputs at launch (see section 3). Display placement of the windows pages open, hot-plug re-placement, "Telas e saídas" settings, identify, test/close | 2–3 days |
 | 3 | Media + Bible | **Done** (thumbnails skipped, Bibles installed rather than bundled; sections 4–5). Media library on disk, offline verse lookup and search, bundled backgrounds and logo | 2–3 days |
-| 4 | Ship it | Backups, export/import, updater, installer, logs, install on the booth PC and run a service with it | 2 days |
+| 4 | Ship it | **Built.** Backups, export/import, updater (off until a release repo exists), unsigned NSIS installer, logs and diagnostics. Not yet done: install on the booth PC and run a service with it | 2 days |
 | 5 | Network screens | LAN server, screen routes, PIN, QR code in Settings | 2–3 days |
 | 6 | Redesign | Live-state projection engine, one control module, then the UI/UX work | separate plan |
 

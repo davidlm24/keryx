@@ -10,6 +10,7 @@ import QRCode from "react-qr-code";
 import { createPageUrl } from "@/utils";
 import ThemeEditorSection from "@/components/settings/ThemeEditorSection";
 import DisplaysSection from "@/components/settings/DisplaysSection";
+import SystemSection from "@/components/settings/SystemSection";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -695,6 +696,8 @@ export default function Settings() {
                     </Card>
 
                     {keryx.isDesktop && <DisplaysSection isMobile={isMobile} />}
+
+                    {keryx.isDesktop && <SystemSection isMobile={isMobile} />}
 
                     <ThemeEditorSection isMobile={isMobile} />
 

@@ -5,6 +5,7 @@
 //   keryx:config        sync    { mediaBaseUrl }
 //   keryx:displays:*    invoke  list / set / close / identify for output windows
 //   keryx:bible:*       invoke  installed versions, install from the web or a file
+//   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -17,7 +18,7 @@ function safeExtension(name) {
     return /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : "";
 }
 
-function registerDataIpc({ store, outputs, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
+function registerDataIpc({ store, outputs, system, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
 
     ipcMain.handle("keryx:db", (event, payload) => {
@@ -87,6 +88,18 @@ function registerDataIpc({ store, outputs, mediaDir, mediaBaseUrl, isTrustedSend
         if (canceled || !filePaths[0]) return null;
         return bible.installFromJson(store, version, await fs.promises.readFile(filePaths[0], "utf8"));
     }));
+
+    ipcMain.handle("keryx:system", async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const op = payload && payload.op;
+        if (!Object.prototype.hasOwnProperty.call(system.ops, op)) return { error: { message: `Operação desconhecida: ${op}.`, status: 400 } };
+        try {
+            return { data: await system.ops[op](event) };
+        } catch (err) {
+            log(`[keryx-system] ${op}: ${err && err.stack}`);
+            return { error: { message: err.message || "Falha na operação.", status: err.status || 500 } };
+        }
+    });
 
     ipcMain.on("keryx:config", (event) => {
         event.returnValue = { mediaBaseUrl };

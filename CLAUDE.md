@@ -46,6 +46,10 @@ wiring, the data model and the known gaps.
 - **`window.keryxDesktop.*` returns a fresh object on every access**
   (contextBridge). In a component, read it once into a ref; using it as an
   effect or callback dependency directly re-runs the effect on every render.
+- **Never replace or delete the live database file from the running app**
+  (Windows locks it). Importing stages a zip and swaps it in at the next
+  launch, before the store opens (`archive.cjs`); backups use `VACUUM INTO`.
+  Anything that deletes user data moves it aside instead.
 - **Media URLs:** the store keeps `keryx-media://<file>`; pages get
   `http://127.0.0.1:7700/media/<file>` from the adapter. Never write the http
   form into the database by other means, and keep checks like
@@ -60,6 +64,7 @@ npm run lint           # gates on errors only; ~90 warnings are advisory
 npm run build
 npm run desktop:smoke  # build + run the app on a temp data dir + in-app checks
 KERYX_SMOKE=1 npm run desktop:dev   # same checks + the renderer adapter end to end
+npm run dist           # Windows installer in release/ (unsigned)
 npm run db:schema      # after editing base44/entities/*.jsonc
 npm run db:import      # one-off Base44 -> local import; needs the user's token
 npm run dev            # web build in a browser, against Supabase
