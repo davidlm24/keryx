@@ -9,8 +9,10 @@ import { createPageUrl } from "@/utils";
 import DeviceCard from "@/components/projection/DeviceCard";
 import DeviceForm from "@/components/projection/DeviceForm";
 import SceneForm from "@/components/projection/SceneForm";
+import { useLanBaseUrl, LAN_OFF_HINT } from "@/hooks/useLanBaseUrl";
 
 export default function ProjectionManager() {
+  const { baseUrl: lanBaseUrl } = useLanBaseUrl();
   const [showDeviceForm, setShowDeviceForm] = useState(false);
   const [editingDevice, setEditingDevice] = useState(null);
   const [showSceneForm, setShowSceneForm] = useState(false);
@@ -42,7 +44,11 @@ export default function ProjectionManager() {
   });
 
   const copyUrl = (device) => {
-    const url = `${window.location.origin}${createPageUrl("DeviceView")}?device=${device.id}`;
+    if (!lanBaseUrl) {
+      alert(LAN_OFF_HINT);
+      return;
+    }
+    const url = `${lanBaseUrl}${createPageUrl("DeviceView")}?device=${device.id}`;
     navigator.clipboard.writeText(url);
     setCopiedId(device.id);
     setTimeout(() => setCopiedId(null), 2000);

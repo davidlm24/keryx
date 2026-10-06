@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import QRCode from "react-qr-code";
 import { QrCode, X } from "lucide-react";
+import { useLanBaseUrl, LAN_OFF_HINT } from "@/hooks/useLanBaseUrl";
 
 /**
  * Painel de QR Code — gera QR code para a congregação acessar a letra no celular.
@@ -9,7 +10,8 @@ import { QrCode, X } from "lucide-react";
 export default function QrCodePanel({ channel, songTitle }) {
     const [show, setShow] = useState(false);
 
-    const qrUrl = `${window.location.origin}/LyricProjection${channel ? `?ch=${channel}` : ""}`;
+    const { baseUrl } = useLanBaseUrl();
+    const qrUrl = baseUrl ? `${baseUrl}/LyricProjection${channel ? `?ch=${channel}` : ""}` : null;
 
     return (
         <>
@@ -31,7 +33,7 @@ export default function QrCodePanel({ channel, songTitle }) {
                         </div>
                         {songTitle && <p className="text-sm text-gray-600 mb-3">{songTitle}</p>}
                         <div className="flex justify-center mb-4">
-                            <QRCode value={qrUrl} size={200} />
+                            {qrUrl ? <QRCode value={qrUrl} size={200} /> : <p className="text-sm text-gray-700">{LAN_OFF_HINT}</p>}
                         </div>
                         <p className="text-xs text-gray-500">
                             A congregação pode ler este código para ver a letra no celular em tempo real.

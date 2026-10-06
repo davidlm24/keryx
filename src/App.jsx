@@ -10,6 +10,8 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import PageTransition from '@/components/PageTransition';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import NetworkHome from '@/components/network/NetworkHome';
+import { keryx } from '@/api/keryxClient';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -134,6 +136,20 @@ const AuthenticatedApp = () => {
 };
 
 
+// A tablet, TV or stage monitor on the church network: only the screen pages
+// (the server refuses the rest too) and a picker at "/". No Layout, no auth.
+const NetworkApp = () => (
+  <Routes>
+    <Route path="/LyricProjection" element={<LyricProjection />} />
+    <Route path="/StageView" element={<StageView />} />
+    <Route path="/VideoProjection" element={<Pages.VideoProjection />} />
+    <Route path="/BibleMaterialProjection" element={<BibleMaterialProjection />} />
+    <Route path="/AnnouncementCarousel" element={<AnnouncementCarouselPage />} />
+    <Route path="/DeviceView" element={<DeviceView />} />
+    <Route path="*" element={<NetworkHome />} />
+  </Routes>
+);
+
 function App() {
 
   return (
@@ -149,7 +165,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/*" element={<AuthenticatedApp />} />
+            <Route path="/*" element={keryx.isNetworkScreen ? <NetworkApp /> : <AuthenticatedApp />} />
           </Routes>
           </ErrorBoundary>
         </Router>

@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         install: (version) => ipcRenderer.invoke("keryx:bible:install", { version }),
         installFromFile: (version) => ipcRenderer.invoke("keryx:bible:install-file", { version }),
     },
+    network: {
+        call: (op, args) => ipcRenderer.invoke("keryx:network", { op, args }),
+    },
     system: {
         call: (op) => ipcRenderer.invoke("keryx:system", { op }),
     },

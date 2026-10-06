@@ -8,15 +8,22 @@ import { createPageUrl } from "@/utils";
 
 const TYPE_ICONS = { projector: Monitor, tv: Tv, tablet: Tablet, pc: Monitor };
 
+import { useLanBaseUrl, LAN_OFF_HINT } from "@/hooks/useLanBaseUrl";
+
 export default function DeviceCard({ device, onEdit, onDelete, onCopyUrl }) {
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
   const Icon = TYPE_ICONS[device.type] || Monitor;
   const online = device.is_online && device.last_seen && Date.now() - new Date(device.last_seen).getTime() < 60000;
   const out = device.current_output;
-  const deviceUrl = `${window.location.origin}${createPageUrl("DeviceView")}?device=${device.id}`;
+  const { baseUrl } = useLanBaseUrl();
+  const deviceUrl = baseUrl ? `${baseUrl}${createPageUrl("DeviceView")}?device=${device.id}` : "";
 
   const copyUrl = () => {
+    if (!deviceUrl) {
+      alert(LAN_OFF_HINT);
+      return;
+    }
     navigator.clipboard.writeText(deviceUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

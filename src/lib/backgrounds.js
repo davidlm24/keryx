@@ -45,8 +45,14 @@ export const BACKGROUNDS = {
 
 const ALL_IDS = new Set(Object.values(BACKGROUNDS).flat());
 
-const desktopMediaBase = () =>
-    typeof window !== "undefined" && window.keryxDesktop ? window.keryxDesktop.mediaBaseUrl : null;
+// Where bundled and uploaded files are served: the desktop app, or the KERYX
+// computer for a screen on the network. Null on the web build.
+const desktopMediaBase = () => {
+    if (typeof window === "undefined") return null;
+    if (window.keryxDesktop) return window.keryxDesktop.mediaBaseUrl;
+    if (window.keryxLan === true) return `${window.location.origin}/media/`;
+    return null;
+};
 
 export function backgroundUrl(id) {
     const base = desktopMediaBase();

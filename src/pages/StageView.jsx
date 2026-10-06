@@ -75,6 +75,45 @@ export default function StageView() {
         return () => unsubscribe();
     }, []);
 
+    // Sem janela do operador (monitor de palco na rede): a letra ativa vem da
+    // base de dados. Com janela do operador, os dados ricos (cifras, notas)
+    // chegam por postMessage e têm prioridade, por isso isto fica de fora.
+    useEffect(() => {
+        if (window.opener) return undefined;
+        let activeId = null;
+        const show = (rec) => {
+            if (rec.id !== activeId) {
+                activeId = rec.id;
+                songStartRef.current = Date.now();
+                setElapsed(0);
+            }
+            setSongData({
+                title: rec.song_title,
+                artist: rec.artist || "",
+                slides: rec.slides || [],
+                text_color: rec.text_color,
+                background_image: rec.background_image,
+            });
+            setSlideIndex(rec.slide_index || 0);
+        };
+        const clear = () => {
+            activeId = null;
+            setSongData(null);
+            setSlideIndex(0);
+            setElapsed(0);
+            songStartRef.current = null;
+        };
+        keryx.entities.LyricSync.list("-timestamp", 1)
+            .then(([rec]) => { if (rec && rec.status === "active") show(rec); })
+            .catch(() => {});
+        return keryx.entities.LyricSync.subscribe((event) => {
+            const rec = event.data;
+            if (!rec) return;
+            if ((event.type === "create" || event.type === "update") && rec.status === "active") show(rec);
+            else if (rec.id === activeId && (event.type === "delete" || rec.status === "stopped")) clear();
+        });
+    }, []);
+
     // Listen for messages from opener
     useEffect(() => {
         const handleMessage = (event) => {

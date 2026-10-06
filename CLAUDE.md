@@ -50,6 +50,12 @@ wiring, the data model and the known gaps.
   (Windows locks it). Importing stages a zip and swaps it in at the next
   launch, before the store opens (`archive.cjs`); backups use `VACUUM INTO`.
   Anything that deletes user data moves it aside instead.
+- **Network screens** (`electron/lan.cjs`) see only the pages in
+  `NETWORK_SCREENS` and may write only what `SCREEN_WRITES` lists. A page added
+  there must work from the database alone (no `window.opener`). Links and QR
+  codes meant for other devices come from `useLanBaseUrl()`, never
+  `window.location.origin` (that is 127.0.0.1 on desktop).
+  `keryx.isNetworkScreen` is true in such a browser.
 - **Media URLs:** the store keeps `keryx-media://<file>`; pages get
   `http://127.0.0.1:7700/media/<file>` from the adapter. Never write the http
   form into the database by other means, and keep checks like

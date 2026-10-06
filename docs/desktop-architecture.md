@@ -1,8 +1,7 @@
 # KERYX as an offline-first desktop app
 
-Status: decisions settled 2026-10-06. Phases 0–4 (shell, local data, outputs,
-media and Bible, shipping) are built; network screens and the redesign are
-not. Installing on the booth PC and running a real service is the last step of
+Status: decisions settled 2026-10-06. Phases 0–5 (shell, local data, outputs,
+media and Bible, shipping, network screens) are built; the redesign is not. Installing on the booth PC and running a real service is the last step of
 phase 4 and is the church's to do.
 
 ## Why
@@ -209,6 +208,38 @@ Before phase 3 nothing read the `bible_verse` table; every verse came from
 
 ## 7. Network screens (tablets, stage monitor, smart TVs)
 
+**As built (phase 5):**
+
+- `electron/lan.cjs` listens on `0.0.0.0:7701` **only when "Telas na rede" is
+  on** in Settings (`electron/network.cjs`; Windows asks for firewall
+  permission the first time). It is a separate server from the loopback one.
+- It serves `index.html` only for `/` and the network screens
+  (`NETWORK_SCREENS`: Letras, Palco, Vídeo, Material bíblico, Anúncios, Saída
+  configurada), injecting `window.keryxLan = true`. Operator pages get a 404.
+  Assets and media are served; nothing outside `dist/` and `media/`.
+- `/api/db` is read-only except `ProjectionDevice.update` and
+  `VideoSync.update` (the writes screens make), needs an `X-Keryx` header
+  (blocks cross-site form posts), and caps the body. `/api/events` is
+  Server-Sent Events carrying every store change; `EventSource` reconnects
+  by itself and the page refetches on reconnect (it fires `online`).
+- Optional 4–8 digit PIN: a form at `/lan/pin`, an HMAC cookie for a year,
+  five wrong tries lock that address out for a minute, changing the PIN signs
+  every screen out.
+- In the browser, `src/api/backends/network.js` gives the desktop adapter the
+  same bridge shape over HTTP/SSE, so pages are unchanged; `App.jsx` routes a
+  network screen to the screen pages and a picker (`NetworkHome`).
+- `StageView` now follows the live `LyricSync` when it has no operator
+  window; `PastorView` (fed by `ProjectionState`, which nothing writes),
+  `Projection`, `CommunicationProjection` and `BannerProjection` (fed only by
+  `postMessage`) are not offered on the network until the live-state engine.
+- QR codes and copied screen links use the network address
+  (`useLanBaseUrl`); with network screens off they say how to turn them on.
+- The smoke run opens plain browser windows against the LAN server and checks
+  that projected lyrics reach them, the stage follows slides, operator pages
+  are refused and the PIN form appears; 10 node:test cases cover the server.
+
+Original plan, for reference:
+
 - The main process serves the same bundle on `0.0.0.0:7701`, restricted to
   screen routes (`/LyricProjection`, `/StageView`, …). Operator routes are
   only served on `127.0.0.1`, so a phone on the Wi-Fi can't open the control
@@ -294,7 +325,7 @@ development time, not calendar time.
 | 2 | Outputs | **Done**, except opening outputs at launch (see section 3). Display placement of the windows pages open, hot-plug re-placement, "Telas e saídas" settings, identify, test/close | 2–3 days |
 | 3 | Media + Bible | **Done** (thumbnails skipped, Bibles installed rather than bundled; sections 4–5). Media library on disk, offline verse lookup and search, bundled backgrounds and logo | 2–3 days |
 | 4 | Ship it | **Built.** Backups, export/import, updater (off until a release repo exists), unsigned NSIS installer, logs and diagnostics. Not yet done: install on the booth PC and run a service with it | 2 days |
-| 5 | Network screens | LAN server, screen routes, PIN, QR code in Settings | 2–3 days |
+| 5 | Network screens | **Built.** LAN server (off until enabled), screen routes only, read-only API, PIN, QR code in Settings, auto-reconnect, StageView fed from the database | 2–3 days |
 | 6 | Redesign | Live-state projection engine, one control module, then the UI/UX work | separate plan |
 
 Phases 1 and 2 are the risk; after them, nothing depends on the internet.

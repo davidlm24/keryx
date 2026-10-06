@@ -162,6 +162,74 @@ async function checkOutputs(webContents, outputs, screen, { fullscreen }) {
 }
 
 // Backups, logs and the Settings bridge, as the packaged app runs them.
+// A tablet on the network: a plain browser window (no preload, no desktop
+// bridge) opening screen pages from the LAN server, fed by store changes.
+async function checkNetwork({ network, store }) {
+    const result = { started: false, lyrics: false, stage: false, operatorPageBlocked: false, pinForm: false, tabletErrors: [], ok: false };
+    await network.ops.setPin(null, ""); // start open, whatever the data folder had
+    await network.ops.setEnabled(null, true);
+    const info = network.info();
+    result.started = info.running;
+    if (!info.running) return { ...result, error: info.error };
+    const base = `http://127.0.0.1:${info.port}`;
+
+    const tablet = () => {
+        const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, partition: `keryx-smoke-lan-${Date.now()}` } });
+        win.webContents.on("console-message", (event) => {
+            if (event.level === "error") result.tabletErrors.push(String(event.message).slice(0, 160));
+        });
+        return win;
+    };
+    const textOf = (win) => win.webContents.executeJavaScript("document.body ? document.body.innerText : ''");
+    const waitFor = async (win, needle, ms = 8000) => {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {
+            if ((await textOf(win).catch(() => "")).includes(needle)) return true;
+            await sleep(250);
+        }
+        return false;
+    };
+
+    const lyrics = tablet();
+    const stage = tablet();
+    try {
+        await lyrics.loadURL(`${base}/LyricProjection`);
+        await stage.loadURL(`${base}/StageView`);
+        await sleep(1500);
+        result.isNetworkScreen = await lyrics.webContents.executeJavaScript("window.keryxLan === true && !window.keryxDesktop");
+
+        // The operator projects after the screens are open: only the event stream can deliver it.
+        const row = store.call("LyricSync", "create", [{
+            song_title: "Hino de teste",
+            slides: [{ text: "Primeira linha da letra" }, { text: "Segunda linha da letra" }],
+            slide_index: 0,
+            status: "active",
+            timestamp: Date.now(),
+        }]);
+        result.lyrics = await waitFor(lyrics, "Primeira linha da letra");
+        store.call("LyricSync", "update", [row.id, { slide_index: 1, timestamp: Date.now() }]);
+        result.stage = await waitFor(stage, "Segunda linha da letra");
+        result.lyricsAdvanced = await waitFor(lyrics, "Segunda linha da letra");
+
+        await lyrics.loadURL(`${base}/Settings`);
+        result.operatorPageBlocked = (await textOf(lyrics)).includes("computador do operador");
+
+        await network.ops.setPin(null, "2468");
+        const locked = tablet();
+        await locked.loadURL(`${base}/StageView`);
+        result.pinForm = (await textOf(locked)).includes("PIN") && locked.webContents.getURL().includes("/lan/pin");
+        locked.close();
+        await network.ops.setPin(null, "");
+    } finally {
+        lyrics.close();
+        stage.close();
+        await network.ops.setEnabled(null, false);
+    }
+    result.ok = result.started && result.isNetworkScreen && result.lyrics && result.stage && result.lyricsAdvanced
+        && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0;
+    return result;
+}
+
 async function checkSystem(webContents, { dataDir, system }) {
     const info = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("info")`)).data;
     const made = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("backupNow")`)).data;
@@ -208,7 +276,7 @@ function expectAdapter(a) {
 const VERBOSE = process.env.KERYX_SMOKE_VERBOSE === "1";
 const step = (name) => { if (VERBOSE) console.log(`smoke: ${name}`); };
 
-function runSmokeTest(win, { dev, outputs, screen, system, dataDir, importOutcome }) {
+function runSmokeTest(win, { dev, outputs, screen, system, network, store, dataDir, importOutcome }) {
     const errors = [];
     const { webContents } = win;
     const finish = (ok, details) => {
@@ -276,7 +344,10 @@ function runSmokeTest(win, { dev, outputs, screen, system, dataDir, importOutcom
             step("bridge ok; checking outputs");
             const outputsResult = await checkOutputs(webContents, outputs, screen, { fullscreen: process.env.KERYX_SMOKE_FULLSCREEN === "1" });
             const systemResult = await checkSystem(webContents, { dataDir, system });
-            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && !importOutcome, { rendered, bridge, adapter, outputs: outputsResult, system: systemResult });
+            // The LAN server serves the built app (dist/), so this runs in built mode only.
+            const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, store });
+            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && !importOutcome && (dev || networkResult.ok),
+                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, network: networkResult });
         } catch (err) {
             finish(false, { rendered, exception: String(err && err.message) });
         }

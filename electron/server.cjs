@@ -147,4 +147,4 @@ function startStaticServer({ root, mediaDir, bundledDir, host, port }) {
     });
 }
 
-module.exports = { startStaticServer, MEDIA_PREFIX };
+module.exports = { startStaticServer, MEDIA_PREFIX, BUNDLED_PREFIX, MIME, within, sendFile };

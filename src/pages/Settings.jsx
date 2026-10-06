@@ -11,6 +11,8 @@ import { createPageUrl } from "@/utils";
 import ThemeEditorSection from "@/components/settings/ThemeEditorSection";
 import DisplaysSection from "@/components/settings/DisplaysSection";
 import SystemSection from "@/components/settings/SystemSection";
+import NetworkSection from "@/components/settings/NetworkSection";
+import { useLanBaseUrl, LAN_OFF_HINT } from "@/hooks/useLanBaseUrl";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -25,6 +27,7 @@ import {
 
 export default function Settings() {
     const { user: authUser } = useAuth();
+    const { baseUrl: lanBaseUrl } = useLanBaseUrl();
     const [language, setLanguage] = useState("pt");
     const [backgroundUrl, setBackgroundUrl] = useState("");
     const [logoUrl, setLogoUrl] = useState("");
@@ -673,11 +676,15 @@ export default function Settings() {
                                     </div>
                                     <div className="flex flex-col items-center justify-center">
                                         <div className="p-6 bg-white rounded-lg shadow-2xl">
-                                            <QRCode
-                                                value={window.location.origin + createPageUrl("VideoProjection")}
-                                                size={isMobile ? 200 : 256}
-                                                level="H"
-                                            />
+                                            {lanBaseUrl ? (
+                                                <QRCode
+                                                    value={lanBaseUrl + createPageUrl("VideoProjection")}
+                                                    size={isMobile ? 200 : 256}
+                                                    level="H"
+                                                />
+                                            ) : (
+                                                <p className="max-w-[16rem] text-center text-sm text-gray-700">{LAN_OFF_HINT}</p>
+                                            )}
                                         </div>
                                         <p className={`mt-4 text-center text-muted-foreground ${isMobile ? 'text-xs' : 'text-sm'}`}>
                                             Mantenha o dispositivo sempre aberto
@@ -696,6 +703,8 @@ export default function Settings() {
                     </Card>
 
                     {keryx.isDesktop && <DisplaysSection isMobile={isMobile} />}
+
+                    {keryx.isDesktop && <NetworkSection isMobile={isMobile} />}
 
                     {keryx.isDesktop && <SystemSection isMobile={isMobile} />}
 

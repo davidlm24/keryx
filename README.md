@@ -77,6 +77,15 @@ For in-app updates, create a GitHub repository for the releases, add
 `GH_TOKEN=<token> npx electron-builder --win --publish always`. Installed copies
 then offer the new version in Settings; installing is always a click.
 
+### Screens on the network (tablets, TVs, stage monitor)
+
+Settings > "Telas na rede": turn it on and open the address shown (or scan the
+QR code) in the tablet's or TV's browser, on the same Wi-Fi. Windows asks once
+whether KERYX may use the network: allow it on private networks. An optional
+PIN keeps other devices on the Wi-Fi out. Screens can only view: the control
+pages are never served to the network. Available: Letras, Palco, Vídeo,
+Material bíblico, Anúncios, Saída configurada.
+
 ### Bible text
 
 Nothing ships with the app: NVI, ACF and AA are copyrighted editions. On

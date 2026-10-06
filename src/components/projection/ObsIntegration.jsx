@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Copy, Check, Monitor } from "lucide-react";
 import { useThemeColors } from "@/hooks/useThemeColors";
+import { useLanBaseUrl, LAN_OFF_HINT } from "@/hooks/useLanBaseUrl";
 
 /**
  * Painel de integração OBS — mostra a URL de Browser Source para streaming.
@@ -10,8 +11,10 @@ export default function ObsIntegration({ channel }) {
     const colors = useThemeColors();
     const [copied, setCopied] = useState(false);
 
-    const baseUrl = window.location.origin;
-    const obsUrls = {
+    // OBS is a plain browser, not the KERYX window: it needs the network
+    // address even on this computer.
+    const { baseUrl } = useLanBaseUrl();
+    const obsUrls = !baseUrl ? {} : {
         lyrics: `${baseUrl}/LyricProjection${channel ? `?ch=${channel}` : ""}`,
         bible: `${baseUrl}/BibleMaterialProjection${channel ? `?ch=${channel}` : ""}`,
         stage: `${baseUrl}/StageView${channel ? `?ch=${channel}` : ""}`,
@@ -32,6 +35,7 @@ export default function ObsIntegration({ channel }) {
             <p className="text-xs text-gray-400">
                 Adiciona estas URLs como "Browser Source" no OBS para transmitir os slides ao vivo.
             </p>
+            {!baseUrl && <p className="text-xs text-gray-400">{LAN_OFF_HINT}</p>}
             <div className="space-y-2">
                 {Object.entries(obsUrls).map(([type, url]) => (
                     <div key={type} className="flex items-center gap-2">

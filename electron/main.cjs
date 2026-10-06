@@ -11,6 +11,7 @@ const { createLogger, captureConsole } = require("./logger.cjs");
 const { applyPendingImport } = require("./archive.cjs");
 const { createUpdater } = require("./updater.cjs");
 const { createSystem } = require("./system.cjs");
+const { createNetwork } = require("./network.cjs");
 const schema = require("./db/schema.json");
 
 const HOST = "127.0.0.1";
@@ -60,6 +61,7 @@ let mainWindow = null;
 let store = null;
 let outputs = null;
 let system = null;
+let network = null;
 
 // Same database, same port: a second launch just focuses the first.
 const gotLock = app.requestSingleInstanceLock();
@@ -221,6 +223,19 @@ app.whenReady().then(async () => {
     try {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }
+
+    // Tablets and TVs on the church network (off until enabled in Settings).
+    // KERYX_LAN_PORT=0 lets a smoke run use a free port.
+    network = createNetwork({
+        store,
+        settings,
+        distDir: path.join(app.getAppPath(), "dist"),
+        mediaDir,
+        bundledDir: path.join(app.getAppPath(), "resources"),
+        logger,
+        port: process.env.KERYX_LAN_PORT !== undefined ? Number(process.env.KERYX_LAN_PORT) : undefined,
+    });
+    await network.startIfEnabled();
     // Never installs by itself: it only finds out, and Settings says so.
     if (updater.enabled() && !SMOKE && !DEV_URL) setTimeout(() => updater.check(), 8000);
 
@@ -228,6 +243,7 @@ app.whenReady().then(async () => {
         store,
         outputs,
         system,
+        network,
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
@@ -235,11 +251,12 @@ app.whenReady().then(async () => {
     });
 
     const win = createMainWindow();
-    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, dataDir, importOutcome });
+    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, network, store, dataDir, importOutcome });
 });
 
 app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
+    if (network) network.stop();
     if (system) {
         try {
             system.backupNow("ao fechar");
