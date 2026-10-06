@@ -6,8 +6,9 @@ const path = require("node:path");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
 const { createLanServer, lanAddresses, safeNext } = require("./lan.cjs");
+const { createLive, loadLiveRules } = require("./live.cjs");
 
-function fixture(config = { pin: "", secret: "s3cret" }) {
+async function fixture(config = { pin: "", secret: "s3cret" }) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "keryx-lan-"));
     const dist = path.join(root, "dist");
     fs.mkdirSync(path.join(dist, "assets"), { recursive: true });
@@ -19,12 +20,13 @@ function fixture(config = { pin: "", secret: "s3cret" }) {
     fs.writeFileSync(path.join(root, "secret.txt"), "nope");
     const store = createStore({ file: ":memory:", schema, log: () => {} });
     const cfg = { ...config };
-    const lan = createLanServer({ distDir: dist, mediaDir: media, bundledDir: null, store, getConfig: () => cfg });
-    return { lan, store, cfg };
+    const live = createLive({ file: path.join(root, "live.json"), rules: await loadLiveRules(), log: () => {} });
+    const lan = createLanServer({ distDir: dist, mediaDir: media, bundledDir: null, store, live, getConfig: () => cfg });
+    return { lan, store, live, cfg };
 }
 
 async function started(config) {
-    const f = fixture(config);
+    const f = await fixture(config);
     const { port } = await f.lan.start({ port: 0, host: "127.0.0.1" });
     f.base = `http://127.0.0.1:${port}`;
     f.db = (body, headers = { "x-keryx": "1" }) => fetch(`${f.base}/api/db`, {
@@ -129,6 +131,36 @@ test("store changes reach /api/events", async (t) => {
     assert.equal(f.lan.clients().length, 0);
 });
 
+test("the live state: readable at /api/live, streamed as 'live' events, never writable", async (t) => {
+    const f = await started();
+    t.after(() => f.lan.stop());
+    f.live.call("content.show", { title: "Hino", slides: ["Santo, santo, santo"], style: { background_image: "keryx-media://fundo.png" } });
+    const res = await fetch(`${f.base}/api/live`);
+    assert.equal(res.status, 200);
+    const { data } = await res.json();
+    assert.equal(data.rev, 1);
+    assert.equal(data.content.slides[0].text, "Santo, santo, santo");
+    assert.equal(data.content.style.background_image, "keryx-media://fundo.png", "the screen maps media URLs itself");
+    assert.equal(typeof data.serverNow, "number");
+    for (const method of ["POST", "PUT", "DELETE"]) {
+        const refused = await fetch(`${f.base}/api/live`, { method, headers: { "x-keryx": "1" }, body: method === "DELETE" ? undefined : "{}" });
+        assert.equal(refused.status, 405, method);
+    }
+
+    const controller = new AbortController();
+    const events = await fetch(`${f.base}/api/events`, { signal: controller.signal });
+    const reader = events.body.getReader();
+    await new Promise((r) => setTimeout(r, 100));
+    f.live.call("content.show", { title: "Outro", slides: ["Aleluia"] });
+    let text = "";
+    while (!text.includes("Aleluia")) text += new TextDecoder().decode((await reader.read()).value);
+    const lines = text.split("\n");
+    const at = lines.indexOf("event: live");
+    assert.ok(at >= 0, "named live event");
+    assert.equal(JSON.parse(lines[at + 1].slice(6)).rev, 2);
+    controller.abort();
+});
+
 test("with a PIN: pages redirect to the PIN form, APIs say 401, the right PIN sets a cookie", async (t) => {
     const f = await started({ pin: "4321", secret: "s3cret" });
     t.after(() => f.lan.stop());
@@ -137,6 +169,7 @@ test("with a PIN: pages redirect to the PIN form, APIs say 401, the right PIN se
     assert.equal(redirect.headers.get("location"), "/lan/pin?next=%2FLyricProjection%3Fch%3D1");
     assert.equal((await f.db({ entity: "Song", op: "list", args: [] })).status, 401);
     assert.equal((await fetch(`${f.base}/api/events`)).status, 401);
+    assert.equal((await fetch(`${f.base}/api/live`)).status, 401);
     assert.equal((await fetch(`${f.base}/media/a.png`)).status, 401);
 
     const form = await page(f.base, "/lan/pin?next=%2FStageView");

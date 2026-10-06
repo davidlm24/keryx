@@ -7,8 +7,10 @@
 //   - /api/db is read-only except for the two writes a screen performs
 //     (ProjectionDevice heartbeat, VideoSync "played")
 //   - an optional PIN, remembered by a cookie, rate-limited per address
-//   - /api/events (Server-Sent Events) pushes every store change, which is what
-//     keeps screens in step; EventSource reconnects by itself
+//   - /api/events (Server-Sent Events) pushes every store change, and the
+//     whole live state as "live" events, which is what keeps screens in step;
+//     EventSource reconnects by itself
+//   - /api/live is the live state (electron/live.cjs), read-only from here
 //
 // Pure Node (no Electron), so it is unit tested.
 
@@ -104,7 +106,7 @@ function readBody(req, limit = MAX_BODY) {
     });
 }
 
-function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log = () => {} }) {
+function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, log = () => {} }) {
     const dist = path.resolve(distDir);
     const media = path.resolve(mediaDir);
     const bundled = bundledDir ? path.resolve(bundledDir) : null;
@@ -113,6 +115,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
     let server = null;
     let keepalive = null;
     let unsubscribe = null;
+    let unsubscribeLive = null;
 
     const json = (res, status, body, headers = {}) => {
         const data = Buffer.from(JSON.stringify(body));
@@ -232,6 +235,12 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
         if (pathname === "/api/events" && req.method === "GET") return handleEvents(req, res);
         if (pathname === "/api/db") return handleDb(req, res);
         if (pathname === "/api/screens" && req.method === "GET") return json(res, 200, NETWORK_SCREENS);
+        if (pathname === "/api/live") {
+            // Screens only watch; the operator changes the live state on the KERYX computer.
+            if (req.method !== "GET") return json(res, 405, { error: { message: "Esta tela só pode ler os dados.", status: 405 } }, { Allow: "GET" });
+            if (!live) return json(res, 503, { error: { message: "Projeção indisponível.", status: 503 } });
+            return json(res, 200, { data: live.get() });
+        }
 
         if (req.method !== "GET" && req.method !== "HEAD") return res.writeHead(405, { Allow: "GET, HEAD" }).end();
 
@@ -270,6 +279,12 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
                 const frame = `data: ${JSON.stringify(change)}\n\n`;
                 for (const client of clients) client.res.write(frame);
             });
+            if (live) {
+                unsubscribeLive = live.onChange((snapshot) => {
+                    const frame = `event: live\ndata: ${JSON.stringify(snapshot)}\n\n`;
+                    for (const client of clients) client.res.write(frame);
+                });
+            }
             keepalive = setInterval(() => {
                 for (const client of clients) client.res.write(": ping\n\n");
             }, KEEPALIVE_MS);
@@ -285,8 +300,10 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
         stop() {
             if (keepalive) clearInterval(keepalive);
             if (unsubscribe) unsubscribe();
+            if (unsubscribeLive) unsubscribeLive();
             keepalive = null;
             unsubscribe = null;
+            unsubscribeLive = null;
             for (const client of clients) client.res.end();
             clients.clear();
             if (server) {

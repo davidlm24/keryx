@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Tv, Tablet, Monitor, Trash2, Pencil, Link2, QrCode, X, Copy, Check } from "lucide-react";
 import { DEVICE_TYPE_LABELS, DEVICE_ROLE_LABELS, CONTENT_TYPE_LABELS } from "@/lib/deviceStyles";
 import { createPageUrl } from "@/utils";
+import { useLanBaseUrl, LAN_OFF_HINT } from "@/hooks/useLanBaseUrl";
 
 const TYPE_ICONS = { projector: Monitor, tv: Tv, tablet: Tablet, pc: Monitor };
-
-import { useLanBaseUrl, LAN_OFF_HINT } from "@/hooks/useLanBaseUrl";
 
 export default function DeviceCard({ device, onEdit, onDelete, onCopyUrl }) {
   const [showQR, setShowQR] = useState(false);

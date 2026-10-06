@@ -17,7 +17,7 @@
     "desktop:dev": "node scripts/desktop.mjs dev",
     "desktop:start": "vite build && node scripts/desktop.mjs start",
     "desktop:smoke": "vite build && node scripts/desktop.mjs smoke",
-    "test": "node --test electron/**/*.test.cjs scripts/**/*.test.cjs src/**/*.test.mjs",
+    "test": "node --test electron/**/*.test.cjs scripts/**/*.test.cjs src/**/*.test.mjs shared/**/*.test.mjs",
     "db:schema": "node scripts/gen-sqlite-schema.mjs",
     "dist": "vite build && electron-builder --win --publish never",
     "dist:dir": "vite build && electron-builder --win --dir --publish never"
@@ -111,6 +111,8 @@
     "files": [
       "electron/**/*",
       "!electron/**/*.test.cjs",
+      "shared/**/*",
+      "!shared/**/*.test.mjs",
       "dist/**/*",
       "resources/**/*",
       "package.json"

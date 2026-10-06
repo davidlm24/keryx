@@ -7,6 +7,9 @@
 //   keryx:bible:*       invoke  installed versions, install from the web or a file
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 //   keryx:network       invoke  { op, args } screens on the church network
+//   keryx:live:get      invoke  -> live state snapshot (shared/live-state.mjs)
+//   keryx:live:call     invoke  { op, args } -> the new snapshot | { error }
+//   keryx:live-change   event   the whole snapshot, sent to every window after each change
 
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -19,7 +22,7 @@ function safeExtension(name) {
     return /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : "";
 }
 
-function registerDataIpc({ store, outputs, system, network, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
+function registerDataIpc({ store, outputs, system, network, live, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
 
     ipcMain.handle("keryx:db", (event, payload) => {
@@ -112,6 +115,28 @@ function registerDataIpc({ store, outputs, system, network, mediaDir, mediaBaseU
             if (!err.status) log(`[keryx-network] ${op}: ${err && err.stack}`);
             return { error: { message: err.message || "Falha na operação.", status: err.status || 500 } };
         }
+    });
+
+    // Outputs are app windows too: they may report "this video ended".
+    ipcMain.handle("keryx:live:get", (event) => (isTrustedSender(event) ? { data: live.get() } : reject));
+    ipcMain.handle("keryx:live:call", (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const { op, args } = payload || {};
+        try {
+            return { data: live.call(op, args) };
+        } catch (err) {
+            if (err && err.status) return { error: { message: err.message, status: err.status } };
+            log(`[keryx-live] ${op}: ${err && err.stack}`);
+            return { error: { message: `Falha na projeção: ${err && err.message}`, status: 500 } };
+        }
+    });
+    // Same timing as db changes: after the caller's reply.
+    live.onChange((snapshot) => {
+        setImmediate(() => {
+            for (const win of BrowserWindow.getAllWindows()) {
+                if (!win.isDestroyed()) win.webContents.send("keryx:live-change", snapshot);
+            }
+        });
     });
 
     ipcMain.on("keryx:config", (event) => {

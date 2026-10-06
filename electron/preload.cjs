@@ -16,6 +16,17 @@ ipcRenderer.on("keryx:db-change", (_event, change) => {
     }
 });
 
+const liveListeners = new Set();
+ipcRenderer.on("keryx:live-change", (_event, snapshot) => {
+    for (const listener of liveListeners) {
+        try {
+            listener(snapshot);
+        } catch (err) {
+            console.error("[keryx] live listener failed:", err);
+        }
+    }
+});
+
 contextBridge.exposeInMainWorld("keryxDesktop", {
     isDesktop: true,
     platform: process.platform,
@@ -38,6 +49,15 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         status: () => ipcRenderer.invoke("keryx:bible:status"),
         install: (version) => ipcRenderer.invoke("keryx:bible:install", { version }),
         installFromFile: (version) => ipcRenderer.invoke("keryx:bible:install-file", { version }),
+    },
+    // What every output shows right now; pages use keryx.live, not this.
+    live: {
+        get: () => ipcRenderer.invoke("keryx:live:get"),
+        call: (op, args) => ipcRenderer.invoke("keryx:live:call", { op, args }),
+        onChange(listener) {
+            liveListeners.add(listener);
+            return () => liveListeners.delete(listener);
+        },
     },
     network: {
         call: (op, args) => ipcRenderer.invoke("keryx:network", { op, args }),

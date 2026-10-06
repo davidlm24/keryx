@@ -1,7 +1,8 @@
 # KERYX as an offline-first desktop app
 
 Status: decisions settled 2026-10-06. Phases 0–5 (shell, local data, outputs,
-media and Bible, shipping, network screens) are built; the redesign is not. Installing on the booth PC and running a real service is the last step of
+media and Bible, shipping, network screens) are built; the redesign is not.
+Installing on the booth PC and running a real service is the last step of
 phase 4 and is the church's to do.
 
 ## Why
@@ -110,13 +111,79 @@ control logic.
 - **Phase 1 (no page changes):** those tables become SQLite tables like any
   other, and the change-event broadcast carries their updates to outputs and
   network screens. Everything works as now, minus the internet.
-- **Later (the redesign):** replace the tables with a single **live state**
-  document held in the main process (`{ lyrics, video, tools, overlays,
-  alert, stage }`). Operator pages mutate it through one `projection`
-  service; outputs render it. This is where the duplicated control code in
-  `Home`/`Services` collapses into one module, and where `postMessage` goes
-  away. It's listed here so phase 1 doesn't paint us into a corner, not as
-  phase-1 work.
+- **Phase 6 (the redesign):** replace the tables with a single **live state**
+  document held in the main process. Operator pages mutate it through one
+  `projection` service; outputs render it. This is where the duplicated
+  control code in `Home`/`Services` collapses into one module, and where
+  `postMessage` goes away.
+
+### The live-state engine (phase 6, part 1)
+
+Decided 2026-10-06. Built in steps; the app runs end to end after each.
+
+**The document** (`shared/live-state.mjs`, one module for the main process,
+the pages and node:test):
+
+```
+{ version, rev, updatedAt,            // rev: a newer snapshot always wins
+  screen: "show" | "black" | "logo",  // overrides everything; Esc = black
+  session: { id, serviceId, startedAt },
+  background: { kind: image|video|color, value },     // under everything
+  content: { kind: lyrics|bible|text, ref, title, artist,
+             slides: [{ text, duration, is_chorus }], index,
+             style: { font_size, font_family, text_effect, text_color, text_color_2, background_image },
+             stage: { song_key, bpm, chords, musician_notes } },
+  media: { kind, url, title, playlist, playlistIndex,  // main projector
+           playback: { paused, position, at, volume } },
+  video: { kind, url, title, playback },               // video screens / tablets
+  tool: { mode: clock|stopwatch|timer|freetext, text, style, startedAt, endsAt },
+  communication: { item, playlist, playlistIndex, startedAt },
+  school: { content_type, slides, index, quiz_questions, quiz_index, quiz_reveal, media_url, style },
+  overlays: [...], alert: { message, type, since } }
+```
+
+- **Main projector priority** (`mainLayer`): screen black/logo › tool ›
+  communication › media › content; background under, overlays and alert
+  over. Showing content takes down tool/communication/media, so "nothing
+  appears after black or a clock" can't happen. Other outputs pick their
+  layers: lyrics screen = content; stage = content + next slide + `stage`;
+  video screens = `video`; Escola bíblica = `school`.
+- **Shared clock:** timers store `endsAt`/`startedAt`, video stores the
+  position at time `at`; every snapshot carries `serverNow` so a tablet with
+  a wrong clock still counts the same seconds (`keryx.live.now()`).
+- **Restart:** `live.json` in the data folder (debounced); restored with the
+  same content and `screen: "black"`, playback paused. One click resumes.
+- **Media** in the document is `keryx-media://` like the database; each
+  window and network screen maps it to a URL it can load.
+
+**Plumbing (step 1, built):** `electron/live.cjs` holds it and broadcasts the
+whole snapshot after each change (a few KB; no diffs to get out of order).
+IPC `keryx:live:get` / `keryx:live:call` / `keryx:live-change`; network
+screens read `GET /api/live` and `event: live` on `/api/events`, never write.
+In the pages: `keryx.live` (`src/api/liveClient.js`), `useLiveState()` /
+`useLiveNow()` (`src/hooks/useLiveState.js`), and the operator API
+`src/lib/projection.js` (`showLyrics`, `goTo`, `next`, `showMedia`,
+`transport.*`, `showTool`, `alert`, `setScreen`, `clear`, …). The web build
+runs the same rules in the browser (`backends/localLive.js`, localStorage +
+`storage` events: the operator tab and its own windows; no remote screens).
+
+**Migration steps:**
+
+1. Engine only (above). No page uses it yet. **Done.**
+2. Lyrics and Bible: a shared `useProjectionControl()` for Home/Services/
+   Bible; `/Projection`, `LyricProjection`, `StageView`, `PastorView` render
+   `content`. `LyricSync`, `LiveSession` and the lyric postMessages go.
+3. Video, media, YouTube: `VideoSync`/`VideoControl` go.
+4. Tools, communication, overlays, alert, black/logo. `CommunicationProjection`
+   becomes a view of the communication layer.
+5. Escola bíblica: `BibleProjectionSync` goes; no more `?channel=`.
+6. Retire the old paths (postMessage queue, dead listeners, the sync
+   entities), open outputs at launch, add `/Projection`, `/PastorView` and
+   `/CommunicationProjection` to the network screens.
+
+Not in part 1: devices and scenes (`ProjectionDevice.current_output`,
+`DeviceView`, `OperatorPanel`) and `BannerProjection` wait for the UI
+redesign.
 
 ## 3. Outputs and displays
 
@@ -326,7 +393,7 @@ development time, not calendar time.
 | 3 | Media + Bible | **Done** (thumbnails skipped, Bibles installed rather than bundled; sections 4–5). Media library on disk, offline verse lookup and search, bundled backgrounds and logo | 2–3 days |
 | 4 | Ship it | **Built.** Backups, export/import, updater (off until a release repo exists), unsigned NSIS installer, logs and diagnostics. Not yet done: install on the booth PC and run a service with it | 2 days |
 | 5 | Network screens | **Built.** LAN server (off until enabled), screen routes only, read-only API, PIN, QR code in Settings, auto-reconnect, StageView fed from the database | 2–3 days |
-| 6 | Redesign | Live-state projection engine, one control module, then the UI/UX work | separate plan |
+| 6 | Redesign | Live-state projection engine (section 2; step 1 of 6 built), one control module, then the UI/UX work | separate plan |
 
 Phases 1 and 2 are the risk; after them, nothing depends on the internet.
 

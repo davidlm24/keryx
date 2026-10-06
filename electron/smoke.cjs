@@ -72,6 +72,25 @@ const ADAPTER = `(async () => {
 
     try { await keryx.integrations.Core.InvokeLLM({ prompt: "x" }); out.llm = "no error"; } catch (e) { out.llm = e.status; }
 
+    // keryx.live through the projection service, as operator pages will use it.
+    const { projection } = await import("/src/lib/projection.js");
+    const heard = [];
+    const offLive = keryx.live.subscribe((s) => heard.push(s.rev));
+    await keryx.live.load();
+    const shown = await projection.showLyrics({ title: "L", slides: [{ text: "a" }, { text: "b" }], style: { background_image: file_url } });
+    await projection.next();
+    await new Promise((r) => setTimeout(r, 150));
+    offLive();
+    out.live = {
+        index: keryx.live.current().content.index,
+        heard: heard.length,
+        rendered: shown.content.style.background_image === file_url,
+        stored: (await window.keryxDesktop.live.get()).data.content.style.background_image,
+        clock: Math.abs(keryx.live.now() - Date.now()) < 1000,
+    };
+    try { await projection.showMedia({ kind: "nope", url: "x" }); out.live.bad = "no error"; } catch (e) { out.live.bad = e.status; }
+    await projection.clear();
+
     // Bible: two verses as an installed ACF, read the way the components do.
     await window.keryxDesktop.db.call("BibleVerse", "bulkCreate", [[
         { version: "ACF", book: "João", chapter: 3, verse: 16, text: "Porque Deus amou o mundo de tal maneira" },
@@ -161,11 +180,66 @@ async function checkOutputs(webContents, outputs, screen, { fullscreen }) {
     return result;
 }
 
+// The live state (electron/live.cjs): the operator window changes it over
+// IPC and every window hears it, outputs included.
+const LIVE_LISTEN = `(() => {
+    window.__keryxLiveSeen = [];
+    window.keryxDesktop.live.onChange((s) => window.__keryxLiveSeen.push(s.rev + ":" + s.screen + ":" + (s.content ? s.content.index : "-")));
+    return true;
+})()`;
+const LIVE_DRIVE = `(async () => {
+    const live = window.keryxDesktop.live;
+    const before = (await live.get()).data;
+    const shown = (await live.call("content.show", { kind: "lyrics", title: "Smoke", slides: [{ text: "Primeira" }, { text: "Segunda" }] })).data;
+    const moved = (await live.call("content.next", {})).data;
+    const unchanged = (await live.call("content.next", {})).data;
+    const bad = await live.call("content.explode", {});
+    const black = (await live.call("screen.set", { mode: "black" })).data;
+    await new Promise((r) => setTimeout(r, 300));
+    return {
+        startRev: before.rev,
+        revs: [shown.rev, moved.rev, unchanged.rev, black.rev],
+        slide: moved.content.slides[moved.content.index].text,
+        serverNow: typeof moved.serverNow,
+        badStatus: bad.error && bad.error.status,
+        badMessage: bad.error && bad.error.message,
+        seen: window.__keryxLiveSeen,
+    };
+})()`;
+
+async function checkLive(webContents, { live }) {
+    const result = { ok: false };
+    await webContents.executeJavaScript(LIVE_LISTEN);
+    const opened = await webContents.executeJavaScript(OPEN_OUTPUT("/StageView", "stageView"), true);
+    const output = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/StageView"));
+    result.outputOpened = Boolean(opened.opened && output);
+    if (output) await output.webContents.executeJavaScript(LIVE_LISTEN);
+
+    const drive = await webContents.executeJavaScript(LIVE_DRIVE);
+    const r0 = drive.startRev;
+    const expected = [`${r0 + 1}:show:0`, `${r0 + 2}:show:1`, `${r0 + 3}:black:1`];
+    result.drive = drive;
+    result.outputSeen = output ? await output.webContents.executeJavaScript("window.__keryxLiveSeen") : null;
+    result.mainScreen = live.get().screen;
+    if (output) output.close();
+    live.call("clear");
+    live.call("screen.set", { mode: "show" });
+
+    result.ok = result.outputOpened
+        && drive.revs.join(",") === [r0 + 1, r0 + 2, r0 + 2, r0 + 3].join(",")
+        && drive.slide === "Segunda" && drive.serverNow === "number"
+        && drive.badStatus === 400 && /Operação desconhecida/.test(drive.badMessage)
+        && drive.seen.join(",") === expected.join(",")
+        && Array.isArray(result.outputSeen) && result.outputSeen.join(",") === expected.join(",")
+        && result.mainScreen === "black";
+    return result;
+}
+
 // Backups, logs and the Settings bridge, as the packaged app runs them.
 // A tablet on the network: a plain browser window (no preload, no desktop
 // bridge) opening screen pages from the LAN server, fed by store changes.
-async function checkNetwork({ network, store }) {
-    const result = { started: false, lyrics: false, stage: false, operatorPageBlocked: false, pinForm: false, tabletErrors: [], ok: false };
+async function checkNetwork({ network, store, live }) {
+    const result = { started: false, lyrics: false, stage: false, live: null, operatorPageBlocked: false, pinForm: false, tabletErrors: [], ok: false };
     await network.ops.setPin(null, ""); // start open, whatever the data folder had
     await network.ops.setEnabled(null, true);
     const info = network.info();
@@ -211,6 +285,24 @@ async function checkNetwork({ network, store }) {
         result.stage = await waitFor(stage, "Segunda linha da letra");
         result.lyricsAdvanced = await waitFor(lyrics, "Segunda linha da letra");
 
+        // The live state reaches a tablet as a read and as "live" events, and the tablet can't change it.
+        await lyrics.webContents.executeJavaScript(`(() => {
+            window.__live = [];
+            new EventSource("/api/events").addEventListener("live", (e) => {
+                const s = JSON.parse(e.data);
+                window.__live.push(s.content ? s.content.slides[0].text : "(vazio)");
+            });
+            return new Promise((r) => setTimeout(r, 500));
+        })()`);
+        live.call("content.show", { title: "Na rede", slides: [{ text: "Texto ao vivo" }], style: { background_image: "keryx-media://fundo.png" } });
+        await sleep(500);
+        result.live = await lyrics.webContents.executeJavaScript(`(async () => {
+            const read = await (await fetch("/api/live")).json();
+            const write = await fetch("/api/live", { method: "POST", headers: { "X-Keryx": "1" }, body: "{}" });
+            return { events: window.__live, read: read.data.content.slides[0].text, media: read.data.content.style.background_image, writeStatus: write.status };
+        })()`);
+        live.call("clear");
+
         await lyrics.loadURL(`${base}/Settings`);
         result.operatorPageBlocked = (await textOf(lyrics)).includes("computador do operador");
 
@@ -225,7 +317,9 @@ async function checkNetwork({ network, store }) {
         stage.close();
         await network.ops.setEnabled(null, false);
     }
+    const l = result.live;
     result.ok = result.started && result.isNetworkScreen && result.lyrics && result.stage && result.lyricsAdvanced
+        && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0;
     return result;
 }
@@ -269,6 +363,8 @@ function expectAdapter(a) {
         && /^keryx-media:\/\/[0-9a-f-]{36}\.png$/.test(a.mediaStored)
         && a.mediaRead === true
         && a.llm === 501
+        && a.live.index === 1 && a.live.heard === 3 /* first read, show, next */ && a.live.rendered && /^keryx-media:\/\/[0-9a-f-]{36}\.png$/.test(a.live.stored)
+        && a.live.clock && a.live.bad === 400
         && a.bible.passage === "16,17" && a.bible.source === "local" && a.bible.preferred === "ACF"
         && a.bible.search === "ACF 17" && a.bible.parsed === "João" && a.bible.missing === 404;
 }
@@ -276,7 +372,7 @@ function expectAdapter(a) {
 const VERBOSE = process.env.KERYX_SMOKE_VERBOSE === "1";
 const step = (name) => { if (VERBOSE) console.log(`smoke: ${name}`); };
 
-function runSmokeTest(win, { dev, outputs, screen, system, network, store, dataDir, importOutcome }) {
+function runSmokeTest(win, { dev, outputs, screen, system, network, store, live, dataDir, importOutcome }) {
     const errors = [];
     const { webContents } = win;
     const finish = (ok, details) => {
@@ -344,10 +440,11 @@ function runSmokeTest(win, { dev, outputs, screen, system, network, store, dataD
             step("bridge ok; checking outputs");
             const outputsResult = await checkOutputs(webContents, outputs, screen, { fullscreen: process.env.KERYX_SMOKE_FULLSCREEN === "1" });
             const systemResult = await checkSystem(webContents, { dataDir, system });
+            const liveResult = await checkLive(webContents, { live });
             // The LAN server serves the built app (dist/), so this runs in built mode only.
-            const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, store });
-            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && !importOutcome && (dev || networkResult.ok),
-                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, network: networkResult });
+            const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, store, live });
+            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && !importOutcome && (dev || networkResult.ok),
+                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, network: networkResult });
         } catch (err) {
             finish(false, { rendered, exception: String(err && err.message) });
         }

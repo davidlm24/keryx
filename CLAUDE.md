@@ -28,6 +28,12 @@ wiring, the data model and the known gaps.
   `backends/supabase.js` (web build). A new method goes into both; pages never
   talk to SQLite, IPC or Supabase directly. Query semantics follow Base44 and
   are pinned by `electron/db/store.test.cjs`; change them there first.
+- **What is on screen is the live state** (`shared/live-state.mjs`, held by
+  `electron/live.cjs`). Operator pages change it only through
+  `src/lib/projection.js`; outputs read it with `useLiveState()`. A new kind
+  of content is a new op in `shared/live-state.mjs` with a test there, not a
+  new sync table or postMessage type. Being migrated (docs, section 2): the
+  old sync tables and postMessage still drive what isn't moved yet.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. On desktop every
   write reaches every window with the whole row, deletes included.

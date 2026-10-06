@@ -3,6 +3,7 @@
 // window.keryxDesktop from electron/preload.cjs. No login, no network.
 
 import { ClientError } from "../errors";
+import { createLiveClient } from "../liveClient";
 
 // The database stores media as keryx-media://<file>, independent of the
 // local server's host and port; windows get a URL they can load. Pages test
@@ -153,5 +154,9 @@ export function createDesktopBackend(bridge) {
 
     const appLogs = { async logUserInApp() {} };
 
-    return { entities, auth, integrations, appLogs };
+    // What is on screen: media in the document is keryx-media:// like in the
+    // database, so each window and network screen gets URLs it can load.
+    const live = createLiveClient(bridge.live, { toStore, fromStore });
+
+    return { entities, auth, integrations, appLogs, live };
 }

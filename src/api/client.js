@@ -9,10 +9,15 @@
 //   - supabase: the web build running in a plain browser
 // Anything not on that surface is a deliberate omission: add it to every
 // backend when a page needs it, not in the page.
+//
+// keryx.live is what every output shows right now (liveClient.js); change it
+// through src/lib/projection.js, read it with useLiveState().
 
 import * as supabaseBackend from "./backends/supabase";
 import { createDesktopBackend } from "./backends/desktop";
 import { createNetworkBridge } from "./backends/network";
+import { createLocalLiveBridge } from "./backends/localLive";
+import { createLiveClient } from "./liveClient";
 
 const desktopBridge = typeof window !== "undefined" ? window.keryxDesktop : undefined;
 
@@ -26,6 +31,7 @@ const backend = isDesktop
         : supabaseBackend;
 
 export const { entities, auth, integrations, appLogs } = backend;
+export const live = backend.live ?? createLiveClient(createLocalLiveBridge());
 
-export const keryx = { entities, auth, integrations, appLogs, isDesktop, isNetworkScreen };
+export const keryx = { entities, auth, integrations, appLogs, live, isDesktop, isNetworkScreen };
 export default keryx;

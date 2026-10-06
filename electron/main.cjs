@@ -12,6 +12,7 @@ const { applyPendingImport } = require("./archive.cjs");
 const { createUpdater } = require("./updater.cjs");
 const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
+const { createLive, loadLiveRules } = require("./live.cjs");
 const schema = require("./db/schema.json");
 
 const HOST = "127.0.0.1";
@@ -62,6 +63,7 @@ let store = null;
 let outputs = null;
 let system = null;
 let network = null;
+let live = null;
 
 // Same database, same port: a second launch just focuses the first.
 const gotLock = app.requestSingleInstanceLock();
@@ -224,10 +226,19 @@ app.whenReady().then(async () => {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }
 
+    // What every output shows right now (shared/live-state.mjs).
+    try {
+        live = createLive({ file: path.join(dataDir, "live.json"), rules: await loadLiveRules(), log: (m) => logger.warn(m) });
+    } catch (err) {
+        fatal("KERYX não conseguiu iniciar", `Não foi possível carregar o estado da projeção: ${err && err.message}`);
+        return;
+    }
+
     // Tablets and TVs on the church network (off until enabled in Settings).
     // KERYX_LAN_PORT=0 lets a smoke run use a free port.
     network = createNetwork({
         store,
+        live,
         settings,
         distDir: path.join(app.getAppPath(), "dist"),
         mediaDir,
@@ -244,6 +255,7 @@ app.whenReady().then(async () => {
         outputs,
         system,
         network,
+        live,
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
@@ -251,12 +263,13 @@ app.whenReady().then(async () => {
     });
 
     const win = createMainWindow();
-    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, network, store, dataDir, importOutcome });
+    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, network, store, live, dataDir, importOutcome });
 });
 
 app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
     if (network) network.stop();
+    if (live) live.flush();
     if (system) {
         try {
             system.backupNow("ao fechar");

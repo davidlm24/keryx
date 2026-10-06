@@ -9,7 +9,7 @@ const SETTINGS_KEY = "network";
 const DEFAULT_PORT = 7701;
 const PIN = /^\d{4,8}$/;
 
-function createNetwork({ store, settings, distDir, mediaDir, bundledDir, logger, port }) {
+function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, logger, port }) {
     if (port === undefined || Number.isNaN(port)) port = DEFAULT_PORT;
     const config = () => {
         const saved = settings.get(SETTINGS_KEY, {}) || {};
@@ -23,7 +23,7 @@ function createNetwork({ store, settings, distDir, mediaDir, bundledDir, logger,
     };
     const save = (patch) => settings.set(SETTINGS_KEY, { ...config(), ...patch });
 
-    const lan = createLanServer({ distDir, mediaDir, bundledDir, store, getConfig: () => config(), log: (m) => logger.warn(m) });
+    const lan = createLanServer({ distDir, mediaDir, bundledDir, store, live, getConfig: () => config(), log: (m) => logger.warn(m) });
     let lastError = "";
 
     async function start() {
