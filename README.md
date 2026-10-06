@@ -62,7 +62,7 @@ These can't be done from code:
 
 ### Importing the old data
 
-`scripts/migrate-from-base44.mjs` pulls every entity from Base44 and upserts
+`scripts/migrate-from-keryx.mjs` pulls every entity from Base44 and upserts
 it with the original ids, so cross-references survive. It needs a Base44
 session token and the project's service-role key — both are secrets; see the
 comment block at the top of the script and `.env.example`. Run it with
@@ -74,7 +74,7 @@ comment block at the top of the script and `.env.example`. Run it with
 ## How the backend is wired
 
 The pages were generated against Base44's SDK, and sixty-odd files still
-import `base44` from `src/api/base44Client.js`. That module is now a one-line
+import `keryx` from `src/api/keryxClient.js`. That module is now a one-line
 re-export of **`src/api/client.js`**, which implements the same surface on
 `supabase-js`:
 
@@ -88,7 +88,7 @@ re-export of **`src/api/client.js`**, which implements the same surface on
 | `integrations.Core.InvokeLLM` | Edge Function `invoke-llm` → Anthropic API with web search/fetch |
 | `integrations.Core.SendEmail / SendSMS / GenerateImage / ExtractDataFromUploadedFile` | not implemented; reject with a message (no page uses them) |
 
-Renaming the `base44` identifier across the codebase is a mechanical follow-up
+Renaming the `keryx` identifier across the codebase is a mechanical follow-up
 that was deliberately left out of the migration so the diff stayed reviewable.
 
 Projection windows on the **same machine** do not go through the backend —
@@ -124,12 +124,12 @@ supabase/
   functions/
     invoke-llm/         InvokeLLM on the Anthropic API
     delete-account/     self-service account deletion (needs the service role)
-base44/entities/*.jsonc 31 JSON Schemas the tables were generated from; readable field docs
+keryx/entities/*.jsonc 31 JSON Schemas the tables were generated from; readable field docs
 scripts/
-  migrate-from-base44.mjs
+  migrate-from-keryx.mjs
 src/
   api/client.js         the Supabase-backed client (entities / auth / integrations)
-  api/base44Client.js   re-export of the above under the old name
+  api/keryxClient.js   re-export of the above under the old name
   pages/                26 route components
   pages.config.js       the 9 layout-wrapped pages; the rest are routed in App.jsx
   components/

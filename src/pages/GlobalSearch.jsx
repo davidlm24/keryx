@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Input } from "@/components/ui/input";
 import { Music, Film, BookOpen, Search as SearchIcon } from "lucide-react";
 import { useThemeColors } from "@/hooks/useThemeColors";
@@ -12,9 +12,9 @@ export default function GlobalSearch() {
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
 
-    const { data: songs } = useQuery({ queryKey: ["songs"], queryFn: () => base44.entities.Song.list(), initialData: [] });
-    const { data: media } = useQuery({ queryKey: ["media"], queryFn: () => base44.entities.Media.list(), initialData: [] });
-    const { data: materials } = useQuery({ queryKey: ["bibleMaterials"], queryFn: () => base44.entities.BibleMaterial.list(), initialData: [] });
+    const { data: songs } = useQuery({ queryKey: ["songs"], queryFn: () => keryx.entities.Song.list(), initialData: [] });
+    const { data: media } = useQuery({ queryKey: ["media"], queryFn: () => keryx.entities.Media.list(), initialData: [] });
+    const { data: materials } = useQuery({ queryKey: ["bibleMaterials"], queryFn: () => keryx.entities.BibleMaterial.list(), initialData: [] });
 
     const results = useMemo(() => {
         if (!query.trim()) return { songs: [], media: [], materials: [] };

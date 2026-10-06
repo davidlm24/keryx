@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,13 +46,13 @@ export default function Settings() {
         try {
             if (authUser?.id) {
                 try {
-                    await base44.entities.User.delete(authUser.id);
+                    await keryx.entities.User.delete(authUser.id);
                 } catch (e) {
                     console.error("Erro ao eliminar conta no servidor:", e);
                 }
             }
             localStorage.removeItem("gerar_projection_settings");
-            await base44.auth.logout("/login");
+            await keryx.auth.logout("/login");
         } catch (e) {
             console.error("Erro ao sair:", e);
             window.location.href = "/login";
@@ -139,7 +139,7 @@ export default function Settings() {
         // If authenticated, also save to server
         if (authUser?.id) {
             try {
-                await base44.entities.User.update(authUser.id, updateData);
+                await keryx.entities.User.update(authUser.id, updateData);
             } catch (error) {
                 console.error("Erro ao salvar no servidor (usando localStorage):", error);
             }
@@ -156,7 +156,7 @@ export default function Settings() {
         
         setIsUploadingBg(true);
         try {
-            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             setPendingBgUrl(file_url);
         } catch (error) {
             console.error("Erro ao fazer upload:", error);
@@ -172,7 +172,7 @@ export default function Settings() {
         
         setIsUploadingLogo(true);
         try {
-            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             setPendingLogoUrl(file_url);
         } catch (error) {
             console.error("Erro ao fazer upload:", error);

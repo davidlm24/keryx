@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email, password);
+      await keryx.auth.loginViaEmailPassword(email, password);
       window.location.href = returnTo;
     } catch (err) {
       setError(err.message || "Invalid email or password");
@@ -34,11 +34,11 @@ export default function Login() {
   };
 
   const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", returnTo);
+    keryx.auth.loginWithProvider("google", returnTo);
   };
 
   const handleFacebook = () => {
-    base44.auth.loginWithProvider("facebook", returnTo);
+    keryx.auth.loginWithProvider("facebook", returnTo);
   };
 
   return (

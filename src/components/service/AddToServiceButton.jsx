@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { CalendarPlus, Check } from "lucide-react";
@@ -13,7 +13,7 @@ export default function AddToServiceButton({ itemType, contentId, title, ensureC
 
     const { data: services } = useQuery({
         queryKey: ["services"],
-        queryFn: () => base44.entities.Service.list("-date"),
+        queryFn: () => keryx.entities.Service.list("-date"),
         initialData: [],
     });
 
@@ -24,9 +24,9 @@ export default function AddToServiceButton({ itemType, contentId, title, ensureC
                 const content = await ensureContent();
                 finalContentId = content?.id || "";
             }
-            const items = await base44.entities.ServiceItem.filter({ serviceId });
+            const items = await keryx.entities.ServiceItem.filter({ serviceId });
             const order = items.length;
-            return base44.entities.ServiceItem.create({
+            return keryx.entities.ServiceItem.create({
                 serviceId,
                 order,
                 type: itemType,

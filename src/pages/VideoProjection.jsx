@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useLiveSessionChannel } from "@/hooks/useLiveSessionChannel";
 import { useProjectionReconnect } from "@/hooks/useProjectionReconnect";
 import { isYouTubeUrl, getYouTubeId } from "@/utils/youtube";
@@ -77,24 +77,24 @@ export default function VideoProjection() {
     useEffect(() => {
         const initLastId = async () => {
             try {
-                const existing = await base44.entities.VideoControl.list('-timestamp', 1);
+                const existing = await keryx.entities.VideoControl.list('-timestamp', 1);
                 if (existing.length > 0) lastControlId.current = existing[0].id;
             } catch (e) {}
         };
         initLastId();
 
-        const unsubVideo = base44.entities.VideoSync.subscribe((event) => {
+        const unsubVideo = keryx.entities.VideoSync.subscribe((event) => {
             if (event.type === 'create' || event.type === 'update') {
                 const v = event.data;
                 if (v.status === "active") {
                     setVideoUrl(v.video_url);
                     setTitle(v.title || "");
-                    base44.entities.VideoSync.update(v.id, { status: "played" }).catch(() => {});
+                    keryx.entities.VideoSync.update(v.id, { status: "played" }).catch(() => {});
                 }
             }
         });
 
-        const unsubControl = base44.entities.VideoControl.subscribe((event) => {
+        const unsubControl = keryx.entities.VideoControl.subscribe((event) => {
             if (event.type !== 'create') return;
             const cmd = event.data;
             if (cmd.id === lastControlId.current) return;
@@ -131,7 +131,7 @@ export default function VideoProjection() {
             }
         });
 
-        const unsubLive = base44.entities.LiveSession.subscribe((event) => {
+        const unsubLive = keryx.entities.LiveSession.subscribe((event) => {
             if (event.type === 'create' && event.data?.status === "active" && !channelRef.current) {
                 channelRef.current = event.data.channel;
             }
@@ -146,13 +146,13 @@ export default function VideoProjection() {
         const fetchInitial = async () => {
             try {
                 const [videos, controls] = await Promise.all([
-                    base44.entities.VideoSync.list('-timestamp', 1),
-                    base44.entities.VideoControl.list('-timestamp', 1)
+                    keryx.entities.VideoSync.list('-timestamp', 1),
+                    keryx.entities.VideoControl.list('-timestamp', 1)
                 ]);
                 if (videos.length > 0 && videos[0].status === "active") {
                     setVideoUrl(videos[0].video_url);
                     setTitle(videos[0].title || "");
-                    base44.entities.VideoSync.update(videos[0].id, { status: "played" }).catch(() => {});
+                    keryx.entities.VideoSync.update(videos[0].id, { status: "played" }).catch(() => {});
                 }
                 if (controls.length > 0) lastControlId.current = controls[0].id;
             } catch (e) {}

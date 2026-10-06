@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, SkipBack, SkipForward, Play, Pause } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { sendToProjection } from "@/lib/projectionWindow";
 
 export default function LyricPlayerPanel({ song, onClose, projectionWindow, stageWindow, lyricSyncId, onSlideChange }) {
@@ -48,7 +48,7 @@ export default function LyricPlayerPanel({ song, onClose, projectionWindow, stag
         // Tanto o projetor local como o tablet subscrevem ao LyricSync —
         // ambos recebem a mudança em simultâneo, sem diferença de tempo.
         if (lyricSyncId) {
-            base44.entities.LyricSync.update(lyricSyncId, { slide_index: idx, timestamp: Date.now() }).catch(() => {});
+            keryx.entities.LyricSync.update(lyricSyncId, { slide_index: idx, timestamp: Date.now() }).catch(() => {});
         }
         // Janela única de projeção local (postMessage SLIDE_INDEX)
         sendToProjection({ type: "SLIDE_INDEX", index: idx });

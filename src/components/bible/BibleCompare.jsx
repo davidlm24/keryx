@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Book, Loader2, Layers } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { bibleBooks, VERSION_API_MAP, BOOK_API_MAP } from "./bibleData";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
@@ -68,7 +68,7 @@ export default function BibleCompare({ onProjectVerse }) {
         const refStr = verseEnd !== verseStart
             ? `${book} ${chapter}:${verseStart}-${verseEnd}`
             : `${book} ${chapter}:${verseStart}`;
-        const result = await base44.integrations.Core.InvokeLLM({
+        const result = await keryx.integrations.Core.InvokeLLM({
             prompt: `Forneça o texto bíblico COMPLETO e EXATO de ${refStr} na versão ${version}. Retorne APENAS o texto dos versículos numerados, sem introduções. Formato: "1 texto\n2 texto"`,
             response_json_schema: {
                 type: "object",

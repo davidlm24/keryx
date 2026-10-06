@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 
 const DEFAULTS = { primary: "#7d8470", secondary: "#c9a86a" };
 const SETTINGS_KEY = "gerar_projection_settings";
@@ -10,7 +10,7 @@ export function useThemeColors() {
     useEffect(() => {
         const load = async () => {
             try {
-                const user = await base44.auth.me();
+                const user = await keryx.auth.me();
                 if (user) {
                     setColors({
                         primary: user.navbar_primary_color || user.primary_color || DEFAULTS.primary,

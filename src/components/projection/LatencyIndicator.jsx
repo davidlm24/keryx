@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Activity } from "lucide-react";
 
 /**
@@ -14,7 +14,7 @@ export default function LatencyIndicator({ liveSessionId }) {
     useEffect(() => {
         if (!liveSessionId) return;
 
-        const unsubscribe = base44.entities.LiveSession.subscribe((event) => {
+        const unsubscribe = keryx.entities.LiveSession.subscribe((event) => {
             if (event.type === "update" && event.data?.id === liveSessionId) {
                 const sentAt = event.data._latencyProbe;
                 if (sentAt) {
@@ -28,7 +28,7 @@ export default function LatencyIndicator({ liveSessionId }) {
         // Medir a cada 10s
         const probe = () => {
             setMeasuring(true);
-            base44.entities.LiveSession.update(liveSessionId, {
+            keryx.entities.LiveSession.update(liveSessionId, {
                 _latencyProbe: Date.now()
             }).catch(() => setMeasuring(false));
         };

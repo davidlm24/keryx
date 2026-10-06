@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, X, Check, Plus, Trash2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 
 const AGE_GROUPS = {
     children: "Crianças (4-10)", teens: "Adolescentes (11-14)", youth: "Jovens (15-25)",
@@ -72,7 +72,7 @@ export default function MaterialForm({ classes, onSave, onCancel, editing }) {
         if (!file) return;
         setUploading(true);
         try {
-            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             const slides = [...form.slides];
             slides[i] = { ...slides[i], image_url: file_url };
             set("slides", slides);
@@ -96,7 +96,7 @@ export default function MaterialForm({ classes, onSave, onCancel, editing }) {
     const uploadFile = async (file, field) => {
         setUploading(true);
         try {
-            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             set(field, file_url);
         } catch (e) { console.error(e); alert("Erro ao enviar ficheiro"); }
         setUploading(false);

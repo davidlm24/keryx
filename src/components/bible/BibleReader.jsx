@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { bibleBooks, VERSION_API_MAP, BOOK_API_MAP } from "./bibleData";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Loader2, ChevronLeft, ChevronRight, Type, Moon, Sun, BookOpen } from "lucide-react";
 
 const FONT_SIZES = { sm: "text-base", md: "text-lg", lg: "text-xl", xl: "text-2xl", xxl: "text-3xl" };
@@ -44,7 +44,7 @@ export default function BibleReader() {
                 setVerses(parsed);
                 localStorage.setItem(cacheKey, JSON.stringify(parsed));
             } else {
-                const result = await base44.integrations.Core.InvokeLLM({
+                const result = await keryx.integrations.Core.InvokeLLM({
                     prompt: `Forneça o texto bíblico COMPLETO de ${bName} ${ch} na versão ${ver}. Retorne APENAS os versículos numerados no formato "1 texto\n2 texto".`,
                     response_json_schema: { type: "object", properties: { text: { type: "string" } } }
                 });

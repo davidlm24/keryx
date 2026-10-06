@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Maximize2, Search, Heart, Monitor, Square, Video, Trash2 } from "lucide-react";
@@ -56,7 +56,7 @@ export default function Home() {
 
     const { data: songs, isLoading } = useQuery({
         queryKey: ["songs"],
-        queryFn: () => base44.entities.Song.list("title"),
+        queryFn: () => keryx.entities.Song.list("title"),
         initialData: () => {
             try { return JSON.parse(localStorage.getItem("oc_songs") || "[]"); } catch { return []; }
         },
@@ -90,7 +90,7 @@ export default function Home() {
     }, [songs, selectedArtist, selectedLetter, searchText, showFavoritesOnly]);
 
     const toggleFavoriteMutation = useMutation({
-        mutationFn: ({ id, isFav }) => base44.entities.Song.update(id, { is_favorite: isFav }),
+        mutationFn: ({ id, isFav }) => keryx.entities.Song.update(id, { is_favorite: isFav }),
         onMutate: async ({ id, isFav }) => {
             await queryClient.cancelQueries({ queryKey: ["songs"] });
             const previous = queryClient.getQueryData(["songs"]);
@@ -108,7 +108,7 @@ export default function Home() {
     };
 
     const createSongMutation = useMutation({
-        mutationFn: (songData) => base44.entities.Song.create(songData),
+        mutationFn: (songData) => keryx.entities.Song.create(songData),
         onMutate: async (songData) => {
             await queryClient.cancelQueries({ queryKey: ["songs"] });
             const previous = queryClient.getQueryData(["songs"]);
@@ -130,7 +130,7 @@ export default function Home() {
     });
 
     const updateSongMutation = useMutation({
-        mutationFn: ({ id, songData }) => base44.entities.Song.update(id, songData),
+        mutationFn: ({ id, songData }) => keryx.entities.Song.update(id, songData),
         onMutate: async ({ id, songData }) => {
             await queryClient.cancelQueries({ queryKey: ["songs"] });
             const previous = queryClient.getQueryData(["songs"]);
@@ -150,7 +150,7 @@ export default function Home() {
     });
 
     const deleteSongMutation = useMutation({
-        mutationFn: (id) => base44.entities.Song.delete(id),
+        mutationFn: (id) => keryx.entities.Song.delete(id),
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey: ["songs"] });
             const previous = queryClient.getQueryData(["songs"]);
@@ -167,7 +167,7 @@ export default function Home() {
     const deleteAllSongsMutation = useMutation({
         mutationFn: async (songsList) => {
             for (const song of songsList) {
-                await base44.entities.Song.delete(song.id);
+                await keryx.entities.Song.delete(song.id);
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
         },
@@ -210,11 +210,11 @@ export default function Home() {
     const [stageWindow, setStageWindow] = useState(null);
     const [previewContent, setPreviewContent] = useState(null);
     const [overlays, setOverlays] = useState([]);
-    const { data: projectionDevices } = useQuery({ queryKey: ["projectionDevices"], queryFn: () => base44.entities.ProjectionDevice.list(), initialData: [] });
+    const { data: projectionDevices } = useQuery({ queryKey: ["projectionDevices"], queryFn: () => keryx.entities.ProjectionDevice.list(), initialData: [] });
 
     // Obter nome do operador + limpar sessões órfãs no arranque
     useEffect(() => {
-        base44.auth.me().then(u => setOperatorName(u?.full_name || u?.email || "")).catch(() => {});
+        keryx.auth.me().then(u => setOperatorName(u?.full_name || u?.email || "")).catch(() => {});
         cleanupOrphanSessions();
     }, []);
 
@@ -241,7 +241,7 @@ export default function Home() {
     // Atualizar overlays na projeção ativa em tempo real
     useEffect(() => {
         if (activeLyricSyncId && overlays) {
-            base44.entities.LyricSync.update(activeLyricSyncId, { overlays }).catch(() => {});
+            keryx.entities.LyricSync.update(activeLyricSyncId, { overlays }).catch(() => {});
         }
     }, [overlays, activeLyricSyncId]);
 
@@ -281,14 +281,14 @@ export default function Home() {
 
         // Registar no histórico
         try {
-            await base44.entities.SongHistory.create({
+            await keryx.entities.SongHistory.create({
                 song_id: song.id,
                 song_title: song.title,
                 song_artist: song.artist || "",
                 played_at: new Date().toISOString(),
                 operator_name: operatorName,
             });
-            await base44.entities.Song.update(song.id, {
+            await keryx.entities.Song.update(song.id, {
                 play_count: (song.play_count || 0) + 1,
                 last_played_at: new Date().toISOString()
             });
@@ -316,7 +316,7 @@ export default function Home() {
 
         // Enviar letra para tablet remoto via LyricSync (como o VideoSync faz para vídeos)
         try {
-            const lyricRecord = await base44.entities.LyricSync.create({
+            const lyricRecord = await keryx.entities.LyricSync.create({
                 song_title: song.title,
                 artist: song.artist || "",
                 slides: song.slides?.length ? song.slides : generateSectionSlides(song.lyrics),
@@ -333,10 +333,10 @@ export default function Home() {
             });
             setActiveLyricSyncId(lyricRecord.id);
             // Limpar registos antigos em segundo plano
-            base44.entities.LyricSync.list().then(oldRecords => {
+            keryx.entities.LyricSync.list().then(oldRecords => {
                 for (const old of oldRecords) {
                     if (old.id !== lyricRecord.id && Date.now() - old.timestamp > 10000) {
-                        base44.entities.LyricSync.delete(old.id).catch(() => {});
+                        keryx.entities.LyricSync.delete(old.id).catch(() => {});
                     }
                 }
             }).catch(() => {});
@@ -347,7 +347,7 @@ export default function Home() {
         // Atualizar LiveSession
         try {
             if (!liveSessionId) {
-                const session = await base44.entities.LiveSession.create({
+                const session = await keryx.entities.LiveSession.create({
                     status: "active",
                     currentItemId: song.id,
                     currentSlideIndex: 0,
@@ -356,7 +356,7 @@ export default function Home() {
                 });
                 setLiveSessionId(session.id);
             } else {
-                await base44.entities.LiveSession.update(liveSessionId, {
+                await keryx.entities.LiveSession.update(liveSessionId, {
                     currentItemId: song.id,
                     currentSlideIndex: 0
                 });
@@ -376,17 +376,17 @@ export default function Home() {
 
             try {
                 // Criar novo registro PRIMEIRO para a tablet receber instantaneamente
-                await base44.entities.VideoSync.create({
+                await keryx.entities.VideoSync.create({
                     video_url: song.audio_url,
                     title: song.title,
                     timestamp: Date.now(),
                     status: "active"
                 });
                 // Limpar vídeos antigos em segundo plano (não bloqueia a notificação)
-                base44.entities.VideoSync.list().then(oldVideos => {
+                keryx.entities.VideoSync.list().then(oldVideos => {
                     for (const old of oldVideos) {
                         if (Date.now() - old.timestamp > 10000) {
-                            base44.entities.VideoSync.delete(old.id).catch(() => {});
+                            keryx.entities.VideoSync.delete(old.id).catch(() => {});
                         }
                     }
                 }).catch(() => {});
@@ -442,7 +442,7 @@ export default function Home() {
         const projectorDevice = projectionDevices?.[0];
         if (projectorDevice) {
             const slides = song.slides?.length ? song.slides : generateSectionSlides(song.lyrics);
-            base44.entities.ProjectionDevice.update(projectorDevice.id, {
+            keryx.entities.ProjectionDevice.update(projectorDevice.id, {
                 current_output: { content_type: "lyrics", title: song.title, slides, slide_index: 0, background_image: song.background_image || "" }
             }).catch(() => {});
         }
@@ -462,31 +462,31 @@ export default function Home() {
         }
         // Parar vídeos remotos (marcar como played e enviar stop)
         try {
-            base44.entities.VideoSync.list().then(videos => {
+            keryx.entities.VideoSync.list().then(videos => {
                 for (const v of videos) {
-                    if (v.status === "active") base44.entities.VideoSync.update(v.id, { status: "played" }).catch(() => {});
+                    if (v.status === "active") keryx.entities.VideoSync.update(v.id, { status: "played" }).catch(() => {});
                 }
             });
         } catch {}
         // Limpar todos os dispositivos remotos (projetor, TV, tablet, PC)
         if (projectionDevices && projectionDevices.length > 0) {
             for (const device of projectionDevices) {
-                base44.entities.ProjectionDevice.update(device.id, {
+                keryx.entities.ProjectionDevice.update(device.id, {
                     current_output: { content_type: "blank", title: "", slides: [], slide_index: 0 }
                 }).catch(() => {});
             }
         }
         // Parar projeção de letra no tablet remoto
         try {
-            base44.entities.LyricSync.list().then(records => {
+            keryx.entities.LyricSync.list().then(records => {
                 for (const r of records) {
-                    if (r.status === "active") base44.entities.LyricSync.update(r.id, { status: "stopped" }).catch(() => {});
+                    if (r.status === "active") keryx.entities.LyricSync.update(r.id, { status: "stopped" }).catch(() => {});
                 }
             });
         } catch {}
         // Encerrar LiveSession
         if (liveSessionId) {
-            base44.entities.LiveSession.update(liveSessionId, {
+            keryx.entities.LiveSession.update(liveSessionId, {
                 status: "ended",
                 endedAt: Date.now()
             }).then(() => setLiveSessionId(null)).catch(() => {});
@@ -499,7 +499,7 @@ export default function Home() {
 
     const handleSlideChange = (idx) => {
         if (liveSessionId) {
-            base44.entities.LiveSession.update(liveSessionId, { currentSlideIndex: idx }).catch(() => {});
+            keryx.entities.LiveSession.update(liveSessionId, { currentSlideIndex: idx }).catch(() => {});
         }
     };
 

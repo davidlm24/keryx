@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Search, Music, Book, Loader2, Cast } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useThemeColors } from "@/hooks/useThemeColors";
 
 /**
@@ -46,7 +46,7 @@ export default function UnifiedSearch({ songs = [], onSelectSong, onSelectVerse 
             setIsSearchingBible(true);
             setBibleSearched(true);
             try {
-                const result = await base44.integrations.Core.InvokeLLM({
+                const result = await keryx.integrations.Core.InvokeLLM({
                     prompt: `Pesquise na Bíblia por versículos que contenham a palavra ou frase: "${query}". Retorne até 5 resultados mais relevantes. Para cada resultado retorne: book (nome do livro em português), chapter (número), verse (número), text (texto completo do versículo). Priorize versículos onde a palavra aparece literalmente.`,
                     response_json_schema: {
                         type: "object",

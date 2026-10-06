@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Loader2, Send, X } from "lucide-react";
@@ -22,7 +22,7 @@ export default function QuickVerseBar({ onProject, deviceId }) {
         if (!reference.trim()) return;
         setLoading(true);
         try {
-            const result = await base44.integrations.Core.InvokeLLM({
+            const result = await keryx.integrations.Core.InvokeLLM({
                 prompt: `Busca o versículo bíblico "${reference}" na versão Almeida Revista e Corrigida (ARC).
 Retorna em JSON:
 - reference: a referência formatada (ex: "João 3:16")

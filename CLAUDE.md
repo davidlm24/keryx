@@ -16,13 +16,13 @@ wiring, the data model and the known gaps.
 - **The schema lives in `supabase/migrations/`.** A schema change is a new
   migration file, applied to the project and committed. Never alter a table
   from the dashboard without writing the migration down. The JSON Schemas in
-  `base44/entities/` are the readable field docs the tables were generated
+  `keryx/entities/` are the readable field docs the tables were generated
   from; keep them in step when you add a column.
-- **Data access goes through `base44.entities.*` inside TanStack Query** —
-  yes, the identifier is still `base44`; it is a re-export of the Supabase
+- **Data access goes through `keryx.entities.*` inside TanStack Query** —
+  yes, the identifier is still `keryx`; it is a re-export of the Supabase
   client in `src/api/client.js`. Add to that client when a page needs a new
   method; don't call `supabase.from()` from a page.
-- **Realtime is `base44.entities.<Name>.subscribe(cb)`.** Returns an
+- **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. Events carry
   the whole row in `data` only for tables with `REPLICA IDENTITY FULL`
   (the eight the app subscribes to); add that when subscribing to a new one.

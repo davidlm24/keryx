@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Wand2, Upload, Video, Clock } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import LyricSyncEditor from "./LyricSyncEditor";
 import ThemePicker from "./ThemePicker";
 import ChordImporter from "@/components/songs/ChordImporter";
@@ -219,7 +219,7 @@ export default function SongForm({ song, onSubmit, onCancel }) {
                                         onClick={async () => {
                                             setIsUploadingVideo(true);
                                             try {
-                                                const { file_url } = await base44.integrations.Core.UploadFile({ file: pendingVideo });
+                                                const { file_url } = await keryx.integrations.Core.UploadFile({ file: pendingVideo });
                                                 setFormData({ ...formData, audio_url: file_url });
                                                 setPendingVideo(null);
                                             } catch (error) {

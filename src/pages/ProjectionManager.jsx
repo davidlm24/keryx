@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,26 +18,26 @@ export default function ProjectionManager() {
   const [copiedId, setCopiedId] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: devices } = useQuery({ queryKey: ["projectionDevices"], queryFn: () => base44.entities.ProjectionDevice.list("-updated_date"), initialData: [] });
-  const { data: scenes } = useQuery({ queryKey: ["projectionScenes"], queryFn: () => base44.entities.ProjectionScene.list("-updated_date"), initialData: [] });
+  const { data: devices } = useQuery({ queryKey: ["projectionDevices"], queryFn: () => keryx.entities.ProjectionDevice.list("-updated_date"), initialData: [] });
+  const { data: scenes } = useQuery({ queryKey: ["projectionScenes"], queryFn: () => keryx.entities.ProjectionScene.list("-updated_date"), initialData: [] });
 
   const saveDeviceMut = useMutation({
-    mutationFn: (data) => data.id ? base44.entities.ProjectionDevice.update(data.id, data) : base44.entities.ProjectionDevice.create(data),
+    mutationFn: (data) => data.id ? keryx.entities.ProjectionDevice.update(data.id, data) : keryx.entities.ProjectionDevice.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["projectionDevices"] }); setShowDeviceForm(false); setEditingDevice(null); }
   });
 
   const deleteDeviceMut = useMutation({
-    mutationFn: (id) => base44.entities.ProjectionDevice.delete(id),
+    mutationFn: (id) => keryx.entities.ProjectionDevice.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projectionDevices"] })
   });
 
   const saveSceneMut = useMutation({
-    mutationFn: (data) => data.id ? base44.entities.ProjectionScene.update(data.id, data) : base44.entities.ProjectionScene.create(data),
+    mutationFn: (data) => data.id ? keryx.entities.ProjectionScene.update(data.id, data) : keryx.entities.ProjectionScene.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["projectionScenes"] }); setShowSceneForm(false); setEditingScene(null); }
   });
 
   const deleteSceneMut = useMutation({
-    mutationFn: (id) => base44.entities.ProjectionScene.delete(id),
+    mutationFn: (id) => keryx.entities.ProjectionScene.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projectionScenes"] })
   });
 

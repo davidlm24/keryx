@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -12,13 +12,13 @@ export default function SongHistoryPage() {
 
     const { data: history, isLoading } = useQuery({
         queryKey: ["songHistory"],
-        queryFn: () => base44.entities.SongHistory.list("-played_at", 100),
+        queryFn: () => keryx.entities.SongHistory.list("-played_at", 100),
         initialData: [],
     });
 
     const { data: songs } = useQuery({
         queryKey: ["songs"],
-        queryFn: () => base44.entities.Song.list("title"),
+        queryFn: () => keryx.entities.Song.list("title"),
         initialData: [],
     });
 

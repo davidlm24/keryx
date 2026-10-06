@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 
 /**
  * Vista de projeção de Comunicação Visual (contagens regressivas, cronómetros,
@@ -21,7 +21,7 @@ export default function CommunicationProjectionView({ video: initialVideo, playl
     useEffect(() => {
         const loadLogo = async () => {
             try {
-                const user = await base44.auth.me();
+                const user = await keryx.auth.me();
                 setLogoUrl(user?.logo_url || "");
             } catch (error) {
                 // Silenciar erro — janela de projeção pode não ter contexto de auth

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Book, Loader2, Search, Monitor, ChevronDown, ChevronUp } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { bibleBooks, VERSION_API_MAP, BOOK_API_MAP } from "./bibleData";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { getBibleProjectionStyle, setBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
@@ -176,7 +176,7 @@ export default function BibleSelector({ onPassageFound, onProjectDirect }) {
                 const versionLabel = version === "BKJ1611"
                     ? "King James Fiel 1611 em português (BKJ 1611), tradução literal portuguesa fiel ao texto original"
                     : version;
-                const result = await base44.integrations.Core.InvokeLLM({
+                const result = await keryx.integrations.Core.InvokeLLM({
                     prompt: `Forneça o texto bíblico COMPLETO e EXATO de ${reference} na versão ${versionLabel}. Retorne APENAS o texto dos versículos numerados, sem introduções ou comentários. Formato: "1 texto do versículo\n2 texto do versículo"`,
                     response_json_schema: {
                         type: "object",
@@ -491,7 +491,7 @@ export default function BibleSelector({ onPassageFound, onProjectDirect }) {
                                                     const file = e.target.files?.[0];
                                                     if (!file) return;
                                                     setBgUploading(true);
-                                                    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                                                    const { file_url } = await keryx.integrations.Core.UploadFile({ file });
                                                     setBgImageUrl(file_url);
                                                     setBgColor("");
                                                     setBgUploading(false);

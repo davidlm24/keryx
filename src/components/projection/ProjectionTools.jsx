@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, Timer, Square, Type, MonitorOff, Loader2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { sendToProjection } from "@/lib/projectionWindow";
 
@@ -66,7 +66,7 @@ export default function ProjectionTools() {
         const file = e.target.files?.[0];
         if (!file) return;
         setBgUploading(true);
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const { file_url } = await keryx.integrations.Core.UploadFile({ file });
         setBgImage(file_url);
         setBgUploading(false);
     };

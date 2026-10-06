@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Maximize2, Book, Search, Star, Upload, BookOpen, ChevronUp, ChevronDown, Clock, Layers } from "lucide-react";
@@ -25,7 +25,7 @@ export default function Bible() {
     const colors = useThemeColors();
 
     const createPassageMutation = useMutation({
-        mutationFn: (passageData) => base44.entities.BiblePassage.create(passageData),
+        mutationFn: (passageData) => keryx.entities.BiblePassage.create(passageData),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["biblePassages"] });
         },

@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Music, Clock, TrendingUp, BarChart3, Calendar, FileText, Copy } from "lucide-react";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from "recharts";
@@ -10,9 +10,9 @@ const PIE_COLORS = ["#7d8470", "#c9a86a", "#9c8861", "#d4b87a", "#6b7263", "#b89
 export default function Analytics() {
     const colors = useThemeColors();
 
-    const { data: songs } = useQuery({ queryKey: ["songs"], queryFn: () => base44.entities.Song.list(), initialData: [] });
-    const { data: history } = useQuery({ queryKey: ["songHistory"], queryFn: () => base44.entities.SongHistory.list("-played_at", 200), initialData: [] });
-    const { data: services } = useQuery({ queryKey: ["services"], queryFn: () => base44.entities.Service.list("-date", 50), initialData: [] });
+    const { data: songs } = useQuery({ queryKey: ["songs"], queryFn: () => keryx.entities.Song.list(), initialData: [] });
+    const { data: history } = useQuery({ queryKey: ["songHistory"], queryFn: () => keryx.entities.SongHistory.list("-played_at", 200), initialData: [] });
+    const { data: services } = useQuery({ queryKey: ["services"], queryFn: () => keryx.entities.Service.list("-date", 50), initialData: [] });
 
     const stats = useMemo(() => {
         const topSongs = {};

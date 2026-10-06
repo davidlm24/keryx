@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, X, Maximize2, Maximize } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 
 function formatTime(s) {
     if (!s || isNaN(s)) return "0:00";
@@ -53,7 +53,7 @@ export default function VideoPlayerPanel({ song, onClose, onSendToProjection, vi
         }
         // Enviar para dispositivos remotos via DB (QR code / cross-device)
         try {
-            await base44.entities.VideoControl.create({
+            await keryx.entities.VideoControl.create({
                 ...payload,
                 timestamp: Date.now()
             });
@@ -131,7 +131,7 @@ export default function VideoPlayerPanel({ song, onClose, onSendToProjection, vi
     const requestRemoteFullscreen = async () => {
         // Envia comando fullscreen apenas para dispositivos QR (DB), não para janela local
         try {
-            await base44.entities.VideoControl.create({
+            await keryx.entities.VideoControl.create({
                 action: "fullscreen",
                 timestamp: Date.now()
             });

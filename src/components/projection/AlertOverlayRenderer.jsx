@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 
 /**
  * Renderiza um overlay de alerta/mensagem sobre qualquer projeção.
@@ -14,7 +14,7 @@ export default function AlertOverlayRenderer() {
         // Buscar alerta ativo ao carregar
         const check = async () => {
             try {
-                const records = await base44.entities.AlertMessage.list("-timestamp", 1);
+                const records = await keryx.entities.AlertMessage.list("-timestamp", 1);
                 if (records.length > 0 && records[0].status === "active") {
                     setAlert(records[0]);
                 }
@@ -22,7 +22,7 @@ export default function AlertOverlayRenderer() {
         };
         check();
 
-        const unsubscribe = base44.entities.AlertMessage.subscribe((event) => {
+        const unsubscribe = keryx.entities.AlertMessage.subscribe((event) => {
             if (event.type === "create" || event.type === "update") {
                 if (event.data?.status === "active") {
                     setAlert(event.data);

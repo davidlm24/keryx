@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Maximize2, Play } from "lucide-react";
 import PagePanel from "@/components/layout/PagePanel";
@@ -18,12 +18,12 @@ export default function Communication() {
 
     const { data: videos, isLoading } = useQuery({
         queryKey: ["communicationVideos"],
-        queryFn: () => base44.entities.CommunicationVideo.list("-created_date"),
+        queryFn: () => keryx.entities.CommunicationVideo.list("-created_date"),
         initialData: [],
     });
 
     const createVideoMutation = useMutation({
-        mutationFn: (videoData) => base44.entities.CommunicationVideo.create(videoData),
+        mutationFn: (videoData) => keryx.entities.CommunicationVideo.create(videoData),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["communicationVideos"] });
             setShowForm(false);
@@ -32,7 +32,7 @@ export default function Communication() {
     });
 
     const updateVideoMutation = useMutation({
-        mutationFn: ({ id, videoData }) => base44.entities.CommunicationVideo.update(id, videoData),
+        mutationFn: ({ id, videoData }) => keryx.entities.CommunicationVideo.update(id, videoData),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["communicationVideos"] });
             setShowForm(false);
@@ -41,7 +41,7 @@ export default function Communication() {
     });
 
     const deleteVideoMutation = useMutation({
-        mutationFn: (id) => base44.entities.CommunicationVideo.delete(id),
+        mutationFn: (id) => keryx.entities.CommunicationVideo.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["communicationVideos"] });
         },

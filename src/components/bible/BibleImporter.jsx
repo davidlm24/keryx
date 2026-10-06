@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Loader2, BookOpen } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useThemeColors } from "@/hooks/useThemeColors";
 
 export default function BibleImporter({ onImportComplete }) {
@@ -96,7 +96,7 @@ export default function BibleImporter({ onImportComplete }) {
             }
             
             // Importar todas as passagens de uma vez
-            await base44.entities.BiblePassage.bulkCreate(allPassages);
+            await keryx.entities.BiblePassage.bulkCreate(allPassages);
             
             alert(`Bíblia ${bibleVersions[version].name} importada com sucesso!`);
             if (onImportComplete) onImportComplete();

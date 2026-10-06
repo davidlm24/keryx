@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Layers, Plus, Trash2, Eye, EyeOff, GripVertical, Upload, Loader2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useThemeColors } from "@/hooks/useThemeColors";
 
 /**
@@ -48,7 +48,7 @@ export default function OverlayManager({ overlays = [], onChange }) {
         if (!file) return;
         setUploading(id);
         try {
-            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             updateOverlay(id, { content: file_url });
         } catch (e) {
             console.error("Erro no upload:", e);

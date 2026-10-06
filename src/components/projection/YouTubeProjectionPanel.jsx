@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Youtube, X, Send, Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { isYouTubeUrl, getYouTubeId, getYouTubeThumbnail } from "@/utils/youtube";
 
 function formatTime(s) {
@@ -141,7 +141,7 @@ export default function YouTubeProjectionPanel({ onClose }) {
 
     const sendControl = async (payload) => {
         try {
-            await base44.entities.VideoControl.create({ ...payload, timestamp: Date.now() });
+            await keryx.entities.VideoControl.create({ ...payload, timestamp: Date.now() });
         } catch (e) {
             console.error("Erro ao enviar controlo:", e);
         }
@@ -150,7 +150,7 @@ export default function YouTubeProjectionPanel({ onClose }) {
     const handleSend = async () => {
         if (!valid) return;
         try {
-            await base44.entities.VideoSync.create({
+            await keryx.entities.VideoSync.create({
                 video_url: url.trim(),
                 title: title.trim() || "YouTube",
                 timestamp: Date.now(),
@@ -164,7 +164,7 @@ export default function YouTubeProjectionPanel({ onClose }) {
 
     const handleStop = async () => {
         try {
-            await base44.entities.VideoSync.create({
+            await keryx.entities.VideoSync.create({
                 video_url: "",
                 title: "",
                 timestamp: Date.now(),

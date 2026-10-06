@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowLeft, Maximize2, Calendar, Square, FileDown, Eye } from "lucide-react";
@@ -53,12 +53,12 @@ export default function Services() {
     // Colaboração em tempo real — subscreve a atualizações do Service por outros operadores
     useEffect(() => {
         if (!serviceId) return;
-        const unsubscribe = base44.entities.Service.subscribe((event) => {
+        const unsubscribe = keryx.entities.Service.subscribe((event) => {
             if ((event.type === 'update' || event.type === 'delete') && event.data?.id === serviceId) {
                 queryClient.invalidateQueries({ queryKey: ["services"] });
             }
         });
-        const unsubscribeItems = base44.entities.ServiceItem.subscribe((event) => {
+        const unsubscribeItems = keryx.entities.ServiceItem.subscribe((event) => {
             if (event.data?.serviceId === serviceId) {
                 queryClient.invalidateQueries({ queryKey: ["serviceItems", serviceId] });
             }
@@ -77,12 +77,12 @@ export default function Services() {
 
     const { data: services, isLoading, isFetching } = useQuery({
         queryKey: ["services"],
-        queryFn: () => base44.entities.Service.list("-date"),
+        queryFn: () => keryx.entities.Service.list("-date"),
         initialData: [],
     });
 
     const createServiceMutation = useMutation({
-        mutationFn: (serviceData) => base44.entities.Service.create(serviceData),
+        mutationFn: (serviceData) => keryx.entities.Service.create(serviceData),
         onMutate: async (serviceData) => {
             await queryClient.cancelQueries({ queryKey: ["services"] });
             const previous = queryClient.getQueryData(["services"]);
@@ -113,7 +113,7 @@ export default function Services() {
     });
 
     const updateServiceMutation = useMutation({
-        mutationFn: ({ id, serviceData }) => base44.entities.Service.update(id, serviceData),
+        mutationFn: ({ id, serviceData }) => keryx.entities.Service.update(id, serviceData),
         onMutate: async ({ id, serviceData }) => {
             await queryClient.cancelQueries({ queryKey: ["services"] });
             const previous = queryClient.getQueryData(["services"]);
@@ -139,7 +139,7 @@ export default function Services() {
     });
 
     const deleteServiceMutation = useMutation({
-        mutationFn: (id) => base44.entities.Service.delete(id),
+        mutationFn: (id) => keryx.entities.Service.delete(id),
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey: ["services"] });
             const previous = queryClient.getQueryData(["services"]);
@@ -162,14 +162,14 @@ export default function Services() {
 
     const { data: serviceItems } = useQuery({
         queryKey: ["serviceItems", serviceId],
-        queryFn: () => base44.entities.ServiceItem.filter({ serviceId }, "order"),
+        queryFn: () => keryx.entities.ServiceItem.filter({ serviceId }, "order"),
         enabled: !!serviceId,
         initialData: [],
     });
 
     // Obter nome do operador para o histórico
     useEffect(() => {
-        base44.auth.me().then(u => setOperatorName(u?.full_name || u?.email || "")).catch(() => {});
+        keryx.auth.me().then(u => setOperatorName(u?.full_name || u?.email || "")).catch(() => {});
     }, []);
 
     // Avisar ao fechar com sessão ativa
@@ -219,11 +219,11 @@ export default function Services() {
         let fullItem;
         try {
             if (projType === "song") {
-                fullItem = await base44.entities.Song.get(contentId);
+                fullItem = await keryx.entities.Song.get(contentId);
             } else if (projType === "bible") {
-                fullItem = await base44.entities.BiblePassage.get(contentId);
+                fullItem = await keryx.entities.BiblePassage.get(contentId);
             } else if (projType === "media") {
-                fullItem = await base44.entities.Media.get(contentId);
+                fullItem = await keryx.entities.Media.get(contentId);
             }
         } catch (e) {
             console.error("Erro ao buscar item:", e);
@@ -242,7 +242,7 @@ export default function Services() {
 
         // Registar no histórico
         if (projType === "song") {
-            base44.entities.SongHistory.create({
+            keryx.entities.SongHistory.create({
                 song_id: contentId,
                 song_title: fullItem.title,
                 song_artist: fullItem.artist || "",
@@ -251,7 +251,7 @@ export default function Services() {
                 service_title: selectedService?.title || "",
                 operator_name: operatorName,
             }).catch(() => {});
-            base44.entities.Song.update(contentId, {
+            keryx.entities.Song.update(contentId, {
                 play_count: (fullItem.play_count || 0) + 1,
                 last_played_at: new Date().toISOString()
             }).catch(() => {});
@@ -269,7 +269,7 @@ export default function Services() {
             const preloadMap = { song: "Song", bible: "BiblePassage", media: "Media" };
             const entityName = preloadMap[nextType];
             if (entityName) {
-                base44.entities[entityName].get(nextItem.contentId)
+                keryx.entities[entityName].get(nextItem.contentId)
                     .then(data => setPreloadedNext(data))
                     .catch(() => {});
             }
@@ -290,7 +290,7 @@ export default function Services() {
             const slides = projType === "song"
                 ? (fullItem.slides || [{ text: fullItem.lyrics, duration: fullItem.duration || 30 }])
                 : (fullItem.slides || [{ text: fullItem.text, duration: 10 }]);
-            base44.entities.LyricSync.create({
+            keryx.entities.LyricSync.create({
                 song_title: projType === "song" ? fullItem.title : fullItem.reference,
                 artist: fullItem.artist || "",
                 slides,
@@ -306,10 +306,10 @@ export default function Services() {
             }).then(lyricRecord => {
                 setActiveLyricSyncId(lyricRecord.id);
                 // Limpar registos antigos em segundo plano
-                base44.entities.LyricSync.list().then(oldRecords => {
+                keryx.entities.LyricSync.list().then(oldRecords => {
                     for (const old of oldRecords) {
                         if (old.id !== lyricRecord.id && Date.now() - old.timestamp > 10000) {
-                            base44.entities.LyricSync.delete(old.id).catch(() => {});
+                            keryx.entities.LyricSync.delete(old.id).catch(() => {});
                         }
                     }
                 }).catch(() => {});
@@ -319,7 +319,7 @@ export default function Services() {
         // Atualizar LiveSession
         try {
             if (!liveSessionId) {
-                const session = await base44.entities.LiveSession.create({
+                const session = await keryx.entities.LiveSession.create({
                     serviceId,
                     status: "active",
                     currentItemId: item.id,
@@ -330,7 +330,7 @@ export default function Services() {
                 setLiveSessionId(session.id);
                 setSessionStartTime(Date.now());
             } else {
-                await base44.entities.LiveSession.update(liveSessionId, {
+                await keryx.entities.LiveSession.update(liveSessionId, {
                     currentItemId: item.id,
                     currentSlideIndex: 0
                 });
@@ -351,17 +351,17 @@ export default function Services() {
             videoWindow.postMessage({ type: "VIDEO_STOP" }, "*");
         }
         try {
-            base44.entities.VideoSync.list().then(videos => {
+            keryx.entities.VideoSync.list().then(videos => {
                 for (const v of videos) {
-                    if (v.status === "active") base44.entities.VideoSync.update(v.id, { status: "played" }).catch(() => {});
+                    if (v.status === "active") keryx.entities.VideoSync.update(v.id, { status: "played" }).catch(() => {});
                 }
             });
         } catch {}
         // Limpar todos os dispositivos remotos (projetor, TV, tablet, PC)
         try {
-            base44.entities.ProjectionDevice.list().then(devices => {
+            keryx.entities.ProjectionDevice.list().then(devices => {
                 for (const device of devices) {
-                    base44.entities.ProjectionDevice.update(device.id, {
+                    keryx.entities.ProjectionDevice.update(device.id, {
                         current_output: { content_type: "blank", title: "", slides: [], slide_index: 0 }
                     }).catch(() => {});
                 }
@@ -369,15 +369,15 @@ export default function Services() {
         } catch {}
         // Parar projeção de letra no tablet remoto
         try {
-            base44.entities.LyricSync.list().then(records => {
+            keryx.entities.LyricSync.list().then(records => {
                 for (const r of records) {
-                    if (r.status === "active") base44.entities.LyricSync.update(r.id, { status: "stopped" }).catch(() => {});
+                    if (r.status === "active") keryx.entities.LyricSync.update(r.id, { status: "stopped" }).catch(() => {});
                 }
             });
         } catch {}
         // Encerrar LiveSession
         if (liveSessionId) {
-            base44.entities.LiveSession.update(liveSessionId, {
+            keryx.entities.LiveSession.update(liveSessionId, {
                 status: "ended",
                 endedAt: Date.now()
             }).then(() => setLiveSessionId(null)).catch(() => {});
@@ -409,17 +409,17 @@ export default function Services() {
             if (isVideo) {
                 try {
                     // Criar novo registro PRIMEIRO para a tablet receber instantaneamente
-                    await base44.entities.VideoSync.create({
+                    await keryx.entities.VideoSync.create({
                         video_url: data.audio_url,
                         title: data.title,
                         timestamp: Date.now(),
                         status: "active"
                     });
                     // Limpar vídeos antigos em segundo plano (não bloqueia a notificação)
-                    base44.entities.VideoSync.list().then(oldVideos => {
+                    keryx.entities.VideoSync.list().then(oldVideos => {
                         for (const old of oldVideos) {
                             if (Date.now() - old.timestamp > 10000) {
-                                base44.entities.VideoSync.delete(old.id).catch(() => {});
+                                keryx.entities.VideoSync.delete(old.id).catch(() => {});
                             }
                         }
                     }).catch(() => {});
@@ -457,7 +457,7 @@ export default function Services() {
 
     const handleSlideChange = (idx) => {
         if (liveSessionId) {
-            base44.entities.LiveSession.update(liveSessionId, { currentSlideIndex: idx }).catch(() => {});
+            keryx.entities.LiveSession.update(liveSessionId, { currentSlideIndex: idx }).catch(() => {});
         }
     };
 

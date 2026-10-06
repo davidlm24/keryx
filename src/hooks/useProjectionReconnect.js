@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 
 /**
  * Reconecta automaticamente a subscrição de projeção quando a ligação volta.
@@ -16,7 +16,7 @@ export function useProjectionReconnect(onReconnect, entityType) {
     useEffect(() => {
         const handleOnline = async () => {
             try {
-                const records = await base44.entities[entityType].list("-timestamp", 1);
+                const records = await keryx.entities[entityType].list("-timestamp", 1);
                 if (records.length > 0) {
                     callbackRef.current(records[0]);
                 }

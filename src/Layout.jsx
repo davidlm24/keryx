@@ -1,5 +1,5 @@
 import React from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import TopHeader from "@/components/layout/TopHeader";
 import BottomTabBar from "@/components/layout/BottomTabBar";
 
@@ -50,7 +50,7 @@ export default function Layout({ children, currentPageName }) {
             };
 
             try {
-                const user = await base44.auth.me();
+                const user = await keryx.auth.me();
                 if (user) {
                     setUserSettings({
                         logo_url: user.logo_url || defaults.logo_url,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Sparkles } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -18,7 +18,7 @@ export default function ServiceItemManager({ service, onPlayItem }) {
 
     const { data: serviceItems, isLoading } = useQuery({
         queryKey: ["serviceItems", service.id],
-        queryFn: () => base44.entities.ServiceItem.filter({ serviceId: service.id }),
+        queryFn: () => keryx.entities.ServiceItem.filter({ serviceId: service.id }),
         initialData: [],
     });
 
@@ -29,10 +29,10 @@ export default function ServiceItemManager({ service, onPlayItem }) {
         const migrate = async () => {
             if (!service.id) return;
             try {
-                const existing = await base44.entities.ServiceItem.filter({ serviceId: service.id });
+                const existing = await keryx.entities.ServiceItem.filter({ serviceId: service.id });
                 if (existing.length === 0 && service.items?.length > 0) {
                     const typeMap = { song: "SONG", bible: "BIBLE", media: "VIDEO", announcement: "ANNOUNCEMENT" };
-                    await base44.entities.ServiceItem.bulkCreate(
+                    await keryx.entities.ServiceItem.bulkCreate(
                         service.items.map((item, idx) => ({
                             serviceId: service.id,
                             order: idx,
@@ -54,7 +54,7 @@ export default function ServiceItemManager({ service, onPlayItem }) {
     }, [service.id]);
 
     const createItem = useMutation({
-        mutationFn: (data) => base44.entities.ServiceItem.create({
+        mutationFn: (data) => keryx.entities.ServiceItem.create({
             ...data,
             serviceId: service.id,
             order: sortedItems.length,
@@ -68,17 +68,17 @@ export default function ServiceItemManager({ service, onPlayItem }) {
     });
 
     const updateItem = useMutation({
-        mutationFn: ({ id, data }) => base44.entities.ServiceItem.update(id, data),
+        mutationFn: ({ id, data }) => keryx.entities.ServiceItem.update(id, data),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["serviceItems", service.id] }),
     });
 
     const deleteItem = useMutation({
-        mutationFn: (id) => base44.entities.ServiceItem.delete(id),
+        mutationFn: (id) => keryx.entities.ServiceItem.delete(id),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["serviceItems", service.id] }),
     });
 
     const reorderItems = useMutation({
-        mutationFn: (items) => base44.entities.ServiceItem.bulkUpdate(
+        mutationFn: (items) => keryx.entities.ServiceItem.bulkUpdate(
             items.map((item, idx) => ({ id: item.id, order: idx }))
         ),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["serviceItems", service.id] }),

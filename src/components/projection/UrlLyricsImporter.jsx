@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Link, Loader2, Download } from "lucide-react";
@@ -20,7 +20,7 @@ export default function UrlLyricsImporter({ onImport }) {
         setLoading(true);
         setPreview(null);
         try {
-            const result = await base44.integrations.Core.InvokeLLM({
+            const result = await keryx.integrations.Core.InvokeLLM({
                 prompt: `Acesse a URL "${url}" e extraia a letra completa da música.
 Retorna em JSON:
 - title: título exato da música

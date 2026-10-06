@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Clock, Timer, Bell, Upload, Image } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 
 export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
     const [formData, setFormData] = useState(video || {
@@ -40,7 +40,7 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
     useEffect(() => {
         const loadLogo = async () => {
             try {
-                const user = await base44.auth.me();
+                const user = await keryx.auth.me();
                 setLogoUrl(user.logo_url || "");
             } catch (error) {
                 console.error("Erro ao carregar logo:", error);
@@ -60,7 +60,7 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
         
         setIsUploading(true);
         try {
-            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             setPendingImage(file_url);
         } catch (error) {
             console.error("Erro ao fazer upload:", error);
@@ -76,7 +76,7 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
         
         setIsUploading(true);
         try {
-            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             setPendingVideo(file_url);
         } catch (error) {
             console.error("Erro ao fazer upload:", error);
@@ -92,7 +92,7 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
         
         setIsUploading(true);
         try {
-            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             setPendingAudio(file_url);
         } catch (error) {
             console.error("Erro ao fazer upload:", error);
@@ -109,7 +109,7 @@ export default function CommunicationVideoForm({ video, onSubmit, onCancel }) {
         setIsUploading(true);
         try {
             for (const file of files) {
-                const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                const { file_url } = await keryx.integrations.Core.UploadFile({ file });
                 
                 let fileType = "image";
                 let duration = 5;

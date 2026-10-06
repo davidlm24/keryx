@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +22,7 @@ export default function ThemeEditorSection({ isMobile }) {
     const loadThemes = async () => {
         setIsLoading(true);
         try {
-            const list = await base44.entities.ProjectionTheme.list();
+            const list = await keryx.entities.ProjectionTheme.list();
             setThemes(list);
             if (list.length > 0 && !selectedTheme) {
                 setSelectedTheme(list[0]);
@@ -37,7 +37,7 @@ export default function ThemeEditorSection({ isMobile }) {
     const handleCreate = async () => {
         if (!newName.trim()) return;
         try {
-            const created = await base44.entities.ProjectionTheme.create({
+            const created = await keryx.entities.ProjectionTheme.create({
                 name: newName.trim(),
                 text_color: "#ffffff",
                 font_family: "sans",
@@ -58,7 +58,7 @@ export default function ThemeEditorSection({ isMobile }) {
         if (!selectedTheme?.id) return;
         setIsSaving(true);
         try {
-            await base44.entities.ProjectionTheme.update(selectedTheme.id, {
+            await keryx.entities.ProjectionTheme.update(selectedTheme.id, {
                 name: selectedTheme.name,
                 elements: selectedTheme.elements || [],
                 text_color: selectedTheme.text_color,
@@ -80,7 +80,7 @@ export default function ThemeEditorSection({ isMobile }) {
     const handleDelete = async (id) => {
         if (!confirm("Eliminar este tema?")) return;
         try {
-            await base44.entities.ProjectionTheme.delete(id);
+            await keryx.entities.ProjectionTheme.delete(id);
             const updated = themes.filter((t) => t.id !== id);
             setThemes(updated);
             if (selectedTheme?.id === id) setSelectedTheme(updated[0] || null);

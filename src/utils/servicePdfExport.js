@@ -1,4 +1,4 @@
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { jsPDF } from "jspdf";
 
 /**
@@ -55,7 +55,7 @@ export async function exportServiceToPdf(service, items) {
         try {
             const contentId = item.contentId;
             if (item.type === "SONG" && contentId) {
-                const song = await base44.entities.Song.get(contentId);
+                const song = await keryx.entities.Song.get(contentId);
                 if (song.lyrics) {
                     const lines = doc.splitTextToSize(song.lyrics, pageWidth - 2 * margin);
                     lines.forEach(line => {
@@ -76,7 +76,7 @@ export async function exportServiceToPdf(service, items) {
                     doc.setFont("helvetica", "normal");
                 }
             } else if (item.type === "BIBLE" && contentId) {
-                const passage = await base44.entities.BiblePassage.get(contentId);
+                const passage = await keryx.entities.BiblePassage.get(contentId);
                 if (passage.text) {
                     const lines = doc.splitTextToSize(passage.text, pageWidth - 2 * margin);
                     lines.forEach(line => {

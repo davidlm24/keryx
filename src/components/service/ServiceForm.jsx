@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Calendar, Users, Plus, Trash2, Loader2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useThemeColors } from "@/hooks/useThemeColors";
 
 export default function ServiceForm({ service, onSubmit, onCancel }) {
@@ -32,7 +32,7 @@ export default function ServiceForm({ service, onSubmit, onCancel }) {
     useEffect(() => {
         const loadTeamMembers = async () => {
             try {
-                const members = await base44.entities.WorshipTeam.list("name");
+                const members = await keryx.entities.WorshipTeam.list("name");
                 setTeamMembers(members);
             } catch (error) {
                 console.error("Erro ao carregar membros:", error);

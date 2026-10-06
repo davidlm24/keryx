@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Clock, Bell, Eye, MessageSquare } from "lucide-react";
 
 export default function PastorView() {
@@ -18,7 +18,7 @@ export default function PastorView() {
     }, []);
 
     useEffect(() => {
-        const unsub = base44.entities.ProjectionState.subscribe((event) => {
+        const unsub = keryx.entities.ProjectionState.subscribe((event) => {
             if (event.type === "create" || event.type === "update") {
                 const s = event.data;
                 setSlides(s.bible_text ? [{ text: s.bible_text, is_bible: true, bible_reference: s.bible_reference }] : []);
@@ -29,7 +29,7 @@ export default function PastorView() {
         // Load initial state
         const loadInitial = async () => {
             try {
-                const states = await base44.entities.ProjectionState.list("-updated_at", 1);
+                const states = await keryx.entities.ProjectionState.list("-updated_at", 1);
                 if (states.length > 0) {
                     const s = states[0];
                     if (s.bible_text) {

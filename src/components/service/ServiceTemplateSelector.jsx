@@ -1,6 +1,6 @@
 import React from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar, Plus, Sparkles } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -11,14 +11,14 @@ export default function ServiceTemplateSelector({ open, onClose, onCreated }) {
 
     const { data: templates } = useQuery({
         queryKey: ["serviceTemplates"],
-        queryFn: () => base44.entities.ServiceTemplate.list("-created_date"),
+        queryFn: () => keryx.entities.ServiceTemplate.list("-created_date"),
         initialData: [],
     });
 
     const createFromTemplate = useMutation({
         mutationFn: async (template) => {
             const today = new Date().toISOString().slice(0, 10);
-            const service = await base44.entities.Service.create({
+            const service = await keryx.entities.Service.create({
                 title: `${template.name} - ${new Date().toLocaleDateString("pt-BR")}`,
                 date: today,
                 startTime: "19:00",
@@ -27,7 +27,7 @@ export default function ServiceTemplateSelector({ open, onClose, onCreated }) {
                 items: [],
             });
             if (template.items?.length > 0) {
-                await base44.entities.ServiceItem.bulkCreate(
+                await keryx.entities.ServiceItem.bulkCreate(
                     template.items.map((item, idx) => ({
                         serviceId: service.id,
                         order: idx,

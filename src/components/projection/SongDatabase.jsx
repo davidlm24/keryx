@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Download, Upload, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useThemeColors } from "@/hooks/useThemeColors";
@@ -53,7 +53,7 @@ export default function SongDatabase({ songs }) {
                 alert("Nenhuma música válida (título e letra obrigatórios).");
                 return;
             }
-            const result = await base44.entities.Song.bulkCreate(valid);
+            const result = await keryx.entities.Song.bulkCreate(valid);
             queryClient.invalidateQueries({ queryKey: ["songs"] });
             const count = Array.isArray(result) ? result.length : valid.length;
             setMessage(`${count} músicas importadas com sucesso!`);

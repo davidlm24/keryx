@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, Music } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import UrlLyricsImporter from "@/components/projection/UrlLyricsImporter";
@@ -21,7 +21,7 @@ export default function SongSearch({ onSongFound }) {
         try {
             // Buscar letra e duração real em paralelo
             const [lyricsResult, durationResult] = await Promise.all([
-                base44.integrations.Core.InvokeLLM({
+                keryx.integrations.Core.InvokeLLM({
                     prompt: `Acesse o site letras.mus.br e busca a letra COMPLETA da música "${searchQuery}".
 
 Retorna em JSON:
@@ -55,7 +55,7 @@ REGRAS IMPORTANTES:
                         required: ["title", "artist", "lyrics_slides"]
                     }
                 }),
-                base44.integrations.Core.InvokeLLM({
+                keryx.integrations.Core.InvokeLLM({
                     prompt: `Pesquisa no Google, Spotify, YouTube Music ou qualquer fonte confiável a duração oficial em segundos da música "${searchQuery}". Retorna apenas o número de segundos totais da música (ex: se a música dura 4:32 retorna 272). Se não encontrares, retorna 0.`,
                     add_context_from_internet: true,
                     response_json_schema: {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useLiveSessionChannel } from "@/hooks/useLiveSessionChannel";
 import { useProjectionReconnect } from "@/hooks/useProjectionReconnect";
 import { FONT_MAP, SIZE_MAP, getTextEffect } from "@/lib/deviceStyles";
@@ -31,7 +31,7 @@ export default function LyricProjection() {
         // Buscar o registo ativo mais recente ao carregar
         const checkDatabase = async () => {
             try {
-                const records = await base44.entities.LyricSync.list('-timestamp', 1);
+                const records = await keryx.entities.LyricSync.list('-timestamp', 1);
                 if (records.length > 0 && records[0].status === "active") {
                     activeIdRef.current = records[0].id;
                     setLyricData(records[0]);
@@ -42,7 +42,7 @@ export default function LyricProjection() {
         checkDatabase();
 
         // Subscrição em tempo real — para o tablet remoto
-        const unsubscribe = base44.entities.LyricSync.subscribe((event) => {
+        const unsubscribe = keryx.entities.LyricSync.subscribe((event) => {
             if (event.type === 'create' || event.type === 'update') {
                 const rec = event.data;
                 if (rec.status === "active") {
@@ -63,7 +63,7 @@ export default function LyricProjection() {
         });
 
         // Subscrição da LiveSession — limpa a projeção quando a sessão termina (com filtro por canal)
-        const unsubscribeLive = base44.entities.LiveSession.subscribe((event) => {
+        const unsubscribeLive = keryx.entities.LiveSession.subscribe((event) => {
             if (event.type === 'create' && event.data?.status === "active" && !channelRef.current) {
                 channelRef.current = event.data.channel;
             }
@@ -130,7 +130,7 @@ export default function LyricProjection() {
     const [idleLogo, setIdleLogo] = useState(() => localStorage.getItem("idleLogoUrl") || "");
 
     useEffect(() => {
-        base44.auth.me().then(u => {
+        keryx.auth.me().then(u => {
             if (u?.logo_url) {
                 setIdleLogo(u.logo_url);
                 localStorage.setItem("idleLogoUrl", u.logo_url);

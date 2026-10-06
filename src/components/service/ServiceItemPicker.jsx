@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery } from "@tanstack/react-query";
 import {
     Search, Music, Book, Film, Image as ImageIcon, FileText, Monitor,
@@ -34,37 +34,37 @@ export default function ServiceItemPicker({ open, onClose, onAdd }) {
 
     const { data: songs } = useQuery({
         queryKey: ["songs"],
-        queryFn: () => base44.entities.Song.list("-title"),
+        queryFn: () => keryx.entities.Song.list("-title"),
         initialData: [],
         enabled: selectedType === "SONG",
     });
     const { data: passages } = useQuery({
         queryKey: ["biblePassages"],
-        queryFn: () => base44.entities.BiblePassage.list("-created_date"),
+        queryFn: () => keryx.entities.BiblePassage.list("-created_date"),
         initialData: [],
         enabled: selectedType === "BIBLE",
     });
     const { data: media } = useQuery({
         queryKey: ["media"],
-        queryFn: () => base44.entities.Media.list("-created_date"),
+        queryFn: () => keryx.entities.Media.list("-created_date"),
         initialData: [],
         enabled: ["VIDEO", "IMAGE", "PDF", "POWERPOINT"].includes(selectedType),
     });
     const { data: banners } = useQuery({
         queryKey: ["bannerTemplates"],
-        queryFn: () => base44.entities.BannerTemplate.list("-created_date"),
+        queryFn: () => keryx.entities.BannerTemplate.list("-created_date"),
         initialData: [],
         enabled: selectedType === "BANNER",
     });
     const { data: polls } = useQuery({
         queryKey: ["polls"],
-        queryFn: () => base44.entities.Poll.list("-created_date"),
+        queryFn: () => keryx.entities.Poll.list("-created_date"),
         initialData: [],
         enabled: selectedType === "POLL",
     });
     const { data: quizzes } = useQuery({
         queryKey: ["quizzes"],
-        queryFn: () => base44.entities.Quiz.list("-created_date"),
+        queryFn: () => keryx.entities.Quiz.list("-created_date"),
         initialData: [],
         enabled: selectedType === "QUIZ",
     });

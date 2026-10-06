@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useLiveSessionChannel } from "@/hooks/useLiveSessionChannel";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
 
@@ -16,7 +16,7 @@ export default function BibleMaterialProjection() {
 
     // Subscrição da LiveSession — limpa o ecrã quando a sessão termina (com filtro por canal)
     useEffect(() => {
-        const unsubscribe = base44.entities.LiveSession.subscribe((event) => {
+        const unsubscribe = keryx.entities.LiveSession.subscribe((event) => {
             if (event.type === 'create' && event.data?.status === "active" && !liveChannelRef.current) {
                 liveChannelRef.current = event.data.channel;
             }
@@ -34,12 +34,12 @@ export default function BibleMaterialProjection() {
         if (!channel) return;
         const fetchLatest = async () => {
             try {
-                const records = await base44.entities.BibleProjectionSync.filter({ channel }, "-timestamp", 1);
+                const records = await keryx.entities.BibleProjectionSync.filter({ channel }, "-timestamp", 1);
                 if (records[0]) applyState(records[0]);
             } catch (e) { console.error(e); }
         };
         fetchLatest();
-        const unsubscribe = base44.entities.BibleProjectionSync.subscribe((event) => {
+        const unsubscribe = keryx.entities.BibleProjectionSync.subscribe((event) => {
             if (event.data?.channel !== channel) return;
             fetchLatest();
         });

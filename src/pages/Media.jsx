@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Maximize2, Film } from "lucide-react";
@@ -30,19 +30,19 @@ export default function Media() {
 
     const { data: mediaItems, isLoading } = useQuery({
         queryKey: ["media"],
-        queryFn: () => base44.entities.Media.list("-created_date"),
+        queryFn: () => keryx.entities.Media.list("-created_date"),
         initialData: [],
     });
 
     const createMediaMutation = useMutation({
-        mutationFn: (mediaData) => base44.entities.Media.create(mediaData),
+        mutationFn: (mediaData) => keryx.entities.Media.create(mediaData),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["media"] });
         },
     });
 
     const deleteMediaMutation = useMutation({
-        mutationFn: (id) => base44.entities.Media.delete(id),
+        mutationFn: (id) => keryx.entities.Media.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["media"] });
         },

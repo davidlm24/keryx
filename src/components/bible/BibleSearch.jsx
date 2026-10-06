@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Loader2, Cast, Star, Inbox } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
 
@@ -27,7 +27,7 @@ export default function BibleSearch({ onProjectVerse }) {
             Para cada resultado, retorne: book (nome do livro em português), chapter (número), verse (número), text (texto completo do versículo).
             Priorize versículos onde a palavra aparece literalmente.`;
 
-            const result = await base44.integrations.Core.InvokeLLM({
+            const result = await keryx.integrations.Core.InvokeLLM({
                 prompt,
                 response_json_schema: {
                     type: "object",
@@ -81,7 +81,7 @@ export default function BibleSearch({ onProjectVerse }) {
         setSavingId(i);
         try {
             const reference = `${r.book} ${r.chapter}:${r.verse}`;
-            await base44.entities.BibleNote.create({
+            await keryx.entities.BibleNote.create({
                 reference,
                 book: r.book,
                 chapter: r.chapter,

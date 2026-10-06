@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { FONT_MAP, SIZE_MAP, getTextEffect } from "@/lib/deviceStyles";
 
 /**
@@ -15,11 +15,11 @@ export default function AnnouncementCarousel({ intervalSec = 8 }) {
     useEffect(() => {
         const load = async () => {
             try {
-                const items = await base44.entities.BannerTemplate.filter({ category: "announcement" }, "-updated_date", 50);
+                const items = await keryx.entities.BannerTemplate.filter({ category: "announcement" }, "-updated_date", 50);
                 setBanners(items.filter(b => b.title || b.subtitle || b.phrases?.length));
             } catch (e) {
                 // fallback: carregar todos
-                const items = await base44.entities.BannerTemplate.list("-updated_date", 50);
+                const items = await keryx.entities.BannerTemplate.list("-updated_date", 50);
                 setBanners(items.filter(b => b.title || b.subtitle || b.phrases?.length));
             } finally {
                 setLoading(false);

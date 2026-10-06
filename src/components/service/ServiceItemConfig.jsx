@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery } from "@tanstack/react-query";
 
 export default function ServiceItemConfig({ item, open, onClose, onSave }) {
@@ -27,7 +27,7 @@ export default function ServiceItemConfig({ item, open, onClose, onSave }) {
 
     const { data: scenes } = useQuery({
         queryKey: ["projectionScenes"],
-        queryFn: () => base44.entities.ProjectionScene.list("-created_date"),
+        queryFn: () => keryx.entities.ProjectionScene.list("-created_date"),
         initialData: [],
     });
 

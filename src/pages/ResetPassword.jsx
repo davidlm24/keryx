@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ export default function ResetPassword() {
   const [hasSession, setHasSession] = useState(null); // null = still checking
 
   useEffect(() => {
-    base44.auth.isAuthenticated().then(setHasSession).catch(() => setHasSession(false));
+    keryx.auth.isAuthenticated().then(setHasSession).catch(() => setHasSession(false));
   }, []);
 
   const [newPassword, setNewPassword] = useState("");
@@ -34,7 +34,7 @@ export default function ResetPassword() {
     }
     setLoading(true);
     try {
-      await base44.auth.resetPassword({ resetToken, newPassword });
+      await keryx.auth.resetPassword({ resetToken, newPassword });
       window.location.href = "/login";
     } catch (err) {
       setError(err.message || "Failed to reset password");

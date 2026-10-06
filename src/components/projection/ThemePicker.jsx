@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Palette, Save, Trash2, Plus, X } from "lucide-react";
@@ -32,7 +32,7 @@ export default function ThemePicker({ formData, onApply }) {
 
     const loadThemes = async () => {
         try {
-            const data = await base44.entities.ProjectionTheme.list("-updated_date", 50);
+            const data = await keryx.entities.ProjectionTheme.list("-updated_date", 50);
             setThemes(data);
         } catch (e) {
             console.error("Erro ao carregar temas:", e);
@@ -59,7 +59,7 @@ export default function ThemePicker({ formData, onApply }) {
     const saveTheme = async () => {
         if (!themeName.trim()) return;
         try {
-            await base44.entities.ProjectionTheme.create({
+            await keryx.entities.ProjectionTheme.create({
                 name: themeName.trim(),
                 text_color: formData.text_color || "#ffffff",
                 text_color_2: formData.text_color_2 || "",
@@ -79,7 +79,7 @@ export default function ThemePicker({ formData, onApply }) {
     const deleteTheme = async (id) => {
         if (!confirm("Eliminar este tema?")) return;
         try {
-            await base44.entities.ProjectionTheme.delete(id);
+            await keryx.entities.ProjectionTheme.delete(id);
             loadThemes();
         } catch (e) {
             console.error("Erro ao eliminar:", e);

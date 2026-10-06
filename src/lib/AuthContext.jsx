@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
+import { keryx } from '@/api/keryxClient';
 
 // Session state for the whole app, fed by Supabase's auth listener.
 //
@@ -20,8 +20,8 @@ export const AuthProvider = ({ children }) => {
     setIsLoadingAuth(true);
     setAuthError(null);
     try {
-      if (await base44.auth.isAuthenticated()) {
-        setUser(await base44.auth.me());
+      if (await keryx.auth.isAuthenticated()) {
+        setUser(await keryx.auth.me());
         setIsAuthenticated(true);
       } else {
         setUser(null);
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAppState();
-    const { data: { subscription } } = base44.supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = keryx.supabase.auth.onAuthStateChange((event) => {
       // TOKEN_REFRESHED carries no change the UI cares about; the others do.
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
         checkAppState();
@@ -51,11 +51,11 @@ export const AuthProvider = ({ children }) => {
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    return base44.auth.logout(shouldRedirect ? window.location.href : undefined);
+    return keryx.auth.logout(shouldRedirect ? window.location.href : undefined);
   };
 
   const navigateToLogin = () => {
-    base44.auth.redirectToLogin(window.location.href);
+    keryx.auth.redirectToLogin(window.location.href);
   };
 
   return (

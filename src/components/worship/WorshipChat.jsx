@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Link2, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export default function WorshipChat() {
 
     // Load current user name
     useEffect(() => {
-        base44.auth.me()
+        keryx.auth.me()
             .then(u => setSenderName(u?.full_name || u?.email?.split("@")[0] || ""))
             .catch(() => {});
     }, []);
@@ -34,7 +34,7 @@ export default function WorshipChat() {
     useEffect(() => {
         const loadMessages = async () => {
             try {
-                const result = await base44.entities.ChatMessage.filter(
+                const result = await keryx.entities.ChatMessage.filter(
                     { channel: "worship" },
                     { sort: "created_date", limit: 50 }
                 );
@@ -52,7 +52,7 @@ export default function WorshipChat() {
 
     // Real-time subscription
     useEffect(() => {
-        const unsubscribe = base44.entities.ChatMessage.subscribe((event) => {
+        const unsubscribe = keryx.entities.ChatMessage.subscribe((event) => {
             if (event.type === "create" && event.data?.channel === "worship") {
                 const msg = event.data;
                 if (knownIdsRef.current.has(msg.id)) return;
@@ -91,7 +91,7 @@ export default function WorshipChat() {
 
         setSending(true);
         try {
-            const created = await base44.entities.ChatMessage.create({
+            const created = await keryx.entities.ChatMessage.create({
                 sender_name: senderName.trim(),
                 message: text,
                 channel: "worship",

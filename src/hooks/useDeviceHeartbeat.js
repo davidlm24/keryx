@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 
 /**
  * Envia um heartbeat periódico para ProjectionDevice, atualizando last_seen.
@@ -15,7 +15,7 @@ export function useDeviceHeartbeat(deviceId = null, deviceName = "Projection Scr
         if (!idRef.current) return;
 
         const send = () => {
-            base44.entities.ProjectionDevice.update(idRef.current, {
+            keryx.entities.ProjectionDevice.update(idRef.current, {
                 is_online: true,
                 last_seen: new Date().toISOString()
             }).catch(() => {});
@@ -24,7 +24,7 @@ export function useDeviceHeartbeat(deviceId = null, deviceName = "Projection Scr
         send(); // imediato
         const interval = setInterval(send, 15000);
         const onOffline = () => {
-            base44.entities.ProjectionDevice.update(idRef.current, {
+            keryx.entities.ProjectionDevice.update(idRef.current, {
                 is_online: false
             }).catch(() => {});
         };
@@ -33,7 +33,7 @@ export function useDeviceHeartbeat(deviceId = null, deviceName = "Projection Scr
         return () => {
             clearInterval(interval);
             window.removeEventListener("offline", onOffline);
-            base44.entities.ProjectionDevice.update(idRef.current, {
+            keryx.entities.ProjectionDevice.update(idRef.current, {
                 is_online: false
             }).catch(() => {});
         };

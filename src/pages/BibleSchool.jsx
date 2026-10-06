@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,12 +44,12 @@ export default function BibleSchool() {
     const materialQuizQuestions = (m) => m?.quiz_questions?.length ? m.quiz_questions : (m?.quiz_question ? [{ question: m.quiz_question, options: m.quiz_options, correct: m.quiz_correct }] : []);
     const channel = getChannel();
 
-    const { data: classes } = useQuery({ queryKey: ["bibleClasses"], queryFn: () => base44.entities.BibleSchoolClass.list("-created_date"), initialData: [] });
-    const { data: materials } = useQuery({ queryKey: ["bibleMaterials"], queryFn: () => base44.entities.BibleMaterial.list("-created_date"), initialData: [] });
+    const { data: classes } = useQuery({ queryKey: ["bibleClasses"], queryFn: () => keryx.entities.BibleSchoolClass.list("-created_date"), initialData: [] });
+    const { data: materials } = useQuery({ queryKey: ["bibleMaterials"], queryFn: () => keryx.entities.BibleMaterial.list("-created_date"), initialData: [] });
 
     const resetForm = () => { setFormData({ name: "", age_group: "children", teacher_name: "", assistant_name: "", room: "", meeting_time: "", curriculum: "", notes: "" }); setStudents([]); setEditingId(null); setShowForm(false); };
     const createM = useMutation({
-        mutationFn: (d) => base44.entities.BibleSchoolClass.create({ ...d, students }),
+        mutationFn: (d) => keryx.entities.BibleSchoolClass.create({ ...d, students }),
         onMutate: async (d) => {
             await queryClient.cancelQueries({ queryKey: ["bibleClasses"] });
             const previous = queryClient.getQueryData(["bibleClasses"]);
@@ -62,7 +62,7 @@ export default function BibleSchool() {
         onSettled: () => queryClient.invalidateQueries({ queryKey: ["bibleClasses"] }),
     });
     const updateM = useMutation({
-        mutationFn: ({ id, data }) => base44.entities.BibleSchoolClass.update(id, { ...data, students }),
+        mutationFn: ({ id, data }) => keryx.entities.BibleSchoolClass.update(id, { ...data, students }),
         onMutate: async ({ id, data }) => {
             await queryClient.cancelQueries({ queryKey: ["bibleClasses"] });
             const previous = queryClient.getQueryData(["bibleClasses"]);
@@ -75,7 +75,7 @@ export default function BibleSchool() {
         onSettled: () => queryClient.invalidateQueries({ queryKey: ["bibleClasses"] }),
     });
     const deleteM = useMutation({
-        mutationFn: (id) => base44.entities.BibleSchoolClass.delete(id),
+        mutationFn: (id) => keryx.entities.BibleSchoolClass.delete(id),
         onMutate: async (id) => {
             await queryClient.cancelQueries({ queryKey: ["bibleClasses"] });
             const previous = queryClient.getQueryData(["bibleClasses"]);
@@ -86,9 +86,9 @@ export default function BibleSchool() {
         onSettled: () => queryClient.invalidateQueries({ queryKey: ["bibleClasses"] }),
     });
 
-    const createMaterialM = useMutation({ mutationFn: (d) => base44.entities.BibleMaterial.create(d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["bibleMaterials"] }); setShowMaterialForm(false); setEditingMaterial(null); } });
-    const updateMaterialM = useMutation({ mutationFn: ({ id, data }) => base44.entities.BibleMaterial.update(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["bibleMaterials"] }); setShowMaterialForm(false); setEditingMaterial(null); } });
-    const deleteMaterialM = useMutation({ mutationFn: (id) => base44.entities.BibleMaterial.delete(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bibleMaterials"] }) });
+    const createMaterialM = useMutation({ mutationFn: (d) => keryx.entities.BibleMaterial.create(d), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["bibleMaterials"] }); setShowMaterialForm(false); setEditingMaterial(null); } });
+    const updateMaterialM = useMutation({ mutationFn: ({ id, data }) => keryx.entities.BibleMaterial.update(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["bibleMaterials"] }); setShowMaterialForm(false); setEditingMaterial(null); } });
+    const deleteMaterialM = useMutation({ mutationFn: (id) => keryx.entities.BibleMaterial.delete(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bibleMaterials"] }) });
 
     const addStudent = () => { if (studentInput.trim()) { setStudents([...students, { name: studentInput.trim(), age: 0, parent_phone: "", attendance: [] }]); setStudentInput(""); } };
 
@@ -106,7 +106,7 @@ export default function BibleSchool() {
     };
 
     // ---- Projeção isolada por canal ----
-    const sendSync = (payload) => base44.entities.BibleProjectionSync.create({ channel, timestamp: Date.now(), ...payload }).catch(e => console.error(e));
+    const sendSync = (payload) => keryx.entities.BibleProjectionSync.create({ channel, timestamp: Date.now(), ...payload }).catch(e => console.error(e));
 
     const projectMaterial = (m) => {
         const slides = (m.type === "slides" || m.type === "text") ? (m.slides || []) : null;

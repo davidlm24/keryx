@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Maximize2, Tv, Wifi } from "lucide-react";
@@ -35,7 +35,7 @@ export default function DeviceView() {
   const handlePair = async () => {
     if (!pairingCode.trim()) return;
     try {
-      const devices = await base44.entities.ProjectionDevice.filter({ pairing_code: pairingCode.trim().toUpperCase() });
+      const devices = await keryx.entities.ProjectionDevice.filter({ pairing_code: pairingCode.trim().toUpperCase() });
       if (devices.length > 0) {
         window.location.search = `?device=${devices[0].id}`;
       } else {
@@ -51,16 +51,16 @@ export default function DeviceView() {
     let unsubscribe = null;
     const load = async () => {
       try {
-        const dev = await base44.entities.ProjectionDevice.get(deviceId);
+        const dev = await keryx.entities.ProjectionDevice.get(deviceId);
         setDevice(dev);
         setLoading(false);
 
-        unsubscribe = base44.entities.ProjectionDevice.subscribe((event) => {
+        unsubscribe = keryx.entities.ProjectionDevice.subscribe((event) => {
           if (event.data?.id === deviceId) setDevice(event.data);
         });
 
         const beat = async () => {
-          try { await base44.entities.ProjectionDevice.update(deviceId, { is_online: true, last_seen: new Date().toISOString() }); } catch (e) { /* ignore */ }
+          try { await keryx.entities.ProjectionDevice.update(deviceId, { is_online: true, last_seen: new Date().toISOString() }); } catch (e) { /* ignore */ }
         };
         beat();
         heartbeatRef.current = setInterval(beat, 30000);
@@ -77,7 +77,7 @@ export default function DeviceView() {
 
   useEffect(() => {
     const onUnmount = () => {
-      if (deviceId) base44.entities.ProjectionDevice.update(deviceId, { is_online: false }).catch(() => {});
+      if (deviceId) keryx.entities.ProjectionDevice.update(deviceId, { is_online: false }).catch(() => {});
     };
     window.addEventListener("beforeunload", onUnmount);
     return () => window.removeEventListener("beforeunload", onUnmount);

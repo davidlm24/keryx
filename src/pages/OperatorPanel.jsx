@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,9 +36,9 @@ export default function OperatorPanel() {
   const [showLiveEditor, setShowLiveEditor] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: devices } = useQuery({ queryKey: ["projectionDevices"], queryFn: () => base44.entities.ProjectionDevice.list("-updated_date"), initialData: [] });
-  const { data: scenes } = useQuery({ queryKey: ["projectionScenes"], queryFn: () => base44.entities.ProjectionScene.list("-updated_date"), initialData: [] });
-  const { data: songs } = useQuery({ queryKey: ["songs"], queryFn: () => base44.entities.Song.list("title"), initialData: [] });
+  const { data: devices } = useQuery({ queryKey: ["projectionDevices"], queryFn: () => keryx.entities.ProjectionDevice.list("-updated_date"), initialData: [] });
+  const { data: scenes } = useQuery({ queryKey: ["projectionScenes"], queryFn: () => keryx.entities.ProjectionScene.list("-updated_date"), initialData: [] });
+  const { data: songs } = useQuery({ queryKey: ["songs"], queryFn: () => keryx.entities.Song.list("title"), initialData: [] });
 
   // Poll device status for live online/offline updates
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function OperatorPanel() {
   const output = selectedDevice?.current_output || {};
 
   const sendToDevice = useMutation({
-    mutationFn: ({ deviceId, output }) => base44.entities.ProjectionDevice.update(deviceId, { current_output: output }),
+    mutationFn: ({ deviceId, output }) => keryx.entities.ProjectionDevice.update(deviceId, { current_output: output }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projectionDevices"] })
   });
 
@@ -94,14 +94,14 @@ export default function OperatorPanel() {
   const sendAlert = async (message, type = "alert") => {
     // Desativar alertas anteriores e criar novo
     try {
-      const existing = await base44.entities.AlertMessage.filter({ status: "active" });
+      const existing = await keryx.entities.AlertMessage.filter({ status: "active" });
       if (existing.length) {
-        await base44.entities.AlertMessage.bulkUpdate(
+        await keryx.entities.AlertMessage.bulkUpdate(
           existing.map(a => ({ id: a.id, status: "inactive" }))
         );
       }
     } catch (e) {}
-    await base44.entities.AlertMessage.create({
+    await keryx.entities.AlertMessage.create({
       message,
       type,
       status: "active",
@@ -111,9 +111,9 @@ export default function OperatorPanel() {
 
   const clearAlert = async () => {
     try {
-      const existing = await base44.entities.AlertMessage.filter({ status: "active" });
+      const existing = await keryx.entities.AlertMessage.filter({ status: "active" });
       if (existing.length) {
-        await base44.entities.AlertMessage.bulkUpdate(
+        await keryx.entities.AlertMessage.bulkUpdate(
           existing.map(a => ({ id: a.id, status: "inactive" }))
         );
       }

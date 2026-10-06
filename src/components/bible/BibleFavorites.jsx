@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +25,12 @@ export default function BibleFavorites({ onProjectVerse }) {
 
     const { data: notes, isLoading } = useQuery({
         queryKey: ["bibleNotes"],
-        queryFn: () => base44.entities.BibleNote.list("-updated_date", 200),
+        queryFn: () => keryx.entities.BibleNote.list("-updated_date", 200),
         initialData: [],
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (id) => base44.entities.BibleNote.delete(id),
+        mutationFn: (id) => keryx.entities.BibleNote.delete(id),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bibleNotes"] }),
     });
 
@@ -64,7 +64,7 @@ export default function BibleFavorites({ onProjectVerse }) {
             const chapter = refMatch ? parseInt(refMatch[2]) : 0;
             const verse = refMatch ? parseInt(refMatch[3]) : 0;
 
-            await base44.entities.BibleNote.create({
+            await keryx.entities.BibleNote.create({
                 reference: newNote.reference,
                 book,
                 chapter,
@@ -191,7 +191,7 @@ export default function BibleFavorites({ onProjectVerse }) {
                                             itemType="BIBLE"
                                             title={n.reference}
                                             ensureContent={async () => {
-                                                const passage = await base44.entities.BiblePassage.create({
+                                                const passage = await keryx.entities.BiblePassage.create({
                                                     reference: n.reference,
                                                     book: n.book,
                                                     chapter: n.chapter,

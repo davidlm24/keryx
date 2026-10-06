@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Music2, Clock, Guitar, Activity, ChevronRight, StickyNote, Timer, Plus, Minus } from "lucide-react";
 import { transposeChords, semitoneLabel } from "@/utils/chordTranspose";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
-import { base44 } from "@/api/base44Client";
+import { keryx } from "@/api/keryxClient";
 import { useLiveSessionChannel } from "@/hooks/useLiveSessionChannel";
 import { useProjectionReconnect } from "@/hooks/useProjectionReconnect";
 
@@ -59,7 +59,7 @@ export default function StageView() {
 
     // Subscrição da LiveSession — limpa o palco quando a sessão termina (com filtro por canal)
     useEffect(() => {
-        const unsubscribe = base44.entities.LiveSession.subscribe((event) => {
+        const unsubscribe = keryx.entities.LiveSession.subscribe((event) => {
             if (event.type === 'create' && event.data?.status === "active" && !channelRef.current) {
                 channelRef.current = event.data.channel;
             }
