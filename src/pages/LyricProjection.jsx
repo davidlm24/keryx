@@ -12,6 +12,10 @@ export default function LyricProjection() {
     const [lyricData, setLyricData] = useState(null);
     const [slideIndex, setSlideIndex] = useState(0);
     const activeIdRef = useRef(null);
+    // Driven by the local operator window via postMessage; the DB fallback
+    // poll must not override it.
+    const localModeRef = useRef(false);
+    const lastTsRef = useRef(0);
     const channelRef = useLiveSessionChannel();
 
     // Reconexão automática — re-busca estado ao voltar online
@@ -31,8 +35,10 @@ export default function LyricProjection() {
         // Buscar o registo ativo mais recente ao carregar
         const checkDatabase = async () => {
             try {
+                if (localModeRef.current) return;
                 const records = await keryx.entities.LyricSync.list('-timestamp', 1);
-                if (records.length > 0 && records[0].status === "active") {
+                if (records.length > 0 && records[0].status === "active" && (records[0].timestamp || 0) > lastTsRef.current) {
+                    lastTsRef.current = records[0].timestamp || 0;
                     activeIdRef.current = records[0].id;
                     setLyricData(records[0]);
                     setSlideIndex(records[0].slide_index || 0);
@@ -45,6 +51,7 @@ export default function LyricProjection() {
         const unsubscribe = keryx.entities.LyricSync.subscribe((event) => {
             if (event.type === 'create' || event.type === 'update') {
                 const rec = event.data;
+                if (rec.timestamp) lastTsRef.current = Math.max(lastTsRef.current, rec.timestamp);
                 if (rec.status === "active") {
                     activeIdRef.current = rec.id;
                     setLyricData(rec);
@@ -84,6 +91,7 @@ export default function LyricProjection() {
             if (msg.type === "PROJECTION_READY") return;
 
             if (msg.type === "PROJECTION_DATA") {
+                localModeRef.current = true;
                 setLyricData({
                     song_title: msg.title,
                     artist: msg.artist || "",
@@ -105,6 +113,7 @@ export default function LyricProjection() {
             }
 
             if (msg.type === "STOP_PROJECTION") {
+                localModeRef.current = false;
                 setLyricData(null);
                 setSlideIndex(0);
             }
@@ -115,8 +124,9 @@ export default function LyricProjection() {
         // Sinalizar que está pronto
         window.opener?.postMessage({ type: "PROJECTION_READY" }, "*");
 
-        // Polling rápido como fallback (garante resposta quase instantânea)
-        const interval = setInterval(checkDatabase, 200);
+        // Rede de segurança caso o realtime perca um evento. Só aplica registos
+        // mais recentes do que o último visto, para não reverter slides.
+        const interval = setInterval(checkDatabase, 15000);
 
         return () => {
             unsubscribe();

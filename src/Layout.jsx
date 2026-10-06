@@ -89,7 +89,7 @@ export default function Layout({ children, currentPageName }) {
     }, []);
 
     // Projection pages render raw, without header/footer
-    if (currentPageName === "Projection" || currentPageName === "LyricProjection" || currentPageName === "CommunicationProjection" || currentPageName === "BannerProjection" || currentPageName === "PastorView" || currentPageName === "StageView" || currentPageName === "BibleMaterialProjection") {
+    if (currentPageName === "Projection" || currentPageName === "LyricProjection" || currentPageName === "CommunicationProjection" || currentPageName === "VideoProjection" || currentPageName === "BannerProjection" || currentPageName === "PastorView" || currentPageName === "StageView" || currentPageName === "BibleMaterialProjection") {
         return children;
     }
 
@@ -112,8 +112,6 @@ export default function Layout({ children, currentPageName }) {
         }}>
             <style>{`
                 :root {
-                    --primary: ${userSettings.primary_color};
-                    --secondary: ${userSettings.secondary_color};
                     --navbar-primary: ${userSettings.navbar_primary_color};
                     --navbar-secondary: ${userSettings.navbar_secondary_color};
                     --submenu-primary: ${userSettings.submenu_primary_color};

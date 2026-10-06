@@ -37,6 +37,10 @@
     "channel": {
       "type": "string",
       "description": "Canal de sincronizacao para projecao remota"
+    },
+    "latencyProbe": {
+      "type": "number",
+      "description": "Hora de envio (Unix ms) da sonda de latencia do operador"
     }
   },
   "required": [],

@@ -16,7 +16,7 @@ export default function LatencyIndicator({ liveSessionId }) {
 
         const unsubscribe = keryx.entities.LiveSession.subscribe((event) => {
             if (event.type === "update" && event.data?.id === liveSessionId) {
-                const sentAt = event.data._latencyProbe;
+                const sentAt = event.data.latencyProbe;
                 if (sentAt) {
                     const ms = Date.now() - sentAt;
                     setLatency(ms);
@@ -29,7 +29,7 @@ export default function LatencyIndicator({ liveSessionId }) {
         const probe = () => {
             setMeasuring(true);
             keryx.entities.LiveSession.update(liveSessionId, {
-                _latencyProbe: Date.now()
+                latencyProbe: Date.now()
             }).catch(() => setMeasuring(false));
         };
 

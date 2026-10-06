@@ -126,7 +126,7 @@ export default function WorshipChat() {
             <motion.button
                 onClick={handleOpen}
                 className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all"
-                style={{ background: "linear-gradient(135deg, var(--primary), var(--accent))" }}
+                style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))" }}
                 whileTap={{ scale: 0.9 }}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -171,7 +171,7 @@ export default function WorshipChat() {
                             {/* Header */}
                             <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/20 to-accent/20">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, var(--primary), var(--accent))" }}>
+                                    <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))" }}>
                                         <Music className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
@@ -205,7 +205,7 @@ export default function WorshipChat() {
                                                 )}
                                                 <div
                                                     className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm chat-message-text ${isMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
-                                                    style={isMe ? { background: "linear-gradient(135deg, var(--primary), var(--accent))" } : {}}
+                                                    style={isMe ? { background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))" } : {}}
                                                 >
                                                     <p className="whitespace-pre-wrap break-words">{msg.message}</p>
                                                     {urls && urls.length > 0 && (
@@ -258,7 +258,7 @@ export default function WorshipChat() {
                                         disabled={!input.trim() || !senderName.trim() || sending}
                                         size="icon"
                                         className="h-10 w-10 shrink-0"
-                                        style={{ background: "linear-gradient(135deg, var(--primary), var(--accent))" }}
+                                        style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))" }}
                                     >
                                         <Send className="w-4 h-4" />
                                     </Button>
