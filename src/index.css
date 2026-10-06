@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -110,9 +110,9 @@ button:focus-visible {
     --sidebar-accent-foreground: 96 18% 89%;
     --sidebar-border: 30 8% 21%;
     --sidebar-ring: 78 9% 48%;
-    --font-heading: "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-heading: "Montserrat", system-ui, sans-serif;
     --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-display: "Montserrat", system-ui, sans-serif;
   }
   .dark {
     --background: 30 10% 9%;
