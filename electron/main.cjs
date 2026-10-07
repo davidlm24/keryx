@@ -27,7 +27,9 @@ const BG = "#1a1714";
 const DEV_URL = process.env.KERYX_DEV_URL || "";
 const SMOKE = process.env.KERYX_SMOKE === "1";
 // KERYX_START_PATH: open the main window on this page (e.g. /Settings).
-const START_PATH = process.env.KERYX_START_PATH ? "/" + process.env.KERYX_START_PATH.replace(/^\/+/, "") : "";
+// Without it the app opens on the operator console; smoke runs keep "/",
+// which their checks start from.
+const START_PATH = process.env.KERYX_START_PATH ? "/" + process.env.KERYX_START_PATH.replace(/^\/+/, "") : SMOKE ? "" : "/Console";
 const DEVTOOLS = Boolean(DEV_URL) || process.env.KERYX_DEVTOOLS === "1";
 
 // Everything the app keeps lives here: keryx.db, media/, and Chromium's own

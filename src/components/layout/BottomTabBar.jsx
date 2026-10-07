@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Calendar, Music, Book, Film, LayoutGrid, X } from "lucide-react";
+import { Calendar, Music, Book, Film, LayoutGrid, X, MonitorPlay } from "lucide-react";
 import { createPageUrl } from "@/utils";
 
 const MAIN_TABS = [
+    // The operator console (its own screen, no Layout): the way back from the older pages.
+    { name: "Console", icon: MonitorPlay, label: "Console", path: "/Console" },
     { name: "Services", icon: Calendar, label: "Cultos", path: "/Services" },
     { name: "Home", icon: Music, label: "Músicas", path: "/Home" },
     { name: "Bible", icon: Book, label: "Bíblia", path: "/Bible" },
