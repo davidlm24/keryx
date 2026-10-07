@@ -76,12 +76,12 @@ export function Row({ icon, title, meta, metaClass = "", time, state = "", actio
 }
 
 // A monitor: caption line (state word first) and the screen, 16:9.
-export function Monitor({ state, caption, live, now, logoUrl, right, className = "", style, children }) {
+export function Monitor({ state, caption, live, now, logoUrl, right, motion = false, className = "", style, children }) {
     return (
         <div className={`kx-mon ${state ? `is-${state}` : ""} ${className}`} style={style}>
             <div className="kx-mon-cap"><span className="kx-section">{caption}</span>{right}</div>
             <div className="kx-mon-screen">
-                {live && <ScreenRenderer state={live} now={now} logoUrl={logoUrl} preview />}
+                {live && <ScreenRenderer state={live} now={now} logoUrl={logoUrl} preview motion={motion} />}
                 {children}
             </div>
         </div>

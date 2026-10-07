@@ -752,6 +752,12 @@ async function checkConsole(webContents, { live, outputs }) {
         result.quickEsc = !(await js("Boolean(document.querySelector('.qj'))")) && Boolean(live.get().content);
         await click(".envtabs button", "KERYX");
 
+        // The Programa monitor mirrors the screens: a video-channel clip
+        // renders as a real (muted) video covering the box, not a poster.
+        live.call("video.show", { kind: "video", url: "keryx-media://programa-motion.mp4", title: "Clipe do console" });
+        result.programaMotion = await waitFor(() => js("Boolean(document.querySelector('.prog .ks-vidcover video'))"), 6000);
+        live.call("video.clear");
+
         // The player: an audio file from the Mídia tab goes out with Enter,
         // plays on the projector under the song, and the L/R meters move.
         const toneFile = await js(MAKE_TONE);
@@ -838,7 +844,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.verify && result.verifyProjector && result.resent && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
         && result.armed && result.quickOpened && result.quickRead === "João|3|16" && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
-        && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration
+        && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
         && result.tlEmpty && result.tlBlocks && result.tlClosed);
     return result;

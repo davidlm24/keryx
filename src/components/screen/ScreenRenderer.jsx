@@ -3,14 +3,17 @@ import "./screen.css";
 import { mainLayer, currentSlide, toolTime } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
+import LiveVideo from "@/components/projection/LiveVideo";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
 // (fill) and the console's monitors render it in a box, so a preview is the
 // output scaled down. `now` is the live clock (useLiveNow) for timers and
 // countdowns; `preview` keeps media from playing (a poster instead) and
-// audio silent.
-export default function ScreenRenderer({ state, now, logoUrl = "", preview = false, fill = false, className = "" }) {
+// audio silent. `motion` is the console's Programa monitor: still a muted
+// preview, but videos (the media layer and the video channel) really play,
+// in step with the screens, so the monitor mirrors the projector.
+export default function ScreenRenderer({ state, now, logoUrl = "", preview = false, motion = false, fill = false, className = "" }) {
     const cls = `ks ${fill ? "ks-fill" : "ks-box"} ${className}`;
     if (!state) return <div className={cls}><Idle logoUrl={logoUrl} /></div>;
 
@@ -27,12 +30,15 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
             {layer === "content" && <Content content={state.content} />}
             {layer === "tool" && <Tool tool={state.tool} now={now} />}
             {layer === "communication" && <Communication comm={state.communication} now={now} />}
-            {layer === "media" && (preview ? <MediaPoster media={state.media} /> : <LiveMediaView media={state.media} />)}
+            {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} />)}
             {!preview && layer === "content" && state.content.audio && (
                 <audio key={state.content.startedAt} src={state.content.audio} autoPlay className="hidden" />
             )}
             {state.logo?.visible && logoUrl && layer !== "media" && (
                 <img className={`ks-logo ks-${state.logo.size} ks-${state.logo.corner}`} src={logoUrl} alt="" />
+            )}
+            {preview && motion && state.video && (
+                <div className="ks-vidcover"><LiveVideo item={state.video} muted className="ks-vidcover-v" /></div>
             )}
             <Overlays overlays={state.overlays} />
             {state.alert && <div className={`ks-alert ks-alert-${state.alert.type}`}>{state.alert.message}</div>}
@@ -172,12 +178,14 @@ function Communication({ comm, now }) {
 
 const KIND_LABEL = { video: "Vídeo", youtube: "YouTube", image: "Imagem", gif: "GIF", pdf: "Apresentação", powerpoint: "Apresentação", audio: "Áudio" };
 
-function MediaPoster({ media }) {
+function MediaPoster({ media, motion = false }) {
     const image = media.kind === "image" || media.kind === "gif";
+    const moving = motion && (media.kind === "video" || media.kind === "youtube");
     return (
         <div className="ks-media">
             {image && <img src={media.url} alt="" />}
-            {!image && <><div className="ks-media-kind">{KIND_LABEL[media.kind] || media.kind}</div><div className="ks-media-t">{media.title || media.url}</div></>}
+            {moving && <LiveVideo item={media} muted className="ks-vidcover-v" />}
+            {!image && !moving && <><div className="ks-media-kind">{KIND_LABEL[media.kind] || media.kind}</div><div className="ks-media-t">{media.title || media.url}</div></>}
             {media.playlist && <div className="ks-media-count">{media.playlistIndex + 1} / {media.playlist.length}</div>}
         </div>
     );

@@ -28,6 +28,8 @@ function previewDoc(stage, cur, now) {
 const captionOf = (doc, word) => {
     if (!doc) return word;
     const layer = mainLayer(doc);
+    // A video-channel clip covers the screens over every layer.
+    if (doc.video && layer !== "black" && layer !== "logo") return `${word} · ${doc.video.title || "Vídeo"}`;
     if (layer === "black") return `${word} · Tela preta`;
     if (layer === "logo") return `${word} · Logo`;
     if (layer === "content") return `${word} · ${doc.content.title || "Texto"}${doc.content.slides.length > 1 ? ` · ${doc.content.index + 1}/${doc.content.slides.length}` : ""}`;
@@ -66,7 +68,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     return (
         <div className="mons" data-live-keys="" tabIndex={-1}>
             <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
-            <Monitor className="prog" state={progState} caption={captionOf(cur, progWord)} live={cur} now={now} logoUrl={logoUrl}>
+            <Monitor className="prog" state={progState} caption={captionOf(cur, progWord)} live={cur} now={now} logoUrl={logoUrl} motion>
                 {!isLive && (
                     <div className="pipwrap">
                         <span className="kx-pip-cap">NO AR AGORA</span>

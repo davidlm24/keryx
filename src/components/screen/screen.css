@@ -74,3 +74,9 @@
 .ks-alert.ks-alert-alert { background: #e5484d; color: #fff; }
 
 @media (prefers-reduced-motion: reduce) { .ks-anim-fade, .ks-anim-slide, .ks-anim-zoom { animation: none; } }
+
+/* The console's Programa monitor mirroring the video channel: the clip
+   covers the box, as TabletVideoReceiver covers the projector. */
+.ks-vidcover { position: absolute; inset: 0; background: #000; z-index: 40; }
+.ks-vidcover-v { width: 100%; height: 100%; }
+.ks-vidcover-v video, .ks-vidcover-v > div { width: 100%; height: 100%; object-fit: contain; }
