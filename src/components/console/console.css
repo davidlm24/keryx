@@ -255,3 +255,34 @@
 .console .lyr-paste textarea:focus { box-shadow: inset 0 0 0 1px var(--line-strong); }
 .console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line); flex: none; font-size: 12px; }
 .console .lyr-legal { max-width: 360px; }
+
+/* ---------- Configurações (canvas artboard 20) ---------- */
+.console .cfg .frm { display: grid; grid-template-columns: 140px 1fr; gap: var(--space-2) var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); }
+.console .cfg .frm .k { font-size: 11px; color: var(--fg-3); }
+.console .cfg .frm-v { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
+.console .cfg .frm .kx-field { flex: 1; min-width: 180px; }
+.console .sw2 { width: 28px; height: 16px; border-radius: 999px; background: var(--bg-3); position: relative; flex: none; }
+.console .sw2::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--fg-2); transition: left var(--duration-fast) var(--ease-out); }
+.console .sw2.is-on { background: var(--prev-fill); }
+.console .sw2.is-on::after { left: 14px; background: var(--on-state); }
+.console .sw2:disabled { opacity: var(--dim); }
+.console .cfg .diagram { display: flex; gap: var(--space-3); align-items: flex-end; padding: var(--space-3); flex-wrap: wrap; }
+.console .cfg .dmon { display: flex; flex-direction: column; gap: var(--space-1); align-items: center; }
+.console .cfg .dmon .box { border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--fg-2); text-align: center; padding: 4px; }
+.console .cfg .dmon.is-live .box { box-shadow: inset 0 0 0 1px var(--air); color: var(--air-fg); }
+.console .cfg .cfg-out { gap: var(--space-2); }
+.console .cfg .cfg-select { height: 24px; max-width: 220px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; }
+.console .cfg .cfg-launch { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.console .cfg .cfg-acts { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
+.console .cfg .cfg-pin { letter-spacing: .2em; color: var(--fg-1); }
+.console .cfg .cfg-qr { display: flex; gap: var(--space-3); padding: var(--space-2) var(--space-3); align-items: flex-start; flex-wrap: wrap; }
+.console .cfg .cfg-qr-box { background: #fff; padding: 8px; border-radius: var(--radius-control); line-height: 0; }
+.console .cfg .cfg-qr-list { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.console .cfg .cfg-url { display: flex; align-items: center; gap: var(--space-1); }
+.console .cfg .cfg-url code { font: inherit; font-size: 12px; color: var(--fg-2); user-select: text; }
+.console .cfg .cfg-url code.is-main { font-size: 14px; color: var(--fg-1); }
+.console .cfg .cfg-logo { width: 40px; height: 40px; object-fit: contain; border-radius: var(--radius-control); background: var(--bg-2); }
+.console .cfg .cfg-path { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; user-select: text; }
+.console .cfg .cfg-inline { height: 22px; width: 100%; max-width: 320px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; box-shadow: inset 0 0 0 1px var(--line-strong); outline: none; }
+.console .cfg .kx-row .kx-row-meta { white-space: normal; }
+.console .cfg .listhead { height: auto; min-height: var(--row); padding: var(--space-1) var(--space-3); }

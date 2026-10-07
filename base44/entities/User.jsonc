@@ -21,6 +21,14 @@
       "type": "string",
       "description": "URL do logo"
     },
+    "church_name": {
+      "type": "string",
+      "description": "Nome da igreja (Configurações › Igreja)"
+    },
+    "church_city": {
+      "type": "string",
+      "description": "Cidade da igreja"
+    },
     "primary_color": {
       "type": "string",
       "default": "#84cc16",

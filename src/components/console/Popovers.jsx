@@ -12,7 +12,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 
 // The KERYX menu: pages that stay outside the console, the service picker,
 // Ver (modules) and the layout reset.
-export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout }) {
+export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings }) {
     const navigate = useNavigate();
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     const go = (path) => { setOpen(null); navigate(path); };
@@ -55,7 +55,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>
             <MenuItem icon="layers" onClick={() => setOpen("ver")}>Ver<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
             <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>
-            <MenuItem icon="sliders" onClick={() => go("/Settings")}>Configurações</MenuItem>
+            <MenuItem icon="sliders" onClick={() => { setOpen(null); onSettings?.("telas"); }}>Configurações</MenuItem>
         </div>
     );
 }
@@ -88,8 +88,7 @@ export function Shortcuts({ open, setOpen }) {
 }
 
 // Saídas: the windows the main process places and the screens on the network.
-export function Outputs({ open, setOpen, outputs, network, isLive, onOpen, onClose, tries, idle, onIdle }) {
-    const navigate = useNavigate();
+export function Outputs({ open, setOpen, outputs, network, isLive, onOpen, onClose, tries, idle, onIdle, onSettings }) {
     if (open !== "outs") return null;
     const local = outputs.map((o) => {
         const bad = o.placement.missing;
@@ -119,7 +118,7 @@ export function Outputs({ open, setOpen, outputs, network, isLive, onOpen, onClo
             <div className="kx-menu-sep" />
             <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}>
                 <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo…</Btn>
-                <Btn onClick={() => { setOpen(null); navigate("/Settings"); }}>Telas e saídas…</Btn>
+                <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas…</Btn>
             </div>
         </div>
     );

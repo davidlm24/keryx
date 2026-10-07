@@ -85,12 +85,33 @@ const directive = (raw, ...keys) => {
     return "";
 };
 
+// Long stanzas cut into slides of at most n lines (Configurações › Letras,
+// "Ao importar"); 0 keeps each stanza whole.
+export function splitLines(sections, n) {
+    if (!n) return sections;
+    return sections.flatMap((s) => {
+        const lines = s.text.split("\n");
+        if (lines.length <= n) return [s];
+        const out = [];
+        for (let i = 0; i < lines.length; i += n) out.push({ section: s.section, text: lines.slice(i, i + n).join("\n") });
+        return out;
+    });
+}
+
+// The "Ao importar" preference, read by every import (local to this computer).
+export const IMPORT_LINES_KEY = "keryx.import.lines";
+export const importLines = () => {
+    try { return Number(localStorage.getItem(IMPORT_LINES_KEY)) || 0; } catch { return 0; }
+};
+
 // A Song row (Song entity: title and lyrics required) from one text.
-// name: the file name, the fallback title. -> { title, artist, lyrics, slides }
-export function songFromText(raw, { name = "", title = "", artist = "" } = {}) {
+// name: the file name, the fallback title; lines: see splitLines.
+// -> { title, artist, lyrics, slides }
+export function songFromText(raw, { name = "", title = "", artist = "", lines = 0 } = {}) {
     const text = String(raw || "").replace(/\r\n/g, "\n").trim();
-    const sections = parseChords(text);
-    const lyrics = sections.map((s) => s.text).join("\n\n");
+    const stanzas = parseChords(text);
+    const sections = splitLines(stanzas, lines);
+    const lyrics = stanzas.map((s) => s.text).join("\n\n");
     const baseName = String(name).replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim();
     return {
         title: title || directive(text, "title", "t") || baseName || (lyrics.split("\n")[0] || "Sem título").slice(0, 80),
@@ -110,8 +131,8 @@ export function songsFromJson(raw) {
 }
 
 // Any file the "+ › Do computador" picker accepts. -> [song rows]
-export function songsFromFile(name, raw) {
+export function songsFromFile(name, raw, { lines = 0 } = {}) {
     if (/\.json$/i.test(name)) return songsFromJson(raw);
-    const song = songFromText(raw, { name });
+    const song = songFromText(raw, { name, lines });
     return song.lyrics ? [song] : [];
 }

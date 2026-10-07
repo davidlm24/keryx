@@ -34,3 +34,11 @@ test("JSON export of the songs page", () => {
     assert.deepEqual(rows, [{ title: "A", lyrics: "a", artist: "B" }]);
     assert.throws(() => songsFromJson("{oops"), /JSON inválido/);
 });
+
+test("Ao importar: long stanzas cut into slides of n lines; the lyrics stay whole", () => {
+    const raw = "um\ndois\ntrês\nquatro\ncinco\n\nseis";
+    assert.equal(songFromText(raw, { name: "x.txt" }).slides.length, 2, "0 keeps stanzas whole");
+    const s = songFromText(raw, { name: "x.txt", lines: 2 });
+    assert.deepEqual(s.slides.map((x) => x.text), ["um\ndois", "três\nquatro", "cinco", "seis"]);
+    assert.equal(s.lyrics, "um\ndois\ntrês\nquatro\ncinco\n\nseis");
+});

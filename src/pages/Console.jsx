@@ -19,6 +19,7 @@ import BibleEnv from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
 import LyricsSearch from "@/components/console/LyricsSearch";
+import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol } from "@/lib/console/layout";
 import { liveAction, quickJumpKey } from "@/lib/console/keys";
@@ -48,7 +49,17 @@ export default function Console() {
     const bibleStageRef = useRef(null);
     // The Bible environment's selection cursor (↑/↓ from the console's keys).
     const bibleApiRef = useRef(null);
-    const [env, setEnv] = useState("culto");
+    const [env, setEnvState] = useState("culto");
+    // Configurações, inside the console: the section shown, or null. The old
+    // /Settings route lands here (?config=telas).
+    const [cfg, setCfg] = useState(() => {
+        try {
+            const want = new URLSearchParams(window.location.search).get("config");
+            return want ? (sectionIds.includes(want) ? want : "telas") : null;
+        } catch { return null; }
+    });
+    const setEnv = useCallback((v) => { setCfg(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
+    const openSettings = useCallback((section = "telas") => { setOpen(null); setCfg(section); }, []);
     const [open, setOpen] = useState(null);
     const [libTab, setLibTab] = useState("letras");
     const [drawer, setDrawer] = useState(false);
@@ -199,7 +210,7 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && quick === null) {
+            if (env === "biblia" && !open && quick === null && !cfg) {
                 const ch = quickJumpKey(e);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
@@ -210,6 +221,8 @@ export default function Console() {
                 if (action === "end") { e.preventDefault(); setOpen(null); }
                 return;
             }
+            // In Configurações Esc goes back to the console; it never ends the projection there.
+            if (cfg && action === "end") { e.preventDefault(); setCfg(null); return; }
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -238,7 +251,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide]);
+    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, cfg]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -292,8 +305,9 @@ export default function Console() {
                 <div className="kx-banner is-rh">MODO ENSAIO — nada será enviado às saídas<span className="kx-sub">As telas continuam com o que estava no ar.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setOpen("arm")}>Armar saídas</button></div>
             )}
             <div className="main">
-                {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
-                {env === "culto" && (
+                {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={() => setCfg(null)} />}
+                {!cfg && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
+                {!cfg && env === "culto" && (
                     <>
                         {!layout.hidden.lib && (
                             <>
@@ -333,7 +347,7 @@ export default function Console() {
                     </>
                 )}
             </div>
-            {env === "culto" && !layout.hidden.tl && (
+            {!cfg && env === "culto" && !layout.hidden.tl && (
                 <div className={`kx-panel tl-panel ${layout.tlOpen ? "is-open" : ""}`}>
                     <Timeline service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
                 </div>
@@ -345,12 +359,12 @@ export default function Console() {
                 <div className="verif-overlay">
                     <VerifyView c={c} items={items} data={data} outputs={outputs} network={network}
                         onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
-                        onOpenOutput={openOutput} onClose={() => setOpen(null)} />
+                        onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} />
                 </div>
             )}
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />
+            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} />
+            <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <ArmDialog open={open} setOpen={setOpen} live={c.live} onArm={c.arm} />
             <EndDialog open={open} setOpen={setOpen} mode={c.mode} onEnd={c.end} />

@@ -5,7 +5,7 @@ import Icon from "./Icon";
 import { Row, Btn, Field, Empty } from "./kx";
 import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
-import { songsFromFile } from "@/lib/songImport";
+import { songsFromFile, importLines } from "@/lib/songImport";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
@@ -55,7 +55,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
         const bad = [];
         for (const file of files) {
             try {
-                const rows = songsFromFile(file.name, await file.text());
+                const rows = songsFromFile(file.name, await file.text(), { lines: importLines() });
                 for (const row of rows) { await keryx.entities.Song.create(row); made += 1; }
                 if (!rows.length) bad.push(file.name);
             } catch (err) { bad.push(`${file.name} (${err?.message || "falhou"})`); }

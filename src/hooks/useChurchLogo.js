@@ -14,13 +14,16 @@ export function useChurchLogo() {
     });
 
     useEffect(() => {
-        keryx.auth.me().then((u) => {
-            if (!u?.logo_url) return;
-            setLogo(u.logo_url);
+        const take = (u) => {
+            const url = u?.logo_url || defaultLogoUrl();
+            setLogo(url);
             try {
-                localStorage.setItem("idleLogoUrl", u.logo_url);
+                localStorage.setItem("idleLogoUrl", url);
             } catch { /* private mode */ }
-        }).catch(() => {});
+        };
+        keryx.auth.me().then((u) => { if (u) take(u); }).catch(() => {});
+        // Configurações › Igreja changes the logo: every window follows.
+        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
     }, []);
 
     return logo;

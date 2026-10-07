@@ -43,7 +43,9 @@ wiring, the data model and the known gaps.
   `src/components/console/`), built on the design system in
   `docs/design-system/` (tokens and `kx-` classes, imported as `@ds/…`; read
   `docs/design-system.md` before touching its look). One screen, always
-  live (no steps; Verificar is an overlay from the Saídas popover). A click
+  live (no steps; Verificar is an overlay from the Saídas popover;
+  Configurações is a view inside the console, `src/components/console/settings/`,
+  and `/Settings` redirects there on desktop). A click
   prepares a *stage* in the Prévia (`src/lib/console/stage.js`); Enter, a
   **double click** or "Enviar ao ar" sends it (user decision 2026-10-07;
   dragging a library row onto the Prévia prepares, onto the Programa sends,

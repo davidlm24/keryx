@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { keryx } from "@/api/keryxClient";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function Settings() {
+    // Desktop: Configurações moved into the console (design system); the
+    // appearance options of this page are gone there. The web build keeps
+    // this page (account deletion lives here).
+    if (keryx.isDesktop) return <Navigate to="/Console?config=telas" replace />;
+    return <LegacySettings />;
+}
+
+function LegacySettings() {
     const { user: authUser } = useAuth();
     const { baseUrl: lanBaseUrl } = useLanBaseUrl();
     const [language, setLanguage] = useState("pt");

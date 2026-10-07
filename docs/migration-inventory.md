@@ -156,7 +156,7 @@ is saved in `background_image`; overlays never reach the projector; the
 search highlighter crashes on "("; passages added from favourites are always
 tagged NVI; the background upload has no `try`.
 
-## 6. Configurações (`src/pages/Settings.jsx`)
+## 6. Configurações (`src/pages/Settings.jsx`) — migrated (phase 2, see section 9)
 
 | Section | Destination |
 | --- | --- |
@@ -226,9 +226,16 @@ Each phase is approved on its own, and each ends with `npm test`, lint, the
 smoke and a look at the page.
 
 1. **Design**: Claude Design draws the screens the canvas lacks (prompt below).
-2. **Configurações** in the design system: Telas e saídas, Telas na rede/PIN,
-   Dados e atualizações, Bíblias, Igreja (logo), temas. The old Settings and
-   its appearance fields go.
+2. **Configurações** in the design system. **Done 2026-10-07** (canvas
+   artboard 20): inside the console (`src/components/console/settings/`),
+   seven sections — Telas e saídas (diagram, per-output screen, Abrir ao
+   iniciar, Tela ociosa), Telas na rede (on/off, QR, PIN, clients), Bíblias
+   instaladas (install, default version), Igreja (name, city, logo — new
+   profile fields church_name/church_city), Temas (rename, default,
+   delete), Letras (Vagalume key, "Ao importar" lines), Dados e
+   atualizações. On the desktop `/Settings` redirects to
+   `/Console?config=telas`; the appearance options are gone there. The web
+   build keeps the old page (account deletion) until a web settings pass.
 3. **Músicas**: the song editor (all SongForm fields, cifra, vídeo and
    sincronização, imprimir, importar/exportar, favoritos).
 4. **Cultos → Preparar**: culto CRUD, equipe, status, item editor, modelos,

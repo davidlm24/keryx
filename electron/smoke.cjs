@@ -1004,6 +1004,35 @@ async function checkConsole(webContents, { live, outputs }) {
         result.layersAfter = (live.get().layerOrder || []).join(",");
         live.call("layers.order", { order: ["logo", "overlays", "content", "background"] });
 
+        // Configurações inside the console: from the KERYX menu, every
+        // section renders, Tela ociosa and Igreja save, Esc goes back.
+        await click(".topbar .markbtn", "");
+        await click(".kx-pop button", "Configurações");
+        result.cfgOpen = await waitFor(() => js("Boolean(document.querySelector('.console .cfg'))"));
+        result.cfgSections = {};
+        for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Letras", "Dados e atualizações"]) {
+            await click(".console .main .kx-row", name);
+            result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
+        }
+        result.cfgAll = Object.values(result.cfgSections).every(Boolean);
+        result.shotCfg = await shot("configuracoes");
+        await click(".console .main .kx-row", "Telas e saídas");
+        result.cfgOutputs = await waitText(webContents, "Projeção principal");
+        await click(".console .cfg .kx-seg button", "Preto");
+        result.cfgIdle = await waitFor(() => live.get().idle === "black");
+        await click(".console .cfg .kx-seg button", "Logo da igreja");
+        await waitFor(() => live.get().idle === "logo");
+        await click(".console .main .kx-row", "Igreja");
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg input[placeholder=\"Nome da igreja\"]'))"));
+        await click(".console .cfg .kx-field", "");
+        await type("Igreja do Teste");
+        await press("Tab");
+        result.cfgChurch = await waitFor(async () => ((await js(`window.keryxDesktop.db.call("User", "get", ["local"])`)).data || {}).church_name === "Igreja do Teste", 6000);
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { church_name: "" }])`);
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("Escape");
+        result.cfgEsc = await waitFor(() => js("!document.querySelector('.console .cfg') && Boolean(document.querySelector('.console .main .col.center'))"));
+
         await click(".tl-panel .kx-tl button", "");
         result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
     } finally {
@@ -1035,7 +1064,8 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
         && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
-        && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved);
+        && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
+        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc);
     return result;
 }
 

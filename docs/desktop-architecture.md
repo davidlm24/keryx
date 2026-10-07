@@ -309,6 +309,12 @@ command palette (`/`), Saídas, and Ensaio.
   background; op `layers.order`) stacks the look layers on every screen;
   Camadas reorders them by dragging. Alert, video-channel cover and
   black/logo stay above all.
+- **Configurações** is a view inside the console (`settings/SettingsView`,
+  canvas artboard 20): Telas e saídas, Telas na rede, Bíblias instaladas,
+  Igreja (name, city, logo on the profile), Temas, Letras, Dados e
+  atualizações, over the same desktop bridges the old page used. Esc goes
+  back to the console and never ends the projection from there. On the
+  desktop `/Settings` redirects to `/Console?config=telas`.
 - **Setlist without a service:** the first item added (drop, "Adicionar",
   the Bible's "Adicionar à setlist") creates a draft Service "Setlist de
   dd/mm" for today. Today's service is matched by the local date.

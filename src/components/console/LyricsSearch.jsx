@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn, Field, Row, Empty } from "./kx";
-import { songFromText } from "@/lib/songImport";
+import { songFromText, importLines } from "@/lib/songImport";
 
 // "+ › Na internet…" for songs, like the Holyrics search: one field, the
 // results of several sources in one list, the lyrics beside it, Importar.
@@ -68,7 +68,7 @@ export default function LyricsSearch({ c, onClose, onImported }) {
     const importSong = async () => {
         if (!hit || !lyrics.trim()) return;
         try {
-            const song = songFromText(lyrics, { title: hit.title, artist: hit.artist });
+            const song = songFromText(lyrics, { title: hit.title, artist: hit.artist, lines: importLines() });
             const row = await keryx.entities.Song.create(song);
             c.say(`${song.title} importada para as Letras.`);
             onImported?.(row);
