@@ -90,9 +90,9 @@ export function useConsole() {
     }, [prev, isLive, live, callOp, say]);
 
     const moveSlide = useCallback((d) => {
-        if (!cur?.content) return;
+        if (!cur?.content) { say("Nada com slides no ar."); return; }
         callOp(d > 0 ? "content.next" : "content.prev").catch(() => {});
-    }, [cur, callOp]);
+    }, [cur, callOp, say]);
 
     const goTo = useCallback((index) => callOp("content.goTo", { index }).catch(() => {}), [callOp]);
 

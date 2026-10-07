@@ -7,13 +7,36 @@
 .console .col > .kx-panel { flex: 1; }
 .console .col > .kx-panel.is-collapsed { flex: none; }
 .console .center { flex: 1; min-width: 0; }
-.console .topbar { height: var(--topbar); flex: none; display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); background: var(--bg-1); border-radius: var(--radius-panel); }
-.console .topbar .svc { display: flex; align-items: baseline; gap: var(--space-2); padding: 0 var(--space-2); white-space: nowrap; min-width: 0; overflow: hidden; }
-.console .topbar .svc b { font-weight: 500; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; }
-.console .topbar .grow { flex: 1; min-width: 12px; }
-.console .topbar .kx-field { width: 300px; cursor: text; }
-.console .markbtn { height: var(--row); display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-1); font-weight: 500; letter-spacing: .04em; }
+/* The top bar is a menu bar: left (menu, environments, steps), the search in
+   the middle, right (mode, clock, outputs, screen glyphs). Nothing wraps; as
+   it narrows it drops the clock, then shortens the outputs and the search. */
+.console .topbar { height: var(--topbar); flex: none; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-1); background: var(--bg-1); border-radius: var(--radius-panel); white-space: nowrap; container: topbar / inline-size; overflow: hidden; }
+.console .topbar > div { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.console .topbar .tb-l, .console .topbar .tb-r { flex: none; }
+.console .topbar .tb-c { flex: 1; justify-content: center; }
+.console .topbar .tb-search { width: 100%; max-width: 340px; min-width: 0; cursor: text; }
+.console .topbar .tb-sep { width: 1px; height: 16px; background: var(--line); flex: none; margin: 0 var(--space-1); }
+.console .topbar .tb-clock { font-size: 12px; font-weight: 500; color: var(--fg-2); font-variant-numeric: tabular-nums; padding: 0 var(--space-1); }
+.console .topbar .tb-outs-s { display: none; font-variant-numeric: tabular-nums; }
+.console .topbar .kx-seg > button { white-space: nowrap; }
+/* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
+.console .envtabs { height: var(--topbar); border-bottom: 0; padding: 0; }
+.console .envtabs > button { font-weight: 500; letter-spacing: .02em; }
+.console .envtabs > button.is-on::after { bottom: 8px; background: var(--brand); height: 2px; border-radius: 1px; }
+.console .envtabs > button:disabled { opacity: .4; cursor: default; }
+.console .markbtn { height: var(--row); width: 32px; display: inline-grid; place-items: center; border-radius: var(--radius-control); flex: none; }
+.console .markbtn img { width: 18px; height: 18px; border-radius: 999px; object-fit: cover; }
 .console .markbtn:hover, .console .markbtn.is-on { background: var(--bg-2); }
+@container topbar (max-width: 1400px) { .console .topbar .tb-el { display: none; } }
+@container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
+@container topbar (max-width: 1200px) {
+    .console .topbar .tb-outs-l { display: none; }
+    .console .topbar .tb-outs-s { display: inline; }
+}
+@container topbar (max-width: 1080px) {
+    .console .topbar .tb-search { width: 32px; max-width: 32px; padding: 0; justify-content: center; }
+    .console .topbar .tb-search input, .console .topbar .tb-search kbd { display: none; }
+}
 .console .pop { position: absolute; z-index: 30; }
 .console .scrim { position: absolute; inset: 0; z-index: 25; }
 .console .scrim.is-dim { background: #0c0c0d99; }
@@ -102,47 +125,22 @@
 .console .svcpick { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); height: var(--row); }
 .console .svcpick select { flex: 1; min-width: 0; height: 24px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; }
 .console .kx-alert .kx-btn { color: var(--fg-1); }
-.console.is-compact .topbar .svc .kx-meta { display: none; }
-.console.is-compact .topbar .kx-field { width: 200px; }
-.console.is-compact .mons { flex-direction: row; align-items: stretch; }
-.console.is-compact .prog { width: 60%; flex: none; }
-.console.is-compact .subrow { flex: 1; min-width: 0; flex-direction: column; }
-.console.is-compact .subrow .kx-mon { width: 100%; }
-.console.is-compact .subrow .side { padding-top: 0; }
-/* ---------- Apresentar: Programa large, Prévia beside it, everything else behind Mais ---------- */
-.console .quiet { color: var(--fg-3); font-size: 11px; white-space: nowrap; padding: 0 var(--space-2); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.console .apres { flex: 1; min-height: 0; display: flex; gap: var(--gutter); position: relative; }
-.console .apres-l { flex: 58 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); overflow: hidden; container-type: size; }
-.console .apres-r { flex: 42 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); overflow: hidden; }
-.console .apres-l .kx-mon, .console .apres-r .kx-mon { width: 100%; }
-/* The Programa is as wide as the column allows while leaving room (~150 px)
-   for the caption, the slide strip and the controls; the strip sits right
-   under it and its thumbnails grow into the height that is left. */
-.console .apres-prog { flex: none; }
-.console .apres-prog .kx-mon-screen { width: min(100cqw, calc((100cqh - 150px) * 16 / 9)); }
-.console .apres-prog .kx-mon-screen > .pipwrap { right: 2%; bottom: 3%; width: 28%; }
-.console .strip { display: flex; gap: var(--space-2); overflow-x: auto; overflow-y: hidden; padding: 2px; flex: 0 1 150px; min-height: 58px; align-items: stretch; }
-.console .thumb { position: relative; flex: none; height: 100%; max-height: 146px; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
-.console .thumb .ks-box { width: 100%; }
-.console .thumb .ks-box { pointer-events: none; }
-.console .thumb .n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: 10px; line-height: 12px; color: var(--fg-2); background: #0c0c0dcc; border-radius: 0 3px 0 0; z-index: 99; }
-.console .thumb:hover { box-shadow: 0 0 0 1px var(--line-strong); }
-.console .thumb.is-air { box-shadow: 0 0 0 2px var(--air); } .console .thumb.is-air .n { color: var(--air-fg); }
-.console .thumb.is-next { box-shadow: 0 0 0 1px var(--fg-3); }
-.console .thumb.is-prev { box-shadow: 0 0 0 2px var(--prev); } .console .thumb.is-prev .n { color: var(--prev-fg); }
-.console .apres-nav { display: flex; align-items: center; gap: var(--space-2); flex: none; }
-.console .apres-nav .kx-btn { height: 36px; padding: 0 var(--space-3); }
-.console .apres-send { display: flex; align-items: center; gap: var(--space-3); flex: none; }
-.console .apres-send:focus { outline: none; }
-.console .apres-note { font-size: 11px; line-height: 16px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: none; }
-.console .apres-tnotes { padding: var(--space-1) var(--space-2) var(--space-2); background: var(--bg-2); border-radius: var(--radius-control); color: var(--fg-2); font-size: 12px; line-height: 16px; flex: none; }
-.console .apres-tnotes p { margin: 2px 0 0; white-space: pre-wrap; }
-.console .apres-rund { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
-.console .mais { position: absolute; z-index: 32; top: 0; right: 0; bottom: 0; width: 380px; display: flex; }
-.console .mais > .kx-panel { flex: 1; box-shadow: var(--popover); }
-.console .roteiro-pop { position: absolute; z-index: 30; top: 48px; right: 6px; bottom: 6px; width: 400px; display: flex; }
-.console .roteiro-pop > .kx-panel { flex: 1; box-shadow: var(--popover); }
-.console.is-apres .topbar .kx-btn.kx-btn-icon { width: 36px; height: 36px; }
+/* ---------- Bíblia: quick jump (Livro → Capítulo → Versículo) ---------- */
+.console .qj { position: absolute; z-index: 40; left: 50%; top: 120px; transform: translateX(-50%); width: 560px; max-width: calc(100vw - 24px); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.console .qj-steps { display: flex; gap: var(--space-3); }
+.console .qj-step { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.console .qj-step .kx-section { color: var(--fg-3); }
+.console .qj-step.is-on .kx-section { color: var(--brand); }
+.console .qj-step b { font-weight: 500; color: var(--fg-1); font-size: 16px; line-height: 22px; min-height: 22px; }
+.console .qj-input { height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-2); background: var(--bg-3); border-radius: var(--radius-control); }
+.console .qj-input:focus-within { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .qj-input input, .console .qj-input input:focus-visible { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--fg-1); font: inherit; font-size: 16px; }
+.console .qj-cands { display: flex; flex-wrap: wrap; gap: 4px var(--space-2); font-size: 12px; color: var(--fg-3); min-height: 18px; }
+.console .qj-cands button { color: var(--fg-2); padding: 0 2px; border-radius: 3px; }
+.console .qj-cands button:hover, .console .qj-cands button.is-on { color: var(--fg-1); background: var(--bg-3); }
+.console .qj-foot { display: flex; align-items: center; gap: var(--space-3); font-size: 11px; color: var(--fg-3); }
+.console .qj-foot .err { color: var(--warn-fg); }
+.console .qj-foot .grow { flex: 1; }
 /* ---------- Verificar ---------- */
 .console .verif { max-width: 980px; width: 100%; margin: 0 auto; flex: 1; }
 .console .verif-sum { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: 0 var(--space-3); border-bottom: 1px solid var(--line); flex: none; flex-wrap: wrap; }

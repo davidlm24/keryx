@@ -236,6 +236,7 @@ app.whenReady().then(async () => {
         settings,
         getOrigin: () => appOrigin,
         openWindow: openOutputWindow,
+        operatorWindow: () => mainWindow,
         log: (m) => console.warn(m),
     });
 

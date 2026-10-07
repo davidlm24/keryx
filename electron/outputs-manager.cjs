@@ -14,7 +14,7 @@ const {
 const SETTINGS_KEY = "outputs";
 const HIDE_CURSOR_CSS = "html, body, * { cursor: none !important; }";
 
-function createOutputManager({ screen, settings, getOrigin, openWindow = null, log = console.warn }) {
+function createOutputManager({ screen, settings, getOrigin, openWindow = null, operatorWindow = () => null, log = console.warn }) {
     const windows = new Map(); // output key -> BrowserWindow
 
     // Primary first, then left to right, so "Tela 1" is always the operator's own screen
@@ -70,6 +70,20 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, l
         };
         win.on("close", forget);
         win.on("closed", forget);
+
+        // An output never keeps the keyboard: the operator's keys (arrows,
+        // Enter, Esc) belong to the console. Opening one (and going full
+        // screen) activates it on Windows, so focus goes back to the window
+        // that opened it, or the operator's main window, once it is up.
+        const opener = BrowserWindow.getFocusedWindow();
+        const giveBack = () => {
+            const back = opener && opener !== win && !opener.isDestroyed() ? opener : operatorWindow();
+            if (back && back !== win && !back.isDestroyed() && !win.isDestroyed() && win.isFocused()) back.focus();
+        };
+        win.once("ready-to-show", () => setTimeout(giveBack, 50));
+        win.once("show", () => setTimeout(giveBack, 50));
+        win.once("enter-full-screen", () => setTimeout(giveBack, 50));
+        setTimeout(giveBack, 1000);
 
         const placement = placementFor(key);
         const { webContents } = win;
@@ -138,7 +152,8 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, l
         if (!outputForKey(key)) throw new Error(`Saída desconhecida: ${key}`);
         const existing = windows.get(key);
         if (existing && !existing.isDestroyed()) {
-            existing.focus();
+            existing.showInactive();
+            existing.moveTop();
             return list();
         }
         if (!openWindow) throw new Error("Abrir saídas não está disponível.");

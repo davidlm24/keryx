@@ -117,7 +117,7 @@ export const BOOK_API_MAP = {
 
 // -- References ---------------------------------------------------------------
 
-const fold = (text) => String(text).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[\s.]+/g, "");
+export const fold = (text) => String(text).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[\s.]+/g, "");
 const squash = (text) => String(text || "").trim().toLowerCase().replace(/[\s.]+/g, "");
 
 const ALIASES = {

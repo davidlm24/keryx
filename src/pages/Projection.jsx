@@ -96,6 +96,24 @@ export default function Projection() {
         };
     }, [hasContent]);
 
+    // If the operator clicked the projector window, the screen keys still
+    // work there, as on the console: Esc takes everything down, B and L
+    // toggle Tela preta and the logo.
+    const screenMode = live?.screen || "show";
+    useEffect(() => {
+        if (!keryx.isDesktop) return undefined;
+        const fail = (err) => console.error("[keryx] screen:", err);
+        const onKey = (e) => {
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+            if (k === "Escape") { e.preventDefault(); projection.clear().catch(fail); }
+            else if (k === "b") projection.setScreen(screenMode === "black" ? "show" : "black").catch(fail);
+            else if (k === "l") projection.setScreen(screenMode === "logo" ? "show" : "logo").catch(fail);
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [screenMode]);
+
     // Legacy paths, shown as the live state's own layers would be.
     if (toolMode === "black") return <div className="min-h-screen bg-black" />;
     if (toolMode) {

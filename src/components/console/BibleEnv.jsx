@@ -40,7 +40,7 @@ function group(verses, how) {
 // reading view in the middle (click selects, Shift+click a range), and on
 // the right what is on air, the selected verses as slides, a Prévia and the
 // three actions. Nothing here changes the screens except "Enviar ao ar".
-export default function BibleEnv({ c, logoUrl, request, serviceId, itemsCount, onPrepare, onSend }) {
+export default function BibleEnv({ c, logoUrl, request, stageRef, serviceId, itemsCount, onPrepare, onSend }) {
     const [mem, setMem] = useState(load);
     const [version, setVersion] = useState(null);
     const [book, setBook] = useState(mem.book || "João");
@@ -87,6 +87,12 @@ export default function BibleEnv({ c, logoUrl, request, serviceId, itemsCount, o
     const reference = sel.length ? `${book} ${chapter}:${rangeLabel(sel)}` : "";
     // The version travels with the passage: on the screen ("JOÃO 3:16 · NVI"), in the captions, in the rundown.
     const stage = useMemo(() => (slides.length && version ? stageFromPassage({ reference: `${reference} · ${version}`, text: picked.map((v) => `${v.number} ${v.text}`).join("\n"), slides, version }) : null), [slides, reference, picked, version]);
+    // The console sends this stage on Enter / Ctrl+Enter in the Bible environment.
+    useEffect(() => {
+        if (!stageRef) return undefined;
+        stageRef.current = stage;
+        return () => { stageRef.current = null; };
+    }, [stage, stageRef]);
     const pdoc = useMemo(() => { if (!stage) return null; const [op, args] = stageOp(stage); try { return applyOp({ ...emptyState(c.now), background: c.cur?.background || null, logo: c.cur?.logo || emptyState().logo }, op, args, c.now); } catch { return null; } }, [stage, c.cur, c.now]);
 
     const pick = (n, e) => {
@@ -135,7 +141,7 @@ export default function BibleEnv({ c, logoUrl, request, serviceId, itemsCount, o
             </div>
             <div className="kx-split" />
             <div className="col center">
-                <Panel title={`${book} ${chapter}${version ? ` · ${version}` : ""}`} count="clique seleciona · Shift+clique seleciona um trecho" actions={<><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}>
+                <Panel title={`${book} ${chapter}${version ? ` · ${version}` : ""}`} count="clique seleciona · Shift+clique um trecho · digite a referência" actions={<><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}>
                     {error && <Empty icon="warn" title="Capítulo indisponível">{error}</Empty>}
                     {!error && !verses.length && <Empty title="Carregando…" />}
                     <div className="reading">
@@ -168,7 +174,7 @@ export default function BibleEnv({ c, logoUrl, request, serviceId, itemsCount, o
                     </Monitor>
                     <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-2)", flexWrap: "wrap" }}>
                         <Btn kind="outline" disabled={!stage} onClick={() => onPrepare(stage)}>Pôr na prévia</Btn>
-                        <Btn kind={c.isLive ? "prev" : "rh"} disabled={!stage} onClick={() => onSend(stage)} title={c.isLive ? "Enviar ao ar" : "As telas não mudam"}>{c.isLive ? "Enviar ao ar" : c.mode === "prep" ? "Mostrar aqui" : "Mostrar no ensaio"}</Btn>
+                        <Btn kind={c.isLive ? "prev" : "rh"} disabled={!stage} onClick={() => onSend(stage)} title={c.isLive ? "Enviar ao ar" : "As telas não mudam"}>{c.isLive ? "Enviar ao ar" : c.mode === "prep" ? "Mostrar aqui" : "Mostrar no ensaio"}<kbd className="kx-kbd">Enter</kbd></Btn>
                         <Btn disabled={!stage} onClick={addToService}>Adicionar ao culto</Btn>
                         <Btn kind="icon" disabled={!reference} onClick={toggleFav} title={favs.includes(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
                     </div>

@@ -47,7 +47,11 @@ wiring, the data model and the known gaps.
   sends it. Ensaio applies operations to a local copy with `applyOp`
   (`useConsole`), never to the main process. Screens and the console's
   monitors render with `src/components/screen/ScreenRenderer.jsx` — one
-  component, sized in container units — so a preview is the output.
+  component, sized in container units — so a preview is the output. Keys go
+  through `src/lib/console/keys.js` (with a test); a mouse click must not
+  leave focus on a control, Esc ends at once. The old pages are being folded
+  into the console: `docs/migration-inventory.md` says where each function
+  goes; don't add features to the old pages.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. On desktop every
   write reaches every window with the whole row, deletes included.

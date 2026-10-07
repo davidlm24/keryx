@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "@ds/tokens.css";
 import "@ds/components/bundle.css";
 import "@/components/console/console.css";
@@ -16,23 +16,23 @@ import Rundown from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
 import Timeline from "@/components/console/Timeline";
 import BibleEnv from "@/components/console/BibleEnv";
-import PresentView from "@/components/console/PresentView";
+import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT } from "@/lib/console/layout";
-import { liveAction } from "@/lib/console/keys";
+import { liveAction, quickJumpKey } from "@/lib/console/keys";
 import { stageFromSong, stageFromPassage, stageFromMedia, stageFromText, stageFromTool } from "@/lib/console/stage";
 
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
 const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LOG_KEY(serviceId)) || "{}"); } catch { return {}; } };
 
-// The operator console: three views of the same service, driving the live
-// state (shared/live-state.mjs) through useConsole.
+// The operator console, driving the live state (shared/live-state.mjs)
+// through useConsole. Two environments (KERYX: projection, Bíblia) and three
+// steps of the same service:
 //   Preparar   the full console on a local copy: the screens don't change.
 //   Verificar  the readiness check before the service.
-//   Apresentar Programa and Prévia large, the slide strip, a short rundown,
-//              the rest behind "Mais"; Ensaio lives here.
+//   Apresentar the full console, live (Ensaio lives here). Opens here.
 // docs/design-system.md is the look; docs/desktop-architecture.md the plumbing.
 export default function Console() {
     const c = useConsole();
@@ -40,8 +40,9 @@ export default function Console() {
     const data = useLibrary();
     const [profile, setProfile] = useState("");
     const [view, setViewState] = useState(null);
-    const [mais, setMais] = useState(false);
-    const [maisTab, setMaisTab] = useState("letras");
+    const [quick, setQuick] = useState(null);
+    // The Bible environment's selection, as a stage: what Enter sends there.
+    const bibleStageRef = useRef(null);
     const [env, setEnv] = useState("culto");
     const [open, setOpen] = useState(null);
     const [libTab, setLibTab] = useState("letras");
@@ -60,19 +61,18 @@ export default function Console() {
         window.addEventListener("resize", onResize);
         return () => window.removeEventListener("resize", onResize);
     }, []);
-    // The view: Apresentar when a service is running, else Preparar.
+    // The step. The console always opens in Apresentar: keys then act on the
+    // screens, which is what an operator expects of them.
     const { enterPrep, enterPresent } = c;
     const setView = useCallback((v) => {
         if (v === "preparar") enterPrep();
         if (v === "apresentar") enterPresent();
         if (v === "verificar") setEnv("culto");
-        setMais(false);
         setOpen(null);
         setViewState(v);
     }, [enterPrep, enterPresent]);
     const hasLive = Boolean(c.live);
-    const hasSession = Boolean(c.live?.session);
-    useEffect(() => { if (view === null && hasLive) setView(hasSession ? "apresentar" : "preparar"); }, [view, hasLive, hasSession, setView]);
+    useEffect(() => { if (view === null && hasLive) setView("apresentar"); }, [view, hasLive, setView]);
     const setLayout = useCallback((next) => { setLayoutState(next); saveLayout(profile, next); }, [profile]);
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT }); c.say("Layout padrão restaurado."); };
 
@@ -105,7 +105,10 @@ export default function Console() {
     }, [buildStage, c]);
 
     // Sending records when the item went on air (for the timeline), in live mode only.
-    const sendStage = useCallback(async (stage) => {
+    // With no stage given: the Bible selection in the Bible environment, else the Prévia.
+    const sendStage = useCallback(async (given) => {
+        const stage = given || (env === "biblia" && bibleStageRef.current) || undefined;
+        if (!stage && env === "biblia") { c.say("Selecione versículos ou digite a referência."); return; }
         const went = await c.send(stage);
         if (!went || !c.isLive) return;
         const itemId = stage?.args?.ref?.serviceItemId ?? c.prev?.args?.ref?.serviceItemId;
@@ -118,7 +121,7 @@ export default function Console() {
             try { localStorage.setItem(LOG_KEY(serviceId), JSON.stringify(next)); } catch { /* not remembered */ }
             return next;
         });
-    }, [c, serviceId]);
+    }, [c, serviceId, env]);
     const goItem = useCallback(async (item, index) => {
         try { const stage = await buildStage(item, index); c.setPrev(stage); await sendStage(stage); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
     }, [buildStage, c, sendStage]);
@@ -140,34 +143,47 @@ export default function Console() {
     useEffect(() => { if (!projectorDown) { setTries(1); return undefined; } const id = setInterval(() => setTries((t) => t + 1), 5000); return () => clearInterval(id); }, [projectorDown]);
     const connected = outputs.filter((o) => o.open).length + network.filter((d) => d.online).length;
     const outsLabel = projectorDown ? "Saídas · 1 com problema" : c.mode === "ensaio" ? "Saídas desarmadas" : `Saídas · ${connected} ${connected === 1 ? "conectada" : "conectadas"}`;
+    const outsCount = projectorDown ? "!" : c.mode === "ensaio" ? "Ensaio" : String(connected);
     const outsState = projectorDown ? "warn" : c.mode === "ensaio" ? "rh" : "";
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
     const closeOutput = (key) => window.keryxDesktop?.displays.close(key).catch(() => {});
 
-    const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); if (view === "verificar") setView("preparar"); setMais(false); setEnv("biblia"); };
+    const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); if (view === "verificar") setView("apresentar"); setEnv("biblia"); };
 
-    // Keys (src/lib/console/keys.js): a focused control keeps its own keys.
-    // Enter sends only with nothing interactive focused, Ctrl+Enter from
-    // anywhere; arrows move the slide; B/L/C the screen; Esc asks before
-    // ending (or closes what is open); / searches; ? lists the keys.
+    // Keys (src/lib/console/keys.js). A mouse click never leaves focus on a
+    // control (see onMouseClick), so after clicking a song Enter sends it, as
+    // in Holyrics; a control focused with Tab keeps its own Enter/Space.
+    // Arrows move the slide or verse on air; B/L/C the screen; Esc takes the
+    // projection down at once (after closing whatever is open; in a text field
+    // it first leaves the field); / searches; ? lists the keys. In the Bible
+    // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
+            if (env === "biblia" && !open && quick === null && view !== "verificar") {
+                const ch = quickJumpKey(e);
+                if (ch) { e.preventDefault(); setQuick(ch); return; }
+            }
             const action = liveAction(e);
             if (!action) return;
+            if (action === "blur") { e.target.blur?.(); return; }
             if (open) {
                 if (action === "end") { e.preventDefault(); setOpen(null); }
                 return;
             }
             // Verificar shows no Prévia and no slides: only the screen keys work there.
             if (view === "verificar" && ["send", "next", "prev", "clear", "play"].includes(action)) return;
-            if (action === "end" && mais) { e.preventDefault(); setMais(false); return; }
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
             else if (action === "black") c.toggleScreen("black");
             else if (action === "logo") c.toggleScreen("logo");
             else if (action === "clear") c.clearText();
-            else if (action === "end") { e.preventDefault(); if (drawer) setDrawer(false); else setOpen("encerrar"); }
+            else if (action === "end") {
+                e.preventDefault();
+                if (drawer) { setDrawer(false); return; }
+                c.end();
+                c.say(c.isLive ? "Projeção encerrada · Voltar ao anterior desfaz." : "Encerrado só aqui: as telas não mudam.");
+            }
             else if (action === "search") { e.preventDefault(); setOpen("palette"); }
             else if (action === "help") setOpen("atalhos");
             else if (action === "play") {
@@ -177,7 +193,16 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, view, mais]);
+    }, [c, open, drawer, sendStage, view, env, quick]);
+
+    // A mouse click must not leave focus on the control it hit: the live keys
+    // would then belong to that control (the "keys don't work" bug). Keyboard
+    // activation (detail 0) keeps focus, so Tab navigation still works.
+    const onMouseClick = (e) => {
+        if (e.detail === 0) return;
+        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href]");
+        if (t && !t.closest(".dialog, .palette, .qj")) setTimeout(() => t.blur?.(), 0);
+    };
 
     const rundownProps = { service, items, airItemId, prevItemId, prepare: prepareItem, go: goItem };
     const histLeft = useMemo(() => (layout.hidden.lib ? 0 : layout.libW + 6) + (layout.hidden.slides ? 0 : layout.slidesW + 6) + 6, [layout]);
@@ -194,7 +219,7 @@ export default function Console() {
                 <Split horizontal size={layout.camadasH} onSize={(v) => setLayout({ ...layout, camadasH: v })} onReset={() => setLayout({ ...layout, camadasH: DEFAULT_LAYOUT.camadasH })} clamp={(v) => clampSize("camadasH", v)} />
             )}
             {!layout.hidden.roteiro && (
-                <Panel title="Roteiro" count={items.length ? `${items.length} itens · ${mmss(items.reduce((a, b) => a + (b.duration || 0), 0))}` : service?.title || ""} collapsed={!inDrawer && layout.collapsed.roteiro} onToggle={inDrawer ? undefined : () => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
+                <Panel title="Roteiro" count={service ? `${service.title}${items.length ? ` · ${items.length} itens · ${mmss(items.reduce((a, b) => a + (b.duration || 0), 0))}` : ""}` : "nenhum culto"} collapsed={!inDrawer && layout.collapsed.roteiro} onToggle={inDrawer ? undefined : () => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
                     actions={<IconBtn name="plus" title="Adicionar ao roteiro" small onClick={() => setOpen("palette")} />}>
                     <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} />
                 </Panel>
@@ -206,8 +231,8 @@ export default function Console() {
     const present = view === "apresentar";
 
     return (
-        <div className={`kx console ${compact ? "is-compact" : ""} ${c.isLive ? "" : "is-ensaio"} ${present ? "is-apres" : ""}`}>
-            <TopBar c={c} service={service} view={view} setView={setView} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={outsLabel} outsState={outsState} compact={compact} drawerOpen={drawer} toggleDrawer={() => setDrawer((d) => !d)} mais={mais} toggleMais={() => setMais((m) => !m)} logoUrl={logoUrl} />
+        <div className={`kx console ${compact ? "is-compact" : ""} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
+            <TopBar c={c} view={view} setView={setView} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={outsLabel} outsCount={outsCount} outsState={outsState} compact={compact} drawerOpen={drawer} toggleDrawer={() => setDrawer((d) => !d)} logoUrl={logoUrl} />
             {/* A failing output: one line under the top bar, in every view, never over a monitor. */}
             {projectorDown && (
                 <div className="kx-banner is-warn" role="alert">
@@ -219,6 +244,9 @@ export default function Console() {
                     <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => setOpen("outs")}>Ver saídas</button>
                 </div>
             )}
+            {view === "preparar" && (
+                <div className="kx-banner is-rh">PREPARAR — nada vai às telas<span className="kx-sub">Monte e teste à vontade. Tela preta e Mostrar logo continuam valendo nas telas.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setView("apresentar")}>Ir para Apresentar</button></div>
+            )}
             {c.mode === "ensaio" && (
                 <div className="kx-banner is-rh">MODO ENSAIO — nada será enviado às saídas<span className="kx-sub">As telas continuam com o que estava no ar.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setOpen("arm")}>Armar saídas</button></div>
             )}
@@ -229,14 +257,8 @@ export default function Console() {
                         onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
                         onOpenOutput={openOutput} onGoPresent={() => setView("apresentar")} />
                 )}
-                {view !== "verificar" && view !== null && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} serviceId={serviceId} itemsCount={items.length} onPrepare={(s) => { c.setPrev(s); setEnv("culto"); }} onSend={(s) => sendStage(s)} />}
-                {present && env === "culto" && (
-                    <PresentView c={c} logoUrl={logoUrl} service={service} items={items} log={log} airItemId={airItemId} prevItemId={prevItemId}
-                        onPrepareItem={prepareItem} onGoItem={goItem} onSend={() => sendStage()}
-                        onOpenRoteiro={() => setOpen(open === "roteiro" ? null : "roteiro")} onOpenHistory={() => setOpen(open === "hist" ? null : "hist")}
-                        mais={mais} setMais={setMais} maisTab={maisTab} setMaisTab={setMaisTab} data={data} onAddSong={addSong} />
-                )}
-                {view === "preparar" && env === "culto" && (
+                {view !== "verificar" && view !== null && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} serviceId={serviceId} itemsCount={items.length} onPrepare={(s) => { c.setPrev(s); setEnv("culto"); }} onSend={(s) => sendStage(s)} />}
+                {(view === "preparar" || present) && env === "culto" && (
                     <>
                         {!layout.hidden.lib && (
                             <>
@@ -259,7 +281,7 @@ export default function Console() {
                             </>
                         )}
                         <div className="col center">
-                            <Panel title={c.isLive ? "Programa" : "Programa · Ensaio"} actions={
+                            <Panel title={c.isLive ? "Programa" : c.mode === "prep" ? "Programa · Preparação" : "Programa · Ensaio"} actions={
                                 <div style={{ position: "relative" }}>
                                     <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 22 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco"><Icon name="undo" />Voltar ao anterior</button>
                                 </div>
@@ -276,7 +298,7 @@ export default function Console() {
                     </>
                 )}
             </div>
-            {view === "preparar" && !layout.hidden.tl && (
+            {(view === "preparar" || present) && env === "culto" && !layout.hidden.tl && (
                 <div className={`kx-panel tl-panel ${layout.tlOpen ? "is-open" : ""}`}>
                     <Timeline service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
                 </div>
@@ -286,18 +308,15 @@ export default function Console() {
             <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} />
-            <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={present ? 12 : histLeft} />
+            <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <ArmDialog open={open} setOpen={setOpen} live={c.live} onArm={c.arm} />
             <EndDialog open={open} setOpen={setOpen} mode={c.mode} onEnd={c.end} />
-            {open === "roteiro" && (
-                <div className="roteiro-pop">
-                    <Panel title="Roteiro" count={items.length ? `${items.length} itens` : ""} actions={<IconBtn name="x" title="Fechar" small onClick={() => setOpen(null)} />}>
-                        <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={(it, i) => { prepareItem(it, i); setOpen(null); }} onGo={(it, i) => { goItem(it, i); setOpen(null); }} canReorder={false} />
-                    </Panel>
-                </div>
-            )}
             <Palette open={open} setOpen={setOpen} data={data} items={items} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} />
             {compact && drawer && <div className="drawer">{rightPanels(true)}</div>}
+            {quick !== null && env === "biblia" && (
+                <BibleQuickJump initial={quick} onCancel={() => setQuick(null)}
+                    onPick={(r) => { setQuick(null); setBibleRequest({ book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart, at: Date.now() }); }} />
+            )}
             {c.toast && <div className="toast">{c.toast}</div>}
         </div>
     );

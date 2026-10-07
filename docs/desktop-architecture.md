@@ -262,27 +262,42 @@ command palette (`/`), Saídas, and Ensaio.
   one control that bypasses the Prévia (`alert.show`).
 - The layout (module sizes, collapsed, hidden) is saved per profile in
   localStorage (`src/lib/console/layout.js`); "Restaurar layout" resets it.
-- **Three views** (`useConsole` modes): **Preparar** (`prep`) is the full
-  console on the local copy, so nothing prepared there reaches the screens;
-  **Verificar** (`VerifyView`) checks the output windows and network screens,
-  every media file of the rundown (a HEAD request to the local media server,
-  which answers 404 when a file is gone), fonts, the Bible versions installed
-  for offline use and what needs the internet, then "Ir para Apresentar"
-  (asks once when something needs attention); **Apresentar**
-  (`PresentView`) is the live screen: Programa sized by its column, the
-  slides on air as a strip (a click prepares), the Prévia with the one send
-  button, a short rundown, and the library and Camadas behind "Mais". Ensaio
-  (`ensaio`) exists only in Apresentar. The console opens in Apresentar when
-  a session is running, else in Preparar.
+- **Two environments, three steps.** The top bar is a menu bar: the KERYX
+  mark opens the menu, the tabs **KERYX | Bíblia** switch environment
+  (projection console or the Bible), and **Preparar · Verificar · Apresentar**
+  are the steps. **Apresentar** is the full console, live (all modules,
+  resizable); Ensaio (`ensaio`) exists only there. **Preparar** (`prep`) is
+  the same console on the local copy, under a blue "PREPARAR — nada vai às
+  telas" banner; nothing prepared there reaches the screens. **Verificar**
+  (`VerifyView`) checks the output windows and network screens, every media
+  file of the rundown (a HEAD request to the local media server, which answers
+  404 when a file is gone), fonts, the Bible versions installed for offline
+  use and what needs the internet, then "Ir para Apresentar" (asks once when
+  something needs attention). The console always opens in Apresentar. The bar
+  never wraps: container queries drop the clock, then shorten the outputs
+  label and the search as the window narrows.
 - **Tela preta and Mostrar logo always act on the real screens**, in every
   view and mode: they are the emergency actions. A failing output is a banner
   under the top bar in every view, never over a monitor.
-- Live-safety rules: Enter sends only with nothing focused, Ctrl+Enter from
-  anywhere (`src/lib/console/keys.js`); nothing sends on double click;
-  Encerrar asks first.
+- Keys (`src/lib/console/keys.js`): a mouse click never leaves focus on a
+  control (the console blurs it), so after clicking a song Enter sends it and
+  the arrows move the slide or verse on air, as in Holyrics. A control
+  focused with Tab keeps its own Enter/Space; Ctrl+Enter sends from anywhere
+  but a text field. **Esc takes the projection down at once** (closing an open
+  popover first; in a text field it only leaves the field); "Voltar ao
+  anterior" undoes, and the Encerrar button still asks. AltGr (Ctrl+Alt) is
+  typing. In the Bible environment a letter or digit opens the quick jump
+  (`BibleQuickJump`, `src/lib/console/quickRef.js`): "jo 3 16-18" fills
+  Livro, Capítulo, Versículo; Enter selects the verses (they show in the
+  Prévia), Enter again sends. B stays Tela preta there. Output windows give
+  the keyboard back to the window that opened them, and the projector itself
+  handles Esc, B and L if clicked. Nothing sends on double click.
 
 Still outside the console (reached from its menu) until they are folded in:
 Músicas, Mídia and Comunicação as editors, Cultos as the planner, Settings.
+`docs/migration-inventory.md` lists every function of the old pages and
+where it goes (or why it is retired), the bugs not to carry over, and the
+phases of the migration.
 The old Ferramentas/Comunicação postMessage paths, `AlertMessage` and
 `BibleProjectionSync` stay only as fallbacks for those pages.
 

@@ -516,14 +516,15 @@ async function checkLayers(webContents, { live, outputs }) {
     return result;
 }
 
-// Backups, logs and the Settings bridge, as the packaged app runs them.
-// A tablet on the network: a plain browser window (no preload, no desktop
-// bridge) opening screen pages from the LAN server, fed by store changes.
-// The console: a song prepared in the Prévia goes to air only with Enter, the
-// arrow moves the live slide, a rehearsal never touches the air, arming
-// returns, Esc ends. The projector is opened by the main process, as "Abrir
-// ao iniciar" would.
+// The console, driven with real input (webContents.sendInputEvent: focus
+// moves as it would under a mouse and a keyboard). The projector opens
+// without taking the keyboard; the console opens in Apresentar; a mouse click
+// on a control leaves the keys to the console (Enter sends, arrows move);
+// a control focused with Tab keeps its own Enter; Esc ends at once; Preparar
+// and Ensaio never touch the air; the Bible quick jump reads "jo 3 16". The
+// projector is opened by the main process, as "Abrir ao iniciar" would.
 async function checkConsole(webContents, { live, outputs }) {
+    const { BrowserWindow } = require("electron");
     const result = { ok: false };
     const waitText = async (win, needle, present = true, ms = 8000) => {
         const end = Date.now() + ms;
@@ -536,124 +537,200 @@ async function checkConsole(webContents, { live, outputs }) {
     const waitFor = async (test, ms = 5000) => {
         const end = Date.now() + ms;
         while (Date.now() < end) {
-            if (test()) return true;
+            if (await test()) return true;
             await sleep(150);
         }
         return false;
     };
-    const key = (k, mods = {}) => webContents.executeJavaScript(`window.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(k)}, bubbles: true, ctrlKey: ${Boolean(mods.ctrl)} })); true`);
-    // A key pressed while a control has focus: the event starts at that control.
-    const keyOn = (selector, text, k) => webContents.executeJavaScript(`(() => {
-        const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((n) => n.textContent.includes(${JSON.stringify(text)}));
-        if (!el) return false;
-        el.focus();
-        el.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(k)}, bubbles: true }));
-        return document.activeElement === el;
+    const js = (code) => webContents.executeJavaScript(code);
+    // Real key presses. Printable keys also send the "char" event that types.
+    const KEYCODE = { ArrowRight: "Right", ArrowLeft: "Left", " ": "Space" };
+    const press = async (k, modifiers = []) => {
+        const keyCode = KEYCODE[k] || k;
+        webContents.sendInputEvent({ type: "keyDown", keyCode, modifiers });
+        if (k.length === 1 && !modifiers.includes("control")) webContents.sendInputEvent({ type: "char", keyCode: k, modifiers });
+        webContents.sendInputEvent({ type: "keyUp", keyCode, modifiers });
+        await sleep(120);
+    };
+    const type = async (text) => { for (const ch of text) await press(ch); };
+    // A real mouse click in the middle of the first element matching the text.
+    const click = async (selector, text = "") => {
+        const at = await js(`(() => {
+            const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((n) => n.textContent.includes(${JSON.stringify(text)}) || (n.getAttribute("aria-label") || "").includes(${JSON.stringify(text)}));
+            if (!el) return null;
+            el.scrollIntoView({ block: "nearest" });
+            const r = el.getBoundingClientRect();
+            return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+        })()`);
+        if (!at) return false;
+        webContents.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y });
+        webContents.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 });
+        webContents.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "left", clickCount: 1 });
+        await sleep(250);
+        return true;
+    };
+    const active = () => js("(() => { const a = document.activeElement; return a ? a.tagName + (a.getAttribute('role') ? '[' + a.getAttribute('role') + ']' : '') : null; })()");
+    // The top bar never wraps or overflows: one line, everything inside it.
+    const barFits = () => js(`(() => {
+        const bar = document.querySelector(".topbar");
+        if (!bar) return false;
+        const r = bar.getBoundingClientRect();
+        const kids = [...bar.querySelectorAll("button, .kx-field, .kx-seg, .tb-clock")].filter((n) => n.offsetParent);
+        return bar.scrollWidth <= bar.clientWidth + 1 && kids.every((n) => { const k = n.getBoundingClientRect(); return k.height <= r.height && k.right <= r.right + 1 && k.top >= r.top - 1; });
     })()`);
-    const song = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "create", [{
+    const shot = async (suffix) => {
+        if (!process.env.KERYX_CONSOLE_SHOT) return null;
+        try {
+            await sleep(700);
+            const file = process.env.KERYX_CONSOLE_SHOT.replace(/\.png$/i, `${suffix ? `-${suffix}` : ""}.png`);
+            fs.writeFileSync(file, (await webContents.capturePage()).toPNG());
+            return true;
+        } catch (err) {
+            return String(err && err.message);
+        }
+    };
+
+    const song = (await js(`window.keryxDesktop.db.call("Song", "create", [{
         title: "Canto do console", artist: "Coral do Teste", lyrics: "Primeiro slide do console\\n\\nSegundo slide do console",
         slides: [{ text: "Primeiro slide do console" }, { text: "Segundo slide do console" }],
     }])`)).data;
+    // The projector covers the operator window otherwise; a window in the
+    // background also stalls page transitions (animation frames).
+    const operatorWin = BrowserWindow.fromWebContents(webContents);
+    const size = operatorWin && operatorWin.getContentSize();
+    if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
+    await sleep(300);
     outputs.open("/Projection");
     const main = await waitWindow("/Projection");
-    // The projector may cover the operator window; a window in the background
-    // stalls the page transition (it runs on animation frames). Bring it up.
-    const operatorWin = require("electron").BrowserWindow.fromWebContents(webContents);
+    await sleep(1500);
+    // Opening the projector must not take the keyboard from the operator.
+    result.focusKept = !operatorWin || BrowserWindow.getFocusedWindow() === operatorWin;
     if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
-    await sleep(500);
     try {
-        await webContents.executeJavaScript(`history.pushState({}, "", "/Console"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
+        await js(`history.pushState({}, "", "/Console"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         // Section captions are uppercase on screen (CSS), so innerText is too.
-        // No service running: the console opens in Preparar, on a local copy.
-        result.opened = await waitText(webContents, "PROGRAMA · PREPARAÇÃO", true, 15000);
+        // The console always opens in Apresentar, live, with the full console.
+        result.opened = await waitText(webContents, "PROGRAMA · NADA", true, 15000);
         result.listed = await waitText(webContents, "Canto do console", true, 15000);
-        await webContents.executeJavaScript(CLICK_TEXT(".kx-row", "Canto do console"));
-        await key("Enter", { ctrl: true });
+        result.fullConsole = await js("Boolean(document.querySelector('.console .main .kx-split')) && !document.querySelector('.apres')");
+
+        // Click the step selector (a radio: it used to keep the keys), then a song: Enter sends.
+        await click(".topbar .kx-seg button", "Apresentar");
+        await click(".kx-row", "Canto do console");
+        result.prepared = await waitText(webContents, "PRÉVIA · CANTO DO CONSOLE");
+        result.airUntouched = !live.get().content;
+        result.clickLeftNoFocus = (await active()) === "BODY";
+        // A control focused from the keyboard keeps its own Enter.
+        result.tabFocused = await js(`(() => { const t = document.querySelector(".console [role='tab']"); if (!t) return false; t.focus(); return document.activeElement === t; })()`);
+        await press("Enter");
+        await sleep(300);
+        result.focusedEnterKeptAir = !live.get().content;
+        await js("document.activeElement && document.activeElement.blur(); true");
+        if (!(await js("document.body.innerText.includes('PRÉVIA · CANTO DO CONSOLE')"))) await click(".kx-row", "Canto do console");
+        await press("Enter");
+        result.sent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
+        result.projected = Boolean(main) && await waitText(main, "Primeiro slide do console");
+        // Click a radio again, then the arrow: the slide moves on the projector.
+        await click(".topbar .kx-seg button", "Apresentar");
+        await press("ArrowRight");
+        result.advanced = Boolean(main) && await waitText(main, "Segundo slide do console");
+
+        // The top bar at the common operator widths: one line, nothing cut off.
+        result.bar = {};
+        for (const w of [1248, 1366, 1920]) {
+            if (operatorWin) operatorWin.setContentSize(w, 820);
+            await sleep(500);
+            result.bar[w] = await barFits();
+            result[`shot${w}`] = await shot(String(w));
+        }
+        if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
+        await sleep(300);
+        result.barFits = Object.values(result.bar).every(Boolean);
+
+        // Esc: off the air at once, with a way back.
+        await press("Escape");
+        result.escEnded = await waitFor(() => !live.get().content);
+        result.escToast = await waitText(webContents, "Voltar ao anterior desfaz");
+
+        // Preparar: a local copy. Enter "shows here" only; Tela preta still reaches the screens.
+        await click(".topbar .kx-seg button", "Preparar");
+        result.prepBanner = await waitText(webContents, "nada vai às telas");
+        result.prepCaption = await waitText(webContents, "PROGRAMA · PREPARAÇÃO");
+        await click(".kx-row", "Canto do console");
+        await press("Enter");
         await sleep(500);
         result.prepKeptAir = !live.get().content;
-        // Tela preta is an emergency action: it reaches the screens from Preparar too.
-        await key("b");
+        await press("b");
         result.prepBlack = await waitFor(() => live.get().screen === "black");
-        await key("b");
+        await press("b");
         result.prepUnblack = await waitFor(() => live.get().screen === "show");
 
         // Verificar: the readiness list, with the outputs the main process holds.
-        await webContents.executeJavaScript(CLICK_TEXT(".topbar .kx-seg button", "Verificar"));
+        await click(".topbar .kx-seg button", "Verificar");
         result.verify = await waitText(webContents, "SAÍDAS") && await waitText(webContents, "BÍBLIA") && await waitText(webContents, "Ir para Apresentar");
         result.verifyProjector = (await bodyText(webContents)).includes("Projeção principal");
 
-        // Apresentar: the library is behind "Mais".
-        await webContents.executeJavaScript(CLICK_TEXT(".topbar .kx-seg button", "Apresentar"));
-        result.present = await waitText(webContents, "PROGRAMA · NADA");
-        await webContents.executeJavaScript(CLICK_TEXT(".topbar button", "Mais"));
-        await waitText(webContents, "Canto do console");
-        await webContents.executeJavaScript(CLICK_TEXT(".mais .kx-row", "Canto do console"));
-        result.prepared = await waitText(webContents, "PRÉVIA · CANTO DO CONSOLE");
-        result.airUntouched = !live.get().content;
-        // The Codex bug: a focused tab (Letras) and Enter must not send the Prévia.
-        result.focusedEnter = await keyOn(".mais .kx-tabs button", "Letras", "Enter");
-        await sleep(400);
-        result.focusedEnterKeptAir = !live.get().content;
-        await key("Enter", { ctrl: true });
-        result.sent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
-        result.projected = Boolean(main) && await waitText(main, "Primeiro slide do console");
-        await key("ArrowRight");
-        result.advanced = await waitText(main, "Segundo slide do console");
-        // Esc closes "Mais" first; the slide strip shows the song with slide 2 on air.
-        await key("Escape");
-        await sleep(300);
-        result.maisClosed = !(await webContents.executeJavaScript("Boolean(document.querySelector('.mais'))")) && Boolean(live.get().content);
-        result.strip = await webContents.executeJavaScript("document.querySelectorAll('.strip .thumb').length === 2 && document.querySelector('.strip .thumb.is-air .n').textContent === '2'");
-
-        // KERYX_CONSOLE_SHOT=<file.png>: the console with a song on air.
-        // The operator window may sit behind the projector: bring it up first.
-        // A capture that fails is reported, not fatal.
-        if (process.env.KERYX_CONSOLE_SHOT) {
-            try {
-                const win = require("electron").BrowserWindow.fromWebContents(webContents);
-                if (win) { win.show(); win.focus(); }
-                await sleep(1200);
-                fs.writeFileSync(process.env.KERYX_CONSOLE_SHOT, (await webContents.capturePage()).toPNG());
-                result.shot = true;
-            } catch (err) {
-                result.shot = String(err && err.message);
-            }
-        }
-
-        await webContents.executeJavaScript(CLICK_TEXT(".kx-seg-mode button", "Ensaio"));
+        // Back to Apresentar, the song on air again, then Ensaio.
+        await click(".topbar .kx-seg button", "Apresentar");
+        await waitText(webContents, "nada vai às telas", false);
+        await click(".kx-row", "Canto do console");
+        await press("Enter");
+        result.resent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
+        await click(".kx-seg-mode button", "Ensaio");
         result.rehearsing = await waitText(webContents, "MODO ENSAIO");
         // In Ensaio a slide click prepares, "Mostrar no ensaio" shows it in the
-        // rehearsal copy only: the screens stay on slide 2.
-        await webContents.executeJavaScript("document.querySelector('.strip .thumb').click(); true");
-        await sleep(300);
-        result.rehearsalButton = await webContents.executeJavaScript(CLICK_TEXT("button", "Mostrar no ensaio"));
+        // rehearsal copy only: the screens stay on slide 1.
+        await click(".kx-slide", "Segundo slide do console");
+        result.rehearsalButton = await click("button", "Mostrar no ensaio");
         await sleep(400);
-        result.rehearsalKeptAir = Boolean(live.get().content) && live.get().content.index === 1;
-        await webContents.executeJavaScript(CLICK_TEXT(".kx-banner button", "Armar saídas"));
-        await sleep(300);
-        await webContents.executeJavaScript(CLICK_TEXT(".dialog button", "Armar saídas"));
+        result.rehearsalKeptAir = Boolean(live.get().content) && live.get().content.index === 0;
+        await click(".kx-banner button", "Armar saídas");
+        await click(".dialog button", "Armar saídas");
         result.armed = await waitText(webContents, "MODO ENSAIO", false);
 
-        // Esc asks first; only "Encerrar" in the dialog ends.
-        await key("Escape");
+        // Bíblia: a letter opens the quick jump; "jo 3 16" reads as João 3:16.
+        await click(".envtabs button", "Bíblia");
+        await waitText(webContents, "Versículos selecionados".toUpperCase());
+        await press("j");
+        result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
+        await type("o 3 16");
+        result.quickRead = await js("[...document.querySelectorAll('.qj-step b')].map((n) => n.textContent).join('|')");
+        result.shotBible = await shot("biblia");
+        await press("Enter");
+        result.quickPicked = await waitFor(() => js("!document.querySelector('.qj') && [...document.querySelectorAll('.kx-panel-h')].some((n) => n.textContent.startsWith('João 3'))"));
+        // Esc in the quick jump cancels it and never ends the projection.
+        await press("g");
+        await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
+        await press("Escape");
+        await sleep(300);
+        result.quickEsc = !(await js("Boolean(document.querySelector('.qj'))")) && Boolean(live.get().content);
+        await click(".envtabs button", "KERYX");
+
+        // The Encerrar button asks first; only "Encerrar" in the dialog ends.
+        await click(".topbar button", "Encerrar a projeção");
         result.endAsked = await waitText(webContents, "ENCERRAR A PROJEÇÃO?");
         result.endWaited = Boolean(live.get().content);
-        await webContents.executeJavaScript(CLICK_TEXT(".dialog button", "Encerrar"));
+        await click(".dialog button", "Encerrar");
         result.ended = await waitFor(() => !live.get().content);
-        result.consoleErrors = [];
     } finally {
-        await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "delete", ["${song && song.id}"])`);
-        await webContents.executeJavaScript(`history.pushState({}, "", "/"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
+        if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
+        live.call("clear");
+        await js(`window.keryxDesktop.db.call("Song", "delete", ["${song && song.id}"])`);
+        await js(`history.pushState({}, "", "/"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         if (main) main.close();
     }
-    result.ok = result.opened && result.listed && result.prepKeptAir && result.prepBlack && result.prepUnblack && result.verify && result.verifyProjector
-        && result.present && result.maisClosed && result.strip
-        && result.prepared && result.airUntouched && result.focusedEnter && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.advanced && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
-        && result.armed && result.endAsked && result.endWaited && result.ended;
+    result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
+        && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
+        && result.sent && result.projected && result.advanced && result.barFits && result.escEnded && result.escToast
+        && result.prepBanner && result.prepCaption && result.prepKeptAir && result.prepBlack && result.prepUnblack
+        && result.verify && result.verifyProjector && result.resent && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
+        && result.armed && result.quickOpened && result.quickRead === "João|3|16" && result.quickPicked && result.quickEsc
+        && result.endAsked && result.endWaited && result.ended);
     return result;
 }
 
+// A tablet on the network: a plain browser window (no preload, no desktop
+// bridge) opening screen pages from the LAN server, fed by store changes.
 async function checkNetwork({ network, live, videoFile }) {
     const result = { started: false, lyrics: false, stage: false, live: null, operatorPageBlocked: false, pinForm: false, tabletErrors: [], ok: false };
     await network.ops.setPin(null, ""); // start open, whatever the data folder had
@@ -763,6 +840,7 @@ async function checkNetwork({ network, live, videoFile }) {
     return result;
 }
 
+// Backups, logs and the Settings bridge, as the packaged app runs them.
 async function checkSystem(webContents, { dataDir, system }) {
     const info = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("info")`)).data;
     const made = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("backupNow")`)).data;

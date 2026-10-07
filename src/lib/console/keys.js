@@ -24,16 +24,27 @@ export function focusKind(target) {
     return "none";
 }
 
-// -> "send" | "next" | "prev" | "black" | "logo" | "clear" | "end" | "search" | "help" | "play" | null
+// AltGr on Windows (ABNT2 "/" and "?") arrives as Ctrl+Alt with a printable
+// key: that is typing, not a shortcut.
+const isAltGr = (e) => e.ctrlKey && e.altKey && typeof e.key === "string" && e.key.length === 1;
+
+// Focus left by a mouse click on a control should not trap the live keys:
+// the console blurs it (see Console.jsx). A keyboard-focused control (Tab)
+// keeps its own Enter/Space, as before.
+//
+// -> "send" | "next" | "prev" | "black" | "logo" | "clear" | "end" | "blur" |
+//    "search" | "help" | "play" | null
 export function liveAction(e) {
     const kind = focusKind(e.target);
-    const mod = e.ctrlKey || e.metaKey;
-    if (kind === "text") return null;
+    const altGr = isAltGr(e);
+    const mod = (e.ctrlKey || e.metaKey) && !altGr;
+    // In a text field the first Esc leaves the field; every other key is typing.
+    if (kind === "text") return e.key === "Escape" ? "blur" : null;
     if (e.key === "Enter") {
         if (mod) return "send";
         return kind === "control" ? null : "send";
     }
-    if (mod || e.altKey) return null;
+    if (mod || (e.altKey && !altGr)) return null;
     switch (e.key) {
         case "ArrowRight": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu']") ? null : "next";
         case "ArrowLeft": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu']") ? null : "prev";
@@ -46,4 +57,17 @@ export function liveAction(e) {
         case "?": return "help";
         default: return null;
     }
+}
+
+// In the Bible environment, typing a reference opens the quick jump (as in
+// Holyrics): a letter or digit, nothing focused, no modifier. "B" stays Tela
+// preta (no book of the Portuguese canon starts with B); L and C start books
+// (Lucas, Levítico, Crônicas, Colossenses…), so there they type.
+// -> the character to start with, or null.
+export function quickJumpKey(e) {
+    if (focusKind(e.target) !== "none") return null;
+    if ((e.ctrlKey || e.metaKey || e.altKey) && !isAltGr(e)) return null;
+    if (typeof e.key !== "string" || e.key.length !== 1) return null;
+    if (e.key === "b" || e.key === "B") return null;
+    return /[\p{L}\d]/u.test(e.key) ? e.key : null;
 }

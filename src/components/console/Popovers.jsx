@@ -63,13 +63,14 @@ export function Shortcuts({ open, setOpen }) {
     if (open !== "atalhos") return null;
     const keys = [
         ["Ctrl+Enter", "Enviar a Prévia ao ar (de qualquer lugar)"],
-        ["Enter", "Enviar ao ar quando nenhum botão ou campo está selecionado"],
-        ["← →", "Slide anterior / próximo no ar"],
+        ["Enter", "Enviar ao ar (depois de clicar numa música ou versículo)"],
+        ["← →", "Slide ou versículo anterior / próximo no ar"],
         ["Espaço", "Tocar / pausar"],
         ["B", "Tela preta (na hora)"],
         ["L", "Mostrar logo"],
         ["C", "Limpar texto"],
-        ["Esc", "Encerrar (pergunta antes) ou fechar o que está aberto"],
+        ["Esc", "Tirar tudo do ar na hora (Voltar ao anterior desfaz) ou fechar o que está aberto"],
+        ["Letra", "Na Bíblia: digitar a referência (ex.: jo 3 16)"],
         ["/", "Buscar em tudo"],
         ["?", "Esta lista"],
     ];
