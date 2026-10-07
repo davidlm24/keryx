@@ -42,3 +42,27 @@ test("Ao importar: long stanzas cut into slides of n lines; the lyrics stay whol
     assert.deepEqual(s.slides.map((x) => x.text), ["um\ndois", "três\nquatro", "cinco", "seis"]);
     assert.equal(s.lyrics, "um\ndois\ntrês\nquatro\ncinco\n\nseis");
 });
+
+test("editor: live split with [labels], chorus, line cuts", async () => {
+    const { slidesFromLyrics } = await import("./songImport.js");
+    const ly = "[Verso 1]\nFirme na rocha\nnada me abala\n\n[Refrão]\nRocha eterna\nem Ti descanso\n\nRocha eterna\nnada separa\n\nsem rótulo";
+    const s = slidesFromLyrics(ly);
+    assert.deepEqual(s.map((x) => x.label), ["Verso 1", "Refrão", "Refrão", "Refrão"], "a label holds until the next");
+    assert.equal(s[1].is_chorus, true);
+    assert.equal(s[0].text, "Firme na rocha\nnada me abala");
+    assert.equal(slidesFromLyrics(ly, { lines: 1 }).length, 7);
+    assert.deepEqual(slidesFromLyrics("[Refrão]\n\n"), [], "a lone label adds nothing");
+});
+
+test("editor: timings from the marked starts; durations", async () => {
+    const { withTimings, parseDuration, formatDuration } = await import("./songImport.js");
+    const slides = [{ text: "a" }, { text: "b" }, { text: "c" }];
+    const t = withTimings(slides, [2, 10.555, null], 30);
+    assert.deepEqual(t[0], { text: "a", start: 2, duration: 8.56 });
+    assert.deepEqual(t[1], { text: "b", start: 10.56, duration: 19.45 }, "the last mark runs to the end of the video");
+    assert.deepEqual(t[2], { text: "c" }, "unmarked stays as it was");
+    assert.equal(parseDuration("4:36"), 276);
+    assert.equal(parseDuration("90"), 90);
+    assert.equal(parseDuration("x"), null);
+    assert.equal(formatDuration(276), "4:36");
+});

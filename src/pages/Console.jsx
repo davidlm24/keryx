@@ -19,6 +19,7 @@ import BibleEnv from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
 import LyricsSearch from "@/components/console/LyricsSearch";
+import SongEditor from "@/components/console/SongEditor";
 import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol } from "@/lib/console/layout";
@@ -58,8 +59,14 @@ export default function Console() {
             return want ? (sectionIds.includes(want) ? want : "telas") : null;
         } catch { return null; }
     });
-    const setEnv = useCallback((v) => { setCfg(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
-    const openSettings = useCallback((section = "telas") => { setOpen(null); setCfg(section); }, []);
+    const setEnv = useCallback((v) => { setCfg(null); setEditSong(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
+    const openSettings = useCallback((section = "telas") => { setOpen(null); setEditSong(null); setCfg(section); }, []);
+    // The song editor, inside the console: a song id, "new", or null. The old
+    // /Home page lands here on desktop (?song=new).
+    const [editSong, setEditSong] = useState(() => {
+        try { return new URLSearchParams(window.location.search).get("song") || null; } catch { return null; }
+    });
+    const openSong = useCallback((id) => { setOpen(null); setCfg(null); setEditSong(id); }, []);
     const [open, setOpen] = useState(null);
     const [libTab, setLibTab] = useState("letras");
     const [drawer, setDrawer] = useState(false);
@@ -120,6 +127,14 @@ export default function Console() {
         if (c.isLive && projector && !projector.open) window.keryxDesktop?.displays.open("/Projection").catch(() => {});
         const went = await c.send(stage);
         if (!went || !c.isLive) return;
+        // A song on air counts for Histórico, Estatísticas and the CCLI report.
+        const sent = stage || c.prev;
+        if (sent?.kind === "lyrics" && String(sent.id || "").startsWith("song:") && !sent.airSlide) {
+            const songId = sent.id.slice(5);
+            const song = data.songs.find((x) => x.id === songId);
+            keryx.entities.SongHistory.create({ song_id: songId, song_title: sent.title, song_artist: song?.artist || "", played_at: new Date().toISOString(), operator_name: "Operador", ...(service ? { service_id: service.id, service_title: service.title } : {}) }).catch(() => {});
+            if (song) keryx.entities.Song.update(songId, { play_count: (song.play_count || 0) + 1, last_played_at: new Date().toISOString() }).catch(() => {});
+        }
         const itemId = stage?.args?.ref?.serviceItemId ?? c.prev?.args?.ref?.serviceItemId;
         if (!itemId || !serviceId) return;
         const now = Date.now();
@@ -130,7 +145,7 @@ export default function Console() {
             try { localStorage.setItem(LOG_KEY(serviceId), JSON.stringify(next)); } catch { /* not remembered */ }
             return next;
         });
-    }, [c, serviceId, env, projector]);
+    }, [c, serviceId, env, projector, data.songs, service]);
     const goItem = useCallback(async (item, index) => {
         try { const stage = await buildStage(item, index); c.setPrev(stage); await sendStage(stage); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
     }, [buildStage, c, sendStage]);
@@ -210,7 +225,7 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && quick === null && !cfg) {
+            if (env === "biblia" && !open && quick === null && !cfg && !editSong) {
                 const ch = quickJumpKey(e);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
@@ -223,6 +238,9 @@ export default function Console() {
             }
             // In Configurações Esc goes back to the console; it never ends the projection there.
             if (cfg && action === "end") { e.preventDefault(); setCfg(null); return; }
+            // The song editor handles its own keys (Esc, Space while marking);
+            // only the emergency keys reach the screens from there.
+            if (editSong && !["black", "logo"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -251,7 +269,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, cfg]);
+    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, cfg, editSong]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -306,14 +324,15 @@ export default function Console() {
             )}
             <div className="main">
                 {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={() => setCfg(null)} />}
-                {!cfg && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
-                {!cfg && env === "culto" && (
+                {!cfg && editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={() => setEditSong(null)} onSaved={(row) => { if (editSong === "new" && row?.id) setEditSong(row.id); }} />}
+                {!cfg && !editSong && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
+                {!cfg && !editSong && env === "culto" && (
                     <>
                         {!layout.hidden.lib && (
                             <>
                                 <div className="col" style={sideCol("libW", layout.libW)}>
                                     <Panel title="Biblioteca" collapsed={layout.collapsed.lib} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, lib: !layout.collapsed.lib } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                        <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} />
+                                        <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} />
                                     </Panel>
                                 </div>
                                 <Split size={layout.libW} onSize={(v) => setLayout({ ...layout, libW: v })} onReset={() => setLayout({ ...layout, libW: DEFAULT_LAYOUT.libW })} clamp={(v) => clampSize("libW", v)} />
@@ -347,14 +366,14 @@ export default function Console() {
                     </>
                 )}
             </div>
-            {!cfg && env === "culto" && !layout.hidden.tl && (
+            {!cfg && !editSong && env === "culto" && !layout.hidden.tl && (
                 <div className={`kx-panel tl-panel ${layout.tlOpen ? "is-open" : ""}`}>
                     <Timeline service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
                 </div>
             )}
 
             {open && <div className={`scrim ${open === "palette" || open === "arm" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
-            {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => c.setPrev(stageFromSong(song))} />}
+            {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
                     <VerifyView c={c} items={items} data={data} outputs={outputs} network={network}

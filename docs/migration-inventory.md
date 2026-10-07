@@ -35,7 +35,7 @@ Legend for the destination column:
 - **Retire**: not migrated, with the reason.
 - **Done**: the console already does it.
 
-## 1. Músicas (`src/pages/Home.jsx`)
+## 1. Músicas (`src/pages/Home.jsx`) — migrated (phase 3, see section 9)
 
 | Function | Destination |
 | --- | --- |
@@ -236,8 +236,19 @@ smoke and a look at the page.
    atualizações. On the desktop `/Settings` redirects to
    `/Console?config=telas`; the appearance options are gone there. The web
    build keeps the old page (account deletion) until a web settings pass.
-3. **Músicas**: the song editor (all SongForm fields, cifra, vídeo and
-   sincronização, imprimir, importar/exportar, favoritos).
+3. **Músicas**. **Done 2026-10-07** (canvas artboard 16): the song editor
+   inside the console (`SongEditor.jsx`): all SongForm fields, notes,
+   cifra and "Importar cifra", the lyrics with [Verso]/[Refrão]/[Ponte] and
+   a live split (Estrofe / 2 / 4 linhas) into 16:9 thumbnails, per-song style
+   (tema, fonte, 6 tamanhos, cor, efeito, fundo), the song video or playback
+   with "Marcar tempos" (Space), Imprimir (escaped), Excluir (asked twice),
+   Ctrl+S. Opening keeps a song's saved slides; editing the lyrics redoes
+   them. Biblioteca › Letras: Editar, favorite star and "só favoritas",
+   "+ › Nova música / Exportar todas". A live send records SongHistory and
+   play_count (as Músicas did). On the desktop `/Home` (and `/`) redirect
+   to the console; the web build keeps the old page. Not carried over: the
+   artist accordion and A–Z rail (search replaces them), "Apagar todas"
+   (retired), text_color_2 (not in the Song schema; it was dropped on write).
 4. **Cultos → Preparar**: culto CRUD, equipe, status, item editor, modelos,
    duplicar, PDF. Fix `contentId` on template items and `startTime` on the way.
 5. **Mídia and Comunicação → Biblioteca/Avisos**: multi upload, categorias,

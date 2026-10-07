@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { keryx } from "@/api/keryxClient";
+import { Navigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Maximize2, Search, Heart, Monitor, Square, Video, Trash2 } from "lucide-react";
@@ -30,6 +31,13 @@ import { cacheItem, uncacheItem } from "@/hooks/useOfflineCache";
 import { generateSlides as generateSectionSlides } from "@/utils/songSections";
 
 export default function Home() {
+    // Desktop: Músicas moved into the console (Biblioteca › Letras and the
+    // song editor). The web build keeps this page for now.
+    if (keryx.isDesktop) return <Navigate to="/Console" replace />;
+    return <LegacyHome />;
+}
+
+function LegacyHome() {
     const [showForm, setShowForm] = useState(false);
     const [editingSong, setEditingSong] = useState(null);
     const [selectedArtist, setSelectedArtist] = useState("all");

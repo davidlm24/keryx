@@ -309,6 +309,13 @@ command palette (`/`), Saídas, and Ensaio.
   background; op `layers.order`) stacks the look layers on every screen;
   Camadas reorders them by dragging. Alert, video-channel cover and
   black/logo stay above all.
+- **Editor de música** is a view inside the console (`SongEditor.jsx`,
+  canvas artboard 16), opened from Biblioteca › Letras (Editar, "+ › Nova
+  música") and after a web import. Lyrics split live into slides
+  (`slidesFromLyrics`, `withTimings` in `src/lib/songImport.js`, tested);
+  a song keeps its saved slides until its lyrics change. On the desktop
+  `/Home` redirects to the console. A live send of a song records
+  SongHistory and play_count.
 - **Configurações** is a view inside the console (`settings/SettingsView`,
   canvas artboard 20): Telas e saídas, Telas na rede, Bíblias instaladas,
   Igreja (name, city, logo on the profile), Temas, Letras, Dados e

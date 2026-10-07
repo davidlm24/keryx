@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Row, Btn, Field, Empty } from "./kx";
+import { Row, Btn, IconBtn, Field, Empty } from "./kx";
 import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
 import { songsFromFile, importLines } from "@/lib/songImport";
@@ -26,9 +26,10 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // The library: Letras, Mídia and Avisos (and the Setlist on narrow screens).
 // A click prepares the item in the Prévia; a double click sends it to air
 // (onGo). The quick alert is the one control that bypasses the Prévia.
-export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onGo, onAddSong, onLyricsWeb, hideTabs = false }) {
+export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, hideTabs = false }) {
     const navigate = useNavigate();
     const [q, setQ] = useState("");
+    const [favOnly, setFavOnly] = useState(false);
     const [alertText, setAlertText] = useState("");
     const [yt, setYt] = useState("");
     const [tool, setTool] = useState(null);
@@ -62,6 +63,18 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
         }
         c.say(made ? `${made} ${made === 1 ? "música importada" : "músicas importadas"}${bad.length ? ` · não deu: ${bad.join(", ")}` : ""}.` : `Nenhuma letra encontrada em ${bad.join(", ")}.`);
     };
+    // "+ › Exportar todas": the songs as the JSON the import reads back.
+    const exportSongs = () => {
+        const songs = data.songs.map(({ id: _id, created_date: _c, updated_date: _u, created_by_id: _b, ...rest }) => rest);
+        const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), app: "KERYX", count: songs.length, songs }, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `keryx_musicas_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        c.say(`${songs.length} ${songs.length === 1 ? "música exportada" : "músicas exportadas"}.`);
+    };
+    const toggleFav = (s) => keryx.entities.Song.update(s.id, { is_favorite: !s.is_favorite }).catch((err) => c.say(err?.message || "Não foi possível."));
     // "+ › Do computador" in Mídia: videos, audio, images, PDF, PowerPoint.
     const importMedia = async (files) => {
         c.say(`Copiando ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}…`);
@@ -70,8 +83,10 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
     };
     const addItems = tab === "letras"
         ? [
+            { label: "Nova música…", icon: "plus", onClick: () => onEditSong?.("new") },
             { label: "Do computador…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", onFiles: importSongFiles },
             { label: "Na internet…", icon: "external", onClick: () => onLyricsWeb?.() },
+            { label: "Exportar todas…", icon: "save", onClick: exportSongs },
         ]
         : tab === "midia"
             ? [
@@ -100,12 +115,13 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
             {tab !== "roteiro" && (
                 <div className="searchrow">
                     <Field value={q} onChange={setQ} placeholder={tab === "letras" ? "Letras" : tab === "midia" ? "Mídia" : "Avisos"} />
+                    {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} onClick={() => setFavOnly((f) => !f)} />}
                     <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "midia" ? "Adicionar mídia" : "Adicionar aviso"} items={addItems} />
                 </div>
             )}
 
             {tab === "letras" && (() => {
-                const songs = data.songs.filter((s) => match(ql, s.title, s.artist, s.lyrics));
+                const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, s.lyrics));
                 return (
                     <div style={{ overflow: "auto", flex: 1 }}>
                         {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma música"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
@@ -119,7 +135,11 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                 onClick={() => onPrepare(stageFromSong(s))}
                                 onDoubleClick={onGo && (() => onGo(stageFromSong(s)))}
                                 dragProps={dragProps(stageFromSong(s))}
-                                actions={onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist">Adicionar</Btn>}
+                                actions={<>
+                                    <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
+                                    {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música">Editar</Btn>}
+                                    {onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist">Adicionar</Btn>}
+                                </>}
                             />
                         ))}
                     </div>

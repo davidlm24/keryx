@@ -136,3 +136,50 @@ export function songsFromFile(name, raw, { lines = 0 } = {}) {
     const song = songFromText(raw, { name, lines });
     return song.lyrics ? [song] : [];
 }
+
+// -- The song editor -------------------------------------------------------------
+
+// The editor's live split of the lyrics into slides: stanzas are separated
+// by a blank line; a stanza that starts with "[Label]" names itself and the
+// stanzas after it until the next label (chorus labels mark is_chorus);
+// lines > 0 cuts long stanzas. -> [{ text, label, is_chorus? }]
+export function slidesFromLyrics(lyrics, { lines = 0 } = {}) {
+    const out = [];
+    let label = "";
+    String(lyrics || "").replace(/\r/g, "").split(/\n\s*\n/).forEach((block) => {
+        let rows = block.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
+        if (!rows.length) return;
+        const m = /^\s*\[(.+?)\]\s*$/.exec(rows[0]);
+        if (m) { label = m[1].trim(); rows = rows.slice(1); }
+        if (!rows.length) return;
+        const chunks = [];
+        if (lines > 0) for (let i = 0; i < rows.length; i += lines) chunks.push(rows.slice(i, i + lines));
+        else chunks.push(rows);
+        for (const chunk of chunks) out.push({ text: chunk.join("\n"), label, ...(CHORUS_RE.test(label) ? { is_chorus: true } : {}) });
+    });
+    return out;
+}
+
+// Lyric timing (the song's video): each slide's start in seconds, the
+// duration up to the next start (the last one to the end of the video).
+// starts: [seconds | null] by slide index. Slides without a start keep theirs.
+export function withTimings(slides, starts, total = null) {
+    const marked = slides.map((s, i) => (Number.isFinite(starts?.[i]) ? starts[i] : null));
+    return slides.map((s, i) => {
+        const start = marked[i];
+        if (start === null) return s;
+        const next = marked.slice(i + 1).find((x) => x !== null);
+        const end = next ?? (Number.isFinite(total) ? total : null);
+        return { ...s, start: Math.round(start * 100) / 100, ...(end !== null ? { duration: Math.max(0, Math.round((end - start) * 100) / 100) } : {}) };
+    });
+}
+
+// "m:ss" or seconds -> seconds (null when empty or unreadable).
+export function parseDuration(text) {
+    const t = String(text ?? "").trim();
+    if (!t) return null;
+    const m = /^(\d+):([0-5]?\d)$/.exec(t);
+    if (m) return Number(m[1]) * 60 + Number(m[2]);
+    return /^\d+$/.test(t) ? Number(t) : null;
+}
+export const formatDuration = (s) => (Number.isFinite(s) && s > 0 ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "");

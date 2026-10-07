@@ -273,63 +273,6 @@ const CLICK_TEXT = (selector, text) => `(() => {
     return true;
 })()`;
 
-async function checkOperatorFlow(webContents, { live }) {
-    const result = { ok: false };
-    const waitText = async (win, needle, present = true, ms = 8000) => {
-        const end = Date.now() + ms;
-        while (Date.now() < end) {
-            if ((await bodyText(win)).includes(needle) === present) return true;
-            await sleep(250);
-        }
-        return false;
-    };
-    const song = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "create", [{
-        title: "Hino da fumaça", artist: "Coral do Teste", lyrics: "Primeira estrofe do hino\\n\\nSegunda estrofe do hino",
-        slides: [{ text: "Primeira estrofe do hino" }, { text: "Segunda estrofe do hino" }],
-    }])`)).data;
-    try {
-        webContents.reload();
-        await sleep(500);
-        result.listed = await waitText(webContents, "Coral do Teste");
-        await webContents.executeJavaScript(CLICK_TEXT("button", "Coral do Teste"));
-        await sleep(500);
-        result.clickedPlay = await webContents.executeJavaScript(CLICK_TEXT("button", "Projetar"));
-        await sleep(1500);
-        const main = windowFor("/Projection");
-        result.projectorOpened = Boolean(main);
-        result.projected = await waitText(main, "Primeira estrofe do hino");
-        result.sessionStarted = Boolean(live.get().session);
-        result.panel = (await bodyText(webContents)).includes("1 / 2");
-
-        await webContents.executeJavaScript(`window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" })); true`);
-        result.advanced = await waitText(main, "Segunda estrofe do hino");
-        result.liveIndex = live.get().content && live.get().content.index;
-
-        // KERYX_SMOKE_SHOTS=<folder>: what the projector, the stage and the operator page look like now.
-        const shots = process.env.KERYX_SMOKE_SHOTS;
-        if (shots) {
-            await webContents.executeJavaScript(CLICK_TEXT("button", "Palco"));
-            await sleep(2000);
-            fs.mkdirSync(shots, { recursive: true });
-            for (const [name, win] of [["projetor", main], ["palco", windowFor("/StageView")], ["operador", { webContents }]]) {
-                if (win) fs.writeFileSync(require("node:path").join(shots, `${name}.png`), (await win.webContents.capturePage()).toPNG());
-            }
-            const stageWin = windowFor("/StageView");
-            if (stageWin) stageWin.close();
-        }
-
-        result.clickedStop = await webContents.executeJavaScript(CLICK_TEXT("button", "Parar Projeção"));
-        result.cleared = await waitText(main, "Segunda estrofe do hino", false);
-        result.liveCleared = !live.get().content && !live.get().session;
-        if (main) main.close();
-    } finally {
-        await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "delete", ["${song && song.id}"])`);
-    }
-    result.ok = result.listed && result.clickedPlay && result.projectorOpened && result.projected && result.sessionStarted
-        && result.panel && result.advanced && result.liveIndex === 1 && result.clickedStop && result.cleared && result.liveCleared;
-    return result;
-}
-
 // Video and media through the live state: a short real video recorded in
 // the page, a video screen that opens after it started (it must join), pause
 // and play from the operator, and a playlist the projector moves on by itself.
@@ -587,7 +530,7 @@ async function checkConsole(webContents, { live, outputs }) {
         }
         return false;
     };
-    const js = (code) => webContents.executeJavaScript(code);
+    const js = (code) => webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← ${String(code).replace(/s+/g, " ").slice(0, 160)}`); });
     // Real key presses. Printable keys also send the "char" event that types.
     const KEYCODE = { ArrowRight: "Right", ArrowLeft: "Left", ArrowUp: "Up", ArrowDown: "Down", " ": "Space" };
     const press = async (k, modifiers = []) => {
@@ -655,6 +598,7 @@ async function checkConsole(webContents, { live, outputs }) {
 
     let tone = null;
     let svc = null;
+    let edSong = null;
     // João 3:14-18 (placeholder text): the Bible environment reads the local
     // database first, so the verse flow is testable without internet.
     const VERSES = [14, 15, 16, 17, 18];
@@ -676,6 +620,10 @@ async function checkConsole(webContents, { live, outputs }) {
     result.focusKept = !operatorWin || BrowserWindow.getFocusedWindow() === operatorWin;
     if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
     try {
+        // The app opens on the console now (/ redirects there): leave it and
+        // come back, so this check starts from a freshly mounted console.
+        await js(`history.pushState({}, "", "/Analytics"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
+        await sleep(600);
         await js(`history.pushState({}, "", "/Console"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         // Section captions are uppercase on screen (CSS), so innerText is too.
         // The console opens live, one screen, with the full module layout.
@@ -815,7 +763,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Space completed the book: the field holds the full name. The
         // synthetic char event ignores preventDefault and adds a stray
         // space a real keyboard would not; collapse whitespace.
-        result.quickSpaceValue = String(await js("document.querySelector('.qj-input input').value"));
+        result.quickSpaceValue = String(await js("(document.querySelector('.qj-input input') || {}).value"));
         result.quickSpace = result.quickSpaceValue.replace(/s+/g, " ").trim() === "João 3 16";
         result.shotBible = await shot("biblia");
         await press("Enter");
@@ -1004,6 +952,39 @@ async function checkConsole(webContents, { live, outputs }) {
         result.layersAfter = (live.get().layerOrder || []).join(",");
         live.call("layers.order", { order: ["logo", "overlays", "content", "background"] });
 
+        // The song editor: "+ › Nova música", lyrics split live into slides,
+        // Ctrl+S saves, Esc closes; "Editar" reopens it with the song.
+        await click(".envtabs button", "KERYX");
+        await click(".kx-tabs button", "Letras");
+        await click(".searchrow .addmenu button", "");
+        await click(".addmenu-pop button", "Nova música");
+        result.edOpen = await waitFor(() => js("Boolean(document.querySelector('.song-ed-l'))"));
+        result.edFill = await js(`(() => {
+            const setVal = (el, v) => { const p = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(p, "value").set.call(el, v); el.dispatchEvent(new Event("input", { bubbles: true })); };
+            const title = document.querySelector(".song-ed-l .kx-field input");
+            const lyrics = document.querySelector("textarea[aria-label=Letra]");
+            if (!title || !lyrics) return "sem campos: " + document.body.innerText.slice(0, 200);
+            setVal(title, "Música do editor");
+            setVal(lyrics, "[Verso]\\nlinha um\\nlinha dois\\n\\n[Refrão]\\nrefrão um\\nrefrão dois");
+            return true;
+        })()`);
+        result.edThumbs = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 2"));
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("s", ["control"]);
+        result.edSaved = await waitFor(async () => {
+            const rows = (await js(`window.keryxDesktop.db.call("Song", "filter", [{ title: "Música do editor" }])`)).data || [];
+            edSong = rows[0] || null;
+            return Boolean(edSong) && edSong.slides?.length === 2 && edSong.slides[1].label === "Refrão" && edSong.slides[1].is_chorus === true;
+        }, 6000);
+        await press("Escape");
+        result.edClosed = await waitFor(() => js("!document.querySelector('.song-ed-l')"));
+        result.edListed = await waitText(webContents, "Música do editor");
+        await js(`(() => { const row = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Música do editor")); const b = row && [...row.querySelectorAll("button")].find((x) => x.textContent === "Editar"); if (b) b.click(); return Boolean(b); })()`);
+        result.edReopen = await waitFor(() => js("(document.querySelector('.song-ed-l .kx-field input') || {}).value === 'Música do editor'"));
+        result.shotEditor = await shot("editor");
+        await press("Escape");
+        await waitFor(() => js("!document.querySelector('.song-ed-l')"));
+
         // Configurações inside the console: from the KERYX menu, every
         // section renders, Tela ociosa and Igreja save, Esc goes back.
         await click(".topbar .markbtn", "");
@@ -1041,6 +1022,7 @@ async function checkConsole(webContents, { live, outputs }) {
         try { live.call("audio.clear"); } catch { /* nothing playing */ }
         await js(`window.keryxDesktop.db.call("Song", "delete", ["${song && song.id}"])`);
         if (tone) await js(`window.keryxDesktop.db.call("Media", "delete", ["${tone.id}"])`);
+        if (edSong) await js(`window.keryxDesktop.db.call("Song", "delete", ["${edSong.id}"])`).catch(() => {});
         for (const v of [14, 15, 16, 17, 18]) await js(`window.keryxDesktop.db.call("BibleVerse", "delete", ["smoke-jo3-${v}"])`).catch(() => {});
         if (svc) {
             const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
@@ -1065,7 +1047,8 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
-        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc);
+        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc
+        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen);
     return result;
 }
 
@@ -1298,7 +1281,8 @@ function runSmokeTest(win, { dev, outputs, screen, system, network, live, dataDi
             const outputsResult = await checkOutputs(webContents, outputs, screen, { fullscreen: process.env.KERYX_SMOKE_FULLSCREEN === "1" });
             const systemResult = await checkSystem(webContents, { dataDir, system });
             const liveResult = await checkLive(webContents, { live });
-            const operatorResult = await checkOperatorFlow(webContents, { live });
+            // Músicas moved into the console (Biblioteca › Letras + song editor).
+            const operatorResult = { ok: true, retired: "Músicas no console" };
             const videoResult = await checkVideo(webContents, { live });
             const layersResult = await checkLayers(webContents, { live, outputs });
             const consoleResult = await checkConsole(webContents, { live, outputs });
