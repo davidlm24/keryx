@@ -23,7 +23,12 @@ export const BACKGROUND_KINDS = ["image", "video", "color"];
 export const TOOL_MODES = ["clock", "stopwatch", "timer", "freetext"];
 export const SCHOOL_KINDS = ["slides", "text", "quiz", "video", "image", "blank"];
 export const ALERT_TYPES = ["alert", "message"];
-export const STYLE_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "background_image", "background_color"];
+export const STYLE_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "background_image", "background_color", "text_align", "text_position", "transition"];
+export const LOGO_CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
+export const LOGO_SIZES = ["small", "medium", "large"];
+// The main layers, top to bottom: what "Voltar ao anterior" remembers.
+const MAIN_LAYERS = ["tool", "communication", "media", "content"];
+const MAX_HISTORY = 8;
 
 const MAX_TEXT = 20000;
 const MAX_URL = 4096;
@@ -55,6 +60,13 @@ export function emptyState(now = Date.now()) {
         school: null,
         overlays: [],
         alert: null,
+        // The church logo as a corner mark over the content (the idle logo
+        // and screen "logo" are separate). Off until a theme turns it on.
+        logo: { visible: false, corner: "bottom-right", size: "medium" },
+        // What was on the main projector before each change, newest first,
+        // so the operator can bring it back (through the preview, never
+        // straight to air).
+        history: [],
     };
 }
 
@@ -163,6 +175,27 @@ const need = (layer, label) => {
 // the layers that would hide it.
 const reveal = (above) => ({ screen: "show", ...Object.fromEntries(above.map((k) => [k, null])) });
 
+// The topmost main layer regardless of the screen mode.
+const topLayer = (s) => MAIN_LAYERS.find((k) => s[k]) || null;
+
+const layerTitle = (layer, data) => {
+    if (layer === "content" || layer === "media") return data.title || "";
+    if (layer === "communication") return String(data.item?.title || data.item?.text || data.item?.type || "");
+    return data.mode || "";
+};
+
+// History patch: the main layer that is about to be replaced or taken down.
+// A layer that is already the newest entry is not recorded twice.
+function remember(s, now, only = null) {
+    const layer = topLayer(s);
+    if (!layer || (only && layer !== only)) return {};
+    const data = s[layer];
+    const history = s.history || [];
+    if (history[0] && history[0].data === data) return {};
+    const entry = { at: now, layer, title: layerTitle(layer, data), data };
+    return { history: [entry, ...history].slice(0, MAX_HISTORY) };
+}
+
 const OPS = {
     "screen.set": (_s, { mode }) => ({ screen: oneOf(mode, SCREEN_MODES, "Modo da tela") }),
 
@@ -174,6 +207,24 @@ const OPS = {
         },
     }),
     "session.end": (s) => (s.session ? { session: null } : null),
+    // Where the service is in its rundown (ServiceItem id and position);
+    // starts a session when none is running.
+    "session.item": (s, { itemId, index }, now) => ({
+        session: {
+            ...(s.session || { id: globalThis.crypto.randomUUID(), serviceId: null, startedAt: now }),
+            itemId: text(itemId, "Item do culto", { max: 200 }) || null,
+            itemIndex: index === undefined || index === null ? null : Math.trunc(count(index, "Posição no roteiro")),
+            itemAt: now,
+        },
+    }),
+
+    "logo.set": (s, a) => {
+        const next = { ...s.logo };
+        if (a.visible !== undefined) next.visible = Boolean(a.visible);
+        if (a.corner !== undefined) next.corner = oneOf(a.corner, LOGO_CORNERS, "Canto do logo");
+        if (a.size !== undefined) next.size = oneOf(a.size, LOGO_SIZES, "Tamanho do logo");
+        return next.visible === s.logo.visible && next.corner === s.logo.corner && next.size === s.logo.size ? null : { logo: next };
+    },
 
     "background.set": (_s, a) => ({
         background: {
@@ -184,9 +235,10 @@ const OPS = {
     }),
     "background.clear": (s) => (s.background ? { background: null } : null),
 
-    "content.show": (_s, a, now) => {
+    "content.show": (s, a, now) => {
         const items = slides(a.slides);
         return {
+            ...remember(s, now),
             ...reveal(["tool", "communication", "media"]),
             content: {
                 kind: oneOf(a.kind ?? "lyrics", CONTENT_KINDS, "Tipo de conteúdo"),
@@ -223,17 +275,19 @@ const OPS = {
     },
     "content.next": (s) => OPS["content.goTo"](s, { index: need(s.content, "projetado").index + 1 }),
     "content.prev": (s) => OPS["content.goTo"](s, { index: need(s.content, "projetado").index - 1 }),
-    "content.clear": (s) => (s.content ? { content: null } : null),
+    "content.clear": (s, _a, now) => (s.content ? { ...remember(s, now, "content"), content: null } : null),
 
-    "media.show": (_s, a, now) => ({
+    "media.show": (s, a, now) => ({
+        ...remember(s, now),
         ...reveal(["tool", "communication"]),
         media: { ...mediaItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: freshPlayback(now) },
     }),
-    "media.playlist": (_s, a, now) => {
+    "media.playlist": (s, a, now) => {
         const items = list(a.items, "Lista de mídias").map(mediaItem);
         if (items.length === 0) throw new LiveError("A lista de mídias está vazia.");
         const i = clampIndex(a.index, items.length);
         return {
+            ...remember(s, now),
             ...reveal(["tool", "communication"]),
             media: { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: freshPlayback(now) },
         };
@@ -246,7 +300,7 @@ const OPS = {
         const i = (media.playlistIndex + 1) % media.playlist.length;
         return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) } };
     },
-    "media.clear": (s) => (s.media ? { media: null } : null),
+    "media.clear": (s, _a, now) => (s.media ? { ...remember(s, now, "media"), media: null } : null),
 
     // The video channel: video screens and tablets (VideoProjection). It does
     // not cover the main projector.
@@ -269,11 +323,12 @@ const OPS = {
         return playback ? { [layer]: { ...current, playback } } : null;
     },
 
-    "tool.show": (_s, a, now) => {
+    "tool.show": (s, a, now) => {
         const mode = oneOf(a.mode, TOOL_MODES, "Ferramenta");
         let endsAt = null;
         if (mode === "timer") endsAt = a.endsAt != null ? count(a.endsAt, "Fim do timer") : now + count(a.durationMs, "Duração do timer", { min: 1 });
         return {
+            ...remember(s, now),
             ...reveal(["communication"]),
             tool: {
                 mode,
@@ -284,17 +339,17 @@ const OPS = {
             },
         };
     },
-    "tool.clear": (s) => (s.tool ? { tool: null } : null),
+    "tool.clear": (s, _a, now) => (s.tool ? { ...remember(s, now, "tool"), tool: null } : null),
 
     // Communication pieces (countdowns, announcements, image + text) are
     // free-form rows from CommunicationVideo; outputs render them.
-    "communication.show": (_s, a, now) => {
+    "communication.show": (s, a, now) => {
         const playlist = a.playlist ? list(a.playlist, "Lista").map((x) => loose(x, "Item")) : null;
         if (playlist && playlist.length === 0) throw new LiveError("A lista está vazia.");
         const i = playlist ? clampIndex(a.index, playlist.length) : 0;
         const item = playlist ? playlist[i] : loose(a.item, "Item");
         if (!isPlainObject(item)) throw new LiveError("Item de comunicação inválido.");
-        return { ...reveal(["tool"]), communication: { item, playlist, playlistIndex: i, startedAt: now } };
+        return { ...remember(s, now), ...reveal(["tool"]), communication: { item, playlist, playlistIndex: i, startedAt: now } };
     },
     "communication.advance": (s, { fromIndex }, now) => {
         const c = need(s.communication, "em exibição");
@@ -302,7 +357,7 @@ const OPS = {
         const i = (c.playlistIndex + 1) % c.playlist.length;
         return { communication: { ...c, item: c.playlist[i], playlistIndex: i, startedAt: now } };
     },
-    "communication.clear": (s) => (s.communication ? { communication: null } : null),
+    "communication.clear": (s, _a, now) => (s.communication ? { ...remember(s, now, "communication"), communication: null } : null),
 
     // Escola bíblica (BibleMaterialProjection): its own output.
     "school.show": (_s, a, now) => {
@@ -349,9 +404,9 @@ const OPS = {
     }),
     "alert.clear": (s) => (s.alert ? { alert: null } : null),
 
-    // Stop: what Esc / "Parar" means today. Background, Escola bíblica,
+    // Stop: what Esc / "Encerrar" means. Background, logo, Escola bíblica,
     // overlays and alerts stay; they have their own controls.
-    "clear": () => ({ screen: "show", content: null, media: null, video: null, tool: null, communication: null }),
+    "clear": (s, _a, now) => ({ ...remember(s, now), screen: "show", content: null, media: null, video: null, tool: null, communication: null }),
 };
 
 export const OP_NAMES = Object.keys(OPS);
@@ -388,6 +443,8 @@ export function restoreState(saved, now = Date.now()) {
         school: layer(saved.school),
         overlays: Array.isArray(saved.overlays) ? saved.overlays.filter(isPlainObject) : [],
         alert: layer(saved.alert),
+        logo: { ...base.logo, ...(layer(saved.logo) || {}) },
+        history: Array.isArray(saved.history) ? saved.history.filter((h) => isPlainObject(h) && isPlainObject(h.data)).slice(0, MAX_HISTORY) : [],
     };
 }
 

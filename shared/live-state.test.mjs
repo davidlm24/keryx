@@ -161,13 +161,62 @@ test("communication playlist and Escola bíblica", () => {
     assert.equal(mainLayer(s), "communication", "the school layer is not on the main projector");
 });
 
-test("sessions", () => {
+test("sessions and the position in the rundown", () => {
     let s = run([["session.start", { serviceId: "svc1" }, T0]]);
     assert.match(s.session.id, /^[0-9a-f-]{36}$/);
     assert.equal(s.session.serviceId, "svc1");
+    s = applyOp(s, "session.item", { itemId: "it3", index: 2 }, T0 + 1);
+    assert.equal(s.session.serviceId, "svc1", "the session is kept");
+    assert.equal(s.session.itemId, "it3");
+    assert.equal(s.session.itemIndex, 2);
+    assert.equal(s.session.itemAt, T0 + 1);
     s = applyOp(s, "session.end", {}, T0);
     assert.equal(s.session, null);
     assert.equal(applyOp(s, "session.end", {}, T0), s);
+    const bare = applyOp(emptyState(T0), "session.item", { itemId: "it1" }, T0);
+    assert.ok(bare.session && bare.session.itemId === "it1" && bare.session.itemIndex === null, "a position starts a session when none runs");
+});
+
+test("history: what the projector showed before each change, newest first, for 'Voltar ao anterior'", () => {
+    let s = run([["content.show", { ...song, index: 1 }, T0]]);
+    assert.deepEqual(s.history, [], "nothing was replaced yet");
+    s = applyOp(s, "content.next", {}, T0 + 1);
+    assert.deepEqual(s.history, [], "moving a slide is not a change of what is on air");
+    s = applyOp(s, "media.show", { kind: "image", url: "a", title: "Foto" }, T0 + 2);
+    assert.equal(s.history.length, 1);
+    assert.equal(s.history[0].layer, "content");
+    assert.equal(s.history[0].title, song.title);
+    assert.equal(s.history[0].data.index, 2, "the slide it was on comes back with it");
+    assert.equal(s.history[0].at, T0 + 2);
+    s = applyOp(s, "content.clear", {}, T0 + 3);
+    assert.equal(s.history.length, 1, "clearing a layer the media was covering records nothing");
+    s = applyOp(s, "media.clear", {}, T0 + 4);
+    assert.equal(s.history[0].layer, "media");
+    assert.equal(s.history[0].title, "Foto");
+    assert.equal(s.history[1].layer, "content");
+    s = applyOp(s, "tool.show", { mode: "clock" }, T0 + 5);
+    assert.equal(s.history.length, 2, "nothing was on air to remember");
+    s = applyOp(s, "clear", {}, T0 + 6);
+    assert.equal(s.history[0].layer, "tool");
+    for (let i = 0; i < 12; i++) s = applyOp(s, "content.show", { title: `m${i}`, slides: ["x"] }, T0 + 10 + i);
+    assert.equal(s.history.length, 8, "capped");
+    assert.equal(s.history[0].title, "m10");
+    const back = restoreState(JSON.parse(JSON.stringify(s)), T0);
+    assert.equal(back.history.length, 8, "history survives a restart");
+});
+
+test("the corner logo is a layer of its own", () => {
+    const s0 = emptyState(T0);
+    assert.deepEqual(s0.logo, { visible: false, corner: "bottom-right", size: "medium" });
+    let s = applyOp(s0, "logo.set", { visible: true, corner: "top-left" }, T0);
+    assert.deepEqual(s.logo, { visible: true, corner: "top-left", size: "medium" });
+    assert.equal(applyOp(s, "logo.set", { visible: true }, T0), s, "no change, no broadcast");
+    assert.throws(() => applyOp(s, "logo.set", { corner: "middle" }, T0), LiveError);
+    s = applyOp(s, "clear", {}, T0);
+    assert.equal(s.logo.visible, true, "Encerrar leaves the logo layer");
+    assert.equal(restoreState(JSON.parse(JSON.stringify(s)), T0).logo.corner, "top-left");
+    const styled = run([["content.show", { slides: ["x"], style: { text_align: "left", text_position: "bottom", transition: "cut" } }]]);
+    assert.deepEqual(styled.content.style, { text_align: "left", text_position: "bottom", transition: "cut" });
 });
 
 test("bad input is refused with a pt-BR message, not stored", () => {
