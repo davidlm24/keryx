@@ -136,14 +136,15 @@ export function History({ open, setOpen, history, onPick, left }) {
 
 // Encerrar takes everything off the main projector: it asks first. Tela preta
 // is the immediate emergency action and never asks.
-export function EndDialog({ open, setOpen, isLive, onEnd }) {
+export function EndDialog({ open, setOpen, mode, onEnd }) {
+    const isLive = mode === "live";
     const goRef = useRef(null);
     useEffect(() => { if (open === "encerrar") setTimeout(() => goRef.current?.focus(), 0); }, [open]);
     if (open !== "encerrar") return null;
     return (
         <div className="dialog" role="alertdialog" aria-label="Encerrar a projeção">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>Encerrar a projeção?</div>
-            <div>{isLive ? "Texto, mídia e avisos saem das telas agora. Fundo, logo e sobreposições ficam." : "Só o ensaio é encerrado; as telas não mudam."}</div>
+            <div>{isLive ? "Texto, mídia e avisos saem das telas agora. Fundo, logo e sobreposições ficam." : mode === "prep" ? "Só a preparação é limpa; as telas não mudam." : "Só o ensaio é encerrado; as telas não mudam."}</div>
             <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta (B).</div>
             <div className="acts">
                 <Btn onClick={() => setOpen(null)}>Cancelar</Btn>

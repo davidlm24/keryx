@@ -16,6 +16,8 @@ import Rundown from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
 import Timeline from "@/components/console/Timeline";
 import BibleEnv from "@/components/console/BibleEnv";
+import PresentView from "@/components/console/PresentView";
+import VerifyView from "@/components/console/VerifyView";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT } from "@/lib/console/layout";
 import { liveAction } from "@/lib/console/keys";
@@ -25,15 +27,21 @@ const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
 const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LOG_KEY(serviceId)) || "{}"); } catch { return {}; } };
 
-// The operator console: one screen with the library, the slides in hand,
-// Programa and Prévia, the layers, the rundown and the timeline, driving the
-// live state (shared/live-state.mjs) through useConsole. docs/design-system.md
-// is the look; docs/desktop-architecture.md the plumbing.
+// The operator console: three views of the same service, driving the live
+// state (shared/live-state.mjs) through useConsole.
+//   Preparar   the full console on a local copy: the screens don't change.
+//   Verificar  the readiness check before the service.
+//   Apresentar Programa and Prévia large, the slide strip, a short rundown,
+//              the rest behind "Mais"; Ensaio lives here.
+// docs/design-system.md is the look; docs/desktop-architecture.md the plumbing.
 export default function Console() {
     const c = useConsole();
     const logoUrl = useChurchLogo();
     const data = useLibrary();
     const [profile, setProfile] = useState("");
+    const [view, setViewState] = useState(null);
+    const [mais, setMais] = useState(false);
+    const [maisTab, setMaisTab] = useState("letras");
     const [env, setEnv] = useState("culto");
     const [open, setOpen] = useState(null);
     const [libTab, setLibTab] = useState("letras");
@@ -52,6 +60,19 @@ export default function Console() {
         window.addEventListener("resize", onResize);
         return () => window.removeEventListener("resize", onResize);
     }, []);
+    // The view: Apresentar when a service is running, else Preparar.
+    const { enterPrep, enterPresent } = c;
+    const setView = useCallback((v) => {
+        if (v === "preparar") enterPrep();
+        if (v === "apresentar") enterPresent();
+        if (v === "verificar") setEnv("culto");
+        setMais(false);
+        setOpen(null);
+        setViewState(v);
+    }, [enterPrep, enterPresent]);
+    const hasLive = Boolean(c.live);
+    const hasSession = Boolean(c.live?.session);
+    useEffect(() => { if (view === null && hasLive) setView(hasSession ? "apresentar" : "preparar"); }, [view, hasLive, hasSession, setView]);
     const setLayout = useCallback((next) => { setLayoutState(next); saveLayout(profile, next); }, [profile]);
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT }); c.say("Layout padrão restaurado."); };
 
@@ -112,17 +133,18 @@ export default function Console() {
 
     // Outputs: the projector window missing its display, or closed, is the warning.
     const projector = outputs.find((o) => o.key === "/Projection");
-    const projectorDown = Boolean(c.isLive && projector && projector.placement.missing);
+    // The screens are real in every view, so a failing projector is reported in every view.
+    const projectorDown = Boolean(projector && projector.placement.missing);
     const [lastOkAt, setLastOkAt] = useState(null);
     useEffect(() => { if (projector && !projector.placement.missing) setLastOkAt(Date.now()); }, [projector]);
     useEffect(() => { if (!projectorDown) { setTries(1); return undefined; } const id = setInterval(() => setTries((t) => t + 1), 5000); return () => clearInterval(id); }, [projectorDown]);
     const connected = outputs.filter((o) => o.open).length + network.filter((d) => d.online).length;
-    const outsLabel = !c.isLive ? "Saídas desarmadas" : projectorDown ? "Saídas · 1 com problema" : `Saídas · ${connected} ${connected === 1 ? "conectada" : "conectadas"}`;
-    const outsState = !c.isLive ? "rh" : projectorDown ? "warn" : "";
+    const outsLabel = projectorDown ? "Saídas · 1 com problema" : c.mode === "ensaio" ? "Saídas desarmadas" : `Saídas · ${connected} ${connected === 1 ? "conectada" : "conectadas"}`;
+    const outsState = projectorDown ? "warn" : c.mode === "ensaio" ? "rh" : "";
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
     const closeOutput = (key) => window.keryxDesktop?.displays.close(key).catch(() => {});
 
-    const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setEnv("biblia"); };
+    const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); if (view === "verificar") setView("preparar"); setMais(false); setEnv("biblia"); };
 
     // Keys (src/lib/console/keys.js): a focused control keeps its own keys.
     // Enter sends only with nothing interactive focused, Ctrl+Enter from
@@ -136,6 +158,9 @@ export default function Console() {
                 if (action === "end") { e.preventDefault(); setOpen(null); }
                 return;
             }
+            // Verificar shows no Prévia and no slides: only the screen keys work there.
+            if (view === "verificar" && ["send", "next", "prev", "clear", "play"].includes(action)) return;
+            if (action === "end" && mais) { e.preventDefault(); setMais(false); return; }
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -152,7 +177,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage]);
+    }, [c, open, drawer, sendStage, view, mais]);
 
     const rundownProps = { service, items, airItemId, prevItemId, prepare: prepareItem, go: goItem };
     const histLeft = useMemo(() => (layout.hidden.lib ? 0 : layout.libW + 6) + (layout.hidden.slides ? 0 : layout.slidesW + 6) + 6, [layout]);
@@ -177,15 +202,41 @@ export default function Console() {
         </>
     );
 
+    const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
+    const present = view === "apresentar";
+
     return (
-        <div className={`kx console ${compact ? "is-compact" : ""} ${c.isLive ? "" : "is-ensaio"}`}>
-            <TopBar c={c} service={service} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={outsLabel} outsState={outsState} compact={compact} drawerOpen={drawer} toggleDrawer={() => setDrawer((d) => !d)} logoUrl={logoUrl} />
-            {!c.isLive && (
+        <div className={`kx console ${compact ? "is-compact" : ""} ${c.isLive ? "" : "is-ensaio"} ${present ? "is-apres" : ""}`}>
+            <TopBar c={c} service={service} view={view} setView={setView} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={outsLabel} outsState={outsState} compact={compact} drawerOpen={drawer} toggleDrawer={() => setDrawer((d) => !d)} mais={mais} toggleMais={() => setMais((m) => !m)} logoUrl={logoUrl} />
+            {/* A failing output: one line under the top bar, in every view, never over a monitor. */}
+            {projectorDown && (
+                <div className="kx-banner is-warn" role="alert">
+                    Projetor · Reconectando… tentativa {tries}
+                    <span className="kx-sub">ATENÇÃO · última conexão boa às {hhmm(lastOkAt)} · o monitor escolhido não está ligado</span>
+                    <span className="kx-spacer" />
+                    <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("black")}>Tela preta</button>
+                    <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("logo")}>Mostrar logo</button>
+                    <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => setOpen("outs")}>Ver saídas</button>
+                </div>
+            )}
+            {c.mode === "ensaio" && (
                 <div className="kx-banner is-rh">MODO ENSAIO — nada será enviado às saídas<span className="kx-sub">As telas continuam com o que estava no ar.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setOpen("arm")}>Armar saídas</button></div>
             )}
             <div className="main">
-                {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} serviceId={serviceId} itemsCount={items.length} onPrepare={(s) => { c.setPrev(s); setEnv("culto"); }} onSend={(s) => sendStage(s)} />}
-                {env === "culto" && (
+                {view === null && <div className="kx-panel" style={{ flex: 1 }} />}
+                {view === "verificar" && (
+                    <VerifyView c={c} items={items} data={data} outputs={outputs} network={network}
+                        onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
+                        onOpenOutput={openOutput} onGoPresent={() => setView("apresentar")} />
+                )}
+                {view !== "verificar" && view !== null && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} serviceId={serviceId} itemsCount={items.length} onPrepare={(s) => { c.setPrev(s); setEnv("culto"); }} onSend={(s) => sendStage(s)} />}
+                {present && env === "culto" && (
+                    <PresentView c={c} logoUrl={logoUrl} service={service} items={items} log={log} airItemId={airItemId} prevItemId={prevItemId}
+                        onPrepareItem={prepareItem} onGoItem={goItem} onSend={() => sendStage()}
+                        onOpenRoteiro={() => setOpen(open === "roteiro" ? null : "roteiro")} onOpenHistory={() => setOpen(open === "hist" ? null : "hist")}
+                        mais={mais} setMais={setMais} maisTab={maisTab} setMaisTab={setMaisTab} data={data} onAddSong={addSong} />
+                )}
+                {view === "preparar" && env === "culto" && (
                     <>
                         {!layout.hidden.lib && (
                             <>
@@ -213,7 +264,7 @@ export default function Console() {
                                     <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 22 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco"><Icon name="undo" />Voltar ao anterior</button>
                                 </div>
                             } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} tries={tries} lastOkAt={lastOkAt} onOpenOutputs={() => setOpen("outs")} nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))} onSend={() => sendStage()} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
+                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))} onSend={() => sendStage()} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
                             </Panel>
                         </div>
                         {showRight && (
@@ -225,7 +276,7 @@ export default function Console() {
                     </>
                 )}
             </div>
-            {!layout.hidden.tl && (
+            {view === "preparar" && !layout.hidden.tl && (
                 <div className={`kx-panel tl-panel ${layout.tlOpen ? "is-open" : ""}`}>
                     <Timeline service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
                 </div>
@@ -235,9 +286,16 @@ export default function Console() {
             <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} />
-            <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
+            <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={present ? 12 : histLeft} />
             <ArmDialog open={open} setOpen={setOpen} live={c.live} onArm={c.arm} />
-            <EndDialog open={open} setOpen={setOpen} isLive={c.isLive} onEnd={c.end} />
+            <EndDialog open={open} setOpen={setOpen} mode={c.mode} onEnd={c.end} />
+            {open === "roteiro" && (
+                <div className="roteiro-pop">
+                    <Panel title="Roteiro" count={items.length ? `${items.length} itens` : ""} actions={<IconBtn name="x" title="Fechar" small onClick={() => setOpen(null)} />}>
+                        <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={(it, i) => { prepareItem(it, i); setOpen(null); }} onGo={(it, i) => { goItem(it, i); setOpen(null); }} canReorder={false} />
+                    </Panel>
+                </div>
+            )}
             <Palette open={open} setOpen={setOpen} data={data} items={items} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} />
             {compact && drawer && <div className="drawer">{rightPanels(true)}</div>}
             {c.toast && <div className="toast">{c.toast}</div>}

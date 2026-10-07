@@ -109,6 +109,46 @@
 .console.is-compact .subrow { flex: 1; min-width: 0; flex-direction: column; }
 .console.is-compact .subrow .kx-mon { width: 100%; }
 .console.is-compact .subrow .side { padding-top: 0; }
+/* ---------- Apresentar: Programa large, Prévia beside it, everything else behind Mais ---------- */
+.console .quiet { color: var(--fg-3); font-size: 11px; white-space: nowrap; padding: 0 var(--space-2); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.console .apres { flex: 1; min-height: 0; display: flex; gap: var(--gutter); position: relative; }
+.console .apres-l { flex: 58 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); overflow: hidden; container-type: size; }
+.console .apres-r { flex: 42 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); overflow: hidden; }
+.console .apres-l .kx-mon, .console .apres-r .kx-mon { width: 100%; }
+/* The Programa is as wide as the column allows while leaving room (~150 px)
+   for the caption, the slide strip and the controls; the strip sits right
+   under it and its thumbnails grow into the height that is left. */
+.console .apres-prog { flex: none; }
+.console .apres-prog .kx-mon-screen { width: min(100cqw, calc((100cqh - 150px) * 16 / 9)); }
+.console .apres-prog .kx-mon-screen > .pipwrap { right: 2%; bottom: 3%; width: 28%; }
+.console .strip { display: flex; gap: var(--space-2); overflow-x: auto; overflow-y: hidden; padding: 2px; flex: 0 1 150px; min-height: 58px; align-items: stretch; }
+.console .thumb { position: relative; flex: none; height: 100%; max-height: 146px; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
+.console .thumb .ks-box { width: 100%; }
+.console .thumb .ks-box { pointer-events: none; }
+.console .thumb .n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: 10px; line-height: 12px; color: var(--fg-2); background: #0c0c0dcc; border-radius: 0 3px 0 0; z-index: 99; }
+.console .thumb:hover { box-shadow: 0 0 0 1px var(--line-strong); }
+.console .thumb.is-air { box-shadow: 0 0 0 2px var(--air); } .console .thumb.is-air .n { color: var(--air-fg); }
+.console .thumb.is-next { box-shadow: 0 0 0 1px var(--fg-3); }
+.console .thumb.is-prev { box-shadow: 0 0 0 2px var(--prev); } .console .thumb.is-prev .n { color: var(--prev-fg); }
+.console .apres-nav { display: flex; align-items: center; gap: var(--space-2); flex: none; }
+.console .apres-nav .kx-btn { height: 36px; padding: 0 var(--space-3); }
+.console .apres-send { display: flex; align-items: center; gap: var(--space-3); flex: none; }
+.console .apres-send:focus { outline: none; }
+.console .apres-note { font-size: 11px; line-height: 16px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: none; }
+.console .apres-tnotes { padding: var(--space-1) var(--space-2) var(--space-2); background: var(--bg-2); border-radius: var(--radius-control); color: var(--fg-2); font-size: 12px; line-height: 16px; flex: none; }
+.console .apres-tnotes p { margin: 2px 0 0; white-space: pre-wrap; }
+.console .apres-rund { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.console .mais { position: absolute; z-index: 32; top: 0; right: 0; bottom: 0; width: 380px; display: flex; }
+.console .mais > .kx-panel { flex: 1; box-shadow: var(--popover); }
+.console .roteiro-pop { position: absolute; z-index: 30; top: 48px; right: 6px; bottom: 6px; width: 400px; display: flex; }
+.console .roteiro-pop > .kx-panel { flex: 1; box-shadow: var(--popover); }
+.console.is-apres .topbar .kx-btn.kx-btn-icon { width: 36px; height: 36px; }
+/* ---------- Verificar ---------- */
+.console .verif { max-width: 980px; width: 100%; margin: 0 auto; flex: 1; }
+.console .verif-sum { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: 0 var(--space-3); border-bottom: 1px solid var(--line); flex: none; flex-wrap: wrap; }
+.console .verif-sum .t { font-size: 13px; color: var(--fg-1); }
+.console .verif .st { font-size: 11px; min-width: 64px; text-align: right; flex: none; }
+.console .verif .kx-row { min-height: 40px; }
 @media (max-width: 1100px) {
     .console { position: static; min-height: 100vh; }
     .console .main { flex-direction: column; }

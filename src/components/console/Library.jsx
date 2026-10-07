@@ -12,7 +12,7 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // The library: Letras, Mídia and Avisos (and the Roteiro on narrow screens).
 // A click prepares the item in the Prévia; nothing here goes to air except
 // the quick alert, which is the one control that bypasses the Prévia.
-export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onAddSong }) {
+export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onAddSong, hideTabs = false }) {
     const [q, setQ] = useState("");
     const [alertText, setAlertText] = useState("");
     const [yt, setYt] = useState("");
@@ -41,10 +41,12 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
 
     return (
         <>
-            <div className="kx-tabs">
-                {tabs.map(([k, label]) => <button type="button" key={k} className={`kx-t ${tab === k ? "is-on" : ""}`} onClick={() => setTab(k)}>{label}</button>)}
-            </div>
-            {tab === "roteiro" && (
+            {!hideTabs && (
+                <div className="kx-tabs" role="tablist">
+                    {tabs.map(([k, label]) => <button type="button" role="tab" aria-selected={tab === k} key={k} className={`kx-t ${tab === k ? "is-on" : ""}`} onClick={() => setTab(k)}>{label}</button>)}
+                </div>
+            )}
+            {tab === "roteiro" && rundown && (
                 <div style={{ overflow: "auto", flex: 1 }}>
                     <Rundown service={rundown.service} items={rundown.items} airItemId={rundown.airItemId} prevItemId={rundown.prevItemId} onPrepare={rundown.prepare} onGo={rundown.go} />
                 </div>

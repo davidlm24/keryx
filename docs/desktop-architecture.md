@@ -262,6 +262,24 @@ command palette (`/`), Saídas, and Ensaio.
   one control that bypasses the Prévia (`alert.show`).
 - The layout (module sizes, collapsed, hidden) is saved per profile in
   localStorage (`src/lib/console/layout.js`); "Restaurar layout" resets it.
+- **Three views** (`useConsole` modes): **Preparar** (`prep`) is the full
+  console on the local copy, so nothing prepared there reaches the screens;
+  **Verificar** (`VerifyView`) checks the output windows and network screens,
+  every media file of the rundown (a HEAD request to the local media server,
+  which answers 404 when a file is gone), fonts, the Bible versions installed
+  for offline use and what needs the internet, then "Ir para Apresentar"
+  (asks once when something needs attention); **Apresentar**
+  (`PresentView`) is the live screen: Programa sized by its column, the
+  slides on air as a strip (a click prepares), the Prévia with the one send
+  button, a short rundown, and the library and Camadas behind "Mais". Ensaio
+  (`ensaio`) exists only in Apresentar. The console opens in Apresentar when
+  a session is running, else in Preparar.
+- **Tela preta and Mostrar logo always act on the real screens**, in every
+  view and mode: they are the emergency actions. A failing output is a banner
+  under the top bar in every view, never over a monitor.
+- Live-safety rules: Enter sends only with nothing focused, Ctrl+Enter from
+  anywhere (`src/lib/console/keys.js`); nothing sends on double click;
+  Encerrar asks first.
 
 Still outside the console (reached from its menu) until they are folded in:
 Músicas, Mídia and Comunicação as editors, Cultos as the planner, Settings.

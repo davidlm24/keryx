@@ -5,11 +5,20 @@ import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { applyOp } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 
-// The console's own state around the live state: the mode (Ao vivo sends
-// operations to the live state; Ensaio applies them to a local copy with the
-// same rules, so nothing reaches the screens), the Prévia (a stage, never
-// sent until "Enviar ao ar"), and the toast. Every change of what is on
-// screen goes through callOp.
+// The console's own state around the live state.
+//
+// mode:
+//   "live"   Apresentar, outputs armed: operations go to the live state.
+//   "ensaio" Apresentar in rehearsal: operations go to a local copy of the
+//            document, with the same rules (applyOp); the screens keep
+//            showing what was on air.
+//   "prep"   Preparar: the same local copy, without the rehearsal banner;
+//            nothing the operator prepares reaches the screens.
+// Tela preta and Mostrar logo are emergency actions: they always act on the
+// real screens, whatever the mode.
+//
+// The Prévia is a stage, never sent until "Enviar ao ar". Every other change
+// of what is on screen goes through callOp.
 export function useConsole() {
     const live = useLiveState();
     const now = useLiveNow(1000);
@@ -28,18 +37,21 @@ export function useConsole() {
 
     const isLive = mode === "live";
     const cur = isLive ? live : rh;
+    const copyOf = (doc) => JSON.parse(JSON.stringify(doc));
+
+    const liveOp = useCallback(async (op, args = {}) => {
+        try {
+            return await keryx.live.call(op, args);
+        } catch (err) {
+            say(err?.message || "Não foi possível projetar.");
+            throw err;
+        }
+    }, [say]);
 
     // One operation on what the console is driving: the live state, or the
-    // rehearsal copy. Resolves with the new document; errors become a toast.
+    // local copy. Resolves with the new document; errors become a toast.
     const callOp = useCallback(async (op, args = {}) => {
-        if (isLive) {
-            try {
-                return await keryx.live.call(op, args);
-            } catch (err) {
-                say(err?.message || "Não foi possível projetar.");
-                throw err;
-            }
-        }
+        if (isLive) return liveOp(op, args);
         let next = null;
         setRh((doc) => {
             try {
@@ -51,7 +63,7 @@ export function useConsole() {
             }
         });
         return next;
-    }, [isLive, say]);
+    }, [isLive, liveOp, say]);
 
     const setPrev = useCallback((stage) => {
         if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
@@ -59,7 +71,7 @@ export function useConsole() {
     }, [say]);
 
     // "Enviar ao ar": the Prévia (or the stage given) goes to the screens, or
-    // to the rehearsal copy. Resolves true when it went.
+    // to the local copy. Resolves true when it went.
     const send = useCallback(async (stage = prev) => {
         if (!stage) { say("Nada na prévia. Escolha um item do Roteiro, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
@@ -84,10 +96,14 @@ export function useConsole() {
 
     const goTo = useCallback((index) => callOp("content.goTo", { index }).catch(() => {}), [callOp]);
 
+    // Tela preta / Mostrar logo: always the real screens (emergency). The
+    // local copy follows, so the Programa monitor shows it too.
     const toggleScreen = useCallback((which) => {
-        const next = cur?.screen === which ? "show" : which;
-        callOp("screen.set", { mode: next }).catch(() => {});
-    }, [cur, callOp]);
+        const next = live?.screen === which ? "show" : which;
+        liveOp("screen.set", { mode: next }).catch(() => {});
+        if (!isLive) setRh((doc) => (doc ? applyOp(doc, "screen.set", { mode: next }, keryx.live.now()) : doc));
+        if (!isLive) say(next === "show" ? "Telas liberadas." : `${which === "black" ? "Tela preta" : "Logo"} nas telas — vale mesmo fora do ao vivo.`);
+    }, [live, isLive, liveOp, say]);
 
     // Limpar texto: the text layers go; background, logo and media stay.
     const clearText = useCallback(async () => {
@@ -100,7 +116,7 @@ export function useConsole() {
 
     const goEnsaio = useCallback(() => {
         if (!isLive || !live) return;
-        setRh(JSON.parse(JSON.stringify(live)));
+        setRh(copyOf(live));
         setMode("ensaio");
         say("Modo ensaio: as telas continuam com o que estava no ar.");
     }, [isLive, live, say]);
@@ -111,5 +127,21 @@ export function useConsole() {
         say("Saídas armadas. Enviar ao ar volta a mudar as telas.");
     }, [say]);
 
-    return { live, now, mode, isLive, cur, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, goEnsaio, arm, callOp, toast, say };
+    // Views: Preparar works on the local copy; Apresentar is live (or an
+    // Ensaio already running there).
+    const enterPrep = useCallback(() => {
+        if (mode === "prep") return;
+        if (mode === "live") setRh(live ? copyOf(live) : null);
+        setMode("prep");
+    }, [mode, live]);
+    const enterPresent = useCallback(() => {
+        if (mode !== "prep") return;
+        setRh(null);
+        setMode("live");
+    }, [mode]);
+
+    // The local copy starts as soon as the live state arrives.
+    useEffect(() => { if (mode !== "live" && !rh && live) setRh(copyOf(live)); }, [mode, rh, live]);
+
+    return { live, now, mode, isLive, cur, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, goEnsaio, arm, enterPrep, enterPresent, callOp, liveOp, toast, say };
 }

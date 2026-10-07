@@ -168,7 +168,7 @@ export default function BibleEnv({ c, logoUrl, request, serviceId, itemsCount, o
                     </Monitor>
                     <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-2)", flexWrap: "wrap" }}>
                         <Btn kind="outline" disabled={!stage} onClick={() => onPrepare(stage)}>Pôr na prévia</Btn>
-                        <Btn kind={c.isLive ? "prev" : "rh"} disabled={!stage} onClick={() => onSend(stage)} title={c.isLive ? "Enviar ao ar" : "Mostrar no ensaio: as telas não mudam"}>{c.isLive ? "Enviar ao ar" : "Mostrar no ensaio"}</Btn>
+                        <Btn kind={c.isLive ? "prev" : "rh"} disabled={!stage} onClick={() => onSend(stage)} title={c.isLive ? "Enviar ao ar" : "As telas não mudam"}>{c.isLive ? "Enviar ao ar" : c.mode === "prep" ? "Mostrar aqui" : "Mostrar no ensaio"}</Btn>
                         <Btn disabled={!stage} onClick={addToService}>Adicionar ao culto</Btn>
                         <Btn kind="icon" disabled={!reference} onClick={toggleFav} title={favs.includes(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
                     </div>

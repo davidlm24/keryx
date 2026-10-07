@@ -564,13 +564,34 @@ async function checkConsole(webContents, { live, outputs }) {
     try {
         await webContents.executeJavaScript(`history.pushState({}, "", "/Console"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         // Section captions are uppercase on screen (CSS), so innerText is too.
-        result.opened = await waitText(webContents, "PROGRAMA", true, 15000);
+        // No service running: the console opens in Preparar, on a local copy.
+        result.opened = await waitText(webContents, "PROGRAMA · PREPARAÇÃO", true, 15000);
         result.listed = await waitText(webContents, "Canto do console", true, 15000);
         await webContents.executeJavaScript(CLICK_TEXT(".kx-row", "Canto do console"));
+        await key("Enter", { ctrl: true });
+        await sleep(500);
+        result.prepKeptAir = !live.get().content;
+        // Tela preta is an emergency action: it reaches the screens from Preparar too.
+        await key("b");
+        result.prepBlack = await waitFor(() => live.get().screen === "black");
+        await key("b");
+        result.prepUnblack = await waitFor(() => live.get().screen === "show");
+
+        // Verificar: the readiness list, with the outputs the main process holds.
+        await webContents.executeJavaScript(CLICK_TEXT(".topbar .kx-seg button", "Verificar"));
+        result.verify = await waitText(webContents, "SAÍDAS") && await waitText(webContents, "BÍBLIA") && await waitText(webContents, "Ir para Apresentar");
+        result.verifyProjector = (await bodyText(webContents)).includes("Projeção principal");
+
+        // Apresentar: the library is behind "Mais".
+        await webContents.executeJavaScript(CLICK_TEXT(".topbar .kx-seg button", "Apresentar"));
+        result.present = await waitText(webContents, "PROGRAMA · NADA");
+        await webContents.executeJavaScript(CLICK_TEXT(".topbar button", "Mais"));
+        await waitText(webContents, "Canto do console");
+        await webContents.executeJavaScript(CLICK_TEXT(".mais .kx-row", "Canto do console"));
         result.prepared = await waitText(webContents, "PRÉVIA · CANTO DO CONSOLE");
         result.airUntouched = !live.get().content;
         // The Codex bug: a focused tab (Letras) and Enter must not send the Prévia.
-        result.focusedEnter = await keyOn(".kx-tabs button", "Letras", "Enter");
+        result.focusedEnter = await keyOn(".mais .kx-tabs button", "Letras", "Enter");
         await sleep(400);
         result.focusedEnterKeptAir = !live.get().content;
         await key("Enter", { ctrl: true });
@@ -578,6 +599,11 @@ async function checkConsole(webContents, { live, outputs }) {
         result.projected = Boolean(main) && await waitText(main, "Primeiro slide do console");
         await key("ArrowRight");
         result.advanced = await waitText(main, "Segundo slide do console");
+        // Esc closes "Mais" first; the slide strip shows the song with slide 2 on air.
+        await key("Escape");
+        await sleep(300);
+        result.maisClosed = !(await webContents.executeJavaScript("Boolean(document.querySelector('.mais'))")) && Boolean(live.get().content);
+        result.strip = await webContents.executeJavaScript("document.querySelectorAll('.strip .thumb').length === 2 && document.querySelector('.strip .thumb.is-air .n').textContent === '2'");
 
         // KERYX_CONSOLE_SHOT=<file.png>: the console with a song on air.
         // The operator window may sit behind the projector: bring it up first.
@@ -598,7 +624,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.rehearsing = await waitText(webContents, "MODO ENSAIO");
         // In Ensaio a slide click prepares, "Mostrar no ensaio" shows it in the
         // rehearsal copy only: the screens stay on slide 2.
-        await webContents.executeJavaScript(CLICK_TEXT(".kx-slide", "Primeiro slide do console"));
+        await webContents.executeJavaScript("document.querySelector('.strip .thumb').click(); true");
         await sleep(300);
         result.rehearsalButton = await webContents.executeJavaScript(CLICK_TEXT("button", "Mostrar no ensaio"));
         await sleep(400);
@@ -620,7 +646,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await webContents.executeJavaScript(`history.pushState({}, "", "/"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         if (main) main.close();
     }
-    result.ok = result.opened && result.listed && result.prepared && result.airUntouched && result.focusedEnter && result.focusedEnterKeptAir
+    result.ok = result.opened && result.listed && result.prepKeptAir && result.prepBlack && result.prepUnblack && result.verify && result.verifyProjector
+        && result.present && result.maisClosed && result.strip
+        && result.prepared && result.airUntouched && result.focusedEnter && result.focusedEnterKeptAir
         && result.sent && result.projected && result.advanced && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
         && result.armed && result.endAsked && result.endWaited && result.ended;
     return result;

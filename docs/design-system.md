@@ -24,6 +24,39 @@ Cronômetro / Timer / Texto livre (`kx-tool`, on screen `kx-screen-tool`),
 YouTube by link and per-output routing (`kx-route`, one setting with the
 transport's "Toca em").
 
+## Views: Preparar · Verificar · Apresentar (canvas artboards 8–15, 2026-10-07)
+
+After Codex's review the console became three views of the same service,
+switched in the top bar. Same tokens and components; the view-specific layout
+classes (`apres`, `strip`/`thumb`, `apres-send`, `apres-note`, `mais`,
+`verif`) live in the canvas's `Main.dc.html` helmet, not in the bundle.
+
+- **Apresentar** (artboards 8–12, 15): Programa (58 %) and Prévia (42 %)
+  side by side; under the Programa a strip of slide thumbnails (red = on
+  air, outline = next, green = prepared) and 36 px Anterior/Próximo; under
+  the Prévia the 40 px send button with "Ctrl+Enter", a one-line
+  "Ao enviar: …" note when sending is not obvious, and a short rundown (on
+  air, prepared, next two) with "Roteiro completo". "Mais" opens a right
+  drawer (Camadas, Letras, Mídia, Avisos, Ferramentas). Ensaio lives here
+  only. An output failure is a full-width amber banner under the top bar,
+  never over the monitor. Escola bíblica is a service template here: teacher
+  notes under the Prévia ("só no retorno e no tablet"), question slide then
+  "Revelar resposta" as the next slide, a discussion timer.
+- **Preparar** (artboards 1–7, 13): the full console as before, with the
+  quiet line "As telas não mudam enquanto você prepara", "Novo culto a partir
+  de…" (Culto de domingo, Escola bíblica, Jovens, Santa ceia, Funeral,
+  Conferência), "Duplicar o culto anterior", and Pré-culto / Culto /
+  Pós-culto section headers in the Roteiro.
+- **Verificar** (artboard 14): one list grouped as Saídas (with
+  Identificar), Mídia do roteiro (Localizar…), Áudio (Testar), Fontes do
+  tema, Bíblia (installed for offline use), Internet; a summary ("Tudo pronto"
+  / "N itens precisam de atenção") and "Ir para Apresentar", which asks once
+  when there are warnings.
+
+The canvas still has two things the app does differently, on purpose: plain
+Enter sends from anywhere and slides send on double click there; the app
+keeps its rules (`src/lib/console/keys.js`, no double-click send).
+
 ## How the app uses it
 
 - Tokens become the Tailwind theme (`tailwind.config.js` colours/spacing/radius

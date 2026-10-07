@@ -6,7 +6,6 @@ import { applyOp, emptyState, livePosition, mainLayer } from "@shared/live-state
 import { stageOp } from "@/lib/console/stage";
 
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
-const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
 // What the Prévia would look like on air: the stage applied with the live
 // state's own rules to a copy of the current look (background, logo,
@@ -41,25 +40,27 @@ const captionOf = (doc, word) => {
 
 // What sending the Prévia will do, in one line, when it is not obvious from
 // the monitor: which screens it reaches.
-function sendNote(stage, isLive) {
+function sendNote(stage, mode) {
     if (!stage) return null;
-    if (!isLive) return "Só no ensaio: as telas não mudam.";
+    if (mode === "prep") return "Só aqui: as telas não mudam enquanto você prepara.";
+    if (mode === "ensaio") return "Só no ensaio: as telas não mudam.";
     if (stage.kind === "video") return "Ao enviar: toca nas telas de vídeo; o projetor continua como está.";
     if (stage.airSlide) return `Ao enviar: o slide no ar passa para o ${stage.index + 1}.`;
     return null;
 }
 
-// Programa (what is on air, or the rehearsal copy with the real screen in a
-// PiP), a slim warning line when an output fails (never over the monitor),
+// Programa (what is on air, or the local copy with the real screen in a
+// PiP; an output failure is the banner under the top bar, never here),
 // the Prévia with its one send button, the next item, and the transport of
 // a video or media file while one plays.
-export default function CenterPanel({ c, logoUrl, projectorDown, tries, lastOkAt, nextItem, onPrepNext, onSend, onOpenOutputs, videoScreens }) {
-    const { live, cur, prev, now, isLive } = c;
+export default function CenterPanel({ c, logoUrl, projectorDown, nextItem, onPrepNext, onSend, videoScreens }) {
+    const { live, cur, prev, now, isLive, mode } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const progState = projectorDown ? "warn" : isLive ? "air" : "rh";
-    const progWord = isLive ? "Programa" : "Programa · Ensaio";
+    const progWord = isLive ? "Programa" : mode === "prep" ? "Programa · Preparação" : "Programa · Ensaio";
+    const sendLabel = isLive ? "Enviar ao ar" : mode === "prep" ? "Mostrar aqui" : "Mostrar no ensaio";
     const prevCap = prev ? `Prévia · ${prev.title}${prev.slides.length > 1 ? ` · ${prev.index + 1}/${prev.slides.length}` : ""}` : "Prévia";
-    const note = sendNote(prev, isLive);
+    const note = sendNote(prev, mode);
 
     // The transport drives the video channel first, else the media layer.
     const layer = cur?.video ? "video" : cur?.media && (cur.media.kind === "video" || cur.media.kind === "youtube" || cur.media.kind === "audio") ? "media" : null;
@@ -70,16 +71,6 @@ export default function CenterPanel({ c, logoUrl, projectorDown, tries, lastOkAt
 
     return (
         <div className="mons" data-live-keys="" tabIndex={-1}>
-            {projectorDown && (
-                <div className="kx-warnbar" role="alert">
-                    <Icon name="warn" />
-                    <span className="t"><b>Projetor</b> · Reconectando… tentativa {tries} · última conexão {hhmm(lastOkAt)}</span>
-                    <span className="spacer" />
-                    <Btn small onClick={() => c.toggleScreen("black")} title="Tela preta · B">Tela preta</Btn>
-                    <Btn small onClick={() => c.toggleScreen("logo")} title="Mostrar logo · L">Mostrar logo</Btn>
-                    <Btn small onClick={onOpenOutputs}>Ver saídas</Btn>
-                </div>
-            )}
             <Monitor className="prog" state={progState} caption={captionOf(cur, progWord)} live={cur} now={now} logoUrl={logoUrl}>
                 {!isLive && (
                     <div className="pipwrap">
@@ -95,8 +86,8 @@ export default function CenterPanel({ c, logoUrl, projectorDown, tries, lastOkAt
                 </Monitor>
                 <div className="side">
                     <div className="sendrow">
-                        <Btn kind={isLive ? "prev" : "rh"} className="kx-btn-send" onClick={() => onSend()} disabled={!prev} title={isLive ? "Enviar ao ar · Ctrl+Enter" : "Mostrar no ensaio · Ctrl+Enter"}>
-                            {isLive ? "Enviar ao ar" : "Mostrar no ensaio"}
+                        <Btn kind={isLive ? "prev" : "rh"} className="kx-btn-send" onClick={() => onSend()} disabled={!prev} title={`${sendLabel} · Ctrl+Enter`}>
+                            {sendLabel}
                         </Btn>
                         <span className="kx-meta">Ctrl+Enter</span>
                     </div>
