@@ -115,7 +115,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, serviceId, ite
         try {
             const row = await keryx.entities.BiblePassage.create({ reference: `${reference} · ${version}`, book, chapter, verses: rangeLabel(sel), text: stage.args.slides.map((s) => s.text).join("\n"), slides: stage.args.slides, version });
             await keryx.entities.ServiceItem.create({ serviceId, type: "BIBLE", title: reference, contentId: row.id, order: itemsCount, duration: 120 });
-            c.say("Adicionado ao fim do Roteiro.");
+            c.say("Adicionado ao fim da setlist.");
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
     const airTitle = c.cur?.content ? c.cur.content.title : c.cur?.media ? c.cur.media.title : "nada";

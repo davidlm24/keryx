@@ -29,7 +29,7 @@ export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsC
                     {logoUrl ? <img src={logoUrl} alt="" /> : <span className="kx-mark" />}
                 </button>
                 <div className="kx-tabs envtabs" role="tablist" aria-label="Ambiente">
-                    {envTab("culto", "KERYX", "Projeção: músicas, mídia, roteiro")}
+                    {envTab("culto", "KERYX", "Projeção: músicas, mídia, setlist")}
                     {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
                 </div>
             </div>
@@ -51,7 +51,7 @@ export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsC
                     />
                 )}
                 <span className="tb-clock" title="Hora">{clock}</span>
-                {compact && env === "culto" && <IconBtn name="layers" title="Camadas e Roteiro" on={drawerOpen} onClick={toggleDrawer} />}
+                {compact && env === "culto" && <IconBtn name="layers" title="Camadas e Setlist" on={drawerOpen} onClick={toggleDrawer} />}
                 <button type="button" className={`kx-status kx-t ${outsState ? `is-${outsState}` : ""}`} onClick={() => toggle("outs")} title={`Telas e saídas · ${outsLabel}`} aria-expanded={open === "outs"}>
                     <i className="kx-dot" /><span className="tb-outs-l">{outsLabel}</span><span className="tb-outs-s">{outsCount}</span>
                 </button>

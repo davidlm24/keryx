@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { keryx } from "@/api/keryxClient";
+import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { Row, Btn, IconBtn, Empty } from "./kx";
 
 const TYPE_ICON = { SONG: "music", BIBLE: "book", VIDEO: "film", IMAGE: "image", PDF: "film", POWERPOINT: "film", ANNOUNCEMENT: "megaphone", TEXT: "text", TIMER: "clock", BANNER: "image" };
@@ -18,9 +19,25 @@ export function plannedTimes(service, items) {
 // The service's items in order: click (or Enter on the row) prepares; the
 // "Ir" button prepares and sends — the only send here. Drag reorders
 // (ServiceItem.order), as Cultos does.
-export default function Rundown({ service, items, airItemId, prevItemId, onPrepare, onGo, canReorder = true }) {
+export default function Rundown({ service, items, airItemId, prevItemId, onPrepare, onGo, onAddStage, canReorder = true }) {
     const [drag, setDrag] = useState(null);
     const [over, setOver] = useState(null);
+    // However a drag ends (dropped here, elsewhere or cancelled), no row
+    // stays highlighted.
+    useEffect(() => {
+        const done = () => { setDrag(null); setOver(null); };
+        window.addEventListener("dragend", done);
+        window.addEventListener("drop", done);
+        return () => { window.removeEventListener("dragend", done); window.removeEventListener("drop", done); };
+    }, []);
+    const dropHere = (e, i) => {
+        e.preventDefault();
+        const stage = getDragStage();
+        if (stage) { clearDragStage(); onAddStage?.(stage, i); }
+        else if (drag) reorder(drag, i);
+        setDrag(null);
+        setOver(null);
+    };
     const times = plannedTimes(service, items);
     const airIdx = items.findIndex((i) => i.id === airItemId);
 
@@ -34,10 +51,10 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
     };
 
     if (!service) return <Empty icon="list" title="Nenhum culto escolhido">Escolha um culto no menu KERYX ou crie um em Cultos.</Empty>;
-    if (!items.length) return <Empty icon="list" title="Roteiro vazio">Adicione itens pela busca (/) ou na página Cultos.</Empty>;
+    if (!items.length) return <Empty icon="list" title="Setlist vazia">Arraste da Biblioteca, busque (/) ou use a página Cultos.</Empty>;
 
     return (
-        <>
+        <div className="rund">
             {items.map((it, i) => {
                 const state = it.id === airItemId ? "is-air" : it.id === prevItemId ? "is-prev" : airIdx >= 0 && i < airIdx ? "is-done" : "";
                 const dragProps = canReorder ? {
@@ -45,7 +62,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                     onDragStart: (e) => { setDrag(it.id); e.dataTransfer.effectAllowed = "move"; },
                     onDragEnd: () => { setDrag(null); setOver(null); },
                     onDragOver: (e) => { e.preventDefault(); setOver(i); },
-                    onDrop: (e) => { e.preventDefault(); if (drag) reorder(drag, i); setDrag(null); setOver(null); },
+                    onDrop: (e) => dropHere(e, i),
                 } : {};
                 return (
                     <Row
@@ -54,7 +71,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                         title={it.title || TYPE_LABEL[it.type] || it.type}
                         meta={[TYPE_LABEL[it.type], it.notes].filter(Boolean).join(" · ")}
                         time={<>{times[i]}<br />{it.duration ? mmss(it.duration) : ""}</>}
-                        state={`${state} ${drag === it.id ? "is-dragging" : ""} ${over === i && drag ? "is-dropbefore" : ""}`}
+                        state={`${state} ${drag === it.id ? "is-dragging" : ""} ${over === i ? "is-dropbefore" : ""}`}
                         onClick={() => onPrepare(it, i)}
                         onDoubleClick={() => onGo(it, i)}
                         dragProps={dragProps}
@@ -62,6 +79,13 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                     />
                 );
             })}
-        </>
+            {canReorder && (
+                <div
+                    className={`rund-tail ${over === items.length ? "is-dropend" : ""}`}
+                    onDragOver={(e) => { e.preventDefault(); setOver(items.length); }}
+                    onDrop={(e) => dropHere(e, items.length)}
+                />
+            )}
+        </div>
     );
 }

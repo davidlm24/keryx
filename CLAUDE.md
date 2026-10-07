@@ -42,16 +42,24 @@ wiring, the data model and the known gaps.
 - **The operator console is `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`), built on the design system in
   `docs/design-system/` (tokens and `kx-` classes, imported as `@ds/…`; read
-  `docs/design-system.md` before touching its look). A click prepares a
-  *stage* in the Prévia (`src/lib/console/stage.js`); only "Enviar ao ar"
-  sends it. Ensaio applies operations to a local copy with `applyOp`
-  (`useConsole`), never to the main process. Screens and the console's
-  monitors render with `src/components/screen/ScreenRenderer.jsx` — one
-  component, sized in container units — so a preview is the output. Keys go
-  through `src/lib/console/keys.js` (with a test); a mouse click must not
-  leave focus on a control, Esc ends at once. The old pages are being folded
-  into the console: `docs/migration-inventory.md` says where each function
-  goes; don't add features to the old pages.
+  `docs/design-system.md` before touching its look). One screen, always
+  live (no steps; Verificar is an overlay from the Saídas popover). A click
+  prepares a *stage* in the Prévia (`src/lib/console/stage.js`); Enter, a
+  **double click** or "Enviar ao ar" sends it (user decision 2026-10-07;
+  dragging a library row onto the Prévia prepares, onto the Programa sends,
+  onto the Setlist adds a ServiceItem). Ensaio applies operations to a
+  local copy with `applyOp` (`useConsole`), never to the main process.
+  Screens and the console's monitors render with
+  `src/components/screen/ScreenRenderer.jsx` — one component, sized in
+  container units — so a preview is the output; the Programa monitor plays
+  videos muted (`motion`). Keys go through `src/lib/console/keys.js` (with
+  a test); a mouse click must not leave focus on a control, Esc ends at
+  once (music on the audio channel keeps playing). The rundown is called
+  **"Setlist"** in the UI. Output windows are never background (occlusion
+  tracking off in `electron/main.cjs`): don't reintroduce per-element audio
+  taps — the level meters read the system loopback in the console. The old
+  pages are being folded into the console: `docs/migration-inventory.md`
+  says where each function goes; don't add features to the old pages.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. On desktop every
   write reaches every window with the whole row, deletes included.

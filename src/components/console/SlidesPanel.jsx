@@ -35,7 +35,7 @@ export default function SlidesPanel({ c, onGo }) {
 
     return (
         <>
-            {!slides.length && <Empty icon="list" title="Nenhum item em mãos">Clique num item do Roteiro ou da Biblioteca.</Empty>}
+            {!slides.length && <Empty icon="list" title="Nenhum item em mãos">Clique num item da Setlist ou da Biblioteca.</Empty>}
             <div ref={listRef} style={{ overflow: "auto", flex: 1 }}>
                 {slides.map((sl, i) => {
                     let cls = "";

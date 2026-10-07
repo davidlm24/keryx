@@ -279,20 +279,21 @@ command palette (`/`), Saídas, and Ensaio.
   one control that bypasses the Prévia (`alert.show`).
 - The layout (module sizes, collapsed, hidden) is saved per profile in
   localStorage (`src/lib/console/layout.js`); "Restaurar layout" resets it.
-- **Two environments, three steps.** The top bar is a menu bar: the KERYX
-  mark opens the menu, the tabs **KERYX | Bíblia** switch environment
-  (projection console or the Bible), and **Preparar · Verificar · Apresentar**
-  are the steps. **Apresentar** is the full console, live (all modules,
-  resizable); Ensaio (`ensaio`) exists only there. **Preparar** (`prep`) is
-  the same console on the local copy, under a blue "PREPARAR — nada vai às
-  telas" banner; nothing prepared there reaches the screens. **Verificar**
-  (`VerifyView`) checks the output windows and network screens, every media
-  file of the rundown (a HEAD request to the local media server, which answers
-  404 when a file is gone), fonts, the Bible versions installed for offline
-  use and what needs the internet, then "Ir para Apresentar" (asks once when
-  something needs attention). The console always opens in Apresentar. The bar
-  never wraps: container queries drop the clock, then shorten the outputs
-  label and the search as the window narrows.
+- **One console, always live (2026-10-07).** The top bar is a menu bar: the
+  KERYX mark opens the menu, the tabs **KERYX | Bíblia** switch environment,
+  then the search, **Ensaio | Ao vivo**, the clock, the outputs status and
+  the emergency glyphs. There are no steps: preparing while live is safe
+  because nothing reaches the screens without sending, and Ensaio is the one
+  sandbox (a local copy under `applyOp`). **Verificar** (`VerifyView`) is an
+  overlay opened from the Saídas popover or the KERYX menu: output windows
+  and network screens, every media file of the setlist (a HEAD request to
+  the local media server, which answers 404 when a file is gone), fonts, the
+  Bible versions installed for offline use and what needs the internet. The
+  bar never wraps: container queries drop the clock, then shorten the
+  outputs label and the search as the window narrows. The projector output
+  opens with the app on first run, and a live send reopens it if closed;
+  the idle screen is the church logo or plain black (`idle.set`, in the
+  live state so every screen renders the same emptiness).
 - **Tela preta and Mostrar logo always act on the real screens**, in every
   view and mode: they are the emergency actions. A failing output is a banner
   under the top bar in every view, never over a monitor.
@@ -309,15 +310,21 @@ command palette (`/`), Saídas, and Ensaio.
   control (the console blurs it), so after clicking a song Enter sends it and
   the arrows move the slide or verse on air, as in Holyrics. A control
   focused with Tab keeps its own Enter/Space; Ctrl+Enter sends from anywhere
-  but a text field. **Esc takes the projection down at once** (closing an open
-  popover first; in a text field it only leaves the field); "Voltar ao
-  anterior" undoes, and the Encerrar button still asks. AltGr (Ctrl+Alt) is
-  typing. In the Bible environment a letter or digit opens the quick jump
-  (`BibleQuickJump`, `src/lib/console/quickRef.js`): "jo 3 16-18" fills
-  Livro, Capítulo, Versículo; Enter selects the verses (they show in the
-  Prévia), Enter again sends. B stays Tela preta there. Output windows give
-  the keyboard back to the window that opened them, and the projector itself
-  handles Esc, B and L if clicked. Nothing sends on double click.
+  but a text field. **A double click sends to air** (user decision
+  2026-10-07, replacing the earlier no-double-click rule): library rows,
+  setlist rows, slides and Bible verses; one click still only prepares, and
+  Esc plus "Voltar ao anterior" are the net. Dragging does the same spatially:
+  a row dropped on the Prévia prepares, on the Programa sends, on the Setlist
+  becomes a ServiceItem (`src/lib/console/dragStage.js`). **Esc takes the
+  projection down at once** (closing an open popover first; in a text field
+  it only leaves the field); the audio channel keeps playing. AltGr
+  (Ctrl+Alt) is typing. In the Bible environment a letter or digit opens the
+  quick jump (`BibleQuickJump`, `src/lib/console/quickRef.js`): "jo 3 16-18"
+  fills Livro, Capítulo, Versículo — Space or Tab completes the book; Enter
+  selects the verses, Enter again sends. B stays Tela preta there. Output
+  windows give the keyboard back to the window that opened them, never
+  throttle and never pause covered video (occlusion tracking off), and the
+  projector itself handles Esc, B and L if clicked.
 
 Still outside the console (reached from its menu) until they are folded in:
 Músicas, Mídia and Comunicação as editors, Cultos as the planner, Settings.

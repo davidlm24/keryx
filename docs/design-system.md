@@ -26,11 +26,13 @@ transport's "Toca em").
 
 ## Views: Preparar · Verificar · Apresentar (canvas artboards 8–15, 2026-10-07)
 
-After Codex's review the console became three steps of the same service,
-switched in the top bar. **The app departs from artboards 8–12 (user, 2026-10-07):**
-Apresentar is the full modular console of artboards 1–7 (every module on
-screen, resizable), not the slim Programa/strip layout below; the canvas
-keeps that layout as a record. The top bar is a menu bar: the KERYX mark
+After Codex's review the console briefly became three steps (Preparar ·
+Verificar · Apresentar); **later the same day the user cut the steps**: the
+app is one console, always live, Ensaio as the only sandbox, Verificar as an
+overlay from the Saídas popover, and a double click (or a drag onto the
+Programa) sends to air. Artboards 8–15 stay in the canvas as a record; the
+app follows the full modular layout of artboards 1–7. "Roteiro" is called
+**Setlist** in the app. The top bar is a menu bar: the KERYX mark
 (menu), the environment tabs **KERYX | Bíblia** (`kx-tabs`, underline in
 brand), the step selector, the search, Ensaio | Ao vivo, a compact clock, the
 outputs status and the emergency glyphs, on one line at every width. The

@@ -19,6 +19,10 @@ Decisions already taken by the user (2026-10-07):
   pt-BR only). Only the **church logo** stays.
 - **Esc takes the projection down at once** (as in Holyrics); the Encerrar
   button asks first; "Voltar ao anterior" undoes.
+- **One console (2026-10-07):** the Preparar · Verificar · Apresentar steps
+  were removed; Verificar is an overlay from the Saídas popover. A double
+  click or a drag onto the Programa sends to air; the rundown is "Setlist"
+  in the UI; the idle screen is logo or black (Tela ociosa).
 
 Legend for the destination column:
 

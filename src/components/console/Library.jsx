@@ -3,13 +3,22 @@ import Icon from "./Icon";
 import { Row, Btn, Field, Empty } from "./kx";
 import Rundown from "./Rundown";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
+import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
+
+// A library row can be dragged onto the Prévia (prepares), the Programa
+// (sends) or the Setlist (adds the item there).
+const dragProps = (stage) => ({
+    draggable: true,
+    onDragStart: (e) => { setDragStage(stage); e.dataTransfer.setData(STAGE_MIME, stage.id || "1"); e.dataTransfer.effectAllowed = "copyMove"; },
+    onDragEnd: () => clearDragStage(),
+});
 
 const MEDIA_ICON = { video: "film", image: "image", gif: "image", pdf: "film", powerpoint: "film", audio: "music" };
 const MEDIA_LABEL = { video: "Vídeo", image: "Imagem", gif: "GIF", pdf: "Apresentação", powerpoint: "Apresentação", audio: "Áudio" };
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLowerCase().includes(q));
 
-// The library: Letras, Mídia and Avisos (and the Roteiro on narrow screens).
+// The library: Letras, Mídia and Avisos (and the Setlist on narrow screens).
 // A click prepares the item in the Prévia; a double click sends it to air
 // (onGo). The quick alert is the one control that bypasses the Prévia.
 export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onGo, onAddSong, hideTabs = false }) {
@@ -24,7 +33,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
     const prevId = c.prev?.id;
     const state = (id) => (id === airId ? (c.isLive ? "is-air" : "is-rh") : id === prevId ? "is-prev" : "");
 
-    const tabs = [...(compact ? [["roteiro", "Roteiro"]] : []), ["letras", "Letras"], ["midia", "Mídia"], ["avisos", "Avisos"]];
+    const tabs = [...(compact ? [["roteiro", "Setlist"]] : []), ["letras", "Letras"], ["midia", "Mídia"], ["avisos", "Avisos"]];
 
     const showAlert = () => {
         const text = alertText.trim();
@@ -48,7 +57,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
             )}
             {tab === "roteiro" && rundown && (
                 <div style={{ overflow: "auto", flex: 1 }}>
-                    <Rundown service={rundown.service} items={rundown.items} airItemId={rundown.airItemId} prevItemId={rundown.prevItemId} onPrepare={rundown.prepare} onGo={rundown.go} />
+                    <Rundown service={rundown.service} items={rundown.items} airItemId={rundown.airItemId} prevItemId={rundown.prevItemId} onPrepare={rundown.prepare} onGo={rundown.go} onAddStage={rundown.addStage} />
                 </div>
             )}
             {tab !== "roteiro" && (
@@ -71,7 +80,8 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                 state={state(`song:${s.id}`)}
                                 onClick={() => onPrepare(stageFromSong(s))}
                                 onDoubleClick={onGo && (() => onGo(stageFromSong(s)))}
-                                actions={onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar ao roteiro">Adicionar</Btn>}
+                                dragProps={dragProps(stageFromSong(s))}
+                                actions={onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist">Adicionar</Btn>}
                             />
                         ))}
                     </div>
@@ -102,6 +112,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                     state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? (c.isLive ? "is-air" : "is-rh") : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
                                     onClick={() => onPrepare(stageFromMedia(m))}
                                     onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
+                                    dragProps={dragProps(stageFromMedia(m))}
                                     actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo">Telas de vídeo</Btn>}
                                 />
                             ))}
@@ -152,7 +163,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                         <div style={{ overflow: "auto", flex: 1 }}>
                             {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Crie avisos e contagens em Comunicação.</Empty>}
                             {pieces.map((p) => (
-                                <Row key={p.id} icon="megaphone" title={p.title || p.text} meta={[p.type === "countdown" ? "Contagem regressiva" : p.type === "timer" ? "Cronômetro" : "Aviso", p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} />
+                                <Row key={p.id} icon="megaphone" title={p.title || p.text} meta={[p.type === "countdown" ? "Contagem regressiva" : p.type === "timer" ? "Cronômetro" : "Aviso", p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p))} />
                             ))}
                         </div>
                     </>

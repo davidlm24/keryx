@@ -50,7 +50,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
         if (!outs.length && !nets.length) outs.push(line("Saídas", keryx.isDesktop ? "Nenhuma saída configurada" : "No navegador, as telas abrem em abas", "info", null, "monitor"));
         out.push({ name: "Saídas", lines: [...outs, ...nets] });
 
-        // Mídia do roteiro: files of media items, songs' playback and backgrounds.
+        // Mídia da setlist: files of media items, songs' playback and backgrounds.
         const files = [];
         for (const it of items) {
             const type = String(it.type || "").toUpperCase();
@@ -70,7 +70,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
             if (st === "net") net.push(line(f.title, `${f.what} · ${isYouTube(f.url) ? "YouTube" : "na internet"} · precisa de internet durante o culto`, navigator.onLine ? "ok" : "warn", null, "external"));
             else media.push(line(f.title, st === "ok" ? `${f.what} · encontrado` : `${f.what} · Arquivo não encontrado`, st === "ok" ? "ok" : "miss", st === "ok" ? null : { label: "Abrir Mídia", run: () => navigate("/Media") }, "film"));
         }));
-        out.push({ name: "Mídia do roteiro", lines: media.length ? media : [line("Nenhum arquivo no roteiro", "Músicas, leituras e avisos não dependem de arquivos", "info", null, "film")] });
+        out.push({ name: "Mídia da setlist", lines: media.length ? media : [line("Nenhum arquivo na setlist", "Músicas, leituras e avisos não dependem de arquivos", "info", null, "film")] });
 
         // Fontes: the console's own, and the ones themes ask for.
         const fonts = [];
@@ -112,7 +112,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
 
         // Internet: what depends on it, and whether it is there now.
         const online = navigator.onLine;
-        out.push({ name: "Internet", lines: [line(online ? "Conectado" : "Sem internet", net.length ? `${net.length} ${net.length === 1 ? "item precisa" : "itens precisam"} de internet` : "Nenhum item do roteiro depende da internet", online || !net.length ? "ok" : "miss", null, online ? "wifi" : "wifi-off"), ...net] });
+        out.push({ name: "Internet", lines: [line(online ? "Conectado" : "Sem internet", net.length ? `${net.length} ${net.length === 1 ? "item precisa" : "itens precisam"} de internet` : "Nenhum item da setlist depende da internet", online || !net.length ? "ok" : "miss", null, online ? "wifi" : "wifi-off"), ...net] });
 
         setGroups(out);
         setRunning(false);

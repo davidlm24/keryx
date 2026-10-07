@@ -30,6 +30,13 @@ export default function BibleQuickJump({ initial, onPick, onCancel }) {
             else if (r.book && !r.chapter) complete(r.book.name);
             return;
         }
+        // Space completes the book while the book is still being typed (the
+        // last character is a letter): "jo" + space becomes "João ". After a
+        // digit ("1 " on the way to "1 Samuel", "João 3") it stays a space.
+        if (e.key === " " && /\p{L}$/u.test(text)) {
+            const cand = r.book || (r.step === "livro" && r.candidates[active]) || null;
+            if (cand) { e.preventDefault(); complete(cand.name); return; }
+        }
         if ((e.key === "ArrowDown" || e.key === "ArrowRight") && r.step === "livro" && r.candidates.length > 1 && e.currentTarget.selectionStart === text.length) {
             e.preventDefault(); setActive((a) => (a + 1) % r.candidates.length); return;
         }

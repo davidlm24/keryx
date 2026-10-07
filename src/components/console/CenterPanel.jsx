@@ -1,10 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Icon from "./Icon";
 import { Monitor, Btn } from "./kx";
 import PlayerBar from "./PlayerBar";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState, mainLayer } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
+import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 
 // What the Prévia would look like on air: the stage applied with the live
 // state's own rules to a copy of the current look (background, logo,
@@ -54,7 +55,7 @@ function sendNote(stage, mode) {
 // air, or the local copy with the real screen in a PiP; an output failure is
 // the banner under the top bar, never here), the Prévia with its one send
 // button and the next item.
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, nextItem, onPrepNext, onSend, videoScreens, playerPick, setPlayerPick }) {
+export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, nextItem, onPrepNext, onSend, onDropStage, videoScreens, playerPick, setPlayerPick }) {
     const { live, cur, prev, now, isLive, mode } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const progState = projectorDown ? "warn" : isLive ? "air" : "rh";
@@ -63,11 +64,19 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const prevCap = prev ? `Prévia · ${prev.title}${prev.slides.length > 1 ? ` · ${prev.index + 1}/${prev.slides.length}` : ""}` : "Prévia";
     const note = sendNote(prev, mode);
 
+    // Drops from the Biblioteca: the Prévia prepares, the Programa sends.
+    const [dropOn, setDropOn] = useState(null);
+    const dropProps = (where) => ({
+        onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (dropOn !== where) setDropOn(where); } },
+        onDragLeave: () => setDropOn((d) => (d === where ? null : d)),
+        onDrop: (e) => { const s = getDragStage(); setDropOn(null); if (!s) return; e.preventDefault(); clearDragStage(); onDropStage?.(s, where); },
+    });
+
 
     return (
         <div className="mons" data-live-keys="" tabIndex={-1}>
             <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
-            <Monitor className="prog" state={progState} caption={captionOf(cur, progWord)} live={cur} now={now} logoUrl={logoUrl} motion>
+            <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} caption={captionOf(cur, dropOn === "air" ? `${progWord} · solte para enviar` : progWord)} live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}>
                 {!isLive && (
                     <div className="pipwrap">
                         <span className="kx-pip-cap">NO AR AGORA</span>
@@ -76,7 +85,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                 )}
             </Monitor>
             <div className="subrow">
-                <Monitor state={prev ? "prev" : ""} caption={prevCap} live={pdoc} now={now} logoUrl={logoUrl}>
+                <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} caption={dropOn === "prev" ? "Prévia · solte para preparar" : prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={dropProps("prev")}>
                     {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                     {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
                     {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
@@ -91,8 +100,8 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                     {note && <div className="kx-meta sendnote">{note}</div>}
                     <div className="nextline">
                         <span className="kx-meta">Próximo:</span>
-                        <span className="t">{nextItem ? nextItem.title || "Item" : "fim do roteiro"}</span>
-                        {nextItem && <><span className="kx-meta">·</span><Btn small onClick={onPrepNext} title="Pôr o próximo item do Roteiro na Prévia">Preparar</Btn></>}
+                        <span className="t">{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>
+                        {nextItem && <><span className="kx-meta">·</span><Btn small onClick={onPrepNext} title="Pôr o próximo item da Setlist na Prévia">Preparar</Btn></>}
                     </div>
                 </div>
             </div>

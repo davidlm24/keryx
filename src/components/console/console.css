@@ -190,3 +190,10 @@
 /* Verificar as an overlay (opened from the Saídas popover), over the dim
    scrim; its own rows and summary come from .verif below. */
 .console .verif-overlay { position: absolute; z-index: 35; inset: 48px 24px 28px; display: flex; }
+
+/* Drag from the Biblioteca: the monitor under the pointer says what a drop
+   does; the Setlist's tail takes a drop after the last item. */
+.console .kx-mon.is-dropover .kx-mon-screen { outline: 2px dashed var(--brand); outline-offset: -2px; }
+.console .rund { display: flex; flex-direction: column; min-height: 100%; }
+.console .rund-tail { flex: 1; min-height: 28px; }
+.console .rund-tail.is-dropend { box-shadow: inset 0 2px 0 var(--brand); }

@@ -187,11 +187,11 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
     const groups = [];
     const ref = ql ? parseReference(q.trim()) : null;
     const bible = ref ? [{ icon: "book", title: formatReference(ref), meta: ref.verseStart ? "Abrir na Bíblia · pôr os versículos na prévia" : "Abrir o capítulo na Bíblia", pick: () => openReference(ref) }] : [];
-    const rund = (ql ? items.filter((it) => has(it.title)) : []).slice(0, 4).map((it) => ({ icon: "list", title: it.title, meta: "Roteiro", pick: () => onPrepare(it, items.indexOf(it)) }));
+    const rund = (ql ? items.filter((it) => has(it.title)) : []).slice(0, 4).map((it) => ({ icon: "list", title: it.title, meta: "Setlist", pick: () => onPrepare(it, items.indexOf(it)) }));
     const songs = (ql ? data.songs.filter((s) => has(s.title, s.artist)) : data.songs.slice(0, 4)).slice(0, 5).map((s) => ({ icon: "music", title: s.title, meta: [s.artist, s.song_key].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromSong(s)), add: onAddSong ? () => onAddSong(s) : null }));
     const media = (ql ? data.media.filter((m) => has(m.title)) : []).slice(0, 4).map((m) => ({ icon: m.type === "image" ? "image" : "film", title: m.title, meta: m.type, pick: () => onPrepare(stageFromMedia(m)) }));
     const pieces = (ql ? data.pieces.filter((p) => has(p.title, p.text)) : []).slice(0, 4).map((p) => ({ icon: "megaphone", title: p.title || p.text, meta: "Aviso", pick: () => onPrepare(stageFromPiece(p)) }));
-    const order = env === "biblia" ? [["Bíblia", bible], ["Músicas", songs], ["Roteiro", rund], ["Mídia", media], ["Avisos", pieces]] : [["Roteiro", rund], ["Músicas", songs], ["Bíblia", bible], ["Mídia", media], ["Avisos", pieces]];
+    const order = env === "biblia" ? [["Bíblia", bible], ["Músicas", songs], ["Setlist", rund], ["Mídia", media], ["Avisos", pieces]] : [["Setlist", rund], ["Músicas", songs], ["Bíblia", bible], ["Mídia", media], ["Avisos", pieces]];
     for (const [name, list] of order) if (list.length) groups.push({ name, list });
     const flat = groups.flatMap((g) => g.list);
     const run = (i, add) => { const r = flat[i]; if (!r) return; setOpen(null); if (add && r.add) r.add(); else r.pick(); };
@@ -205,17 +205,17 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
     let n = -1;
     return (
         <div className="palette">
-            <Field inputRef={inputRef} value={q} onChange={(v) => { setQ(v); setIdx(0); }} placeholder="Músicas, versículos (Jo 3:16), mídia, avisos, itens do roteiro" onKeyDown={onKey} kbd="Esc" />
+            <Field inputRef={inputRef} value={q} onChange={(v) => { setQ(v); setIdx(0); }} placeholder="Músicas, versículos (Jo 3:16), mídia, avisos, itens da setlist" onKeyDown={onKey} kbd="Esc" />
             <div className="res">
                 {groups.map((g) => (
                     <React.Fragment key={g.name}>
                         <div className="kx-menu-h"><span className="kx-section">{g.name}</span></div>
                         {g.list.map((r) => { n += 1; const i = n; return (
-                            <Row key={`${g.name}${i}`} icon={r.icon} title={r.title} meta={r.meta} state={i === idx ? "is-selected" : ""} onClick={() => run(i, false)} actions={<><Btn onClick={(e) => { e.stopPropagation(); run(i, false); }} title="Pôr na prévia · Enter">Pôr na prévia</Btn>{r.add && <Btn onClick={(e) => { e.stopPropagation(); run(i, true); }} title="Adicionar ao roteiro · Shift+Enter">Adicionar ao roteiro</Btn>}</>} />
+                            <Row key={`${g.name}${i}`} icon={r.icon} title={r.title} meta={r.meta} state={i === idx ? "is-selected" : ""} onClick={() => run(i, false)} actions={<><Btn onClick={(e) => { e.stopPropagation(); run(i, false); }} title="Pôr na prévia · Enter">Pôr na prévia</Btn>{r.add && <Btn onClick={(e) => { e.stopPropagation(); run(i, true); }} title="Adicionar à setlist · Shift+Enter">Adicionar à setlist</Btn>}</>} />
                         ); })}
                     </React.Fragment>
                 ))}
-                {!flat.length && <Empty title={ql ? `Nada com "${q}"` : "Digite para buscar"}>{ql ? "Tente um título, um trecho ou uma referência como Jo 3:16." : "Músicas, versículos, mídia, avisos e itens do roteiro."}</Empty>}
+                {!flat.length && <Empty title={ql ? `Nada com "${q}"` : "Digite para buscar"}>{ql ? "Tente um título, um trecho ou uma referência como Jo 3:16." : "Músicas, versículos, mídia, avisos e itens da setlist."}</Empty>}
             </div>
         </div>
     );

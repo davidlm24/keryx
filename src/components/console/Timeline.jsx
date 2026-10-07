@@ -9,7 +9,7 @@ const minutesOf = (hhmm) => { const [h, m] = String(hhmm).split(":").map(Number)
 // Linha do tempo: one line (Agora, Próximo, how late) that opens into the
 // planned blocks (dashed) over the real ones (from the console's log of when
 // each item went on air). A click on a block prepares the item; going to it
-// is explicit ("Ir" in the Roteiro, or Enter). Opened with no service, or a
+// is explicit ("Ir" in the Setlist, or Enter). Opened with no service, or a
 // service with no items, it says so instead of opening onto nothing.
 export default function Timeline({ service, items, airItemId, prevItemId, log, now, open, onToggle, onPrepare }) {
     const times = plannedTimes(service, items);
@@ -41,7 +41,7 @@ export default function Timeline({ service, items, airItemId, prevItemId, log, n
                 <div className="tl-empty"><Icon name="clock" />Nenhum culto escolhido. Escolha um no menu KERYX, ou crie em Cultos.</div>
             )}
             {open && service && !items.length && (
-                <div className="tl-empty"><Icon name="clock" />{service.title || "Este culto"} ainda não tem itens. Adicione pelo Roteiro (+).</div>
+                <div className="tl-empty"><Icon name="clock" />{service.title || "Este culto"} ainda não tem itens. Adicione pela Setlist (+).</div>
             )}
             {open && service && items.length > 0 && (
                 <div className="tl-track">

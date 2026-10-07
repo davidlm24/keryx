@@ -6,7 +6,7 @@ export const MODULES = [
     ["lib", "Biblioteca"],
     ["slides", "Slides"],
     ["camadas", "Camadas"],
-    ["roteiro", "Roteiro"],
+    ["roteiro", "Setlist"],
     ["tl", "Linha do tempo"],
 ];
 

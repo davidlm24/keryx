@@ -781,6 +781,11 @@ async function checkConsole(webContents, { live, outputs }) {
         result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
         await type("o 3 16");
         result.quickRead = await js("[...document.querySelectorAll('.qj-step b')].map((n) => n.textContent).join('|')");
+        // Space completed the book: the field holds the full name. The
+        // synthetic char event ignores preventDefault and adds a stray
+        // space a real keyboard would not; collapse whitespace.
+        result.quickSpaceValue = String(await js("document.querySelector('.qj-input input').value"));
+        result.quickSpace = result.quickSpaceValue.replace(/s+/g, " ").trim() === "João 3 16";
         result.shotBible = await shot("biblia");
         await press("Enter");
         result.quickPicked = await waitFor(() => js("!document.querySelector('.qj') && [...document.querySelectorAll('.kx-panel-h')].some((n) => n.textContent.startsWith('João 3'))"));
@@ -861,6 +866,42 @@ async function checkConsole(webContents, { live, outputs }) {
             await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i}, duration: 300 }])`);
         }
         result.tlBlocks = await waitFor(() => js("document.querySelectorAll('.tl-track .kx-tl-blk').length >= 2"), 8000);
+
+        // Drag from the Biblioteca (synthetic DragEvents drive the handlers).
+        // Wide enough that the Setlist column is on screen.
+        if (operatorWin) operatorWin.setContentSize(1600, 900);
+        await sleep(400);
+        await click(".kx-tabs button", "Letras");
+        await waitText(webContents, "Canto do console");
+        result.dragPrev = await js(`(() => {
+            const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
+            const to = [...document.querySelectorAll(".kx-mon")].find((n) => n.textContent.includes("Prévia"));
+            if (!from || !to) return "faltou " + (from ? "alvo" : "origem");
+            const dt = new DataTransfer();
+            from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+            to.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer: dt }));
+            to.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: dt }));
+            from.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
+            return true;
+        })()`);
+        await sleep(300);
+        result.dragPrepared = await waitText(webContents, "PRÉVIA · CANTO DO CONSOLE");
+        result.dragDidNotSend = !live.get().content;
+        result.dragSetlist = await js(`(() => {
+            const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
+            const to = document.querySelector(".rund-tail");
+            if (!from || !to) return "faltou " + (from ? "cauda" : "origem");
+            const dt = new DataTransfer();
+            from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+            to.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer: dt }));
+            to.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: dt }));
+            from.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
+            return true;
+        })()`);
+        result.dragAdded = await waitFor(async () => {
+            const rows = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
+            return rows.length === 3 && rows.some((r) => r.title === "Canto do console" && r.type === "SONG");
+        }, 8000);
         await click(".tl-panel .kx-tl button", "");
         result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
     } finally {
@@ -883,11 +924,12 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
         && result.resent && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
-        && result.armed && result.quickOpened && result.quickRead === "João|3|16" && result.quickPicked && result.quickEsc
+        && result.armed && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
-        && result.tlEmpty && result.tlBlocks && result.tlClosed);
+        && result.tlEmpty && result.tlBlocks && result.tlClosed
+        && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded);
     return result;
 }
 

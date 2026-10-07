@@ -121,11 +121,32 @@ export default function Console() {
         try { const stage = await buildStage(item, index); c.setPrev(stage); await sendStage(stage); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
     }, [buildStage, c, sendStage]);
 
+    // A library item dropped on the Setlist: a ServiceItem at that position.
+    const addStageToSetlist = useCallback(async (stage, index) => {
+        if (!serviceId) { c.say("Escolha um culto no menu KERYX."); return; }
+        let type = null;
+        let contentId = "";
+        if (stage.kind === "lyrics" && stage.id?.startsWith("song:")) { type = "SONG"; contentId = stage.id.slice(5); }
+        else if (stage.id?.startsWith("media:")) {
+            contentId = stage.id.slice(6);
+            const k = stage.args?.kind;
+            type = k === "video" || k === "youtube" ? "VIDEO" : k === "audio" ? "AUDIO" : k === "pdf" ? "PDF" : k === "powerpoint" ? "POWERPOINT" : "IMAGE";
+        }
+        if (!type) { c.say("Esse item ainda não entra na setlist; arraste para a Prévia ou o Programa."); return; }
+        const at = Math.max(0, Math.min(items.length, index ?? items.length));
+        try {
+            // Renumber from the end first, so two rows never share an order.
+            for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + 1 });
+            await keryx.entities.ServiceItem.create({ serviceId, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || (type === "SONG" ? 240 : 120) });
+            c.say(`${stage.title} na setlist.`);
+        } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
+    }, [c, serviceId, items]);
+
     const addSong = async (song) => {
         if (!serviceId) { c.say("Escolha um culto no menu KERYX."); return; }
         try {
             await keryx.entities.ServiceItem.create({ serviceId, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || 240 });
-            c.say(`${song.title} adicionada ao fim do Roteiro.`);
+            c.say(`${song.title} adicionada ao fim da setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
 
@@ -195,7 +216,7 @@ export default function Console() {
         if (t && !t.closest(".dialog, .palette, .qj")) setTimeout(() => t.blur?.(), 0);
     };
 
-    const rundownProps = { service, items, airItemId, prevItemId, prepare: prepareItem, go: goItem };
+    const rundownProps = { service, items, airItemId, prevItemId, prepare: prepareItem, go: goItem, addStage: addStageToSetlist };
     const histLeft = useMemo(() => (layout.hidden.lib ? 0 : layout.libW + 6) + (layout.hidden.slides ? 0 : layout.slidesW + 6) + 6, [layout]);
     const showRight = !compact && !(layout.hidden.camadas && layout.hidden.roteiro);
     const rightPanels = (inDrawer) => (
@@ -210,9 +231,9 @@ export default function Console() {
                 <Split horizontal size={layout.camadasH} onSize={(v) => setLayout({ ...layout, camadasH: v })} onReset={() => setLayout({ ...layout, camadasH: DEFAULT_LAYOUT.camadasH })} clamp={(v) => clampSize("camadasH", v)} />
             )}
             {!layout.hidden.roteiro && (
-                <Panel title="Roteiro" count={service ? `${service.title}${items.length ? ` · ${items.length} itens · ${mmss(items.reduce((a, b) => a + (b.duration || 0), 0))}` : ""}` : "nenhum culto"} collapsed={!inDrawer && layout.collapsed.roteiro} onToggle={inDrawer ? undefined : () => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
-                    actions={<IconBtn name="plus" title="Adicionar ao roteiro" small onClick={() => setOpen("palette")} />}>
-                    <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} />
+                <Panel title="Setlist" count={service ? `${service.title}${items.length ? ` · ${items.length} itens · ${mmss(items.reduce((a, b) => a + (b.duration || 0), 0))}` : ""}` : "nenhum culto"} collapsed={!inDrawer && layout.collapsed.roteiro} onToggle={inDrawer ? undefined : () => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
+                    actions={<IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} />}>
+                    <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} />
                 </Panel>
             )}
         </>
@@ -267,7 +288,7 @@ export default function Console() {
                                     <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 22 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco"><Icon name="undo" />Voltar ao anterior</button>
                                 </div>
                             } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))} onSend={() => sendStage()} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
+                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))} onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
                             </Panel>
                         </div>
                         {showRight && (

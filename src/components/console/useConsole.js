@@ -72,7 +72,7 @@ export function useConsole() {
     // "Enviar ao ar": the Prévia (or the stage given) goes to the screens, or
     // to the local copy. Resolves true when it went.
     const send = useCallback(async (stage = prev) => {
-        if (!stage) { say("Nada na prévia. Escolha um item do Roteiro, uma música ou um versículo."); return false; }
+        if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
         const [op, args] = stageOp(stage);
         const ref = stage.args?.ref || {};
