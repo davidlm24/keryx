@@ -12,6 +12,8 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       // Modules the Electron main process uses too (shared/live-state.mjs).
       '@shared': fileURLToPath(new URL('./shared', import.meta.url)),
+      // The design system (tokens, kx- components, icons) the console is built on.
+      '@ds': fileURLToPath(new URL('./docs/design-system', import.meta.url)),
     },
   },
 });

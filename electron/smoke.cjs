@@ -519,6 +519,113 @@ async function checkLayers(webContents, { live, outputs }) {
 // Backups, logs and the Settings bridge, as the packaged app runs them.
 // A tablet on the network: a plain browser window (no preload, no desktop
 // bridge) opening screen pages from the LAN server, fed by store changes.
+// The console: a song prepared in the Prévia goes to air only with Enter, the
+// arrow moves the live slide, a rehearsal never touches the air, arming
+// returns, Esc ends. The projector is opened by the main process, as "Abrir
+// ao iniciar" would.
+async function checkConsole(webContents, { live, outputs }) {
+    const result = { ok: false };
+    const waitText = async (win, needle, present = true, ms = 8000) => {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {
+            if ((await bodyText(win)).includes(needle) === present) return true;
+            await sleep(250);
+        }
+        return false;
+    };
+    const waitFor = async (test, ms = 5000) => {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {
+            if (test()) return true;
+            await sleep(150);
+        }
+        return false;
+    };
+    const key = (k, mods = {}) => webContents.executeJavaScript(`window.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(k)}, bubbles: true, ctrlKey: ${Boolean(mods.ctrl)} })); true`);
+    // A key pressed while a control has focus: the event starts at that control.
+    const keyOn = (selector, text, k) => webContents.executeJavaScript(`(() => {
+        const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((n) => n.textContent.includes(${JSON.stringify(text)}));
+        if (!el) return false;
+        el.focus();
+        el.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(k)}, bubbles: true }));
+        return document.activeElement === el;
+    })()`);
+    const song = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "create", [{
+        title: "Canto do console", artist: "Coral do Teste", lyrics: "Primeiro slide do console\\n\\nSegundo slide do console",
+        slides: [{ text: "Primeiro slide do console" }, { text: "Segundo slide do console" }],
+    }])`)).data;
+    outputs.open("/Projection");
+    const main = await waitWindow("/Projection");
+    // The projector may cover the operator window; a window in the background
+    // stalls the page transition (it runs on animation frames). Bring it up.
+    const operatorWin = require("electron").BrowserWindow.fromWebContents(webContents);
+    if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
+    await sleep(500);
+    try {
+        await webContents.executeJavaScript(`history.pushState({}, "", "/Console"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
+        // Section captions are uppercase on screen (CSS), so innerText is too.
+        result.opened = await waitText(webContents, "PROGRAMA", true, 15000);
+        result.listed = await waitText(webContents, "Canto do console", true, 15000);
+        await webContents.executeJavaScript(CLICK_TEXT(".kx-row", "Canto do console"));
+        result.prepared = await waitText(webContents, "PRÉVIA · CANTO DO CONSOLE");
+        result.airUntouched = !live.get().content;
+        // The Codex bug: a focused tab (Letras) and Enter must not send the Prévia.
+        result.focusedEnter = await keyOn(".kx-tabs button", "Letras", "Enter");
+        await sleep(400);
+        result.focusedEnterKeptAir = !live.get().content;
+        await key("Enter", { ctrl: true });
+        result.sent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
+        result.projected = Boolean(main) && await waitText(main, "Primeiro slide do console");
+        await key("ArrowRight");
+        result.advanced = await waitText(main, "Segundo slide do console");
+
+        // KERYX_CONSOLE_SHOT=<file.png>: the console with a song on air.
+        // The operator window may sit behind the projector: bring it up first.
+        // A capture that fails is reported, not fatal.
+        if (process.env.KERYX_CONSOLE_SHOT) {
+            try {
+                const win = require("electron").BrowserWindow.fromWebContents(webContents);
+                if (win) { win.show(); win.focus(); }
+                await sleep(1200);
+                fs.writeFileSync(process.env.KERYX_CONSOLE_SHOT, (await webContents.capturePage()).toPNG());
+                result.shot = true;
+            } catch (err) {
+                result.shot = String(err && err.message);
+            }
+        }
+
+        await webContents.executeJavaScript(CLICK_TEXT(".kx-seg-mode button", "Ensaio"));
+        result.rehearsing = await waitText(webContents, "MODO ENSAIO");
+        // In Ensaio a slide click prepares, "Mostrar no ensaio" shows it in the
+        // rehearsal copy only: the screens stay on slide 2.
+        await webContents.executeJavaScript(CLICK_TEXT(".kx-slide", "Primeiro slide do console"));
+        await sleep(300);
+        result.rehearsalButton = await webContents.executeJavaScript(CLICK_TEXT("button", "Mostrar no ensaio"));
+        await sleep(400);
+        result.rehearsalKeptAir = Boolean(live.get().content) && live.get().content.index === 1;
+        await webContents.executeJavaScript(CLICK_TEXT(".kx-banner button", "Armar saídas"));
+        await sleep(300);
+        await webContents.executeJavaScript(CLICK_TEXT(".dialog button", "Armar saídas"));
+        result.armed = await waitText(webContents, "MODO ENSAIO", false);
+
+        // Esc asks first; only "Encerrar" in the dialog ends.
+        await key("Escape");
+        result.endAsked = await waitText(webContents, "ENCERRAR A PROJEÇÃO?");
+        result.endWaited = Boolean(live.get().content);
+        await webContents.executeJavaScript(CLICK_TEXT(".dialog button", "Encerrar"));
+        result.ended = await waitFor(() => !live.get().content);
+        result.consoleErrors = [];
+    } finally {
+        await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "delete", ["${song && song.id}"])`);
+        await webContents.executeJavaScript(`history.pushState({}, "", "/"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
+        if (main) main.close();
+    }
+    result.ok = result.opened && result.listed && result.prepared && result.airUntouched && result.focusedEnter && result.focusedEnterKeptAir
+        && result.sent && result.projected && result.advanced && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
+        && result.armed && result.endAsked && result.endWaited && result.ended;
+    return result;
+}
+
 async function checkNetwork({ network, live, videoFile }) {
     const result = { started: false, lyrics: false, stage: false, live: null, operatorPageBlocked: false, pinForm: false, tabletErrors: [], ok: false };
     await network.ops.setPin(null, ""); // start open, whatever the data folder had
@@ -748,10 +855,11 @@ function runSmokeTest(win, { dev, outputs, screen, system, network, live, dataDi
             const operatorResult = await checkOperatorFlow(webContents, { live });
             const videoResult = await checkVideo(webContents, { live });
             const layersResult = await checkLayers(webContents, { live, outputs });
+            const consoleResult = await checkConsole(webContents, { live, outputs });
             // The LAN server serves the built app (dist/), so this runs in built mode only.
             const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live, videoFile: videoResult.fileName });
-            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && operatorResult.ok && videoResult.ok && layersResult.ok && !importOutcome && (dev || networkResult.ok),
-                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, operator: operatorResult, video: videoResult, layers: layersResult, network: networkResult });
+            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && operatorResult.ok && videoResult.ok && layersResult.ok && consoleResult.ok && !importOutcome && (dev || networkResult.ok),
+                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, operator: operatorResult, video: videoResult, layers: layersResult, console: consoleResult, network: networkResult });
         } catch (err) {
             finish(false, { rendered, exception: String(err && (err.stack || err.message)).slice(0, 800) });
         }

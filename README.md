@@ -239,7 +239,9 @@ Two tiers, both in `src/App.jsx`:
   `Layout`. Projection-target pages (`/Projection`, `/BannerProjection`,
   `/StageView`, `/DeviceView`, `/LyricProjection`, `/VideoProjection`,
   `/BibleMaterialProjection`, `/AnnouncementCarousel`) are routed bare,
-  without `Layout` — they are meant to fill a second screen.
+  without `Layout` — they are meant to fill a second screen. So is
+  `/Console`, the operator console (phase 6): it has its own top bar and is
+  built on the design system in `docs/design-system/`.
 
 `createPageUrl(name)` (`src/utils/index.ts`) is just `'/' + name`, so page keys
 and URL paths are the same string. Note that **`/Home` is the songs library**

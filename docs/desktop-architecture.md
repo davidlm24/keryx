@@ -225,8 +225,48 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
 
 Not in part 1: devices and scenes (`ProjectionDevice.current_output`,
 `DeviceView`, `OperatorPanel`) and `BannerProjection` wait for the UI
-redesign. **Next: mock up the whole operator app with the user before any
-UI code** (Holyrics/Spresenter-style dashboard on `src/lib/projection.js`).
+redesign.
+
+### The console (phase 6, part 2)
+
+Decided 2026-10-07 after the mockup in Claude Design (`docs/design-system.md`
+has the link and the tokens). One screen, `/Console`, replaces the operator
+pages: the library (Letras, Mídia, Avisos), the slides in hand, Programa and
+Prévia, Camadas, Roteiro, Linha do tempo, Bíblia as its own environment, the
+command palette (`/`), Saídas, and Ensaio.
+
+- **Programa / Prévia.** A click anywhere prepares a *stage*
+  (`src/lib/console/stage.js`: the live-state operation that would put the
+  item on air, plus title, slides and a start index). Only "Enviar ao ar"
+  (Enter) sends it. The Prévia monitor is the stage applied with `applyOp` to
+  a copy of the current look; both monitors are `ScreenRenderer`, the
+  projector's own component, scaled by container units.
+- **Ensaio.** `useConsole` keeps a local copy of the document and applies
+  operations to it with the same rules (`applyOp` from the shared module);
+  nothing reaches the main process until "Armar saídas", which discards the
+  copy. The outputs never know a rehearsal happened.
+- **Engine additions for it:** `history` (what the main layer showed before
+  each change, for "Voltar ao anterior" — back through the Prévia, never
+  straight to air), `session.item` (the ServiceItem on air), the `logo`
+  layer, and the style keys `text_align`, `text_position`, `transition`.
+- **Camadas** edit the live state directly: Logo = `logo.set`, Sobreposição
+  = `overlays.set`, Texto principal = `content.update { style }`, Fundo =
+  `background.set/clear`. A theme is a `ProjectionTheme` row; the panel
+  shows "Modificado" when the style on air differs from it.
+- **Roteiro** is `ServiceItem` rows of the service in hand (today's by
+  default); drag reorders by writing `order`. The timeline's real lane is
+  the console's own log of when each item went on air (localStorage per
+  service); the planned lane is `Service.startTime` plus durations.
+- **Saídas** = the main process's output windows (`keryx:displays:list`,
+  polled) plus network `ProjectionDevice` heartbeats. The quick alert is the
+  one control that bypasses the Prévia (`alert.show`).
+- The layout (module sizes, collapsed, hidden) is saved per profile in
+  localStorage (`src/lib/console/layout.js`); "Restaurar layout" resets it.
+
+Still outside the console (reached from its menu) until they are folded in:
+Músicas, Mídia and Comunicação as editors, Cultos as the planner, Settings.
+The old Ferramentas/Comunicação postMessage paths, `AlertMessage` and
+`BibleProjectionSync` stay only as fallbacks for those pages.
 
 ## 3. Outputs and displays
 

@@ -3,7 +3,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["./shared/*"]
+      "@shared/*": ["./shared/*"],
+      "@ds/*": ["./docs/design-system/*"]
     },
     "jsx": "react-jsx",
     "module": "esnext",

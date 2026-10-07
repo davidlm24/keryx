@@ -39,6 +39,15 @@ wiring, the data model and the known gaps.
   `BibleProjectionSync`) as fallbacks until the redesign replaces them; don't
   extend those. Going live from Músicas/Cultos goes through
   `useProjectionControl()`.
+- **The operator console is `/Console`** (`src/pages/Console.jsx`,
+  `src/components/console/`), built on the design system in
+  `docs/design-system/` (tokens and `kx-` classes, imported as `@ds/…`; read
+  `docs/design-system.md` before touching its look). A click prepares a
+  *stage* in the Prévia (`src/lib/console/stage.js`); only "Enviar ao ar"
+  sends it. Ensaio applies operations to a local copy with `applyOp`
+  (`useConsole`), never to the main process. Screens and the console's
+  monitors render with `src/components/screen/ScreenRenderer.jsx` — one
+  component, sized in container units — so a preview is the output.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
   unsubscribe function — always call it in the effect cleanup. On desktop every
   write reaches every window with the whole row, deletes included.

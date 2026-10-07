@@ -30,6 +30,7 @@ import LyricProjection from './pages/LyricProjection';
 import GlobalSearch from './pages/GlobalSearch';
 import Analytics from './pages/Analytics';
 import AnnouncementCarouselPage from './pages/AnnouncementCarouselPage';
+import Console from './pages/Console';
 
 // Public routes. These render OUTSIDE AuthenticatedApp: that component
 // redirects to the login page whenever auth fails, so a /login route nested
@@ -129,6 +130,8 @@ const AuthenticatedApp = () => {
         </LayoutWrapper>
       } />
       <Route path="/AnnouncementCarousel" element={<AnnouncementCarouselPage />} />
+      {/* The operator console has its own top bar: no Layout. */}
+      <Route path="/Console" element={<Console />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
     </AnimatePresence>
