@@ -1,69 +1,38 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import CommunicationProjectionView from "@/components/projection/CommunicationProjectionView";
 import TabletVideoReceiver from "@/components/projection/TabletVideoReceiver";
-import LiveMediaView from "@/components/projection/LiveMediaView";
-import LiveOverlays from "@/components/projection/LiveOverlays";
-import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
+import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
-import { useLiveState } from "@/hooks/useLiveState";
+import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
-import { currentSlide as slideOf, mainLayer } from "@shared/live-state.mjs";
+import { mainLayer } from "@shared/live-state.mjs";
 
-// The main projector: every layer of the live state (shared/live-state.mjs),
-// by priority (mainLayer): black/logo, tool, communication, media, content;
-// the background layer under the slides, overlays and the alert on top.
-// The current Ferramentas and Comunicação pages still send their tools and
-// pieces by postMessage; those show until the live state shows something new.
+// The main projector: the live state (shared/live-state.mjs) rendered full
+// screen by ScreenRenderer, the same component the console's monitors use.
+// The old Ferramentas and Comunicação pages still send their tools and pieces
+// by postMessage; those show until the live state shows something new.
 export default function Projection() {
     const live = useLiveState();
+    const now = useLiveNow(1000);
+    const logo = useChurchLogo();
     const content = live?.content || null;
     const media = live?.media || null;
-    const logo = useChurchLogo();
 
-    // Modos de ferramentas: relógio, cronômetro, temporizador, tela preta, texto livre
-    const [toolMode, setToolMode] = useState(null); // "clock" | "stopwatch" | "timer" | "black" | "freetext" | null
-    const [toolData, setToolData] = useState({}); // { text, endTime, startTime, text_color, font_size }
-    const [toolTick, setToolTick] = useState(0); // força re-render a cada segundo
-
-    // Comunicação Visual (contagens regressivas, anúncios) — janela unificada
+    // Legacy postMessage payloads (tools: clock, stopwatch, timer, black, freetext; communication pieces).
+    const [toolMode, setToolMode] = useState(null);
+    const [toolData, setToolData] = useState({});
     const [commPayload, setCommPayload] = useState(null);
     const [commKey, setCommKey] = useState(0);
 
     const goFullscreen = () => {
         const el = document.documentElement;
-        if (!document.fullscreenElement && el.requestFullscreen) {
-            el.requestFullscreen().catch(() => {});
-        }
+        if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
     };
-
-    // Tentar tela cheia ao carregar (silencioso se o navegador exigir gesto)
     useEffect(() => { goFullscreen(); }, []);
 
-    // The tool on screen: the old Ferramentas page's (postMessage) first, then
-    // the live state's tool layer, whose times are on the shared clock.
-    const layer = mainLayer(live);
-    const liveTool = !toolMode && layer === "tool" ? live.tool : null;
-    const tm = toolMode || liveTool?.mode || null;
-    const td = toolMode
-        ? toolData
-        : liveTool ? { text: liveTool.text, startTime: liveTool.startedAt, endTime: liveTool.endsAt, ...liveTool.style } : {};
-
-    // Tick para relógio/cronômetro/temporizador
     useEffect(() => {
-        if (!tm || tm === "black" || tm === "freetext") return;
-        const interval = setInterval(() => setToolTick(t => t + 1), 1000);
-        return () => clearInterval(interval);
-    }, [tm]);
-
-    useEffect(() => {
-        // Notify parent window that projection is ready
-        if (window.opener) {
-            window.opener.postMessage({ type: "PROJECTION_READY" }, "*");
-        }
-
-        // Listen for messages from the control window
+        if (window.opener) window.opener.postMessage({ type: "PROJECTION_READY" }, "*");
         const handleMessage = (event) => {
             if (!event.data || !event.data.type) return;
             if (event.data.type === "STOP_PROJECTION") {
@@ -77,7 +46,6 @@ export default function Projection() {
                 setCommPayload({ playlist: event.data.playlist, isSequence: true });
                 setCommKey((k) => k + 1);
             } else if (event.data.type === "PROJECTION_TOOL") {
-                // Ferramentas: clock, stopwatch, timer, black, freetext
                 setCommPayload(null);
                 if (event.data.mode === "stop") {
                     setToolMode(null);
@@ -88,7 +56,6 @@ export default function Projection() {
                 }
             }
         };
-
         window.addEventListener("message", handleMessage);
         return () => window.removeEventListener("message", handleMessage);
     }, []);
@@ -102,10 +69,9 @@ export default function Projection() {
         setCommPayload(null);
     }, [shownKey]);
 
-    // Arrows, space and clicks move the live slide (every screen follows).
-    // Slides change only when the operator moves them: no timer here.
-    // Not while media covers the slides.
-    const hasContent = Boolean(content) && !media;
+    // Arrows, space and clicks move the live slide (every screen follows),
+    // only while the slides are what the projector shows.
+    const hasContent = mainLayer(live) === "content";
     useEffect(() => {
         if (!keryx.isDesktop || !hasContent) return undefined;
         const fail = (err) => console.error("[keryx] slide:", err);
@@ -130,462 +96,24 @@ export default function Projection() {
         };
     }, [hasContent]);
 
-    const advanceCommunication = (fromIndex) => {
-        if (!keryx.isDesktop) return;
-        projection.advanceCommunication(fromIndex).catch((err) => console.error("[keryx] comunicação:", err));
-    };
-
-    // The operator's black / logo screen covers everything, overlays included.
-    if (live?.screen === "black" || tm === "black") {
-        return <div className="min-h-screen bg-black" />;
+    // Legacy paths, shown as the live state's own layers would be.
+    if (toolMode === "black") return <div className="min-h-screen bg-black" />;
+    if (toolMode) {
+        const tool = {
+            mode: toolMode,
+            text: toolData.text || "",
+            style: { text_color: toolData.text_color, font_size: toolData.font_size, background_image: toolData.background_image },
+            startedAt: toolData.startTime || now,
+            endsAt: toolData.endTime || null,
+        };
+        return <ScreenRenderer fill state={{ ...live, screen: "show", tool }} now={now} logoUrl={logo} />;
     }
-    if (live?.screen === "logo") {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                {logo && <img src={logo} alt="" className="max-h-[50vh] max-w-[60vw] object-contain" />}
-            </div>
-        );
-    }
-
-    const body = (() => {
-        // === Modos de Ferramentas ===
-        if (tm === "clock") {
-            const now = new Date(keryx.live.now());
-            const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-            const dateStr = now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-            const fontSizeMap = { small: "text-5xl", medium: "text-7xl", large: "text-8xl", xlarge: "text-9xl" };
-            const fs = fontSizeMap[td.font_size] || "text-8xl";
-            const bg = td.background_image;
-            const isImg = bg && (bg.startsWith("http") || bg.startsWith("data:"));
-            return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-black relative overflow-hidden"
-                    style={isImg ? { backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}>
-                    {isImg && <div className="absolute inset-0 bg-black/50" />}
-                    <div className="relative z-10 text-center">
-                        <p className={`${fs} font-bold font-mono`}
-                            style={{ color: td.text_color || "#ffffff", textShadow: "4px 4px 12px rgba(0,0,0,0.8)" }}>
-                            {timeStr}
-                        </p>
-                        <p className="text-2xl md:text-3xl mt-4 font-medium capitalize"
-                            style={{ color: td.text_color || "#ffffff", textShadow: "2px 2px 8px rgba(0,0,0,0.8)" }}>
-                            {dateStr}
-                        </p>
-                    </div>
-                </div>
-            );
-        }
-
-        if (tm === "stopwatch") {
-            const elapsed = td.startTime ? Math.floor((keryx.live.now() - td.startTime) / 1000) : 0;
-            const hours = Math.floor(elapsed / 3600);
-            const minutes = Math.floor((elapsed % 3600) / 60);
-            const seconds = elapsed % 60;
-            const timeStr = `${hours > 0 ? String(hours).padStart(2, "0") + ":" : ""}${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-            const fontSizeMap = { small: "text-5xl", medium: "text-7xl", large: "text-8xl", xlarge: "text-9xl" };
-            const fs = fontSizeMap[td.font_size] || "text-8xl";
-            const bg = td.background_image;
-            const isImg = bg && (bg.startsWith("http") || bg.startsWith("data:"));
-            return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-black relative overflow-hidden"
-                    style={isImg ? { backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}>
-                    {isImg && <div className="absolute inset-0 bg-black/50" />}
-                    <div className="relative z-10 text-center">
-                        <p className="text-xl md:text-2xl text-white/50 mb-4 uppercase tracking-widest">Cronômetro</p>
-                        <p className={`${fs} font-bold font-mono`}
-                            style={{ color: td.text_color || "#ffffff", textShadow: "4px 4px 12px rgba(0,0,0,0.8)" }}>
-                            {timeStr}
-                        </p>
-                    </div>
-                </div>
-            );
-        }
-
-        if (tm === "timer") {
-            const remaining = td.endTime ? Math.max(0, Math.ceil((td.endTime - keryx.live.now()) / 1000)) : 0;
-            const hours = Math.floor(remaining / 3600);
-            const minutes = Math.floor((remaining % 3600) / 60);
-            const seconds = remaining % 60;
-            const timeStr = `${hours > 0 ? String(hours).padStart(2, "0") + ":" : ""}${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-            const fontSizeMap = { small: "text-5xl", medium: "text-7xl", large: "text-8xl", xlarge: "text-9xl" };
-            const fs = fontSizeMap[td.font_size] || "text-8xl";
-            const bg = td.background_image;
-            const isImg = bg && (bg.startsWith("http") || bg.startsWith("data:"));
-            const isFinished = remaining === 0 && td.endTime;
-            return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-black relative overflow-hidden"
-                    style={isImg ? { backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}>
-                    {isImg && <div className="absolute inset-0 bg-black/50" />}
-                    <div className="relative z-10 text-center">
-                        <p className="text-xl md:text-2xl text-white/50 mb-4 uppercase tracking-widest">Temporizador</p>
-                        <p className={`${fs} font-bold font-mono`}
-                            style={{
-                                color: isFinished ? "#ef4444" : (td.text_color || "#ffffff"),
-                                textShadow: isFinished ? "0 0 30px rgba(239,68,68,0.8)" : "4px 4px 12px rgba(0,0,0,0.8)",
-                            }}>
-                            {timeStr}
-                        </p>
-                    </div>
-                </div>
-            );
-        }
-
-        if (tm === "freetext") {
-            const fontSizeMap = { small: "text-3xl", medium: "text-5xl", large: "text-6xl", xlarge: "text-7xl", xxlarge: "text-8xl" };
-            const fs = fontSizeMap[td.font_size] || "text-6xl";
-            const bg = td.background_image;
-            const isImg = bg && (bg.startsWith("http") || bg.startsWith("data:"));
-            const isGradient = bg && bg.includes("gradient");
-            return (
-                <div className="min-h-screen flex flex-col items-center justify-center p-12 relative overflow-hidden"
-                    style={isImg ? { backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" } : isGradient ? { background: bg } : {}}>
-                    {isImg && <div className="absolute inset-0 bg-black/50" />}
-                    {!bg && <div className="absolute inset-0 bg-gradient-to-br from-background via-accent/20 to-primary/20" />}
-                    <div className="relative z-10 w-full max-w-6xl text-center">
-                        <p className={`${fs} font-bold leading-relaxed whitespace-pre-wrap`}
-                            style={{ color: td.text_color || "#ffffff", textShadow: "4px 4px 12px rgba(0,0,0,0.8)" }}>
-                            {td.text || ""}
-                        </p>
-                    </div>
-                </div>
-            );
-        }
-
-        // Comunicação Visual (contagens regressivas, anúncios)
-        if (commPayload) {
-            return <CommunicationProjectionView key={commKey} {...commPayload} />;
-        }
-        if (layer === "communication") {
-            return <CommunicationProjectionView key={live.communication.startedAt} live={live.communication} onItemEnd={advanceCommunication} />;
-        }
-
-        // Mídia (vídeos, imagens, PDFs; uma ou em sequência)
-        if (media) return <LiveMediaView media={media} />;
-
-        if (!content) {
-            return (
-                <div className="min-h-screen bg-gradient-to-br from-gray-900 via-teal-900 to-lime-900 flex items-center justify-center">
-                    <TabletVideoReceiver />
-                    <div className="text-center">
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ duration: 0.5 }}
-                        >
-                            <div className="text-6xl mb-4">🎵</div>
-                            <h1 className="text-3xl font-bold text-white mb-2">
-                                Aguardando Projeção
-                            </h1>
-                            <p className="text-lime-300 text-lg">
-                                Inicie uma música na janela de controle
-                            </p>
-                            <button
-                                onClick={goFullscreen}
-                                className="mt-6 px-6 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm border border-white/20 transition"
-                            >
-                                Ativar Tela Cheia
-                            </button>
-                        </motion.div>
-                    </div>
-                </div>
-            );
-        }
-
-        const fontSizeClasses = {
-            xsmall: "text-xl md:text-2xl lg:text-3xl",
-            small: "text-2xl md:text-3xl lg:text-4xl",
-            medium: "text-3xl md:text-4xl lg:text-5xl",
-            large: "text-4xl md:text-5xl lg:text-6xl",
-            xlarge: "text-5xl md:text-6xl lg:text-7xl",
-            xxlarge: "text-6xl md:text-7xl lg:text-8xl",
-            xxxlarge: "text-7xl md:text-8xl lg:text-9xl"
-        };
-
-        const fontFamilyClasses = {
-            sans: "font-sans",
-            serif: "font-serif",
-            mono: "font-mono",
-            cursive: "font-['Brush_Script_MT',_cursive]",
-            arial: "font-['Arial',_sans-serif]",
-            georgia: "font-['Georgia',_serif]",
-            times: "font-['Times_New_Roman',_serif]",
-            verdana: "font-['Verdana',_sans-serif]",
-            trebuchet: "font-['Trebuchet_MS',_sans-serif]",
-            impact: "font-['Impact',_sans-serif]",
-            palatino: "font-['Palatino_Linotype',_serif]",
-            garamond: "font-['Garamond',_serif]",
-            helvetica: "font-['Helvetica',_sans-serif]",
-            courier_new: "font-['Courier_New',_monospace]"
-        };
-
-        const getTextEffectStyle = (effect) => {
-            switch(effect) {
-                case "shadow":
-                    return { textShadow: "4px 4px 8px rgba(0,0,0,0.8)" };
-                case "double-shadow":
-                    return { textShadow: "3px 3px 6px rgba(0,0,0,0.8), -2px -2px 4px rgba(0,0,0,0.5)" };
-                case "glow":
-                    return { textShadow: "0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.6)" };
-                case "outline":
-                    return { textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 2px 2px 4px rgba(0,0,0,0.5)" };
-                case "3d":
-                    return { textShadow: "1px 1px 0 #000, 2px 2px 0 #000, 3px 3px 0 #000, 4px 4px 0 #000, 5px 5px 10px rgba(0,0,0,0.5)" };
-                case "neon":
-                    return { textShadow: "0 0 10px #fff, 0 0 20px #fff, 0 0 30px #fff, 0 0 40px #ff00ff, 0 0 70px #ff00ff" };
-                default:
-                    return {};
-            }
-        };
-
-        // Versão com drop-shadow (filter) para texto com gradiente — evita o retângulo branco
-        const getEffectFilter = (effect) => {
-            switch(effect) {
-                case "shadow":
-                    return { filter: "drop-shadow(4px 4px 8px rgba(0,0,0,0.85))" };
-                case "double-shadow":
-                    return { filter: "drop-shadow(3px 3px 6px rgba(0,0,0,0.8)) drop-shadow(-2px -2px 4px rgba(0,0,0,0.5))" };
-                case "glow":
-                    return { filter: "drop-shadow(0 0 20px rgba(255,255,255,0.8)) drop-shadow(0 0 40px rgba(255,255,255,0.5))" };
-                case "outline":
-                    return { filter: "drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000) drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000)" };
-                case "3d":
-                    return { filter: "drop-shadow(2px 2px 0 #000) drop-shadow(4px 4px 8px rgba(0,0,0,0.5))" };
-                case "neon":
-                    return { filter: "drop-shadow(0 0 10px #fff) drop-shadow(0 0 20px #ff00ff) drop-shadow(0 0 40px #ff00ff)" };
-                default:
-                    return {};
-            }
-        };
-
-        const getGradientTextStyle = (slide) => {
-            const hasGradient = slide?.text_color_2;
-            const effect = slide?.text_effect || textEffect;
-            if (hasGradient) {
-                return {
-                    background: `linear-gradient(to right, ${slide.text_color || "#ffffff"}, ${slide.text_color_2})`,
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    textShadow: 'none',
-                    ...getEffectFilter(effect),
-                };
-            }
-            return {
-                color: slide?.text_color || "#ffffff",
-                ...getTextEffectStyle(effect),
-            };
-        };
-
-        const style = content.style || {};
-        const fontSize = style.font_size || "large";
-        const fontFamily = style.font_family || "sans";
-        const textEffect = style.text_effect || "shadow";
-        // The song's own background, else the background layer.
-        const bgLayer = live.background;
-        const backgroundImage = style.background_image || (bgLayer && bgLayer.kind !== "video" ? bgLayer.value : null);
-        const backgroundVideo = !style.background_image && bgLayer?.kind === "video" ? bgLayer.value : null;
-        const songTitle = content.title;
-        const isBible = content.kind === "bible";
-        const reference = content.ref?.reference || content.title;
-        const slide = { ...(slideOf(content) || { text: "" }), text_color: style.text_color, text_color_2: style.text_color_2, text_effect: textEffect };
-
-        const isGradient = backgroundImage && backgroundImage.includes('gradient');
-        const isImageUrl = backgroundImage && (backgroundImage.startsWith('http') || backgroundImage.startsWith('data:'));
-        const isSolidColor = backgroundImage && !isGradient && !isImageUrl;
-
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-12 relative overflow-hidden"
-                 style={isImageUrl ? {
-                     backgroundImage: `url(${backgroundImage})`,
-                     backgroundSize: 'cover',
-                     backgroundPosition: 'center'
-                 } : isGradient ? {
-                     background: backgroundImage
-                 } : isSolidColor ? {
-                     backgroundColor: backgroundImage
-                 } : {}}>
-                <TabletVideoReceiver />
-                {backgroundVideo && (
-                    <video src={backgroundVideo} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
-                )}
-                {/* Overlay escuro sobre imagem de fundo */}
-                {isImageUrl && (
-                    <div className="absolute inset-0 bg-black/50"></div>
-                )}
-
-                {/* Background padrão com gradiente */}
-                {!backgroundImage && !backgroundVideo && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-background via-accent/20 to-primary/20"></div>
-                )}
-
-                {/* Audio player (hidden) */}
-                {content.audio && (
-                    <audio
-                        key={content.startedAt}
-                        src={content.audio}
-                        autoPlay
-                        className="hidden"
-                    />
-                )}
-
-                {/* Background effects (só se não tiver fundo personalizado) */}
-                {!backgroundImage && !backgroundVideo && (
-                    <div className="absolute inset-0 opacity-20">
-                        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-lime-500 rounded-full blur-3xl animate-pulse"></div>
-                        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }}></div>
-                    </div>
-                )}
-
-                {/* Overlay para gradientes (melhor legibilidade) */}
-                {isGradient && (
-                    <div className="absolute inset-0 bg-black/30"></div>
-                )}
-
-                {/* Song title */}
-                {songTitle && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="absolute top-8 left-0 right-0 text-center"
-                    >
-                        <h2 className={`text-2xl font-semibold ${fontFamilyClasses[fontFamily]}`}
-                            style={{
-                                color: slide.text_color || "#ffffff",
-                                ...getTextEffectStyle(textEffect)
-                            }}>
-                            {songTitle}
-                        </h2>
-                    </motion.div>
-                )}
-
-                {/* Main slide content */}
-                <div className="relative z-10 w-full max-w-6xl px-12">
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={`${content.startedAt}:${content.index}`}
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -30 }}
-                            transition={{ duration: 0.5, ease: "easeInOut" }}
-                            className="text-center flex flex-col items-center gap-8"
-                        >
-                            {isBible ? (
-                                <>
-                                    {/* Bible reference badge — professional glass style */}
-                                    <div className="flex flex-col items-center gap-5">
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.92 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            transition={{ duration: 0.4 }}
-                                            className="flex items-center gap-3 px-8 py-3.5 rounded-2xl backdrop-blur-md"
-                                            style={{
-                                                background: "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-                                                border: "1px solid rgba(255,255,255,0.18)",
-                                                boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)",
-                                            }}
-                                        >
-                                            <svg className="w-5 h-5 shrink-0" style={{ color: "rgba(255,255,255,0.7)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.063.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.063.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                                            </svg>
-                                            <span className={`font-bold tracking-[0.15em] uppercase text-xl ${fontFamilyClasses[fontFamily]}`}
-                                                style={{
-                                                    color: "rgba(255,255,255,0.92)",
-                                                    textShadow: "0 2px 12px rgba(0,0,0,0.9)",
-                                                }}>
-                                                {reference}
-                                            </span>
-                                        </motion.div>
-                                        {/* Elegant divider */}
-                                        <div className="flex items-center gap-3 w-48">
-                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"></div>
-                                            <div className="w-1.5 h-1.5 rounded-full bg-white/30"></div>
-                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"></div>
-                                        </div>
-                                    </div>
-
-                                    {/* Bible verse text with verse number badges */}
-                                    <div className={`${fontSizeClasses[fontSize]} ${fontFamilyClasses[fontFamily]} font-semibold leading-loose text-center max-h-[58vh] overflow-y-auto`}
-                                        style={{
-                                            color: slide.text_color || "#ffffff",
-                                            ...getTextEffectStyle(textEffect)
-                                        }}>
-                                        {(() => {
-                                            const text = slide.text || "";
-                                            const verseRegex = /(\d+)\s+([\s\S]*?)(?=\s+\d+\s|$)/g;
-                                            const verses = [];
-                                            let m;
-                                            while ((m = verseRegex.exec(text)) !== null) {
-                                                verses.push({ number: m[1], text: m[2].trim() });
-                                            }
-                                            if (verses.length === 0 && text.trim()) {
-                                                return <div className="mb-4">{text}</div>;
-                                            }
-                                            return verses.map((v, i) => (
-                                                <div key={i} className="flex items-start justify-center gap-3 mb-5">
-                                                    <span className="font-bold shrink-0 rounded-md"
-                                                        style={{
-                                                            fontSize: "0.38em",
-                                                            color: "rgba(255,255,255,0.5)",
-                                                            background: "rgba(255,255,255,0.06)",
-                                                            border: "1px solid rgba(255,255,255,0.12)",
-                                                            lineHeight: 1.3,
-                                                            padding: "0.1em 0.5em",
-                                                            marginTop: "0.2em",
-                                                        }}>
-                                                        {v.number}
-                                                    </span>
-                                                    <span style={getGradientTextStyle(slide)} className="text-left flex-1">
-                                                        {v.text}
-                                                    </span>
-                                                </div>
-                                            ));
-                                        })()}
-                                    </div>
-
-                                    {/* Bottom reference */}
-                                    <div className="flex items-center gap-4 mt-4">
-                                        <div className="h-px w-16 bg-gradient-to-r from-transparent to-white/20"></div>
-                                        <span className={`text-sm font-medium tracking-[0.2em] uppercase ${fontFamilyClasses[fontFamily]}`}
-                                            style={{ color: "rgba(255,255,255,0.45)", textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
-                                            {reference}
-                                        </span>
-                                        <div className="h-px w-16 bg-gradient-to-l from-transparent to-white/20"></div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex flex-col items-center gap-4">
-                                    {slide.is_chorus && (
-                                        <div className="px-5 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/40">
-                                            <span className="text-amber-300 text-sm font-bold uppercase tracking-[0.2em]"
-                                                style={{ textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
-                                                ♪ Refrão
-                                            </span>
-                                        </div>
-                                    )}
-                                    <p
-                                        className={`${fontSizeClasses[fontSize]} ${fontFamilyClasses[fontFamily]} font-bold leading-relaxed whitespace-pre-wrap ${slide.is_chorus ? "italic" : ""}`}
-                                        style={{
-                                            opacity: slide.is_chorus ? 0.95 : 1,
-                                            ...getGradientTextStyle(slide)
-                                        }}
-                                    >
-                                        {slide.text}
-                                    </p>
-                                </div>
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
-                </div>
-
-
-            </div>
-        );
-    })();
+    if (commPayload) return <CommunicationProjectionView key={commKey} {...commPayload} />;
 
     return (
         <>
-            {body}
-            <LiveOverlays />
-            <AlertOverlayRenderer />
+            <TabletVideoReceiver />
+            <ScreenRenderer fill state={live} now={now} logoUrl={logo} />
         </>
     );
 }

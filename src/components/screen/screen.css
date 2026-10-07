@@ -1,0 +1,76 @@
+/* The projected screen (ScreenRenderer): one look for the projector window
+   and for the console's monitors, sized in container units so a preview is
+   the output scaled down. Console tokens never appear here. */
+.ks { position: relative; overflow: hidden; background: #000; color: #fff; isolation: isolate;
+  font-family: "Geist", "Inter", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.ks.ks-fill { position: fixed; inset: 0; container-type: size; }
+.ks.ks-box { width: 100%; aspect-ratio: 16 / 9; container-type: inline-size; }
+.ks-layer { position: absolute; inset: 0; }
+.ks-bg-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.ks-bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ks-bg-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); }
+.ks-bg-default { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 20%, #26304f 0%, #10131f 55%, #06070c 100%); }
+.ks-black { position: absolute; inset: 0; background: #000; }
+
+/* Content: lyrics, Bible, free text */
+.ks-content { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 7cqw 8cqw; gap: 2cqw; }
+.ks-content.ks-pos-top { justify-content: flex-start; padding-top: 9cqw; }
+.ks-content.ks-pos-bottom { justify-content: flex-end; padding-bottom: 8cqw; }
+.ks-content.ks-al-left { align-items: flex-start; text-align: left; }
+.ks-content.ks-al-right { align-items: flex-end; text-align: right; }
+.ks-title { position: absolute; top: 3.5cqw; left: 8cqw; right: 8cqw; text-align: center; font-size: 2.2cqw; font-weight: 500; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks-text { font-weight: 600; line-height: 1.22; white-space: pre-wrap; max-width: 100%; }
+.ks-text.ks-xsmall { font-size: 2.4cqw; } .ks-text.ks-small { font-size: 3cqw; } .ks-text.ks-medium { font-size: 3.8cqw; }
+.ks-text.ks-large { font-size: 4.8cqw; } .ks-text.ks-xlarge { font-size: 5.8cqw; } .ks-text.ks-xxlarge { font-size: 7cqw; }
+.ks-bible .ks-text { font-weight: 500; line-height: 1.3; font-size: calc(var(--ks-size, 4.8cqw) * .8); }
+.ks-text sup { font-size: .5em; opacity: .65; margin-right: .35em; vertical-align: .6em; font-weight: 500; }
+.ks-chorus { font-size: 1.6cqw; letter-spacing: .2em; text-transform: uppercase; opacity: .6; font-weight: 500; }
+.ks-ref { font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; opacity: .8; }
+.ks-anim-fade { animation: ks-fade .4s ease-out; }
+.ks-anim-slide { animation: ks-slide .35s cubic-bezier(.2, .8, .2, 1); }
+.ks-anim-zoom { animation: ks-zoom .35s ease-out; }
+@keyframes ks-fade { from { opacity: 0; } }
+@keyframes ks-slide { from { opacity: 0; transform: translateY(2cqw); } }
+@keyframes ks-zoom { from { opacity: 0; transform: scale(.96); } }
+
+/* Tools */
+.ks-tool { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1cqw; text-align: center; padding: 6cqw; }
+.ks-tool-lab { font-size: 2.2cqw; letter-spacing: .14em; text-transform: uppercase; font-weight: 500; opacity: .7; }
+.ks-tool-v { font-size: 14cqw; line-height: 1; font-weight: 500; text-shadow: 0 .3cqw 1.2cqw rgba(0, 0, 0, .7); }
+.ks-tool-v.ks-done { color: #ff6b70; }
+.ks-tool-date { font-size: 2.4cqw; opacity: .7; text-transform: capitalize; }
+.ks-free { font-size: 5cqw; line-height: 1.25; font-weight: 600; white-space: pre-wrap; text-shadow: 0 .2cqw 1cqw rgba(0, 0, 0, .7); }
+
+/* Communication pieces (countdown, timer, announcement, image + text) */
+.ks-comm { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; text-align: center; padding: 6cqw; }
+.ks-comm-big { font-size: 16cqw; line-height: 1; font-weight: 500; text-shadow: 0 .3cqw 1.2cqw rgba(0, 0, 0, .7); }
+.ks-comm-t { font-size: 5cqw; line-height: 1.2; font-weight: 600; white-space: pre-wrap; text-shadow: 0 .2cqw 1cqw rgba(0, 0, 0, .7); }
+.ks-comm-s { font-size: 2.6cqw; opacity: .85; white-space: pre-wrap; }
+.ks-comm-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+
+/* Media in a preview: a poster, never a playing video */
+.ks-media { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; background: #000; }
+.ks-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.ks-media-kind { font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; opacity: .6; font-weight: 500; }
+.ks-media-t { font-size: 3.2cqw; font-weight: 500; max-width: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks-media-count { position: absolute; top: 2cqw; right: 2cqw; font-size: 2cqw; background: rgba(0, 0, 0, .55); padding: .4cqw 1.2cqw; border-radius: .6cqw; }
+
+/* Corner logo and the idle/logo screens */
+.ks-logo { position: absolute; z-index: 20; object-fit: contain; opacity: .95; }
+.ks-logo.ks-medium { width: 8cqw; height: 8cqw; } .ks-logo.ks-small { width: 5cqw; height: 5cqw; } .ks-logo.ks-large { width: 12cqw; height: 12cqw; }
+.ks-logo.ks-top-left { top: 3cqw; left: 3cqw; } .ks-logo.ks-top-right { top: 3cqw; right: 3cqw; }
+.ks-logo.ks-bottom-left { bottom: 3cqw; left: 3cqw; } .ks-logo.ks-bottom-right { bottom: 3cqw; right: 3cqw; }
+.ks-logo-screen { position: absolute; inset: 0; display: grid; place-items: center; background: #000; }
+.ks-logo-screen img { max-width: 50cqw; max-height: 50cqh; object-fit: contain; }
+.ks-idle { position: absolute; inset: 0; display: grid; place-items: center; }
+.ks-idle img { max-width: 30cqw; max-height: 30cqh; object-fit: contain; opacity: .8; }
+
+/* Overlays (percent positions) and the alert bar */
+.ks-overlays { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
+.ks-ov { position: absolute; }
+.ks-ov img { width: 100%; height: auto; object-fit: contain; display: block; }
+.ks-ov-text { padding: .8cqw 1.4cqw; background: rgba(0, 0, 0, .6); border-radius: .6cqw; font-size: 1.6cqw; line-height: 1.3; font-weight: 500; text-align: center; }
+.ks-alert { position: absolute; z-index: 60; left: 0; right: 0; top: 0; min-height: 6cqw; display: flex; align-items: center; justify-content: center; padding: 1cqw 3cqw; background: #f5a524; color: #1a1300; font-size: 2.8cqw; line-height: 1.2; font-weight: 600; text-align: center; white-space: pre-wrap; }
+.ks-alert.ks-alert-alert { background: #e5484d; color: #fff; }
+
+@media (prefers-reduced-motion: reduce) { .ks-anim-fade, .ks-anim-slide, .ks-anim-zoom { animation: none; } }
