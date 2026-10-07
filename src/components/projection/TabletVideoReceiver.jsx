@@ -1,4 +1,6 @@
 import React from "react";
+import { keryx } from "@/api/keryxClient";
+import { projection } from "@/lib/projection";
 import { useLiveState } from "@/hooks/useLiveState";
 import LiveVideo from "@/components/projection/LiveVideo";
 
@@ -20,7 +22,7 @@ export default function TabletVideoReceiver() {
                     </h2>
                 </div>
             )}
-            <LiveVideo item={video} meter="video" className="w-full h-full" />
+            <LiveVideo item={video} meter="video" className="w-full h-full" onEnded={() => { if (keryx.isDesktop) projection.clearVideo().catch(() => {}); }} />
         </div>
     );
 }

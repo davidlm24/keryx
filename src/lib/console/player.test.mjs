@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { playerLayers, playerLayer, playerOp, meterLevels, clock } from "./player.js";
+import { playerLayers, playerLayer, playerOp, clock } from "./player.js";
 
 const pb = (o = {}) => ({ paused: false, position: 0, at: 0, volume: 1, ...o });
 const doc = {
@@ -33,16 +33,7 @@ test("player buttons", () => {
     assert.equal(playerOp(doc, null, "toggle"), null);
 });
 
-test("meters: the loudest fresh report about this item", () => {
-    const reports = [
-        { layer: "video", url: "y", l: 0.9, r: 0.9, at: 0 },
-        { layer: "video", url: "v", l: 0.2, r: 0.3, at: 1000 },
-        { layer: "video", url: "v", l: 0.5, r: 0.1, at: 1100 },
-        { layer: "audio", url: "a", l: 1, r: 1, at: 1100 },
-    ];
-    assert.deepEqual(meterLevels(reports, "video", "v", 1200), { l: 0.5, r: 0.3, measured: true, fresh: true });
-    assert.deepEqual(meterLevels(reports, "video", "y", 1200), { l: 0, r: 0, measured: false, fresh: false }, "stale and about another item");
-    assert.deepEqual(meterLevels([{ layer: "media", url: "yt", noLevel: true, at: 0 }], "media", "yt", 100), { l: 0, r: 0, measured: false, fresh: true }, "YouTube: plays, not measured");
+test("clock", () => {
     assert.equal(clock(83), "1:23");
     assert.equal(clock(3725), "1:02:05");
 });

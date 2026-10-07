@@ -14,9 +14,12 @@ const IMAGE_SECONDS = 5;
 export default function LiveMediaView({ media }) {
     const inPlaylist = Boolean(media.playlist);
     const index = media.playlistIndex;
+    // A playlist moves on; a single video that ends leaves the screen (the
+    // frozen-last-frame bug). Loops belong to the background layer.
     const advance = () => {
-        if (!inPlaylist || !keryx.isDesktop) return;
-        projection.advanceMedia(index).catch((err) => console.error("[keryx] mídia:", err));
+        if (!keryx.isDesktop) return;
+        const done = inPlaylist ? projection.advanceMedia(index) : projection.clearMedia();
+        done.catch((err) => console.error("[keryx] mídia:", err));
     };
 
     // Images in a playlist stay up for a few seconds, counted from when the
@@ -39,8 +42,8 @@ export default function LiveMediaView({ media }) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center relative">
                 {counter}
-                {/* A single video loops; in a playlist it moves on when it ends. */}
-                <LiveVideo item={media} loop={!inPlaylist} onEnded={advance} meter="media" className="w-full h-screen" />
+                {/* Ends -> the playlist moves on, a single video leaves the screen. */}
+                <LiveVideo item={media} onEnded={advance} meter="media" className="w-full h-screen" />
             </div>
         );
     }

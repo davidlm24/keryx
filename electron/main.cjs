@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Menu, dialog, screen, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
@@ -14,6 +14,13 @@ const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
 const { createLive, loadLiveRules } = require("./live.cjs");
 const schema = require("./db/schema.json");
+
+// A projection window covered by another window is still projecting. Windows
+// marks covered windows "occluded", and Chromium then pauses their video-only
+// media to save power — a muted video froze whenever its window sat behind
+// the projector. No window of this app is ever background.
+app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
+app.commandLine.appendSwitch("disable-background-media-suspend");
 
 const HOST = "127.0.0.1";
 // KERYX_PORT=0 picks a free port; smoke runs do, so a test never collides with
@@ -83,6 +90,10 @@ const webPreferences = {
     sandbox: true,
     // Output windows play lyric backgrounds and videos with no click on them.
     autoplayPolicy: "no-user-gesture-required",
+    // A projection window behind another is still projecting: never throttle,
+    // and never let Chromium "pause video-only background media to save
+    // power" (it freezes a muted video when the window is covered).
+    backgroundThrottling: false,
 };
 
 function isAppUrl(url) {
@@ -229,6 +240,22 @@ app.whenReady().then(async () => {
 
     appUrl = DEV_URL || serverUrl;
     appOrigin = new URL(appUrl).origin;
+
+    // The console's level meters read the sound the PC is putting out
+    // (system loopback, Windows), so measuring can never disturb playback.
+    // getDisplayMedia needs a video source; the page is given its own frame
+    // and stops that track at once. Anything not the app is denied.
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+        if (process.platform !== "win32" || !isAppUrl(request.frame?.url || "")) {
+            callback({});
+            return;
+        }
+        try {
+            callback({ video: request.frame, audio: "loopback" });
+        } catch {
+            callback({});
+        }
+    }, { useSystemPicker: false });
 
     const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
     outputs = createOutputManager({

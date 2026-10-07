@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { playbackPlan } from "@shared/live-state.mjs";
 import { getYouTubeId, loadYouTubeApi } from "@/utils/youtube";
-import { useAudioMeter } from "@/hooks/useAudioMeter";
+import { useDurationReport } from "@/hooks/useDurationReport";
 
 const SYNC_MS = 2000;
 
@@ -14,8 +14,9 @@ const SYNC_MS = 2000;
  *
  * item: live.video, live.media or live.audio ({ kind, url, title, playback, shownAt, fullscreenAt })
  * meter: the live layer this element plays ("media" | "video" | "audio") when
- *   this window is where the sound comes out: its level and duration go to
- *   the console's player (useAudioMeter). Outputs only, never previews.
+ *   this window is an output: it reports the item's duration to the console's
+ *   player (useDurationReport). Levels are never measured here — the console
+ *   reads the system output itself, so playback cannot be disturbed.
  */
 export default function LiveVideo({ item, loop = false, muted = false, className = "", onEnded, onDuration, meter = null }) {
     const isYouTube = item?.kind === "youtube";
@@ -27,14 +28,10 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     const callbacks = useRef({ onEnded, onDuration, loop });
     callbacks.current = { onEnded, onDuration, loop };
     const playback = item?.playback;
-    // Local media (the KERYX media server sends CORS headers) is fetched in
-    // CORS mode so the meter may tap it; anything else plays as before.
-    const metered = Boolean(meter) && !muted && Boolean(window.keryxDesktop);
-    const corsOk = metered && /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/media\//.test(item?.url || "");
-    useAudioMeter(videoRef, { layer: meter, url: item?.url || "", enabled: metered && !isYouTube });
+    const metered = Boolean(meter) && Boolean(window.keryxDesktop);
+    useDurationReport(videoRef, { layer: meter, url: item?.url || "", enabled: metered && !isYouTube });
 
-    // YouTube plays in an iframe that cannot be measured: report its
-    // duration only, so the console's seek bar still works.
+    // YouTube plays in an iframe: ask the player for its duration instead.
     useEffect(() => {
         const bridge = window.keryxDesktop;
         if (!metered || !isYouTube || !bridge?.meters) return undefined;
@@ -42,7 +39,7 @@ export default function LiveVideo({ item, loop = false, muted = false, className
         const url = item?.url || "";
         const id = setInterval(() => {
             const d = ytRef.current?.getDuration?.();
-            meters.report({ layer: meter, l: 0, r: 0, duration: Number.isFinite(d) && d > 0 ? d : null, url, noLevel: true });
+            if (Number.isFinite(d) && d > 0) meters.report({ layer: meter, url, duration: d });
         }, 1000);
         return () => clearInterval(id);
     }, [metered, isYouTube, meter, item?.url]);
@@ -153,7 +150,6 @@ export default function LiveVideo({ item, loop = false, muted = false, className
                 <video
                     ref={videoRef}
                     key={item.url}
-                    crossOrigin={corsOk ? "anonymous" : undefined}
                     src={item.url}
                     muted={muted}
                     loop={loop}

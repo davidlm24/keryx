@@ -1,5 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { keryx } from "@/api/keryxClient";
+import { projection } from "@/lib/projection";
 import { useLiveState } from "@/hooks/useLiveState";
 import LiveVideo from "@/components/projection/LiveVideo";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
@@ -43,7 +45,7 @@ export default function VideoProjection() {
                     </h2>
                 </div>
             )}
-            <LiveVideo item={video} meter="video" className="w-full h-screen" />
+            <LiveVideo item={video} meter="video" className="w-full h-screen" onEnded={() => { if (keryx.isDesktop) projection.clearVideo().catch(() => {}); }} />
             <AlertOverlayRenderer />
         </div>
     );

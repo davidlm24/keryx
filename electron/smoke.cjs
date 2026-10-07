@@ -344,7 +344,7 @@ const RECORD_VIDEO = `(async () => {
     const paint = setInterval(() => { g.fillStyle = i++ % 2 ? "#c33" : "#33c"; g.fillRect(0, 0, 64, 36); }, 60);
     // Long enough that the checks below finish before it ends, even on a slow run.
     rec.start(250);
-    await new Promise((r) => setTimeout(r, 8000));
+    await new Promise((r) => setTimeout(r, 15000));
     const stopped = new Promise((r) => { rec.onstop = r; });
     rec.stop();
     await stopped;
@@ -408,6 +408,37 @@ async function checkVideo(webContents, { live }) {
     result.paused = await waitState(screenWin, (v) => v.paused);
     live.call("transport", { action: "play" });
     result.resumed = await waitState(screenWin, (v) => !v.paused);
+    // Pause -> seek -> play twice over: the picture must keep moving (the
+    // frozen-video regression: an element that stays paused after a seek).
+    result.continuity = true;
+    // Diagnostics: record every play() rejection in the screen window.
+    if (screenWin) await screenWin.webContents.executeJavaScript(`(() => {
+        if (window.__playProbe) return true;
+        window.__playProbe = [];
+        const orig = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function (...args) {
+            const p = orig.apply(this, args);
+            if (p && p.catch) p.catch((err) => window.__playProbe.push(String(err && err.name) + ": " + String(err && err.message).slice(0, 120)));
+            return p;
+        };
+        return true;
+    })()`).catch(() => {});
+    for (let round = 0; round < 2 && result.continuity; round++) {
+        live.call("transport", { action: "pause" });
+        await waitState(screenWin, (v) => v.paused);
+        live.call("transport", { action: "seek", time: 1 });
+        live.call("transport", { action: "play" });
+        const moving = await waitState(screenWin, (v) => !v.paused && v.time >= 1, 6000);
+        const t1 = (await stateOf(screenWin))?.time ?? 0;
+        await sleep(1500);
+        const after = await stateOf(screenWin);
+        result.continuity = moving && Boolean(after) && after.time - t1 >= 1;
+        if (!result.continuity) {
+            result.continuityState = { round, t1, after };
+            result.playErrs = screenWin ? await screenWin.webContents.executeJavaScript("window.__playProbe").catch(() => null) : null;
+            result.shared = (() => { const v = live.get().video; return v && { paused: v.playback.paused, position: v.playback.position, at: v.playback.at }; })();
+        }
+    }
     live.call("video.clear");
     result.cleared = await (async () => {
         const end = Date.now() + 5000;
@@ -431,7 +462,7 @@ async function checkVideo(webContents, { live }) {
     live.call("clear");
     if (projector) projector.close();
 
-    result.ok = result.recorded && result.lateJoin && result.playing && result.title && result.paused && result.resumed && result.cleared
+    result.ok = result.recorded && result.lateJoin && result.playing && result.title && result.paused && result.resumed && result.continuity && result.cleared
         && result.playlistAdvanced && result.projectorImage;
     return result;
 }
@@ -733,7 +764,12 @@ async function checkConsole(webContents, { live, outputs }) {
         result.audioOn = await waitFor(() => live.get().audio && live.get().audio.title === "Tom de teste");
         result.audioUnderSong = Boolean(live.get().content) && live.get().content.title === "Canto do console";
         result.playerShows = await waitFor(() => js("Boolean(document.querySelector('.player:not(.is-idle)')) && document.querySelector('.player .pl-what').textContent.includes('Tom de teste')"));
-        result.meters = await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.player .kx-meter b')]; return b.length === 2 && b.every((x) => parseFloat(x.style.height) > 40); })()"), 10000);
+        const meterState = () => js("document.querySelector('.player .meters') && document.querySelector('.player .meters').dataset.state");
+        await waitFor(async () => (await meterState()) !== "wait", 8000);
+        result.meterState = await meterState();
+        result.meters = result.meterState !== "on"
+            ? "sem loopback nesta máquina"
+            : await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.player .kx-meter b')]; return b.length === 2 && b.every((x) => parseFloat(x.style.height) > 40); })()"), 10000);
         result.duration = await waitText(webContents, "/ 0:20", true, 6000);
         result.shotPlayer = await shot("player");
         await click(".player button", "Pausar");
@@ -741,8 +777,12 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".player button", "Tocar");
         await click(".player .pl-vol button", "");
         result.audioMuted = await waitFor(() => live.get().audio.playback.volume === 0);
-        // The meters read after the volume (and the sound still goes through it).
-        result.metersFollowVolume = await waitFor(() => js("[...document.querySelectorAll('.player .kx-meter b')].every((x) => parseFloat(x.style.height) < 5)"), 6000);
+        // The meters read the system output, so muting the element empties them.
+        result.metersFollowVolume = result.meterState !== "on"
+            ? "sem loopback nesta máquina"
+            : await waitFor(() => js("[...document.querySelectorAll('.player .kx-meter b')].every((x) => parseFloat(x.style.height) < 5)"), 6000);
+        // The mute reached the element that actually plays, on the projector.
+        result.projectorMuted = await waitFor(() => main && main.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.volume === 0 : null; })()").catch(() => null));
 
         // The Encerrar button asks first; only "Encerrar" in the dialog ends.
         // The music is not a screen: it keeps playing until Parar.
@@ -798,8 +838,8 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.verify && result.verifyProjector && result.resent && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
         && result.armed && result.quickOpened && result.quickRead === "João|3|16" && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
-        && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.meters && result.duration
-        && result.audioPaused && result.audioMuted && result.metersFollowVolume && result.audioSurvivesEnd && result.audioStopped
+        && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration
+        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
         && result.tlEmpty && result.tlBlocks && result.tlClosed);
     return result;
 }

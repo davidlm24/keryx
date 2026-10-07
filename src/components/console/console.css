@@ -152,7 +152,7 @@
 .console .player .meters .kx-meter { height: 28px; gap: 2px; }
 .console .player .meters .kx-meter > i { width: 6px; }
 .console .player .meters .lr { font-size: 9px; line-height: 10px; width: 8px; color: var(--fg-3); white-space: normal; word-spacing: 8px; }
-.console .player .meters[data-state="off"], .console .player .meters[data-state="nolevel"] { opacity: var(--dim); }
+.console .player .meters[data-state="off"], .console .player .meters[data-state="wait"] { opacity: var(--dim); }
 .console .player .pl-where { display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
 .console .player .pl-where .lbl { overflow: hidden; text-overflow: ellipsis; }
 @container player (max-width: 860px) { .console .player .pl-where .lbl, .console .player .pl-kind { display: none; } }

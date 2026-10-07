@@ -8,10 +8,12 @@ import { levelsNow, useReportedDuration, useMeterFeed } from "./meterStore";
 const HOT = 0.95; // about -3 dBFS
 const FALL_PER_FRAME = 0.035;
 
-// Two level meters (L / R) fed by the output that plays the sound. They read
-// the meter store on animation frames and paint the bars directly: the levels
-// never re-render the console. Peaks fall back slowly, as on a mixer.
-function Meters({ layer, url, active }) {
+// Two level meters (L / R): the console measures the PC's own sound output
+// (system loopback), so they show what actually reaches the speakers — and
+// measuring can never disturb playback. They read the meter store on
+// animation frames and paint the bars directly: the levels never re-render
+// the console. Peaks fall back slowly, as on a mixer.
+function Meters() {
     useMeterFeed();
     const bars = useRef([]);
     const box = useRef(null);
@@ -23,7 +25,7 @@ function Meters({ layer, url, active }) {
             raf = requestAnimationFrame(paint);
             if (t - last < 40) return;
             last = t;
-            const lv = active && layer ? levelsNow(layer, url) : { l: 0, r: 0, measured: false, fresh: false };
+            const lv = levelsNow();
             [lv.l, lv.r].forEach((v, i) => {
                 shown[i] = Math.max(v, shown[i] - FALL_PER_FRAME);
                 const b = bars.current[i];
@@ -32,12 +34,12 @@ function Meters({ layer, url, active }) {
                     b.classList.toggle("is-hot", shown[i] >= HOT);
                 }
             });
-            if (box.current) box.current.dataset.state = !active || !layer ? "off" : lv.fresh && !lv.measured ? "nolevel" : lv.fresh ? "on" : "wait";
+            if (box.current) box.current.dataset.state = lv.state;
         };
         raf = requestAnimationFrame(paint);
         return () => cancelAnimationFrame(raf);
-    }, [layer, url, active]);
-    const title = !active ? "Níveis L / R · só ao vivo" : "Níveis L / R · medidos na saída que toca o som";
+    }, []);
+    const title = "Níveis L / R · o som que está saindo deste computador";
     return (
         <span className="meters" ref={box} title={title} aria-hidden="true">
             <span className="kx-meter"><i><b ref={(el) => { bars.current[0] = el; }} /></i><i><b ref={(el) => { bars.current[1] = el; }} /></i></span>
@@ -91,7 +93,7 @@ function Volume({ volume, onVolume, disabled }) {
 // move; idle when nothing plays. Acts on the document the console drives
 // (the screens live, the local copy in Ensaio or Preparar).
 export default function PlayerBar({ c, picked, setPicked, videoScreens, projectorOpen }) {
-    const { cur, now, isLive } = c;
+    const { cur, now } = c;
     const layers = playerLayers(cur);
     const layer = playerLayer(cur, picked);
     const item = layer ? cur[layer] : null;
@@ -136,7 +138,7 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
                 {duration ? <><i style={{ width: `${pct}%` }} /><b style={{ left: `${pct}%` }} /></> : null}
             </span>
             <Volume volume={pb?.volume} disabled={off} onVolume={(v) => run("volume", { volume: v })} />
-            <Meters layer={layer} url={item?.url || ""} active={isLive && !off} />
+            <Meters />
             {item && (
                 <span className={`kx-meta pl-where ${silent ? "kx-warn" : ""}`} title={silent ? "A janela do projetor está fechada: o som não sai. Abra em Saídas." : `Onde o som sai: ${where}`}>
                     <Icon name={silent ? "warn" : "tv"} /><span className="lbl">{silent ? "Projetor fechado" : where}</span>

@@ -1,5 +1,5 @@
-// The player on top of the Programa: which live layer it controls, what its
-// buttons do, and how the outputs' level reports become two meters. Plain JS,
+// The player on top of the Programa: which live layer it controls and what
+// its buttons do (levels live in src/components/console/meterStore.js). Plain JS,
 // no imports, so node --test can check it.
 //
 // Three layers play sound: "video" (the video screens), "media" (a video or
@@ -52,27 +52,6 @@ export function playerOp(doc, layer, action, { pos = 0, duration = null, volume 
         case "stop": return [`${layer}.clear`, {}];
         default: return null;
     }
-}
-
-// Level reports from the outputs (several windows may play the same layer):
-// the loudest of the recent reports about this item, per channel.
-// reports: [{ layer, url, l, r, at, noLevel }], newest last.
-export const METER_FRESH_MS = 400;
-export function meterLevels(reports, layer, url, now) {
-    let l = 0;
-    let r = 0;
-    let measured = false;
-    let fresh = false;
-    for (const rep of reports) {
-        if (rep.layer !== layer || rep.url !== url || now - rep.at > METER_FRESH_MS) continue;
-        fresh = true;
-        if (rep.noLevel) continue;
-        measured = true;
-        l = Math.max(l, rep.l);
-        r = Math.max(r, rep.r);
-    }
-    // measured false and fresh true: the output plays it but cannot measure (YouTube).
-    return { l, r, measured, fresh };
 }
 
 const two = (n) => String(n).padStart(2, "0");
