@@ -1,7 +1,12 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Row, Btn, Field, Empty } from "./kx";
 import Rundown from "./Rundown";
+import AddMenu from "./AddMenu";
+import { songsFromFile } from "@/lib/songImport";
+import { importMediaFiles } from "@/lib/mediaImport";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 
@@ -21,7 +26,8 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // The library: Letras, Mídia and Avisos (and the Setlist on narrow screens).
 // A click prepares the item in the Prévia; a double click sends it to air
 // (onGo). The quick alert is the one control that bypasses the Prévia.
-export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onGo, onAddSong, hideTabs = false }) {
+export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onGo, onAddSong, onLyricsWeb, hideTabs = false }) {
+    const navigate = useNavigate();
     const [q, setQ] = useState("");
     const [alertText, setAlertText] = useState("");
     const [yt, setYt] = useState("");
@@ -43,6 +49,37 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
     const alert = c.cur?.alert;
     const alertElapsed = alert ? mmss((c.now - alert.since) / 1000) : "";
 
+    // "+ › Do computador": song files (cifra, ChordPro, texto, JSON exportado).
+    const importSongFiles = async (files) => {
+        let made = 0;
+        const bad = [];
+        for (const file of files) {
+            try {
+                const rows = songsFromFile(file.name, await file.text());
+                for (const row of rows) { await keryx.entities.Song.create(row); made += 1; }
+                if (!rows.length) bad.push(file.name);
+            } catch (err) { bad.push(`${file.name} (${err?.message || "falhou"})`); }
+        }
+        c.say(made ? `${made} ${made === 1 ? "música importada" : "músicas importadas"}${bad.length ? ` · não deu: ${bad.join(", ")}` : ""}.` : `Nenhuma letra encontrada em ${bad.join(", ")}.`);
+    };
+    // "+ › Do computador" in Mídia: videos, audio, images, PDF, PowerPoint.
+    const importMedia = async (files) => {
+        c.say(`Copiando ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}…`);
+        const { created, failed } = await importMediaFiles(files);
+        c.say(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"} à Mídia${failed.length ? ` · falhou: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
+    };
+    const addItems = tab === "letras"
+        ? [
+            { label: "Do computador…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", onFiles: importSongFiles },
+            { label: "Na internet…", icon: "external", onClick: () => onLyricsWeb?.() },
+        ]
+        : tab === "midia"
+            ? [
+                { label: "Do computador…", icon: "folder", accept: "video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
+                { label: "Link do YouTube", icon: "film", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
+            ]
+            : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => navigate("/Communication") }];
+
     const pickTool = (mode) => {
         if (mode === "clock" || mode === "stopwatch") { onPrepare(stageFromTool(mode)); setTool(null); return; }
         setTool(tool === mode ? null : mode);
@@ -61,8 +98,9 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                 </div>
             )}
             {tab !== "roteiro" && (
-                <div style={{ padding: "var(--space-1) var(--space-2)" }}>
+                <div className="searchrow">
                     <Field value={q} onChange={setQ} placeholder={tab === "letras" ? "Letras" : tab === "midia" ? "Mídia" : "Avisos"} />
+                    <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "midia" ? "Adicionar mídia" : "Adicionar aviso"} items={addItems} />
                 </div>
             )}
 
@@ -70,7 +108,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                 const songs = data.songs.filter((s) => match(ql, s.title, s.artist, s.lyrics));
                 return (
                     <div style={{ overflow: "auto", flex: 1 }}>
-                        {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma música"}>{ql ? "Procure por título, artista ou um trecho." : "Cadastre músicas em Músicas."}</Empty>}
+                        {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma música"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
                         {songs.map((s) => (
                             <Row
                                 key={s.id}
@@ -95,14 +133,14 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                     <>
                         <div className="listhead"><span className="kx-section">Link do YouTube</span></div>
                         <div style={{ padding: "0 var(--space-2) var(--space-1)", display: "flex", gap: "var(--space-1)" }}>
-                            <Field icon={null} value={yt} onChange={setYt} placeholder="https://youtube.com/watch?v=…" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter" && /youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } }} />
+                            <Field icon={null} className="kx-field kx-t yt-field" value={yt} onChange={setYt} placeholder="https://youtube.com/watch?v=…" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter" && /youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } }} />
                             <Btn onClick={() => { if (/youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } else c.say("Cole um link do YouTube."); }} title="Pôr na prévia · toca nas telas de vídeo">Tocar</Btn>
                         </div>
                         {audios.length > 1 && (
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar em sequência</Btn></div>
                         )}
                         <div style={{ overflow: "auto", flex: 1 }}>
-                            {!media.length && <Empty icon="film" title={ql ? `Nenhuma mídia com "${q}"` : "Nenhuma mídia"}>Envie arquivos em Mídia.</Empty>}
+                            {!media.length && <Empty icon="film" title={ql ? `Nenhuma mídia com "${q}"` : "Nenhuma mídia"}>Use + para adicionar arquivos do computador.</Empty>}
                             {media.map((m) => (
                                 <Row
                                     key={m.id}
@@ -161,7 +199,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                         )}
                         <div className="listhead"><span className="kx-section">Avisos</span></div>
                         <div style={{ overflow: "auto", flex: 1 }}>
-                            {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Crie avisos e contagens em Comunicação.</Empty>}
+                            {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + para criar avisos e contagens.</Empty>}
                             {pieces.map((p) => (
                                 <Row key={p.id} icon="megaphone" title={p.title || p.text} meta={[p.type === "countdown" ? "Contagem regressiva" : p.type === "timer" ? "Cronômetro" : "Aviso", p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p))} />
                             ))}

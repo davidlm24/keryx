@@ -72,6 +72,14 @@ meters (green, amber from −3 dBFS, dim when not live or not measurable) and
 the ±10 and the percentage, then the time). It replaces the transport that
 sat under the Prévia.
 
+**More app departures (2026-10-07, round 3):** text fields show no gold
+focus ring while typing (a quiet inner `--line-strong` line instead; the
+gold ring stays for keyboard focus on buttons). Monitor frames are drawn
+inside the box, so narrowing the window never cuts them. The Bible picker
+uses bigger targets (books 44 px, chapters 36 px), and the Bible column has
+no Prévia. The player's seek is a 6 px progress bar (red while live) with
+the remaining time and the length beside it.
+
 The canvas still has things the app does differently, on purpose: slides
 send on double click there (never in the app), and Esc there asks before
 ending (the app ends at once; the Encerrar button asks). Plain Enter sends

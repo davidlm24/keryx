@@ -22,6 +22,11 @@ export const DEFAULT_LAYOUT = {
 
 export const LIMITS = { libW: [200, 480], slidesW: [200, 520], rightW: [280, 520], camadasH: [120, 600] };
 
+// A side column: its saved width is the flex basis, and it may shrink down
+// to its minimum when the window narrows, so it never spills over the center
+// or out of the window.
+export const sideCol = (key, width) => ({ flex: `0 1 ${width}px`, minWidth: LIMITS[key][0] });
+
 const KEY = (profile) => `keryx.console.layout.${profile || "default"}`;
 
 export function loadLayout(profile) {

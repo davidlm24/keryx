@@ -589,7 +589,7 @@ async function checkConsole(webContents, { live, outputs }) {
     };
     const js = (code) => webContents.executeJavaScript(code);
     // Real key presses. Printable keys also send the "char" event that types.
-    const KEYCODE = { ArrowRight: "Right", ArrowLeft: "Left", " ": "Space" };
+    const KEYCODE = { ArrowRight: "Right", ArrowLeft: "Left", ArrowUp: "Up", ArrowDown: "Down", " ": "Space" };
     const press = async (k, modifiers = []) => {
         const keyCode = KEYCODE[k] || k;
         webContents.sendInputEvent({ type: "keyDown", keyCode, modifiers });
@@ -655,6 +655,10 @@ async function checkConsole(webContents, { live, outputs }) {
 
     let tone = null;
     let svc = null;
+    // João 3:14-18 (placeholder text): the Bible environment reads the local
+    // database first, so the verse flow is testable without internet.
+    const VERSES = [14, 15, 16, 17, 18];
+    await js(`window.keryxDesktop.db.call("BibleVerse", "bulkCreate", [${JSON.stringify(VERSES.map((v) => ({ id: `smoke-jo3-${v}`, version: "NVI", testament: "Novo", book: "João", chapter: 3, verse: v, text: `Texto do versículo ${v} para o teste` })))}])`);
     const song = (await js(`window.keryxDesktop.db.call("Song", "create", [{
         title: "Canto do console", artist: "Coral do Teste", lyrics: "Primeiro slide do console\\n\\nSegundo slide do console",
         slides: [{ text: "Primeiro slide do console" }, { text: "Segundo slide do console" }],
@@ -706,11 +710,38 @@ async function checkConsole(webContents, { live, outputs }) {
             if (operatorWin) operatorWin.setContentSize(w, 820);
             await sleep(500);
             result.bar[w] = await barFits();
+            result.cols = result.cols || {};
+            result.cols[w] = await js(`(() => {
+                const cols = [...document.querySelectorAll(".console .main > .col")].map((n) => n.getBoundingClientRect());
+                const inside = cols.every((r) => r.left >= -1 && r.right <= innerWidth + 1 && r.width > 0);
+                const apart = cols.every((r, i) => i === 0 || r.left >= cols[i - 1].right - 1);
+                return inside && apart;
+            })()`);
             result[`shot${w}`] = await shot(String(w));
         }
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.barFits = Object.values(result.bar).every(Boolean);
+        for (const w of [1460]) {
+            if (operatorWin) operatorWin.setContentSize(w, 820);
+            await sleep(500);
+            result.cols[w] = await js(`(() => {
+                const cols = [...document.querySelectorAll(".console .main > .col")].map((n) => n.getBoundingClientRect());
+                return cols.every((r, i) => r.left >= -1 && r.right <= innerWidth + 1 && (i === 0 || r.left >= cols[i - 1].right - 1));
+            })()`);
+        }
+        if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
+        await sleep(300);
+        result.colsFit = Object.values(result.cols).every(Boolean);
+        result.noGoldRing = await js(`(() => {
+            const input = document.querySelector(".console .searchrow .kx-field input");
+            if (!input) return "sem campo";
+            input.focus();
+            const field = input.closest(".kx-field");
+            const ok = getComputedStyle(field).outlineStyle === "none" && getComputedStyle(input).outlineStyle === "none";
+            input.blur();
+            return ok;
+        })()`);
 
         // Esc: off the air at once, with a way back.
         await press("Escape");
@@ -776,7 +807,7 @@ async function checkConsole(webContents, { live, outputs }) {
 
         // Bíblia: a letter opens the quick jump; "jo 3 16" reads as João 3:16.
         await click(".envtabs button", "Bíblia");
-        await waitText(webContents, "Versículos selecionados".toUpperCase());
+        await waitText(webContents, "SELECIONADO");
         await press("j");
         result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
         await type("o 3 16");
@@ -789,6 +820,23 @@ async function checkConsole(webContents, { live, outputs }) {
         result.shotBible = await shot("biblia");
         await press("Enter");
         result.quickPicked = await waitFor(() => js("!document.querySelector('.qj') && [...document.querySelectorAll('.kx-panel-h')].some((n) => n.textContent.startsWith('João 3'))"));
+        // The Bible shows "No ar" only (no Prévia monitor).
+        result.bibleOneMonitor = await js("document.querySelectorAll('.console .main .kx-mon').length === 1");
+        // One verse (Enter) goes out as the whole chapter, at that verse.
+        await waitFor(() => js("document.querySelectorAll('.kx-verse').length === 5"), 8000);
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("Enter");
+        result.chapterSent = await waitFor(() => { const c = live.get().content; return c && c.kind === "bible" && c.slides.length === 5 && c.index === 2; });
+        result.chapterRef = live.get().content?.slides?.[2]?.ref;
+        // → walks the chapter on air.
+        await press("ArrowRight");
+        result.arrowNextVerse = await waitFor(() => live.get().content?.index === 3);
+        // ↓ moves the selection (green) without touching the air; Enter projects it.
+        await press("ArrowDown");
+        await press("ArrowDown");
+        result.selMoved = await waitFor(() => js("(() => { const s = document.querySelector('.kx-verse.is-prev'); return s && s.dataset.verse === '18'; })()")) && live.get().content?.index === 3;
+        await press("Enter");
+        result.selSent = await waitFor(() => live.get().content?.index === 4);
         // Esc in the quick jump cancels it and never ends the projection.
         await press("g");
         await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
@@ -796,6 +844,17 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(300);
         result.quickEsc = !(await js("Boolean(document.querySelector('.qj'))")) && Boolean(live.get().content);
         await click(".envtabs button", "KERYX");
+        // The song back on air for the player checks below.
+        await dblclick(".kx-row", "Canto do console");
+        await waitFor(() => live.get().content?.title === "Canto do console");
+
+        // ↑/↓ in KERYX move the selection through the slides; Enter projects it.
+        await press("ArrowDown");
+        result.slideSelMoved = await waitFor(() => js("(() => { const s = document.querySelector('.kx-slide.is-prev .kx-slide-n'); return s && s.textContent === '2'; })()")) && live.get().content.index === 0;
+        await press("Enter");
+        result.slideSelSent = await waitFor(() => live.get().content.index === 1);
+        await press("ArrowLeft");
+        await waitFor(() => live.get().content.index === 0);
 
         // The Programa monitor mirrors the screens: a video-channel clip
         // renders as a real (muted) video covering the box, not a poster.
@@ -821,7 +880,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.meters = result.meterState !== "on"
             ? "sem loopback nesta máquina"
             : await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.player .kx-meter b')]; return b.length === 2 && b.every((x) => parseFloat(x.style.height) > 40); })()"), 10000);
-        result.duration = await waitText(webContents, "/ 0:20", true, 6000);
+        result.duration = await waitFor(() => js("(document.querySelector('.player .pl-left small') || {}).textContent === '0:20'"), 6000);
         result.shotPlayer = await shot("player");
         await click(".player button", "Pausar");
         result.audioPaused = await waitFor(() => live.get().audio.playback.paused);
@@ -860,10 +919,31 @@ async function checkConsole(webContents, { live, outputs }) {
                 return [p.innerText.slice(0, 200), b.getAttribute("aria-label"), at && (at.className.baseVal ?? at.className), innerHeight, Math.round(r.top)].join(" | ");
             })()`);
         }
-        const today = new Date().toISOString().slice(0, 10);
-        svc = (await js(`window.keryxDesktop.db.call("Service", "create", [{ title: "Culto do console", date: "${today}", startTime: "19:00" }])`)).data;
+        // No service yet: dropping a song on the Setlist starts today's setlist.
+        if (operatorWin) operatorWin.setContentSize(1600, 900);
+        await sleep(400);
+        await click(".kx-tabs button", "Letras");
+        await waitText(webContents, "Canto do console");
+        await js(`(() => {
+            const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
+            const to = document.querySelector(".rund-tail");
+            if (!from || !to) return false;
+            const dt = new DataTransfer();
+            from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+            to.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer: dt }));
+            to.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer: dt }));
+            from.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
+            return true;
+        })()`);
+        result.autoSetlist = await waitFor(async () => {
+            const rows = (await js(`window.keryxDesktop.db.call("Service", "list", [])`)).data || [];
+            svc = rows.find((r) => /^Setlist de \d\d\/\d\d$/.test(r.title)) || null;
+            return Boolean(svc);
+        }, 8000);
+        result.autoSetlistShown = await waitText(webContents, "Setlist de");
+        if (!svc) throw new Error("a setlist do dia não foi criada");
         for (const [i, title] of ["Abertura", "Louvor"].entries()) {
-            await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i}, duration: 300 }])`);
+            await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i + 1}, duration: 300 }])`);
         }
         result.tlBlocks = await waitFor(() => js("document.querySelectorAll('.tl-track .kx-tl-blk').length >= 2"), 8000);
 
@@ -900,8 +980,30 @@ async function checkConsole(webContents, { live, outputs }) {
         })()`);
         result.dragAdded = await waitFor(async () => {
             const rows = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
-            return rows.length === 3 && rows.some((r) => r.title === "Canto do console" && r.type === "SONG");
+            return rows.length === 4 && rows.filter((r) => r.title === "Canto do console" && r.type === "SONG").length === 2;
         }, 8000);
+        result.layersBefore = (live.get().layerOrder || []).join(",");
+        result.layerDrag = await js(`(async () => {
+            const rows = [...document.querySelectorAll(".kx-layer")];
+            const from = rows.find((n) => n.textContent.includes("Logo"));
+            const to = rows.find((n) => n.textContent.includes("Texto principal"));
+            if (!from || !to) return "faltou camada";
+            const wait = () => new Promise((r) => setTimeout(r, 80));
+            const dt = new DataTransfer();
+            const r = to.getBoundingClientRect();
+            from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+            await wait();
+            to.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.bottom - 2 }));
+            await wait();
+            to.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt, clientY: r.bottom - 2 }));
+            await wait();
+            from.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
+            return true;
+        })()`);
+        result.layersMoved = await waitFor(() => (live.get().layerOrder || []).join(",") === "overlays,content,logo,background");
+        result.layersAfter = (live.get().layerOrder || []).join(",");
+        live.call("layers.order", { order: ["logo", "overlays", "content", "background"] });
+
         await click(".tl-panel .kx-tl button", "");
         result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
     } finally {
@@ -910,6 +1012,7 @@ async function checkConsole(webContents, { live, outputs }) {
         try { live.call("audio.clear"); } catch { /* nothing playing */ }
         await js(`window.keryxDesktop.db.call("Song", "delete", ["${song && song.id}"])`);
         if (tone) await js(`window.keryxDesktop.db.call("Media", "delete", ["${tone.id}"])`);
+        for (const v of [14, 15, 16, 17, 18]) await js(`window.keryxDesktop.db.call("BibleVerse", "delete", ["smoke-jo3-${v}"])`).catch(() => {});
         if (svc) {
             const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
             for (const it of its) await js(`window.keryxDesktop.db.call("ServiceItem", "delete", ["${it.id}"])`);
@@ -929,7 +1032,10 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
         && result.tlEmpty && result.tlBlocks && result.tlClosed
-        && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded);
+        && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
+        && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && result.chapterSent && result.chapterRef === "João 3:16 · NVI"
+        && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
+        && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved);
     return result;
 }
 

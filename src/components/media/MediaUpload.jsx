@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useThemeColors } from "@/hooks/useThemeColors";
 import { keryx } from "@/api/keryxClient";
+import { mediaTypeOf } from "@/lib/mediaImport";
 
 export default function MediaUpload({ onMediaUploaded }) {
     const colors = useThemeColors();
@@ -38,20 +39,7 @@ export default function MediaUpload({ onMediaUploaded }) {
                 // the row only keeps its URL.
                 const { file_url } = await keryx.integrations.Core.UploadFile({ file });
 
-                let mediaType = "other";
-                if (file.type.startsWith("video/")) {
-                    mediaType = "video";
-                } else if (file.type.startsWith("audio/") || /\.(mp3|m4a|wav|ogg)$/i.test(file.name)) {
-                    mediaType = "audio";
-                } else if (file.type === "image/gif" || file.name.endsWith(".gif")) {
-                    mediaType = "gif";
-                } else if (file.type.startsWith("image/")) {
-                    mediaType = "image";
-                } else if (file.name.endsWith(".ppt") || file.name.endsWith(".pptx")) {
-                    mediaType = "powerpoint";
-                } else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
-                    mediaType = "pdf";
-                }
+                const mediaType = mediaTypeOf(file);
 
                 await onMediaUploaded({
                     title: selectedFiles.length > 1 ? `${title} - ${file.name}` : title,

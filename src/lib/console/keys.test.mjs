@@ -56,6 +56,15 @@ test("other live keys", () => {
     assert.equal(focusKind(input), "text");
 });
 
+test("↑/↓ move the selection, ←/→ the air (Holyrics)", () => {
+    assert.equal(key("ArrowUp", nothing), "selUp");
+    assert.equal(key("ArrowDown", nothing), "selDown");
+    assert.equal(key("ArrowDown", button), "selDown", "a plain button does not use them");
+    assert.equal(key("ArrowDown", tab), null, "tabs move between themselves");
+    assert.equal(key("ArrowDown", input), null, "typing");
+    assert.equal(key("ArrowDown", nothing, { ctrlKey: true }), null);
+});
+
 test("AltGr (Ctrl+Alt with a character) is typing, not a shortcut", () => {
     assert.equal(key("/", nothing, { ctrlKey: true, altKey: true }), "search", "ABNT2: AltGr+Q gives /");
     assert.equal(key("?", nothing, { ctrlKey: true, altKey: true }), "help");

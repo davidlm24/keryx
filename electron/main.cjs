@@ -13,6 +13,7 @@ const { createUpdater } = require("./updater.cjs");
 const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
 const { createLive, loadLiveRules } = require("./live.cjs");
+const { createLyrics } = require("./lyrics.cjs");
 const schema = require("./db/schema.json");
 
 // A projection window covered by another window is still projecting. Windows
@@ -308,6 +309,7 @@ app.whenReady().then(async () => {
         system,
         network,
         live,
+        lyrics: createLyrics({ settings }),
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),

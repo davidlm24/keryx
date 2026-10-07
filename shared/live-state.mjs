@@ -15,6 +15,12 @@
 // different clock can correct for it.
 
 export const LIVE_VERSION = 1;
+// The look layers the operator can stack (live.layerOrder), top first.
+export const LAYER_ORDER = ["logo", "overlays", "content", "background"];
+const layerOrderOf = (value) => {
+    if (!Array.isArray(value) || value.length !== LAYER_ORDER.length || !LAYER_ORDER.every((k) => value.includes(k))) return null;
+    return [...value];
+};
 
 export const SCREEN_MODES = ["show", "black", "logo"];
 export const CONTENT_KINDS = ["lyrics", "bible", "text"];
@@ -70,6 +76,10 @@ export function emptyState(now = Date.now()) {
         // What an idle screen shows (nothing on air, screen "show"): the
         // church logo, or plain black (Holyrics-style, nothing lingers).
         idle: "logo",
+        // The stacking of the look layers, top first (Camadas, drag to
+        // reorder). The alert, a video-channel clip and the black/logo
+        // screens always stay above all of them.
+        layerOrder: [...LAYER_ORDER],
         // What was on the main projector before each change, newest first,
         // so the operator can bring it back (through the preview, never
         // straight to air).
@@ -144,6 +154,8 @@ function slide(value) {
     if (value.is_chorus) out.is_chorus = true;
     if (value.image_url) out.image_url = text(value.image_url, "Imagem do slide", { max: MAX_URL * 1024 });
     if (value.label) out.label = text(value.label, "Rótulo do slide", { max: 200 });
+    // A Bible chapter sent whole carries each verse's own reference.
+    if (value.ref) out.ref = text(value.ref, "Referência do slide", { max: 200 });
     return out;
 }
 
@@ -441,6 +453,12 @@ const OPS = {
 
     // The idle look of the screens: part of the document, so every output
     // (local windows and network screens) renders the same emptiness.
+    "layers.order": (s, { order }) => {
+        const next = layerOrderOf(order);
+        if (!next) throw new LiveError("Ordem de camadas inválida.");
+        return next.join() === (s.layerOrder || LAYER_ORDER).join() ? null : { layerOrder: next };
+    },
+
     "idle.set": (s, { mode }) => {
         const m = oneOf(mode, ["logo", "black"], "Tela ociosa");
         return s.idle === m ? null : { idle: m };
@@ -497,6 +515,7 @@ export function restoreState(saved, now = Date.now()) {
         alert: layer(saved.alert),
         logo: { ...base.logo, ...(layer(saved.logo) || {}) },
         idle: saved.idle === "black" ? "black" : "logo",
+        layerOrder: layerOrderOf(saved.layerOrder) || [...LAYER_ORDER],
         history: Array.isArray(saved.history) ? saved.history.filter((h) => isPlainObject(h) && isPlainObject(h.data)).slice(0, MAX_HISTORY) : [],
     };
 }

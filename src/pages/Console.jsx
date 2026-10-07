@@ -18,11 +18,12 @@ import Timeline from "@/components/console/Timeline";
 import BibleEnv from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
+import LyricsSearch from "@/components/console/LyricsSearch";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
-import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT } from "@/lib/console/layout";
+import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol } from "@/lib/console/layout";
 import { liveAction, quickJumpKey } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
-import { stageFromSong, stageFromPassage, stageFromMedia, stageFromText, stageFromTool } from "@/lib/console/stage";
+import { stageFromSong, stageFromPassage, stageFromMedia, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
@@ -45,6 +46,8 @@ export default function Console() {
     const [playerPick, setPlayerPick] = useState(null);
     // The Bible environment's selection, as a stage: what Enter sends there.
     const bibleStageRef = useRef(null);
+    // The Bible environment's selection cursor (↑/↓ from the console's keys).
+    const bibleApiRef = useRef(null);
     const [env, setEnv] = useState("culto");
     const [open, setOpen] = useState(null);
     const [libTab, setLibTab] = useState("letras");
@@ -121,9 +124,20 @@ export default function Console() {
         try { const stage = await buildStage(item, index); c.setPrev(stage); await sendStage(stage); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
     }, [buildStage, c, sendStage]);
 
+    // No service chosen: the first item added starts today's setlist, a draft
+    // service the operator can rename later in Cultos.
+    const ensureService = useCallback(async () => {
+        if (serviceId) return serviceId;
+        const d = new Date();
+        const two = (n) => String(n).padStart(2, "0");
+        const row = await keryx.entities.Service.create({ title: `Setlist de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, status: "DRAFT" });
+        setServiceId(row.id);
+        c.say("Criada a setlist de hoje.");
+        return row.id;
+    }, [serviceId, c]);
+
     // A library item dropped on the Setlist: a ServiceItem at that position.
     const addStageToSetlist = useCallback(async (stage, index) => {
-        if (!serviceId) { c.say("Escolha um culto no menu KERYX."); return; }
         let type = null;
         let contentId = "";
         if (stage.kind === "lyrics" && stage.id?.startsWith("song:")) { type = "SONG"; contentId = stage.id.slice(5); }
@@ -135,17 +149,18 @@ export default function Console() {
         if (!type) { c.say("Esse item ainda não entra na setlist; arraste para a Prévia ou o Programa."); return; }
         const at = Math.max(0, Math.min(items.length, index ?? items.length));
         try {
+            const sid = await ensureService();
             // Renumber from the end first, so two rows never share an order.
             for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + 1 });
-            await keryx.entities.ServiceItem.create({ serviceId, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || (type === "SONG" ? 240 : 120) });
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || (type === "SONG" ? 240 : 120) });
             c.say(`${stage.title} na setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
-    }, [c, serviceId, items]);
+    }, [c, items, ensureService]);
 
     const addSong = async (song) => {
-        if (!serviceId) { c.say("Escolha um culto no menu KERYX."); return; }
         try {
-            await keryx.entities.ServiceItem.create({ serviceId, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || 240 });
+            const sid = await ensureService();
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || 240 });
             c.say(`${song.title} adicionada ao fim da setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
@@ -160,6 +175,18 @@ export default function Console() {
     const outsState = projectorDown ? "warn" : c.mode === "ensaio" ? "rh" : "";
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
     const closeOutput = (key) => window.keryxDesktop?.displays.close(key).catch(() => {});
+
+    // ↑/↓ in the KERYX environment: the selection walks the slides of the
+    // item in hand (the Prévia's own, else the ones on air); Enter sends it.
+    const selectSlide = useCallback((d) => {
+        const p = c.prev;
+        const air = c.cur?.content;
+        if (p && p.slides.length > 1 && !p.airSlide) { c.setPrev(stageAt(p, p.index + d)); return; }
+        if (air && air.slides.length) {
+            const from = p?.airSlide ? p.index : air.index;
+            c.setPrev(stageAirSlide(air, Math.max(0, Math.min(air.slides.length - 1, from + d)), liveStageId(c.cur)));
+        }
+    }, [c]);
 
     const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
 
@@ -186,6 +213,12 @@ export default function Console() {
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
+            else if (action === "selUp" || action === "selDown") {
+                e.preventDefault();
+                const d = action === "selDown" ? 1 : -1;
+                if (env === "biblia") bibleApiRef.current?.move(d);
+                else selectSlide(d);
+            }
             else if (action === "black") c.toggleScreen("black");
             else if (action === "logo") c.toggleScreen("logo");
             else if (action === "clear") c.clearText();
@@ -205,7 +238,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, env, quick, playerPick]);
+    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -213,7 +246,7 @@ export default function Console() {
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
         const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href]");
-        if (t && !t.closest(".dialog, .palette, .qj")) setTimeout(() => t.blur?.(), 0);
+        if (t && !t.closest(".dialog, .palette, .qj, .lyr, .addmenu")) setTimeout(() => t.blur?.(), 0);
     };
 
     const rundownProps = { service, items, airItemId, prevItemId, prepare: prepareItem, go: goItem, addStage: addStageToSetlist };
@@ -259,14 +292,14 @@ export default function Console() {
                 <div className="kx-banner is-rh">MODO ENSAIO — nada será enviado às saídas<span className="kx-sub">As telas continuam com o que estava no ar.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setOpen("arm")}>Armar saídas</button></div>
             )}
             <div className="main">
-                {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} serviceId={serviceId} itemsCount={items.length} onPrepare={(s) => { c.setPrev(s); setEnv("culto"); }} onSend={(s) => sendStage(s)} />}
+                {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
                 {env === "culto" && (
                     <>
                         {!layout.hidden.lib && (
                             <>
-                                <div className="col" style={{ width: layout.libW, flex: "none" }}>
+                                <div className="col" style={sideCol("libW", layout.libW)}>
                                     <Panel title="Biblioteca" collapsed={layout.collapsed.lib} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, lib: !layout.collapsed.lib } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                        <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} />
+                                        <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} />
                                     </Panel>
                                 </div>
                                 <Split size={layout.libW} onSize={(v) => setLayout({ ...layout, libW: v })} onReset={() => setLayout({ ...layout, libW: DEFAULT_LAYOUT.libW })} clamp={(v) => clampSize("libW", v)} />
@@ -274,7 +307,7 @@ export default function Console() {
                         )}
                         {!layout.hidden.slides && (
                             <>
-                                <div className="col" style={{ width: layout.slidesW, flex: "none" }}>
+                                <div className="col" style={sideCol("slidesW", layout.slidesW)}>
                                     <Panel title="Slides" count={handTitle(c) || "—"} collapsed={layout.collapsed.slides} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, slides: !layout.collapsed.slides } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
                                         <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
                                     </Panel>
@@ -294,7 +327,7 @@ export default function Console() {
                         {showRight && (
                             <>
                                 <Split size={layout.rightW} sign={-1} onSize={(v) => setLayout({ ...layout, rightW: v })} onReset={() => setLayout({ ...layout, rightW: DEFAULT_LAYOUT.rightW })} clamp={(v) => clampSize("rightW", v)} />
-                                <div className="col" style={{ width: layout.rightW, flex: "none", gap: "var(--gutter)" }}>{rightPanels(false)}</div>
+                                <div className="col" style={{ ...sideCol("rightW", layout.rightW), gap: "var(--gutter)" }}>{rightPanels(false)}</div>
                             </>
                         )}
                     </>
@@ -306,7 +339,8 @@ export default function Console() {
                 </div>
             )}
 
-            {open && <div className={`scrim ${open === "palette" || open === "arm" || open === "atalhos" || open === "encerrar" || open === "verificar" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open && <div className={`scrim ${open === "palette" || open === "arm" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => c.setPrev(stageFromSong(song))} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
                     <VerifyView c={c} items={items} data={data} outputs={outputs} network={network}

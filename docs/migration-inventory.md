@@ -49,7 +49,8 @@ Legend for the destination column:
 | Per-song style (fundo, fonte, tamanho, cores, efeito) and ThemePicker | Console · Camadas › Tema (themes exist as `ProjectionTheme`); per-song override in the editor |
 | Gerar slides automaticamente | Preparar · editor de música |
 | Imprimir letra | Preparar · editor de música, "Imprimir" (escape the title and artist) |
-| Exportar / Importar músicas (JSON) | Configurações › Dados |
+| Exportar / Importar músicas (JSON) | Importar: done (console "+ › Do computador", also txt/ChordPro/cifra). Exportar: Configurações › Dados |
+| Busca de letras na internet | Done: "+ › Na internet…" (Vagalume API + letras.mus.br search; letras pages pasted) |
 | Apagar todas | Retire (destructive, no real use; Exportar + a fresh database covers it) |
 | Busca Global button | Done (top bar search, `/`) |
 | Letra para Tablet (actually opens the main projector) | Retire (the label is wrong; outputs open from Saídas) |

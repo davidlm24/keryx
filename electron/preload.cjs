@@ -74,6 +74,10 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     network: {
         call: (op, args) => ipcRenderer.invoke("keryx:network", { op, args }),
     },
+    // Lyrics from the web (Vagalume + letras.mus.br search), main process.
+    lyrics: {
+        call: (op, args) => ipcRenderer.invoke("keryx:lyrics", { op, args }),
+    },
     // Audio levels: outputs report where the sound plays, the console listens.
     meters: {
         report: (level) => ipcRenderer.send("keryx:meter", level),

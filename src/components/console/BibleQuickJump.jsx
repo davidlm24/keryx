@@ -72,7 +72,7 @@ export default function BibleQuickJump({ initial, onPick, onCancel }) {
                     {r.step !== "livro" && r.book && <span>{quickRefLabel(r)} · {r.book.chapters} capítulos{r.chapter ? ` · ${r.book.verses[r.chapter - 1]} versículos no ${r.chapter}` : ""}</span>}
                 </div>
                 <div className="qj-foot">
-                    {r.error ? <span className="err">{r.error}</span> : <span>{r.valid ? "Enter abre na prévia" : r.book ? "Digite o capítulo" : "Tab completa o livro"}</span>}
+                    {r.error ? <span className="err">{r.error}</span> : <span>{r.valid ? "Enter seleciona · Enter de novo projeta" : r.book ? "Digite o capítulo" : "Tab completa o livro"}</span>}
                     <span className="grow" />
                     <span>Ex.: jo 3 16-18 · 1co 13</span>
                     <span>Esc para cancelar</span>

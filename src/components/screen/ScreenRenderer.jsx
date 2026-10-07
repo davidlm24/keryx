@@ -1,6 +1,6 @@
 import React from "react";
 import "./screen.css";
-import { mainLayer, currentSlide, toolTime } from "@shared/live-state.mjs";
+import { mainLayer, currentSlide, toolTime, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
@@ -23,24 +23,29 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
         return <div className={cls}><div className="ks-logo-screen">{logoUrl && <img src={logoUrl} alt="" />}</div></div>;
     }
 
+    // The look layers stack as the operator ordered them (Camadas): top first.
+    const order = Array.isArray(state.layerOrder) && state.layerOrder.length === LAYER_ORDER.length ? state.layerOrder : LAYER_ORDER;
+    const z = (k) => 10 * (order.length - order.indexOf(k));
     return (
         <div className={cls}>
-            <Background state={state} layer={layer} />
-            {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} />)}
-            {layer === "content" && <Content content={state.content} />}
-            {layer === "tool" && <Tool tool={state.tool} now={now} />}
-            {layer === "communication" && <Communication comm={state.communication} now={now} />}
-            {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} />)}
+            <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} /></div>
+            <div className="ks-z" style={{ zIndex: z("content") }}>
+                {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} />)}
+                {layer === "content" && <Content content={state.content} />}
+                {layer === "tool" && <Tool tool={state.tool} now={now} />}
+                {layer === "communication" && <Communication comm={state.communication} now={now} />}
+                {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} />)}
+            </div>
             {!preview && layer === "content" && state.content.audio && (
                 <audio key={state.content.startedAt} src={state.content.audio} autoPlay className="hidden" />
             )}
             {state.logo?.visible && logoUrl && layer !== "media" && (
-                <img className={`ks-logo ks-${state.logo.size} ks-${state.logo.corner}`} src={logoUrl} alt="" />
+                <div className="ks-z" style={{ zIndex: z("logo") }}><img className={`ks-logo ks-${state.logo.size} ks-${state.logo.corner}`} src={logoUrl} alt="" /></div>
             )}
             {preview && motion && state.video && (
                 <div className="ks-vidcover"><LiveVideo item={state.video} muted className="ks-vidcover-v" /></div>
             )}
-            <Overlays overlays={state.overlays} />
+            <Overlays overlays={state.overlays} z={z("overlays")} />
             {state.alert && <div className={`ks-alert ks-alert-${state.alert.type}`}>{state.alert.message}</div>}
         </div>
     );
@@ -106,7 +111,7 @@ function Content({ content }) {
     const pos = style.text_position || "middle";
     const anim = ANIM[style.transition ?? "fade"] ?? "ks-anim-fade";
     const bible = content.kind === "bible";
-    const reference = content.ref?.reference || content.title;
+    const reference = slide.ref || content.ref?.reference || content.title;
     const key = `${content.startedAt}:${content.index}`;
     return (
         <>
@@ -191,11 +196,11 @@ function MediaPoster({ media, motion = false }) {
     );
 }
 
-function Overlays({ overlays }) {
+function Overlays({ overlays, z }) {
     const shown = (overlays || []).filter((o) => o && o.enabled !== false);
     if (shown.length === 0) return null;
     return (
-        <div className="ks-overlays">
+        <div className="ks-overlays" style={{ zIndex: z }}>
             {shown.map((o) => {
                 const style = { left: `${o.x ?? 0}%`, top: `${o.y ?? 0}%`, width: `${o.width ?? 20}%`, opacity: o.opacity ?? 1, zIndex: o.z_index ?? 10 };
                 if (o.type === "logo" || o.type === "image") return <div key={o.id} className="ks-ov" style={style}><img src={o.content} alt="" /></div>;

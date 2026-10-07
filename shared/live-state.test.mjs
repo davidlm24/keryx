@@ -252,6 +252,24 @@ test("restore after a restart: same content, screen black, playback paused, rev 
     assert.deepEqual(restoreState({ version: 1, rev: 2, content: "x", overlays: "y" }, T0).content, null);
 });
 
+test("a Bible chapter sent whole: each slide keeps its own reference", () => {
+    const s = run([["content.show", { kind: "bible", title: "João 3", slides: [{ text: "16 Porque Deus", ref: "João 3:16 · NVI" }, { text: "17 Porque" }], index: 0 }]]);
+    assert.equal(s.content.slides[0].ref, "João 3:16 · NVI");
+    assert.equal(s.content.slides[1].ref, undefined);
+    assert.equal(applyOp(s, "content.next", {}, T0).content.index, 1, "the arrows walk the chapter");
+});
+
+test("layer order: the operator stacks the look layers", () => {
+    let s = emptyState(T0);
+    assert.deepEqual(s.layerOrder, ["logo", "overlays", "content", "background"]);
+    s = applyOp(s, "layers.order", { order: ["content", "logo", "overlays", "background"] }, T0);
+    assert.deepEqual(s.layerOrder, ["content", "logo", "overlays", "background"]);
+    assert.equal(applyOp(s, "layers.order", { order: [...s.layerOrder] }, T0), s, "same order: no change");
+    assert.throws(() => applyOp(s, "layers.order", { order: ["logo", "content"] }, T0), LiveError);
+    assert.throws(() => applyOp(s, "layers.order", { order: ["logo", "logo", "content", "background"] }, T0), LiveError);
+    assert.deepEqual(restoreState(JSON.parse(JSON.stringify(s)), T0).layerOrder, s.layerOrder, "survives a restart");
+});
+
 test("idle screen: logo or black, part of the document", () => {
     let s = emptyState(T0);
     assert.equal(s.idle, "logo");

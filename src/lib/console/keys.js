@@ -32,8 +32,10 @@ const isAltGr = (e) => e.ctrlKey && e.altKey && typeof e.key === "string" && e.k
 // the console blurs it (see Console.jsx). A keyboard-focused control (Tab)
 // keeps its own Enter/Space, as before.
 //
-// -> "send" | "next" | "prev" | "black" | "logo" | "clear" | "end" | "blur" |
-//    "search" | "help" | "play" | null
+// -> "send" | "next" | "prev" | "selUp" | "selDown" | "black" | "logo" |
+//    "clear" | "end" | "blur" | "search" | "help" | "play" | null
+// ←/→ move what is on air; ↑/↓ move the selection (Holyrics): the selected
+// slide or verse turns green and goes out with Enter or a double click.
 export function liveAction(e) {
     const kind = focusKind(e.target);
     const altGr = isAltGr(e);
@@ -48,6 +50,8 @@ export function liveAction(e) {
     switch (e.key) {
         case "ArrowRight": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu']") ? null : "next";
         case "ArrowLeft": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu']") ? null : "prev";
+        case "ArrowUp": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu'], select") ? null : "selUp";
+        case "ArrowDown": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu'], select") ? null : "selDown";
         case " ": return kind === "control" ? null : "play";
         case "b": case "B": return "black";
         case "l": case "L": return "logo";

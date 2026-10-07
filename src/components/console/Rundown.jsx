@@ -50,11 +50,14 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
         await Promise.all(next.map((x, i) => (x.order !== i ? keryx.entities.ServiceItem.update(x.id, { order: i }) : null)));
     };
 
-    if (!service) return <Empty icon="list" title="Nenhum culto escolhido">Escolha um culto no menu KERYX ou crie um em Cultos.</Empty>;
-    if (!items.length) return <Empty icon="list" title="Setlist vazia">Arraste da Biblioteca, busque (/) ou use a página Cultos.</Empty>;
 
     return (
         <div className="rund">
+            {!items.length && (
+                <Empty icon="list" title={service ? "Setlist vazia" : "Setlist de hoje"}>
+                    {service ? "Arraste da Biblioteca, busque (/) ou use +." : "Arraste da Biblioteca ou use + para começar a setlist de hoje. Ou escolha um culto no menu KERYX."}
+                </Empty>
+            )}
             {items.map((it, i) => {
                 const state = it.id === airItemId ? "is-air" : it.id === prevItemId ? "is-prev" : airIdx >= 0 && i < airIdx ? "is-done" : "";
                 const dragProps = canReorder ? {

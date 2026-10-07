@@ -297,6 +297,29 @@ command palette (`/`), Saídas, and Ensaio.
 - **Tela preta and Mostrar logo always act on the real screens**, in every
   view and mode: they are the emergency actions. A failing output is a banner
   under the top bar in every view, never over a monitor.
+- **Selection vs. on air (Holyrics, 2026-10-07):** the slide or verse on
+  air is red, the selection is green. ←/→ move the air; ↑/↓ move the
+  selection (`selUp`/`selDown` in `keys.js`) without touching the screens;
+  Enter or a double click projects it. In the Bible a single verse goes out
+  as the **whole chapter**, one verse per slide, starting there (each slide
+  carries its own reference, `slide.ref` in the live state), so ←/→ keep
+  walking the chapter; a range picked on purpose goes out as that passage.
+  The Bible column shows "No ar agora" only (no Prévia).
+- **Layer order:** `live.layerOrder` (top first: logo, overlays, content,
+  background; op `layers.order`) stacks the look layers on every screen;
+  Camadas reorders them by dragging. Alert, video-channel cover and
+  black/logo stay above all.
+- **Setlist without a service:** the first item added (drop, "Adicionar",
+  the Bible's "Adicionar à setlist") creates a draft Service "Setlist de
+  dd/mm" for today. Today's service is matched by the local date.
+- **"+" beside every search** (`AddMenu`): Letras — "Do computador…" (txt,
+  ChordPro, cifra, the JSON export; parsers in `src/lib/songImport.js`) and
+  "Na internet…" (`LyricsSearch`, main process `electron/lyrics.cjs`:
+  Vagalume through its API with the church's key in settings.json, plus the
+  letras.mus.br search index; letras.mus.br lyric pages refuse automated
+  reading, so those open in the browser and are pasted — KERYX does not get
+  around that block). Mídia — files via `src/lib/mediaImport.js`. Avisos —
+  the Comunicação page until its editor moves. Bíblia — install a version.
 - **The player** (`PlayerBar`, logic in `src/lib/console/player.js`) sits
   on top of the Programa, always (idle when nothing plays, so the monitors
   never move): what plays with sound (video screens, a video or YouTube on

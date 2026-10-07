@@ -7,6 +7,7 @@
 //   keryx:bible:*       invoke  installed versions, install from the web or a file
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 //   keryx:network       invoke  { op, args } screens on the church network
+//   keryx:lyrics        invoke  { op: search | get | setKey | status, args } lyrics from the web
 //   keryx:live:get      invoke  -> live state snapshot (shared/live-state.mjs)
 //   keryx:live:call     invoke  { op, args } -> the new snapshot | { error }
 //   keryx:live-change   event   the whole snapshot, sent to every window after each change
@@ -24,7 +25,7 @@ function safeExtension(name) {
     return /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : "";
 }
 
-function registerDataIpc({ store, outputs, system, network, live, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
+function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
 
     ipcMain.handle("keryx:db", (event, payload) => {
@@ -105,6 +106,19 @@ function registerDataIpc({ store, outputs, system, network, live, mediaDir, medi
         } catch (err) {
             log(`[keryx-system] ${op}: ${err && err.stack}`);
             return { error: { message: err.message || "Falha na operação.", status: err.status || 500 } };
+        }
+    });
+
+    // Lyrics from the web (electron/lyrics.cjs): search, get, setKey, status.
+    ipcMain.handle("keryx:lyrics", async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const { op, args } = payload || {};
+        if (!lyrics || !["search", "get", "setKey", "status"].includes(op)) return { error: { message: `Operação desconhecida: ${op}.`, status: 400 } };
+        try {
+            return { data: await lyrics[op](args) };
+        } catch (err) {
+            if (!err.status) log(`[keryx-lyrics] ${op}: ${err && err.stack}`);
+            return { error: { message: err.message || "Falha na busca de letras.", status: err.status || 500 } };
         }
     });
 

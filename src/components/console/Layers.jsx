@@ -3,7 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn, IconBtn, Seg } from "./kx";
 import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
-import { STYLE_KEYS } from "@shared/live-state.mjs";
+import { STYLE_KEYS, LAYER_ORDER } from "@shared/live-state.mjs";
 
 // Camadas: the look of what is on air, as four layers of the live state —
 // Logo (live.logo), Sobreposição (live.overlays), Texto principal
@@ -13,11 +13,12 @@ import { STYLE_KEYS } from "@shared/live-state.mjs";
 // restored or the look is saved as a new theme.
 
 const LAYERS = [
-    { id: "logo", name: "Logo" },
-    { id: "ov", name: "Sobreposição" },
-    { id: "text", name: "Texto principal" },
-    { id: "bg", name: "Fundo" },
+    { id: "logo", name: "Logo", key: "logo" },
+    { id: "ov", name: "Sobreposição", key: "overlays" },
+    { id: "text", name: "Texto principal", key: "content" },
+    { id: "bg", name: "Fundo", key: "background" },
 ];
+const BY_KEY = Object.fromEntries(LAYERS.map((l) => [l.key, l]));
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"]];
 const TEXT_SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"]];
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["georgia", "Georgia"], ["verdana", "Verdana"]];
@@ -32,6 +33,16 @@ export default function Layers({ c, themes }) {
     const [locked, setLocked] = useState({ bg: false });
     const [themeId, setThemeId] = useState(null);
     const [lastBg, setLastBg] = useState(null);
+    // Drag to reorder: the list follows live.layerOrder (top first).
+    const [drag, setDrag] = useState(null);
+    const [over, setOver] = useState(null);
+    const order = Array.isArray(cur?.layerOrder) && cur.layerOrder.length === LAYER_ORDER.length ? cur.layerOrder : LAYER_ORDER;
+    const rows = order.map((k) => BY_KEY[k]).filter(Boolean);
+    const moveLayer = (fromKey, toIndex) => {
+        const next = order.filter((k) => k !== fromKey);
+        next.splice(Math.min(toIndex > order.indexOf(fromKey) ? toIndex - 1 : toIndex, next.length), 0, fromKey);
+        if (next.join() !== order.join()) c.callOp("layers.order", { order: next }).catch(() => {});
+    };
 
     const content = cur?.content;
     const style = content?.style || {};
@@ -95,9 +106,16 @@ export default function Layers({ c, themes }) {
                 </div>
             )}
             {fontMissing && <div className="warnline"><Icon name="warn" /><span>Fonte "{fontMissing}" não instalada · usando a fonte padrão</span></div>}
-            {LAYERS.map((L) => (
-                <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"}`} onClick={() => setSel(L.id)} role="button" tabIndex={0}>
-                    <span className="kx-glyph"><Icon name="grip" /></span>
+            {rows.map((L, i) => (
+                <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"} ${drag === L.key ? "is-dragging" : ""} ${over === i && drag && drag !== L.key ? "is-dropbefore" : ""}`}
+                    onClick={() => setSel(L.id)} role="button" tabIndex={0}
+                    draggable
+                    onDragStart={(e) => { setDrag(L.key); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", L.key); }}
+                    onDragEnd={() => { setDrag(null); setOver(null); }}
+                    onDragOver={(e) => { if (!drag) return; e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); setOver(e.clientY > r.top + r.height / 2 ? i + 1 : i); }}
+                    onDrop={(e) => { e.preventDefault(); if (drag) moveLayer(drag, over ?? i); setDrag(null); setOver(null); }}
+                    title="Arraste para mudar a ordem das camadas">
+                    <span className="kx-glyph" style={{ cursor: "grab" }}><Icon name="grip" /></span>
                     <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>
                     <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); setLocked({ ...locked, [L.id]: !locked[L.id] }); }} aria-label={locked[L.id] ? "Desbloquear" : "Bloquear"} title={locked[L.id] ? "Desbloquear" : "Bloquear"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
                     <span className="kx-layer-name">{L.name}</span>

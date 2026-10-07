@@ -49,6 +49,10 @@ wiring, the data model and the known gaps.
   dragging a library row onto the Prévia prepares, onto the Programa sends,
   onto the Setlist adds a ServiceItem). Ensaio applies operations to a
   local copy with `applyOp` (`useConsole`), never to the main process.
+  Keys follow Holyrics: ←/→ move what is on air, ↑/↓ move the selection
+  (green), Enter or a double click projects it; one Bible verse goes out as
+  its whole chapter so the arrows keep walking it. With no service chosen,
+  the first item added creates "Setlist de dd/mm" (a draft Service).
   Screens and the console's monitors render with
   `src/components/screen/ScreenRenderer.jsx` — one component, sized in
   container units — so a preview is the output; the Programa monitor plays

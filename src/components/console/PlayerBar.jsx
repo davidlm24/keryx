@@ -132,11 +132,12 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
                 <IconBtn name="skip-fwd" title="Próximo da lista" disabled={off || !list || at >= list.length - 1} onClick={() => run("next")} />
                 <IconBtn name="stop" title="Parar e tirar do ar" disabled={off} onClick={() => run("stop")} />
             </span>
-            <span className="kx-time pl-time">{clock(shownPos)}{duration ? ` / ${clock(duration)}` : ""}</span>
-            <span className="kx-seek pl-seek" role="slider" aria-label="Posição" aria-valuemin={0} aria-valuemax={Math.round(duration || 0)} aria-valuenow={Math.round(shownPos)}
+            <span className="kx-time pl-time">{clock(shownPos)}</span>
+            <span className={`pl-seek ${c.isLive ? "is-live" : ""} ${duration ? "" : "is-unknown"}`} role="slider" aria-label="Posição" aria-valuemin={0} aria-valuemax={Math.round(duration || 0)} aria-valuenow={Math.round(shownPos)}
                 onClick={(e) => { if (!duration || off) return; const r = e.currentTarget.getBoundingClientRect(); run("seek", { pos: ((e.clientX - r.left) / r.width) * duration }); }}>
-                {duration ? <><i style={{ width: `${pct}%` }} /><b style={{ left: `${pct}%` }} /></> : null}
+                <i style={{ width: `${duration ? pct : 0}%` }} /><b style={{ left: `${duration ? pct : 0}%` }} />
             </span>
+            <span className="kx-time pl-left" title="Tempo restante · duração">{duration ? `-${clock(Math.max(0, duration - shownPos))}` : "--:--"}<small>{duration ? clock(duration) : ""}</small></span>
             <Volume volume={pb?.volume} disabled={off} onVolume={(v) => run("volume", { volume: v })} />
             <Meters />
             {item && (

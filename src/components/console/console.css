@@ -2,7 +2,10 @@
    monitors. Everything else (rows, buttons, fields, monitors' look) comes
    from the design system: docs/design-system/components/bundle.css. */
 .console { position: fixed; inset: 0; display: flex; flex-direction: column; gap: var(--gutter); padding: var(--gutter); background: var(--bg-0); color: var(--fg-2); user-select: none; outline: 0; }
-.console .main { flex: 1; min-height: 0; display: flex; align-items: stretch; }
+.console .main { flex: 1; min-height: 0; display: flex; align-items: stretch; overflow: hidden; }
+/* Side columns shrink down to their minimum (inline flex-basis/min-width
+   from Console.jsx); the center keeps room for the monitors. */
+.console .main > .col.center { min-width: 420px; }
 .console .col { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .console .col > .kx-panel { flex: 1; }
 .console .col > .kx-panel.is-collapsed { flex: none; }
@@ -51,10 +54,16 @@
 /* The Programa monitor fills the height it has; the 16:9 screen sits in it and carries the state frame. */
 .console .prog { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .console .prog .kx-mon-screen { aspect-ratio: auto; flex: 1; min-height: 0; container-type: size; background: none; box-shadow: none; border-radius: 0; display: grid; place-items: start center; }
-.console .prog .kx-mon-screen > .ks-box { width: min(100cqw, calc(100cqh * 16 / 9)); border-radius: var(--radius-control); box-shadow: 0 0 0 1px var(--line); }
-.console .prog.is-air .kx-mon-screen > .ks-box { box-shadow: 0 0 0 1px var(--air); }
-.console .prog.is-rh .kx-mon-screen > .ks-box { box-shadow: 0 0 0 1px var(--rh); }
-.console .prog.is-warn .kx-mon-screen > .ks-box { box-shadow: 0 0 0 1px var(--warn); }
+.console .prog .kx-mon-screen > .ks-box { width: min(100cqw, calc(100cqh * 16 / 9)); border-radius: var(--radius-control); }
+/* Monitor frames are painted inside the box (a ::after on top), never as an
+   outer shadow: an outer shadow is cut by the panel's overflow and the
+   border vanished at the edges when the window was narrowed. */
+.console .kx-mon .kx-mon-screen { box-shadow: none; }
+.console .kx-mon:not(.prog) .kx-mon-screen::after, .console .prog .kx-mon-screen > .ks-box::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--frame, var(--line)); border-radius: inherit; pointer-events: none; z-index: 200; }
+.console .kx-mon.is-air { --frame: var(--air); }
+.console .kx-mon.is-prev { --frame: var(--prev); }
+.console .kx-mon.is-rh { --frame: var(--rh); }
+.console .kx-mon.is-warn { --frame: var(--warn); }
 .console .prog .kx-mon-screen > .kx-screen-hatch, .console .prog .kx-mon-screen > .pipwrap { position: absolute; }
 .console .prog .kx-mon-screen > .kx-screen-hatch { inset: 0; }
 .console .subrow { display: flex; gap: var(--space-3); align-items: flex-start; flex: none; }
@@ -65,7 +74,7 @@
 .console .kx-btn-live { height: 32px; padding: 0 var(--space-3); }
 .console .kx-btn.kx-btn-send { height: 40px; padding: 0 var(--space-4); font-size: 13px; }
 .console .topbar .kx-btn.kx-btn-icon { width: 32px; height: 32px; }
-.console .sendrow { display: flex; align-items: center; gap: var(--space-2); }
+.console .sendrow { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex-wrap: wrap; }
 .console .sendnote { line-height: 16px; }
 .console .slidesnav { height: 40px; display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); border-top: 1px solid var(--line); flex: none; }
 /* An output failure: one line above the monitors, never over them. */
@@ -94,12 +103,14 @@
 .console .warnline span { overflow: hidden; text-overflow: ellipsis; }
 .console .drawer { position: absolute; z-index: 32; top: 48px; right: 6px; bottom: 40px; width: 360px; display: flex; flex-direction: column; gap: var(--gutter); }
 .console .drawer > .kx-panel { flex: 1; box-shadow: var(--popover); }
-.console .bgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-1); padding: var(--space-1) var(--space-2); }
-.console .bgrid .kx-book { height: 28px; }
-.console .bstrip { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); height: var(--row); overflow: hidden; }
-.console .bstrip .kx-book { height: 24px; flex-direction: row; gap: 4px; padding: 0 8px; }
-.console .chapters { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--space-1); padding: var(--space-1) var(--space-2); }
-.console .chapters button { height: 24px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 11px; }
+/* The Bible picker: big targets, read at a glance from the booth. */
+.console .bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; padding: var(--space-2); }
+.console .bgrid .kx-book { height: 44px; font-size: 13px; }
+.console .bstrip { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); min-height: 48px; overflow: hidden; }
+.console .bstrip .kx-book { height: 40px; flex-direction: row; gap: 6px; padding: 0 12px; font-size: 14px; }
+.console .bstrip .kx-book small { font-size: 11px; }
+.console .chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .chapters button { height: 36px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 13px; font-variant-numeric: tabular-nums; }
 .console .chapters button:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .chapters button.is-on { background: var(--bg-3); color: var(--fg-1); outline: 1px solid var(--line-strong); outline-offset: -1px; }
 .console .reading { padding: var(--space-1) 0 var(--space-2); max-width: 760px; }
@@ -113,6 +124,8 @@
 .console .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
 .console .kx-row.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
 .console .kx-row.is-dragging { opacity: .4; }
+.console .kx-layer.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
+.console .kx-layer.is-dragging { opacity: .4; }
 .console .kx-transport .toca { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
 .console .kx-transport .kx-seek { min-width: 60px; cursor: pointer; }
 .console .meters { display: inline-flex; gap: 6px; align-items: center; flex: none; }
@@ -139,8 +152,16 @@
 .console .player .pl-play { width: 32px; height: 32px; }
 .console .player .pl-play:not(:disabled) { background: var(--bg-3); color: var(--fg-1); }
 .console .player .pl-time { flex: none; min-width: 0; font-variant-numeric: tabular-nums; }
-.console .player .pl-seek { flex: 1 1 60px; min-width: 40px; cursor: pointer; }
-.console .player.is-idle .pl-seek { cursor: default; }
+/* The progress bar: a real bar (6 px), red while live, click to seek; the
+   thumb shows on hover. Remaining time and the length sit to its right. */
+.console .player .pl-seek { flex: 1 1 80px; min-width: 60px; height: 6px; position: relative; background: var(--bg-3); border-radius: 3px; cursor: pointer; }
+.console .player .pl-seek > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--fg-2); border-radius: 3px; }
+.console .player .pl-seek.is-live > i { background: var(--air); }
+.console .player .pl-seek > b { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--radius-round); background: var(--fg-1); opacity: 0; transition: opacity .12s; }
+.console .player .pl-seek:hover > b { opacity: 1; }
+.console .player .pl-seek.is-unknown, .console .player.is-idle .pl-seek { cursor: default; }
+.console .player .pl-left { flex: none; display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 12px; font-variant-numeric: tabular-nums; min-width: 40px; }
+.console .player .pl-left small { font-size: 10px; color: var(--fg-3); }
 .console .player .pl-vol { display: inline-flex; align-items: center; gap: 2px; flex: none; }
 .console .player .pl-vol input { -webkit-appearance: none; appearance: none; width: 72px; height: 16px; background: transparent; cursor: pointer; margin: 0 4px; }
 .console .player .pl-vol input::-webkit-slider-runnable-track { height: 2px; border-radius: 1px; background: linear-gradient(to right, var(--fg-2) var(--v), var(--bg-3) var(--v)); }
@@ -197,3 +218,40 @@
 .console .rund { display: flex; flex-direction: column; min-height: 100%; }
 .console .rund-tail { flex: 1; min-height: 28px; }
 .console .rund-tail.is-dropend { box-shadow: inset 0 2px 0 var(--brand); }
+
+/* Fields: no gold ring while typing (the design system's focus ring is for
+   keyboard navigation of buttons); a quiet inner line says where you type. */
+.console .kx-field:focus-within { outline: none; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .kx-field input:focus-visible, .console .kx-field input:focus { outline: 0; }
+.console select:focus-visible { outline: 0; box-shadow: inset 0 0 0 1px var(--line-strong); }
+
+/* Bíblia: "No ar agora" fills the column (no Prévia here: the selection in
+   the chapter is what goes next). */
+.console .bible-air { padding: 0 var(--space-2) var(--space-2); }
+.console .bible-air .kx-mon { width: 100%; }
+
+/* "+" beside a search field: the menu of what can be added there. */
+.console .searchrow { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
+.console .searchrow > .kx-field { flex: 1; }
+.console .addmenu { position: relative; flex: none; }
+.console .addmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 45; width: 230px; }
+
+/* Lyrics from the web (LyricsSearch): the Holyrics-style search dialog. */
+.console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); color: var(--fg-1); }
+.console .lyr-h { display: flex; align-items: center; gap: var(--space-2); height: 40px; padding: 0 var(--space-2) 0 var(--space-3); border-bottom: 1px solid var(--line); flex: none; }
+.console .lyr-key { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); flex: none; flex-wrap: wrap; }
+.console .lyr-key .kx-field { flex: 1; min-width: 220px; background: var(--bg-3); }
+.console .lyr-q { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); flex: none; }
+.console .lyr-q .kx-field { flex: 1; height: 36px; background: var(--bg-3); }
+.console .lyr-q .kx-field input { font-size: 14px; }
+.console .lyr-b { flex: 1; min-height: 0; display: flex; border-top: 1px solid var(--line); }
+.console .lyr-list { flex: 0 0 42%; min-width: 0; overflow: auto; border-right: 1px solid var(--line); padding: var(--space-1); }
+.console .lyr-prev { flex: 1; min-width: 0; overflow: auto; padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.console .lyr-t { font-size: 14px; }
+.console .lyr-t b { font-weight: 500; }
+.console .lyr-text { margin: 0; font: inherit; font-size: 13px; line-height: 19px; white-space: pre-wrap; color: var(--fg-1); user-select: text; }
+.console .lyr-paste { display: flex; flex-direction: column; gap: var(--space-2); flex: 1; min-height: 0; align-items: flex-start; }
+.console .lyr-paste textarea { width: 100%; flex: 1; min-height: 180px; resize: none; background: var(--bg-3); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: var(--space-2); font: inherit; font-size: 13px; line-height: 19px; outline: none; user-select: text; }
+.console .lyr-paste textarea:focus { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line); flex: none; font-size: 12px; }
+.console .lyr-legal { max-width: 360px; }

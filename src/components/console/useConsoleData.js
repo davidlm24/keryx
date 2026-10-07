@@ -40,7 +40,11 @@ export function useRundown(serviceId) {
 
 export function pickDefaultService(services) {
     if (!services.length) return null;
-    const today = new Date().toISOString().slice(0, 10);
+    // Local date: toISOString() is UTC, so after 21:00 in Brazil "today"
+    // would already be tomorrow and the evening service would be missed.
+    const d = new Date();
+    const two = (n) => String(n).padStart(2, "0");
+    const today = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
     return services.find((s) => s.date === today) || services[0];
 }
 
