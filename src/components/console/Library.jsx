@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import Icon from "./Icon";
 import { Row, Btn, Field, Empty } from "./kx";
 import Rundown from "./Rundown";
-import { stageFromSong, stageFromMedia, stageFromPiece, stageFromTool, stageFromYouTube, liveStageId } from "@/lib/console/stage";
+import { stageFromSong, stageFromMedia, stageFromPiece, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 
-const MEDIA_ICON = { video: "film", image: "image", gif: "image", pdf: "film", powerpoint: "film" };
-const MEDIA_LABEL = { video: "Vídeo", image: "Imagem", gif: "GIF", pdf: "Apresentação", powerpoint: "Apresentação" };
+const MEDIA_ICON = { video: "film", image: "image", gif: "image", pdf: "film", powerpoint: "film", audio: "music" };
+const MEDIA_LABEL = { video: "Vídeo", image: "Imagem", gif: "GIF", pdf: "Apresentação", powerpoint: "Apresentação", audio: "Áudio" };
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLowerCase().includes(q));
 
@@ -79,6 +79,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
 
             {tab === "midia" && (() => {
                 const media = data.media.filter((m) => match(ql, m.title, m.description));
+                const audios = media.filter((m) => m.type === "audio" && !m.missing);
                 return (
                     <>
                         <div className="listhead"><span className="kx-section">Link do YouTube</span></div>
@@ -86,6 +87,9 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                             <Field icon={null} value={yt} onChange={setYt} placeholder="https://youtube.com/watch?v=…" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter" && /youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } }} />
                             <Btn onClick={() => { if (/youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } else c.say("Cole um link do YouTube."); }} title="Pôr na prévia · toca nas telas de vídeo">Tocar</Btn>
                         </div>
+                        {audios.length > 1 && (
+                            <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar em sequência</Btn></div>
+                        )}
                         <div style={{ overflow: "auto", flex: 1 }}>
                             {!media.length && <Empty icon="film" title={ql ? `Nenhuma mídia com "${q}"` : "Nenhuma mídia"}>Envie arquivos em Mídia.</Empty>}
                             {media.map((m) => (
@@ -94,7 +98,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                     icon={MEDIA_ICON[m.type] || "film"}
                                     title={m.title}
                                     meta={[MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
-                                    state={state(`media:${m.id}`)}
+                                    state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? (c.isLive ? "is-air" : "is-rh") : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
                                     onClick={() => onPrepare(stageFromMedia(m))}
                                     actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo">Telas de vídeo</Btn>}
                                 />

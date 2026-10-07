@@ -352,6 +352,19 @@ const RECORD_VIDEO = `(async () => {
     const res = await window.keryxDesktop.media.importFile(new File(chunks, "smoke.webm", { type: "video/webm" }));
     return res.data && res.data.fileName;
 })()`;
+// A 20-second stereo 440 Hz tone at -6 dBFS as a WAV, imported into the media library.
+const MAKE_TONE = `(async () => {
+    const rate = 22050, seconds = 20, n = rate * seconds;
+    const buf = new ArrayBuffer(44 + n * 4);
+    const v = new DataView(buf);
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n * 4, true); str(8, "WAVE"); str(12, "fmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 2, true); v.setUint32(24, rate, true);
+    v.setUint32(28, rate * 4, true); v.setUint16(32, 4, true); v.setUint16(34, 16, true); str(36, "data"); v.setUint32(40, n * 4, true);
+    for (let i = 0; i < n; i++) { const x = Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 16384); v.setInt16(44 + i * 4, x, true); v.setInt16(46 + i * 4, x, true); }
+    const res = await window.keryxDesktop.media.importFile(new File([buf], "tom.wav", { type: "audio/wav" }));
+    return res.data && res.data.fileName;
+})()`;
 const VIDEO_STATE = `(() => {
     const v = document.querySelector("video");
     return v ? { src: v.src, paused: v.paused, ended: v.ended, time: v.currentTime, duration: v.duration, ready: v.readyState, error: v.error && v.error.code } : null;
@@ -590,6 +603,8 @@ async function checkConsole(webContents, { live, outputs }) {
         }
     };
 
+    let tone = null;
+    let svc = null;
     const song = (await js(`window.keryxDesktop.db.call("Song", "create", [{
         title: "Canto do console", artist: "Coral do Teste", lyrics: "Primeiro slide do console\\n\\nSegundo slide do console",
         slides: [{ text: "Primeiro slide do console" }, { text: "Segundo slide do console" }],
@@ -706,16 +721,73 @@ async function checkConsole(webContents, { live, outputs }) {
         result.quickEsc = !(await js("Boolean(document.querySelector('.qj'))")) && Boolean(live.get().content);
         await click(".envtabs button", "KERYX");
 
+        // The player: an audio file from the Mídia tab goes out with Enter,
+        // plays on the projector under the song, and the L/R meters move.
+        const toneFile = await js(MAKE_TONE);
+        tone = toneFile && (await js(`window.keryxDesktop.db.call("Media", "create", [{ title: "Tom de teste", type: "audio", file_url: "keryx-media://${toneFile}" }])`)).data;
+        await click(".kx-tabs button", "Mídia");
+        result.audioListed = await waitText(webContents, "Tom de teste");
+        await click(".kx-row", "Tom de teste");
+        result.audioPrepared = await waitText(webContents, "PRÉVIA · TOM DE TESTE");
+        await press("Enter");
+        result.audioOn = await waitFor(() => live.get().audio && live.get().audio.title === "Tom de teste");
+        result.audioUnderSong = Boolean(live.get().content) && live.get().content.title === "Canto do console";
+        result.playerShows = await waitFor(() => js("Boolean(document.querySelector('.player:not(.is-idle)')) && document.querySelector('.player .pl-what').textContent.includes('Tom de teste')"));
+        result.meters = await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.player .kx-meter b')]; return b.length === 2 && b.every((x) => parseFloat(x.style.height) > 40); })()"), 10000);
+        result.duration = await waitText(webContents, "/ 0:20", true, 6000);
+        result.shotPlayer = await shot("player");
+        await click(".player button", "Pausar");
+        result.audioPaused = await waitFor(() => live.get().audio.playback.paused);
+        await click(".player button", "Tocar");
+        await click(".player .pl-vol button", "");
+        result.audioMuted = await waitFor(() => live.get().audio.playback.volume === 0);
+        // The meters read after the volume (and the sound still goes through it).
+        result.metersFollowVolume = await waitFor(() => js("[...document.querySelectorAll('.player .kx-meter b')].every((x) => parseFloat(x.style.height) < 5)"), 6000);
+
         // The Encerrar button asks first; only "Encerrar" in the dialog ends.
+        // The music is not a screen: it keeps playing until Parar.
         await click(".topbar button", "Encerrar a projeção");
         result.endAsked = await waitText(webContents, "ENCERRAR A PROJEÇÃO?");
         result.endWaited = Boolean(live.get().content);
         await click(".dialog button", "Encerrar");
         result.ended = await waitFor(() => !live.get().content);
+        result.audioSurvivesEnd = Boolean(live.get().audio);
+        await click(".player button", "Parar e tirar do ar");
+        result.audioStopped = await waitFor(() => !live.get().audio);
+
+        // Linha do tempo: the arrow opens it with no service (and says so),
+        // then shows the blocks once a service with items exists.
+        await click(".tl-panel .kx-tl button", "");
+        result.tlEmpty = await waitText(webContents, "Nenhum culto escolhido");
+        if (!result.tlEmpty) {
+            result.tlDebug = await js(`(() => {
+                const p = document.querySelector(".tl-panel");
+                const b = p && p.querySelector(".kx-tl button");
+                if (!b) return "sem botão";
+                const r = b.getBoundingClientRect();
+                const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                return [p.innerText.slice(0, 200), b.getAttribute("aria-label"), at && (at.className.baseVal ?? at.className), innerHeight, Math.round(r.top)].join(" | ");
+            })()`);
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        svc = (await js(`window.keryxDesktop.db.call("Service", "create", [{ title: "Culto do console", date: "${today}", startTime: "19:00" }])`)).data;
+        for (const [i, title] of ["Abertura", "Louvor"].entries()) {
+            await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i}, duration: 300 }])`);
+        }
+        result.tlBlocks = await waitFor(() => js("document.querySelectorAll('.tl-track .kx-tl-blk').length >= 2"), 8000);
+        await click(".tl-panel .kx-tl button", "");
+        result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
     } finally {
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         live.call("clear");
+        try { live.call("audio.clear"); } catch { /* nothing playing */ }
         await js(`window.keryxDesktop.db.call("Song", "delete", ["${song && song.id}"])`);
+        if (tone) await js(`window.keryxDesktop.db.call("Media", "delete", ["${tone.id}"])`);
+        if (svc) {
+            const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
+            for (const it of its) await js(`window.keryxDesktop.db.call("ServiceItem", "delete", ["${it.id}"])`);
+            await js(`window.keryxDesktop.db.call("Service", "delete", ["${svc.id}"])`);
+        }
         await js(`history.pushState({}, "", "/"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         if (main) main.close();
     }
@@ -725,7 +797,10 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.prepBanner && result.prepCaption && result.prepKeptAir && result.prepBlack && result.prepUnblack
         && result.verify && result.verifyProjector && result.resent && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
         && result.armed && result.quickOpened && result.quickRead === "João|3|16" && result.quickPicked && result.quickEsc
-        && result.endAsked && result.endWaited && result.ended);
+        && result.endAsked && result.endWaited && result.ended
+        && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.meters && result.duration
+        && result.audioPaused && result.audioMuted && result.metersFollowVolume && result.audioSurvivesEnd && result.audioStopped
+        && result.tlEmpty && result.tlBlocks && result.tlClosed);
     return result;
 }
 

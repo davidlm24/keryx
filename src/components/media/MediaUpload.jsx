@@ -41,6 +41,8 @@ export default function MediaUpload({ onMediaUploaded }) {
                 let mediaType = "other";
                 if (file.type.startsWith("video/")) {
                     mediaType = "video";
+                } else if (file.type.startsWith("audio/") || /\.(mp3|m4a|wav|ogg)$/i.test(file.name)) {
+                    mediaType = "audio";
                 } else if (file.type === "image/gif" || file.name.endsWith(".gif")) {
                     mediaType = "gif";
                 } else if (file.type.startsWith("image/")) {
@@ -114,7 +116,7 @@ export default function MediaUpload({ onMediaUploaded }) {
                 </Select>
                 <Input
                     type="file"
-                    accept="video/*,image/*,.gif,.pdf,.ppt,.pptx"
+                    accept="video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx"
                     onChange={handleFileSelect}
                     disabled={isUploading}
                     multiple
@@ -157,7 +159,7 @@ export default function MediaUpload({ onMediaUploaded }) {
                     </div>
                 )}
                 <p className="text-xs" style={{ color: colors.primary }}>
-                    Formatos aceitos: Vídeos, Imagens, GIF, PDF, PowerPoint • Múltiplos arquivos suportados
+                    Formatos aceitos: Vídeos, Áudios, Imagens, GIF, PDF, PowerPoint • Múltiplos arquivos suportados
                 </p>
             </CardContent>
         </Card>

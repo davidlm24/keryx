@@ -43,7 +43,7 @@ export default function VideoProjection() {
                     </h2>
                 </div>
             )}
-            <LiveVideo item={video} className="w-full h-screen" />
+            <LiveVideo item={video} meter="video" className="w-full h-screen" />
             <AlertOverlayRenderer />
         </div>
     );

@@ -80,6 +80,7 @@
 .console .nextline .t { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; }
 .console .tl-panel { flex: none; }
 .console .tl-track { position: relative; height: 72px; margin: 4px var(--space-2) 0; overflow: hidden; }
+.console .tl-empty { height: 72px; display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--fg-3); font-size: 12px; }
 .console .layerprops { padding: var(--space-1) var(--space-2) var(--space-2); display: grid; grid-template-columns: 80px 1fr; gap: var(--space-1) var(--space-2); align-items: center; border-top: 1px solid var(--line); }
 .console .layerprops .k { font-size: 11px; color: var(--fg-3); }
 .console .layerprops .kx-seg { height: 24px; padding: 2px; } .console .layerprops .kx-seg > button { height: 20px; padding: 0 8px; font-size: 11px; }
@@ -125,6 +126,38 @@
 .console .svcpick { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); height: var(--row); }
 .console .svcpick select { flex: 1; min-width: 0; height: 24px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; }
 .console .kx-alert .kx-btn { color: var(--fg-1); }
+/* ---------- Player, on top of the Programa: transport, volume, L/R meters ---------- */
+.console .player { flex: none; height: 36px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-1) 0 var(--space-2); background: var(--bg-2); border-radius: var(--radius-control); white-space: nowrap; min-width: 0; container: player / inline-size; }
+.console .player .pl-what { display: inline-flex; align-items: center; gap: 6px; flex: 0 1 240px; min-width: 0; color: var(--fg-1); }
+.console .player .pl-what .t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.console .player .pl-what .kx-i { color: var(--fg-3); flex: none; }
+.console .player.is-idle .pl-what { color: var(--fg-3); }
+.console .player .pl-kind { flex: none; }
+.console .player .kx-seg { flex: none; }
+.console .player .pl-btns { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.console .player .pl-skip { height: var(--row); padding: 0 6px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--fg-2); }
+.console .player .pl-play { width: 32px; height: 32px; }
+.console .player .pl-play:not(:disabled) { background: var(--bg-3); color: var(--fg-1); }
+.console .player .pl-time { flex: none; min-width: 0; font-variant-numeric: tabular-nums; }
+.console .player .pl-seek { flex: 1 1 60px; min-width: 40px; cursor: pointer; }
+.console .player.is-idle .pl-seek { cursor: default; }
+.console .player .pl-vol { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.console .player .pl-vol input { -webkit-appearance: none; appearance: none; width: 72px; height: 16px; background: transparent; cursor: pointer; margin: 0 4px; }
+.console .player .pl-vol input::-webkit-slider-runnable-track { height: 2px; border-radius: 1px; background: linear-gradient(to right, var(--fg-2) var(--v), var(--bg-3) var(--v)); }
+.console .player .pl-vol input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 10px; margin-top: -4px; border-radius: var(--radius-round); background: var(--fg-1); }
+.console .player .pl-vol input:disabled { opacity: var(--dim); cursor: default; }
+.console .player .pl-vol input:focus-visible { outline: var(--bar) solid var(--brand); outline-offset: 2px; }
+.console .player .pl-num { font-size: 11px; color: var(--fg-3); width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+.console .player .meters { gap: 3px; }
+.console .player .meters .kx-meter { height: 28px; gap: 2px; }
+.console .player .meters .kx-meter > i { width: 6px; }
+.console .player .meters .lr { font-size: 9px; line-height: 10px; width: 8px; color: var(--fg-3); white-space: normal; word-spacing: 8px; }
+.console .player .meters[data-state="off"], .console .player .meters[data-state="nolevel"] { opacity: var(--dim); }
+.console .player .pl-where { display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.console .player .pl-where .lbl { overflow: hidden; text-overflow: ellipsis; }
+@container player (max-width: 860px) { .console .player .pl-where .lbl, .console .player .pl-kind { display: none; } }
+@container player (max-width: 720px) { .console .player .pl-num, .console .player .pl-skip { display: none; } .console .player .pl-what { flex-basis: 150px; } }
+@container player (max-width: 580px) { .console .player .pl-time { display: none; } .console .player .pl-vol input { width: 48px; } }
 /* ---------- Bíblia: quick jump (Livro → Capítulo → Versículo) ---------- */
 .console .qj { position: absolute; z-index: 40; left: 50%; top: 120px; transform: translateX(-50%); width: 560px; max-width: calc(100vw - 24px); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .console .qj-steps { display: flex; gap: var(--space-3); }

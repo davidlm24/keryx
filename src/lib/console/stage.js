@@ -4,7 +4,7 @@
 // (title, slides, a start index). Pure: no I/O, no React.
 import { songContent, passageContent, isVideoUrl } from "@/hooks/useProjectionControl";
 
-const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo" };
+const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
 
 export function stageFromSong(song, ref = {}) {
     const content = songContent(song, ref);
@@ -22,10 +22,20 @@ export function stageFromText(title, text) {
 
 // A Media row: videos, images, PDFs and the like go to the main projector's
 // media layer; a video can be sent to the video screens instead (toVideo).
+// An audio file goes to the audio channel: it plays under whatever the
+// screens show.
 export function stageFromMedia(media, { toVideo = false } = {}) {
     const kind = media.type === "video" && media.file_url?.includes("youtu") ? "youtube" : media.type;
     const item = { kind, url: media.file_url, title: media.title || "", duration: media.duration || undefined, id: media.id };
+    if (kind === "audio") return { kind: "audio", id: `media:${media.id}`, title: media.title || "", meta: "Áudio", slides: [], index: 0, op: "audio.show", args: item, missing: Boolean(media.missing) };
     return { kind: toVideo ? "video" : "media", id: `media:${media.id}`, title: media.title || "", meta: KIND_LABEL[kind] || media.type, slides: [], index: 0, op: toVideo ? "video.show" : "media.show", args: item, missing: Boolean(media.missing) };
+}
+
+// Several audio files played one after the other (music before the service,
+// during the offering): the player's Anterior / Próximo move through them.
+export function stageFromAudioList(list) {
+    const items = list.map((m) => ({ kind: "audio", url: m.file_url, title: m.title || "", id: m.id, duration: m.duration || undefined }));
+    return { kind: "audio", id: `audios:${list.map((m) => m.id).join(",")}`, title: `${list.length} áudios em sequência`, meta: "Áudio", slides: [], index: 0, op: "audio.playlist", args: { items, index: 0 } };
 }
 
 export function stageFromYouTube(url) {

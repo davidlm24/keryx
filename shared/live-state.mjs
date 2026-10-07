@@ -55,6 +55,10 @@ export function emptyState(now = Date.now()) {
         content: null,
         media: null,
         video: null,
+        // Music or a playback track on the KERYX computer (played by the main
+        // projector window), under whatever the screens show. Not a main
+        // layer: Encerrar leaves it playing; the player has its own stop.
+        audio: null,
         tool: null,
         communication: null,
         school: null,
@@ -158,6 +162,13 @@ function mediaItem(value) {
     if (value.duration !== undefined && value.duration !== null) out.duration = count(value.duration, "Duração");
     if (value.id !== undefined && value.id !== null) out.id = text(value.id, "Id", { max: 200 });
     return out;
+}
+
+// What the audio channel plays: an audio file, or a video file for its sound.
+function audioItem(value) {
+    const kind = isPlainObject(value) && value.kind !== undefined ? value.kind : "audio";
+    oneOf(kind, ["audio", "video"], "Tipo de áudio");
+    return mediaItem({ ...value, kind });
 }
 
 const freshPlayback = (now, volume = 1) => ({ paused: false, position: 0, at: now, volume });
@@ -307,8 +318,38 @@ const OPS = {
     "video.show": (_s, a, now) => ({ video: { ...mediaItem(a), shownAt: now, playback: freshPlayback(now) } }),
     "video.clear": (s) => (s.video ? { video: null } : null),
 
+    // The audio channel (see emptyState): one file or a list, a video file
+    // used for its sound included.
+    "audio.show": (_s, a, now) => ({ audio: { ...audioItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: freshPlayback(now) } }),
+    "audio.playlist": (_s, a, now) => {
+        const items = list(a.items, "Lista de áudios").map(audioItem);
+        if (items.length === 0) throw new LiveError("A lista de áudios está vazia.");
+        const i = clampIndex(a.index, items.length);
+        return { audio: { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: freshPlayback(now) } };
+    },
+    "audio.advance": (s, { fromIndex }, now) => {
+        const audio = need(s.audio, "tocando");
+        if (!audio.playlist || Number(fromIndex) !== audio.playlistIndex) return null;
+        const i = audio.playlistIndex + 1;
+        // The end of the list: it stops there (music does not wrap by itself).
+        if (i >= audio.playlist.length) return { audio: { ...audio, playback: { ...audio.playback, paused: true, position: livePosition(audio.playback, now), at: now } } };
+        return { audio: { ...audio, ...audio.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, audio.playback.volume) } };
+    },
+    "audio.clear": (s) => (s.audio ? { audio: null } : null),
+
+    // The operator jumps to an item of a media or audio list (Anterior /
+    // Próximo in the player): it starts from the top, at the same volume.
+    "playlist.goTo": (s, { layer = "media", index }, now) => {
+        oneOf(layer, ["media", "audio"], "Camada");
+        const current = need(s[layer], "em reprodução");
+        if (!current.playlist) throw new LiveError("Não é uma lista.");
+        const i = clampIndex(index, current.playlist.length);
+        if (i === current.playlistIndex) return null;
+        return { [layer]: { ...current, ...current.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, current.playback.volume) } };
+    },
+
     "transport": (s, { layer = "video", action, time, volume }, now) => {
-        oneOf(layer, ["media", "video"], "Camada");
+        oneOf(layer, ["media", "video", "audio"], "Camada");
         const current = need(s[layer], "em reprodução");
         const pb = current.playback;
         const position = livePosition(pb, now);
@@ -438,6 +479,7 @@ export function restoreState(saved, now = Date.now()) {
         content: layer(saved.content),
         media: paused(layer(saved.media)),
         video: paused(layer(saved.video)),
+        audio: paused(layer(saved.audio)),
         tool: layer(saved.tool),
         communication: layer(saved.communication),
         school: layer(saved.school),

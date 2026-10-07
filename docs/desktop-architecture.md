@@ -199,6 +199,23 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
    playlists advanced by the desktop projector) and the operator panels'
    muted previews all use it. Nothing writes `VideoSync`/`VideoControl`;
    network screens no longer write anything but the DeviceView heartbeat.
+   **Audio channel (2026-10-07):** `live.audio` holds music or a playback
+   track (`audio.show`, `audio.playlist`, `audio.advance`, `audio.clear`;
+   `playlist.goTo` jumps within a media or audio list; `transport` takes
+   `layer: "audio"`). It is not a main layer: it plays under whatever the
+   screens show, and Encerrar/Esc leave it playing (the player's Parar stops
+   it). Only the desktop's own `/Projection` window plays it, so a TV on
+   the network showing that page stays silent. Media rows may be `audio`.
+   **Level meters:** where sound plays (`LiveVideo` with a `meter` layer:
+   the projector's media and audio, the video screens), `useAudioMeter`
+   routes the element through Web Audio (element to the speakers and to two
+   analysers), built only when the context runs and the file is readable,
+   so a file is never silenced; `captureStream()` was tried and broke
+   seeking. It measures L/R peaks after the volume and
+   sends them with the duration over `keryx:meter` a dozen times a second;
+   the main process relays them to the other windows. Nothing is stored.
+   Local media is loaded in CORS mode for this (the media server sends
+   `Access-Control-Allow-Origin`); YouTube reports its duration only.
 4. The rest of the engine and outputs. **Done** (decided 2026-10-06: engine
    and outputs only; today's operator pages are not rewired, because the
    redesign replaces them).
@@ -279,6 +296,15 @@ command palette (`/`), Saídas, and Ensaio.
 - **Tela preta and Mostrar logo always act on the real screens**, in every
   view and mode: they are the emergency actions. A failing output is a banner
   under the top bar in every view, never over a monitor.
+- **The player** (`PlayerBar`, logic in `src/lib/console/player.js`) sits
+  on top of the Programa, always (idle when nothing plays, so the monitors
+  never move): what plays with sound (video screens, a video or YouTube on
+  the projector, the audio channel; a switch when several play), Anterior
+  (previous in a list, else back to the start), −10 s, Tocar/Pausar (Space),
+  +10 s, Próximo, Parar, position and seek, mute and a volume slider, the
+  L/R meters (live only) and where the sound comes out, with a warning when
+  the projector window is closed. In the library, an audio file prepares on
+  the audio channel and "Tocar em sequência" queues every audio of the list.
 - Keys (`src/lib/console/keys.js`): a mouse click never leaves focus on a
   control (the console blurs it), so after clicking a song Enter sends it and
   the arrows move the slide or verse on air, as in Holyrics. A control

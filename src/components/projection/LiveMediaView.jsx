@@ -40,7 +40,7 @@ export default function LiveMediaView({ media }) {
             <div className="min-h-screen bg-black flex items-center justify-center relative">
                 {counter}
                 {/* A single video loops; in a playlist it moves on when it ends. */}
-                <LiveVideo item={media} loop={!inPlaylist} onEnded={advance} className="w-full h-screen" />
+                <LiveVideo item={media} loop={!inPlaylist} onEnded={advance} meter="media" className="w-full h-screen" />
             </div>
         );
     }

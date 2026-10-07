@@ -21,6 +21,7 @@ import VerifyView from "@/components/console/VerifyView";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT } from "@/lib/console/layout";
 import { liveAction, quickJumpKey } from "@/lib/console/keys";
+import { playerLayer, playerOp } from "@/lib/console/player";
 import { stageFromSong, stageFromPassage, stageFromMedia, stageFromText, stageFromTool } from "@/lib/console/stage";
 
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
@@ -41,6 +42,8 @@ export default function Console() {
     const [profile, setProfile] = useState("");
     const [view, setViewState] = useState(null);
     const [quick, setQuick] = useState(null);
+    // The layer the player controls when several play (null: the newest).
+    const [playerPick, setPlayerPick] = useState(null);
     // The Bible environment's selection, as a stage: what Enter sends there.
     const bibleStageRef = useRef(null);
     const [env, setEnv] = useState("culto");
@@ -94,7 +97,7 @@ export default function Console() {
         const type = String(item.type || "").toUpperCase();
         if (type === "SONG") return stageFromSong(await keryx.entities.Song.get(item.contentId), ref);
         if (type === "BIBLE") return stageFromPassage(await keryx.entities.BiblePassage.get(item.contentId), ref);
-        if (["VIDEO", "IMAGE", "PDF", "POWERPOINT"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
+        if (["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
         if (type === "TIMER") { const s = stageFromTool("timer", { minutes: Math.max(1, Math.round((item.duration || 300) / 60)) }); return { ...s, args: { ...s.args, ref } }; }
         const s = stageFromText(item.title || "Texto", item.notes || item.title || "");
         return { ...s, args: { ...s.args, ref } };
@@ -187,13 +190,14 @@ export default function Console() {
             else if (action === "search") { e.preventDefault(); setOpen("palette"); }
             else if (action === "help") setOpen("atalhos");
             else if (action === "play") {
-                const layer = c.cur?.video ? "video" : c.cur?.media?.playback ? "media" : null;
-                if (layer) { e.preventDefault(); c.callOp("transport", { layer, action: c.cur[layer].playback.paused ? "play" : "pause" }).catch(() => {}); }
+                // Space: the player's Tocar/Pausar, for the layer it shows.
+                const op = playerOp(c.cur, playerLayer(c.cur, playerPick), "toggle");
+                if (op) { e.preventDefault(); c.callOp(op[0], op[1]).catch(() => {}); }
             }
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, view, env, quick]);
+    }, [c, open, drawer, sendStage, view, env, quick, playerPick]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -286,7 +290,7 @@ export default function Console() {
                                     <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 22 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco"><Icon name="undo" />Voltar ao anterior</button>
                                 </div>
                             } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))} onSend={() => sendStage()} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
+                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))} onSend={() => sendStage()} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
                             </Panel>
                         </div>
                         {showRight && (

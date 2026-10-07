@@ -27,6 +27,17 @@ ipcRenderer.on("keryx:live-change", (_event, snapshot) => {
     }
 });
 
+const meterListeners = new Set();
+ipcRenderer.on("keryx:meter", (_event, level) => {
+    for (const listener of meterListeners) {
+        try {
+            listener(level);
+        } catch (err) {
+            console.error("[keryx] meter listener failed:", err);
+        }
+    }
+});
+
 contextBridge.exposeInMainWorld("keryxDesktop", {
     isDesktop: true,
     platform: process.platform,
@@ -62,6 +73,14 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     },
     network: {
         call: (op, args) => ipcRenderer.invoke("keryx:network", { op, args }),
+    },
+    // Audio levels: outputs report where the sound plays, the console listens.
+    meters: {
+        report: (level) => ipcRenderer.send("keryx:meter", level),
+        onLevel(listener) {
+            meterListeners.add(listener);
+            return () => meterListeners.delete(listener);
+        },
     },
     system: {
         call: (op) => ipcRenderer.invoke("keryx:system", { op }),

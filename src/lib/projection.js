@@ -31,10 +31,19 @@ export const projection = {
     advanceMedia: (fromIndex) => keryx.live.call("media.advance", { fromIndex }),
     clearMedia: op("media.clear"),
 
+    // The audio channel: music or a playback track on the KERYX computer,
+    // under whatever the screens show ({ url, title, kind: "audio" | "video" }).
+    showAudio: op("audio.show"),
+    showAudioPlaylist: (items, index = 0) => keryx.live.call("audio.playlist", { items, index }),
+    advanceAudio: (fromIndex) => keryx.live.call("audio.advance", { fromIndex }),
+    clearAudio: op("audio.clear"),
+    // Anterior / Próximo in a media or audio list.
+    playlistGoTo: (layer, index) => keryx.live.call("playlist.goTo", { layer, index }),
+
     // The video channel (video screens, tablets): { kind, url, title }.
     showVideo: op("video.show"),
     clearVideo: op("video.clear"),
-    // layer: "video" | "media"
+    // layer: "video" | "media" | "audio"
     transport: {
         play: (layer = "video") => keryx.live.call("transport", { layer, action: "play" }),
         pause: (layer = "video") => keryx.live.call("transport", { layer, action: "pause" }),

@@ -10,6 +10,8 @@
 //   keryx:live:get      invoke  -> live state snapshot (shared/live-state.mjs)
 //   keryx:live:call     invoke  { op, args } -> the new snapshot | { error }
 //   keryx:live-change   event   the whole snapshot, sent to every window after each change
+//   keryx:meter         send    { layer, l, r, duration } an output's audio level, relayed
+//                               to the other windows (the console's player meters)
 
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -138,6 +140,25 @@ function registerDataIpc({ store, outputs, system, network, live, mediaDir, medi
                 if (!win.isDestroyed()) win.webContents.send("keryx:live-change", snapshot);
             }
         });
+    });
+
+    // Audio levels measured where the sound plays (an output window), a few
+    // times a second. Not part of the live state: nothing is stored, and a
+    // window that is not listening simply drops them.
+    const level = (v) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0);
+    ipcMain.on("keryx:meter", (event, payload) => {
+        if (!isTrustedSender(event) || !payload || !["media", "video", "audio"].includes(payload.layer)) return;
+        const clean = {
+            layer: payload.layer,
+            l: level(payload.l),
+            r: level(payload.r),
+            duration: Number.isFinite(payload.duration) && payload.duration > 0 ? payload.duration : null,
+            url: typeof payload.url === "string" ? payload.url.slice(0, 2000) : "",
+            noLevel: payload.noLevel === true,
+        };
+        for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed() && win.webContents !== event.sender) win.webContents.send("keryx:meter", clean);
+        }
     });
 
     ipcMain.on("keryx:config", (event) => {

@@ -60,6 +60,16 @@ Capítulo / Versículo captions over the typed text and the candidate books.
   / "N itens precisam de atenção") and "Ir para Apresentar", which asks once
   when there are warnings.
 
+**Player (app, 2026-10-07; not drawn in the canvas yet):** one 36 px row on
+top of the Programa, `bg-2`, built from the transport pieces (`kx-seek`,
+`kx-time`, `kx-meter`, bare icon buttons): title and kind, Anterior,
+−10, Tocar/Pausar (32 px, `bg-3`), +10, Próximo, Parar, time, seek, mute,
+a 2 px volume slider with a 10 px thumb (the seek bar's look), the L/R
+meters (green, amber from −3 dBFS, dim when not live or not measurable) and
+"Toca em". It narrows with container queries (drops "Toca em", the kind,
+the ±10 and the percentage, then the time). It replaces the transport that
+sat under the Prévia.
+
 The canvas still has things the app does differently, on purpose: slides
 send on double click there (never in the app), and Esc there asks before
 ending (the app ends at once; the Encerrar button asks). Plain Enter sends

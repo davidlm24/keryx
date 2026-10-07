@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import CommunicationProjectionView from "@/components/projection/CommunicationProjectionView";
 import TabletVideoReceiver from "@/components/projection/TabletVideoReceiver";
+import LiveVideo from "@/components/projection/LiveVideo";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
@@ -114,6 +115,16 @@ export default function Projection() {
         return () => window.removeEventListener("keydown", onKey);
     }, [screenMode]);
 
+    // The audio channel plays here, on the KERYX computer only (a TV on the
+    // network showing this page stays silent), in whatever the screen shows.
+    const audio = live?.audio || null;
+    const audioIndex = audio?.playlistIndex ?? 0;
+    const audioPlayer = audio && keryx.isDesktop && !keryx.isNetworkScreen ? (
+        <div className="hidden" aria-hidden="true">
+            <LiveVideo item={audio} meter="audio" onEnded={() => { if (audio.playlist) projection.advanceAudio(audioIndex).catch(() => {}); }} />
+        </div>
+    ) : null;
+
     // Legacy paths, shown as the live state's own layers would be.
     if (toolMode === "black") return <div className="min-h-screen bg-black" />;
     if (toolMode) {
@@ -130,6 +141,7 @@ export default function Projection() {
 
     return (
         <>
+            {audioPlayer}
             <TabletVideoReceiver />
             <ScreenRenderer fill state={live} now={now} logoUrl={logo} />
         </>

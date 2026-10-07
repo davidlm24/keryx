@@ -14,7 +14,7 @@ import { FONT_MAP } from "@/lib/deviceStyles";
 // for offline use, and what needs the internet. States: Pronto / Atenção / Falta.
 
 const STATE = { ok: ["Pronto", "kx-prev"], warn: ["Atenção", "kx-warn"], miss: ["Falta", "kx-warn"], info: ["—", "kx-meta"] };
-const MEDIA_TYPES = ["VIDEO", "IMAGE", "PDF", "POWERPOINT"];
+const MEDIA_TYPES = ["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"];
 const isExternal = (url) => /^https?:\/\//.test(url || "") && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url);
 const isYouTube = (url) => /youtu\.?be/.test(url || "");
 

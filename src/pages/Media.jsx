@@ -59,7 +59,8 @@ export default function Media() {
     const handlePlay = (media) => {
         interceptWindowOpen("Tela de Projeção", () => {
             openProjectionWindow();
-            projection.showMedia(asItem(media)).catch(report);
+            // Audio plays on the audio channel, under whatever the screen shows.
+            (media.type === "audio" ? projection.showAudio(asItem(media)) : projection.showMedia(asItem(media))).catch(report);
         });
     };
 

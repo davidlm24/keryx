@@ -107,6 +107,7 @@ confirmation.
 | Reproduzir todos em loop | Console · Biblioteca › Mídia, "Tocar todos" (`projection.showPlaylist`), PowerPoint included or said so |
 | Abrir tela de projeção | Done (Saídas) |
 | Editar mídia | New: rename and recategorise in the row menu |
+| Áudio (new, 2026-10-07) | Done: audio files upload in Mídia, play on the audio channel under the screens, "Tocar em sequência" in the library, the player on top of the Programa with L/R meters. Still to do: the song's own playback track (`content.audio`) plays without transport |
 
 Bugs not to carry over: on mobile the live call sits inside the window-open
 intercept and never runs; `mutate` instead of `mutateAsync` hides create

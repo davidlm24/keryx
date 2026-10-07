@@ -20,7 +20,7 @@ export default function TabletVideoReceiver() {
                     </h2>
                 </div>
             )}
-            <LiveVideo item={video} className="w-full h-full" />
+            <LiveVideo item={video} meter="video" className="w-full h-full" />
         </div>
     );
 }

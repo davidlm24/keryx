@@ -13,7 +13,8 @@
         "powerpoint",
         "image",
         "pdf",
-        "gif"
+        "gif",
+        "audio"
       ],
       "description": "Tipo de m\u00eddia"
     },

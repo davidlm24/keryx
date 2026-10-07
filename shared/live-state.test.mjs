@@ -251,3 +251,44 @@ test("restore after a restart: same content, screen black, playback paused, rev 
     assert.deepEqual(restoreState("garbage", T0), emptyState(T0));
     assert.deepEqual(restoreState({ version: 1, rev: 2, content: "x", overlays: "y" }, T0).content, null);
 });
+
+test("audio channel: plays under the screens, survives Encerrar, has its own transport and list", () => {
+    let s = run([["content.show", song], ["audio.show", { url: "keryx-media://ofertorio.mp3", title: "Ofertório" }, T0]]);
+    assert.equal(s.audio.kind, "audio", "kind defaults to audio");
+    assert.equal(mainLayer(s), "content", "audio is not a main layer");
+    s = applyOp(s, "transport", { layer: "audio", action: "volume", volume: 0.4 }, T0 + 1000);
+    assert.equal(s.audio.playback.volume, 0.4);
+    s = applyOp(s, "clear", {}, T0 + 2000);
+    assert.equal(s.content, null);
+    assert.ok(s.audio, "Encerrar leaves the music playing");
+    assert.equal(applyOp(s, "audio.clear", {}, T0).audio, null);
+    assert.throws(() => applyOp(s, "audio.show", { kind: "image", url: "x" }, T0), LiveError);
+    assert.equal(applyOp(s, "audio.show", { kind: "video", url: "keryx-media://v.mp4" }, T0).audio.kind, "video", "a video file for its sound");
+
+    s = run([["audio.playlist", { items: [{ url: "a" }, { url: "b" }], index: 0 }, T0]]);
+    s = applyOp(s, "transport", { layer: "audio", action: "volume", volume: 0.5 }, T0);
+    s = applyOp(s, "audio.advance", { fromIndex: 0 }, T0 + 5000);
+    assert.equal(s.audio.url, "b");
+    assert.equal(s.audio.playback.volume, 0.5, "volume kept");
+    assert.equal(applyOp(s, "audio.advance", { fromIndex: 0 }, T0), s, "duplicate report ignored");
+    const end = applyOp(s, "audio.advance", { fromIndex: 1 }, T0 + 9000);
+    assert.equal(end.audio.url, "b", "the list does not wrap");
+    assert.equal(end.audio.playback.paused, true);
+    const back = restoreState(JSON.parse(JSON.stringify(s)), T0 + 99999);
+    assert.equal(back.audio.playback.paused, true, "restored paused");
+});
+
+test("playlist.goTo: Anterior / Próximo in the player keep the volume", () => {
+    let s = run([["media.playlist", { items: [{ kind: "video", url: "a" }, { kind: "video", url: "b" }, { kind: "image", url: "c" }], index: 1 }, T0]]);
+    s = applyOp(s, "transport", { layer: "media", action: "volume", volume: 0.3 }, T0);
+    s = applyOp(s, "playlist.goTo", { layer: "media", index: 0 }, T0 + 100);
+    assert.equal(s.media.url, "a");
+    assert.equal(s.media.playlistIndex, 0);
+    assert.equal(s.media.playback.volume, 0.3);
+    assert.equal(s.media.shownAt, T0 + 100);
+    assert.equal(applyOp(s, "playlist.goTo", { layer: "media", index: 0 }, T0), s, "same item: no change");
+    assert.equal(applyOp(s, "playlist.goTo", { layer: "media", index: 99 }, T0).media.url, "c", "clamped");
+    assert.throws(() => applyOp(s, "playlist.goTo", { layer: "video", index: 0 }, T0), LiveError);
+    const single = run([["media.show", { kind: "video", url: "v" }, T0]]);
+    assert.throws(() => applyOp(single, "playlist.goTo", { layer: "media", index: 1 }, T0), LiveError);
+});

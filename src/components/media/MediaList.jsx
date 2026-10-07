@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Trash2, Film, Image, FileText, FileImage, FileType } from "lucide-react";
+import { Play, Trash2, Film, Image, FileText, FileImage, FileType, Music } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { useThemeColors } from "@/hooks/useThemeColors";
@@ -20,6 +20,8 @@ export default function MediaList({ mediaItems, onPlay, onDelete }) {
                 return <FileText className="w-6 h-6 text-blue-300" />;
             case "pdf":
                 return <FileType className="w-6 h-6 text-red-300" />;
+            case "audio":
+                return <Music className="w-6 h-6 text-blue-300" />;
             default:
                 return <Film className="w-6 h-6 text-blue-300" />;
         }
@@ -37,6 +39,8 @@ export default function MediaList({ mediaItems, onPlay, onDelete }) {
                 return "PowerPoint";
             case "pdf":
                 return "PDF";
+            case "audio":
+                return "Áudio";
             default:
                 return "Mídia";
         }
