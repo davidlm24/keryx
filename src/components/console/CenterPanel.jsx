@@ -43,7 +43,6 @@ const captionOf = (doc, word) => {
 // the monitor: which screens it reaches.
 function sendNote(stage, mode) {
     if (!stage) return null;
-    if (mode === "prep") return "Só aqui: as telas não mudam enquanto você prepara.";
     if (mode === "ensaio") return "Só no ensaio: as telas não mudam.";
     if (stage.kind === "video") return "Ao enviar: toca nas telas de vídeo; o projetor continua como está.";
     if (stage.kind === "audio") return "Ao enviar: toca no computador do projetor; as telas não mudam.";
@@ -59,8 +58,8 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const { live, cur, prev, now, isLive, mode } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const progState = projectorDown ? "warn" : isLive ? "air" : "rh";
-    const progWord = isLive ? "Programa" : mode === "prep" ? "Programa · Preparação" : "Programa · Ensaio";
-    const sendLabel = isLive ? "Enviar ao ar" : mode === "prep" ? "Mostrar aqui" : "Mostrar no ensaio";
+    const progWord = isLive ? "Programa" : "Programa · Ensaio";
+    const sendLabel = isLive ? "Enviar ao ar" : "Mostrar no ensaio";
     const prevCap = prev ? `Prévia · ${prev.title}${prev.slides.length > 1 ? ` · ${prev.index + 1}/${prev.slides.length}` : ""}` : "Prévia";
     const note = sendNote(prev, mode);
 

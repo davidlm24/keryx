@@ -67,6 +67,9 @@ export function emptyState(now = Date.now()) {
         // The church logo as a corner mark over the content (the idle logo
         // and screen "logo" are separate). Off until a theme turns it on.
         logo: { visible: false, corner: "bottom-right", size: "medium" },
+        // What an idle screen shows (nothing on air, screen "show"): the
+        // church logo, or plain black (Holyrics-style, nothing lingers).
+        idle: "logo",
         // What was on the main projector before each change, newest first,
         // so the operator can bring it back (through the preview, never
         // straight to air).
@@ -436,6 +439,13 @@ const OPS = {
         overlays: list(overlays ?? [], "Sobreposições", 50).map((o) => loose(o, "Sobreposição")).filter(isPlainObject),
     }),
 
+    // The idle look of the screens: part of the document, so every output
+    // (local windows and network screens) renders the same emptiness.
+    "idle.set": (s, { mode }) => {
+        const m = oneOf(mode, ["logo", "black"], "Tela ociosa");
+        return s.idle === m ? null : { idle: m };
+    },
+
     "alert.show": (_s, a, now) => ({
         alert: {
             message: text(a.message, "Mensagem", { max: 2000, required: true }),
@@ -486,6 +496,7 @@ export function restoreState(saved, now = Date.now()) {
         overlays: Array.isArray(saved.overlays) ? saved.overlays.filter(isPlainObject) : [],
         alert: layer(saved.alert),
         logo: { ...base.logo, ...(layer(saved.logo) || {}) },
+        idle: saved.idle === "black" ? "black" : "logo",
         history: Array.isArray(saved.history) ? saved.history.filter((h) => isPlainObject(h) && isPlainObject(h.data)).slice(0, MAX_HISTORY) : [],
     };
 }

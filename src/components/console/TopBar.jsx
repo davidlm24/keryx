@@ -9,21 +9,18 @@ const elapsed = (ms) => {
 };
 
 // The top bar, a menu bar: the KERYX menu (the mark), the environments
-// KERYX | Bíblia as tabs, the steps Preparar · Verificar · Apresentar, the
-// search, Ensaio | Ao vivo (Apresentar only), a compact clock, the outputs
-// status and the screen controls as bare glyphs. Nothing wraps: as the
-// window narrows the bar drops the clock, then shortens the outputs label
-// and the search (container queries in console.css). Tela preta and Mostrar
-// logo act on the real screens in every step.
-export default function TopBar({ c, view, setView, env, setEnv, open, setOpen, outsLabel, outsCount, outsState, compact, drawerOpen, toggleDrawer, logoUrl }) {
+// KERYX | Bíblia as tabs, the search, Ensaio | Ao vivo, a compact clock, the
+// outputs status and the screen controls as bare glyphs. Nothing wraps: as
+// the window narrows the bar drops the clock, then shortens the outputs
+// label and the search (container queries in console.css). Tela preta and
+// Mostrar logo act on the real screens in every mode.
+export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsCount, outsState, compact, drawerOpen, toggleDrawer, logoUrl }) {
     const { live, now, mode } = c;
     const since = live?.session?.startedAt;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const toggle = (name) => setOpen(open === name ? null : name);
-    const present = view === "apresentar";
     const envTab = (value, label, title) => (
-        <button type="button" role="tab" aria-selected={env === value} className={`kx-t ${env === value ? "is-on" : ""}`} title={title}
-            disabled={view === "verificar" && value === "biblia"} onClick={() => setEnv(value)}>{label}</button>
+        <button type="button" role="tab" aria-selected={env === value} className={`kx-t ${env === value ? "is-on" : ""}`} title={title} onClick={() => setEnv(value)}>{label}</button>
     );
     return (
         <div className="topbar">
@@ -35,8 +32,6 @@ export default function TopBar({ c, view, setView, env, setEnv, open, setOpen, o
                     {envTab("culto", "KERYX", "Projeção: músicas, mídia, roteiro")}
                     {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
                 </div>
-                <span className="tb-sep" />
-                <Seg value={view} onChange={setView} options={[["preparar", "Preparar"], ["verificar", "Verificar"], ["apresentar", "Apresentar"]]} />
             </div>
             <div className="tb-c">
                 <div className="kx-field kx-t tb-search" onClick={() => setOpen("palette")} title="Buscar ou comandar · /" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") setOpen("palette"); }}>
@@ -44,7 +39,7 @@ export default function TopBar({ c, view, setView, env, setEnv, open, setOpen, o
                 </div>
             </div>
             <div className="tb-r">
-                {present && (
+                {(
                     <Seg
                         mode
                         value={mode === "live" ? "live" : "ensaio"}
@@ -56,7 +51,7 @@ export default function TopBar({ c, view, setView, env, setEnv, open, setOpen, o
                     />
                 )}
                 <span className="tb-clock" title="Hora">{clock}</span>
-                {compact && view !== "verificar" && env === "culto" && <IconBtn name="layers" title="Camadas e Roteiro" on={drawerOpen} onClick={toggleDrawer} />}
+                {compact && env === "culto" && <IconBtn name="layers" title="Camadas e Roteiro" on={drawerOpen} onClick={toggleDrawer} />}
                 <button type="button" className={`kx-status kx-t ${outsState ? `is-${outsState}` : ""}`} onClick={() => toggle("outs")} title={`Telas e saídas · ${outsLabel}`} aria-expanded={open === "outs"}>
                     <i className="kx-dot" /><span className="tb-outs-l">{outsLabel}</span><span className="tb-outs-s">{outsCount}</span>
                 </button>

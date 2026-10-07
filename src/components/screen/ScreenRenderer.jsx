@@ -26,7 +26,7 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
     return (
         <div className={cls}>
             <Background state={state} layer={layer} />
-            {layer === "none" && <Idle logoUrl={logoUrl} />}
+            {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} />)}
             {layer === "content" && <Content content={state.content} />}
             {layer === "tool" && <Tool tool={state.tool} now={now} />}
             {layer === "communication" && <Communication comm={state.communication} now={now} />}

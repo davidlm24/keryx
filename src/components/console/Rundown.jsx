@@ -56,8 +56,9 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                         time={<>{times[i]}<br />{it.duration ? mmss(it.duration) : ""}</>}
                         state={`${state} ${drag === it.id ? "is-dragging" : ""} ${over === i && drag ? "is-dropbefore" : ""}`}
                         onClick={() => onPrepare(it, i)}
+                        onDoubleClick={() => onGo(it, i)}
                         dragProps={dragProps}
-                        actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Ir para o item · Enter">Ir</Btn><IconBtn name="more" title="Mais" onClick={(e) => e.stopPropagation()} /></>}
+                        actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Ir para o item · 2 cliques">Ir</Btn><IconBtn name="more" title="Mais" onClick={(e) => e.stopPropagation()} /></>}
                     />
                 );
             })}

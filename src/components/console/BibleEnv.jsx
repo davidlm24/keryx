@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, Field, Row, Monitor, Empty } from "./kx";
@@ -82,11 +82,19 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, serviceId, ite
         return () => { alive = false; };
     }, [version, book, chapter]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // The selection (or any list of verse numbers) as a stage.
+    const stageFor = useCallback((nums) => {
+        const chosen = verses.filter((v) => nums.includes(v.number));
+        const parts = group(chosen, how);
+        if (!parts.length || !version) return null;
+        const ref = `${book} ${chapter}:${rangeLabel(nums)}`;
+        return stageFromPassage({ reference: `${ref} · ${version}`, text: chosen.map((v) => `${v.number} ${v.text}`).join("\n"), slides: parts, version });
+    }, [verses, how, version, book, chapter]);
     const picked = verses.filter((v) => sel.includes(v.number));
     const slides = useMemo(() => group(picked, how), [picked, how]);
     const reference = sel.length ? `${book} ${chapter}:${rangeLabel(sel)}` : "";
     // The version travels with the passage: on the screen ("JOÃO 3:16 · NVI"), in the captions, in the rundown.
-    const stage = useMemo(() => (slides.length && version ? stageFromPassage({ reference: `${reference} · ${version}`, text: picked.map((v) => `${v.number} ${v.text}`).join("\n"), slides, version }) : null), [slides, reference, picked, version]);
+    const stage = useMemo(() => stageFor(sel), [stageFor, sel]);
     // The console sends this stage on Enter / Ctrl+Enter in the Bible environment.
     useEffect(() => {
         if (!stageRef) return undefined;
@@ -146,7 +154,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, serviceId, ite
                     {!error && !verses.length && <Empty title="Carregando…" />}
                     <div className="reading">
                         {verses.map((v) => (
-                            <button type="button" key={v.number} className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`} onClick={(e) => pick(v.number, e)}>
+                            <button type="button" key={v.number} className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`} onClick={(e) => pick(v.number, e)} onDoubleClick={() => { const st = stageFor([v.number]); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }} title="Clique seleciona · 2 cliques enviam este versículo">
                                 <span className="kx-verse-n">{v.number}</span><span>{v.text}</span>
                             </button>
                         ))}
@@ -174,7 +182,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, serviceId, ite
                     </Monitor>
                     <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-2)", flexWrap: "wrap" }}>
                         <Btn kind="outline" disabled={!stage} onClick={() => onPrepare(stage)}>Pôr na prévia</Btn>
-                        <Btn kind={c.isLive ? "prev" : "rh"} disabled={!stage} onClick={() => onSend(stage)} title={c.isLive ? "Enviar ao ar" : "As telas não mudam"}>{c.isLive ? "Enviar ao ar" : c.mode === "prep" ? "Mostrar aqui" : "Mostrar no ensaio"}<kbd className="kx-kbd">Enter</kbd></Btn>
+                        <Btn kind={c.isLive ? "prev" : "rh"} disabled={!stage} onClick={() => onSend(stage)} title={c.isLive ? "Enviar ao ar" : "As telas não mudam"}>{c.isLive ? "Enviar ao ar" : "Mostrar no ensaio"}<kbd className="kx-kbd">Enter</kbd></Btn>
                         <Btn disabled={!stage} onClick={addToService}>Adicionar ao culto</Btn>
                         <Btn kind="icon" disabled={!reference} onClick={toggleFav} title={favs.includes(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
                     </div>

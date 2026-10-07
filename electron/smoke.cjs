@@ -495,7 +495,7 @@ async function checkLayers(webContents, { live, outputs }) {
     }
     // Opened by the main process this time (the earlier checks used window.open).
     outputs.open("/Projection");
-    const main = await waitWindow("/Projection");
+    let main = await waitWindow("/Projection");
     result.projectorErrors = [];
     if (main) main.webContents.on("console-message", (e) => { if (e.level === "error") result.projectorErrors.push(String(e.message).slice(0, 300)); });
     outputs.open("/CommunicationProjection");
@@ -562,10 +562,11 @@ async function checkLayers(webContents, { live, outputs }) {
 
 // The console, driven with real input (webContents.sendInputEvent: focus
 // moves as it would under a mouse and a keyboard). The projector opens
-// without taking the keyboard; the console opens in Apresentar; a mouse click
-// on a control leaves the keys to the console (Enter sends, arrows move);
-// a control focused with Tab keeps its own Enter; Esc ends at once; Preparar
-// and Ensaio never touch the air; the Bible quick jump reads "jo 3 16". The
+// without taking the keyboard; the console is one screen, always live; a
+// mouse click on a control leaves the keys to the console (Enter sends, a
+// double click sends at once, arrows move); a control focused with Tab keeps
+// its own Enter; Esc ends at once; Ensaio never touches the air; Verificar
+// opens from the Saídas popover; the Bible quick jump reads "jo 3 16". The
 // projector is opened by the main process, as "Abrir ao iniciar" would.
 async function checkConsole(webContents, { live, outputs }) {
     const { BrowserWindow } = require("electron");
@@ -613,6 +614,24 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(250);
         return true;
     };
+    const dblclick = async (selector, text = "") => {
+        const at = await js(`(() => {
+            const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((n) => n.textContent.includes(${JSON.stringify(text)}));
+            if (!el) return null;
+            el.scrollIntoView({ block: "nearest" });
+            const r = el.getBoundingClientRect();
+            return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+        })()`);
+        if (!at) return false;
+        webContents.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y });
+        for (const clickCount of [1, 2]) {
+            webContents.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount });
+            webContents.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "left", clickCount });
+            await sleep(60);
+        }
+        await sleep(250);
+        return true;
+    };
     const active = () => js("(() => { const a = document.activeElement; return a ? a.tagName + (a.getAttribute('role') ? '[' + a.getAttribute('role') + ']' : '') : null; })()");
     // The top bar never wraps or overflows: one line, everything inside it.
     const barFits = () => js(`(() => {
@@ -647,7 +666,7 @@ async function checkConsole(webContents, { live, outputs }) {
     if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
     await sleep(300);
     outputs.open("/Projection");
-    const main = await waitWindow("/Projection");
+    let main = await waitWindow("/Projection");
     await sleep(1500);
     // Opening the projector must not take the keyboard from the operator.
     result.focusKept = !operatorWin || BrowserWindow.getFocusedWindow() === operatorWin;
@@ -655,13 +674,13 @@ async function checkConsole(webContents, { live, outputs }) {
     try {
         await js(`history.pushState({}, "", "/Console"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         // Section captions are uppercase on screen (CSS), so innerText is too.
-        // The console always opens in Apresentar, live, with the full console.
+        // The console opens live, one screen, with the full module layout.
         result.opened = await waitText(webContents, "PROGRAMA · NADA", true, 15000);
         result.listed = await waitText(webContents, "Canto do console", true, 15000);
-        result.fullConsole = await js("Boolean(document.querySelector('.console .main .kx-split')) && !document.querySelector('.apres')");
+        result.fullConsole = await js("Boolean(document.querySelector('.console .main .kx-split')) && !document.querySelector('.topbar .kx-seg + .kx-seg')");
 
-        // Click the step selector (a radio: it used to keep the keys), then a song: Enter sends.
-        await click(".topbar .kx-seg button", "Apresentar");
+        // Click a top-bar tab (a control that used to keep the keys), then a song: Enter sends.
+        await click(".envtabs button", "KERYX");
         await click(".kx-row", "Canto do console");
         result.prepared = await waitText(webContents, "PRÉVIA · CANTO DO CONSOLE");
         result.airUntouched = !live.get().content;
@@ -676,8 +695,8 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Enter");
         result.sent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
         result.projected = Boolean(main) && await waitText(main, "Primeiro slide do console");
-        // Click a radio again, then the arrow: the slide moves on the projector.
-        await click(".topbar .kx-seg button", "Apresentar");
+        // Click a tab again, then the arrow: the slide moves on the projector.
+        await click(".envtabs button", "KERYX");
         await press("ArrowRight");
         result.advanced = Boolean(main) && await waitText(main, "Segundo slide do console");
 
@@ -698,27 +717,48 @@ async function checkConsole(webContents, { live, outputs }) {
         result.escEnded = await waitFor(() => !live.get().content);
         result.escToast = await waitText(webContents, "Voltar ao anterior desfaz");
 
-        // Preparar: a local copy. Enter "shows here" only; Tela preta still reaches the screens.
-        await click(".topbar .kx-seg button", "Preparar");
-        result.prepBanner = await waitText(webContents, "nada vai às telas");
-        result.prepCaption = await waitText(webContents, "PROGRAMA · PREPARAÇÃO");
-        await click(".kx-row", "Canto do console");
-        await press("Enter");
-        await sleep(500);
-        result.prepKeptAir = !live.get().content;
-        await press("b");
-        result.prepBlack = await waitFor(() => live.get().screen === "black");
-        await press("b");
-        result.prepUnblack = await waitFor(() => live.get().screen === "show");
+        // One click prepares; a double click sends straight to air (Holyrics).
+        await dblclick(".kx-row", "Canto do console");
+        result.dblSent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
 
-        // Verificar: the readiness list, with the outputs the main process holds.
-        await click(".topbar .kx-seg button", "Verificar");
-        result.verify = await waitText(webContents, "SAÍDAS") && await waitText(webContents, "BÍBLIA") && await waitText(webContents, "Ir para Apresentar");
+        // Sending live reopens a closed projector, without taking the keyboard.
+        outputs.close("/Projection");
+        await waitFor(() => !windowFor("/Projection"), 5000);
+        await sleep(3600); // the console's outputs poll runs every 3 s
+        await press("Escape");
+        await waitFor(() => !live.get().content);
+        await dblclick(".kx-row", "Canto do console");
+        main = await waitWindow("/Projection", 10000);
+        result.autoOpened = Boolean(main);
+        await sleep(1500);
+        result.autoFocusKept = !operatorWin || BrowserWindow.getFocusedWindow() === operatorWin;
+        if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
+        result.projected2 = Boolean(main) && await waitText(main, "Primeiro slide do console");
+
+        // Verificar is a panel on demand now: Saídas -> "Verificar tudo…".
+        // Esc closes the overlay and leaves the projection alone.
+        await click(".kx-status", "");
+        result.outsPopover = await waitText(webContents, "Verificar tudo…");
+        await click(".kx-pop button", "Verificar tudo");
+        result.verify = await waitText(webContents, "SAÍDAS") && await waitText(webContents, "BÍBLIA") && await waitText(webContents, "Fechar");
         result.verifyProjector = (await bodyText(webContents)).includes("Projeção principal");
+        await press("Escape");
+        result.verifyClosed = await waitFor(() => js("!document.querySelector('.verif-overlay')")) && Boolean(live.get().content);
 
-        // Back to Apresentar, the song on air again, then Ensaio.
-        await click(".topbar .kx-seg button", "Apresentar");
-        await waitText(webContents, "nada vai às telas", false);
+        // Tela ociosa: Preto leaves the projector clean after Encerrar.
+        await click(".kx-status", "");
+        await click(".kx-pop .kx-seg button", "Preto");
+        result.idleSet = await waitFor(() => live.get().idle === "black");
+        await press("Escape"); // closes the popover
+        await press("Escape"); // ends the projection
+        await waitFor(() => !live.get().content);
+        result.idleBlack = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("Boolean(document.querySelector('.ks-black')) && !document.querySelector('.ks-idle img')").catch(() => false));
+        await click(".kx-status", "");
+        await click(".kx-pop .kx-seg button", "Logo da igreja");
+        await waitFor(() => live.get().idle === "logo");
+        await press("Escape");
+
+        // The song on air again, then Ensaio.
         await click(".kx-row", "Canto do console");
         await press("Enter");
         result.resent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
@@ -835,13 +875,14 @@ async function checkConsole(webContents, { live, outputs }) {
             await js(`window.keryxDesktop.db.call("Service", "delete", ["${svc.id}"])`);
         }
         await js(`history.pushState({}, "", "/"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
-        if (main) main.close();
+        if (main && !main.isDestroyed()) main.close();
     }
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
         && result.sent && result.projected && result.advanced && result.barFits && result.escEnded && result.escToast
-        && result.prepBanner && result.prepCaption && result.prepKeptAir && result.prepBlack && result.prepUnblack
-        && result.verify && result.verifyProjector && result.resent && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
+        && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
+        && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
+        && result.resent && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
         && result.armed && result.quickOpened && result.quickRead === "João|3|16" && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion

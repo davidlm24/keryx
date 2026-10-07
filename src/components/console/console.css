@@ -186,3 +186,7 @@
     .console .col { width: auto !important; }
     .console .kx-split { display: none; }
 }
+
+/* Verificar as an overlay (opened from the Saídas popover), over the dim
+   scrim; its own rows and summary come from .verif below. */
+.console .verif-overlay { position: absolute; z-index: 35; inset: 48px 24px 28px; display: flex; }

@@ -258,6 +258,11 @@ app.whenReady().then(async () => {
     }, { useSystemPicker: false });
 
     const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
+    // First run: the main projector opens with the app (the operator can
+    // turn it off in Telas e saídas). Smoke runs manage outputs themselves.
+    if (!SMOKE && settings.get("outputs") === undefined) {
+        settings.set("outputs", { "/Projection": { target: "auto", openAtLaunch: true } });
+    }
     outputs = createOutputManager({
         screen,
         settings,

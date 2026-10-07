@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "./Icon";
-import { Btn, MenuItem, Row, Field, Empty } from "./kx";
+import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
 import { MODULES } from "@/lib/console/layout";
 import { restoreArgs } from "@/lib/projection";
 import { stageFromHistory, stageFromSong, stageFromMedia, stageFromPiece } from "@/lib/console/stage";
@@ -52,6 +52,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <MenuItem icon="megaphone" onClick={() => go("/Communication")}>Comunicação</MenuItem>
             <div className="kx-menu-sep" />
             <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Telas e saídas</MenuItem>
+            <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>
             <MenuItem icon="layers" onClick={() => setOpen("ver")}>Ver<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
             <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>
             <MenuItem icon="sliders" onClick={() => go("/Settings")}>Configurações</MenuItem>
@@ -64,6 +65,7 @@ export function Shortcuts({ open, setOpen }) {
     const keys = [
         ["Ctrl+Enter", "Enviar a Prévia ao ar (de qualquer lugar)"],
         ["Enter", "Enviar ao ar (depois de clicar numa música ou versículo)"],
+        ["2 cliques", "Enviar o item ao ar na hora (biblioteca, setlist, slides, versículos)"],
         ["← →", "Slide ou versículo anterior / próximo no ar"],
         ["Espaço", "Tocar / pausar"],
         ["B", "Tela preta (na hora)"],
@@ -86,7 +88,7 @@ export function Shortcuts({ open, setOpen }) {
 }
 
 // Saídas: the windows the main process places and the screens on the network.
-export function Outputs({ open, setOpen, outputs, network, isLive, onOpen, onClose, tries }) {
+export function Outputs({ open, setOpen, outputs, network, isLive, onOpen, onClose, tries, idle, onIdle }) {
     const navigate = useNavigate();
     if (open !== "outs") return null;
     const local = outputs.map((o) => {
@@ -113,7 +115,12 @@ export function Outputs({ open, setOpen, outputs, network, isLive, onOpen, onClo
             ))}
             {!all.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
             <div className="kx-menu-sep" />
-            <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}><Btn onClick={() => { setOpen(null); navigate("/Settings"); }}>Telas e saídas…</Btn></div>
+            <div className="kx-menu-h"><span className="kx-section">Tela ociosa</span><span style={{ flex: 1 }} /><Seg small value={idle} onChange={onIdle} options={[["logo", "Logo da igreja"], ["black", "Preto"]]} /></div>
+            <div className="kx-menu-sep" />
+            <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}>
+                <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo…</Btn>
+                <Btn onClick={() => { setOpen(null); navigate("/Settings"); }}>Telas e saídas…</Btn>
+            </div>
         </div>
     );
 }
@@ -145,7 +152,7 @@ export function EndDialog({ open, setOpen, mode, onEnd }) {
     return (
         <div className="dialog" role="alertdialog" aria-label="Encerrar a projeção">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>Encerrar a projeção?</div>
-            <div>{isLive ? "Texto, mídia e avisos saem das telas agora. Fundo, logo e sobreposições ficam." : mode === "prep" ? "Só a preparação é limpa; as telas não mudam." : "Só o ensaio é encerrado; as telas não mudam."}</div>
+            <div>{isLive ? "Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam." : "Só o ensaio é encerrado; as telas não mudam."}</div>
             <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta (B).</div>
             <div className="acts">
                 <Btn onClick={() => setOpen(null)}>Cancelar</Btn>

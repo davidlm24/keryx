@@ -58,11 +58,11 @@ export function Field({ icon = "search", value, onChange, placeholder, onKeyDown
 }
 
 // A list row: a glyph, a title and one grey line, time on the right, actions
-// on hover. Click, Enter and Space all do the same: prepare (onClick). A row
-// never sends to air by itself.
-export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, dragProps, single, className = "", children }) {
+// on hover. Click, Enter and Space on the row all prepare (onClick); a
+// double click sends to air (onDoubleClick), as in Holyrics.
+export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, dragProps, single, className = "", children }) {
     return (
-        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} role="button" tabIndex={0} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
+        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} role="button" tabIndex={0} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
             {icon && <span className="kx-glyph"><Icon name={icon} /></span>}
             <div className="kx-row-main">
                 <div className="kx-row-title">{title}</div>

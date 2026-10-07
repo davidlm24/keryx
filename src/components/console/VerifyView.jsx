@@ -29,11 +29,10 @@ async function fileState(url) {
     }
 }
 
-export default function VerifyView({ c, items, data, outputs, network, onIdentify, onOpenOutput, onGoPresent }) {
+export default function VerifyView({ c, items, data, outputs, network, onIdentify, onOpenOutput, onClose }) {
     const navigate = useNavigate();
     const [groups, setGroups] = useState(null);
     const [running, setRunning] = useState(false);
-    const [confirm, setConfirm] = useState(false);
     const [installing, setInstalling] = useState(null);
 
     const run = useCallback(async () => {
@@ -146,7 +145,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
                     <span className="kx-meta">{running ? "verificando…" : `${flat.filter((l) => l.state === "ok").length} prontos`}</span>
                     <span style={{ flex: 1 }} />
                     <Btn onClick={run} disabled={running}><Icon name="refresh" />Verificar de novo</Btn>
-                    <Btn kind="prev" className="kx-btn-live" onClick={() => (bad.length ? setConfirm(true) : onGoPresent())}>Ir para Apresentar</Btn>
+                    <Btn kind="prev" className="kx-btn-live" onClick={onClose}>Fechar</Btn>
                 </div>
                 <div className="kx-panel-b">
                     {(groups || []).map((g) => (
@@ -166,19 +165,6 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
                     ))}
                 </div>
             </div>
-            {confirm && (
-                <>
-                    <div className="scrim is-dim" onClick={() => setConfirm(false)} />
-                    <div className="dialog" role="alertdialog" aria-label="Ir para Apresentar com avisos">
-                        <div className="kx-section" style={{ color: "var(--fg-1)" }}>Ir para Apresentar com avisos?</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                            {bad.map((l, i) => <span key={i} className="kx-warn">{l.title} · {l.meta}</span>)}
-                        </div>
-                        <div style={{ color: "var(--fg-2)" }}>Você pode resolver depois; o culto não depende de todos os itens.</div>
-                        <div className="acts"><Btn onClick={() => setConfirm(false)}>Voltar e resolver</Btn><Btn kind="prev" onClick={() => { setConfirm(false); onGoPresent(); }}>Ir para Apresentar</Btn></div>
-                    </div>
-                </>
-            )}
         </div>
     );
 }

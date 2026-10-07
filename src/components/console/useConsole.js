@@ -9,11 +9,10 @@ import { stageOp } from "@/lib/console/stage";
 //
 // mode:
 //   "live"   Apresentar, outputs armed: operations go to the live state.
-//   "ensaio" Apresentar in rehearsal: operations go to a local copy of the
-//            document, with the same rules (applyOp); the screens keep
-//            showing what was on air.
-//   "prep"   Preparar: the same local copy, without the rehearsal banner;
-//            nothing the operator prepares reaches the screens.
+//   "ensaio" rehearsal: operations go to a local copy of the document, with
+//            the same rules (applyOp); the screens keep showing what was on
+//            air. The one sandbox: preparing in live mode is already safe,
+//            because nothing reaches the screens without "Enviar ao ar".
 // Tela preta and Mostrar logo are emergency actions: they always act on the
 // real screens, whatever the mode.
 //
@@ -127,21 +126,8 @@ export function useConsole() {
         say("Saídas armadas. Enviar ao ar volta a mudar as telas.");
     }, [say]);
 
-    // Views: Preparar works on the local copy; Apresentar is live (or an
-    // Ensaio already running there).
-    const enterPrep = useCallback(() => {
-        if (mode === "prep") return;
-        if (mode === "live") setRh(live ? copyOf(live) : null);
-        setMode("prep");
-    }, [mode, live]);
-    const enterPresent = useCallback(() => {
-        if (mode !== "prep") return;
-        setRh(null);
-        setMode("live");
-    }, [mode]);
-
     // The local copy starts as soon as the live state arrives.
     useEffect(() => { if (mode !== "live" && !rh && live) setRh(copyOf(live)); }, [mode, rh, live]);
 
-    return { live, now, mode, isLive, cur, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, goEnsaio, arm, enterPrep, enterPresent, callOp, liveOp, toast, say };
+    return { live, now, mode, isLive, cur, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, goEnsaio, arm, callOp, liveOp, toast, say };
 }

@@ -10,9 +10,9 @@ const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(
 const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLowerCase().includes(q));
 
 // The library: Letras, Mídia and Avisos (and the Roteiro on narrow screens).
-// A click prepares the item in the Prévia; nothing here goes to air except
-// the quick alert, which is the one control that bypasses the Prévia.
-export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onAddSong, hideTabs = false }) {
+// A click prepares the item in the Prévia; a double click sends it to air
+// (onGo). The quick alert is the one control that bypasses the Prévia.
+export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onGo, onAddSong, hideTabs = false }) {
     const [q, setQ] = useState("");
     const [alertText, setAlertText] = useState("");
     const [yt, setYt] = useState("");
@@ -70,6 +70,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                 meta={[s.artist, s.song_key, s.duration && mmss(s.duration), s.audio_url && "playback"].filter(Boolean).join(" · ")}
                                 state={state(`song:${s.id}`)}
                                 onClick={() => onPrepare(stageFromSong(s))}
+                                onDoubleClick={onGo && (() => onGo(stageFromSong(s)))}
                                 actions={onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar ao roteiro">Adicionar</Btn>}
                             />
                         ))}
@@ -100,6 +101,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                     meta={[MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
                                     state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? (c.isLive ? "is-air" : "is-rh") : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
                                     onClick={() => onPrepare(stageFromMedia(m))}
+                                    onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
                                     actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo">Telas de vídeo</Btn>}
                                 />
                             ))}
@@ -150,7 +152,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                         <div style={{ overflow: "auto", flex: 1 }}>
                             {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Crie avisos e contagens em Comunicação.</Empty>}
                             {pieces.map((p) => (
-                                <Row key={p.id} icon="megaphone" title={p.title || p.text} meta={[p.type === "countdown" ? "Contagem regressiva" : p.type === "timer" ? "Cronômetro" : "Aviso", p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} />
+                                <Row key={p.id} icon="megaphone" title={p.title || p.text} meta={[p.type === "countdown" ? "Contagem regressiva" : p.type === "timer" ? "Cronômetro" : "Aviso", p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} />
                             ))}
                         </div>
                     </>

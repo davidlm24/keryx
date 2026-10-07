@@ -4,10 +4,9 @@ import { Btn, Empty } from "./kx";
 import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 
 // The slides of the item in hand: the Prévia when it has slides, else what
-// is on air. A click always prepares (that slide goes to the Prévia); only
-// "Enviar ao ar", or the arrows and Anterior/Próximo for the slide on air,
-// change what the screens show.
-export default function SlidesPanel({ c }) {
+// is on air. A click prepares (that slide goes to the Prévia); a double
+// click puts that slide on air, besides "Enviar ao ar" and the arrows.
+export default function SlidesPanel({ c, onGo }) {
     const { cur, prev, isLive } = c;
     const air = cur?.content;
     const airId = liveStageId(cur);
@@ -29,6 +28,10 @@ export default function SlidesPanel({ c }) {
         if (handIsPrev) c.setPrev(stageAt(prev, i));
         else if (air && i !== air.index) c.setPrev(stageAirSlide(air, i, airId));
     };
+    const go = (i) => {
+        if (handIsPrev) onGo?.(stageAt(prev, i));
+        else if (air) c.goTo(i);
+    };
 
     return (
         <>
@@ -39,7 +42,7 @@ export default function SlidesPanel({ c }) {
                     if (handIsPrev) cls = i === index ? "is-prev" : i === airIndex ? airWord : "";
                     else cls = i === index ? airWord : i === index + 1 ? "is-next" : "";
                     return (
-                        <button type="button" key={i} className={`kx-slide kx-t ${cls}`} onClick={() => pick(i)} title={cls === airWord ? "No ar" : "Pôr na prévia"}>
+                        <button type="button" key={i} className={`kx-slide kx-t ${cls}`} onClick={() => pick(i)} onDoubleClick={() => go(i)} title={cls === airWord ? "No ar" : "Pôr na prévia · 2 cliques enviam"}>
                             <span className="kx-slide-n">{i + 1}</span>
                             <span>
                                 {sl.label && <span className="kx-slide-lab" style={{ display: "block" }}>{sl.label}</span>}

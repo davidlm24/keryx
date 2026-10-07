@@ -252,6 +252,18 @@ test("restore after a restart: same content, screen black, playback paused, rev 
     assert.deepEqual(restoreState({ version: 1, rev: 2, content: "x", overlays: "y" }, T0).content, null);
 });
 
+test("idle screen: logo or black, part of the document", () => {
+    let s = emptyState(T0);
+    assert.equal(s.idle, "logo");
+    s = applyOp(s, "idle.set", { mode: "black" }, T0);
+    assert.equal(s.idle, "black");
+    assert.equal(applyOp(s, "idle.set", { mode: "black" }, T0), s, "same mode: no change");
+    assert.throws(() => applyOp(s, "idle.set", { mode: "pink" }, T0), LiveError);
+    const back = restoreState(JSON.parse(JSON.stringify(s)), T0 + 99);
+    assert.equal(back.idle, "black", "survives a restart");
+    assert.equal(restoreState({ version: back.version, rev: 1 }, T0).idle, "logo");
+});
+
 test("audio channel: plays under the screens, survives Encerrar, has its own transport and list", () => {
     let s = run([["content.show", song], ["audio.show", { url: "keryx-media://ofertorio.mp3", title: "Ofertório" }, T0]]);
     assert.equal(s.audio.kind, "audio", "kind defaults to audio");

@@ -29,18 +29,17 @@ const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
 const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LOG_KEY(serviceId)) || "{}"); } catch { return {}; } };
 
 // The operator console, driving the live state (shared/live-state.mjs)
-// through useConsole. Two environments (KERYX: projection, Bíblia) and three
-// steps of the same service:
-//   Preparar   the full console on a local copy: the screens don't change.
-//   Verificar  the readiness check before the service.
-//   Apresentar the full console, live (Ensaio lives here). Opens here.
+// through useConsole: one console, always ready, as in Holyrics. Two
+// environments (KERYX: projection, Bíblia) and two modes (Ao vivo, Ensaio).
+// Preparing is safe while live — a click or a drag only fills the Prévia;
+// only Enter, a double click or "Enviar ao ar" change the screens. The
+// readiness check (VerifyView) opens on demand from the Saídas popover.
 // docs/design-system.md is the look; docs/desktop-architecture.md the plumbing.
 export default function Console() {
     const c = useConsole();
     const logoUrl = useChurchLogo();
     const data = useLibrary();
     const [profile, setProfile] = useState("");
-    const [view, setViewState] = useState(null);
     const [quick, setQuick] = useState(null);
     // The layer the player controls when several play (null: the newest).
     const [playerPick, setPlayerPick] = useState(null);
@@ -64,18 +63,6 @@ export default function Console() {
         window.addEventListener("resize", onResize);
         return () => window.removeEventListener("resize", onResize);
     }, []);
-    // The step. The console always opens in Apresentar: keys then act on the
-    // screens, which is what an operator expects of them.
-    const { enterPrep, enterPresent } = c;
-    const setView = useCallback((v) => {
-        if (v === "preparar") enterPrep();
-        if (v === "apresentar") enterPresent();
-        if (v === "verificar") setEnv("culto");
-        setOpen(null);
-        setViewState(v);
-    }, [enterPrep, enterPresent]);
-    const hasLive = Boolean(c.live);
-    useEffect(() => { if (view === null && hasLive) setView("apresentar"); }, [view, hasLive, setView]);
     const setLayout = useCallback((next) => { setLayoutState(next); saveLayout(profile, next); }, [profile]);
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT }); c.say("Layout padrão restaurado."); };
 
@@ -84,6 +71,8 @@ export default function Console() {
     useEffect(() => { if (serviceId) setLog(loadLog(serviceId)); }, [serviceId]);
     const service = services.find((s) => s.id === serviceId) || null;
     const { outputs, network } = useOutputs();
+    // Outputs: the projector window missing its display, or closed, is the warning.
+    const projector = outputs.find((o) => o.key === "/Projection");
 
     // The live state says where the service is; the Prévia says what is next in hand.
     const airItemId = c.cur?.session?.itemId || null;
@@ -112,6 +101,9 @@ export default function Console() {
     const sendStage = useCallback(async (given) => {
         const stage = given || (env === "biblia" && bibleStageRef.current) || undefined;
         if (!stage && env === "biblia") { c.say("Selecione versículos ou digite a referência."); return; }
+        // The projector is the main output: sending live (re)opens it if the
+        // window is closed, without taking the keyboard from the console.
+        if (c.isLive && projector && !projector.open) window.keryxDesktop?.displays.open("/Projection").catch(() => {});
         const went = await c.send(stage);
         if (!went || !c.isLive) return;
         const itemId = stage?.args?.ref?.serviceItemId ?? c.prev?.args?.ref?.serviceItemId;
@@ -124,7 +116,7 @@ export default function Console() {
             try { localStorage.setItem(LOG_KEY(serviceId), JSON.stringify(next)); } catch { /* not remembered */ }
             return next;
         });
-    }, [c, serviceId, env]);
+    }, [c, serviceId, env, projector]);
     const goItem = useCallback(async (item, index) => {
         try { const stage = await buildStage(item, index); c.setPrev(stage); await sendStage(stage); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
     }, [buildStage, c, sendStage]);
@@ -137,9 +129,6 @@ export default function Console() {
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
 
-    // Outputs: the projector window missing its display, or closed, is the warning.
-    const projector = outputs.find((o) => o.key === "/Projection");
-    // The screens are real in every view, so a failing projector is reported in every view.
     const projectorDown = Boolean(projector && projector.placement.missing);
     const [lastOkAt, setLastOkAt] = useState(null);
     useEffect(() => { if (projector && !projector.placement.missing) setLastOkAt(Date.now()); }, [projector]);
@@ -151,7 +140,7 @@ export default function Console() {
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
     const closeOutput = (key) => window.keryxDesktop?.displays.close(key).catch(() => {});
 
-    const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); if (view === "verificar") setView("apresentar"); setEnv("biblia"); };
+    const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
 
     // Keys (src/lib/console/keys.js). A mouse click never leaves focus on a
     // control (see onMouseClick), so after clicking a song Enter sends it, as
@@ -162,7 +151,7 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && quick === null && view !== "verificar") {
+            if (env === "biblia" && !open && quick === null) {
                 const ch = quickJumpKey(e);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
@@ -173,8 +162,6 @@ export default function Console() {
                 if (action === "end") { e.preventDefault(); setOpen(null); }
                 return;
             }
-            // Verificar shows no Prévia and no slides: only the screen keys work there.
-            if (view === "verificar" && ["send", "next", "prev", "clear", "play"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -197,7 +184,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, view, env, quick, playerPick]);
+    }, [c, open, drawer, sendStage, env, quick, playerPick]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -232,11 +219,10 @@ export default function Console() {
     );
 
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
-    const present = view === "apresentar";
 
     return (
         <div className={`kx console ${compact ? "is-compact" : ""} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
-            <TopBar c={c} view={view} setView={setView} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={outsLabel} outsCount={outsCount} outsState={outsState} compact={compact} drawerOpen={drawer} toggleDrawer={() => setDrawer((d) => !d)} logoUrl={logoUrl} />
+            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={outsLabel} outsCount={outsCount} outsState={outsState} compact={compact} drawerOpen={drawer} toggleDrawer={() => setDrawer((d) => !d)} logoUrl={logoUrl} />
             {/* A failing output: one line under the top bar, in every view, never over a monitor. */}
             {projectorDown && (
                 <div className="kx-banner is-warn" role="alert">
@@ -248,27 +234,18 @@ export default function Console() {
                     <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => setOpen("outs")}>Ver saídas</button>
                 </div>
             )}
-            {view === "preparar" && (
-                <div className="kx-banner is-rh">PREPARAR — nada vai às telas<span className="kx-sub">Monte e teste à vontade. Tela preta e Mostrar logo continuam valendo nas telas.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setView("apresentar")}>Ir para Apresentar</button></div>
-            )}
             {c.mode === "ensaio" && (
                 <div className="kx-banner is-rh">MODO ENSAIO — nada será enviado às saídas<span className="kx-sub">As telas continuam com o que estava no ar.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setOpen("arm")}>Armar saídas</button></div>
             )}
             <div className="main">
-                {view === null && <div className="kx-panel" style={{ flex: 1 }} />}
-                {view === "verificar" && (
-                    <VerifyView c={c} items={items} data={data} outputs={outputs} network={network}
-                        onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
-                        onOpenOutput={openOutput} onGoPresent={() => setView("apresentar")} />
-                )}
-                {view !== "verificar" && view !== null && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} serviceId={serviceId} itemsCount={items.length} onPrepare={(s) => { c.setPrev(s); setEnv("culto"); }} onSend={(s) => sendStage(s)} />}
-                {(view === "preparar" || present) && env === "culto" && (
+                {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} serviceId={serviceId} itemsCount={items.length} onPrepare={(s) => { c.setPrev(s); setEnv("culto"); }} onSend={(s) => sendStage(s)} />}
+                {env === "culto" && (
                     <>
                         {!layout.hidden.lib && (
                             <>
                                 <div className="col" style={{ width: layout.libW, flex: "none" }}>
                                     <Panel title="Biblioteca" collapsed={layout.collapsed.lib} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, lib: !layout.collapsed.lib } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                        <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onAddSong={addSong} />
+                                        <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} />
                                     </Panel>
                                 </div>
                                 <Split size={layout.libW} onSize={(v) => setLayout({ ...layout, libW: v })} onReset={() => setLayout({ ...layout, libW: DEFAULT_LAYOUT.libW })} clamp={(v) => clampSize("libW", v)} />
@@ -278,14 +255,14 @@ export default function Console() {
                             <>
                                 <div className="col" style={{ width: layout.slidesW, flex: "none" }}>
                                     <Panel title="Slides" count={handTitle(c) || "—"} collapsed={layout.collapsed.slides} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, slides: !layout.collapsed.slides } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                        <SlidesPanel c={c} />
+                                        <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
                                     </Panel>
                                 </div>
                                 <Split size={layout.slidesW} onSize={(v) => setLayout({ ...layout, slidesW: v })} onReset={() => setLayout({ ...layout, slidesW: DEFAULT_LAYOUT.slidesW })} clamp={(v) => clampSize("slidesW", v)} />
                             </>
                         )}
                         <div className="col center">
-                            <Panel title={c.isLive ? "Programa" : c.mode === "prep" ? "Programa · Preparação" : "Programa · Ensaio"} actions={
+                            <Panel title={c.isLive ? "Programa" : "Programa · Ensaio"} actions={
                                 <div style={{ position: "relative" }}>
                                     <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 22 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco"><Icon name="undo" />Voltar ao anterior</button>
                                 </div>
@@ -302,16 +279,23 @@ export default function Console() {
                     </>
                 )}
             </div>
-            {(view === "preparar" || present) && env === "culto" && !layout.hidden.tl && (
+            {env === "culto" && !layout.hidden.tl && (
                 <div className={`kx-panel tl-panel ${layout.tlOpen ? "is-open" : ""}`}>
                     <Timeline service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
                 </div>
             )}
 
-            {open && <div className={`scrim ${open === "palette" || open === "arm" || open === "atalhos" || open === "encerrar" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open && <div className={`scrim ${open === "palette" || open === "arm" || open === "atalhos" || open === "encerrar" || open === "verificar" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open === "verificar" && (
+                <div className="verif-overlay">
+                    <VerifyView c={c} items={items} data={data} outputs={outputs} network={network}
+                        onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
+                        onOpenOutput={openOutput} onClose={() => setOpen(null)} />
+                </div>
+            )}
             <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} />
+            <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <ArmDialog open={open} setOpen={setOpen} live={c.live} onArm={c.arm} />
             <EndDialog open={open} setOpen={setOpen} mode={c.mode} onEnd={c.end} />
