@@ -16,11 +16,14 @@ export default function Projection() {
     const now = useLiveNow(1000);
     const logo = useChurchLogo();
 
-    const goFullscreen = () => {
+    // A network screen (tablet, TV) fills itself. On the desktop the main
+    // process decides: full screen on an external monitor, a window on a
+    // single-monitor PC; asking here would cover the console.
+    useEffect(() => {
+        if (keryx.isDesktop) return;
         const el = document.documentElement;
         if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
-    };
-    useEffect(() => { goFullscreen(); }, []);
+    }, []);
 
     // Arrows, space and clicks move the live slide (every screen follows),
     // only while the slides are what the projector shows.

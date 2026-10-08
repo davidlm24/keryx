@@ -99,6 +99,8 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
         win.once("ready-to-show", () => setTimeout(giveBack, 50));
         win.once("show", () => setTimeout(giveBack, 50));
         win.once("enter-full-screen", () => setTimeout(giveBack, 50));
+        // A windowed output has no full-screen event after the page loads.
+        win.webContents.once("did-finish-load", () => setTimeout(giveBack, 50));
         setTimeout(giveBack, 1000);
 
         const placement = placementFor(key);
