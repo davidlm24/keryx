@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { Music, Clock, TrendingUp, BarChart3, Calendar, FileText, Copy } from "lucide-react";
@@ -8,6 +9,12 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 const PIE_COLORS = ["#7d8470", "#c9a86a", "#9c8861", "#d4b87a", "#6b7263", "#b8945a"];
 
 export default function Analytics() {
+    // Desktop: Estatísticas are the console's Relatórios. The web build keeps this page for now.
+    if (keryx.isDesktop) return <Navigate to="/Console?reports=1" replace />;
+    return <LegacyAnalytics />;
+}
+
+function LegacyAnalytics() {
     const colors = useThemeColors();
 
     const { data: songs } = useQuery({ queryKey: ["songs"], queryFn: () => keryx.entities.Song.list(), initialData: [] });

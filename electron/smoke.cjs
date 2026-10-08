@@ -600,6 +600,8 @@ async function checkConsole(webContents, { live, outputs }) {
     let svc = null;
     let plTpl = null;
     const mvRows = [];
+    const svRows = [];
+    let svClass = null;
     const nvRows = [];
     let edSong = null;
     // João 3:14-18 (placeholder text): the Bible environment reads the local
@@ -625,7 +627,7 @@ async function checkConsole(webContents, { live, outputs }) {
     try {
         // The app opens on the console now (/ redirects there): leave it and
         // come back, so this check starts from a freshly mounted console.
-        await js(`history.pushState({}, "", "/Analytics"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
+        await js(`history.pushState({}, "", "/smoke-remount"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         await sleep(600);
         await js(`history.pushState({}, "", "/Console"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         // Section captions are uppercase on screen (CSS), so innerText is too.
@@ -1211,6 +1213,65 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("document.activeElement && document.activeElement.blur(); true");
         await click(".envtabs button", "KERYX");
 
+        // Escola bíblica in the console: a student's presence for today, a
+        // quiz prepared with its teacher's notes (console only), Enter sends
+        // the question and → reveals the answer; a new material saved with
+        // Ctrl+S; "Setlist" adds it as a MATERIAL item; Esc goes back.
+        const db = async (entity, op, args) => (await js(`window.keryxDesktop.db.call(${JSON.stringify(entity)}, ${JSON.stringify(op)}, ${JSON.stringify(args)})`)).data;
+        svClass = await db("BibleSchoolClass", "create", [{ name: "Turma do smoke", age_group: "adults", students: [{ name: "Ana Smoke", attendance: [] }, { name: "Bia Smoke", attendance: [] }] }]);
+        svRows.push(await db("BibleMaterial", "create", [{ title: "Quiz do smoke", type: "quiz", subject: "Lição do smoke", description: "Nota do professor smoke", quiz_questions: [{ question: "Quem construiu a arca?", options: ["Moisés", "Noé"], correct: 1 }] }]));
+        await click(".topbar .markbtn", "");
+        await click(".kx-pop button", "Escola bíblica");
+        result.svOpen = await waitFor(() => js("Boolean(document.querySelector('.console .sv-mons'))"));
+        await click(".console .main .kx-row", "Turma do smoke");
+        await waitText(webContents, "Ana Smoke");
+        await click(".console .sv-student", "Ana Smoke");
+        const today = await js("(() => { const d = new Date(); const t = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + t(d.getMonth() + 1) + '-' + t(d.getDate()); })()");
+        result.svPresence = await waitFor(async () => ((await db("BibleSchoolClass", "get", [svClass.id])).students || [])[0]?.attendance?.includes(today), 6000);
+        await click(".console .main .kx-row", "Quiz do smoke");
+        result.svPrepared = await waitFor(() => js("[...document.querySelectorAll('.sv-mons .kx-mon')].some((n) => n.textContent.includes('Prévia · Quiz do smoke'))"));
+        result.svNotes = await waitText(webContents, "Nota do professor smoke");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("Enter");
+        result.svSent = await waitFor(() => { const ct = live.get().content; return Boolean(ct && ct.ref?.materialId === svRows[0].id && ct.slides.length === 2 && ct.index === 0 && ct.slides[0].label === "Pergunta"); });
+        result.svNotesOffAir = live.get().content?.stage?.notes === "Nota do professor smoke"
+            && !(await (main && !main.isDestroyed() ? main.webContents.executeJavaScript("document.body.innerText").catch(() => "") : "")).includes("Nota do professor smoke");
+        await press("ArrowRight");
+        result.svReveal = await waitFor(() => { const ct = live.get().content; return ct?.index === 1 && ct.slides[1].text.includes("✓ B) Noé"); });
+        await js("(() => { const b = [...document.querySelectorAll('.console .main button')].find((x) => x.getAttribute('title') === 'Novo material'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("Boolean(document.querySelector('.sv-ed'))"));
+        await setVal(".sv-ed .kx-field input", "Slides do smoke");
+        await setVal(".sv-slides", "Um\n\nDois");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("s", ["control"]);
+        result.svEdited = await waitFor(async () => {
+            const rows = (await db("BibleMaterial", "filter", [{ title: "Slides do smoke" }])) || [];
+            if (rows[0] && !svRows.some((r) => r.id === rows[0].id)) svRows.push(rows[0]);
+            return rows[0]?.slides?.length === 2 && rows[0].slides[1].text === "Dois";
+        }, 6000);
+        await waitFor(() => js("!document.querySelector('.sv-ed')"));
+        await js("(() => { const row = [...document.querySelectorAll('.console .main .kx-row')].find((n) => n.textContent.includes('Slides do smoke')); const b = row && [...row.querySelectorAll('button')].find((x) => x.textContent === 'Setlist'); if (b) b.click(); return Boolean(b); })()");
+        result.svSetlist = await waitFor(async () => ((await db("ServiceItem", "filter", [{ type: "MATERIAL", title: "Slides do smoke" }])) || []).length === 1, 6000);
+        result.shotSchool = await shot("escola");
+        live.call("clear");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("Escape");
+        result.svClosed = await waitFor(() => js("!document.querySelector('.console .sv-mons') && Boolean(document.querySelector('.console .main .col.center'))"));
+
+        // Relatórios: the song sent live in this run is the top song, its CCLI
+        // number is in the report and Copiar puts it on the clipboard.
+        if (song) await db("Song", "update", [song.id, { ccli_number: "7654321" }]);
+        await click(".topbar .markbtn", "");
+        await click(".kx-pop button", "Relatórios");
+        result.rpOpen = await waitFor(() => js("Boolean(document.querySelector('.console .rp-grid'))"));
+        result.rpTop = await waitFor(() => js("[...document.querySelectorAll('.rp-bar-l')].some((n) => n.textContent.includes('Canto do console'))"), 6000);
+        result.rpCcli = await waitFor(() => js("[...document.querySelectorAll('.rp-table td')].some((n) => n.textContent === '7654321')"), 6000);
+        await click(".rp button", "Copiar");
+        result.rpCopied = await waitFor(async () => String((await js("navigator.clipboard.readText().catch(() => '')")) || "").includes("7654321\t"));
+        result.shotReports = await shot("relatorios");
+        await press("Escape");
+        result.rpClosed = await waitFor(() => js("!document.querySelector('.console .rp-grid')"));
+
         await click(".tl-panel .kx-tl button", "");
         result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
     } finally {
@@ -1221,6 +1282,8 @@ async function checkConsole(webContents, { live, outputs }) {
         if (tone) await js(`window.keryxDesktop.db.call("Media", "delete", ["${tone.id}"])`);
         if (edSong) await js(`window.keryxDesktop.db.call("Song", "delete", ["${edSong.id}"])`).catch(() => {});
         for (const v of [14, 15, 16, 17, 18]) await js(`window.keryxDesktop.db.call("BibleVerse", "delete", ["smoke-jo3-${v}"])`).catch(() => {});
+        for (const r of svRows) if (r) await js(`window.keryxDesktop.db.call("BibleMaterial", "delete", ["${r.id}"])`).catch(() => {});
+        if (svClass) await js(`window.keryxDesktop.db.call("BibleSchoolClass", "delete", ["${svClass.id}"])`).catch(() => {});
         for (const r of mvRows) if (r) await js(`window.keryxDesktop.db.call("Media", "delete", ["${r.id}"])`).catch(() => {});
         for (const r of nvRows) if (r) await js(`window.keryxDesktop.db.call("CommunicationVideo", "delete", ["${r.id}"])`).catch(() => {});
         if (plTpl) await js(`window.keryxDesktop.db.call("ServiceTemplate", "delete", ["${plTpl.id}"])`).catch(() => {});
@@ -1254,7 +1317,9 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
-        && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch);
+        && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch
+        && result.svOpen && result.svPresence && result.svPrepared && result.svNotes && result.svSent && result.svNotesOffAir && result.svReveal && result.svEdited && result.svSetlist && result.svClosed
+        && result.rpOpen && result.rpTop && result.rpCcli && result.rpCopied && result.rpClosed);
     return result;
 }
 

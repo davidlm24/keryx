@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import { keryx } from "@/api/keryxClient";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,12 @@ import { format, isAfter, startOfDay, subDays } from "date-fns";
 import { useThemeColors } from "@/hooks/useThemeColors";
 
 export default function SongHistoryPage() {
+    // Desktop: the Histórico is in the console's Relatórios. The web build keeps this page for now.
+    if (keryx.isDesktop) return <Navigate to="/Console?reports=1" replace />;
+    return <LegacySongHistory />;
+}
+
+function LegacySongHistory() {
     const colors = useThemeColors();
 
     const { data: history, isLoading } = useQuery({

@@ -20,6 +20,8 @@
 .ks-content.ks-al-right { align-items: flex-end; text-align: right; }
 .ks-title { position: absolute; top: 3.5cqw; left: 8cqw; right: 8cqw; text-align: center; font-size: 2.2cqw; font-weight: 500; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ks-text { font-weight: 600; line-height: 1.22; white-space: pre-wrap; max-width: 100%; }
+.ks-slide-img { max-width: 84%; max-height: 52cqh; object-fit: contain; border-radius: .6cqw; }
+.ks-slide-img.is-alone { max-height: 80cqh; }
 .ks-text.ks-xsmall { font-size: 2.4cqw; } .ks-text.ks-small { font-size: 3cqw; } .ks-text.ks-medium { font-size: 3.8cqw; }
 .ks-text.ks-large { font-size: 4.8cqw; } .ks-text.ks-xlarge { font-size: 5.8cqw; } .ks-text.ks-xxlarge { font-size: 7cqw; }
 .ks-bible .ks-text { font-weight: 500; line-height: 1.3; font-size: calc(var(--ks-size, 4.8cqw) * .8); }

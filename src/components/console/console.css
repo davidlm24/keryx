@@ -439,3 +439,61 @@
 .console .bc-cell.is-prev, .console .bc-n.is-prev { background: var(--prev-tint); }
 .console .bc-n.is-prev { color: var(--prev-fg); }
 .console .kx-verse.bs-hit { padding-left: var(--space-2); }
+
+/* Escola bíblica: the teacher's notes (console and stage screen only) */
+.console .tnotes { padding: var(--space-1) var(--space-2) var(--space-2); background: var(--bg-2); border-radius: var(--radius-control); color: var(--fg-2); font-size: 12px; line-height: 16px; max-height: 120px; overflow: auto; }
+.console .tnotes p { margin: 2px 0 0; white-space: pre-wrap; }
+
+/* Escola bíblica (canvas artboard "Escola bíblica") */
+.console .sv-scroll { flex: 1; min-height: 0; overflow: auto; }
+.console .sv-frm { display: grid; grid-template-columns: 84px 1fr; gap: var(--space-1) var(--space-2); align-items: center; padding: 0 var(--space-2) var(--space-2); }
+.console .sv-frm .k { font-size: 11px; color: var(--fg-3); }
+.console .sv-frm .kx-field { height: 26px; min-width: 0; }
+.console .sv-ed { grid-template-columns: 96px 1fr; padding-top: var(--space-2); align-items: start; }
+.console .sv-ed .k { line-height: 26px; }
+.console .sv-student .kx-glyph { color: var(--fg-3); }
+.console .sv-student.is-here .kx-glyph { color: var(--prev); }
+.console .sv-student.is-here .kx-row-title { color: var(--fg-1); }
+.console .sv-hint { flex: none; border-top: 1px solid var(--line); }
+.console .sv-mons { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); }
+.console .sv-mons .kx-mon { width: 100%; }
+.console .sv-send { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; padding: 0 var(--space-2) var(--space-2); }
+.console .sv-notes { padding: 0 var(--space-2) var(--space-2); }
+.console .sv-notes:empty { display: none; }
+.console .sv-timer { border-top: 1px solid var(--line); }
+.console .sv-slides { min-height: 180px; height: 34vh; }
+.console .sv-quiz { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.console .sv-q { width: 100%; display: flex; flex-direction: column; gap: 4px; padding: var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); }
+.console .sv-q .kx-field { background: var(--bg-1); }
+.console .sv-opt { padding-left: 18px; }
+.console .sv-right { width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--bg-1); color: var(--fg-3); font-size: 11px; font-weight: 600; }
+.console .sv-right.is-on { background: var(--prev-fill); color: var(--on-state); }
+.console .sv-file { display: flex; gap: var(--space-1); align-items: center; flex-wrap: wrap; }
+.console .sv-file .pl-input { flex: 1; min-width: 160px; }
+
+/* Relatórios */
+.console .rp .kx-panel-b { padding: var(--space-2); }
+.console .rp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.console .rp-card { background: var(--bg-2); border-radius: var(--radius-control); padding-bottom: var(--space-2); min-width: 0; }
+.console .rp-card .listhead { gap: var(--space-1); flex-wrap: wrap; height: auto; min-height: var(--row); }
+.console .rp-wide { grid-column: 1 / -1; }
+.console .rp-empty { padding: var(--space-1) var(--space-2); font-size: 12px; }
+.console .rp-bars { display: flex; flex-direction: column; gap: 6px; padding: 0 var(--space-2); }
+.console .rp-bar { display: grid; grid-template-columns: minmax(120px, 34%) 1fr 36px; gap: var(--space-2); align-items: center; font-size: 12px; }
+.console .rp-bar-l { color: var(--fg-1); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .rp-bar-l small { display: block; color: var(--fg-3); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+.console .rp-bar-t { height: 8px; background: var(--bg-1); border-radius: 4px; overflow: hidden; }
+.console .rp-bar-t > i { display: block; height: 100%; background: var(--brand); border-radius: 4px; min-width: 2px; }
+.console .rp-bar-n { text-align: right; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.console .rp-cols { display: flex; align-items: flex-end; gap: var(--space-2); height: 160px; padding: var(--space-1) var(--space-2) 0; }
+.console .rp-col { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.console .rp-col-n { font-size: 11px; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.console .rp-col-t { flex: 1; width: 100%; max-width: 44px; display: flex; align-items: flex-end; background: var(--bg-1); border-radius: 4px; overflow: hidden; }
+.console .rp-col-t > i { display: block; width: 100%; background: var(--brand); min-height: 2px; }
+.console .rp-col-l { font-size: 11px; color: var(--fg-3); white-space: nowrap; }
+.console .rp-table { width: calc(100% - 2 * var(--space-2)); margin: 0 var(--space-2); border-collapse: collapse; font-size: 12px; }
+.console .rp-table th { text-align: left; font-weight: 500; font-size: 11px; color: var(--fg-3); padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.console .rp-table td { padding: 5px 6px; color: var(--fg-1); border-bottom: 1px solid var(--line); vertical-align: top; }
+.console .rp-table .n { text-align: right; font-variant-numeric: tabular-nums; }
+.console .rp-table .mono { font-variant-numeric: tabular-nums; color: var(--fg-2); white-space: nowrap; }
+@media (max-width: 1100px) { .console .rp-grid { grid-template-columns: 1fr; } }

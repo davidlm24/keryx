@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,12 @@ function getChannel() {
 }
 
 export default function BibleSchool() {
+    // Desktop: the Escola bíblica lives in the console (turmas, alunos, materiais, Projetar). The web build keeps this page for now.
+    if (keryx.isDesktop) return <Navigate to="/Console?school=1" replace />;
+    return <LegacyBibleSchool />;
+}
+
+function LegacyBibleSchool() {
     const colors = useThemeColors();
     const [tab, setTab] = useState("classes");
     const [showForm, setShowForm] = useState(false);

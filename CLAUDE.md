@@ -37,8 +37,11 @@ wiring, the data model and the known gaps.
   Avisos (CommunicationVideo) are the `communication` layer, drawn in full
   by `ScreenRenderer` (look, background, logo, chime; arithmetic in
   `src/lib/console/notice.js`); outputs move a "Tocar todos" sequence on
-  with `useNoticeAdvance`. Today's Ferramentas, Painel do operador alerts,
-  BibleSchool and the web build's Comunicação page still use their old paths (postMessage, `AlertMessage`,
+  with `useNoticeAdvance`. Escola bíblica materials go on air as ordinary
+  stages (`stageFromMaterial`; a quiz is question + answer slides; teacher
+  notes ride in `content.stage`, never on the projector). Today's
+  Ferramentas, Painel do operador alerts and the web build's BibleSchool and
+  Comunicação pages still use their old paths (postMessage, `AlertMessage`,
   `BibleProjectionSync`) as fallbacks until the redesign replaces them; don't
   extend those. Going live from Músicas/Cultos goes through
   `useProjectionControl()`.
@@ -53,8 +56,11 @@ wiring, the data model and the known gaps.
   the service planner, `ServicePlanner.jsx`, and `/Services` redirects to
   `/Console?planner=…`; so are the media library, `MediaView.jsx`
   (`/Media` → `?media=1`), and the aviso editor, `NoticeEditor.jsx`
-  (`/Communication` → Biblioteca › Avisos). One view at a time: the
-  `view` state in Console.jsx). Setlist sections are ServiceItems of type
+  (`/Communication` → Biblioteca › Avisos), the Escola bíblica,
+  `SchoolView.jsx` (`/BibleSchool` → `?school=1`; it projects through the
+  console's Prévia/Programa and every live key works there), and Relatórios,
+  `ReportsView.jsx` (`/Analytics`, `/SongHistoryPage` → `?reports=1`). One
+  view at a time: the `view` state in Console.jsx). Setlist sections are ServiceItems of type
   `SECTION`: headers that take no time and never go on air — use
   `playableItems`/`plan` from `src/lib/console/setlist.js`. A click
   prepares a *stage* in the Prévia (`src/lib/console/stage.js`); Enter, a

@@ -35,7 +35,8 @@ export function useLibrary() {
     const media = useMediaFiles(useList("Media", ["-created_date"]).data);
     const pieces = useList("CommunicationVideo", ["title"]).data;
     const themes = useList("ProjectionTheme", ["name"]).data;
-    return { songs, media, pieces, themes };
+    const materials = useList("BibleMaterial", ["-created_date"]).data;
+    return { songs, media, pieces, themes, materials };
 }
 
 // The services, newest first, and the items of the one in hand (today's by

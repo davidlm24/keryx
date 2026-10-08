@@ -32,7 +32,8 @@
               "TIMER",
               "FREE_CONTENT",
               "AUDIO",
-              "SECTION"
+              "SECTION",
+        "MATERIAL"
             ],
             "description": "Tipo do item"
           },

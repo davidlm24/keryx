@@ -181,10 +181,10 @@ localStorage goes too.
 
 | Page | Destination |
 | --- | --- |
-| EBD (`BibleSchool`): turmas, alunos, materiais (slides, quiz, vídeo, imagem, texto), projetar via `BibleProjectionSync` | Preparar · a "Escola bíblica" service template; materials project through `projection.school.*` (the `school` layer exists). Turmas and alunos: a small EBD screen in Preparar |
-| Estatísticas (`Analytics`) | Relatórios: top songs, by category, cultos por mês, CCLI with Copiar |
-| Histórico (`SongHistoryPage`) | Relatórios: recent plays, counts |
-| Busca global (`GlobalSearch`) | Done (palette); materials join the palette |
+| EBD (`BibleSchool`): turmas, alunos, materiais (slides, quiz, vídeo, imagem, texto), projetar via `BibleProjectionSync` | Done (phase 7): the console's Escola bíblica view; materials go on air as stages, join the Setlist and the palette |
+| Estatísticas (`Analytics`) | Done (phase 7): Relatórios — top songs, by category, cultos por mês, CCLI with Copiar and CSV |
+| Histórico (`SongHistoryPage`) | Done (phase 7): Relatórios › Histórico |
+| Busca global (`GlobalSearch`) | Done (palette; materials included since phase 7) |
 | Painel do operador (`OperatorPanel`) | Retire. Its useful pieces are already in the console: send song, versículo rápido (quick jump), logo/vazio (Mostrar logo, Encerrar), editar slide ao vivo (→ Console · Slides "Editar slide"), berçário alert (→ Console · Camadas › Alerta, `projection.alert`) |
 | Gestor de Projeções, DeviceForm, DeviceCard, SceneForm | Retire (decision above) |
 | DeviceView | Retire; network screens list only the live-state pages |
@@ -306,7 +306,25 @@ smoke and a look at the page.
    results follow the canon (row ids need not), and a number inside a verse
    ("930 anos") is no longer drawn as a verse mark. On the desktop `/Bible`
    redirects to the console's Bíblia; the web build keeps the old page.
-7. **EBD and Relatórios**.
+7. **EBD and Relatórios**. **Done 2026-10-08** (canvas artboards "Escola
+   bíblica" and the Apresentar escola scene). Escola bíblica: `SchoolView.jsx`
+   inside the console — turmas (create, data, delete asked twice), students
+   (add, remove asked twice, a click marks today's presence), materials by
+   lesson (slides with images, quiz with several questions and the right
+   option, text, video, image, teacher's notes, colours; edited in place,
+   Ctrl+S), and the console's Programa/Prévia on the right: a click prepares,
+   Enter or a double click sends, a quiz's answer is the next slide,
+   "Timer de discussão". Materials are `MATERIAL` setlist items (planner
+   "EBD", the view's "Setlist") and palette results; teacher's notes reach
+   the console and the stage screen only. The old channel projection
+   (`BibleProjectionSync`) is not used on the desktop any more. Relatórios:
+   `ReportsView.jsx` — period, top songs, by category, cultos per month,
+   CCLI with Copiar and CSV (matched by song id; the old page matched by
+   title), the history with a filter. On the desktop `/BibleSchool`,
+   `/Analytics` and `/SongHistoryPage` redirect into the console; the web
+   build keeps the old pages. Not carried over: the old projection window per
+   operator channel (one class at a time on the screens now) and the charts
+   library (bars are drawn in the design system).
 8. **Removal**: the shell, the old pages, the legacy paths, the references in
    section 8, `mainPage` → the console, the smoke rewritten on the console.
 

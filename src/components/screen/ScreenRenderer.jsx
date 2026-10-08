@@ -68,7 +68,7 @@ const isUrl = (v) => typeof v === "string" && (v.startsWith("http") || v.startsW
 // or piece's), else the background layer, else the default gradient. Media
 // and communication pieces with their own imagery paint over it.
 function Background({ state, layer }) {
-    const own = layer === "content" ? state.content.style?.background_image
+    const own = layer === "content" ? (state.content.style?.background_image || cssBackground(state.content.style?.background_color))
         : layer === "tool" ? state.tool.style?.background_image
         : layer === "communication" ? (state.communication.item.background_image || cssBackground(state.communication.item.background_color))
         : null;
@@ -124,7 +124,8 @@ function Content({ content }) {
             <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": SIZE_CQW[size] }}>
                 <div key={key} className={anim} style={{ display: "contents" }}>
                     {slide.is_chorus && !bible && <div className="ks-chorus">Refrão</div>}
-                    <div className={`ks-text ks-${size}`} style={textStyle(style)}>{bible ? verseNodes(slide.text) : slide.text}</div>
+                    {isUrl(slide.image_url) && <img className={`ks-slide-img ${slide.text ? "" : "is-alone"}`} src={slide.image_url} alt="" />}
+                    {(slide.text || !slide.image_url) && <div className={`ks-text ks-${size}`} style={textStyle(style)}>{bible ? verseNodes(slide.text) : slide.text}</div>}
                     {bible && reference && <div className="ks-ref" style={{ color: style.text_color || "#ffffff" }}>{reference}</div>}
                 </div>
             </div>

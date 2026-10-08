@@ -23,12 +23,14 @@ import SongEditor from "@/components/console/SongEditor";
 import ServicePlanner from "@/components/console/ServicePlanner";
 import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
+import SchoolView from "@/components/console/SchoolView";
+import ReportsView from "@/components/console/ReportsView";
 import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol } from "@/lib/console/layout";
 import { liveAction, quickJumpKey } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
-import { stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
 
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
@@ -60,9 +62,11 @@ export default function Console() {
     // The views inside the console, one at a time (null: the console itself):
     // { cfg: section } Configurações, { song: id | "new" } the song editor,
     // { planner: true } the service planner, { media: true } the media
-    // library, { notice: id | "new" } the aviso editor. The old pages land
-    // here on desktop: /Settings ?config=telas, /Home ?song=new, /Services
-    // ?planner=<id>, /Media ?media=1, /Communication ?lib=avisos.
+    // library, { notice: id | "new" } the aviso editor, { school: true } the
+    // Escola bíblica, { reports: true } Relatórios. The old pages land here on
+    // desktop: /Settings ?config=telas, /Home ?song=new, /Services
+    // ?planner=<id>, /Media ?media=1, /Communication ?lib=avisos,
+    // /BibleSchool ?school=1, /Analytics and /SongHistoryPage ?reports=1.
     const [view, setView] = useState(() => {
         try {
             const p = new URLSearchParams(window.location.search);
@@ -71,6 +75,8 @@ export default function Console() {
             if (p.get("planner")) return { planner: true };
             if (p.get("media")) return { media: true };
             if (p.get("notice")) return { notice: p.get("notice") };
+            if (p.get("school")) return { school: true };
+            if (p.get("reports")) return { reports: true };
         } catch { /* no query */ }
         return null;
     });
@@ -79,6 +85,8 @@ export default function Console() {
     const planner = Boolean(view?.planner);
     const mediaView = Boolean(view?.media);
     const notice = view?.notice || null;
+    const school = Boolean(view?.school);
+    const reports = Boolean(view?.reports);
     const closeView = useCallback(() => setView(null), []);
     const setCfg = useCallback((section) => setView(section ? { cfg: section } : null), []);
     const setEnv = useCallback((v) => { setView(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
@@ -86,6 +94,9 @@ export default function Console() {
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
+    // The Escola bíblica sends through the KERYX environment's Prévia.
+    const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setView({ school: true }); }, []);
+    const openReports = useCallback(() => { setOpen(null); setView({ reports: true }); }, []);
     const [plannerFocus, setPlannerFocus] = useState(null);
     const [open, setOpen] = useState(null);
     const [libTab, setLibTab] = useState(() => {
@@ -135,6 +146,7 @@ export default function Console() {
         const ref = { serviceItemId: item.id, serviceItemIndex: index, serviceId };
         const type = String(item.type || "").toUpperCase();
         if (type === "SECTION") throw new Error(`"${item.title}" é uma seção da setlist.`);
+        if (type === "MATERIAL") { const s = stageFromMaterial(await keryx.entities.BibleMaterial.get(item.contentId)); return { ...s, args: { ...s.args, ref: { ...(s.args.ref || {}), ...ref } } }; }
         if (type === "ANNOUNCEMENT" && item.contentId) { const s = stageFromPiece(await keryx.entities.CommunicationVideo.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
         if (type === "SONG") return stageFromSong(await keryx.entities.Song.get(item.contentId), ref);
         if (type === "BIBLE") return stageFromPassage(await keryx.entities.BiblePassage.get(item.contentId), ref);
@@ -198,6 +210,7 @@ export default function Console() {
         let type = null;
         let contentId = "";
         if (stage.kind === "lyrics" && stage.id?.startsWith("song:")) { type = "SONG"; contentId = stage.id.slice(5); }
+        else if (stage.id?.startsWith("material:")) { type = "MATERIAL"; contentId = stage.id.slice(9); }
         else if (stage.id?.startsWith("media:")) {
             contentId = stage.id.slice(6);
             const k = stage.args?.kind;
@@ -213,6 +226,15 @@ export default function Console() {
             c.say(`${stage.title} na setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     }, [c, items, ensureService]);
+
+    // Escola bíblica › Setlist: a material at the end of the setlist.
+    const addMaterial = async (m) => {
+        try {
+            const sid = await ensureService();
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "MATERIAL", title: m.title, contentId: m.id, order: items.length, duration: 300 });
+            c.say(`${m.title} adicionado ao fim da setlist.`);
+        } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
+    };
 
     const addSong = async (song) => {
         try {
@@ -288,9 +310,10 @@ export default function Console() {
             if (cfg && action === "end") { e.preventDefault(); setView(null); return; }
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
-            // So do the planner, the media library and the aviso editor (each
-            // closes itself on Esc).
-            if (view && !cfg && !["black", "logo"].includes(action)) return;
+            // So do the planner, the media library, the aviso editor and the
+            // reports (each closes itself on Esc). The Escola bíblica is a
+            // projecting view: every live key works there.
+            if (view && !cfg && !school && !["black", "logo"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -319,7 +342,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, view, cfg]);
+    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, view, cfg, school]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -376,6 +399,8 @@ export default function Console() {
                 {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeView} />}
                 {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} />}
                 {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { if (editSong === "new" && row?.id) setView({ song: row.id }); }} />}
+                {school && <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={closeView} />}
+                {reports && <ReportsView c={c} onClose={closeView} />}
                 {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}
                 {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} />}
                 {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
@@ -434,7 +459,7 @@ export default function Console() {
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} />
                 </div>
             )}
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} />
+            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />

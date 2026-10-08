@@ -4,6 +4,7 @@
 // (title, slides, a start index). Pure: no I/O, no React.
 import { songContent, passageContent, isVideoUrl } from "@/hooks/useProjectionControl";
 import { noticeLabel } from "@/lib/console/notice";
+import { materialSlides, materialMeta } from "@/lib/console/school";
 
 const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
 
@@ -69,6 +70,26 @@ export function stageFromTool(mode, { text = "", minutes = 5 } = {}) {
     return { kind: "tool", id: `tool:${mode}:${text}:${minutes}`, title: titles[mode], meta: "Ferramenta", slides: mode === "freetext" ? [{ text }] : [], index: 0, op: "tool.show", args };
 }
 
+// An Escola bíblica material (BibleMaterial, src/lib/console/school.js):
+// slides, text and quizzes as slides (a quiz's answer is the slide after its
+// question), video and image through the media layer. The teacher's notes
+// ride along for the console and the stage screen (content.stage.notes),
+// never the projector.
+export function stageFromMaterial(m) {
+    const notes = String(m.description || "").trim();
+    const meta = materialMeta(m);
+    if (m.type === "video" || m.type === "image") {
+        const url = m.type === "video" ? m.video_url : m.image_url;
+        if (!url) return { ...stageFromText(m.title || "Material", m.title || ""), id: `material:${m.id}`, meta, notes, missing: true };
+        const s = stageFromMedia({ id: m.id, type: m.type, file_url: url, title: m.title || "" });
+        return { ...s, id: `material:${m.id}`, meta, notes };
+    }
+    const slides = materialSlides(m);
+    const style = { text_color: m.text_color || "", background_image: m.background_image || "", background_color: m.background_image ? "" : (m.background_color || "") };
+    const args = { kind: "text", ref: { materialId: m.id }, title: m.title || "", slides: slides.length ? slides : [{ text: m.title || "" }], style, stage: notes ? { notes, musician_notes: notes, material: m.title || "" } : {} };
+    return { kind: "text", lesson: true, id: `material:${m.id}`, title: m.title || "", meta, slides: args.slides, index: 0, op: "content.show", args, notes };
+}
+
 // A history entry (live.history[i]) back as a stage, for "Voltar ao anterior".
 export function stageFromHistory(entry, restoreArgs) {
     const [op, args] = restoreArgs(entry);
@@ -103,6 +124,7 @@ export function liveStageId(state) {
     if (state.content) {
         const r = state.content.ref || {};
         if (r.songId) return `song:${r.songId}`;
+        if (r.materialId) return `material:${r.materialId}`;
         if (r.passageId) return `passage:${r.passageId}`;
         return `${state.content.kind}:${state.content.title}`;
     }

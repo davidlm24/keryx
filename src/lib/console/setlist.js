@@ -17,6 +17,7 @@ export const TYPE_INFO = {
     TEXT: { label: "Texto", icon: "text" },
     TIMER: { label: "Timer", icon: "clock" },
     SECTION: { label: "Seção", icon: "list" },
+    MATERIAL: { label: "Escola bíblica", icon: "book" },
 };
 export const typeLabel = (t) => TYPE_INFO[String(t || "").toUpperCase()]?.label || String(t || "Item");
 export const typeIcon = (t) => TYPE_INFO[String(t || "").toUpperCase()]?.icon || "list";

@@ -11,7 +11,7 @@ import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 // state's own rules to a copy of the current look (background, logo,
 // overlays) — or, for another slide of what is on air, to a copy of what is
 // on air. Never sent.
-function previewDoc(stage, cur, now) {
+export function previewDoc(stage, cur, now) {
     if (!stage) return null;
     if (stage.airSlide && cur?.content) {
         try { return applyOp(cur, "content.goTo", { index: stage.index }, now); } catch { return cur; }
@@ -26,7 +26,7 @@ function previewDoc(stage, cur, now) {
     }
 }
 
-const captionOf = (doc, word) => {
+export const captionOf = (doc, word) => {
     if (!doc) return word;
     const layer = mainLayer(doc);
     // A video-channel clip covers the screens over every layer.
@@ -39,6 +39,22 @@ const captionOf = (doc, word) => {
     if (layer === "tool") return `${word} · ${{ clock: "Relógio", stopwatch: "Cronômetro", timer: "Timer", freetext: "Texto livre" }[doc.tool.mode]}`;
     return `${word} · nada`;
 };
+
+// An Escola bíblica material's notes for the teacher: the Prévia's, else
+// what is on air (content.stage.notes). Only in the console and on the
+// stage screen, never on the projector.
+export function TeacherNotes({ prev, cur }) {
+    const fromPrev = prev?.notes ? { title: prev.title, notes: prev.notes } : null;
+    const air = cur?.content?.stage?.notes ? { title: cur.content.title, notes: cur.content.stage.notes } : null;
+    const n = fromPrev || air;
+    if (!n) return null;
+    return (
+        <div className="tnotes">
+            <span className="kx-section">Notas do professor <span className="kx-count">· {n.title} · só no console e no palco</span></span>
+            <p>{n.notes}</p>
+        </div>
+    );
+}
 
 // What sending the Prévia will do, in one line, when it is not obvious from
 // the monitor: which screens it reaches.
@@ -98,6 +114,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                         <span className="kx-meta">Ctrl+Enter</span>
                     </div>
                     {note && <div className="kx-meta sendnote">{note}</div>}
+                    <TeacherNotes prev={prev} cur={cur} />
                     <div className="nextline">
                         <span className="kx-meta">Próximo:</span>
                         <span className="t">{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>

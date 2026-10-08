@@ -3,7 +3,8 @@ import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
 import { MODULES } from "@/lib/console/layout";
 import { restoreArgs } from "@/lib/projection";
-import { stageFromHistory, stageFromSong, stageFromMedia, stageFromPiece } from "@/lib/console/stage";
+import { stageFromHistory, stageFromSong, stageFromMedia, stageFromPiece, stageFromMaterial } from "@/lib/console/stage";
+import { materialIcon, materialMeta } from "@/lib/console/school";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 
 const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv" };
@@ -11,7 +12,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 
 // The KERYX menu: pages that stay outside the console, the service picker,
 // Ver (modules) and the layout reset.
-export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice }) {
+export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports }) {
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     if (open === "ver") {
         return (
@@ -49,6 +50,8 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <MenuItem icon="film" onClick={() => { setOpen(null); onMedia?.(); }}>Biblioteca de mídia</MenuItem>
             <MenuItem icon="megaphone" onClick={() => { setOpen(null); onNotices?.(); }}>Avisos</MenuItem>
             <MenuItem icon="plus" onClick={() => { setOpen(null); onNewNotice?.(); }}>Novo aviso</MenuItem>
+            <MenuItem icon="book" onClick={() => { setOpen(null); onSchool?.(); }}>Escola bíblica</MenuItem>
+            <MenuItem icon="history" onClick={() => { setOpen(null); onReports?.(); }}>Relatórios</MenuItem>
             <div className="kx-menu-sep" />
             <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Telas e saídas</MenuItem>
             <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>
@@ -191,7 +194,8 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
     const songs = (ql ? data.songs.filter((s) => has(s.title, s.artist)) : data.songs.slice(0, 4)).slice(0, 5).map((s) => ({ icon: "music", title: s.title, meta: [s.artist, s.song_key].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromSong(s)), add: onAddSong ? () => onAddSong(s) : null }));
     const media = (ql ? data.media.filter((m) => has(m.title)) : []).slice(0, 4).map((m) => ({ icon: m.type === "image" ? "image" : "film", title: m.title, meta: m.type, pick: () => onPrepare(stageFromMedia(m)) }));
     const pieces = (ql ? data.pieces.filter((p) => has(p.title, p.text)) : []).slice(0, 4).map((p) => ({ icon: "megaphone", title: p.title || p.text, meta: "Aviso", pick: () => onPrepare(stageFromPiece(p)) }));
-    const order = env === "biblia" ? [["Bíblia", bible], ["Músicas", songs], ["Setlist", rund], ["Mídia", media], ["Avisos", pieces]] : [["Setlist", rund], ["Músicas", songs], ["Bíblia", bible], ["Mídia", media], ["Avisos", pieces]];
+    const mats = (ql ? (data.materials || []).filter((m) => has(m.title, m.subject, m.class_name)) : []).slice(0, 4).map((m) => ({ icon: materialIcon(m.type), title: m.title, meta: ["Escola bíblica", m.subject, materialMeta(m)].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromMaterial(m)) }));
+    const order = env === "biblia" ? [["Bíblia", bible], ["Músicas", songs], ["Setlist", rund], ["Mídia", media], ["Avisos", pieces], ["Escola bíblica", mats]] : [["Setlist", rund], ["Músicas", songs], ["Bíblia", bible], ["Mídia", media], ["Avisos", pieces], ["Escola bíblica", mats]];
     for (const [name, list] of order) if (list.length) groups.push({ name, list });
     const flat = groups.flatMap((g) => g.list);
     const run = (i, add) => { const r = flat[i]; if (!r) return; setOpen(null); if (add && r.add) r.add(); else r.pick(); };

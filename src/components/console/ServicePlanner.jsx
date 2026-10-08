@@ -11,7 +11,7 @@ import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, to
 
 const ADD = [
     ["SONG", "music", "Música"], ["BIBLE", "book", "Bíblia"], ["VIDEO", "film", "Vídeo"], ["AUDIO", "volume", "Áudio"],
-    ["IMAGE", "image", "Imagem"], ["ANNOUNCEMENT", "megaphone", "Aviso"], ["TEXT", "text", "Texto"], ["TIMER", "clock", "Timer"], ["SECTION", "list", "Seção"],
+    ["IMAGE", "image", "Imagem"], ["ANNOUNCEMENT", "megaphone", "Aviso"], ["TEXT", "text", "Texto"], ["TIMER", "clock", "Timer"], ["MATERIAL", "book", "EBD"], ["SECTION", "list", "Seção"],
 ];
 const MEDIA_FOR = { VIDEO: ["video"], AUDIO: ["audio"], IMAGE: ["image", "gif", "pdf", "powerpoint"] };
 const MEDIA_TYPE = { video: "VIDEO", audio: "AUDIO", image: "IMAGE", gif: "IMAGE", pdf: "PDF", powerpoint: "POWERPOINT" };
@@ -178,6 +178,8 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const f = (key) => ({ value: form[key], onChange: (v) => setForm({ ...form, [key]: v }), onBlur: () => commit(key), onKeyDown: (e) => { if (e.key === "Enter") e.currentTarget.blur(); } });
     const pickList = !adding ? [] : adding === "SONG"
         ? data.songs.filter((s) => match(pick.toLowerCase(), s.title, s.artist)).slice(0, 30).map((s) => ({ key: s.id, icon: "music", title: s.title, meta: s.artist, row: { type: "SONG", title: s.title, contentId: s.id, duration: s.duration || 240 } }))
+        : adding === "MATERIAL"
+            ? (data.materials || []).filter((m) => match(pick.toLowerCase(), m.title, m.subject, m.class_name)).slice(0, 30).map((m) => ({ key: m.id, icon: "book", title: m.title, meta: [m.subject, m.class_name].filter(Boolean).join(" · ") || "Escola bíblica", row: { type: "MATERIAL", title: m.title, contentId: m.id, duration: 300 } }))
         : adding === "ANNOUNCEMENT"
             ? data.pieces.filter((x) => match(pick.toLowerCase(), x.title, x.text)).slice(0, 30).map((x) => ({ key: x.id, icon: "megaphone", title: x.title || x.text, meta: "Aviso", row: { type: "ANNOUNCEMENT", title: x.title || x.text || "Aviso", contentId: x.id, duration: x.duration || 60 } }))
             : MEDIA_FOR[adding]
@@ -303,7 +305,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                             </div>
                             <div className="pl-adder-list">
                                 {pickList.map((r) => <Row key={r.key} icon={r.icon} title={r.title} meta={r.meta} onClick={() => add(r.row)} />)}
-                                {!["BIBLE", "TEXT", "SECTION", "TIMER"].includes(adding) && !pickList.length && <Empty title="Nada encontrado">{adding === "SONG" ? "Cadastre a música na Biblioteca › Letras." : adding === "ANNOUNCEMENT" ? "Crie o aviso em Comunicação." : "Adicione o arquivo na Biblioteca › Mídia."}</Empty>}
+                                {!["BIBLE", "TEXT", "SECTION", "TIMER"].includes(adding) && !pickList.length && <Empty title="Nada encontrado">{adding === "SONG" ? "Cadastre a música na Biblioteca › Letras." : adding === "MATERIAL" ? "Crie o material em Escola bíblica (menu KERYX)." : adding === "ANNOUNCEMENT" ? "Crie o aviso em Comunicação." : "Adicione o arquivo na Biblioteca › Mídia."}</Empty>}
                             </div>
                         </div>
                     )}

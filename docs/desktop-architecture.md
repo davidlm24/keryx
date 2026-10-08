@@ -332,6 +332,30 @@ command palette (`/`), Saídas, and Ensaio.
   screens. Bible slides mark only verse numbers in sequence
   (`src/lib/verseMarks.js`): "930 anos" stays text on the screen. On the
   desktop `/Bible` redirects to `/Console?env=biblia`.
+- **Escola bíblica** is a view inside the console (`SchoolView.jsx`, canvas
+  artboard "Escola bíblica"): turmas (`BibleSchoolClass`) with their data
+  and students — a click marks today's presence (`attendance` dates) —,
+  the lesson materials (`BibleMaterial`, grouped by lesson, edited in place:
+  slides, quiz, text, video, image, teacher's notes, colours) and, on the
+  right, the console's own Programa and Prévia. Materials go on air like
+  any stage (`stageFromMaterial`, `src/lib/console/school.js`, tested):
+  slides and text as `content` slides (a slide's image is drawn above its
+  text), a quiz as a question slide then its answer slide (→ reveals), video
+  and image through the media layer. The teacher's notes travel in
+  `content.stage` (the stage screen's notes banner) and show in the
+  console's Prévia column; the projector never draws them. Materials join
+  the Setlist (ServiceItem type `MATERIAL`; planner "EBD"; "Setlist" in the
+  view) and the palette. The live state's `school` layer and
+  `/BibleMaterialProjection` stay for the web build's old page. On the
+  desktop `/BibleSchool` redirects to `/Console?school=1`.
+- **Relatórios** is a view inside the console (`ReportsView.jsx`;
+  arithmetic in `src/lib/console/reports.js`, tested): by period (30 dias,
+  3 meses, 12 meses, tudo), the songs most sent live (SongHistory, written by
+  the console's send), plays by song category, cultos per month, the CCLI
+  report (songs with a CCLI number played in the period; Copiar as
+  tab-separated text, Salvar CSV) and the history with a filter. On the
+  desktop `/Analytics` and `/SongHistoryPage` redirect to
+  `/Console?reports=1`.
 - **Planejador de culto** is a view inside the console
   (`ServicePlanner.jsx`, canvas artboard 17): the culto and its team on the
   left, the Setlist on the right with sections (ServiceItem type `SECTION`),
@@ -418,9 +442,9 @@ command palette (`/`), Saídas, and Ensaio.
   projector itself handles Esc, B and L if clicked.
 
 Músicas, Cultos, Mídia, Comunicação and Configurações are inside the
-console on the desktop, and so is the Bíblia (read, search, compare,
-notes); EBD and Relatórios are still
-outside (reached from their old pages).
+console on the desktop, and so are the Bíblia (read, search, compare,
+notes), the Escola bíblica and Relatórios; what is left of the old shell
+(Ferramentas, Painel do operador and the pages to retire) goes in phase 8.
 `docs/migration-inventory.md` lists every function of the old pages and
 where it goes (or why it is retired), the bugs not to carry over, and the
 phases of the migration.
