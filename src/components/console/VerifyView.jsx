@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn } from "./kx";
@@ -29,8 +28,7 @@ async function fileState(url) {
     }
 }
 
-export default function VerifyView({ c, items, data, outputs, network, onIdentify, onOpenOutput, onClose, onSettings }) {
-    const navigate = useNavigate();
+export default function VerifyView({ c, items, data, outputs, network, onIdentify, onOpenOutput, onClose, onSettings, onOpenMedia }) {
     const [groups, setGroups] = useState(null);
     const [running, setRunning] = useState(false);
     const [installing, setInstalling] = useState(null);
@@ -68,7 +66,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
         await Promise.all(files.map(async (f) => {
             const st = await fileState(f.url);
             if (st === "net") net.push(line(f.title, `${f.what} · ${isYouTube(f.url) ? "YouTube" : "na internet"} · precisa de internet durante o culto`, navigator.onLine ? "ok" : "warn", null, "external"));
-            else media.push(line(f.title, st === "ok" ? `${f.what} · encontrado` : `${f.what} · Arquivo não encontrado`, st === "ok" ? "ok" : "miss", st === "ok" ? null : { label: "Abrir Mídia", run: () => navigate("/Media") }, "film"));
+            else media.push(line(f.title, st === "ok" ? `${f.what} · encontrado` : `${f.what} · Arquivo não encontrado`, st === "ok" ? "ok" : "miss", st === "ok" ? null : { label: "Abrir a biblioteca", run: () => onOpenMedia?.() }, "film"));
         }));
         out.push({ name: "Mídia da setlist", lines: media.length ? media : [line("Nenhum arquivo na setlist", "Músicas, leituras e avisos não dependem de arquivos", "info", null, "film")] });
 
@@ -116,7 +114,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
 
         setGroups(out);
         setRunning(false);
-    }, [items, data, outputs, network, navigate, onIdentify, onOpenOutput, installing]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [items, data, outputs, network, onIdentify, onOpenOutput, onOpenMedia, installing]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const installBible = async (v) => {
         setInstalling(v);

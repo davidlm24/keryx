@@ -166,8 +166,17 @@ export default function Console() {
         const stage = given || (env === "biblia" && bibleStageRef.current) || undefined;
         if (!stage && env === "biblia") { c.say("Selecione versículos ou digite a referência."); return; }
         // The projector is the main output: sending live (re)opens it if the
-        // window is closed, without taking the keyboard from the console.
-        if (c.isLive && projector && !projector.open) window.keryxDesktop?.displays.open("/Projection").catch(() => {});
+        // window is closed, without taking the keyboard from the console. The
+        // outputs poll can be seconds old, so ask now (beside the send, which
+        // never waits for it).
+        const displays = window.keryxDesktop?.displays;
+        if (c.isLive && projector && displays) {
+            displays.list().then((r) => {
+                const p = r?.data?.outputs?.find((o) => o.key === "/Projection") || projector;
+                if (!p.open) return displays.open("/Projection");
+                return null;
+            }).catch(() => {});
+        }
         const went = await c.send(stage);
         if (!went || !c.isLive) return;
         // A song on air counts for Histórico, Estatísticas and the CCLI report.
@@ -456,7 +465,7 @@ export default function Console() {
                 <div className="verif-overlay">
                     <VerifyView c={c} items={playable} data={data} outputs={outputs} network={network}
                         onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
-                        onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} />
+                        onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} onOpenMedia={openMedia} />
                 </div>
             )}
             <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} />

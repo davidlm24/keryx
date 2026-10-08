@@ -423,7 +423,7 @@ async function checkLayers(webContents, { live, outputs }) {
         return false;
     };
     // Windows the earlier checks closed may still be on their way out.
-    for (const path of ["/Projection", "/CommunicationProjection", "/BibleMaterialProjection", "/StageView"]) {
+    for (const path of ["/Projection", "/CommunicationProjection", "/StageView"]) {
         const end = Date.now() + 5000;
         while (windowFor(path) && Date.now() < end) await sleep(200);
     }
@@ -433,10 +433,8 @@ async function checkLayers(webContents, { live, outputs }) {
     result.projectorErrors = [];
     if (main) main.webContents.on("console-message", (e) => { if (e.level === "error") result.projectorErrors.push(String(e.message).slice(0, 300)); });
     outputs.open("/CommunicationProjection");
-    outputs.open("/BibleMaterialProjection");
     const comm = await waitWindow("/CommunicationProjection");
-    const school = await waitWindow("/BibleMaterialProjection");
-    result.mainOpened = Boolean(main && comm && school);
+    result.mainOpened = Boolean(main && comm);
     try {
         live.call("tool.show", { mode: "freetext", text: "Texto livre de teste" });
         result.freetext = await waitText(main, "Texto livre de teste");
@@ -467,11 +465,6 @@ async function checkLayers(webContents, { live, outputs }) {
         live.call("screen.set", { mode: "show" });
         live.call("overlays.set", { overlays: [] });
 
-        live.call("school.show", { content_type: "quiz", title: "Lição", quiz_questions: [{ question: "Quem construiu a arca?", options: ["Noé", "Moisés"], correct: 0 }] });
-        result.school = await waitText(school, "Quem construiu a arca?");
-        live.call("school.update", { quiz_reveal: true });
-        await sleep(300);
-
         // Abrir ao iniciar: what the main process opens when KERYX starts.
         outputs.setAssignment("/StageView", { openAtLaunch: true });
         const launched = outputs.openAtLaunch().join(",");
@@ -480,17 +473,16 @@ async function checkLayers(webContents, { live, outputs }) {
         outputs.setAssignment("/StageView", { openAtLaunch: false });
     } finally {
         live.call("clear");
-        live.call("school.clear");
         live.call("alert.clear");
         live.call("overlays.set", { overlays: [] });
         live.call("screen.set", { mode: "show" });
-        for (const path of ["/Projection", "/CommunicationProjection", "/BibleMaterialProjection", "/StageView"]) {
+        for (const path of ["/Projection", "/CommunicationProjection", "/StageView"]) {
             const w = windowFor(path);
             if (w) w.close();
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.school && result.openAtLaunch && result.keptTarget;
+        && result.alert && result.overlay && result.logoCovers && result.openAtLaunch && result.keptTarget;
     return result;
 }
 
@@ -623,6 +615,8 @@ async function checkConsole(webContents, { live, outputs }) {
     await sleep(1500);
     // Opening the projector must not take the keyboard from the operator.
     result.focusKept = !operatorWin || BrowserWindow.getFocusedWindow() === operatorWin;
+    // Which window had the focus instead (none: another program is in front).
+    if (!result.focusKept) { const fw = BrowserWindow.getFocusedWindow(); result.focusedInstead = fw ? fw.webContents.getURL() : "nenhuma janela do KERYX"; }
     if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
     try {
         // The app opens on the console now (/ redirects there): leave it and
@@ -847,6 +841,8 @@ async function checkConsole(webContents, { live, outputs }) {
         // The system loopback hears every sound of the computer: when this fails, the
         // heights say whether something else was playing (a steady level) or KERYX was.
         if (!result.metersFollowVolume) result.metersAfterMute = await js("[...document.querySelectorAll('.player .kx-meter b')].map((x) => x.style.height).join(' ')");
+        // And which KERYX windows were playing sound then (none: the sound came from another program).
+        if (!result.metersFollowVolume) result.audibleWindows = BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed() && w.webContents.isCurrentlyAudible()).map((w) => w.webContents.getURL());
         // The mute reached the element that actually plays, on the projector.
         result.projectorMuted = await waitFor(() => main && main.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.volume === 0 : null; })()").catch(() => null));
 
@@ -1410,7 +1406,7 @@ async function checkNetwork({ network, live, videoFile }) {
         })()`);
         live.call("clear");
 
-        await lyrics.loadURL(`${base}/Settings`);
+        await lyrics.loadURL(`${base}/Console`);
         result.operatorPageBlocked = (await textOf(lyrics)).includes("computador do operador");
 
         await network.ops.setPin(null, "2468");
@@ -1552,15 +1548,13 @@ function runSmokeTest(win, { dev, outputs, screen, system, network, live, dataDi
             const outputsResult = await checkOutputs(webContents, outputs, screen, { fullscreen: process.env.KERYX_SMOKE_FULLSCREEN === "1" });
             const systemResult = await checkSystem(webContents, { dataDir, system });
             const liveResult = await checkLive(webContents, { live });
-            // Músicas moved into the console (Biblioteca › Letras + song editor).
-            const operatorResult = { ok: true, retired: "Músicas no console" };
             const videoResult = await checkVideo(webContents, { live });
             const layersResult = await checkLayers(webContents, { live, outputs });
             const consoleResult = await checkConsole(webContents, { live, outputs });
             // The LAN server serves the built app (dist/), so this runs in built mode only.
             const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live, videoFile: videoResult.fileName });
-            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && operatorResult.ok && videoResult.ok && layersResult.ok && consoleResult.ok && !importOutcome && (dev || networkResult.ok),
-                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, operator: operatorResult, video: videoResult, layers: layersResult, console: consoleResult, network: networkResult });
+            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && videoResult.ok && layersResult.ok && consoleResult.ok && !importOutcome && (dev || networkResult.ok),
+                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, video: videoResult, layers: layersResult, console: consoleResult, network: networkResult });
         } catch (err) {
             finish(false, { rendered, exception: String(err && (err.stack || err.message)).slice(0, 800) });
         }

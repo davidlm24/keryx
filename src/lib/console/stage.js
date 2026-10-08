@@ -2,7 +2,7 @@
 // passage, a media file, a communication piece, a tool) as the live-state
 // operation that would put it on air, plus what the console needs to show it
 // (title, slides, a start index). Pure: no I/O, no React.
-import { songContent, passageContent, isVideoUrl } from "@/hooks/useProjectionControl";
+import { songContent, passageContent, isVideoUrl } from "@/lib/console/content";
 import { noticeLabel } from "@/lib/console/notice";
 import { materialSlides, materialMeta } from "@/lib/console/school";
 

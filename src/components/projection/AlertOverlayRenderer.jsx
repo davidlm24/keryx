@@ -1,46 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { keryx } from "@/api/keryxClient";
 import { useLiveState } from "@/hooks/useLiveState";
 
-/**
- * Renderiza um overlay de alerta/mensagem sobre qualquer projeção.
- * The live state's alert (projection.alert) comes first; the AlertMessage
- * table, which the current Painel do operador still writes, is the fallback.
- */
+// The live state's alert (projection.alert, the console's Alerta rápido) over
+// whatever a screen shows: the lyrics, stage, video and avisos screens. (The
+// projector draws it inside ScreenRenderer.)
 export default function AlertOverlayRenderer() {
-    const liveAlert = useLiveState((s) => s?.alert);
-    const [stored, setAlert] = useState(null);
-    const alert = liveAlert || stored;
-
-    useEffect(() => {
-        // Buscar alerta ativo ao carregar
-        const check = async () => {
-            try {
-                const records = await keryx.entities.AlertMessage.list("-timestamp", 1);
-                if (records.length > 0 && records[0].status === "active") {
-                    setAlert(records[0]);
-                }
-            } catch (e) {}
-        };
-        check();
-
-        const unsubscribe = keryx.entities.AlertMessage.subscribe((event) => {
-            if (event.type === "create" || event.type === "update") {
-                if (event.data?.status === "active") {
-                    setAlert(event.data);
-                } else if (event.data?.status === "inactive") {
-                    setAlert(null);
-                }
-            }
-            if (event.type === "delete") {
-                setAlert(null);
-            }
-        });
-
-        return () => unsubscribe();
-    }, []);
-
+    const alert = useLiveState((s) => s?.alert);
     const isAlert = alert?.type === "alert";
 
     return (

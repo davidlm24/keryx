@@ -145,20 +145,13 @@ test("timers run on the document's clock", () => {
     assert.throws(() => run([["tool.show", { mode: "timer" }]]), LiveError);
 });
 
-test("communication playlist and Escola bíblica", () => {
+test("communication playlist", () => {
     let s = run([["communication.show", { playlist: [{ type: "countdown", duration: 300 }, { type: "announcement", text: "Bem-vindos" }] }]]);
     assert.equal(mainLayer(s), "communication");
     s = applyOp(s, "communication.advance", { fromIndex: 0 }, T0 + 1);
     assert.equal(s.communication.item.text, "Bem-vindos");
     assert.equal(s.communication.startedAt, T0 + 1);
 
-    s = applyOp(s, "school.show", { content_type: "quiz", title: "Lição 3", quiz_questions: [{ question: "a" }, { question: "b" }] }, T0);
-    s = applyOp(s, "school.update", { quiz_reveal: true }, T0);
-    assert.equal(s.school.quiz_reveal, true);
-    s = applyOp(s, "school.update", { quiz_index: 1 }, T0);
-    assert.equal(s.school.quiz_index, 1);
-    assert.equal(s.school.quiz_reveal, false, "a new question starts hidden");
-    assert.equal(mainLayer(s), "communication", "the school layer is not on the main projector");
 });
 
 test("sessions and the position in the rundown", () => {

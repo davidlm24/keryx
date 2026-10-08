@@ -4,7 +4,7 @@ import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Empty } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { songContent, isVideoUrl } from "@/hooks/useProjectionControl";
+import { songContent, isVideoUrl } from "@/lib/console/content";
 import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
 import { parseChords, slidesFromLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { printSong } from "@/lib/printSong";

@@ -1,14 +1,14 @@
 // The live state: one document saying what every output shows right now.
 // Operator pages change it only through applyOp (by way of src/lib/projection.js);
 // outputs render it. The same module runs in the Electron main process
-// (electron/live.cjs holds the document there), in the web build's tab
-// (src/api/backends/localLive.js) and in node:test.
+// (electron/live.cjs holds the document there), in the console (Ensaio and
+// the previews apply operations to a local copy) and in node:test.
 //
 // Layers, top to bottom on the main projector (mainLayer):
 //   screen black/logo > tool > communication > media > content
 // with background under everything and overlays + alert over everything.
 // Other outputs pick the layers they need (stage: content; video: video;
-// Escola bíblica: school).
+// avisos: communication).
 //
 // Times are milliseconds on the clock of whoever holds the document (the
 // main process on desktop). Snapshots carry serverNow so a screen with a
@@ -27,7 +27,6 @@ export const CONTENT_KINDS = ["lyrics", "bible", "text"];
 export const MEDIA_KINDS = ["video", "image", "gif", "pdf", "powerpoint", "youtube", "audio"];
 export const BACKGROUND_KINDS = ["image", "video", "color"];
 export const TOOL_MODES = ["clock", "stopwatch", "timer", "freetext"];
-export const SCHOOL_KINDS = ["slides", "text", "quiz", "video", "image", "blank"];
 export const ALERT_TYPES = ["alert", "message"];
 export const STYLE_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "background_image", "background_color", "text_align", "text_position", "transition"];
 export const LOGO_CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
@@ -67,7 +66,6 @@ export function emptyState(now = Date.now()) {
         audio: null,
         tool: null,
         communication: null,
-        school: null,
         overlays: [],
         alert: null,
         // The church logo as a corner mark over the content (the idle logo
@@ -415,38 +413,6 @@ const OPS = {
     },
     "communication.clear": (s, _a, now) => (s.communication ? { ...remember(s, now, "communication"), communication: null } : null),
 
-    // Escola bíblica (BibleMaterialProjection): its own output.
-    "school.show": (_s, a, now) => {
-        const items = slides(a.slides);
-        const questions = a.quiz_questions ? list(a.quiz_questions, "Perguntas").map((q) => loose(q, "Pergunta")) : [];
-        return {
-            school: {
-                content_type: oneOf(a.content_type ?? "slides", SCHOOL_KINDS, "Tipo de material"),
-                title: text(a.title, "Título", { max: 500 }),
-                slides: items,
-                index: clampIndex(a.index, items.length),
-                quiz_questions: questions,
-                quiz_index: clampIndex(a.quiz_index, questions.length),
-                quiz_reveal: Boolean(a.quiz_reveal),
-                media_url: text(a.media_url, "Endereço da mídia", { max: MAX_URL }),
-                style: style(a.style),
-                startedAt: now,
-            },
-        };
-    },
-    "school.update": (s, a) => {
-        const current = need(s.school, "em exibição na Escola bíblica");
-        const next = { ...current };
-        if (a.index !== undefined) next.index = clampIndex(a.index, current.slides.length);
-        if (a.quiz_index !== undefined) {
-            next.quiz_index = clampIndex(a.quiz_index, current.quiz_questions.length);
-            next.quiz_reveal = false;
-        }
-        if (a.quiz_reveal !== undefined) next.quiz_reveal = Boolean(a.quiz_reveal);
-        return { school: next };
-    },
-    "school.clear": (s) => (s.school ? { school: null } : null),
-
     "overlays.set": (_s, { overlays }) => ({
         overlays: list(overlays ?? [], "Sobreposições", 50).map((o) => loose(o, "Sobreposição")).filter(isPlainObject),
     }),
@@ -510,7 +476,6 @@ export function restoreState(saved, now = Date.now()) {
         audio: paused(layer(saved.audio)),
         tool: layer(saved.tool),
         communication: layer(saved.communication),
-        school: layer(saved.school),
         overlays: Array.isArray(saved.overlays) ? saved.overlays.filter(isPlainObject) : [],
         alert: layer(saved.alert),
         logo: { ...base.logo, ...(layer(saved.logo) || {}) },

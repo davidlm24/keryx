@@ -11,7 +11,6 @@ const OUTPUTS = [
     { key: "/VideoProjection", label: "Vídeo", windowName: "videoProjection" },
     { key: "/StageView", label: "Palco", windowName: "stageView" },
     { key: "/PastorView", label: "Tela do pastor", windowName: "pastorView" },
-    { key: "/BibleMaterialProjection", label: "Material bíblico", windowName: "bibleProjection" },
     { key: "/CommunicationProjection", label: "Comunicação", windowName: "communicationProjection" },
 ];
 

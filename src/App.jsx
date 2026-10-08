@@ -2,182 +2,60 @@ import './App.css'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
-import PageNotFound from './lib/PageNotFound';
-import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import PageTransition from '@/components/PageTransition';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import NetworkHome from '@/components/network/NetworkHome';
+import DesktopOnly from '@/components/DesktopOnly';
 import { keryx } from '@/api/keryxClient';
 
-const { Pages, Layout, mainPage } = pagesConfig;
-const mainPageKey = mainPage ?? Object.keys(Pages)[0];
-const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
-
-import BannerProjection from './pages/BannerProjection';
-import SongHistoryPage from './pages/SongHistoryPage';
-import StageView from './pages/StageView';
-import BibleSchool from './pages/BibleSchool';
-import PastorView from './pages/PastorView';
-import ProjectionManager from './pages/ProjectionManager';
-import OperatorPanel from './pages/OperatorPanel';
-import DeviceView from './pages/DeviceView';
-import BibleMaterialProjection from './pages/BibleMaterialProjection';
-import LyricProjection from './pages/LyricProjection';
-import GlobalSearch from './pages/GlobalSearch';
-import Analytics from './pages/Analytics';
-import AnnouncementCarouselPage from './pages/AnnouncementCarouselPage';
 import Console from './pages/Console';
+import Projection from './pages/Projection';
+import LyricProjection from './pages/LyricProjection';
+import StageView from './pages/StageView';
+import VideoProjection from './pages/VideoProjection';
+import CommunicationProjection from './pages/CommunicationProjection';
+import PastorView from './pages/PastorView';
 
-// Public routes. These render OUTSIDE AuthenticatedApp: that component
-// redirects to the login page whenever auth fails, so a /login route nested
-// inside it would never render and the redirect would loop.
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-
-const LayoutWrapper = ({ children, currentPageName }) => Layout ?
-  <Layout currentPageName={currentPageName}><PageTransition>{children}</PageTransition></Layout>
-  : <PageTransition>{children}</PageTransition>;
-
-const AuthenticatedApp = () => {
-  const location = useLocation();
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
-
-  // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
-    }
-  }
-
-  // Render the main app
-  return (
-    <AnimatePresence mode="wait">
-    <Routes location={location} key={location.pathname}>
-      <Route path="/" element={
-        <LayoutWrapper currentPageName={mainPageKey}>
-          <MainPage />
-        </LayoutWrapper>
-      } />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
-      ))}
-      <Route path="/Services/:id" element={
-        <LayoutWrapper currentPageName="Services">
-          <Pages.Services />
-        </LayoutWrapper>
-      } />
-      <Route path="/BannerProjection" element={<BannerProjection />} />
-      <Route path="/StageView" element={<StageView />} />
-      <Route path="/SongHistoryPage" element={
-        <LayoutWrapper currentPageName="SongHistoryPage">
-          <SongHistoryPage />
-        </LayoutWrapper>
-      } />
-      <Route path="/BibleSchool" element={
-        <LayoutWrapper currentPageName="BibleSchool">
-          <BibleSchool />
-        </LayoutWrapper>
-      } />
-      <Route path="/ProjectionManager" element={
-        <LayoutWrapper currentPageName="ProjectionManager">
-          <ProjectionManager />
-        </LayoutWrapper>
-      } />
-      <Route path="/OperatorPanel" element={
-        <LayoutWrapper currentPageName="OperatorPanel">
-          <OperatorPanel />
-        </LayoutWrapper>
-      } />
-      <Route path="/DeviceView" element={<DeviceView />} />
-      <Route path="/PastorView" element={<PastorView />} />
-      <Route path="/BibleMaterialProjection" element={<BibleMaterialProjection />} />
-      <Route path="/LyricProjection" element={<LyricProjection />} />
-      <Route path="/GlobalSearch" element={
-        <LayoutWrapper currentPageName="GlobalSearch">
-          <GlobalSearch />
-        </LayoutWrapper>
-      } />
-      <Route path="/Analytics" element={
-        <LayoutWrapper currentPageName="Analytics">
-          <Analytics />
-        </LayoutWrapper>
-      } />
-      <Route path="/AnnouncementCarousel" element={<AnnouncementCarouselPage />} />
-      {/* The operator console has its own top bar: no Layout. */}
-      <Route path="/Console" element={<Console />} />
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
-    </AnimatePresence>
-  );
-};
-
-
-// A tablet, TV or stage monitor on the church network: only the screen pages
-// (the server refuses the rest too) and a picker at "/". No Layout, no auth.
-const NetworkApp = () => (
-  <Routes>
-    <Route path="/Projection" element={<Pages.Projection />} />
+// The screens every output shows (the projector, the stage, the video
+// screens…): opened by the console or the main process on this computer,
+// and by tablets and TVs on the church network (electron/lan.cjs serves only
+// these, NETWORK_SCREENS).
+const screens = (
+  <>
+    <Route path="/Projection" element={<Projection />} />
     <Route path="/LyricProjection" element={<LyricProjection />} />
     <Route path="/StageView" element={<StageView />} />
-    <Route path="/VideoProjection" element={<Pages.VideoProjection />} />
-    <Route path="/BibleMaterialProjection" element={<BibleMaterialProjection />} />
-    <Route path="/AnnouncementCarousel" element={<AnnouncementCarouselPage />} />
-    <Route path="/CommunicationProjection" element={<Pages.CommunicationProjection />} />
+    <Route path="/VideoProjection" element={<VideoProjection />} />
+    <Route path="/CommunicationProjection" element={<CommunicationProjection />} />
     <Route path="/PastorView" element={<PastorView />} />
-    <Route path="/DeviceView" element={<DeviceView />} />
-    <Route path="*" element={<NetworkHome />} />
-  </Routes>
+  </>
 );
 
+// KERYX is the desktop app (docs/desktop-architecture.md): the operator
+// console is the whole app; there is no login. On the church network a
+// screen picks what it shows at "/". In a plain browser there is no backend.
 function App() {
-
+  if (!keryx.isDesktop && !keryx.isNetworkScreen) return <DesktopOnly />;
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <ErrorBoundary>
-          <Routes>
-            {/* The paths here are the ones the auth pages link to each other
-                by, and the ones Base44 custom auth redirects to. Keep them in
-                sync with the app's auth settings on the server. */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/*" element={keryx.isNetworkScreen ? <NetworkApp /> : <AuthenticatedApp />} />
-          </Routes>
-          </ErrorBoundary>
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClientInstance}>
+      <Router>
+        <ErrorBoundary>
+          {keryx.isNetworkScreen ? (
+            <Routes>
+              {screens}
+              <Route path="*" element={<NetworkHome />} />
+            </Routes>
+          ) : (
+            <Routes>
+              <Route path="/Console" element={<Console />} />
+              {screens}
+              <Route path="*" element={<Navigate to="/Console" replace />} />
+            </Routes>
+          )}
+        </ErrorBoundary>
+      </Router>
+      <Toaster />
+    </QueryClientProvider>
   )
 }
 

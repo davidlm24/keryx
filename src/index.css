@@ -248,60 +248,6 @@ button:focus-visible {
   display: none;
 }
 
-/* ===== Painel Lateral (mc-*) — chrome partilhado das páginas ===== */
-@keyframes mcOpen{from{opacity:.65;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
-.mc-page .mc-panel{box-sizing:border-box;display:grid;grid-template-columns:206px minmax(0,1fr) 72px;background:#1a1714;color:#f2f0e9;border:1px solid #39352d;box-shadow:0 18px 50px #17140f30;animation:mcOpen .55s cubic-bezier(.2,.8,.2,1) both}
-.mc-page .mc-panel-2col{grid-template-columns:206px minmax(0,1fr)}
-.mc-page .mc-side{background:#211e19;border-right:1px solid #39352d}
-.mc-page .mc-side-sticky{position:sticky;top:0;max-height:100vh;overflow-y:auto;padding:34px 18px;display:flex;flex-direction:column;gap:12px;animation:mcOpen .55s cubic-bezier(.2,.8,.2,1) both;scrollbar-width:none}
-.mc-page .mc-brand{display:flex;align-items:center;gap:10px;padding:2px 5px 28px;border-bottom:1px solid #39352d;margin-bottom:8px}
-.mc-page .mc-brand strong{font-size:21px;letter-spacing:.12em;font-weight:800}
-.mc-page .mc-live{font-size:10px;font-weight:800;letter-spacing:.08em;color:#fff;background:#a44337;padding:5px 8px;border-radius:20px}
-.mc-page .mc-control{border:1px solid transparent;border-radius:10px;background:transparent;color:#d5d2c8;display:flex;align-items:center;gap:12px;text-align:left;padding:12px 11px;width:100%;font:600 12px/1.35 system-ui,sans-serif;cursor:pointer;transition:background .2s,color .2s,border-color .2s,box-shadow .2s}
-.mc-page .mc-control svg{width:17px;height:17px;flex:none;color:#a9ad9a}
-.mc-page .mc-control:hover{background:#302c25;color:#fff;border-color:#464137}
-.mc-page .mc-control:active{background:#3a352c;box-shadow:inset 0 0 0 1px #7d8470}
-.mc-page .mc-control:disabled{opacity:.45;cursor:not-allowed}
-.mc-page .mc-control:focus-visible,.mc-page .mc-letter:focus-visible{outline:2px solid #c9a86a;outline-offset:2px}
-.mc-page .mc-control.mc-primary{background:#7d8470;color:#fff;box-shadow:0 5px 14px #0003}
-.mc-page .mc-control.mc-primary svg{color:#fff}
-.mc-page .mc-control.mc-danger{color:#e9b0a5}
-.mc-page .mc-control.mc-danger svg{color:#df8779}
-.mc-page .mc-control.mc-accent{margin-top:auto;background:#30281d;border-color:#574830;color:#e7d4ad}
-.mc-page .mc-control.mc-accent svg{color:#c9a86a}
-.mc-page .mc-main{padding:52px 54px;display:flex;flex-direction:column;gap:30px;min-width:0}
-.mc-page .mc-topline{display:flex;align-items:center;justify-content:space-between;padding-bottom:23px;border-bottom:1px solid #39352d}
-.mc-page .mc-title{font-size:12px;font-weight:700;letter-spacing:.12em;color:#a9ad9a;text-transform:uppercase}
-.mc-page .mc-searchbox{display:flex;align-items:center;gap:14px;width:100%;box-sizing:border-box;background:#24211c;border:1px solid #4a4439;border-radius:14px;padding:0 19px;height:68px;box-shadow:inset 0 1px #ffffff08;transition:border-color .2s,box-shadow .2s}
-.mc-page .mc-searchbox:focus-within{border-color:#7d8470;box-shadow:0 0 0 3px #7d847022}
-.mc-page .mc-searchbox svg{width:20px;height:20px;color:#a9ad9a;flex:none}
-.mc-page .mc-searchbox input{border:0;outline:0;background:none;color:#f2f0e9;width:100%;font:500 15px system-ui,sans-serif}
-.mc-page .mc-searchbox input::placeholder{color:#918c80;opacity:1}
-.mc-page .mc-filters{display:flex;align-items:center;gap:10px}
-.mc-page .mc-chip{border:1px solid #484237;border-radius:9px;background:#24211c;color:#c7c3b8;padding:10px 16px;font:600 12px system-ui,sans-serif;cursor:pointer;transition:background .2s,color .2s,border-color .2s,box-shadow .2s}
-.mc-page .mc-chip svg{width:14px;height:14px;flex:none}
-.mc-page .mc-chip:hover{border-color:#7d8470;color:#fff;background:#302c25}
-.mc-page .mc-chip:active{background:#7d8470;color:#fff;box-shadow:inset 0 0 0 1px #a9ad9a}
-.mc-page .mc-chip.mc-active{background:#7d8470;color:#fff;border-color:#7d8470;box-shadow:0 4px 12px #0003}
-.mc-page .mc-chip.mc-fav{display:flex;align-items:center;gap:8px}
-.mc-page .mc-chip.mc-fav svg{color:#c9a86a}
-.mc-page .mc-divider{height:1px;background:#39352d}
-.mc-page .mc-alphabet{background:#211e19;border-left:1px solid #39352d}
-.mc-page .mc-alphabet-sticky{position:sticky;top:0;max-height:100vh;overflow-y:auto;padding:38px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;scrollbar-width:none}
-.mc-page .mc-letter{width:42px;height:29px;border:1px solid transparent;border-radius:7px;background:transparent;color:#aaa69b;font:700 11px system-ui,sans-serif;cursor:pointer;transition:background .2s,color .2s,border-color .2s,box-shadow .2s}
-.mc-page .mc-letter:hover{border-color:#625b4c;background:#302c25;color:#fff}
-.mc-page .mc-letter:active,.mc-page .mc-letter.mc-selected{background:#7d8470;color:#fff;border-color:#7d8470;box-shadow:0 3px 9px #0004}
-@media (max-width:767px){
-.mc-page .mc-panel,.mc-page .mc-panel-2col{grid-template-columns:1fr}
-.mc-page .mc-alphabet{display:none}
-.mc-page .mc-side{border-right:0;border-bottom:1px solid #39352d}
-.mc-page .mc-side-sticky{position:static;max-height:none;overflow:visible;flex-direction:row;padding:12px 14px;gap:8px}
-.mc-page .mc-brand{padding:2px 5px;border-bottom:0;margin-bottom:0;white-space:nowrap}
-.mc-page .mc-brand strong{font-size:16px}
-.mc-page .mc-control{white-space:nowrap;flex:none;width:auto;padding:10px 12px}
-.mc-page .mc-control.mc-accent{margin-top:0}
-.mc-page .mc-main{padding:24px 18px;gap:18px}
-}
 /* The toast viewport (src/components/ui/toast.jsx, generated) is a fixed box
    in the bottom-right corner, there even with no toast: it swallowed clicks
    on whatever sits under it (the console's Linha do tempo arrow). Clicks go

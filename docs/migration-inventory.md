@@ -192,7 +192,7 @@ localStorage goes too.
 | BannerProjection, `components/banners/*` | Retire (nothing sends it messages) |
 | Shell: `Layout`, `TopHeader`, `BottomTabBar`, `PagePanel`, `PageTransition` | Retire with the last page; the console is the app |
 
-## 8. References to update when pages go
+## 8. References to update when pages go — done (phase 8)
 
 - `src/pages.config.js` (the nine Layout pages, `mainPage: "Home"` → the console).
 - `src/App.jsx` routes, including `/Services/:id` and the explicit raw routes.
@@ -325,8 +325,30 @@ smoke and a look at the page.
    build keeps the old pages. Not carried over: the old projection window per
    operator channel (one class at a time on the screens now) and the charts
    library (bars are drawn in the design system).
-8. **Removal**: the shell, the old pages, the legacy paths, the references in
-   section 8, `mainPage` → the console, the smoke rewritten on the console.
+8. **Removal**. **Done 2026-10-08.** Decided first: KERYX is desktop only
+   (an analysis of Holyrics, ProPresenter, EasyWorship, FreeShow and
+   Proclaim: all are programs on the church computer; what is "hybrid" is
+   phone control on the local network, which KERYX has, and optional cloud
+   accounts for sync, which would not need a web copy of the app). Removed:
+   every old page (Músicas, Cultos, Mídia, Comunicação, Bíblia,
+   Configurações, EBD, Estatísticas, Histórico, Painel do operador, Gestor de
+   projeção, DeviceView, Anúncios, Banners, Busca global), the login pages,
+   the shell (Layout, the "mc-" panel and its CSS, PageTransition,
+   pages.config), the Supabase backend in the app and the browser-only live
+   store, the postMessage path (`projectionWindow.js`, Projection's
+   handlers, `CommunicationProjectionView`), the `AlertMessage` and
+   `BibleProjectionSync` fallbacks, the live state's `school` layer with
+   `/BibleMaterialProjection`, `useProjectionControl` (its content builders
+   moved to `src/lib/console/content.js`), the AI fallback for Bible text,
+   the Base44 → Supabase script and `@supabase/supabase-js` — 116 files,
+   found by an import graph from `src/main.jsx`. `/` and unknown paths open
+   the console; a plain browser sees `DesktopOnly`. Network screens: the
+   list is the six output pages, they only read (the DeviceView heartbeat was
+   the one write), and each says which page it shows, so the console's
+   Saídas list the screens connected now. Sending live asks the window state
+   fresh before reopening the projector (the outputs poll could be 5 s old).
+   `supabase/` is kept, unused, for a future sync or backup; the tables
+   nothing writes any more are kept as user data.
 
 ## 10. Prompt for Claude Design
 

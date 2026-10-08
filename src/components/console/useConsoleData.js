@@ -63,32 +63,33 @@ export function pickDefaultService(services) {
     return services.find((s) => s.date === today) || services[0];
 }
 
-const ONLINE_MS = 45_000;
-
-// The outputs: the windows the main process places (desktop) and the screens
-// on the church network (ProjectionDevice heartbeats). Polled, since window
-// state has no event.
+// The outputs: the windows the main process places (desktop) and the
+// screens on the church network connected right now (each says which page
+// it shows; electron/lan.cjs). Polled, since window state has no event.
 export function useOutputs() {
     const [local, setLocal] = useState({ displays: [], outputs: [] });
+    const [clients, setClients] = useState([]);
     useEffect(() => {
         const bridge = window.keryxDesktop;
         if (!bridge) return undefined;
         let alive = true;
         // The bridge answers { data, error }; data = { displays, outputs }.
-        const read = () => bridge.displays.list().then((r) => { if (alive && r && r.data) setLocal(r.data); }).catch(() => {});
+        const read = () => {
+            bridge.displays.list().then((r) => { if (alive && r && r.data) setLocal(r.data); }).catch(() => {});
+            bridge.network?.call("info").then((r) => { if (alive && r && r.data) setClients(r.data.clients || []); }).catch(() => {});
+        };
         read();
         const id = setInterval(read, 5000);
         return () => { alive = false; clearInterval(id); };
     }, []);
-    const devices = useList("ProjectionDevice", ["name"]).data;
-    const now = Date.now();
-    const network = devices.map((d) => ({
-        id: d.id,
-        name: d.name || "Tela na rede",
-        kind: d.type || "tv",
-        online: Boolean(d.is_online) && d.last_seen && now - Date.parse(d.last_seen) < ONLINE_MS,
-        lastSeen: d.last_seen || null,
-        role: d.role || "lyrics",
-    }));
+    const network = useMemo(() => clients.map((cl) => ({
+        id: `${cl.ip}|${cl.screen}|${cl.since}`,
+        name: cl.label || "Tela na rede",
+        ip: cl.ip,
+        kind: /iPad|Tablet|Android(?!.*Mobile)/i.test(cl.agent || "") ? "tablet" : "tv",
+        online: true,
+        lastSeen: cl.since,
+        role: cl.screen === "/VideoProjection" ? "media" : "lyrics",
+    })), [clients]);
     return { displays: local.displays, outputs: local.outputs, network };
 }

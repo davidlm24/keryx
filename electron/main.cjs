@@ -34,7 +34,7 @@ const BG = "#1a1714";
 // KERYX_SMOKE: load the app, run the checks in smoke.cjs, print, exit.
 const DEV_URL = process.env.KERYX_DEV_URL || "";
 const SMOKE = process.env.KERYX_SMOKE === "1";
-// KERYX_START_PATH: open the main window on this page (e.g. /Settings).
+// KERYX_START_PATH: open the main window on this page (e.g. Console?config=telas).
 // Without it the app opens on the operator console; smoke runs keep "/",
 // which their checks start from.
 const START_PATH = process.env.KERYX_START_PATH ? "/" + process.env.KERYX_START_PATH.replace(/^\/+/, "") : SMOKE ? "" : "/Console";
@@ -183,8 +183,8 @@ function createMainWindow() {
     mainWindow.once("ready-to-show", () => mainWindow.show());
     mainWindow.on("closed", () => { mainWindow = null; });
     mainWindow.loadURL(appUrl + START_PATH).catch((err) => {
-        // Also what a bad KERYX_START_PATH looks like (Git Bash rewrites "/Settings"
-        // to a Windows path; use MSYS_NO_PATHCONV=1 or "Settings" without a slash).
+        // Also what a bad KERYX_START_PATH looks like (Git Bash rewrites "/Console"
+        // to a Windows path; use MSYS_NO_PATHCONV=1 or "Console" without a slash).
         console.error(`[keryx] não foi possível abrir ${appUrl + START_PATH}: ${err.message}`);
         if (SMOKE) {
             console.log(`SMOKE FAIL ${JSON.stringify({ load: err.message })}`);

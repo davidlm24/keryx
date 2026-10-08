@@ -98,7 +98,7 @@ export function Outputs({ open, setOpen, outputs, network, isLive, onOpen, onClo
         const meta = bad ? "O monitor escolhido não está ligado · mostrando numa janela" : o.placement.mode === "fullscreen" ? `Tela ${o.placement.displayId ?? ""}`.trim() : "Janela";
         return { key: o.key, name: o.label, icon: OUTPUT_ICON[o.key] || "monitor", meta, cls: st[0], state: st[1], dot: st[2], open: o.open };
     });
-    const remote = network.map((d) => ({ key: d.id, name: d.name, icon: DEVICE_ICON[d.kind] || "tv", meta: `Rede · ${d.role}`, cls: d.online ? "" : "is-off", state: d.online ? "Conectada" : "Desconectada", dot: d.online ? "var(--prev)" : "var(--fg-3)", remote: true }));
+    const remote = network.map((d) => ({ key: d.id, name: d.name, icon: DEVICE_ICON[d.kind] || "tv", meta: `Rede · ${d.ip || ""}`, cls: d.online ? "" : "is-off", state: d.online ? "Conectada" : "Desconectada", dot: d.online ? "var(--prev)" : "var(--fg-3)", remote: true }));
     const all = [...local, ...remote];
     const okCount = all.filter((o) => o.state === "Conectada").length;
     return (

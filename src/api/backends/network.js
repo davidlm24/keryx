@@ -42,7 +42,8 @@ export function createNetworkBridge() {
 
     function connect() {
         if (source) return;
-        source = new EventSource("/api/events");
+        // Which page this screen shows, for the console's list of screens.
+        source = new EventSource(`/api/events?screen=${encodeURIComponent(window.location.pathname)}`);
         source.onmessage = (event) => {
             let change;
             try {

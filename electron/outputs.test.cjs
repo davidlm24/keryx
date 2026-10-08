@@ -20,7 +20,7 @@ test("outputKeyForUrl matches only same-origin output paths", () => {
     assert.equal(outputKeyForUrl("http://127.0.0.1:7700/Projection", origin), "/Projection");
     assert.equal(outputKeyForUrl("http://127.0.0.1:7700/Projection/", origin), "/Projection");
     assert.equal(outputKeyForUrl("/Projection", origin), null, "relative URLs are resolved by Electron before the handler");
-    assert.equal(outputKeyForUrl("http://127.0.0.1:7700/BibleMaterialProjection?channel=x", origin), "/BibleMaterialProjection");
+    assert.equal(outputKeyForUrl("http://127.0.0.1:7700/CommunicationProjection?x=1", origin), "/CommunicationProjection");
     assert.equal(outputKeyForUrl("http://127.0.0.1:7700/Home", origin), null);
     assert.equal(outputKeyForUrl("http://evil.example/Projection", origin), null);
     assert.equal(outputKeyForUrl("about:blank", origin), null);

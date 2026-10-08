@@ -1,11 +1,11 @@
 // Where Bible text comes from, for every component that shows or projects it.
 //
-//   1. The local database (desktop, once a version is installed): instant,
-//      offline, exact.
+//   1. The local database (once a version is installed): instant, offline,
+//      exact.
 //   2. abibliadigital.com.br, when online and the version exists there.
-//   3. The AI, in the web build only, as the pages did before.
 //
-// The desktop build never asks the AI for scripture.
+// KERYX never asks an AI for scripture. Network screens (no desktop bridge)
+// read installed text through the same store, over the church network.
 
 import { keryx } from "@/api/keryxClient";
 import { ClientError } from "@/api/errors";
@@ -64,23 +64,7 @@ async function fetchOnline(version, book, chapter) {
     }
 }
 
-// The web build's last resort, kept as it was.
-async function fetchFromAi(version, book, chapter) {
-    const result = await keryx.integrations.Core.InvokeLLM({
-        prompt: `Forneça o texto bíblico COMPLETO de ${book} ${chapter} na versão ${version}. Retorne APENAS os versículos numerados no formato "1 texto\n2 texto".`,
-        response_json_schema: { type: "object", properties: { text: { type: "string" } } },
-    });
-    const verses = [];
-    const regex = /(\d+)\s+([\s\S]*?)(?=\s+\d+\s|$)/g;
-    let m;
-    while ((m = regex.exec(result.text || "")) !== null) {
-        const text = m[2].trim();
-        if (text) verses.push({ number: Number(m[1]), text });
-    }
-    return verses;
-}
-
-// { verses: [{ number, text }], source: "local" | "online" | "ai" }
+// { verses: [{ number, text }], source: "local" | "online" }
 export async function getChapter(version, book, chapter) {
     const local = await keryx.entities.BibleVerse.filter({ version, book, chapter: Number(chapter) }, "verse");
     if (local.length) return { verses: local.map((v) => ({ number: v.verse, text: v.text })), source: "local" };
@@ -88,18 +72,11 @@ export async function getChapter(version, book, chapter) {
     const online = await fetchOnline(version, book, chapter);
     if (online) return { verses: online, source: "online" };
 
-    if (!keryx.isDesktop) {
-        const verses = await fetchFromAi(version, book, chapter);
-        if (verses.length) return { verses, source: "ai" };
-    }
-
     const installable = versionInfo(version)?.install;
     throw new ClientError(
-        keryx.isDesktop && installable
+        installable
             ? `A ${version} não está instalada neste computador. Instale-a em Configurações › Bíblias instaladas (ou pelo + da Bíblia).`
-            : keryx.isDesktop
-                ? `A ${version} só está disponível com internet. Use uma versão instalada (NVI, ACF ou AA) para projetar sem internet.`
-                : `Não foi possível obter ${book} ${chapter} na ${version}.`,
+            : `A ${version} só está disponível com internet. Use uma versão instalada (NVI, ACF ou AA) para projetar sem internet.`,
         404,
     );
 }
@@ -116,8 +93,8 @@ export async function getPassage(version, book, chapter, verseStart, verseEnd) {
 
 // Verses containing the words, ignoring case and accents, in canonical order:
 // [{ book, chapter, verse, text, version }]. Searches `version` when it is
-// installed, otherwise the first installed one. Desktop only: returns null on
-// the web build, where callers keep their AI search.
+// installed, otherwise the first installed one. On this computer only:
+// null on a network screen.
 export async function searchVerses(query, version, limit = 20) {
     if (!keryx.isDesktop) return null;
     const q = String(query || "").trim();
@@ -137,7 +114,7 @@ export async function searchVerses(query, version, limit = 20) {
 // (src/lib/bibleSearch.js reads the query). The database is asked for the
 // longest term; the rest is checked here.
 // -> { version, terms, total, verses: [{ book, chapter, verse, text }] }
-// Desktop only: null on the web build.
+// On this computer only: null on a network screen.
 export async function searchBible(query, version, { books = null, limit = 300 } = {}) {
     if (!keryx.isDesktop) return null;
     const terms = searchTerms(query);

@@ -1,9 +1,24 @@
 # KERYX as an offline-first desktop app
 
 Status: decisions settled 2026-10-06. Phases 0–5 (shell, local data, outputs,
-media and Bible, shipping, network screens) are built; the redesign is not.
-Installing on the booth PC and running a real service is the last step of
-phase 4 and is the church's to do.
+media and Bible, shipping, network screens) are built, and so is the
+redesign: the operator console is the whole app (migration phases 2–8,
+`docs/migration-inventory.md`). Installing on the booth PC and running a
+real service is the church's to do.
+
+**Current state (2026-10-08, after migration phase 8).** KERYX is desktop
+only: the web build on Supabase, its login pages and backend were retired
+(desktop projection apps don't run in a browser; tablets and TVs join
+through the computer's network server). The app is `/Console` plus the
+output pages (`/Projection`, `/LyricProjection`, `/StageView`,
+`/VideoProjection`, `/CommunicationProjection`, `/PastorView`); every old
+page, the brown "mc-" shell, the postMessage path to a projector window, the
+`AlertMessage` and `BibleProjectionSync` fallbacks, the live state's
+`school` layer with `/BibleMaterialProjection`, `DeviceView` and its
+heartbeat (the one write network screens had) are gone. Network screens
+only read, and say which page they show when they connect; the console lists
+them from that. The sections below keep the plan as it was written, phase by
+phase; where they describe a page or path listed here, that is history.
 
 ## Why
 
@@ -232,13 +247,11 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
      (`openAtLaunch` in the assignment). Comunicação is an output too.
    - Network screens: `/Projection`, `/PastorView` and
      `/CommunicationProjection` join the list.
-   - Still on the old paths, until the redesign replaces their pages: the
-     Ferramentas and Comunicação pages (postMessage to a projector window
-     they opened; it shows until the live state shows something new), the
-     Painel do operador's alerts (`AlertMessage`, shown when the live state
-     has no alert) and BibleSchool (`BibleProjectionSync` by channel, shown
-     when the live state has no school layer). Their tables and the
-     postMessage queue go with those pages.
+   - Still on the old paths at the time, until the redesign replaced their
+     pages: the Ferramentas and Comunicação pages (postMessage), the Painel
+     do operador's alerts (`AlertMessage`) and BibleSchool
+     (`BibleProjectionSync`). All retired in migration phase 8 (2026-10-08);
+     the tables stay as user data.
 
 Not in part 1: devices and scenes (`ProjectionDevice.current_output`,
 `DeviceView`, `OperatorPanel`) and `BannerProjection` wait for the UI
@@ -345,9 +358,8 @@ command palette (`/`), Saídas, and Ensaio.
   `content.stage` (the stage screen's notes banner) and show in the
   console's Prévia column; the projector never draws them. Materials join
   the Setlist (ServiceItem type `MATERIAL`; planner "EBD"; "Setlist" in the
-  view) and the palette. The live state's `school` layer and
-  `/BibleMaterialProjection` stay for the web build's old page. On the
-  desktop `/BibleSchool` redirects to `/Console?school=1`.
+  view) and the palette. (The live state's old `school` layer and
+  `/BibleMaterialProjection` were removed in phase 8.)
 - **Relatórios** is a view inside the console (`ReportsView.jsx`;
   arithmetic in `src/lib/console/reports.js`, tested): by period (30 dias,
   3 meses, 12 meses, tudo), the songs most sent live (SongHistory, written by
@@ -393,7 +405,7 @@ command palette (`/`), Saídas, and Ensaio.
   Delete asks twice and only takes the row out (the file stays in the media
   folder). A Media row whose file is gone is flagged `missing` by
   `useLibrary` from `integrations.Core.FileInfo` (desktop:
-  `keryx:media-info`, a stat in the media folder; the web build reports
+  `keryx:media-info`, a stat in the media folder; network screens report
   nothing) and offers "Localizar…"; the console refuses to send it. A
   file's duration is read from the file the first time its thumbnail loads.
 - **Avisos** (CommunicationVideo) go on air as `communication.show` (one, or
@@ -409,9 +421,7 @@ command palette (`/`), Saídas, and Ensaio.
   `/CommunicationProjection`, which now renders with ScreenRenderer too)
   moves a sequence on at the end of each piece. The **Editor de aviso**
   (`NoticeEditor.jsx`) edits all of it with a live 16:9 preview; saving
-  touches the library only, "Pôr na prévia do console" prepares it. On the
-  desktop `/Media` redirects to `/Console?media=1` and `/Communication`
-  to Biblioteca › Avisos.
+  touches the library only, "Pôr na prévia do console" prepares it.
 - **The player** (`PlayerBar`, logic in `src/lib/console/player.js`) sits
   on top of the Programa, always (idle when nothing plays, so the monitors
   never move): what plays with sound (video screens, a video or YouTube on
@@ -441,16 +451,12 @@ command palette (`/`), Saídas, and Ensaio.
   throttle and never pause covered video (occlusion tracking off), and the
   projector itself handles Esc, B and L if clicked.
 
-Músicas, Cultos, Mídia, Comunicação and Configurações are inside the
-console on the desktop, and so are the Bíblia (read, search, compare,
-notes), the Escola bíblica and Relatórios; what is left of the old shell
-(Ferramentas, Painel do operador and the pages to retire) goes in phase 8.
+Everything the old pages did is in the console (Músicas, Cultos, Mídia,
+Comunicação, Configurações, the Bíblia, the Escola bíblica, Relatórios); the
+old pages, their shell and their projection paths were removed in phase 8.
 `docs/migration-inventory.md` lists every function of the old pages and
-where it goes (or why it is retired), the bugs not to carry over, and the
+where it went (or why it was retired), the bugs not carried over, and the
 phases of the migration.
-The old Ferramentas postMessage path (and Comunicação's, for the web
-build's page), `AlertMessage` and `BibleProjectionSync` stay only as
-fallbacks for those pages.
 
 ## 3. Outputs and displays
 
@@ -517,10 +523,9 @@ Before phase 3 nothing read the `bible_verse` table; every verse came from
   Bíblia › Mais › Bíblias instaladas, and a prompt above the verse search
   while none is installed (`BibleInstaller`, `electron/bible.cjs`).
 - **One source of verse text:** `src/lib/bibleText.js` (`getChapter`,
-  `getPassage`, `searchVerses`, `searchBible`). Order: local database → abibliadigital
-  online → AI (web build only). The reader, selector, compare view,
-  `QuickVerseBar`, word search and the Home search all use it. The desktop
-  build never asks the AI for scripture.
+  `getPassage`, `searchVerses`, `searchBible`). Order: local database →
+  abibliadigital online. The console's Bíblia (read, search, compare), the
+  planner and the palette all use it. KERYX never asks an AI for scripture.
 - **References and books:** `src/lib/bibleBooks.js` parses "Jo 3:16",
   "1Co 13:4-7", "salmo 23" (accents optional), and holds the version list.
   Its verse-count table was wrong in ~165 chapters (Levítico 23 listed 9

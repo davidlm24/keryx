@@ -62,11 +62,6 @@ export const projection = {
     advanceCommunication: (fromIndex) => keryx.live.call("communication.advance", { fromIndex }),
     clearCommunication: op("communication.clear"),
 
-    school: {
-        show: op("school.show"),
-        update: op("school.update"),
-        clear: op("school.clear"),
-    },
 
     // Under everything: { kind: "image" | "video" | "color", value }.
     setBackground: op("background.set"),

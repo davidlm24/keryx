@@ -40,12 +40,12 @@ const page = (base, p, headers = {}) => fetch(base + p, { redirect: "manual", he
 test("serves only screen pages and '/', with the network flag injected", async (t) => {
     const f = await started();
     t.after(() => f.lan.stop());
-    for (const p of ["/", "/Projection", "/LyricProjection", "/StageView/", "/PastorView", "/CommunicationProjection", "/DeviceView?device=x"]) {
+    for (const p of ["/", "/Projection", "/LyricProjection", "/StageView/", "/PastorView", "/CommunicationProjection", "/VideoProjection"]) {
         const res = await page(f.base, p);
         assert.equal(res.status, 200, p);
         assert.match(await res.text(), /<head><script>window\.keryxLan=true;<\/script>/, p);
     }
-    for (const p of ["/Home", "/Settings", "/Services", "/Media", "/OperatorPanel", "/login"]) {
+    for (const p of ["/Console", "/Home", "/Settings", "/DeviceView", "/BibleMaterialProjection", "/login"]) {
         const res = await page(f.base, p);
         assert.equal(res.status, 404, `${p} must not be reachable from the network`);
         assert.match(await res.text(), /computador do operador/);
@@ -68,7 +68,7 @@ test("static files: assets yes, nothing outside dist or media", async (t) => {
     assert.equal((await ranged.arrayBuffer()).byteLength, 10);
 });
 
-test("the database is read-only except for the screen writes", async (t) => {
+test("the database is read-only from the network", async (t) => {
     const f = await started();
     t.after(() => f.lan.stop());
     const song = f.store.call("Song", "create", [{ title: "A" }]);
@@ -84,6 +84,7 @@ test("the database is read-only except for the screen writes", async (t) => {
         ["Song", "update", [song.id, { title: "x" }]],
         ["Song", "delete", [song.id]],
         ["User", "update", ["local", { logo_url: "x" }]],
+        ["ProjectionDevice", "update", [device.id, { is_online: true }]],
         ["ProjectionDevice", "delete", [device.id]],
         ["VideoSync", "create", [{ video_url: "x" }]],
         ["VideoSync", "update", ["x", { status: "played" }]],
@@ -93,8 +94,6 @@ test("the database is read-only except for the screen writes", async (t) => {
     }
     assert.equal(f.store.call("Song", "get", [song.id]).title, "A");
 
-    const beat = await (await f.db({ entity: "ProjectionDevice", op: "update", args: [device.id, { is_online: true }] })).json();
-    assert.equal(beat.data.is_online, true);
     const missing = await (await f.db({ entity: "Song", op: "get", args: ["nope"] })).json();
     assert.equal(missing.error.status, 404);
 });
@@ -108,6 +107,21 @@ test("/api/db needs the custom header, valid JSON and a sane size", async (t) =>
     const huge = await fetch(`${f.base}/api/db`, { method: "POST", headers: { "x-keryx": "1" }, body: "x".repeat(2 * 1024 * 1024) }).catch(() => ({ status: 413 }));
     assert.equal(huge.status, 413);
     assert.equal((await fetch(`${f.base}/api/db`)).status, 405);
+});
+
+test("a screen says which page it shows; unknown pages are not recorded", async (t) => {
+    const f = await started();
+    t.after(() => f.lan.stop());
+    const a = new AbortController();
+    const b = new AbortController();
+    await fetch(`${f.base}/api/events?screen=%2FStageView`, { signal: a.signal });
+    await fetch(`${f.base}/api/events?screen=%2FConsole`, { signal: b.signal });
+    await new Promise((r) => setTimeout(r, 100));
+    const seen = f.lan.clients().map((c) => [c.screen, c.label]).sort();
+    assert.deepEqual(seen, [["", ""], ["/StageView", "Palco"]]);
+    a.abort();
+    b.abort();
+    await new Promise((r) => setTimeout(r, 100));
 });
 
 test("store changes reach /api/events", async (t) => {
