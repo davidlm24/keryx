@@ -181,6 +181,12 @@ function createMainWindow() {
     });
     guardWindow(mainWindow);
     mainWindow.once("ready-to-show", () => mainWindow.show());
+    // Closing the console closes KERYX. The outputs are not in the taskbar, so
+    // otherwise the app could keep running unseen (and the network server up).
+    // "close" (not "closed"): the import restart's app.exit() destroys windows
+    // without it, so that restart is untouched; the updater's quitAndInstall
+    // is already quitting, and app.quit() then does nothing more.
+    mainWindow.on("close", () => app.quit());
     mainWindow.on("closed", () => { mainWindow = null; });
     mainWindow.loadURL(appUrl + START_PATH).catch((err) => {
         // Also what a bad KERYX_START_PATH looks like (Git Bash rewrites "/Console"

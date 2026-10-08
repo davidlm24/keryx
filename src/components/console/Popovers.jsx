@@ -110,7 +110,10 @@ export function Outputs({ open, setOpen, outputs, network, isLive, onOpen, onClo
                     <div><div className="kx-out-name">{o.name}</div><div className="kx-out-meta">{o.meta}</div></div>
                     <span className="kx-out-st" style={{ gap: 8 }}>
                         <i className="kx-dot" style={{ background: o.dot }} />{o.state}
-                        {!o.remote && (o.open ? <Btn small onClick={() => onClose(o.key)}>Fechar</Btn> : <Btn small onClick={() => onOpen(o.key)}>Abrir</Btn>)}
+                        {/* Outputs have no taskbar button: "Trazer para a frente" is how to see one again. */}
+                        {!o.remote && (o.open
+                            ? <><Btn small onClick={() => onOpen(o.key)} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn small onClick={() => onClose(o.key)}>Fechar</Btn></>
+                            : <Btn small onClick={() => onOpen(o.key)}>Abrir</Btn>)}
                     </span>
                 </div>
             ))}

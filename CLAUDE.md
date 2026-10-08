@@ -150,9 +150,13 @@ shell. Don't ask for their values and don't write them into tracked files.
 
 ## Verifying a change
 
-The loop is: `npm test`, `npm run lint`, `npm run desktop:smoke` (or
-`KERYX_SMOKE=1 npm run desktop:dev` when touching `src/api`), then look at
-the page. The quick look is the browser preview (`npm run dev`, the
+While working, the loop is `npm test`, `npm run lint`, `npm run build`
+and the browser preview — none of them open windows. **The desktop smoke
+(`npm run desktop:smoke`, or `KERYX_SMOKE=1 npm run desktop:dev` when
+touching `src/api`) runs once, at the end of a task or before a release,
+and the user is told right before it starts:** it opens real projection
+windows on their monitors, takes focus and plays a test tone for ~5 minutes
+(user decision 2026-10-08). The quick look is the browser preview (`npm run dev`, the
 side-panel "keryx-ui"): the real store and live engine on sample data in a
 temp folder (`scripts/preview/`, `src/api/backends/preview.js`,
 docs/desktop-architecture.md 8a); outputs open as tabs from Saídas. The

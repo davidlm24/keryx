@@ -72,7 +72,9 @@ export default function TelasSection({ c }) {
                         {typeof o.assignment.target === "object" && !list.some((d) => d.id === o.assignment.target.id) && <option value={`gone:${o.assignment.target.id}`} disabled>{o.assignment.target.width}×{o.assignment.target.height} (desligada)</option>}
                     </select>
                     <span className="cfg-launch"><Switch on={o.assignment.openAtLaunch === true} onChange={(on) => apply(displays.set(o.key, { openAtLaunch: on }))} label={`Abrir ${o.label} ao iniciar`} /><span className="kx-meta">Abrir ao iniciar</span></span>
-                    {o.open ? <Btn onClick={() => apply(displays.close(o.key))}>Fechar</Btn> : <Btn onClick={() => apply(displays.open(o.key))}>Abrir</Btn>}
+                    {o.open
+                        ? <><Btn onClick={() => apply(displays.open(o.key))} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn onClick={() => apply(displays.close(o.key))}>Fechar</Btn></>
+                        : <Btn onClick={() => apply(displays.open(o.key))}>Abrir</Btn>}
                 </div>
             ))}
             <div className="frm" style={{ borderTop: "1px solid var(--line)", marginTop: "var(--space-1)", paddingTop: "var(--space-2)" }}>
@@ -82,7 +84,7 @@ export default function TelasSection({ c }) {
                     <span className="kx-meta">o que as telas mostram quando nada está no ar</span>
                 </div>
             </div>
-            <div className="listhead"><span className="kx-meta">Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou Fechar aqui. Ligar um monitor aparece aqui em poucos segundos.</span></div>
+            <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas: use Trazer para a frente para ver uma de novo. Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou Fechar aqui. Fechar o KERYX fecha todas. Ligar um monitor aparece aqui em poucos segundos.</span></div>
         </>
     );
 }
