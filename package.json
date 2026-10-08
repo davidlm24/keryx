@@ -8,6 +8,7 @@
   "main": "electron/main.cjs",
   "scripts": {
     "build": "vite build",
+    "dev": "vite",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "db:import": "node scripts/import-base44.mjs",

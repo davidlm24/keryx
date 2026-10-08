@@ -16,12 +16,23 @@
 
 import { createDesktopBackend } from "./backends/desktop";
 import { createNetworkBridge } from "./backends/network";
+import { createPreviewBridge } from "./backends/preview";
 import { createLiveClient } from "./liveClient";
 import { ClientError } from "./errors";
+
+// `npm run dev` in a plain browser (Claude's side panel included): the
+// preview bridge (backends/preview.js) stands in for the desktop one, on the
+// real store and live engine of scripts/preview/server.cjs with sample data.
+// import.meta.env.DEV is false in production builds, so this branch — and
+// preview.js with it — is not in them: a plain browser gets DesktopOnly.
+if (import.meta.env.DEV && typeof window !== "undefined" && !window.keryxDesktop && window.keryxLan !== true) {
+    window.keryxDesktop = createPreviewBridge();
+}
 
 const desktopBridge = typeof window !== "undefined" ? window.keryxDesktop : undefined;
 
 export const isDesktop = Boolean(desktopBridge && desktopBridge.db);
+export const isPreview = Boolean(desktopBridge && desktopBridge.isPreview);
 export const isNetworkScreen = !isDesktop && typeof window !== "undefined" && window.keryxLan === true;
 
 // Outside the desktop app and the church network: every call fails, in pt-BR.
@@ -47,5 +58,5 @@ const backend = isDesktop
 
 export const { entities, auth, integrations, appLogs, live } = backend;
 
-export const keryx = { entities, auth, integrations, appLogs, live, isDesktop, isNetworkScreen };
+export const keryx = { entities, auth, integrations, appLogs, live, isDesktop, isNetworkScreen, isPreview };
 export default keryx;

@@ -25,7 +25,9 @@ let analysers = null;
 const buf = typeof Float32Array === "undefined" ? null : new Float32Array(FFT);
 
 function startCapture() {
-    if (capture !== "idle" || typeof window === "undefined" || !window.keryxDesktop) {
+    // The browser preview (npm run dev) has no system loopback: no meters
+    // there, and no capture prompt.
+    if (capture !== "idle" || typeof window === "undefined" || !window.keryxDesktop || window.keryxDesktop.isPreview) {
         if (capture === "idle") capture = "off";
         return;
     }

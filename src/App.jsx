@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import ErrorBoundary from '@/components/ErrorBoundary';
 import NetworkHome from '@/components/network/NetworkHome';
 import DesktopOnly from '@/components/DesktopOnly';
+import PreviewBanner from '@/components/PreviewBanner';
 import { keryx } from '@/api/keryxClient';
 
 import Console from './pages/Console';
@@ -33,12 +34,15 @@ const screens = (
 
 // KERYX is the desktop app (docs/desktop-architecture.md): the operator
 // console is the whole app; there is no login. On the church network a
-// screen picks what it shows at "/". In a plain browser there is no backend.
+// screen picks what it shows at "/". In a plain browser there is no backend,
+// except in development: `npm run dev` runs the browser preview (sample
+// data, src/api/backends/preview.js), marked by PreviewBanner.
 function App() {
   if (!keryx.isDesktop && !keryx.isNetworkScreen) return <DesktopOnly />;
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
+        {import.meta.env.DEV && keryx.isPreview && <PreviewBanner />}
         <ErrorBoundary>
           {keryx.isNetworkScreen ? (
             <Routes>

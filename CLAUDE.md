@@ -27,7 +27,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by
   network screens over HTTP (`backends/network.js`). A plain browser gets an
-  inert backend and `DesktopOnly`. Pages never talk to SQLite or IPC
+  inert backend and `DesktopOnly` — except under `npm run dev`, where the
+  preview bridge (`backends/preview.js`) stands in for the desktop one
+  (`keryx.isPreview`). Pages never talk to SQLite or IPC
   directly. Query semantics follow Base44 and are pinned by
   `electron/db/store.test.cjs`; change them there first.
 - **What is on screen is the live state** (`shared/live-state.mjs`, held by
@@ -131,6 +133,7 @@ KERYX_SMOKE=1 npm run desktop:dev   # same checks + the renderer adapter end to 
 npm run dist           # Windows installer in release/ (unsigned)
 npm run db:schema      # after editing base44/entities/*.jsonc
 npm run db:import      # one-off Base44 -> local import; needs the user's token
+npm run dev            # dev only: the console in a plain browser on sample data (the side-panel preview)
 ```
 
 Smoke runs use a free port and a temp data folder, so they never collide with a KERYX that is open. In Git Bash set `KERYX_START_PATH=Console?config=telas` (no leading slash; `/Console` is rewritten to a Windows path), and `KERYX_SCREENSHOT=file.png` with `KERYX_SCREENSHOT_TEXT="some heading"` to capture a page; `KERYX_CONSOLE_SHOT=file.png` saves the console check's screenshots.
@@ -149,7 +152,11 @@ shell. Don't ask for their values and don't write them into tracked files.
 
 The loop is: `npm test`, `npm run lint`, `npm run desktop:smoke` (or
 `KERYX_SMOKE=1 npm run desktop:dev` when touching `src/api`), then look at
-the page. `KERYX_SCREENSHOT=<file.png>` makes a smoke run save a screenshot.
+the page. The quick look is the browser preview (`npm run dev`, the
+side-panel "keryx-ui"): the real store and live engine on sample data in a
+temp folder (`scripts/preview/`, `src/api/backends/preview.js`,
+docs/desktop-architecture.md 8a); outputs open as tabs from Saídas. The
+smoke and `desktop:dev` remain the truth for outputs, audio and displays. `KERYX_SCREENSHOT=<file.png>` makes a smoke run save a screenshot.
 Pure logic lives in tested modules (`src/lib/**`, `shared/`); the UI is
 covered by the smoke's in-app checks.
 

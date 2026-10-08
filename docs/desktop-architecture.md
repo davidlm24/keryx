@@ -633,6 +633,53 @@ Original plan, for reference:
 - **Logs:** `electron-log` to `%APPDATA%/KERYX/logs/`, with "Enviar
   diagnóstico" zipping the last log.
 
+## 8a. Prévia no navegador (dev)
+
+`npm run dev` (and the side-panel preview, `.claude/launch.json` "keryx-ui")
+runs the whole console in a plain browser on sample data, for a quick look
+at the UI. It is the real store and live engine, not a mock:
+`scripts/preview/server.cjs` opens `electron/db/store.cjs` and
+`electron/live.cjs` on a throwaway folder (`%TEMP%\keryx-preview`, wiped on
+every start, or `keryx-preview-<pid>` when another preview holds it),
+seeds `scripts/preview/fixtures.cjs` (invented songs, a culto with
+sections, avisos, media on the bundled backgrounds, a turma with a quiz, and
+João 3:14-18 as "Texto de exemplo do versículo N" — never real Bible text)
+and answers an HTTP API with the shape of the desktop IPC (`/__keryx/db`,
+`/__keryx/live`, `/__keryx/events` over SSE, media at `/media/`), mounted
+by a Vite plugin in `vite.config.js`. Loopback only (by address and Host
+name), writes need the `X-Keryx` header; tested in
+`scripts/preview/server.test.cjs`. In the browser,
+`src/api/backends/preview.js` is installed as `window.keryxDesktop` (same
+shape as `preload.cjs`), so every desktop path runs unchanged; monitors,
+Bible downloads, web lyrics, the network server, backups and the audio
+meters answer "Disponível no aplicativo do computador" or a harmless
+default, and outputs open as browser tabs only from Saídas (a send never
+takes the tab). A strip says "PRÉVIA DE DESENVOLVIMENTO". None of it is in
+a production build (`import.meta.env.DEV`; a plain browser there still gets
+`DesktopOnly`), in the packaged app (scripts/ is not in electron-builder's
+files) or in `npm run desktop:dev` (`KERYX_NO_PREVIEW`). The smoke and
+`desktop:dev` remain the truth for outputs, audio and displays.
+
+## 8b. Nuvem (futuro)
+
+Recorded so the decision is not lost (2026-10-08; nothing built):
+
+- The web build was retired on purpose: projection apps are desktop apps;
+  the hybrid parts exist around them (phone control on the local network,
+  optional accounts for sync), not instead of them.
+- The local SQLite stays the source of truth (local-first): the church
+  projects with no internet.
+- Optional cloud features live inside the desktop app, not in a web UI:
+  - "Conectar conta" in Configurações, signing in through the system
+    browser (OAuth with a loopback or deep-link return);
+  - a scheduled copy of the existing backup file to Google Drive (or
+    Supabase Storage);
+  - later, sync of rows and media to Supabase for a second computer or the
+    team's phones, conflict rule "last edit wins" per row by
+    `updated_date`.
+- `supabase/` (migrations, Edge Functions) is kept, unused, as the starting
+  point for that.
+
 ## 9. Project layout after the change
 
 ```

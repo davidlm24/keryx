@@ -169,8 +169,10 @@ export default function Console() {
         // window is closed, without taking the keyboard from the console. The
         // outputs poll can be seconds old, so ask now (beside the send, which
         // never waits for it).
+        // (The browser preview opens outputs as tabs only when asked, from
+        // Saídas: a send must not take the tab away from the console.)
         const displays = window.keryxDesktop?.displays;
-        if (c.isLive && projector && displays) {
+        if (c.isLive && projector && displays && !keryx.isPreview) {
             displays.list().then((r) => {
                 const p = r?.data?.outputs?.find((o) => o.key === "/Projection") || projector;
                 if (!p.open) return displays.open("/Projection");

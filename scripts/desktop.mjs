@@ -36,6 +36,8 @@ function run(env) {
 }
 
 if (mode === "dev") {
+    // The app talks to its own store over IPC: no browser preview store here.
+    process.env.KERYX_NO_PREVIEW = "1";
     const { createServer } = await import("vite");
     const vite = await createServer({ root, server: { host: "127.0.0.1" } });
     await vite.listen();

@@ -253,3 +253,9 @@ button:focus-visible {
    on whatever sits under it (the console's Linha do tempo arrow). Clicks go
    through it; the toasts themselves are pointer-events-auto. */
 .fixed.z-\[100\].max-h-screen.flex-col-reverse { pointer-events: none; }
+
+/* The browser preview's strip (PreviewBanner, npm run dev only). */
+.keryx-preview-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 10000; height: 20px; display: flex; align-items: center; justify-content: center; font: 600 10px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .08em; color: #1a1300; background: #f5b83d; pointer-events: none; }
+html.keryx-preview .console { top: 20px; }
+/* Narrow windows lay the console out in the page flow instead. */
+html.keryx-preview #root { padding-top: 20px; }

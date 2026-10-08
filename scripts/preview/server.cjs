@@ -1,0 +1,180 @@
+// The browser preview's backend (dev only): `npm run dev` mounts it in the
+// Vite dev server (vite.config.js), so a plain browser — Claude's side panel
+// included — runs the full console on sample data. It is the REAL store
+// (electron/db/store.cjs) and live engine (electron/live.cjs) on a throwaway
+// folder, behind an HTTP API with the shape of the desktop IPC (preload.cjs):
+//
+//   POST /__keryx/db           { entity, op, args } -> { data } | { error }
+//   GET  /__keryx/live         -> { data: snapshot }
+//   POST /__keryx/live         { op, args } -> { data: snapshot } | { error }
+//   GET  /__keryx/events       Server-Sent Events: store changes (messages),
+//                              the live state ("live" events)
+//   GET  /__keryx/outputs      the output pages (electron/outputs.cjs)
+//   GET  /__keryx/bible        installed Bible versions (rows per version)
+//   POST /__keryx/media?name=  the file's bytes -> { data: { fileName } }
+//   POST /__keryx/media-info   { names } -> { data: { [name]: { exists, size } } }
+//   GET  /media/<file>         the preview's media folder; /media/bundled/ is resources/
+//
+// Never packaged (electron-builder "files" leaves scripts/ out) and never
+// required by the main process. Loopback only; it never touches the real
+// data in %APPDATA%\KERYX. Pure Node, so it is unit tested.
+
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const crypto = require("node:crypto");
+const { createStore } = require("../../electron/db/store.cjs");
+const { createLive, loadLiveRules } = require("../../electron/live.cjs");
+const { OUTPUTS } = require("../../electron/outputs.cjs");
+const { within, sendFile } = require("../../electron/server.cjs");
+const schema = require("../../electron/db/schema.json");
+const { seed } = require("./fixtures.cjs");
+
+const ROOT = path.join(__dirname, "..", "..");
+const PREFIX = "/__keryx/";
+const MAX_JSON = 2 * 1024 * 1024;
+const MAX_FILE = 200 * 1024 * 1024;
+const KEEPALIVE_MS = 20000;
+const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+const HOSTS = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+
+// The preview's own folder under the system temp dir: wiped on every start.
+const defaultDataDir = () => path.join(os.tmpdir(), "keryx-preview");
+function freshDir(dir) {
+    const resolved = path.resolve(dir);
+    // Only ever a folder named keryx-preview*: nothing else is deleted here.
+    if (!/^keryx-preview/.test(path.basename(resolved))) throw new Error(`pasta de prévia inesperada: ${resolved}`);
+    try {
+        fs.rmSync(resolved, { recursive: true, force: true });
+    } catch (err) {
+        // Windows: another preview still has its database open. Use a folder
+        // of this process's own instead of failing.
+        if (err.code !== "EPERM" && err.code !== "EBUSY") throw err;
+        return freshDir(`${resolved}-${process.pid}`);
+    }
+    fs.mkdirSync(path.join(resolved, "media"), { recursive: true });
+    return resolved;
+}
+
+const safeExtension = (name) => {
+    const ext = path.extname(String(name || "")).toLowerCase();
+    return /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : "";
+};
+
+function readBody(req, max) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        let size = 0;
+        req.on("data", (c) => {
+            size += c.length;
+            if (size > max) { reject(Object.assign(new Error("Arquivo grande demais."), { status: 413 })); req.destroy(); return; }
+            chunks.push(c);
+        });
+        req.on("end", () => resolve(Buffer.concat(chunks)));
+        req.on("error", reject);
+    });
+}
+
+const json = (res, status, body) => {
+    res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(body));
+};
+const failure = (err) => ({ error: { message: err && err.message ? err.message : "Erro na prévia.", status: (err && err.status) || 500 } });
+
+async function createPreviewServer({ dataDir = defaultDataDir(), bundledDir = path.join(ROOT, "resources"), log = () => {} } = {}) {
+    const dir = freshDir(dataDir);
+    const mediaDir = path.join(dir, "media");
+    const store = createStore({ file: path.join(dir, "keryx.db"), schema, log });
+    const live = createLive({ file: path.join(dir, "live.json"), rules: await loadLiveRules(), log });
+    seed(store);
+
+    const clients = new Set();
+    const broadcast = (frame) => { for (const res of clients) res.write(frame); };
+    const offStore = store.onChange((change) => broadcast(`data: ${JSON.stringify(change)}\n\n`));
+    const offLive = live.onChange((snap) => broadcast(`event: live\ndata: ${JSON.stringify(snap)}\n\n`));
+    const ping = setInterval(() => broadcast(": ping\n\n"), KEEPALIVE_MS);
+    ping.unref?.();
+
+    // Connect-style middleware: answers its own paths, passes the rest on.
+    async function middleware(req, res, next) {
+        const url = new URL(req.url, "http://localhost");
+        const own = url.pathname.startsWith(PREFIX) || url.pathname.startsWith("/media/");
+        if (!own) return next();
+        // This machine only, by address and by name (no DNS rebinding).
+        if (!LOOPBACK.has(req.socket.remoteAddress) || !HOSTS.test(String(req.headers.host || ""))) return json(res, 403, { error: { message: "A prévia só atende este computador.", status: 403 } });
+        // Writes need the custom header: a page on another site cannot send it.
+        if (req.method === "POST" && req.headers["x-keryx"] !== "1") return json(res, 403, { error: { message: "Pedido não autorizado.", status: 403 } });
+        try {
+            if (url.pathname.startsWith("/media/")) return serveMedia(req, res, url.pathname);
+            const route = url.pathname.slice(PREFIX.length);
+            if (route === "db" && req.method === "POST") {
+                const { entity, op, args } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                try { return json(res, 200, { data: store.call(entity, op, args) }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "live" && req.method === "GET") return json(res, 200, { data: live.get() });
+            if (route === "live" && req.method === "POST") {
+                const { op, args } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                try { return json(res, 200, { data: live.call(op, args) }); } catch (err) { return json(res, 200, failure(err)); }
+            }
+            if (route === "events" && req.method === "GET") {
+                res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
+                res.write("retry: 2000\n\n");
+                clients.add(res);
+                req.on("close", () => clients.delete(res));
+                return undefined;
+            }
+            if (route === "outputs" && req.method === "GET") return json(res, 200, { data: OUTPUTS.map(({ key, label, windowName }) => ({ key, label, windowName })) });
+            if (route === "bible" && req.method === "GET") return json(res, 200, { data: store.countBy("BibleVerse", "version") });
+            if (route === "media" && req.method === "POST") {
+                const bytes = await readBody(req, MAX_FILE);
+                const fileName = crypto.randomUUID() + safeExtension(url.searchParams.get("name"));
+                fs.writeFileSync(path.join(mediaDir, fileName), bytes);
+                return json(res, 200, { data: { fileName } });
+            }
+            if (route === "media-info" && req.method === "POST") {
+                const { names = [] } = JSON.parse((await readBody(req, MAX_JSON)).toString("utf8") || "{}");
+                const out = {};
+                for (const name of names.slice(0, 2000)) {
+                    const base = path.basename(String(name || ""));
+                    let stat = null;
+                    try { if (base === name) stat = fs.statSync(path.join(mediaDir, base)); } catch { stat = null; }
+                    out[name] = { exists: Boolean(stat && stat.isFile()), size: stat ? stat.size : 0 };
+                }
+                return json(res, 200, { data: out });
+            }
+            return json(res, 404, { error: { message: "Rota da prévia desconhecida.", status: 404 } });
+        } catch (err) {
+            return json(res, err.status || 400, failure(err));
+        }
+    }
+
+    function serveMedia(req, res, encoded) {
+        let pathname;
+        try { pathname = decodeURIComponent(encoded); } catch { return res.writeHead(400).end(); }
+        const bundled = pathname.startsWith("/media/bundled/");
+        const file = bundled ? within(bundledDir, pathname.slice("/media/bundled".length)) : within(mediaDir, pathname.slice("/media".length));
+        if (!file) return res.writeHead(403).end();
+        let stat;
+        try { stat = fs.statSync(file); } catch { return res.writeHead(404).end(); }
+        if (!stat.isFile()) return res.writeHead(404).end();
+        return sendFile(req, res, file, stat, { "Cache-Control": "no-store" });
+    }
+
+    return {
+        middleware,
+        store,
+        live,
+        dataDir: dir,
+        close() {
+            clearInterval(ping);
+            offStore();
+            offLive();
+            for (const res of clients) res.end();
+            clients.clear();
+            live.flush();
+            store.close();
+        },
+    };
+}
+
+module.exports = { createPreviewServer, defaultDataDir };
