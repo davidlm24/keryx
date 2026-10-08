@@ -264,15 +264,6 @@ async function checkLive(webContents, { live }) {
     return result;
 }
 
-// The operator flow through the real Músicas page: Projetar on a song puts it
-// on the projector, an arrow key moves every screen, Parar Projeção clears it.
-const CLICK_TEXT = (selector, text) => `(() => {
-    const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((n) => n.textContent.includes(${JSON.stringify(text)}));
-    if (!el) return false;
-    el.click();
-    return true;
-})()`;
-
 // Video and media through the live state: a short real video recorded in
 // the page, a video screen that opens after it started (it must join), pause
 // and play from the operator, and a playlist the projector moves on by itself.
@@ -598,6 +589,7 @@ async function checkConsole(webContents, { live, outputs }) {
 
     let tone = null;
     let svc = null;
+    let plTpl = null;
     let edSong = null;
     // João 3:14-18 (placeholder text): the Bible environment reads the local
     // database first, so the verse flow is testable without internet.
@@ -1014,6 +1006,67 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         result.cfgEsc = await waitFor(() => js("!document.querySelector('.console .cfg') && Boolean(document.querySelector('.console .main .col.center'))"));
 
+        // The planner inside the console: from the KERYX menu; the culto's name
+        // saves on blur, a section is added and dragged to the top, the team
+        // gets a member, the setlist becomes a template that keeps contentId,
+        // Esc goes back and the Setlist shows the section as a header.
+        await click(".topbar .markbtn", "");
+        await click(".kx-pop button", "Planejar o culto");
+        result.plOpen = await waitFor(() => js("Boolean(document.querySelector('.console .pl-frm'))"));
+        const setVal = (selector, v) => js(`(() => {
+            const el = document.querySelector(${JSON.stringify(selector)});
+            if (!el) return false;
+            const p = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+            el.focus();
+            Object.getOwnPropertyDescriptor(p, "value").set.call(el, ${JSON.stringify(v)});
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            return true;
+        })()`);
+        await setVal(".pl-frm .kx-field input", "Culto do planejador");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        result.plRenamed = await waitFor(async () => ((await js(`window.keryxDesktop.db.call("Service", "get", ["${svc.id}"])`)).data || {}).title === "Culto do planejador", 6000);
+        result.plEnds = await waitText(webContents, "termina às");
+        await click(".pl-add button", "Seção");
+        await waitFor(() => js("Boolean(document.querySelector('.pl-adder input'))"));
+        await setVal(".pl-adder input", "Pré-culto");
+        await press("Enter");
+        const itemsOf = async () => ((await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }, "order"])`)).data || []);
+        result.plSection = await waitFor(async () => (await itemsOf()).some((i) => i.type === "SECTION" && i.title === "Pré-culto"), 6000);
+        await waitFor(() => js("Boolean(document.querySelector('.pl-sec'))"));
+        result.plDrag = await js(`(() => {
+            const src = document.querySelector(".pl-sec");
+            const dst = document.querySelector(".pl-list .kx-row");
+            if (!src || !dst || src === dst) return "sem linhas";
+            const dt = new DataTransfer();
+            src.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+            return true;
+        })()`);
+        await sleep(150);
+        await js(`(() => {
+            const dst = document.querySelector(".pl-list .kx-row");
+            const dt = new DataTransfer();
+            dst.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt }));
+            dst.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt }));
+            return true;
+        })()`);
+        result.plMoved = await waitFor(async () => { const its = (await itemsOf()).sort((a, b) => a.order - b.order); return its[0]?.type === "SECTION"; }, 6000);
+        await setVal(".pl-pad .kx-field input[list=pl-team]", "Ana Souza · Ministra");
+        await press("Enter");
+        result.plTeam = await waitFor(async () => { const t = ((await js(`window.keryxDesktop.db.call("Service", "get", ["${svc.id}"])`)).data || {}).worship_team || []; return t.some((m) => m.member_name === "Ana Souza" && m.role === "Ministra"); }, 6000);
+        await click(".pl-acts button", "Salvar como modelo");
+        await setVal(".pl-pop .kx-field input", "Modelo do smoke");
+        await click(".pl-pop button", "Salvar modelo");
+        result.plTemplate = await waitFor(async () => {
+            const rows = (await js(`window.keryxDesktop.db.call("ServiceTemplate", "filter", [{ name: "Modelo do smoke" }])`)).data || [];
+            plTpl = rows[0] || null;
+            return Boolean(plTpl) && plTpl.items[0]?.type === "SECTION" && plTpl.items.every((i) => "contentId" in i);
+        }, 6000);
+        result.shotPlanner = await shot("planejador");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("Escape");
+        result.plClosed = await waitFor(() => js("!document.querySelector('.console .pl-frm') && Boolean(document.querySelector('.console .main .col.center'))"));
+        result.plRundownSection = await waitFor(() => js("[...document.querySelectorAll('.rund-sec')].some((n) => n.textContent.includes('Pré-culto'))"));
+
         await click(".tl-panel .kx-tl button", "");
         result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
     } finally {
@@ -1024,6 +1077,7 @@ async function checkConsole(webContents, { live, outputs }) {
         if (tone) await js(`window.keryxDesktop.db.call("Media", "delete", ["${tone.id}"])`);
         if (edSong) await js(`window.keryxDesktop.db.call("Song", "delete", ["${edSong.id}"])`).catch(() => {});
         for (const v of [14, 15, 16, 17, 18]) await js(`window.keryxDesktop.db.call("BibleVerse", "delete", ["smoke-jo3-${v}"])`).catch(() => {});
+        if (plTpl) await js(`window.keryxDesktop.db.call("ServiceTemplate", "delete", ["${plTpl.id}"])`).catch(() => {});
         if (svc) {
             const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
             for (const it of its) await js(`window.keryxDesktop.db.call("ServiceItem", "delete", ["${it.id}"])`);
@@ -1048,7 +1102,8 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc
-        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen);
+        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen
+        && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection);
     return result;
 }
 

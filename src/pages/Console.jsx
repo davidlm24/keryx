@@ -20,14 +20,15 @@ import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
 import LyricsSearch from "@/components/console/LyricsSearch";
 import SongEditor from "@/components/console/SongEditor";
+import ServicePlanner from "@/components/console/ServicePlanner";
 import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol } from "@/lib/console/layout";
 import { liveAction, quickJumpKey } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
-import { stageFromSong, stageFromPassage, stageFromMedia, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
 
-const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
 const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LOG_KEY(serviceId)) || "{}"); } catch { return {}; } };
 
@@ -59,19 +60,28 @@ export default function Console() {
             return want ? (sectionIds.includes(want) ? want : "telas") : null;
         } catch { return null; }
     });
-    const setEnv = useCallback((v) => { setCfg(null); setEditSong(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
-    const openSettings = useCallback((section = "telas") => { setOpen(null); setEditSong(null); setCfg(section); }, []);
+    const setEnv = useCallback((v) => { setCfg(null); setEditSong(null); setPlanner(false); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
+    const openSettings = useCallback((section = "telas") => { setOpen(null); setEditSong(null); setPlanner(false); setCfg(section); }, []);
     // The song editor, inside the console: a song id, "new", or null. The old
     // /Home page lands here on desktop (?song=new).
     const [editSong, setEditSong] = useState(() => {
         try { return new URLSearchParams(window.location.search).get("song") || null; } catch { return null; }
     });
-    const openSong = useCallback((id) => { setOpen(null); setCfg(null); setEditSong(id); }, []);
+    const openSong = useCallback((id) => { setOpen(null); setCfg(null); setPlanner(false); setEditSong(id); }, []);
+    // The service planner, inside the console (canvas artboard 17). The old
+    // /Services page lands here on desktop (?planner=<service id>|new|1).
+    const [planner, setPlanner] = useState(() => {
+        try { return new URLSearchParams(window.location.search).get("planner") || false; } catch { return false; }
+    });
+    const [plannerFocus, setPlannerFocus] = useState(null);
     const [open, setOpen] = useState(null);
     const [libTab, setLibTab] = useState("letras");
     const [drawer, setDrawer] = useState(false);
     const [layout, setLayoutState] = useState(() => loadLayout(""));
-    const [serviceId, setServiceId] = useState(null);
+    // ?planner=<id> (the old /Services/:id) opens on that culto.
+    const [serviceId, setServiceId] = useState(() => {
+        try { const v = new URLSearchParams(window.location.search).get("planner"); return v && v !== "1" && v !== "new" ? v : null; } catch { return null; }
+    });
     const [log, setLog] = useState({});
     const [bibleRequest, setBibleRequest] = useState(null);
     const [width, setWidth] = useState(() => window.innerWidth);
@@ -99,12 +109,17 @@ export default function Console() {
     const airItemId = c.cur?.session?.itemId || null;
     const prevItemId = c.prev?.args?.ref?.serviceItemId || null;
     const airIdx = items.findIndex((i) => i.id === airItemId);
-    const nextItem = airIdx >= 0 ? items[airIdx + 1] || null : items[0] || null;
+    // Sections (Pré-culto, Culto…) are headers: never prepared, never next.
+    const playable = useMemo(() => playableItems(items), [items]);
+    const nextItem = (airIdx >= 0 ? items.slice(airIdx + 1) : items).find((i) => !isSection(i)) || null;
+    const setPlan = useMemo(() => plan(service, items), [service, items]);
 
     // A rundown item as a stage: the row it points at, with the item's id in ref.
     const buildStage = useCallback(async (item, index) => {
         const ref = { serviceItemId: item.id, serviceItemIndex: index, serviceId };
         const type = String(item.type || "").toUpperCase();
+        if (type === "SECTION") throw new Error(`"${item.title}" é uma seção da setlist.`);
+        if (type === "ANNOUNCEMENT" && item.contentId) { const s = stageFromPiece(await keryx.entities.CommunicationVideo.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
         if (type === "SONG") return stageFromSong(await keryx.entities.Song.get(item.contentId), ref);
         if (type === "BIBLE") return stageFromPassage(await keryx.entities.BiblePassage.get(item.contentId), ref);
         if (["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
@@ -158,7 +173,7 @@ export default function Console() {
         const two = (n) => String(n).padStart(2, "0");
         const row = await keryx.entities.Service.create({ title: `Setlist de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, status: "DRAFT" });
         setServiceId(row.id);
-        c.say("Criada a setlist de hoje.");
+        c.say("Criada a setlist de hoje · renomeie em Planejar o culto.");
         return row.id;
     }, [serviceId, c]);
 
@@ -214,6 +229,22 @@ export default function Console() {
         }
     }, [c]);
 
+    // The planner: for the culto in hand (or a given one), "new" creates one.
+    const openPlanner = useCallback(async (id, itemId = null) => {
+        setOpen(null); setCfg(null); setEditSong(null);
+        if (id === "new") {
+            const d = new Date();
+            const two = (n) => String(n).padStart(2, "0");
+            try {
+                const row = await keryx.entities.Service.create({ title: `Culto de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, startTime: "19:00", status: "DRAFT", service_type: "culto" });
+                setServiceId(row.id);
+                c.say("Novo culto criado.");
+            } catch (err) { c.say(err?.message || "Não foi possível criar o culto."); return; }
+        } else if (id && id !== true) setServiceId(id);
+        setPlannerFocus(itemId);
+        setPlanner(true);
+    }, [c]);
+
     const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
 
     // Keys (src/lib/console/keys.js). A mouse click never leaves focus on a
@@ -225,7 +256,7 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && quick === null && !cfg && !editSong) {
+            if (env === "biblia" && !open && quick === null && !cfg && !editSong && !planner) {
                 const ch = quickJumpKey(e);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
@@ -240,7 +271,8 @@ export default function Console() {
             if (cfg && action === "end") { e.preventDefault(); setCfg(null); return; }
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
-            if (editSong && !["black", "logo"].includes(action)) return;
+            // So does the planner (it closes itself on Esc).
+            if ((editSong || planner) && !["black", "logo"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -269,7 +301,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, cfg, editSong]);
+    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, cfg, editSong, planner]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -295,9 +327,9 @@ export default function Console() {
                 <Split horizontal size={layout.camadasH} onSize={(v) => setLayout({ ...layout, camadasH: v })} onReset={() => setLayout({ ...layout, camadasH: DEFAULT_LAYOUT.camadasH })} clamp={(v) => clampSize("camadasH", v)} />
             )}
             {!layout.hidden.roteiro && (
-                <Panel title="Setlist" count={service ? `${service.title}${items.length ? ` · ${items.length} itens · ${mmss(items.reduce((a, b) => a + (b.duration || 0), 0))}` : ""}` : "nenhum culto"} collapsed={!inDrawer && layout.collapsed.roteiro} onToggle={inDrawer ? undefined : () => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
-                    actions={<IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} />}>
-                    <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} />
+                <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"} collapsed={!inDrawer && layout.collapsed.roteiro} onToggle={inDrawer ? undefined : () => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
+                    actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} /></>}>
+                    <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
                 </Panel>
             )}
         </>
@@ -324,9 +356,10 @@ export default function Console() {
             )}
             <div className="main">
                 {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={() => setCfg(null)} />}
+                {!cfg && !editSong && planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={() => setPlanner(false)} />}
                 {!cfg && editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={() => setEditSong(null)} onSaved={(row) => { if (editSong === "new" && row?.id) setEditSong(row.id); }} />}
-                {!cfg && !editSong && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
-                {!cfg && !editSong && env === "culto" && (
+                {!cfg && !editSong && !planner && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
+                {!cfg && !editSong && !planner && env === "culto" && (
                     <>
                         {!layout.hidden.lib && (
                             <>
@@ -366,9 +399,9 @@ export default function Console() {
                     </>
                 )}
             </div>
-            {!cfg && !editSong && env === "culto" && !layout.hidden.tl && (
+            {!cfg && !editSong && !planner && env === "culto" && !layout.hidden.tl && (
                 <div className={`kx-panel tl-panel ${layout.tlOpen ? "is-open" : ""}`}>
-                    <Timeline service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
+                    <Timeline service={service} items={playable} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
                 </div>
             )}
 
@@ -376,18 +409,18 @@ export default function Console() {
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
-                    <VerifyView c={c} items={items} data={data} outputs={outputs} network={network}
+                    <VerifyView c={c} items={playable} data={data} outputs={outputs} network={network}
                         onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} />
                 </div>
             )}
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} />
+            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} onPlanner={openPlanner} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <ArmDialog open={open} setOpen={setOpen} live={c.live} onArm={c.arm} />
             <EndDialog open={open} setOpen={setOpen} mode={c.mode} onEnd={c.end} />
-            <Palette open={open} setOpen={setOpen} data={data} items={items} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} />
+            <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} />
             {compact && drawer && <div className="drawer">{rightPanels(true)}</div>}
             {quick !== null && env === "biblia" && (
                 <BibleQuickJump initial={quick} onCancel={() => setQuick(null)}

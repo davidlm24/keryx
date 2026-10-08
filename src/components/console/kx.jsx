@@ -47,11 +47,11 @@ export function Seg({ value, options, onChange, mode, className = "", small }) {
     );
 }
 
-export function Field({ icon = "search", value, onChange, placeholder, onKeyDown, kbd, inputRef, ...rest }) {
+export function Field({ icon = "search", value, onChange, placeholder, onKeyDown, kbd, inputRef, inputProps, ...rest }) {
     return (
         <div className="kx-field kx-t" {...rest}>
             {icon && <Icon name={icon} />}
-            <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} onKeyDown={onKeyDown} />
+            <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} onKeyDown={onKeyDown} {...inputProps} />
             {kbd && <kbd>{kbd}</kbd>}
         </div>
     );

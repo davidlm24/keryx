@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,14 @@ import QrCodePanel from "@/components/projection/QrCodePanel";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function Services() {
+    // Desktop: Cultos moved into the console (the planner). The web build
+    // keeps this page for now.
+    const { id } = useParams();
+    if (keryx.isDesktop) return <Navigate to={`/Console?planner=${id || "1"}`} replace />;
+    return <LegacyServices />;
+}
+
+function LegacyServices() {
     const [showForm, setShowForm] = useState(false);
     const [editingService, setEditingService] = useState(null);
     const { id: serviceId } = useParams();

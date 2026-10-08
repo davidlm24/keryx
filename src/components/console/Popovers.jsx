@@ -12,7 +12,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 
 // The KERYX menu: pages that stay outside the console, the service picker,
 // Ver (modules) and the layout reset.
-export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings }) {
+export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings, onPlanner }) {
     const navigate = useNavigate();
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     const go = (path) => { setOpen(null); navigate(path); };
@@ -32,7 +32,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
         return (
             <div className="pop kx-pop" style={{ left: 6, top: 40, width: 300, maxHeight: 420, overflow: "auto" }}>
                 <div className="kx-menu-h"><span className="kx-section">Culto</span></div>
-                {!services.length && <div className="kx-menu-h"><span className="kx-meta">Nenhum culto. Crie um em Cultos.</span></div>}
+                {!services.length && <div className="kx-menu-h"><span className="kx-meta">Nenhum culto ainda.</span></div>}
                 {services.slice(0, 20).map((s) => (
                     <MenuItem key={s.id} checked={s.id === serviceId} onClick={() => { setServiceId(s.id); setOpen(null); }}>
                         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</span>
@@ -40,14 +40,15 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                     </MenuItem>
                 ))}
                 <div className="kx-menu-sep" />
-                <MenuItem icon="list" onClick={() => go("/Services")}>Cultos…</MenuItem>
+                <MenuItem icon="list" onClick={() => { setOpen(null); onPlanner?.(serviceId); }}>Planejar o culto…</MenuItem>
+                <MenuItem icon="plus" onClick={() => { setOpen(null); onPlanner?.("new"); }}>Novo culto</MenuItem>
             </div>
         );
     }
     return (
         <div className="pop kx-pop" style={{ left: 6, top: 40, width: 230 }}>
             <MenuItem icon="list" onClick={() => setOpen("cultos")}>Culto<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
-            <MenuItem icon="music" onClick={() => go("/Home")}>Músicas</MenuItem>
+            <MenuItem icon="list" onClick={() => { setOpen(null); onPlanner?.(serviceId); }}>Planejar o culto</MenuItem>
             <MenuItem icon="film" onClick={() => go("/Media")}>Mídia</MenuItem>
             <MenuItem icon="megaphone" onClick={() => go("/Communication")}>Comunicação</MenuItem>
             <div className="kx-menu-sep" />

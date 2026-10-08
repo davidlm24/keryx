@@ -316,6 +316,16 @@ command palette (`/`), Saídas, and Ensaio.
   a song keeps its saved slides until its lyrics change. On the desktop
   `/Home` redirects to the console. A live send of a song records
   SongHistory and play_count.
+- **Planejador de culto** is a view inside the console
+  (`ServicePlanner.jsx`, canvas artboard 17): the culto and its team on the
+  left, the Setlist on the right with sections (ServiceItem type `SECTION`),
+  planned times, total and end (`plan()` in `src/lib/console/setlist.js`,
+  tested), templates that keep `contentId`, duplicating the previous culto
+  and the PDF. It writes only the database; nothing there touches the
+  screens. Sections never reach `buildStage`, the Próximo line, the
+  timeline or the palette (`playableItems`). ANNOUNCEMENT items play as
+  `communication.show`. On the desktop `/Services` and `/Services/:id`
+  redirect to `/Console?planner=…`.
 - **Configurações** is a view inside the console (`settings/SettingsView`,
   canvas artboard 20): Telas e saídas, Telas na rede, Bíblias instaladas,
   Igreja (name, city, logo on the profile), Temas, Letras, Dados e

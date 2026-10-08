@@ -72,7 +72,7 @@ can never apply; gradient swatches use the invalid `linear-gradient(to br …)`;
 the ProjectionTools background upload has no `try`; the print popup does not
 escape HTML; Space is handled by two panels at once.
 
-## 2. Cultos (`src/pages/Services.jsx`)
+## 2. Cultos (`src/pages/Services.jsx`) — migrated (phase 4, see section 9)
 
 | Function | Destination |
 | --- | --- |
@@ -249,8 +249,26 @@ smoke and a look at the page.
    to the console; the web build keeps the old page. Not carried over: the
    artist accordion and A–Z rail (search replaces them), "Apagar todas"
    (retired), text_color_2 (not in the Song schema; it was dropped on write).
-4. **Cultos → Preparar**: culto CRUD, equipe, status, item editor, modelos,
-   duplicar, PDF. Fix `contentId` on template items and `startTime` on the way.
+4. **Cultos**. **Done 2026-10-08** (canvas artboard 17): the planner
+   inside the console (`ServicePlanner.jsx`, arithmetic in
+   `src/lib/console/setlist.js` with a test). Culto: nome, data, hora
+   (`startTime`; the legacy `time` is still read), local, tipo
+   culto/evento, status Rascunho/Planejado/Feito, notas, picker, Novo,
+   Excluir (asked twice; its items go too). Equipe: "Nome · função", Enter
+   adds, suggestions from WorshipTeam. Setlist: sections (new item type
+   SECTION: a header with its count and length, never sent to air), every
+   kind (Música, Bíblia by reference, Vídeo, Áudio, Imagem, Aviso, Texto,
+   Timer), drag to reorder, per-item título/duração/notas, ativar,
+   duplicar, tirar (asked twice), planned times, total and "termina às".
+   Criar a partir de modelo (appends to this culto), Salvar como modelo
+   (templates now keep `contentId`, so their items play), Duplicar o culto
+   anterior, Exportar PDF (times, sections, team, notes). Avisos in a setlist
+   now play (`communication.show`). Opened from the KERYX menu (Planejar o
+   culto, Novo culto), the Setlist header and a row's "…"; on the desktop
+   `/Services` and `/Services/:id` redirect to `/Console?planner=…`; the
+   web build keeps the old page. Not carried over: scenes and autoAdvance
+   (never read), the team chat (needs accounts), OBS/QR (Configurações ›
+   Telas na rede), the ServiceTimer alert threshold.
 5. **Mídia and Comunicação → Biblioteca/Avisos**: multi upload, categorias,
    tocar todos, the aviso editor; Comunicação moves to
    `projection.showCommunication`.
