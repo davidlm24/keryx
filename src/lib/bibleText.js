@@ -9,7 +9,8 @@
 
 import { keryx } from "@/api/keryxClient";
 import { ClientError } from "@/api/errors";
-import { BIBLE_VERSIONS, BOOK_API_MAP } from "@/lib/bibleBooks";
+import { BIBLE_VERSIONS, BOOK_API_MAP, bibleBooks } from "@/lib/bibleBooks";
+import { searchTerms, anchorTerm, verseMatches } from "@/lib/bibleSearch";
 
 const ONLINE_CACHE_PREFIX = "bible_";
 
@@ -95,7 +96,7 @@ export async function getChapter(version, book, chapter) {
     const installable = versionInfo(version)?.install;
     throw new ClientError(
         keryx.isDesktop && installable
-            ? `A ${version} não está instalada neste computador. Baixe-a em Bíblia › Mais › Bíblias instaladas.`
+            ? `A ${version} não está instalada neste computador. Instale-a em Configurações › Bíblias instaladas (ou pelo + da Bíblia).`
             : keryx.isDesktop
                 ? `A ${version} só está disponível com internet. Use uma versão instalada (NVI, ACF ou AA) para projetar sem internet.`
                 : `Não foi possível obter ${book} ${chapter} na ${version}.`,
@@ -123,11 +124,37 @@ export async function searchVerses(query, version, limit = 20) {
     if (q.length < 3) return [];
     const installed = Object.keys(await installedVersions());
     if (!installed.length) {
-        throw new ClientError("Nenhuma Bíblia instalada. Baixe uma em Bíblia › Mais › Bíblias instaladas.", 404);
+        throw new ClientError("Nenhuma Bíblia instalada. Instale uma em Configurações › Bíblias instaladas.", 404);
     }
     const target = installed.includes(version) ? version : installed[0];
     const rows = await keryx.entities.BibleVerse.filter({ version: target, text: { $regex: q } }, "id", limit);
     return rows.map((r) => ({ book: r.book, chapter: r.chapter, verse: r.verse, text: r.text, version: target }));
+}
+
+// The console's word search: every verse of `version` (or of the first
+// installed one) holding all the words and quoted phrases of the query,
+// ignoring case and accents, in canonical order (book, chapter, verse), within `books` when given
+// (src/lib/bibleSearch.js reads the query). The database is asked for the
+// longest term; the rest is checked here.
+// -> { version, terms, total, verses: [{ book, chapter, verse, text }] }
+// Desktop only: null on the web build.
+export async function searchBible(query, version, { books = null, limit = 300 } = {}) {
+    if (!keryx.isDesktop) return null;
+    const terms = searchTerms(query);
+    if (anchorTerm(terms).length < 3) return { version, terms, total: 0, verses: [], short: true };
+    const installed = Object.keys(await installedVersions());
+    if (!installed.length) {
+        throw new ClientError("Nenhuma Bíblia instalada. Baixe uma em Configurações › Bíblias instaladas para buscar por palavra.", 404);
+    }
+    const target = installed.includes(version) ? version : installed[0];
+    const filter = { version: target, text: { $regex: anchorTerm(terms) } };
+    if (books) filter.book = books;
+    const rows = await keryx.entities.BibleVerse.filter(filter, "id");
+    // Canonical order (book, chapter, verse): row ids need not follow it.
+    const at = new Map(bibleBooks.map((b, i) => [b.name, i]));
+    const hits = rows.filter((r) => verseMatches(r.text, terms))
+        .sort((a, b) => (at.get(a.book) ?? 99) - (at.get(b.book) ?? 99) || a.chapter - b.chapter || a.verse - b.verse);
+    return { version: target, terms, total: hits.length, verses: hits.slice(0, limit).map((r) => ({ book: r.book, chapter: r.chapter, verse: r.verse, text: r.text })) };
 }
 
 export const versesToText = (verses) => verses.map((v) => `${v.number} ${v.text}`).join("\n");

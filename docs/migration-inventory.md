@@ -131,7 +131,7 @@ Bugs not to carry over: a type outside the known ones crashes the form;
 mutations have no `onError`; `logoUrl` is loaded and unused; gradients use
 `to br`.
 
-## 5. Bíblia (`src/pages/Bible.jsx`)
+## 5. Bíblia (`src/pages/Bible.jsx`) — migrated (phase 6, see section 9)
 
 | Function | Destination |
 | --- | --- |
@@ -290,7 +290,22 @@ smoke and a look at the page.
    redirect into the console; the web build keeps the old pages. Not
    carried over: the old "Aguardando comunicação" placeholder (the idle
    logo shows instead); the Tailwind gradients ("to br") are read as CSS.
-6. **Bíblia, the rest**: busca por palavra, comparar, anotações.
+6. **Bíblia, the rest**. **Done 2026-10-08** (no artboard; built in the
+   Bíblia environment's own look). The centre panel has Ler / Buscar /
+   Comparar. Buscar: `searchBible` (installed Bíblia), all words or a
+   "quoted phrase", accents and case ignored, Toda / AT / NT / Este livro,
+   canonical order, hits marked without a regex (the old highlighter's "("
+   crash is gone), ↑/↓ through the results, Enter or 2 clicks project from
+   that verse; the top field and the palette search words too. Comparar: up
+   to four versions side by side, aligned by verse, each with Enviar and
+   Usar, failures shown per column. Anotações: a note per verse
+   (`BibleNote`, note_type "note"), marked in the reading view and listed on
+   the left. Favoritos: `BibleNote` (note_type "favorite"); the old local
+   list moves there once. Not carried over: Destaques (nothing wrote them);
+   creating a `BiblePassage` on every Projetar. Also fixed on the way: search
+   results follow the canon (row ids need not), and a number inside a verse
+   ("930 anos") is no longer drawn as a verse mark. On the desktop `/Bible`
+   redirects to the console's Bíblia; the web build keeps the old page.
 7. **EBD and Relatórios**.
 8. **Removal**: the shell, the old pages, the legacy paths, the references in
    section 8, `mainPage` → the console, the smoke rewritten on the console.

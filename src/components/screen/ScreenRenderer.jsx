@@ -6,6 +6,7 @@ import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
 import { noticeTime, fileAt, clockOf } from "@/lib/console/notice";
 import { ringBell } from "@/lib/bell";
+import { verseSegments } from "@/lib/verseMarks";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
@@ -100,13 +101,11 @@ function textStyle(style) {
 }
 
 // Bible slides carry "16 Porque Deus… 17 Porque…": the numbers become marks.
+// Only numbers in sequence are marks (src/lib/verseMarks.js): "930 anos" stays text.
 function verseNodes(text) {
-    const parts = String(text).split(/(?:^|\s)(\d{1,3})\s+(?=\S)/);
-    if (parts.length < 3) return text;
-    const out = [];
-    if (parts[0].trim()) out.push(parts[0]);
-    for (let i = 1; i < parts.length; i += 2) out.push(<sup key={i}>{parts[i]}</sup>, parts[i + 1]);
-    return out;
+    const segs = verseSegments(text);
+    if (segs.length === 1 && segs[0].n === null) return text;
+    return segs.flatMap((x, i) => (x.n === null ? [x.text] : [<sup key={i}>{x.n}</sup>, x.text]));
 }
 
 function Content({ content }) {

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { keryx } from "@/api/keryxClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,13 @@ import OverlayManager from "../components/projection/OverlayManager";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function Bible() {
+    // Desktop: the Bíblia lives in the console (the Bíblia environment: read,
+    // search, compare, notes). The web build keeps this page for now.
+    if (keryx.isDesktop) return <Navigate to="/Console?env=biblia" replace />;
+    return <LegacyBible />;
+}
+
+function LegacyBible() {
     const queryClient = useQueryClient();
 
     const colors = useThemeColors();

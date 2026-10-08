@@ -316,6 +316,22 @@ command palette (`/`), Saídas, and Ensaio.
   a song keeps its saved slides until its lyrics change. On the desktop
   `/Home` redirects to the console. A live send of a song records
   SongHistory and play_count.
+- **Bíblia environment, the rest** (phase 6): the centre panel reads
+  (Ler), searches (Buscar) or compares (Comparar). Buscar is `searchBible`
+  over the installed Bíblia: every word and "quoted phrase", accents and
+  case ignored (`src/lib/bibleSearch.js`, tested; the store's `$regex` is a
+  folded substring match, so no pattern reaches it), whole Bíblia / AT / NT /
+  this book, canonical order, the hits marked; ↑/↓ walk the results, Enter
+  or a double click projects from that verse (its chapter, as in Ler); the
+  top field and the palette ("Buscar … na Bíblia") start a search when the
+  text is not a reference. Comparar sets up to four versions side by side
+  (text through `getChapter`; a version that cannot load says why in its
+  column), each with Enviar and Usar. Notes on one verse and favourites are
+  `BibleNote` rows (`useBibleNotes`; the old local favourites move there
+  once); a verse with a note is marked in Ler; notes never reach the
+  screens. Bible slides mark only verse numbers in sequence
+  (`src/lib/verseMarks.js`): "930 anos" stays text on the screen. On the
+  desktop `/Bible` redirects to `/Console?env=biblia`.
 - **Planejador de culto** is a view inside the console
   (`ServicePlanner.jsx`, canvas artboard 17): the culto and its team on the
   left, the Setlist on the right with sections (ServiceItem type `SECTION`),
@@ -402,7 +418,8 @@ command palette (`/`), Saídas, and Ensaio.
   projector itself handles Esc, B and L if clicked.
 
 Músicas, Cultos, Mídia, Comunicação and Configurações are inside the
-console on the desktop; Bíblia's extras, EBD and Relatórios are still
+console on the desktop, and so is the Bíblia (read, search, compare,
+notes); EBD and Relatórios are still
 outside (reached from their old pages).
 `docs/migration-inventory.md` lists every function of the old pages and
 where it goes (or why it is retired), the bugs not to carry over, and the
@@ -476,7 +493,7 @@ Before phase 3 nothing read the `bible_verse` table; every verse came from
   Bíblia › Mais › Bíblias instaladas, and a prompt above the verse search
   while none is installed (`BibleInstaller`, `electron/bible.cjs`).
 - **One source of verse text:** `src/lib/bibleText.js` (`getChapter`,
-  `getPassage`, `searchVerses`). Order: local database → abibliadigital
+  `getPassage`, `searchVerses`, `searchBible`). Order: local database → abibliadigital
   online → AI (web build only). The reader, selector, compare view,
   `QuickVerseBar`, word search and the Home search all use it. The desktop
   build never asks the AI for scripture.

@@ -84,10 +84,13 @@ wiring, the data model and the known gaps.
   (`entities.User` maps to it whatever id is passed). Don't add features that
   assume accounts; cloud sync is a later phase.
 - **Bible text goes through `src/lib/bibleText.js`** (`getChapter`,
-  `getPassage`, `searchVerses`): local database, then abibliadigital, then
+  `getPassage`, `searchVerses`, `searchBible` — the console's word search,
+  query rules in `src/lib/bibleSearch.js`): local database, then abibliadigital, then
   the AI on the web build only. Don't fetch verses or call the AI for
   scripture anywhere else. References parse with `parseReference` in
-  `src/lib/bibleBooks.js`. Never bundle Bible text: the editions are
+  `src/lib/bibleBooks.js`. Verse marks inside a slide's text are read with
+  `src/lib/verseMarks.js` (numbers in sequence only). Favourites and notes
+  are `BibleNote` rows (`useBibleNotes`). Never bundle Bible text: the editions are
   copyrighted; churches install them (`electron/bible.cjs`).
 - **Files shipped with the app** (backgrounds, default logo) are in
   `resources/` and served as `/media/bundled/…`; reference them through

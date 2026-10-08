@@ -53,7 +53,10 @@ export default function Console() {
     const bibleStageRef = useRef(null);
     // The Bible environment's selection cursor (↑/↓ from the console's keys).
     const bibleApiRef = useRef(null);
-    const [env, setEnvState] = useState("culto");
+    // ?env=biblia (the old /Bible page on desktop) opens the Bíblia environment.
+    const [env, setEnvState] = useState(() => {
+        try { return new URLSearchParams(window.location.search).get("env") === "biblia" ? "biblia" : "culto"; } catch { return "culto"; }
+    });
     // The views inside the console, one at a time (null: the console itself):
     // { cfg: section } Configurações, { song: id | "new" } the song editor,
     // { planner: true } the service planner, { media: true } the media
@@ -259,6 +262,7 @@ export default function Console() {
     }, [c]);
 
     const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
+    const searchBibleFor = (text) => { setBibleRequest({ search: text, at: Date.now() }); setOpen(null); setEnv("biblia"); };
 
     // Keys (src/lib/console/keys.js). A mouse click never leaves focus on a
     // control (see onMouseClick), so after clicking a song Enter sends it, as
@@ -436,7 +440,7 @@ export default function Console() {
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <ArmDialog open={open} setOpen={setOpen} live={c.live} onArm={c.arm} />
             <EndDialog open={open} setOpen={setOpen} mode={c.mode} onEnd={c.end} />
-            <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} />
+            <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onBibleSearch={searchBibleFor} />
             {compact && drawer && <div className="drawer">{rightPanels(true)}</div>}
             {quick !== null && env === "biblia" && (
                 <BibleQuickJump initial={quick} onCancel={() => setQuick(null)}

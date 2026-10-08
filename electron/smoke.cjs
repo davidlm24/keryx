@@ -505,6 +505,15 @@ async function checkLayers(webContents, { live, outputs }) {
 async function checkConsole(webContents, { live, outputs }) {
     const { BrowserWindow } = require("electron");
     const result = { ok: false };
+    // Fields save when they lose focus, and Chromium sends no focus or blur
+    // events to a page whose window is not the active one (someone using the
+    // computer during the run). The page is told it has focus instead, so the
+    // run never needs to take the user's window away.
+    let emulatingFocus = false;
+    try {
+        if (!webContents.debugger.isAttached()) { webContents.debugger.attach("1.3"); emulatingFocus = true; }
+        await webContents.debugger.sendCommand("Emulation.setFocusEmulationEnabled", { enabled: true });
+    } catch { /* runs without it */ }
     const waitText = async (win, needle, present = true, ms = 8000) => {
         const end = Date.now() + ms;
         while (Date.now() < end) {
@@ -1151,6 +1160,57 @@ async function checkConsole(webContents, { live, outputs }) {
         result.nvAdvanced = await waitFor(() => (live.get().communication?.playlistIndex || 0) >= 1, 6000);
         live.call("clear");
 
+        // The Bíblia, the rest: word search ignoring accents and case, ↑/↓
+        // through the results and Enter projecting from one (its chapter);
+        // a quoted phrase; Comparar side by side; a note and a favourite as
+        // BibleNote rows; the palette's "Buscar … na Bíblia".
+        await click(".envtabs button", "Bíblia");
+        await click(".console .main .kx-seg button", "Buscar");
+        result.bsOpen = await waitFor(() => js("Boolean(document.querySelector('.bs-bar input')) && document.activeElement === document.querySelector('.bs-bar input')"));
+        await setVal(".bs-bar input", "versiculo TESTE");
+        await press("Enter");
+        result.bsFound = await waitFor(() => js("document.querySelectorAll('.bs-hit').length === 5 && [...document.querySelectorAll('.bs-hit mark')].some((m) => m.textContent === 'versículo')"), 6000);
+        await js("document.activeElement && document.activeElement.blur(); true");
+        // A click on the first result selects it; ↓ walks to the next one.
+        await js("document.querySelector('.bs-hit').click(); true");
+        await waitFor(() => js("(document.querySelector('.bs-hit.is-prev .bs-ref') || {}).textContent === 'João 3:14'"));
+        await press("ArrowDown");
+        result.bsWalked = await waitFor(() => js("(document.querySelector('.bs-hit.is-prev .bs-ref') || {}).textContent === 'João 3:15'"));
+        await press("Enter");
+        result.bsSent = await waitFor(() => { const ct = live.get().content; return Boolean(ct && ct.ref?.wholeChapter && ct.ref.book === "João" && ct.index === 1); });
+        await setVal(".bs-bar input", '"versículo 17"');
+        await press("Enter");
+        result.bsPhrase = await waitFor(() => js("document.querySelectorAll('.bs-hit').length === 1 && document.querySelector('.bs-hit .bs-ref').textContent === 'João 3:17'"), 6000);
+        result.shotSearch = await shot("biblia-busca");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await click(".console .main .kx-seg button", "Comparar");
+        result.bcShown = await waitFor(() => js("document.querySelectorAll('.bc-head').length >= 2 && [...document.querySelectorAll('.bc-cell')].some((n) => n.textContent.includes('Texto do versículo'))"), 8000);
+        result.shotCompare = await shot("biblia-comparar");
+        await click(".console .main .kx-seg button", "Ler");
+        await waitFor(() => js("Boolean(document.querySelector('.reading [data-verse=\"16\"]'))"));
+        await js("document.querySelector('.reading [data-verse=\"16\"]').click(); true");
+        result.noteBox = await waitFor(() => js("Boolean(document.querySelector('.be-note textarea')) && document.querySelector('.be-note').textContent.includes('João 3:16')"));
+        await setVal(".be-note textarea", "Nota do smoke");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        const notesOf = async (type) => ((await js(`window.keryxDesktop.db.call("BibleNote", "filter", [{ note_type: "${type}" }])`)).data || []);
+        result.noteSaved = await waitFor(async () => (await notesOf("note")).some((n) => n.book === "João" && n.chapter === 3 && n.verse === 16 && n.note_text === "Nota do smoke"), 6000);
+        result.noteMarked = await waitFor(() => js("Boolean(document.querySelector('.reading .kx-verse.has-note[data-verse=\"16\"]')) && document.body.innerText.includes('Nota do smoke')"));
+        await js("(() => { const b = [...document.querySelectorAll('.console .main button')].find((x) => x.getAttribute('title') === 'Favoritar'); if (b) b.click(); return Boolean(b); })()");
+        result.favSaved = await waitFor(async () => (await notesOf("favorite")).some((n) => n.reference === "João 3:16"), 6000);
+        result.favListed = await waitFor(() => js("[...document.querySelectorAll('.be-lists .kx-row')].some((n) => n.textContent.includes('João 3:16'))"));
+        await press("/");
+        await waitFor(() => js("Boolean(document.querySelector('.palette input'))"));
+        await type("verso teste");
+        result.paletteBible = await waitText(webContents, "na Bíblia");
+        await setVal(".palette input", "versiculo teste");
+        await waitFor(() => js("[...document.querySelectorAll('.palette .kx-row')].some((n) => n.textContent.includes('Buscar'))"));
+        await js("(() => { const r = [...document.querySelectorAll('.palette .kx-row')].find((n) => n.textContent.includes('Buscar')); if (r) r.click(); return Boolean(r); })()");
+        result.paletteSearch = await waitFor(() => js("document.querySelectorAll('.bs-hit').length === 5"), 6000);
+        for (const n of [...(await notesOf("note")), ...(await notesOf("favorite"))]) if (/^João 3:16/.test(n.reference)) await js(`window.keryxDesktop.db.call("BibleNote", "delete", ["${n.id}"])`);
+        live.call("clear");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await click(".envtabs button", "KERYX");
+
         await click(".tl-panel .kx-tl button", "");
         result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
     } finally {
@@ -1171,6 +1231,7 @@ async function checkConsole(webContents, { live, outputs }) {
         }
         await js(`history.pushState({}, "", "/"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         if (main && !main.isDestroyed()) main.close();
+        if (emulatingFocus) try { webContents.debugger.detach(); } catch { /* already gone */ }
     }
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
@@ -1191,7 +1252,9 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
-        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced);
+        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced
+        && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
+        && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch);
     return result;
 }
 

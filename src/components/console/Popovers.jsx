@@ -174,7 +174,7 @@ export function ArmDialog({ open, setOpen, live, onArm }) {
 }
 
 // The command palette: everything by name, a reference opens the Bible.
-export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, openReference, env }) {
+export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, openReference, onBibleSearch, env }) {
     const [q, setQ] = useState("");
     const [idx, setIdx] = useState(0);
     const inputRef = useRef(null);
@@ -185,6 +185,8 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
     const groups = [];
     const ref = ql ? parseReference(q.trim()) : null;
     const bible = ref ? [{ icon: "book", title: formatReference(ref), meta: ref.verseStart ? "Abrir na Bíblia · pôr os versículos na prévia" : "Abrir o capítulo na Bíblia", pick: () => openReference(ref) }] : [];
+    // Not a reference: the words can still be searched in the Bíblia.
+    if (!ref && onBibleSearch && ql.length >= 3) bible.push({ icon: "search", title: `Buscar “${q.trim()}” na Bíblia`, meta: "Busca por palavra na Bíblia instalada", pick: () => onBibleSearch(q.trim()) });
     const rund = (ql ? items.filter((it) => has(it.title)) : []).slice(0, 4).map((it) => ({ icon: "list", title: it.title, meta: "Setlist", pick: () => onPrepare(it, items.indexOf(it)) }));
     const songs = (ql ? data.songs.filter((s) => has(s.title, s.artist)) : data.songs.slice(0, 4)).slice(0, 5).map((s) => ({ icon: "music", title: s.title, meta: [s.artist, s.song_key].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromSong(s)), add: onAddSong ? () => onAddSong(s) : null }));
     const media = (ql ? data.media.filter((m) => has(m.title)) : []).slice(0, 4).map((m) => ({ icon: m.type === "image" ? "image" : "film", title: m.title, meta: m.type, pick: () => onPrepare(stageFromMedia(m)) }));

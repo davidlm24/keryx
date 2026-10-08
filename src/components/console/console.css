@@ -408,3 +408,34 @@
 .console .nv-stage { container-type: size; }
 .console .nv-screen > .ks { width: 100%; height: 100%; }
 .console .nv-note { flex: none; border-top: 1px solid var(--line); gap: var(--space-2); height: auto; min-height: var(--row); padding: var(--space-1) var(--space-2); flex-wrap: wrap; }
+
+/* Bíblia: lists, notes, word search, compare (phase 6) */
+.console .be-lists { flex: 1; min-height: 0; overflow: auto; }
+.console .be-hint { padding: 0 var(--space-2) var(--space-1); font-size: 11px; }
+.console .kx-verse .be-notemark { display: inline-flex; vertical-align: -2px; margin-left: 6px; color: var(--fg-3); }
+.console .kx-verse.has-note .kx-verse-n { color: var(--fg-2); }
+.console .be-note { flex: none; border-top: 1px solid var(--line); padding: 0 var(--space-2) var(--space-2); }
+.console .be-note .listhead { padding: 0; }
+.console .be-note .ed-text { min-height: 56px; }
+.console .bs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.console .bs-bar { flex: none; display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; padding: var(--space-2) var(--space-2) 0; }
+.console .bs-status { flex: none; }
+.console .bs-list { flex: 1; min-height: 0; overflow: auto; padding-bottom: var(--space-2); }
+.console .kx-verse.bs-hit { grid-template-columns: 112px 1fr; }
+.console .bs-ref { font-size: 11px; line-height: 20px; color: var(--fg-3); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .kx-verse.bs-hit.is-prev .bs-ref { color: var(--prev-fg); }
+.console .bs-hit mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(--fg-1); border-radius: 2px; padding: 0 1px; }
+.console .bc { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.console .bc-bar { position: sticky; top: 0; z-index: 2; flex: none; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: var(--space-2); background: var(--bg-1); }
+.console .bc-chip { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--bg-2); color: var(--fg-2); font-size: 11px; font-weight: 500; letter-spacing: .02em; }
+.console .bc-chip:hover { color: var(--fg-1); }
+.console .bc-chip.is-on { background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .bc-grid { display: grid; column-gap: var(--space-3); padding: 0 var(--space-2) var(--space-2); align-items: start; }
+.console .bc-head { position: sticky; top: 38px; z-index: 1; display: flex; align-items: center; gap: var(--space-1); min-width: 0; height: var(--row); background: var(--bg-1); border-bottom: 1px solid var(--line); }
+.console .bc-err { font-size: 11px; color: var(--warn-fg); padding: 4px 0; }
+.console .bc-n { font-size: 11px; color: var(--fg-3); text-align: right; padding: 6px 0; font-variant-numeric: tabular-nums; }
+.console .bc-cell { text-align: left; font-size: 14px; line-height: 20px; color: var(--fg-1); padding: 4px 6px; border-radius: var(--radius-control); }
+.console .bc-cell:hover { background: var(--bg-2); }
+.console .bc-cell.is-prev, .console .bc-n.is-prev { background: var(--prev-tint); }
+.console .bc-n.is-prev { color: var(--prev-fg); }
+.console .kx-verse.bs-hit { padding-left: var(--space-2); }

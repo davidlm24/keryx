@@ -1,19 +1,32 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, Field, Row, Empty } from "./kx";
+import { Panel, Btn, Field, Row, Seg, Empty } from "./kx";
 import AddMenu from "./AddMenu";
+import BibleSearchPanel, { useBibleSearch } from "./BibleSearchPanel";
+import BibleCompareView from "./BibleCompareView";
+import { useBibleNotes } from "./useBibleNotes";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { bibleBooks, BIBLE_VERSIONS, parseReference } from "@/lib/bibleBooks";
 import { getChapter, preferredVersion } from "@/lib/bibleText";
 import { stageFromPassage, stageAirSlide } from "@/lib/console/stage";
+import { verseNumbers } from "@/lib/verseMarks";
 
 // Book groups, by position in the canon, for the colour bar of each book.
 const GROUPS = [[0, 4, "#b08a5a"], [5, 16, "#9a7a4a"], [17, 21, "#8d8a6a"], [22, 38, "#8a6a9a"], [39, 43, "#5a8ab0"], [44, 64, "#6a9a7a"], [65, 65, "#7a9a5a"]];
 const groupColor = (i) => (GROUPS.find(([a, b]) => i >= a && i <= b) || GROUPS[0])[2];
 const KEY = "keryx.console.bible";
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } };
-const save = (v) => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch { /* not remembered */ } };
+// The old local favourites ("favs") belong to useBibleNotes, which moves
+// them into the database: saving here never writes them back.
+const save = (v) => {
+    try {
+        const { favs: _drop, ...rest } = v;
+        const keep = load().favs;
+        localStorage.setItem(KEY, JSON.stringify(Array.isArray(keep) && keep.length ? { ...rest, favs: keep } : rest));
+    } catch { /* not remembered */ }
+};
+const MODES = [["ler", "Ler"], ["buscar", "Buscar"], ["comparar", "Comparar"]];
 
 const rangeLabel = (nums) => {
     const s = [...nums].sort((a, b) => a - b);
@@ -36,11 +49,40 @@ function group(verses, how) {
     return out;
 }
 
-// The Bíblia environment, Holyrics-style: books and chapters on the left,
-// the chapter as a reading view in the middle and, on the right, what is on
-// air and the actions.
+// A passage (several verses) as a stage, grouped per slide.
+function passageStageOf({ verses, nums, how, version, book, chapter }) {
+    const chosen = verses.filter((v) => nums.includes(v.number));
+    const parts = group(chosen, how);
+    if (!parts.length || !version) return null;
+    const ref = `${book} ${chapter}:${rangeLabel(nums)}`;
+    return stageFromPassage({ reference: `${ref} · ${version}`, text: chosen.map((v) => `${v.number} ${v.text}`).join("\n"), slides: parts, version });
+}
+
+// One verse: the whole chapter, one verse per slide, starting at it. When
+// that chapter (same version) is already on air it only moves there.
+function chapterStageOf({ verses, n, version, book, chapter, onAir }) {
+    if (!version || !verses.length) return null;
+    const index = verses.findIndex((v) => v.number === n);
+    if (index < 0) return null;
+    const id = `chapter:${book}:${chapter}:${version}`;
+    const airIsChapter = Boolean(onAir && onAir.ref?.wholeChapter && onAir.ref.book === book && Number(onAir.ref.chapter) === Number(chapter) && onAir.ref.version === version);
+    if (airIsChapter) return { ...stageAirSlide(onAir, index, id), title: `${book} ${chapter}:${n}` };
+    const slides = verses.map((v) => ({ text: `${v.number} ${v.text}`, label: `v. ${v.number}`, ref: `${book} ${chapter}:${v.number} · ${version}` }));
+    const st = stageFromPassage(
+        { reference: `${book} ${chapter} · ${version}`, text: verses.map((v) => `${v.number} ${v.text}`).join("\n"), slides, version },
+        { book, chapter, version, wholeChapter: true },
+    );
+    return { ...st, id, title: `${book} ${chapter}:${n}`, index };
+}
+
+// The Bíblia environment, Holyrics-style: books and chapters on the left
+// (with recent chapters, favourites and notes), the chapter in the middle —
+// read it (Ler), search the installed Bíblia by word (Buscar), or set
+// versions side by side (Comparar) — and, on the right, what is on air, the
+// selection, its note and the actions.
 //   - The verse on air is red (is-air); the selection is green (is-prev).
-//   - A click or ↑/↓ moves the selection; nothing changes on the screens.
+//   - A click or ↑/↓ moves the selection (in Buscar, through the results);
+//     nothing changes on the screens.
 //   - Enter or a double click projects the selection. One verse goes out as
 //     the whole chapter (one verse per slide) starting there, so ←/→ keep
 //     walking the chapter; a range picked on purpose (Shift/Ctrl+click) goes
@@ -57,9 +99,14 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const [error, setError] = useState("");
     const [q, setQ] = useState("");
     const [anchor, setAnchor] = useState(null);
+    const [mode, setMode] = useState("ler");
+    const modeRef = useRef(mode);
+    modeRef.current = mode;
     const readingRef = useRef(null);
+    const searchInputRef = useRef(null);
     const bookRow = bibleBooks.find((b) => b.name === book) || bibleBooks[42];
     const bookIdx = bibleBooks.indexOf(bookRow);
+    const notesApi = useBibleNotes();
 
     // The version the operator chose and the one shown: when the chosen one
     // is not installed, another installed one is used — and said so, never
@@ -70,57 +117,46 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         preferredVersion(wanted).then((v) => { if (alive) setVersion(v); }).catch(() => { if (alive) setVersion(wanted); });
         return () => { alive = false; };
     }, [wanted]);
+    const search = useBibleSearch(version || wanted, book);
 
-    // A reference from the palette, the quick jump or the top field.
+    // A reference from the palette, the quick jump or the top field; or a
+    // word search from the palette ({ search }).
     useEffect(() => {
         if (!request) return;
+        if (request.search) {
+            setMode("buscar");
+            search.setQ(request.search);
+            search.run(request.search, "all");
+            return;
+        }
         setBook(request.book); setChapter(request.chapter); setGrid(false);
         const nums = request.verseStart ? Array.from({ length: request.verseEnd - request.verseStart + 1 }, (_, i) => request.verseStart + i) : [];
         setSel(nums);
         setAnchor(nums[0] ?? null);
-    }, [request]);
+    }, [request]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!version) return undefined;
         let alive = true;
         setError(""); setVerses([]);
         getChapter(version, book, chapter).then((r) => { if (alive) setVerses(r.verses); }).catch((err) => { if (alive) setError(err?.message || "Não foi possível carregar o capítulo."); });
-        const next = { ...mem, version: wanted, book, chapter, recent: [[book, chapter], ...(mem.recent || []).filter(([b, ch]) => !(b === book && ch === chapter))].slice(0, 6) };
+        // Walking search results does not fill "Recentes".
+        const recent = modeRef.current === "buscar" ? (mem.recent || []) : [[book, chapter], ...(mem.recent || []).filter(([b, ch]) => !(b === book && ch === chapter))].slice(0, 6);
+        const next = { ...mem, version: wanted, book, chapter, recent };
         setMem(next); save(next);
         return () => { alive = false; };
     }, [version, book, chapter]); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => { if (mode === "buscar") setTimeout(() => searchInputRef.current?.focus(), 0); }, [mode]);
 
     // What is on air, when it is this chapter.
     const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
     const airIsChapter = Boolean(onAir && onAir.ref?.wholeChapter && onAir.ref.book === book && Number(onAir.ref.chapter) === Number(chapter) && onAir.ref.version === version);
     const airHere = Boolean(onAir && (airIsChapter || String(onAir.ref?.reference || onAir.title).startsWith(`${book} ${chapter}:`)));
     const airSlideText = onAir ? String(onAir.slides[onAir.index]?.text || "") : "";
-    const airVerseNums = useMemo(() => (airSlideText.match(/(?:^|\s)(\d{1,3})\s/g) || []).map((m) => Number(m.trim())), [airSlideText]);
+    const airVerseNums = useMemo(() => verseNumbers(airSlideText), [airSlideText]);
 
-    // A passage (several verses) as a stage, grouped per slide.
-    const passageStage = useCallback((nums) => {
-        const chosen = verses.filter((v) => nums.includes(v.number));
-        const parts = group(chosen, how);
-        if (!parts.length || !version) return null;
-        const ref = `${book} ${chapter}:${rangeLabel(nums)}`;
-        return stageFromPassage({ reference: `${ref} · ${version}`, text: chosen.map((v) => `${v.number} ${v.text}`).join("\n"), slides: parts, version });
-    }, [verses, how, version, book, chapter]);
-
-    // One verse: the whole chapter, one verse per slide, starting at it. When
-    // this chapter is already on air it only moves there (content.goTo).
-    const verseStage = useCallback((n) => {
-        if (!version || !verses.length) return null;
-        const index = verses.findIndex((v) => v.number === n);
-        if (index < 0) return null;
-        if (airIsChapter) return { ...stageAirSlide(onAir, index, `chapter:${book}:${chapter}:${version}`), title: `${book} ${chapter}:${n}` };
-        const slides = verses.map((v) => ({ text: `${v.number} ${v.text}`, label: `v. ${v.number}`, ref: `${book} ${chapter}:${v.number} · ${version}` }));
-        const st = stageFromPassage(
-            { reference: `${book} ${chapter} · ${version}`, text: verses.map((v) => `${v.number} ${v.text}`).join("\n"), slides, version },
-            { book, chapter, version, wholeChapter: true },
-        );
-        return { ...st, id: `chapter:${book}:${chapter}:${version}`, title: `${book} ${chapter}:${n}`, index };
-    }, [verses, version, book, chapter, airIsChapter, onAir]);
-
+    const passageStage = useCallback((nums) => passageStageOf({ verses, nums, how, version, book, chapter }), [verses, how, version, book, chapter]);
+    const verseStage = useCallback((n) => chapterStageOf({ verses, n, version, book, chapter, onAir }), [verses, version, book, chapter, onAir]);
     const stageFor = useCallback((nums) => (nums.length === 1 ? verseStage(nums[0]) : nums.length ? passageStage(nums) : null), [verseStage, passageStage]);
     const picked = verses.filter((v) => sel.includes(v.number));
     const slides = useMemo(() => (sel.length > 1 ? group(picked, how) : picked.map((v) => ({ text: `${v.number} ${v.text}` }))), [picked, how, sel.length]);
@@ -133,8 +169,32 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         return () => { stageRef.current = null; };
     }, [stage, stageRef]);
 
-    // ↑/↓ from the console: move the selection one verse, keep it in view.
+    // A search result: its chapter opens behind and the verse is selected.
+    const pickResult = useCallback((r) => {
+        setBook(r.book); setChapter(r.chapter); setGrid(false);
+        setSel([r.verse]); setAnchor(r.verse);
+    }, []);
+    // A double click on a result: project from that verse right away.
+    const sendResult = useCallback(async (r) => {
+        pickResult(r);
+        try {
+            const { verses: vs } = await getChapter(version, r.book, r.chapter);
+            const st = chapterStageOf({ verses: vs, n: r.verse, version, book: r.book, chapter: r.chapter, onAir });
+            if (st) onSend(st);
+        } catch (err) { c.say(err?.message || "Não foi possível abrir o capítulo."); }
+    }, [pickResult, version, onAir, onSend, c]);
+
+    // ↑/↓ from the console: move the selection one verse (in Buscar, one
+    // result), keep it in view.
     const move = useCallback((d) => {
+        if (mode === "buscar") {
+            const list = search.result?.verses || [];
+            if (!list.length) return;
+            const at = list.findIndex((r) => r.book === book && Number(r.chapter) === Number(chapter) && sel.length === 1 && r.verse === sel[0]);
+            const idx = at < 0 ? (d > 0 ? 0 : list.length - 1) : Math.max(0, Math.min(list.length - 1, at + d));
+            pickResult(list[idx]);
+            return;
+        }
         if (!verses.length) return;
         const at = sel.length ? (d > 0 ? Math.max(...sel) : Math.min(...sel)) : airHere && airVerseNums.length ? airVerseNums[0] : null;
         const idx = at == null ? (d > 0 ? 0 : verses.length - 1) : Math.max(0, Math.min(verses.length - 1, verses.findIndex((v) => v.number === at) + d));
@@ -142,7 +202,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         setSel([n]);
         setAnchor(n);
         readingRef.current?.querySelector(`[data-verse="${n}"]`)?.scrollIntoView({ block: "nearest" });
-    }, [verses, sel, airHere, airVerseNums]);
+    }, [mode, search.result, book, chapter, verses, sel, airHere, airVerseNums, pickResult]);
     useEffect(() => {
         if (!apiRef) return undefined;
         apiRef.current = { move };
@@ -152,16 +212,23 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // Click: select that verse. Shift+click: a range from the last one.
     // Ctrl+click: add or remove one verse.
     const pick = (n, e) => {
-        if (e.shiftKey && anchor != null) {
+        if (e?.shiftKey && anchor != null) {
             const [a, b] = [Math.min(anchor, n), Math.max(anchor, n)];
             setSel(Array.from({ length: b - a + 1 }, (_, i) => a + i));
             return;
         }
-        if (e.ctrlKey || e.metaKey) { setSel((s) => (s.includes(n) ? s.filter((x) => x !== n) : [...s, n].sort((x, y) => x - y))); setAnchor(n); return; }
+        if (e?.ctrlKey || e?.metaKey) { setSel((s) => (s.includes(n) ? s.filter((x) => x !== n) : [...s, n].sort((x, y) => x - y))); setAnchor(n); return; }
         setSel([n]);
         setAnchor(n);
     };
-    const goRef = (text) => { const r = parseReference(text); if (!r) { c.say("Referência não reconhecida. Ex.: Jo 3:16-21"); return; } setBook(r.book); setChapter(r.chapter); setGrid(false); setSel(r.verseStart ? Array.from({ length: r.verseEnd - r.verseStart + 1 }, (_, i) => r.verseStart + i) : []); setQ(""); };
+    const goRef = (text) => { const r = parseReference(text); if (!r) { c.say("Referência não reconhecida. Ex.: Jo 3:16-21"); return false; } setBook(r.book); setChapter(r.chapter); setGrid(false); setSel(r.verseStart ? Array.from({ length: r.verseEnd - r.verseStart + 1 }, (_, i) => r.verseStart + i) : []); setAnchor(r.verseStart || null); setQ(""); return true; };
+    // The top field: a reference opens it; anything else searches by word.
+    const submitTop = () => {
+        const text = q.trim();
+        if (!text) return;
+        if (parseReference(text)) { goRef(text); setMode("ler"); return; }
+        setMode("buscar"); search.setQ(text); search.run(text); setQ("");
+    };
     // "+": install a version for use without internet (electron/bible.cjs).
     const installVersion = async (v) => {
         const bible = window.keryxDesktop?.bible;
@@ -174,8 +241,13 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             setWanted(v);
         } catch (err) { c.say(err?.message || `Não foi possível instalar a ${v}.`); }
     };
-    const favs = mem.favs || [];
-    const toggleFav = () => { if (!reference) return; const next = { ...mem, favs: favs.includes(reference) ? favs.filter((f) => f !== reference) : [reference, ...favs].slice(0, 12) }; setMem(next); save(next); };
+    const toggleFav = async () => {
+        if (!reference) return;
+        try {
+            const on = await notesApi.toggleFavorite({ reference, book, chapter, verse: Math.min(...sel), text: picked.map((v) => v.text).join(" ") });
+            c.say(on ? `${reference} nos favoritos.` : `${reference} saiu dos favoritos.`);
+        } catch (err) { c.say(err?.message || "Não foi possível."); }
+    };
     // Adds the selected verses as a passage (never the whole chapter).
     const addToService = async () => {
         const passage = passageStage(sel);
@@ -188,8 +260,28 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             c.say("Adicionado ao fim da setlist.");
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
+    // Comparar › Enviar: the selection in that version (one verse: its
+    // chapter from there, as in Ler).
+    const sendVersion = (v, vs) => {
+        const st = sel.length === 1 ? chapterStageOf({ verses: vs, n: sel[0], version: v, book, chapter, onAir }) : passageStageOf({ verses: vs, nums: sel, how, version: v, book, chapter });
+        if (st) onSend(st);
+    };
+    const useVersion = (v) => { setWanted(v); c.say(`Bíblia na ${v}.`); };
+
+    const marked = notesApi.versesWithNotes(book, chapter);
+    const oneVerse = sel.length === 1 ? verses.find((v) => v.number === sel[0]) : null;
+    const note = oneVerse ? notesApi.noteOf(book, chapter, oneVerse.number) : null;
+    const saveNote = async (text) => {
+        if (!oneVerse) return;
+        try {
+            const r = await notesApi.saveNote({ book, chapter, verse: oneVerse.number, text, verseText: oneVerse.text });
+            if (r === "saved") c.say(`Anotação salva em ${book} ${chapter}:${oneVerse.number}.`);
+            if (r === "removed") c.say("Anotação apagada.");
+        } catch (err) { c.say(err?.message || "Não foi possível salvar a anotação."); }
+    };
     const airTitle = c.cur?.content ? c.cur.content.title : c.cur?.media ? c.cur.media.title : "nada";
     const sendLabel = c.isLive ? "Enviar ao ar" : "Mostrar no ensaio";
+    const searchSel = sel.length === 1 ? { book, chapter, verse: sel[0] } : null;
 
     return (
         <>
@@ -197,7 +289,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 <Panel title="Bíblia" count={version || wanted} actions={<select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: 4, font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {version && version !== wanted && <div className="warnline"><Icon name="warn" /><span>{wanted} não instalada · mostrando {version}</span></div>}
                     <div className="searchrow">
-                        <Field value={q} onChange={setQ} placeholder="Livro, capítulo ou referência" onKeyDown={(e) => { if (e.key === "Enter") goRef(q); }} />
+                        <Field value={q} onChange={setQ} placeholder="Referência (Jo 3:16) ou palavra" onKeyDown={(e) => { if (e.key === "Enter") submitTop(); }} />
                         <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}`, icon: "book", onClick: () => installVersion(v.id) }))} />
                     </div>
                     {grid ? (
@@ -212,28 +304,45 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                             </div>
                         </>
                     )}
-                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Recentes</span></div>
-                    {(mem.recent || []).map(([b, ch]) => <Row key={`${b}${ch}`} single icon="history" title={`${b} ${ch}`} onClick={() => { setBook(b); setChapter(ch); setSel([]); setGrid(false); }} />)}
-                    <div className="listhead"><span className="kx-section">Favoritos</span></div>
-                    {favs.map((f) => <Row key={f} single icon="star" title={f} onClick={() => goRef(f)} />)}
+                    <div className="be-lists">
+                        <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Recentes</span></div>
+                        {(mem.recent || []).map(([b, ch]) => <Row key={`${b}${ch}`} single icon="history" title={`${b} ${ch}`} onClick={() => { setBook(b); setChapter(ch); setSel([]); setGrid(false); setMode("ler"); }} />)}
+                        <div className="listhead"><span className="kx-section">Favoritos <span className="kx-count">· {notesApi.favorites.length}</span></span></div>
+                        {!notesApi.favorites.length && <div className="be-hint kx-meta">Selecione versículos e use a estrela.</div>}
+                        {notesApi.favorites.map((f) => <Row key={f.id} single icon="star" title={f.reference} onClick={() => { if (goRef(f.reference)) setMode("ler"); }} />)}
+                        <div className="listhead"><span className="kx-section">Anotações <span className="kx-count">· {notesApi.notes.length}</span></span></div>
+                        {!notesApi.notes.length && <div className="be-hint kx-meta">Selecione um versículo e escreva à direita.</div>}
+                        {notesApi.notes.map((n) => <Row key={n.id} icon="text" title={n.reference} meta={n.note_text} onClick={() => { if (goRef(n.reference)) setMode("ler"); }} />)}
+                    </div>
                 </Panel>
             </div>
             <div className="kx-split" />
             <div className="col center">
-                <Panel title={`${book} ${chapter}${version ? ` · ${version}` : ""}`} count="clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" actions={<><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}>
-                    {error && <Empty icon="warn" title="Capítulo indisponível">{error}</Empty>}
-                    {!error && !verses.length && <Empty title="Carregando…" />}
-                    <div className="reading" ref={readingRef}>
-                        {verses.map((v) => (
-                            <button type="button" key={v.number} data-verse={v.number}
-                                className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`}
-                                onClick={(e) => pick(v.number, e)}
-                                onDoubleClick={() => { const st = verseStage(v.number); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }}
-                                title="Clique seleciona · 2 cliques projetam a partir deste versículo">
-                                <span className="kx-verse-n">{v.number}</span><span>{v.text}</span>
-                            </button>
-                        ))}
-                    </div>
+                <Panel title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}${version ? ` · ${version}` : ""}`}
+                    count={mode === "ler" ? "clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" : mode === "buscar" ? "↑↓ percorre os resultados · Enter ou 2 cliques projeta" : "versões lado a lado"}
+                    actions={<>
+                        {mode === "ler" && <><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}
+                        <Seg small value={mode} onChange={setMode} options={MODES} />
+                    </>} bodyStyle={mode === "ler" ? undefined : { display: "flex", flexDirection: "column" }}>
+                    {mode === "ler" && (
+                        <>
+                            {error && <Empty icon="warn" title="Capítulo indisponível">{error}</Empty>}
+                            {!error && !verses.length && <Empty title="Carregando…" />}
+                            <div className="reading" ref={readingRef}>
+                                {verses.map((v) => (
+                                    <button type="button" key={v.number} data-verse={v.number}
+                                        className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""} ${marked.has(v.number) ? "has-note" : ""}`}
+                                        onClick={(e) => pick(v.number, e)}
+                                        onDoubleClick={() => { const st = verseStage(v.number); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }}
+                                        title={marked.has(v.number) ? `Anotação: ${notesApi.noteOf(book, chapter, v.number)?.note_text || ""}` : "Clique seleciona · 2 cliques projetam a partir deste versículo"}>
+                                        <span className="kx-verse-n">{v.number}</span><span>{v.text}{marked.has(v.number) && <span className="be-notemark" aria-label="tem anotação"><Icon name="text" size={12} /></span>}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                    {mode === "buscar" && <BibleSearchPanel search={search} selected={searchSel} onPick={pickResult} onSend={sendResult} inputRef={searchInputRef} />}
+                    {mode === "comparar" && <BibleCompareView book={book} chapter={chapter} version={version || wanted} sel={sel} onSelect={pick} onSendVersion={sendVersion} onUseVersion={useVersion} />}
                 </Panel>
             </div>
             <div className="kx-split" />
@@ -254,10 +363,17 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                         {!slides.length && <Empty title="Nenhum versículo selecionado">Clique num versículo ou use ↑ ↓. Enter projeta.</Empty>}
                         {slides.map((s, i) => <div key={i} className="vslide"><b>{i + 1}</b><span>{s.text}</span></div>)}
                     </div>
+                    {oneVerse && (
+                        <div className="be-note">
+                            <div className="listhead"><span className="kx-section">Anotação <span className="kx-count">· {book} {chapter}:{oneVerse.number} · só no console</span></span></div>
+                            <textarea key={`${book}:${chapter}:${oneVerse.number}:${note?.id || "novo"}`} className="ed-text" rows={3} defaultValue={note?.note_text || ""} placeholder="Uma nota sobre este versículo (não vai para as telas)" aria-label="Anotação"
+                                onBlur={(e) => saveNote(e.target.value)} />
+                        </div>
+                    )}
                     <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-2)", flexWrap: "wrap", borderTop: "1px solid var(--line)" }}>
                         <Btn kind={c.isLive ? "prev" : "rh"} className="kx-btn-live" disabled={!stage} onClick={() => onSend(stage)} title={c.isLive ? "Enviar ao ar · Enter" : "As telas não mudam"}>{sendLabel}<kbd className="kx-kbd">Enter</kbd></Btn>
                         <Btn disabled={!sel.length} onClick={addToService}>Adicionar à setlist</Btn>
-                        <Btn kind="icon" disabled={!reference} onClick={toggleFav} title={favs.includes(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
+                        <Btn kind="icon" on={notesApi.isFavorite(reference)} disabled={!reference} onClick={toggleFav} title={notesApi.isFavorite(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
                     </div>
                 </Panel>
             </div>
