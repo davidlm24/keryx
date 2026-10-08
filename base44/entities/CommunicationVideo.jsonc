@@ -11,6 +11,7 @@
       "enum": [
         "countdown",
         "timer",
+        "attention",
         "announcement",
         "image_text"
       ],

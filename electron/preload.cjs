@@ -103,5 +103,6 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
             const bytes = new Uint8Array(await file.arrayBuffer());
             return ipcRenderer.invoke("keryx:media-import", { bytes, name: file.name });
         },
+        info: (names) => ipcRenderer.invoke("keryx:media-info", { names }),
     },
 });

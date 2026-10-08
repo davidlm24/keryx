@@ -8,6 +8,7 @@ import { projection } from "@/lib/projection";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { mainLayer } from "@shared/live-state.mjs";
+import { useNoticeAdvance } from "@/hooks/useNoticeAdvance";
 
 // The main projector: the live state (shared/live-state.mjs) rendered full
 // screen by ScreenRenderer, the same component the console's monitors use.
@@ -117,6 +118,11 @@ export default function Projection() {
 
     // The audio channel plays here, on the KERYX computer only (a TV on the
     // network showing this page stays silent), in whatever the screen shows.
+    // Avisos in a sequence ("Tocar todos"): at the end of each piece the
+    // projector moves the live state on (communication.advance ignores the
+    // same report from another screen).
+    useNoticeAdvance(live?.communication);
+
     const audio = live?.audio || null;
     const audioIndex = audio?.playlistIndex ?? 0;
     const audioPlayer = audio && keryx.isDesktop && !keryx.isNetworkScreen ? (
@@ -143,7 +149,7 @@ export default function Projection() {
         <>
             {audioPlayer}
             <TabletVideoReceiver />
-            <ScreenRenderer fill state={live} now={now} logoUrl={logo} />
+            <ScreenRenderer fill state={live} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />
         </>
     );
 }

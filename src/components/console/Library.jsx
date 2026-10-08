@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Row, Btn, IconBtn, Field, Empty } from "./kx";
@@ -7,7 +6,8 @@ import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
 import { songsFromFile, importLines } from "@/lib/songImport";
 import { importMediaFiles } from "@/lib/mediaImport";
-import { stageFromSong, stageFromMedia, stageFromPiece, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
+import { stageFromSong, stageFromMedia, stageFromPiece, stageFromPieceList, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
+import { noticeLabel, noticeIcon } from "@/lib/console/notice";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 
 // A library row can be dragged onto the Prévia (prepares), the Programa
@@ -26,8 +26,7 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // The library: Letras, Mídia and Avisos (and the Setlist on narrow screens).
 // A click prepares the item in the Prévia; a double click sends it to air
 // (onGo). The quick alert is the one control that bypasses the Prévia.
-export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, hideTabs = false }) {
-    const navigate = useNavigate();
+export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, hideTabs = false }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [alertText, setAlertText] = useState("");
@@ -92,8 +91,9 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
             ? [
                 { label: "Do computador…", icon: "folder", accept: "video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
                 { label: "Link do YouTube", icon: "film", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
+                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
-            : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => navigate("/Communication") }];
+            : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => onEditNotice?.("new") }];
 
     const pickTool = (mode) => {
         if (mode === "clock" || mode === "stopwatch") { onPrepare(stageFromTool(mode)); setTool(null); return; }
@@ -156,6 +156,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                             <Field icon={null} className="kx-field kx-t yt-field" value={yt} onChange={setYt} placeholder="https://youtube.com/watch?v=…" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter" && /youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } }} />
                             <Btn onClick={() => { if (/youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } else c.say("Cole um link do YouTube."); }} title="Pôr na prévia · toca nas telas de vídeo">Tocar</Btn>
                         </div>
+                        <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a biblioteca de mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir biblioteca</Btn>}</div>
                         {audios.length > 1 && (
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar em sequência</Btn></div>
                         )}
@@ -166,7 +167,8 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                     key={m.id}
                                     icon={MEDIA_ICON[m.type] || "film"}
                                     title={m.title}
-                                    meta={[MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
+                                    meta={m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
+                                    metaClass={m.missing ? "kx-warn" : ""}
                                     state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? (c.isLive ? "is-air" : "is-rh") : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
                                     onClick={() => onPrepare(stageFromMedia(m))}
                                     onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
@@ -217,11 +219,12 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                 <Btn onClick={() => { if (freeText.trim()) { onPrepare(stageFromTool("freetext", { text: freeText.trim() })); setTool(null); } }}>Pôr na prévia</Btn>
                             </div>
                         )}
-                        <div className="listhead"><span className="kx-section">Avisos</span></div>
+                        <div className="listhead"><span className="kx-section">Avisos <span className="kx-count">· {pieces.length}</span></span><span style={{ flex: 1 }} />{pieces.length > 1 && <Btn small onClick={() => onPrepare(stageFromPieceList(pieces))} title="Pôr na prévia todos os avisos desta lista, um depois do outro, em loop">Tocar todos</Btn>}</div>
                         <div style={{ overflow: "auto", flex: 1 }}>
-                            {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + para criar avisos e contagens.</Empty>}
+                            {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (
-                                <Row key={p.id} icon="megaphone" title={p.title || p.text} meta={[p.type === "countdown" ? "Contagem regressiva" : p.type === "timer" ? "Cronômetro" : "Aviso", p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p))} />
+                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p))}
+                                    actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso">Editar</Btn>} />
                             ))}
                         </div>
                     </>

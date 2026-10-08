@@ -21,6 +21,8 @@ import VerifyView from "@/components/console/VerifyView";
 import LyricsSearch from "@/components/console/LyricsSearch";
 import SongEditor from "@/components/console/SongEditor";
 import ServicePlanner from "@/components/console/ServicePlanner";
+import MediaView from "@/components/console/MediaView";
+import NoticeEditor from "@/components/console/NoticeEditor";
 import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol } from "@/lib/console/layout";
@@ -52,30 +54,41 @@ export default function Console() {
     // The Bible environment's selection cursor (↑/↓ from the console's keys).
     const bibleApiRef = useRef(null);
     const [env, setEnvState] = useState("culto");
-    // Configurações, inside the console: the section shown, or null. The old
-    // /Settings route lands here (?config=telas).
-    const [cfg, setCfg] = useState(() => {
+    // The views inside the console, one at a time (null: the console itself):
+    // { cfg: section } Configurações, { song: id | "new" } the song editor,
+    // { planner: true } the service planner, { media: true } the media
+    // library, { notice: id | "new" } the aviso editor. The old pages land
+    // here on desktop: /Settings ?config=telas, /Home ?song=new, /Services
+    // ?planner=<id>, /Media ?media=1, /Communication ?lib=avisos.
+    const [view, setView] = useState(() => {
         try {
-            const want = new URLSearchParams(window.location.search).get("config");
-            return want ? (sectionIds.includes(want) ? want : "telas") : null;
-        } catch { return null; }
+            const p = new URLSearchParams(window.location.search);
+            if (p.get("config")) return { cfg: sectionIds.includes(p.get("config")) ? p.get("config") : "telas" };
+            if (p.get("song")) return { song: p.get("song") };
+            if (p.get("planner")) return { planner: true };
+            if (p.get("media")) return { media: true };
+            if (p.get("notice")) return { notice: p.get("notice") };
+        } catch { /* no query */ }
+        return null;
     });
-    const setEnv = useCallback((v) => { setCfg(null); setEditSong(null); setPlanner(false); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
-    const openSettings = useCallback((section = "telas") => { setOpen(null); setEditSong(null); setPlanner(false); setCfg(section); }, []);
-    // The song editor, inside the console: a song id, "new", or null. The old
-    // /Home page lands here on desktop (?song=new).
-    const [editSong, setEditSong] = useState(() => {
-        try { return new URLSearchParams(window.location.search).get("song") || null; } catch { return null; }
-    });
-    const openSong = useCallback((id) => { setOpen(null); setCfg(null); setPlanner(false); setEditSong(id); }, []);
-    // The service planner, inside the console (canvas artboard 17). The old
-    // /Services page lands here on desktop (?planner=<service id>|new|1).
-    const [planner, setPlanner] = useState(() => {
-        try { return new URLSearchParams(window.location.search).get("planner") || false; } catch { return false; }
-    });
+    const cfg = view?.cfg || null;
+    const editSong = view?.song || null;
+    const planner = Boolean(view?.planner);
+    const mediaView = Boolean(view?.media);
+    const notice = view?.notice || null;
+    const closeView = useCallback(() => setView(null), []);
+    const setCfg = useCallback((section) => setView(section ? { cfg: section } : null), []);
+    const setEnv = useCallback((v) => { setView(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
+    const openSettings = useCallback((section = "telas") => { setOpen(null); setView({ cfg: section }); }, []);
+    const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
+    const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
+    const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
     const [plannerFocus, setPlannerFocus] = useState(null);
     const [open, setOpen] = useState(null);
-    const [libTab, setLibTab] = useState("letras");
+    const [libTab, setLibTab] = useState(() => {
+        try { return new URLSearchParams(window.location.search).get("lib") === "avisos" ? "avisos" : "letras"; } catch { return "letras"; }
+    });
+    const openNotices = useCallback(() => { setOpen(null); setView(null); setEnvState("culto"); setLibTab("avisos"); }, []);
     const [drawer, setDrawer] = useState(false);
     const [layout, setLayoutState] = useState(() => loadLayout(""));
     // ?planner=<id> (the old /Services/:id) opens on that culto.
@@ -231,7 +244,7 @@ export default function Console() {
 
     // The planner: for the culto in hand (or a given one), "new" creates one.
     const openPlanner = useCallback(async (id, itemId = null) => {
-        setOpen(null); setCfg(null); setEditSong(null);
+        setOpen(null);
         if (id === "new") {
             const d = new Date();
             const two = (n) => String(n).padStart(2, "0");
@@ -242,7 +255,7 @@ export default function Console() {
             } catch (err) { c.say(err?.message || "Não foi possível criar o culto."); return; }
         } else if (id && id !== true) setServiceId(id);
         setPlannerFocus(itemId);
-        setPlanner(true);
+        setView({ planner: true });
     }, [c]);
 
     const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
@@ -256,7 +269,7 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && quick === null && !cfg && !editSong && !planner) {
+            if (env === "biblia" && !open && quick === null && !view) {
                 const ch = quickJumpKey(e);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
@@ -268,11 +281,12 @@ export default function Console() {
                 return;
             }
             // In Configurações Esc goes back to the console; it never ends the projection there.
-            if (cfg && action === "end") { e.preventDefault(); setCfg(null); return; }
+            if (cfg && action === "end") { e.preventDefault(); setView(null); return; }
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
-            // So does the planner (it closes itself on Esc).
-            if ((editSong || planner) && !["black", "logo"].includes(action)) return;
+            // So do the planner, the media library and the aviso editor (each
+            // closes itself on Esc).
+            if (view && !cfg && !["black", "logo"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -301,7 +315,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, cfg, editSong, planner]);
+    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, view, cfg]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -355,17 +369,19 @@ export default function Console() {
                 <div className="kx-banner is-rh">MODO ENSAIO — nada será enviado às saídas<span className="kx-sub">As telas continuam com o que estava no ar.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setOpen("arm")}>Armar saídas</button></div>
             )}
             <div className="main">
-                {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={() => setCfg(null)} />}
-                {!cfg && !editSong && planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={() => setPlanner(false)} />}
-                {!cfg && editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={() => setEditSong(null)} onSaved={(row) => { if (editSong === "new" && row?.id) setEditSong(row.id); }} />}
-                {!cfg && !editSong && !planner && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
-                {!cfg && !editSong && !planner && env === "culto" && (
+                {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeView} />}
+                {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} />}
+                {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { if (editSong === "new" && row?.id) setView({ song: row.id }); }} />}
+                {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}
+                {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} />}
+                {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
+                {!view && env === "culto" && (
                     <>
                         {!layout.hidden.lib && (
                             <>
                                 <div className="col" style={sideCol("libW", layout.libW)}>
                                     <Panel title="Biblioteca" collapsed={layout.collapsed.lib} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, lib: !layout.collapsed.lib } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                        <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} />
+                                        <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
                                     </Panel>
                                 </div>
                                 <Split size={layout.libW} onSize={(v) => setLayout({ ...layout, libW: v })} onReset={() => setLayout({ ...layout, libW: DEFAULT_LAYOUT.libW })} clamp={(v) => clampSize("libW", v)} />
@@ -399,7 +415,7 @@ export default function Console() {
                     </>
                 )}
             </div>
-            {!cfg && !editSong && !planner && env === "culto" && !layout.hidden.tl && (
+            {!view && env === "culto" && !layout.hidden.tl && (
                 <div className={`kx-panel tl-panel ${layout.tlOpen ? "is-open" : ""}`}>
                     <Timeline service={service} items={playable} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
                 </div>
@@ -414,7 +430,7 @@ export default function Console() {
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} />
                 </div>
             )}
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} onPlanner={openPlanner} />
+            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />

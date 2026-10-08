@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,13 @@ import RemoteProjectionDialog from "../components/projection/RemoteProjectionDia
 import { useIsMobileDevice } from "@/hooks/useIsMobileDevice";
 
 export default function Media() {
+    // Desktop: Mídia moved into the console (Biblioteca de mídia). The web
+    // build keeps this page for now.
+    if (keryx.isDesktop) return <Navigate to="/Console?media=1" replace />;
+    return <LegacyMedia />;
+}
+
+function LegacyMedia() {
     const [remoteDialogOpen, setRemoteDialogOpen] = useState(false);
     const [remoteDialogTitle, setRemoteDialogTitle] = useState("");
     const isMobileDevice = useIsMobileDevice();

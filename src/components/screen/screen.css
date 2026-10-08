@@ -42,11 +42,20 @@
 .ks-free { font-size: 5cqw; line-height: 1.25; font-weight: 600; white-space: pre-wrap; text-shadow: 0 .2cqw 1cqw rgba(0, 0, 0, .7); }
 
 /* Communication pieces (countdown, timer, announcement, image + text) */
-.ks-comm { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; text-align: center; padding: 6cqw; }
-.ks-comm-big { font-size: 16cqw; line-height: 1; font-weight: 500; text-shadow: 0 .3cqw 1.2cqw rgba(0, 0, 0, .7); }
-.ks-comm-t { font-size: 5cqw; line-height: 1.2; font-weight: 600; white-space: pre-wrap; text-shadow: 0 .2cqw 1cqw rgba(0, 0, 0, .7); }
-.ks-comm-s { font-size: 2.6cqw; opacity: .85; white-space: pre-wrap; }
-.ks-comm-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.ks-comm { --ks-size: 5cqw; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--ks-size) * .3); text-align: center; padding: 6cqw 8cqw; }
+.ks-comm.ks-pos-top { justify-content: flex-start; padding-top: 9cqw; }
+.ks-comm.ks-pos-bottom { justify-content: flex-end; padding-bottom: 8cqw; }
+.ks-comm.ks-al-left { align-items: flex-start; text-align: left; }
+.ks-comm.ks-al-right { align-items: flex-end; text-align: right; }
+.ks-comm-big { font-size: calc(var(--ks-size) * 3.2); line-height: 1; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ks-comm-big.ks-urgent { color: #ff6b70 !important; -webkit-text-fill-color: #ff6b70; animation: ks-pulse 1s ease-in-out infinite; }
+.ks-comm-t { font-size: var(--ks-size); line-height: 1.2; font-weight: 600; white-space: pre-wrap; max-width: 100%; }
+.ks-comm-s { font-size: calc(var(--ks-size) * .52); line-height: 1.35; opacity: .9; white-space: pre-wrap; max-width: 100%; }
+.ks-comm-flag { font-size: calc(var(--ks-size) * .42); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #1a1300; background: #f5b83d; padding: .3em .9em; border-radius: .3em; }
+.ks-comm-attention .ks-comm-t, .ks-comm-announcement .ks-comm-t, .ks-comm-image_text .ks-comm-t { font-weight: 700; }
+.ks-logo.ks-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+@keyframes ks-pulse { 50% { transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .ks-comm-big.ks-urgent { animation: none; } }
 
 /* Media in a preview: a poster, never a playing video */
 .ks-media { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; background: #000; }

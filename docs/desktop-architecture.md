@@ -341,8 +341,37 @@ command palette (`/`), Saídas, and Ensaio.
   Vagalume through its API with the church's key in settings.json, plus the
   letras.mus.br search index; letras.mus.br lyric pages refuse automated
   reading, so those open in the browser and are pasted — KERYX does not get
-  around that block). Mídia — files via `src/lib/mediaImport.js`. Avisos —
-  the Comunicação page until its editor moves. Bíblia — install a version.
+  around that block). Mídia — files via `src/lib/mediaImport.js` and
+  "Biblioteca de mídia…". Avisos — "Novo aviso…" opens the aviso editor.
+  Bíblia — install a version.
+- **Biblioteca de mídia** is a view inside the console (`MediaView.jsx`,
+  canvas artboard "Biblioteca de mídia"): grid or list, kind tabs and
+  categories (pt-BR labels over the stored sermon/worship/… values),
+  "Enviar arquivos" (several, with progress), YouTube links, rename (F2),
+  recategorise, "Tocar em sequência" (`media.playlist` for pictures and
+  videos, the audio channel for audio; PowerPoint is said to be skipped),
+  Delete asks twice and only takes the row out (the file stays in the media
+  folder). A Media row whose file is gone is flagged `missing` by
+  `useLibrary` from `integrations.Core.FileInfo` (desktop:
+  `keryx:media-info`, a stat in the media folder; the web build reports
+  nothing) and offers "Localizar…"; the console refuses to send it. A
+  file's duration is read from the file the first time its thumbnail loads.
+- **Avisos** (CommunicationVideo) go on air as `communication.show` (one, or
+  a playlist with "Tocar todos"). `ScreenRenderer` draws them in full on
+  every output: the five kinds (Contagem regressiva, Cronômetro, Chamar
+  atenção — new type `attention` —, Anúncio, Imagem + texto), size, font,
+  colour or gradient, effect, alignment and position, a background image,
+  colour, video or a loop of files (`fileAt` in
+  `src/lib/console/notice.js`, the same file at the same second on every
+  screen), the church logo in a corner, and — only on outputs of this
+  computer (`audio`) — background audio and a Web Audio chime. The last
+  ten seconds of a countdown pulse red. `useNoticeAdvance` (projector and
+  `/CommunicationProjection`, which now renders with ScreenRenderer too)
+  moves a sequence on at the end of each piece. The **Editor de aviso**
+  (`NoticeEditor.jsx`) edits all of it with a live 16:9 preview; saving
+  touches the library only, "Pôr na prévia do console" prepares it. On the
+  desktop `/Media` redirects to `/Console?media=1` and `/Communication`
+  to Biblioteca › Avisos.
 - **The player** (`PlayerBar`, logic in `src/lib/console/player.js`) sits
   on top of the Programa, always (idle when nothing plays, so the monitors
   never move): what plays with sound (video screens, a video or YouTube on
@@ -372,13 +401,15 @@ command palette (`/`), Saídas, and Ensaio.
   throttle and never pause covered video (occlusion tracking off), and the
   projector itself handles Esc, B and L if clicked.
 
-Still outside the console (reached from its menu) until they are folded in:
-Músicas, Mídia and Comunicação as editors, Cultos as the planner, Settings.
+Músicas, Cultos, Mídia, Comunicação and Configurações are inside the
+console on the desktop; Bíblia's extras, EBD and Relatórios are still
+outside (reached from their old pages).
 `docs/migration-inventory.md` lists every function of the old pages and
 where it goes (or why it is retired), the bugs not to carry over, and the
 phases of the migration.
-The old Ferramentas/Comunicação postMessage paths, `AlertMessage` and
-`BibleProjectionSync` stay only as fallbacks for those pages.
+The old Ferramentas postMessage path (and Comunicação's, for the web
+build's page), `AlertMessage` and `BibleProjectionSync` stay only as
+fallbacks for those pages.
 
 ## 3. Outputs and displays
 

@@ -4,6 +4,8 @@ import { mainLayer, currentSlide, toolTime, LAYER_ORDER } from "@shared/live-sta
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
+import { noticeTime, fileAt, clockOf } from "@/lib/console/notice";
+import { ringBell } from "@/lib/bell";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
@@ -13,7 +15,7 @@ import LiveVideo from "@/components/projection/LiveVideo";
 // audio silent. `motion` is the console's Programa monitor: still a muted
 // preview, but videos (the media layer and the video channel) really play,
 // in step with the screens, so the monitor mirrors the projector.
-export default function ScreenRenderer({ state, now, logoUrl = "", preview = false, motion = false, fill = false, className = "" }) {
+export default function ScreenRenderer({ state, now, logoUrl = "", preview = false, motion = false, fill = false, audio = !preview, className = "" }) {
     const cls = `ks ${fill ? "ks-fill" : "ks-box"} ${className}`;
     if (!state) return <div className={cls}><Idle logoUrl={logoUrl} /></div>;
 
@@ -33,7 +35,7 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
                 {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} />)}
                 {layer === "content" && <Content content={state.content} />}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
-                {layer === "communication" && <Communication comm={state.communication} now={now} />}
+                {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={audio} />}
                 {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} />)}
             </div>
             {!preview && layer === "content" && state.content.audio && (
@@ -55,6 +57,10 @@ function Idle({ logoUrl }) {
     return <><div className="ks-bg-default" /><div className="ks-idle">{logoUrl && <img src={logoUrl} alt="" />}</div></>;
 }
 
+// Old rows saved Tailwind-style gradients ("to br"), which CSS ignores.
+const SIDE = { t: "top", b: "bottom", l: "left", r: "right" };
+const cssBackground = (v) => (typeof v === "string" ? v.replace(/\bto ([tblr])([tblr])?\b/g, (_m, a, b) => `to ${[a, b].filter(Boolean).map((x) => SIDE[x]).join(" ")}`) : v);
+
 const isUrl = (v) => typeof v === "string" && (v.startsWith("http") || v.startsWith("data:") || v.startsWith("blob:") || v.startsWith("/"));
 
 // The background under the content: the item's own (a song's image, a tool's
@@ -63,7 +69,7 @@ const isUrl = (v) => typeof v === "string" && (v.startsWith("http") || v.startsW
 function Background({ state, layer }) {
     const own = layer === "content" ? state.content.style?.background_image
         : layer === "tool" ? state.tool.style?.background_image
-        : layer === "communication" ? (state.communication.item.background_image || state.communication.item.background_color)
+        : layer === "communication" ? (state.communication.item.background_image || cssBackground(state.communication.item.background_color))
         : null;
     const bg = own || null;
     const liveBg = !bg && state.background ? state.background : null;
@@ -127,12 +133,6 @@ function Content({ content }) {
     );
 }
 
-const two = (n) => String(n).padStart(2, "0");
-const clockOf = (ms) => {
-    const s = Math.max(0, Math.round(ms / 1000));
-    const h = Math.floor(s / 3600);
-    return `${h ? two(h) + ":" : ""}${two(Math.floor((s % 3600) / 60))}:${two(s % 60)}`;
-};
 
 function Tool({ tool, now }) {
     const style = tool.style || {};
@@ -157,28 +157,46 @@ function Tool({ tool, now }) {
     );
 }
 
-// Communication pieces (CommunicationVideo rows): the time counts from the
-// shared start, so every screen shows the same second.
-function Communication({ comm, now }) {
+// Communication pieces (CommunicationVideo rows, src/lib/console/notice.js):
+// the time counts from the shared start, so every screen shows the same
+// second. The piece brings its own look — text size, font, colour, effect
+// and position, a background image, colour, video or a loop of files, the
+// church logo in a corner — and, on outputs that play sound (`audio`), its
+// background audio and the alert chime.
+const NOTICE_CQW = { small: "3.4cqw", medium: "4.2cqw", large: "5cqw", xlarge: "6.2cqw", xxlarge: "7.6cqw" };
+
+function Communication({ comm, now, logoUrl, preview, motion, audio }) {
     const item = comm.item || {};
     const elapsed = Math.max(0, now - comm.startedAt);
-    const duration = Number(item.duration) || 0;
-    const color = { color: item.text_color || "#ffffff" };
-    // An image + text piece shows its picture whole; the background behind it is painted by Background.
-    const img = item.type === "image_text" && isUrl(item.image_url) ? <img className="ks-comm-img" src={item.image_url} alt="" /> : null;
-    let big = null;
-    if (item.type === "countdown") big = clockOf(Math.max(0, duration * 1000 - elapsed));
-    else if (item.type === "timer") big = clockOf(duration ? Math.min(elapsed, duration * 1000) : elapsed);
+    const t = noticeTime(item, elapsed);
+    const urgent = item.type === "countdown" && t !== null && t > 0 && t <= 10_000;
+    const file = fileAt(item.files, elapsed);
+    const video = file?.file.type === "video" ? file.file.url : !file && isUrl(item.background_video) ? item.background_video : null;
+    const picture = file?.file.type === "image" ? file.file.url : null;
+    const playing = !preview || motion;
+    const ts = textStyle(item);
+    const heading = item.text || (item.type === "countdown" || item.type === "timer" ? "" : item.title);
     return (
-        <div className="ks-comm" style={color}>
-            {img}
-            {item.type === "countdown" && (item.subtext || item.text) && <div className="ks-comm-s">{item.subtext || item.text}</div>}
-            {big && <div className="ks-comm-big">{big}</div>}
-            {item.type !== "countdown" && item.text && <div className="ks-comm-t">{item.text}</div>}
-            {item.type !== "countdown" && item.subtext && <div className="ks-comm-s">{item.subtext}</div>}
+        <>
+            {picture && <><div key={file.index} className="ks-bg-img" style={{ backgroundImage: `url(${picture})` }} /><div className="ks-bg-dim" /></>}
+            {video && <><video key={`${video}${file?.index ?? ""}`} className="ks-bg-video" src={video} autoPlay={playing} loop={!file} muted playsInline preload="metadata" /><div className="ks-bg-dim" /></>}
+            {audio && isUrl(item.background_audio) && <audio key={comm.startedAt} src={item.background_audio} autoPlay loop className="hidden" />}
+            {audio && item.sound_alert && <Chime key={comm.startedAt} />}
+            <div className={`ks-comm ks-comm-${item.type || "announcement"} ks-al-${item.text_position_h || "center"} ks-pos-${item.text_position_v || "middle"}`} style={{ "--ks-size": NOTICE_CQW[item.font_size] || NOTICE_CQW.large }}>
+                {item.type === "attention" && <div className="ks-comm-flag">Atenção</div>}
+                {heading && <div className="ks-comm-t" style={ts}>{heading}</div>}
+                {t !== null && <div className={`ks-comm-big ${urgent ? "ks-urgent" : ""}`} style={ts}>{clockOf(t)}</div>}
+                {item.subtext && <div className="ks-comm-s" style={ts}>{item.subtext}</div>}
+            </div>
+            {item.show_logo && logoUrl && <img className={`ks-logo ks-medium ks-${item.logo_position || "top-left"}`} src={logoUrl} alt="" />}
             {comm.playlist && <div className="ks-media-count">{comm.playlistIndex + 1} / {comm.playlist.length}</div>}
-        </div>
+        </>
     );
+}
+
+function Chime() {
+    React.useEffect(() => { ringBell(); }, []);
+    return null;
 }
 
 const KIND_LABEL = { video: "Vídeo", youtube: "YouTube", image: "Imagem", gif: "GIF", pdf: "Apresentação", powerpoint: "Apresentação", audio: "Áudio" };

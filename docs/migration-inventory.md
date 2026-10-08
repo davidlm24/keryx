@@ -101,7 +101,7 @@ and header read `time`; "N itens" counts the legacy `service.items`;
 saved and never read; Modo Ensaio ignores media; trash on an item has no
 confirmation.
 
-## 3. Mídia (`src/pages/Media.jsx`)
+## 3. Mídia (`src/pages/Media.jsx`) — migrated (phase 5, see section 9)
 
 | Function | Destination |
 | --- | --- |
@@ -118,7 +118,7 @@ Bugs not to carry over: on mobile the live call sits inside the window-open
 intercept and never runs; `mutate` instead of `mutateAsync` hides create
 failures; the loop silently skips PowerPoint; `media/MediaCard.jsx` is dead.
 
-## 4. Comunicação (`src/pages/Communication.jsx`)
+## 4. Comunicação (`src/pages/Communication.jsx`) — migrated (phase 5, see section 9)
 
 | Function | Destination |
 | --- | --- |
@@ -269,9 +269,27 @@ smoke and a look at the page.
    web build keeps the old page. Not carried over: scenes and autoAdvance
    (never read), the team chat (needs accounts), OBS/QR (Configurações ›
    Telas na rede), the ServiceTimer alert threshold.
-5. **Mídia and Comunicação → Biblioteca/Avisos**: multi upload, categorias,
-   tocar todos, the aviso editor; Comunicação moves to
-   `projection.showCommunication`.
+5. **Mídia and Comunicação**. **Done 2026-10-08** (canvas artboards
+   "Biblioteca de mídia" and "Editor de aviso"). Mídia: `MediaView.jsx`
+   inside the console — grid/list, Todas/Vídeos/Imagens/Áudios
+   (Apresentações when there are any), categories in pt-BR, search,
+   "Enviar arquivos" (several, with progress, `mutateAsync`-style errors
+   per file), YouTube link, rename, recategorise, "Tocar em sequência"
+   (PowerPoint is said to be skipped, not silently), Delete asked twice
+   (the row goes, the file stays), lost files flagged with "Localizar…"
+   (`integrations.Core.FileInfo`), durations read from the files.
+   Comunicação: `NoticeEditor.jsx` — the five kinds (new `attention`,
+   "Chamar atenção"), título, texto, duração, logo corner, alert chime,
+   size, font, colour/gradient, effect, alignment, position, background
+   (bundled photos, image, colour, video, audio, a loop of files), live
+   preview, Excluir (asked twice), Ctrl+S, unsaved changes asked once.
+   Biblioteca › Avisos: Editar, "Tocar todos" (`communication.show` with a
+   playlist; the projector and the avisos screen advance it). The screens
+   now draw avisos in full (ScreenRenderer); `/CommunicationProjection`
+   uses ScreenRenderer too. On the desktop `/Media` and `/Communication`
+   redirect into the console; the web build keeps the old pages. Not
+   carried over: the old "Aguardando comunicação" placeholder (the idle
+   logo shows instead); the Tailwind gradients ("to br") are read as CSS.
 6. **Bíblia, the rest**: busca por palavra, comparar, anotações.
 7. **EBD and Relatórios**.
 8. **Removal**: the shell, the old pages, the legacy paths, the references in

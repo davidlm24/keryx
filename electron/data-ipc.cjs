@@ -2,6 +2,7 @@
 //   keryx:db            invoke  { entity, op, args } -> { data } | { error }
 //   keryx:db-change     event   store change, sent to every window
 //   keryx:media-import  invoke  { sourcePath | bytes, name } -> { fileName }
+//   keryx:media-info    invoke  { names } -> { [name]: { exists, size } } files in the media folder
 //   keryx:config        sync    { mediaBaseUrl }
 //   keryx:displays:*    invoke  list / set / open / close / identify for output windows
 //   keryx:bible:*       invoke  installed versions, install from the web or a file
@@ -60,6 +61,25 @@ function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaD
             log(`[keryx-media] import failed: ${err && err.message}`);
             return { error: { message: `Não foi possível salvar o arquivo: ${err && err.message}`, status: 500 } };
         }
+    });
+
+    // Which media files are still there (a Media row whose file was moved or
+    // lost shows "Arquivo não encontrado") and how big they are.
+    ipcMain.handle("keryx:media-info", async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const names = Array.isArray(payload?.names) ? payload.names.slice(0, 2000) : [];
+        const out = {};
+        await Promise.all(names.map(async (name) => {
+            const base = path.basename(String(name || ""));
+            if (!base || base !== name) { out[name] = { exists: false, size: 0 }; return; }
+            try {
+                const stat = await fs.promises.stat(path.join(mediaDir, base));
+                out[name] = { exists: stat.isFile(), size: stat.size };
+            } catch {
+                out[name] = { exists: false, size: 0 };
+            }
+        }));
+        return { data: out };
     });
 
     const outputsOp = (fn) => (event, payload) => {

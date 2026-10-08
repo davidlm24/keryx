@@ -140,9 +140,20 @@ export function createDesktopBackend(bridge) {
         return { file_url: mediaBase + res.data.fileName };
     }
 
+    // { urls } -> { [url]: { exists, size } } for files in the media folder;
+    // other URLs (YouTube, the web) are left out: nothing to check.
+    async function FileInfo({ urls = [] } = {}) {
+        const local = urls.filter((u) => typeof u === "string" && u.startsWith(mediaBase) && !u.startsWith(mediaBase + "bundled/"));
+        if (!local.length || !bridge.media.info) return {};
+        const res = await bridge.media.info(local.map((u) => decodeURIComponent(u.slice(mediaBase.length))));
+        if (res.error) throw new ClientError(res.error.message, res.error.status);
+        return Object.fromEntries(local.map((u) => [u, res.data[decodeURIComponent(u.slice(mediaBase.length))] || { exists: false, size: 0 }]));
+    }
+
     const integrations = {
         Core: {
             UploadFile,
+            FileInfo,
             // AI features are out of v1 (docs/desktop-architecture.md, section 11).
             InvokeLLM: notInDesktop("A IA"),
             SendEmail: notInDesktop("Envio de email"),

@@ -351,3 +351,60 @@
 .console .rund-sec { gap: 0; cursor: grab; }
 .console .rund-sec.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
 .console .rund-plan { display: flex; justify-content: center; padding: var(--space-2); }
+
+/* Biblioteca de mídia (canvas artboard "Biblioteca de mídia") */
+.console .mv-acts { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+.console .mv-cats { border-bottom: 0; padding: 0; margin-right: var(--space-2); }
+.console .mv-bar { flex: none; display: flex; gap: var(--space-1); align-items: center; flex-wrap: wrap; padding: var(--space-1) var(--space-2); }
+.console .mv-up { flex: none; border-top: 1px solid var(--line); padding-bottom: var(--space-1); }
+.console .mv-up-row { display: flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); }
+.console .mv-up-n { width: 280px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-1); font-size: 12px; }
+.console .mv-up-row .kx-meta { width: 96px; text-align: right; }
+.console .prog2 { flex: 1; height: 2px; background: var(--bg-3); border-radius: 1px; position: relative; overflow: hidden; }
+.console .prog2 > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--prev); transition: width var(--duration-fast) var(--ease-out); }
+.console .prog2 > i.is-busy { animation: mv-busy 1.2s ease-in-out infinite alternate; }
+@keyframes mv-busy { from { opacity: .45; } to { opacity: 1; } }
+.console .mv-selbar { flex: none; display: flex; align-items: center; gap: var(--space-1); height: var(--row); padding: 0 var(--space-2); background: var(--bg-2); box-shadow: inset 2px 0 0 var(--prev); }
+.console .mv-body { flex: 1; min-height: 0; overflow: auto; }
+.console .mv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3) var(--space-2); padding: var(--space-2); }
+.console .mv-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.console .mv-th { position: relative; aspect-ratio: 16 / 9; width: 100%; border-radius: var(--radius-control); overflow: hidden; background: var(--screen-bg, #000); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; color: var(--fg-2); padding: 0; cursor: pointer; }
+.console .mv-th img, .console .mv-th video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.console .mv-th audio { display: none; }
+.console .mv-th:hover { box-shadow: 0 0 0 1px var(--line-strong); }
+.console .mv-th.is-sel { box-shadow: 0 0 0 2px var(--prev); }
+.console .mv-th.is-air { box-shadow: 0 0 0 2px var(--air); }
+.console .mv-th.is-warn { box-shadow: 0 0 0 1px var(--warn); }
+.console .mv-th.is-sel.is-warn { box-shadow: 0 0 0 2px var(--prev), 0 0 0 3px var(--warn); }
+.console .mv-th-t { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 4px; font-size: 12px; color: var(--fg-3); }
+.console .mv-th-t.is-warn { color: var(--warn-fg, var(--warn)); font-weight: 500; }
+.console .mv-lab { position: absolute; left: 0; top: 0; padding: 1px 5px; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--fg-2); background: #0c0c0dcc; border-radius: 0 0 3px 0; }
+.console .mv-n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: 10px; line-height: 12px; color: var(--fg-2); background: #0c0c0dcc; border-radius: 0 3px 0 0; font-variant-numeric: tabular-nums; }
+.console .mv-title { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .mv-cell > .kx-btn { align-self: flex-start; }
+.console .mv-rename { height: 24px; width: 100%; box-sizing: border-box; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; outline: none; box-shadow: inset 0 0 0 1px var(--line-strong); user-select: text; }
+.console .mv-row.is-sel { background: var(--prev-fill, var(--bg-2)); }
+.console .mv-row.is-air { box-shadow: inset 2px 0 0 var(--air); }
+
+/* Editor de aviso (canvas artboard "Editor de aviso") */
+.console .nv-scroll { flex: 1; min-height: 0; overflow: auto; }
+.console .nv-frm { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .nv-frm .k { font-size: 11px; color: var(--fg-3); }
+.console .nv-frm .kx-field { height: 26px; min-width: 0; }
+.console .nv-frm .kx-seg { justify-self: start; max-width: 100%; }
+.console .nv-frm .kx-seg > button { white-space: nowrap; padding: 0 6px !important; }
+.console .nv-color { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); }
+.console .nv-sub { height: auto; min-height: 44px; }
+.console .nv-inline { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; min-width: 0; }
+.console .nv-pad { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-2) var(--space-2); }
+.console .nv-media { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.console .nv-chip { display: flex; align-items: center; gap: var(--space-1); height: 26px; padding: 0 2px 0 var(--space-2); background: var(--bg-2); border-radius: var(--radius-control); font-size: 12px; color: var(--fg-1); }
+.console .nv-chip > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .nv-secs { width: 44px; height: 20px; text-align: center; background: var(--bg-1); }
+.console .nv-pick { border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); max-height: 240px; overflow: auto; }
+.console .nv-foot { flex: none; display: flex; justify-content: flex-end; gap: var(--space-1); padding: var(--space-2); border-top: 1px solid var(--line); }
+.console .nv-stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: var(--space-3); }
+.console .nv-screen { width: min(100%, 1100px, calc((100cqh - 2 * var(--space-3)) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); container-type: inline-size; }
+.console .nv-stage { container-type: size; }
+.console .nv-screen > .ks { width: 100%; height: 100%; }
+.console .nv-note { flex: none; border-top: 1px solid var(--line); gap: var(--space-2); height: auto; min-height: var(--row); padding: var(--space-1) var(--space-2); flex-wrap: wrap; }

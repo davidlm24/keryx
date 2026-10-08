@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
 import { MODULES } from "@/lib/console/layout";
@@ -12,10 +11,8 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 
 // The KERYX menu: pages that stay outside the console, the service picker,
 // Ver (modules) and the layout reset.
-export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings, onPlanner }) {
-    const navigate = useNavigate();
+export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice }) {
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
-    const go = (path) => { setOpen(null); navigate(path); };
     if (open === "ver") {
         return (
             <div className="pop kx-pop" style={{ left: 6, top: 40, width: 220 }}>
@@ -49,8 +46,9 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
         <div className="pop kx-pop" style={{ left: 6, top: 40, width: 230 }}>
             <MenuItem icon="list" onClick={() => setOpen("cultos")}>Culto<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
             <MenuItem icon="list" onClick={() => { setOpen(null); onPlanner?.(serviceId); }}>Planejar o culto</MenuItem>
-            <MenuItem icon="film" onClick={() => go("/Media")}>Mídia</MenuItem>
-            <MenuItem icon="megaphone" onClick={() => go("/Communication")}>Comunicação</MenuItem>
+            <MenuItem icon="film" onClick={() => { setOpen(null); onMedia?.(); }}>Biblioteca de mídia</MenuItem>
+            <MenuItem icon="megaphone" onClick={() => { setOpen(null); onNotices?.(); }}>Avisos</MenuItem>
+            <MenuItem icon="plus" onClick={() => { setOpen(null); onNewNotice?.(); }}>Novo aviso</MenuItem>
             <div className="kx-menu-sep" />
             <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Telas e saídas</MenuItem>
             <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>

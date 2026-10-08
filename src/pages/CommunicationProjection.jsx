@@ -1,25 +1,22 @@
 import React from "react";
 import { keryx } from "@/api/keryxClient";
-import { projection } from "@/lib/projection";
-import { useLiveState } from "@/hooks/useLiveState";
-import CommunicationProjectionView from "@/components/projection/CommunicationProjectionView";
+import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { useChurchLogo } from "@/hooks/useChurchLogo";
+import { useNoticeAdvance } from "@/hooks/useNoticeAdvance";
+import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
 
-// A screen for Comunicação Visual only (countdowns, announcements, image +
-// text): the live state's communication layer, whatever the main projector
-// shows. On the network too.
+// A screen for avisos only (countdowns, announcements, image + text): the
+// live state's communication layer, whatever the main projector shows,
+// drawn by the same ScreenRenderer as every other output. On the network too.
 export default function CommunicationProjection() {
     const communication = useLiveState((s) => s?.communication);
-    const advance = (fromIndex) => {
-        if (!keryx.isDesktop) return;
-        projection.advanceCommunication(fromIndex).catch((err) => console.error("[keryx] comunicação:", err));
-    };
-
+    const now = useLiveNow(1000);
+    const logo = useChurchLogo();
+    useNoticeAdvance(communication);
     return (
         <>
-            {communication
-                ? <CommunicationProjectionView key={communication.startedAt} live={communication} onItemEnd={advance} />
-                : <CommunicationProjectionView />}
+            <ScreenRenderer fill state={communication ? { screen: "show", communication } : null} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />
             <AlertOverlayRenderer />
         </>
     );

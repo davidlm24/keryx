@@ -368,9 +368,13 @@ const notAvailable = (name) => async () => {
     throw new ClientError(`${name} não está disponível nesta versão do KERYX.`, 501);
 };
 
+// Files in Storage are not checked one by one: nothing to report.
+const FileInfo = async () => ({});
+
 export const integrations = {
     Core: {
         UploadFile,
+        FileInfo,
         InvokeLLM,
         SendEmail: notAvailable("Envio de email"),
         SendSMS: notAvailable("Envio de SMS"),

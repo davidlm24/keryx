@@ -34,8 +34,11 @@ wiring, the data model and the known gaps.
   of content is a new op in `shared/live-state.mjs` with a test there, not a
   new sync table or postMessage type. Every output renders it; outputs can be
   opened by the main process (`keryx:displays:open`, "Abrir ao iniciar").
-  Today's Ferramentas, Comunicação, Painel do operador alerts and BibleSchool
-  pages still use their old paths (postMessage, `AlertMessage`,
+  Avisos (CommunicationVideo) are the `communication` layer, drawn in full
+  by `ScreenRenderer` (look, background, logo, chime; arithmetic in
+  `src/lib/console/notice.js`); outputs move a "Tocar todos" sequence on
+  with `useNoticeAdvance`. Today's Ferramentas, Painel do operador alerts,
+  BibleSchool and the web build's Comunicação page still use their old paths (postMessage, `AlertMessage`,
   `BibleProjectionSync`) as fallbacks until the redesign replaces them; don't
   extend those. Going live from Músicas/Cultos goes through
   `useProjectionControl()`.
@@ -48,7 +51,10 @@ wiring, the data model and the known gaps.
   and `/Settings` redirects there on desktop; so is the song editor,
   `SongEditor.jsx`, and `/Home` redirects to the console on desktop; so is
   the service planner, `ServicePlanner.jsx`, and `/Services` redirects to
-  `/Console?planner=…`). Setlist sections are ServiceItems of type
+  `/Console?planner=…`; so are the media library, `MediaView.jsx`
+  (`/Media` → `?media=1`), and the aviso editor, `NoticeEditor.jsx`
+  (`/Communication` → Biblioteca › Avisos). One view at a time: the
+  `view` state in Console.jsx). Setlist sections are ServiceItems of type
   `SECTION`: headers that take no time and never go on air — use
   `playableItems`/`plan` from `src/lib/console/setlist.js`. A click
   prepares a *stage* in the Prévia (`src/lib/console/stage.js`); Enter, a
@@ -121,7 +127,7 @@ npm run dev            # web build in a browser, against Supabase
 
 Smoke runs use a free port and a temp data folder, so they never collide with a KERYX that is open. In Git Bash set `KERYX_START_PATH=Settings` (no leading slash; `/Settings` is rewritten to a Windows path), and `KERYX_SCREENSHOT=file.png` with `KERYX_SCREENSHOT_TEXT="some heading"` to capture a page.
 
-Outputs (projector, stage, ...) render the live state, so either a page (`window.open`) or the main process (`outputs.open`, `keryx:displays:open`, "Abrir ao iniciar") can open them; `electron/outputs*.cjs` places and tracks them. Only the old Ferramentas/Comunicação pages still need a projector they opened themselves (postMessage).
+Outputs (projector, stage, ...) render the live state, so either a page (`window.open`) or the main process (`outputs.open`, `keryx:displays:open`, "Abrir ao iniciar") can open them; `electron/outputs*.cjs` places and tracks them. Only the old Ferramentas page (and the web build's Comunicação page) still need a projector they opened themselves (postMessage).
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.

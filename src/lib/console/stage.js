@@ -3,6 +3,7 @@
 // operation that would put it on air, plus what the console needs to show it
 // (title, slides, a start index). Pure: no I/O, no React.
 import { songContent, passageContent, isVideoUrl } from "@/hooks/useProjectionControl";
+import { noticeLabel } from "@/lib/console/notice";
 
 const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
 
@@ -38,13 +39,27 @@ export function stageFromAudioList(list) {
     return { kind: "audio", id: `audios:${list.map((m) => m.id).join(",")}`, title: `${list.length} áudios em sequência`, meta: "Áudio", slides: [], index: 0, op: "audio.playlist", args: { items, index: 0 } };
 }
 
+// Pictures and videos shown one after the other on the projector (images
+// for their duration, videos to the end); the projector moves on by itself.
+export function stageFromMediaList(list) {
+    const items = list.map((m) => ({ kind: m.type === "video" && m.file_url?.includes("youtu") ? "youtube" : m.type, url: m.file_url, title: m.title || "", id: m.id, duration: m.duration || undefined }));
+    return { kind: "media", id: `medias:${list.map((m) => m.id).join(",")}`, title: `${list.length} mídias em sequência`, meta: "Mídia", slides: [], index: 0, op: "media.playlist", args: { items, index: 0 }, missing: list.some((m) => m.missing) };
+}
+
 export function stageFromYouTube(url) {
     return { kind: "video", id: `yt:${url}`, title: "Vídeo do YouTube", meta: "YouTube", slides: [], index: 0, op: "video.show", args: { kind: "youtube", url, title: "Vídeo do YouTube" } };
 }
 
-// A CommunicationVideo row (countdown, timer, announcement, image + text).
+// A CommunicationVideo row (src/lib/console/notice.js): countdown, timer,
+// attention, announcement, image + text.
 export function stageFromPiece(piece) {
-    return { kind: "piece", id: `piece:${piece.id}`, title: piece.title || piece.text || "", meta: piece.type === "countdown" ? "Contagem regressiva" : piece.type === "timer" ? "Cronômetro" : "Aviso", slides: [], index: 0, op: "communication.show", args: { item: piece } };
+    return { kind: "piece", id: `piece:${piece.id}`, title: piece.title || piece.text || "", meta: noticeLabel(piece.type), slides: [], index: 0, op: "communication.show", args: { item: piece } };
+}
+
+// Every aviso one after the other ("Tocar todos"), on a loop: each for its
+// duration (a cronômetro without one stays until moved on).
+export function stageFromPieceList(list) {
+    return { kind: "piece", id: `pieces:${list.map((p) => p.id).join(",")}`, title: `${list.length} avisos em sequência`, meta: "Avisos", slides: [], index: 0, op: "communication.show", args: { playlist: list, index: 0 } };
 }
 
 export function stageFromTool(mode, { text = "", minutes = 5 } = {}) {

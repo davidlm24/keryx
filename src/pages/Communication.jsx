@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { keryx } from "@/api/keryxClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Maximize2, Play } from "lucide-react";
@@ -11,6 +12,13 @@ import CommunicationVideoForm from "../components/communication/CommunicationVid
 import CommunicationVideoList from "../components/communication/CommunicationVideoList";
 
 export default function Communication() {
+    // Desktop: Comunicação moved into the console (Biblioteca › Avisos and
+    // the aviso editor). The web build keeps this page for now.
+    if (keryx.isDesktop) return <Navigate to="/Console?lib=avisos" replace />;
+    return <LegacyCommunication />;
+}
+
+function LegacyCommunication() {
     const [showForm, setShowForm] = useState(false);
     const [editingVideo, setEditingVideo] = useState(null);
     const colors = useThemeColors();

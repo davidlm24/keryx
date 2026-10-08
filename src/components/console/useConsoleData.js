@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 
@@ -16,9 +16,23 @@ const useList = (name, args, key = name) => {
     return { ...q, data: q.data ?? EMPTY };
 };
 
+// Which media files are on disk (desktop): a row whose file is gone gets
+// missing: true (the console warns before sending it), and every row its size.
+function useMediaFiles(rows) {
+    const urls = rows.map((m) => m.file_url).filter(Boolean);
+    const key = urls.join("|");
+    const info = useQuery({
+        queryKey: ["console", "mediaFiles", key],
+        queryFn: () => keryx.integrations.Core.FileInfo({ urls }),
+        enabled: urls.length > 0,
+        staleTime: 30_000,
+    }).data;
+    return useMemo(() => (info ? rows.map((m) => (info[m.file_url] ? { ...m, missing: !info[m.file_url].exists, size: info[m.file_url].size } : m)) : rows), [rows, info]);
+}
+
 export function useLibrary() {
     const songs = useList("Song", ["title"]).data;
-    const media = useList("Media", ["-created_date"]).data;
+    const media = useMediaFiles(useList("Media", ["-created_date"]).data);
     const pieces = useList("CommunicationVideo", ["title"]).data;
     const themes = useList("ProjectionTheme", ["name"]).data;
     return { songs, media, pieces, themes };

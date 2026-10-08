@@ -590,6 +590,8 @@ async function checkConsole(webContents, { live, outputs }) {
     let tone = null;
     let svc = null;
     let plTpl = null;
+    const mvRows = [];
+    const nvRows = [];
     let edSong = null;
     // João 3:14-18 (placeholder text): the Bible environment reads the local
     // database first, so the verse flow is testable without internet.
@@ -831,6 +833,9 @@ async function checkConsole(webContents, { live, outputs }) {
         result.metersFollowVolume = result.meterState !== "on"
             ? "sem loopback nesta máquina"
             : await waitFor(() => js("[...document.querySelectorAll('.player .kx-meter b')].every((x) => parseFloat(x.style.height) < 5)"), 6000);
+        // The system loopback hears every sound of the computer: when this fails, the
+        // heights say whether something else was playing (a steady level) or KERYX was.
+        if (!result.metersFollowVolume) result.metersAfterMute = await js("[...document.querySelectorAll('.player .kx-meter b')].map((x) => x.style.height).join(' ')");
         // The mute reached the element that actually plays, on the projector.
         result.projectorMuted = await waitFor(() => main && main.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.volume === 0 : null; })()").catch(() => null));
 
@@ -1067,6 +1072,85 @@ async function checkConsole(webContents, { live, outputs }) {
         result.plClosed = await waitFor(() => js("!document.querySelector('.console .pl-frm') && Boolean(document.querySelector('.console .main .col.center'))"));
         result.plRundownSection = await waitFor(() => js("[...document.querySelectorAll('.rund-sec')].some((n) => n.textContent.includes('Pré-culto'))"));
 
+        // The media library inside the console: a lost file says so, a
+        // YouTube link is added and named, the kind tabs filter, two pictures
+        // play in sequence on the projector, Delete (twice) takes a row out.
+        const mk = async (row) => (await js(`window.keryxDesktop.db.call("Media", "create", [${JSON.stringify(row)}])`)).data;
+        mvRows.push(await mk({ title: "Arquivo sumido", type: "video", file_url: "keryx-media://nao-existe-smoke.mp4" }));
+        mvRows.push(await mk({ title: "Foto um", type: "image", file_url: "keryx-media://bundled/backgrounds/1557672172-298e090bd0f1.webp", duration: 5 }));
+        mvRows.push(await mk({ title: "Foto dois", type: "image", file_url: "keryx-media://bundled/backgrounds/1506905925346-21bda4d32df4.webp", duration: 5 }));
+        await click(".topbar .markbtn", "");
+        await click(".kx-pop button", "Biblioteca de mídia");
+        result.mvOpen = await waitFor(() => js("Boolean(document.querySelector('.console .mv .mv-grid'))"));
+        result.mvMissing = await waitFor(() => js("[...document.querySelectorAll('.mv-cell')].some((n) => n.textContent.includes('Arquivo sumido') && n.textContent.includes('Arquivo não encontrado') && n.textContent.includes('Localizar'))"), 6000);
+        const thumb = async (name, modifiers = []) => {
+            const at = await js(`(() => { const cell = [...document.querySelectorAll(".mv-cell")].find((n) => n.textContent.includes(${JSON.stringify(name)})); const b = cell && cell.querySelector(".mv-th"); if (!b) return null; b.scrollIntoView({ block: "nearest" }); const r = b.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`);
+            if (!at) return false;
+            webContents.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y });
+            webContents.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1, modifiers });
+            webContents.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "left", clickCount: 1, modifiers });
+            await sleep(200);
+            return true;
+        };
+        await setVal(".mv-bar .kx-field:nth-of-type(2) input", "https://youtu.be/dQw4w9WgXcQ");
+        await click(".mv-bar button", "Adicionar link");
+        await waitFor(() => js("Boolean(document.querySelector('.mv-rename'))"));
+        await setVal(".mv-rename", "Vídeo do smoke");
+        await press("Enter");
+        result.mvYouTube = await waitFor(async () => {
+            const rows = (await js(`window.keryxDesktop.db.call("Media", "filter", [{ title: "Vídeo do smoke" }])`)).data || [];
+            if (rows[0]) mvRows.push(rows[0]);
+            return Boolean(rows[0]) && /youtu/.test(rows[0].file_url);
+        }, 6000);
+        await click(".mv-cats button", "Imagens");
+        result.mvTabs = await waitFor(() => js("(() => { const t = [...document.querySelectorAll('.mv-cell')].map((n) => n.textContent); return t.length >= 2 && t.every((x) => !x.includes('Arquivo sumido') && !x.includes('Vídeo do smoke')); })()"));
+        await thumb("Foto um");
+        await thumb("Foto dois", ["control"]);
+        result.mvSelected = await waitFor(() => js("document.querySelectorAll('.mv-th.is-sel').length === 2"));
+        await click(".mv-acts button", "Tocar em sequência");
+        result.mvSequence = await waitFor(() => (live.get().media?.playlist || []).length === 2);
+        live.call("clear");
+        await click(".mv-cats button", "Todas");
+        await thumb("Arquivo sumido");
+        await press("Delete");
+        await press("Delete");
+        result.mvDeleted = await waitFor(async () => !((await js(`window.keryxDesktop.db.call("Media", "filter", [{ title: "Arquivo sumido" }])`)).data || []).length, 6000);
+        result.shotMedia = await shot("midia");
+        await press("Escape");
+        await press("Escape");
+        result.mvClosed = await waitFor(() => js("!document.querySelector('.console .mv') && Boolean(document.querySelector('.console .main .col.center'))"));
+
+        // The aviso editor: "Novo aviso", the kind "Chamar atenção" shows its
+        // flag in the live preview, Ctrl+S saves; "Tocar todos" in
+        // Biblioteca › Avisos goes on air and the projector moves it on.
+        await click(".topbar .markbtn", "");
+        await click(".kx-pop button", "Novo aviso");
+        result.nvOpen = await waitFor(() => js("Boolean(document.querySelector('.console .nv-l')) && Boolean(document.querySelector('.nv-screen .ks-comm-big'))"));
+        await click(".nv-l .kx-row", "Chamar atenção");
+        result.nvFlag = await waitFor(() => js("Boolean(document.querySelector('.nv-screen .ks-comm-flag'))"));
+        await setVal(".nv-frm .kx-field input", "Atenção do smoke");
+        result.nvPreviewText = await waitFor(() => js("(document.querySelector('.nv-screen .ks-comm-t') || {}).textContent === 'Atenção do smoke'"));
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("s", ["control"]);
+        result.nvSaved = await waitFor(async () => {
+            const rows = (await js(`window.keryxDesktop.db.call("CommunicationVideo", "filter", [{ title: "Atenção do smoke" }])`)).data || [];
+            if (rows[0] && !nvRows.some((r) => r.id === rows[0].id)) nvRows.push(rows[0]);
+            return rows[0]?.type === "attention" && rows[0].sound_alert === true;
+        }, 6000);
+        result.shotNotice = await shot("aviso");
+        await press("Escape");
+        result.nvClosed = await waitFor(() => js("!document.querySelector('.console .nv-l')"));
+        for (const n of [1, 2]) nvRows.push((await js(`window.keryxDesktop.db.call("CommunicationVideo", "create", [{ title: "AAA aviso ${n}", type: "announcement", text: "AAA aviso ${n}", duration: 1 }])`)).data);
+        await click(".envtabs button", "KERYX");
+        await click(".kx-tabs button", "Avisos");
+        await waitText(webContents, "AAA aviso 2");
+        await click(".kx-panel .listhead button", "Tocar todos");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("Enter");
+        result.nvPlaylist = await waitFor(() => (live.get().communication?.playlist || []).length >= 3);
+        result.nvAdvanced = await waitFor(() => (live.get().communication?.playlistIndex || 0) >= 1, 6000);
+        live.call("clear");
+
         await click(".tl-panel .kx-tl button", "");
         result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
     } finally {
@@ -1077,6 +1161,8 @@ async function checkConsole(webContents, { live, outputs }) {
         if (tone) await js(`window.keryxDesktop.db.call("Media", "delete", ["${tone.id}"])`);
         if (edSong) await js(`window.keryxDesktop.db.call("Song", "delete", ["${edSong.id}"])`).catch(() => {});
         for (const v of [14, 15, 16, 17, 18]) await js(`window.keryxDesktop.db.call("BibleVerse", "delete", ["smoke-jo3-${v}"])`).catch(() => {});
+        for (const r of mvRows) if (r) await js(`window.keryxDesktop.db.call("Media", "delete", ["${r.id}"])`).catch(() => {});
+        for (const r of nvRows) if (r) await js(`window.keryxDesktop.db.call("CommunicationVideo", "delete", ["${r.id}"])`).catch(() => {});
         if (plTpl) await js(`window.keryxDesktop.db.call("ServiceTemplate", "delete", ["${plTpl.id}"])`).catch(() => {});
         if (svc) {
             const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
@@ -1103,7 +1189,9 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen
-        && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection);
+        && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
+        && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
+        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced);
     return result;
 }
 
