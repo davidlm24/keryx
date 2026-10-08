@@ -435,6 +435,9 @@ async function checkLayers(webContents, { live, outputs }) {
     outputs.open("/CommunicationProjection");
     const comm = await waitWindow("/CommunicationProjection");
     result.mainOpened = Boolean(main && comm);
+    // Outputs are not in the taskbar (only the console is), both open here.
+    const openNow = outputs.trackedWindows().filter((w) => !w.destroyed);
+    result.offTaskbar = openNow.length >= 2 && openNow.every((w) => w.skipTaskbar === true);
     try {
         live.call("tool.show", { mode: "freetext", text: "Texto livre de teste" });
         result.freetext = await waitText(main, "Texto livre de teste");
@@ -482,7 +485,7 @@ async function checkLayers(webContents, { live, outputs }) {
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.openAtLaunch && result.keptTarget;
+        && result.alert && result.overlay && result.logoCovers && result.openAtLaunch && result.keptTarget && result.offTaskbar;
     return result;
 }
 
@@ -1482,9 +1485,31 @@ const step = (name) => { if (VERBOSE) console.log(`smoke: ${name}`); };
 function runSmokeTest(win, { dev, outputs, screen, system, network, live, dataDir, importOutcome }) {
     const errors = [];
     const { webContents } = win;
+    // Last check, then the report: closing the console must quit KERYX even
+    // with an output open (outputs are not in the taskbar, so nothing else
+    // would show it is still running). The result is printed only when the
+    // app really quits; if it doesn't within a few seconds, that is a failure.
     const finish = (ok, details) => {
-        console.log(`SMOKE ${ok ? "OK" : "FAIL"} ${JSON.stringify({ ...details, errors })}`);
-        app.exit(ok ? 0 : 1);
+        let reported = false;
+        const report = (quit) => {
+            if (reported) return;
+            reported = true;
+            const passed = ok && quit.quits && quit.outputOpen;
+            console.log(`SMOKE ${passed ? "OK" : "FAIL"} ${JSON.stringify({ ...details, quit, errors })}`);
+            app.exit(passed ? 0 : 1);
+        };
+        try {
+            outputs.open("/Projection");
+        } catch { /* reported as outputOpen: false */ }
+        setTimeout(() => {
+            const outputOpen = outputs.trackedWindows().some((w) => !w.destroyed);
+            app.once("will-quit", (event) => {
+                event.preventDefault();
+                report({ quits: true, outputOpen });
+            });
+            setTimeout(() => report({ quits: false, outputOpen, note: "o KERYX continuou aberto depois de fechar o console" }), 10000);
+            if (!win.isDestroyed()) win.close();
+        }, 1500);
     };
 
     for (const name of ["did-start-loading", "did-stop-loading", "dom-ready", "did-finish-load", "did-navigate", "did-navigate-in-page", "unresponsive", "responsive", "render-process-gone"]) {

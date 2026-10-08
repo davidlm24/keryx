@@ -14,8 +14,19 @@ const {
 const SETTINGS_KEY = "outputs";
 const HIDE_CURSOR_CSS = "html, body, * { cursor: none !important; }";
 
-function createOutputManager({ screen, settings, getOrigin, openWindow = null, operatorWindow = () => null, log = console.warn }) {
+// BrowserWindow is injectable for tests (in plain Node, require("electron") is a path).
+function createOutputManager({ screen, settings, getOrigin, openWindow = null, operatorWindow = () => null, log = console.warn, BrowserWindow: Win = BrowserWindow }) {
     const windows = new Map(); // output key -> BrowserWindow
+    // Windows this manager took off the taskbar (Electron has no getter).
+    const offTaskbar = new WeakSet();
+    // Outputs are not in the taskbar (as in Holyrics): only the console is.
+    // Set before going full screen: on Windows, changing it on a window that
+    // is already full screen can bring the button back or flicker.
+    const hideFromTaskbar = (win) => {
+        if (win.isDestroyed()) return;
+        win.setSkipTaskbar(true);
+        offTaskbar.add(win);
+    };
 
     // Primary first, then left to right, so "Tela 1" is always the operator's own screen
     // and the numbers match what Identificar telas shows.
@@ -37,12 +48,13 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
     const assignmentFor = (key) => normalizeAssignment(assignments()[key]);
     const placementFor = (key) => resolvePlacement(outputForKey(key), displays(), assignmentFor(key));
 
-    // Extra BrowserWindow options for a window.open to this output.
+    // Extra BrowserWindow options for an output, whichever way it opens
+    // (a page's window.open, or open). Never in the taskbar, full screen or not.
     function windowOptions(key) {
         const placement = placementFor(key);
-        if (placement.mode !== "fullscreen") return {};
+        if (placement.mode !== "fullscreen") return { skipTaskbar: true };
         const { x, y, width, height } = placement.display.bounds;
-        return { x, y, width, height, frame: false, backgroundColor: "#000000", autoHideMenuBar: true };
+        return { x, y, width, height, frame: false, backgroundColor: "#000000", autoHideMenuBar: true, skipTaskbar: true };
     }
 
     function present(win, placement) {
@@ -50,10 +62,12 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
         if (placement.mode === "fullscreen") {
             if (win.isFullScreen()) win.setFullScreen(false);
             win.setBounds(placement.display.bounds);
+            hideFromTaskbar(win);
             win.setFullScreen(true);
         } else {
             if (win.isFullScreen()) win.setFullScreen(false);
             win.setBounds(windowedBounds(displays()));
+            hideFromTaskbar(win);
         }
     }
 
@@ -70,12 +84,14 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
         };
         win.on("close", forget);
         win.on("closed", forget);
+        // Whatever path created it (the options may not have said so).
+        hideFromTaskbar(win);
 
         // An output never keeps the keyboard: the operator's keys (arrows,
         // Enter, Esc) belong to the console. Opening one (and going full
         // screen) activates it on Windows, so focus goes back to the window
         // that opened it, or the operator's main window, once it is up.
-        const opener = BrowserWindow.getFocusedWindow();
+        const opener = Win.getFocusedWindow();
         const giveBack = () => {
             const back = opener && opener !== win && !opener.isDestroyed() ? opener : operatorWindow();
             if (back && back !== win && !back.isDestroyed() && !win.isDestroyed() && win.isFocused()) back.focus();
@@ -185,7 +201,7 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
     // Shows each display's number on it for a few seconds.
     function identify(durationMs = 3000) {
         displays().forEach((d, index) => {
-            const win = new BrowserWindow({
+            const win = new Win({
                 x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: d.bounds.height,
                 frame: false, transparent: true, focusable: false, skipTaskbar: true, alwaysOnTop: true,
                 webPreferences: { sandbox: true, contextIsolation: true },
@@ -212,6 +228,7 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
             fullScreen: win.isFullScreen(),
             bounds: win.getBounds(),
             destroyed: win.isDestroyed(),
+            skipTaskbar: offTaskbar.has(win),
         })),
     };
 }

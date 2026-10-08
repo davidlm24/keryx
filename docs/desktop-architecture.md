@@ -460,6 +460,28 @@ phases of the migration.
 
 ## 3. Outputs and displays
 
+**As it is now (2026-10-08):** only the console is in the Windows taskbar,
+as in Holyrics. Every output window (projector, lyrics, video, stage,
+pastor, avisos) is created with `skipTaskbar` (`windowOptions`, both paths:
+a page's `window.open` and `outputs.open`/"Abrir ao iniciar"), and
+`track`/`present` set it again before any change to full screen (on Windows,
+changing it on a window already full screen can bring the button back). An
+open output has **Trazer para a frente** in the Saídas popover and in
+Configurações › Telas e saídas (`showInactive` + `moveTop`, the console
+keeps the keyboard). **Closing the console closes KERYX** and every output
+(the console's `close` event calls `app.quit()`; the import restart uses
+`app.exit()`, which skips it, and the updater's `quitAndInstall` is already
+quitting), so the app never keeps running unseen with the network server up.
+The smoke checks that every output is off the taskbar and that closing the
+console quits with an output open. Measured on Windows 11 during a smoke
+(UI Automation on the taskbar, window styles): the app had one taskbar
+button while 2–3 of its windows were open — the outputs are off the
+taskbar. **Alt+Tab still lists the outputs:** `skipTaskbar` does not set
+WS_EX_TOOLWINDOW, and the windows are unowned. The candidate fix is
+`type: "toolbar"` (WS_EX_TOOLWINDOW) on output windows; not done, it needs
+its own test (focus, full screen, Esc/B/L and Ctrl+W on a clicked output).
+`focusable: false` is not an option: outputs handle those keys.
+
 - **Display manager** (main process, Electron `screen` API): lists monitors,
   stores a mapping `display id → output kind` (projector → `/Projection`,
   TV → `/LyricProjection`, stage → `/StageView`, …) in settings, and opens
