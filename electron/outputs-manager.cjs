@@ -49,12 +49,15 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
     const placementFor = (key) => resolvePlacement(outputForKey(key), displays(), assignmentFor(key));
 
     // Extra BrowserWindow options for an output, whichever way it opens
-    // (a page's window.open, or open). Never in the taskbar, full screen or not.
+    // (a page's window.open, or open). Never in the taskbar nor in Alt+Tab,
+    // full screen or not: skipTaskbar covers the taskbar, and type "toolbar"
+    // makes the window a Windows tool window (WS_EX_TOOLWINDOW), which Alt+Tab
+    // does not list. It can only be set at creation.
     function windowOptions(key) {
         const placement = placementFor(key);
-        if (placement.mode !== "fullscreen") return { skipTaskbar: true };
+        if (placement.mode !== "fullscreen") return { skipTaskbar: true, type: "toolbar" };
         const { x, y, width, height } = placement.display.bounds;
-        return { x, y, width, height, frame: false, backgroundColor: "#000000", autoHideMenuBar: true, skipTaskbar: true };
+        return { x, y, width, height, frame: false, backgroundColor: "#000000", autoHideMenuBar: true, skipTaskbar: true, type: "toolbar" };
     }
 
     function present(win, placement) {
