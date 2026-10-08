@@ -62,24 +62,38 @@ Configurações › "Dados e atualizações":
   data and restarts KERYX; what was replaced stays in a `before-import-…`
   folder inside the data folder until you delete it.
 - **Salvar diagnóstico:** a zip with recent logs and system info for support.
-- **Atualizações:** see "Releasing" below; off until a release repository is set.
+- **Atualizações:** from 0.2.1 on, new versions come from the releases repository (see "Releasing" below).
 
 ### Releasing a new version
 
+Installed copies update themselves from
+[comunidadegerar/keryx-releases](https://github.com/comunidadegerar/keryx-releases),
+a public repository that holds only the installers and `latest.yml` (the
+code stays in the private repository). `build.publish` in `package.json`
+points there. Configurações › Dados e atualizações finds the new version,
+downloads it when asked and installs it on the next restart, never on its own
+and never mid-service.
+
 ```bash
-# bump "version" in package.json, then
-npm run dist          # release/KERYX-Setup-<version>.exe
+# 1. bump "version" in package.json (and commit)
+# 2. build from a clean copy with its own install (npm ci): electron-builder
+#    packs the main process's dependencies from ./node_modules, which a git
+#    worktree sharing the main folder's node_modules does not have
+npm ci
+# 3. build and publish, with a token of the account that owns keryx-releases
+#    (GH_TOKEN; never commit it). In Git Bash, from the GitHub CLI:
+GH_TOKEN="$(gh auth token --user comunidadegerar)" npx vite build
+GH_TOKEN="$(gh auth token --user comunidadegerar)" npx electron-builder --win --publish always
 ```
 
-Copy the installer to the church computer and run it; data in `%APPDATA%\KERYX`
-is kept. Windows shows "Windows protected your PC" for the unsigned installer:
-More info > Run anyway.
+The release goes out as a normal release (not a draft), so installed copies
+see it at once. To build an installer without publishing, `npm run dist`
+(`release/KERYX-Setup-<version>.exe`).
 
-For in-app updates, create a GitHub repository for the releases, add
-`"publish": { "provider": "github", "owner": "<owner>", "repo": "<repo>" }` to the
-`build` section of `package.json`, and release with
-`GH_TOKEN=<token> npx electron-builder --win --publish always`. Installed copies
-then offer the new version in Configurações; installing is always a click.
+The first install (or a copy older than 0.2.1, which has no update setting)
+is by hand: copy the installer to the church computer and run it; data in
+`%APPDATA%KERYX` is kept. Windows shows "O Windows protegeu o computador" for
+the unsigned installer: Mais informações › Executar assim mesmo.
 
 ### Screens on the network (tablets, TVs, stage monitor)
 
