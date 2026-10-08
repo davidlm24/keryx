@@ -1,7 +1,7 @@
 {
   "name": "keryx",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "KERYX: projeção de letras, Bíblia e mídia para a igreja",
   "author": "KERYX",
   "type": "module",
@@ -134,6 +134,14 @@
       "shortcutName": "KERYX",
       "language": "1046",
       "deleteAppDataOnUninstall": false
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "comunidadegerar",
+        "repo": "keryx-releases",
+        "releaseType": "release"
+      }
+    ]
   }
 }
