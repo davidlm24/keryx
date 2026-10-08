@@ -53,8 +53,10 @@ function createUpdater({ app, log = () => {}, loadUpdater = () => require("elect
             } catch { /* error event */ }
             return state;
         },
+        // Quit, update in the background and open KERYX again: no installer
+        // window (isSilent). The install is per user, so there is no admin prompt.
         installAndRestart() {
-            if (updater && state.status === "downloaded") updater.quitAndInstall(false, true);
+            if (updater && state.status === "downloaded") updater.quitAndInstall(true, true);
         },
     };
 }
