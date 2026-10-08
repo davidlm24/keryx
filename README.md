@@ -226,6 +226,15 @@ Tables are the entities in snake_case; columns are the entity fields verbatim
 
 ## Known gaps
 
+0. **`npm audit` leaves findings on purpose** (2026-10-08; fixed what a non-breaking
+   update or jsPDF 4 could). Left: **react-router 6** (moderate: open redirect
+   through links/`navigate()` with *untrusted* paths, and server rendering;
+   KERYX has a few fixed local routes and no SSR, and the fix is React Router 7),
+   and the **build-time chains** that never ship in the app: Tailwind 3's
+   (`braces`, `micromatch`, `chokidar`, fix = Tailwind 4) and electron-builder's
+   (npm "fixes" it by going back to 26.5.0). Revisit with a Tailwind 4 or React
+   Router 7 migration. Run `npm audit` after dependency changes.
+
 1. **No type layer.** Everything is untyped `.jsx`.
 2. **Advisory lint warnings**, mostly unused locals and
    `react-hooks/exhaustive-deps`.
