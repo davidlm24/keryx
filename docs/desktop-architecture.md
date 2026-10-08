@@ -476,11 +476,14 @@ The smoke checks that every output is off the taskbar and that closing the
 console quits with an output open. Measured on Windows 11 during a smoke
 (UI Automation on the taskbar, window styles): the app had one taskbar
 button while 2–3 of its windows were open — the outputs are off the
-taskbar. **Alt+Tab still lists the outputs:** `skipTaskbar` does not set
-WS_EX_TOOLWINDOW, and the windows are unowned. The candidate fix is
-`type: "toolbar"` (WS_EX_TOOLWINDOW) on output windows; not done, it needs
-its own test (focus, full screen, Esc/B/L and Ctrl+W on a clicked output).
-`focusable: false` is not an option: outputs handle those keys.
+taskbar. **Alt+Tab (2026-10-08):** `skipTaskbar` alone does not take a
+window out of Alt+Tab, so output windows are also created with
+`type: "toolbar"` (WS_EX_TOOLWINDOW; creation-time only, in `windowOptions`).
+Measured during a smoke (window styles of the app's windows every 3 s): the
+console was the only KERYX window Alt+Tab would list; the outputs had
+`tool=True`. Not checked by hand: Esc/B/L and Ctrl+W typed into a clicked
+output on a real monitor. `focusable: false` is not an option: outputs handle
+those keys.
 
 - **Display manager** (main process, Electron `screen` API): lists monitors,
   stores a mapping `display id → output kind` (projector → `/Projection`,

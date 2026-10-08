@@ -49,11 +49,12 @@ test("outputs stay out of the taskbar, full screen or in a window", () => {
     // Two monitors: the projector goes full screen on the second.
     const two = manager({ monitors: [display(1, 0, true), display(2, 1920, false)] });
     assert.equal(two.outputs.windowOptions("/Projection").skipTaskbar, true);
+    assert.equal(two.outputs.windowOptions("/Projection").type, "toolbar", "tool window: not in Alt+Tab");
     assert.equal(two.outputs.windowOptions("/Projection").frame, false, "full screen: no frame");
     // One monitor: it opens in a window, still off the taskbar.
     const one = manager({ monitors: [display(1, 0, true)] });
-    assert.deepEqual(one.outputs.windowOptions("/Projection"), { skipTaskbar: true });
-    assert.deepEqual(one.outputs.windowOptions("/StageView"), { skipTaskbar: true });
+    assert.deepEqual(one.outputs.windowOptions("/Projection"), { skipTaskbar: true, type: "toolbar" });
+    assert.deepEqual(one.outputs.windowOptions("/StageView"), { skipTaskbar: true, type: "toolbar" });
 });
 
 test("open passes skipTaskbar at creation; track sets it before full screen", () => {
@@ -61,6 +62,7 @@ test("open passes skipTaskbar at creation; track sets it before full screen", ()
     outputs.open("/Projection");
     assert.equal(opened.length, 1);
     assert.equal(opened[0].options.skipTaskbar, true, "on creation");
+    assert.equal(opened[0].options.type, "toolbar", "on creation");
     const { calls } = opened[0].win;
     const skip = calls.findIndex((c) => c[0] === "setSkipTaskbar" && c[1] === true);
     const full = calls.findIndex((c) => c[0] === "setFullScreen" && c[1] === true);
