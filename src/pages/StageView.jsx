@@ -3,6 +3,7 @@ import { Music2, Clock, Guitar, Activity, ChevronRight, StickyNote, Timer, Plus,
 import { transposeChords, semitoneLabel } from "@/utils/chordTranspose";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { keryx } from "@/api/keryxClient";
 
 // The stage monitor: current and next slide, key, BPM, chords and musician
 // notes from the live state (shared/live-state.mjs), on the operator's PC or
@@ -19,6 +20,7 @@ export default function StageView() {
     useEffect(() => { setTranspose(0); }, [songKey]);
 
     useEffect(() => {
+        if (keryx.isDesktop) return undefined; // the main process places desktop outputs
         const tryFullscreen = () => {
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen().catch(() => {});

@@ -27,7 +27,7 @@ function fakeWindow() {
         showInactive: () => calls.push(["showInactive"]),
         moveTop: () => calls.push(["moveTop"]),
         close: () => { win.destroyed = true; },
-        webContents: { on: () => {}, insertCSS: () => Promise.resolve() },
+        webContents: { on: () => {}, once: () => {}, insertCSS: () => Promise.resolve() },
     };
     return win;
 }
