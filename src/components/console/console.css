@@ -361,7 +361,7 @@
 .console .mv-up-n { width: 280px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-1); font-size: 12px; }
 .console .mv-up-row .kx-meta { width: 96px; text-align: right; }
 .console .prog2 { flex: 1; height: 2px; background: var(--bg-3); border-radius: 1px; position: relative; overflow: hidden; }
-.console .prog2 > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--prev); transition: width var(--duration-fast) var(--ease-out); }
+.console .prog2 > i { position: absolute; inset: 0; background: var(--prev); transform-origin: left center; transition: transform var(--duration-fast) var(--ease-out); }
 .console .prog2 > i.is-busy { animation: mv-busy 1.2s ease-in-out infinite alternate; }
 @keyframes mv-busy { from { opacity: .45; } to { opacity: 1; } }
 .console .mv-selbar { flex: none; display: flex; align-items: center; gap: var(--space-1); height: var(--row); padding: 0 var(--space-2); background: var(--bg-2); box-shadow: inset 2px 0 0 var(--prev); }

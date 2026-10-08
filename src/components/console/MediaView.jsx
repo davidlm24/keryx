@@ -196,7 +196,7 @@ export default function MediaView({ c, media, onSend, onClose }) {
                             <div key={`${n}${i}`} className="mv-up-row">
                                 <span className="kx-glyph"><Icon name={i < uploads.at ? "check" : "dot"} /></span>
                                 <span className="mv-up-n">{n}</span>
-                                <div className="prog2"><i className={i === uploads.at ? "is-busy" : ""} style={{ width: i < uploads.at ? "100%" : i === uploads.at ? "60%" : "0%" }} /></div>
+                                <div className="prog2"><i className={i === uploads.at ? "is-busy" : ""} style={{ transform: `scaleX(${i < uploads.at ? 1 : i === uploads.at ? 0.6 : 0})` }} /></div>
                                 <span className="kx-meta">{i < uploads.at ? "pronto" : i === uploads.at ? "copiando…" : "na fila"}</span>
                             </div>
                         ))}
