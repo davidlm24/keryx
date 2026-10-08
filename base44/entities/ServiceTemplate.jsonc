@@ -30,13 +30,20 @@
               "POLL",
               "QUIZ",
               "TIMER",
-              "FREE_CONTENT"
+              "FREE_CONTENT",
+              "AUDIO",
+              "SECTION",
+        "MATERIAL"
             ],
             "description": "Tipo do item"
           },
           "title": {
             "type": "string",
             "description": "Titulo sugerido do item"
+          },
+          "contentId": {
+            "type": "string",
+            "description": "Conteúdo do item (música, passagem, mídia, aviso), para o item tocar"
           },
           "order": {
             "type": "number",

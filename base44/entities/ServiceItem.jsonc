@@ -26,6 +26,9 @@
         "POLL",
         "QUIZ",
         "TIMER",
+        "AUDIO",
+        "SECTION",
+        "MATERIAL",
         "FREE_CONTENT"
       ],
       "default": "SONG",

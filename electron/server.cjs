@@ -129,7 +129,7 @@ function startStaticServer({ root, mediaDir, bundledDir, host, port }) {
                 res.writeHead(404).end();
                 return;
             }
-            // Client-side route (/Home, /Bible, ...): hand it to the SPA.
+            // Client-side route (/Console, /Projection, ...): hand it to the SPA.
             const index = path.join(rootDir, "index.html");
             fs.stat(index, (indexErr, indexStat) => {
                 if (indexErr) res.writeHead(404).end();

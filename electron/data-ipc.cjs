@@ -2,11 +2,18 @@
 //   keryx:db            invoke  { entity, op, args } -> { data } | { error }
 //   keryx:db-change     event   store change, sent to every window
 //   keryx:media-import  invoke  { sourcePath | bytes, name } -> { fileName }
+//   keryx:media-info    invoke  { names } -> { [name]: { exists, size } } files in the media folder
 //   keryx:config        sync    { mediaBaseUrl }
-//   keryx:displays:*    invoke  list / set / close / identify for output windows
+//   keryx:displays:*    invoke  list / set / open / close / identify for output windows
 //   keryx:bible:*       invoke  installed versions, install from the web or a file
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 //   keryx:network       invoke  { op, args } screens on the church network
+//   keryx:lyrics        invoke  { op: search | get | setKey | status, args } lyrics from the web
+//   keryx:live:get      invoke  -> live state snapshot (shared/live-state.mjs)
+//   keryx:live:call     invoke  { op, args } -> the new snapshot | { error }
+//   keryx:live-change   event   the whole snapshot, sent to every window after each change
+//   keryx:meter         send    { layer, url, duration } the length of the item an output
+//                               plays, relayed to the other windows (the console's seek bar)
 
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -19,7 +26,7 @@ function safeExtension(name) {
     return /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : "";
 }
 
-function registerDataIpc({ store, outputs, system, network, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
+function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
 
     ipcMain.handle("keryx:db", (event, payload) => {
@@ -56,6 +63,25 @@ function registerDataIpc({ store, outputs, system, network, mediaDir, mediaBaseU
         }
     });
 
+    // Which media files are still there (a Media row whose file was moved or
+    // lost shows "Arquivo não encontrado") and how big they are.
+    ipcMain.handle("keryx:media-info", async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const names = Array.isArray(payload?.names) ? payload.names.slice(0, 2000) : [];
+        const out = {};
+        await Promise.all(names.map(async (name) => {
+            const base = path.basename(String(name || ""));
+            if (!base || base !== name) { out[name] = { exists: false, size: 0 }; return; }
+            try {
+                const stat = await fs.promises.stat(path.join(mediaDir, base));
+                out[name] = { exists: stat.isFile(), size: stat.size };
+            } catch {
+                out[name] = { exists: false, size: 0 };
+            }
+        }));
+        return { data: out };
+    });
+
     const outputsOp = (fn) => (event, payload) => {
         if (!isTrustedSender(event)) return reject;
         try {
@@ -67,6 +93,7 @@ function registerDataIpc({ store, outputs, system, network, mediaDir, mediaBaseU
     ipcMain.handle("keryx:displays:list", outputsOp(() => outputs.list()));
     ipcMain.handle("keryx:displays:set", outputsOp(({ key, assignment }) => outputs.setAssignment(key, assignment)));
     ipcMain.handle("keryx:displays:close", outputsOp(({ key }) => { outputs.close(key); return outputs.list(); }));
+    ipcMain.handle("keryx:displays:open", outputsOp(({ key }) => outputs.open(key)));
     ipcMain.handle("keryx:displays:identify", outputsOp(() => { outputs.identify(); return true; }));
 
     const bibleOp = (fn) => async (event, payload) => {
@@ -102,6 +129,19 @@ function registerDataIpc({ store, outputs, system, network, mediaDir, mediaBaseU
         }
     });
 
+    // Lyrics from the web (electron/lyrics.cjs): search, get, setKey, status.
+    ipcMain.handle("keryx:lyrics", async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const { op, args } = payload || {};
+        if (!lyrics || !["search", "get", "setKey", "status"].includes(op)) return { error: { message: `Operação desconhecida: ${op}.`, status: 400 } };
+        try {
+            return { data: await lyrics[op](args) };
+        } catch (err) {
+            if (!err.status) log(`[keryx-lyrics] ${op}: ${err && err.stack}`);
+            return { error: { message: err.message || "Falha na busca de letras.", status: err.status || 500 } };
+        }
+    });
+
     ipcMain.handle("keryx:network", async (event, payload) => {
         if (!isTrustedSender(event)) return reject;
         const { op, args } = payload || {};
@@ -111,6 +151,45 @@ function registerDataIpc({ store, outputs, system, network, mediaDir, mediaBaseU
         } catch (err) {
             if (!err.status) log(`[keryx-network] ${op}: ${err && err.stack}`);
             return { error: { message: err.message || "Falha na operação.", status: err.status || 500 } };
+        }
+    });
+
+    // Outputs are app windows too: they may report "this video ended".
+    ipcMain.handle("keryx:live:get", (event) => (isTrustedSender(event) ? { data: live.get() } : reject));
+    ipcMain.handle("keryx:live:call", (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const { op, args } = payload || {};
+        try {
+            return { data: live.call(op, args) };
+        } catch (err) {
+            if (err && err.status) return { error: { message: err.message, status: err.status } };
+            log(`[keryx-live] ${op}: ${err && err.stack}`);
+            return { error: { message: `Falha na projeção: ${err && err.message}`, status: 500 } };
+        }
+    });
+    // Same timing as db changes: after the caller's reply.
+    live.onChange((snapshot) => {
+        setImmediate(() => {
+            for (const win of BrowserWindow.getAllWindows()) {
+                if (!win.isDestroyed()) win.webContents.send("keryx:live-change", snapshot);
+            }
+        });
+    });
+
+    // An output reports how long the item it plays is (for the console's
+    // seek bar), once a second. Not part of the live state: nothing is
+    // stored, and a window that is not listening simply drops it. Levels are
+    // not relayed: the console measures the system output itself.
+    ipcMain.on("keryx:meter", (event, payload) => {
+        if (!isTrustedSender(event) || !payload || !["media", "video", "audio"].includes(payload.layer)) return;
+        if (!Number.isFinite(payload.duration) || payload.duration <= 0) return;
+        const clean = {
+            layer: payload.layer,
+            duration: payload.duration,
+            url: typeof payload.url === "string" ? payload.url.slice(0, 2000) : "",
+        };
+        for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed() && win.webContents !== event.sender) win.webContents.send("keryx:meter", clean);
         }
     });
 

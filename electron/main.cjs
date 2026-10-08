@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Menu, dialog, screen, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
@@ -12,7 +12,16 @@ const { applyPendingImport } = require("./archive.cjs");
 const { createUpdater } = require("./updater.cjs");
 const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
+const { createLive, loadLiveRules } = require("./live.cjs");
+const { createLyrics } = require("./lyrics.cjs");
 const schema = require("./db/schema.json");
+
+// A projection window covered by another window is still projecting. Windows
+// marks covered windows "occluded", and Chromium then pauses their video-only
+// media to save power — a muted video froze whenever its window sat behind
+// the projector. No window of this app is ever background.
+app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
+app.commandLine.appendSwitch("disable-background-media-suspend");
 
 const HOST = "127.0.0.1";
 // KERYX_PORT=0 picks a free port; smoke runs do, so a test never collides with
@@ -25,8 +34,10 @@ const BG = "#1a1714";
 // KERYX_SMOKE: load the app, run the checks in smoke.cjs, print, exit.
 const DEV_URL = process.env.KERYX_DEV_URL || "";
 const SMOKE = process.env.KERYX_SMOKE === "1";
-// KERYX_START_PATH: open the main window on this page (e.g. /Settings).
-const START_PATH = process.env.KERYX_START_PATH ? "/" + process.env.KERYX_START_PATH.replace(/^\/+/, "") : "";
+// KERYX_START_PATH: open the main window on this page (e.g. Console?config=telas).
+// Without it the app opens on the operator console; smoke runs keep "/",
+// which their checks start from.
+const START_PATH = process.env.KERYX_START_PATH ? "/" + process.env.KERYX_START_PATH.replace(/^\/+/, "") : SMOKE ? "" : "/Console";
 const DEVTOOLS = Boolean(DEV_URL) || process.env.KERYX_DEVTOOLS === "1";
 
 // Everything the app keeps lives here: keryx.db, media/, and Chromium's own
@@ -62,6 +73,7 @@ let store = null;
 let outputs = null;
 let system = null;
 let network = null;
+let live = null;
 
 // Same database, same port: a second launch just focuses the first.
 const gotLock = app.requestSingleInstanceLock();
@@ -79,6 +91,10 @@ const webPreferences = {
     sandbox: true,
     // Output windows play lyric backgrounds and videos with no click on them.
     autoplayPolicy: "no-user-gesture-required",
+    // A projection window behind another is still projecting: never throttle,
+    // and never let Chromium "pause video-only background media to save
+    // power" (it freezes a muted video when the window is covered).
+    backgroundThrottling: false,
 };
 
 function isAppUrl(url) {
@@ -135,6 +151,22 @@ function guardWindow(win) {
     }
 }
 
+// An output the main process opens itself (open at launch, or on request
+// from a page): the same window a page's window.open would get.
+function openOutputWindow(url, placement) {
+    const win = new BrowserWindow({
+        width: 1280,
+        height: 720,
+        backgroundColor: "#000000",
+        autoHideMenuBar: true,
+        ...placement,
+        webPreferences,
+    });
+    guardWindow(win);
+    win.loadURL(url).catch((err) => logger.error(`[keryx-outputs] não foi possível abrir ${url}: ${err.message}`));
+    return win;
+}
+
 function createMainWindow() {
     mainWindow = new BrowserWindow({
         width: 1440,
@@ -151,8 +183,8 @@ function createMainWindow() {
     mainWindow.once("ready-to-show", () => mainWindow.show());
     mainWindow.on("closed", () => { mainWindow = null; });
     mainWindow.loadURL(appUrl + START_PATH).catch((err) => {
-        // Also what a bad KERYX_START_PATH looks like (Git Bash rewrites "/Settings"
-        // to a Windows path; use MSYS_NO_PATHCONV=1 or "Settings" without a slash).
+        // Also what a bad KERYX_START_PATH looks like (Git Bash rewrites "/Console"
+        // to a Windows path; use MSYS_NO_PATHCONV=1 or "Console" without a slash).
         console.error(`[keryx] não foi possível abrir ${appUrl + START_PATH}: ${err.message}`);
         if (SMOKE) {
             console.log(`SMOKE FAIL ${JSON.stringify({ load: err.message })}`);
@@ -210,11 +242,34 @@ app.whenReady().then(async () => {
     appUrl = DEV_URL || serverUrl;
     appOrigin = new URL(appUrl).origin;
 
+    // The console's level meters read the sound the PC is putting out
+    // (system loopback, Windows), so measuring can never disturb playback.
+    // getDisplayMedia needs a video source; the page is given its own frame
+    // and stops that track at once. Anything not the app is denied.
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+        if (process.platform !== "win32" || !isAppUrl(request.frame?.url || "")) {
+            callback({});
+            return;
+        }
+        try {
+            callback({ video: request.frame, audio: "loopback" });
+        } catch {
+            callback({});
+        }
+    }, { useSystemPicker: false });
+
     const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
+    // First run: the main projector opens with the app (the operator can
+    // turn it off in Telas e saídas). Smoke runs manage outputs themselves.
+    if (!SMOKE && settings.get("outputs") === undefined) {
+        settings.set("outputs", { "/Projection": { target: "auto", openAtLaunch: true } });
+    }
     outputs = createOutputManager({
         screen,
         settings,
         getOrigin: () => appOrigin,
+        openWindow: openOutputWindow,
+        operatorWindow: () => mainWindow,
         log: (m) => console.warn(m),
     });
 
@@ -224,10 +279,19 @@ app.whenReady().then(async () => {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }
 
+    // What every output shows right now (shared/live-state.mjs).
+    try {
+        live = createLive({ file: path.join(dataDir, "live.json"), rules: await loadLiveRules(), log: (m) => logger.warn(m) });
+    } catch (err) {
+        fatal("KERYX não conseguiu iniciar", `Não foi possível carregar o estado da projeção: ${err && err.message}`);
+        return;
+    }
+
     // Tablets and TVs on the church network (off until enabled in Settings).
     // KERYX_LAN_PORT=0 lets a smoke run use a free port.
     network = createNetwork({
         store,
+        live,
         settings,
         distDir: path.join(app.getAppPath(), "dist"),
         mediaDir,
@@ -244,6 +308,8 @@ app.whenReady().then(async () => {
         outputs,
         system,
         network,
+        live,
+        lyrics: createLyrics({ settings }),
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
@@ -251,12 +317,15 @@ app.whenReady().then(async () => {
     });
 
     const win = createMainWindow();
-    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, network, store, dataDir, importOutcome });
+    // Outputs set to "Abrir ao iniciar" in Telas e saídas.
+    win.once("ready-to-show", () => outputs.openAtLaunch());
+    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, network, live, dataDir, importOutcome });
 });
 
 app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
     if (network) network.stop();
+    if (live) live.flush();
     if (system) {
         try {
             system.backupNow("ao fechar");

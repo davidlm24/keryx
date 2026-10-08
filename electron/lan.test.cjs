@@ -6,8 +6,9 @@ const path = require("node:path");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
 const { createLanServer, lanAddresses, safeNext } = require("./lan.cjs");
+const { createLive, loadLiveRules } = require("./live.cjs");
 
-function fixture(config = { pin: "", secret: "s3cret" }) {
+async function fixture(config = { pin: "", secret: "s3cret" }) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "keryx-lan-"));
     const dist = path.join(root, "dist");
     fs.mkdirSync(path.join(dist, "assets"), { recursive: true });
@@ -19,12 +20,13 @@ function fixture(config = { pin: "", secret: "s3cret" }) {
     fs.writeFileSync(path.join(root, "secret.txt"), "nope");
     const store = createStore({ file: ":memory:", schema, log: () => {} });
     const cfg = { ...config };
-    const lan = createLanServer({ distDir: dist, mediaDir: media, bundledDir: null, store, getConfig: () => cfg });
-    return { lan, store, cfg };
+    const live = createLive({ file: path.join(root, "live.json"), rules: await loadLiveRules(), log: () => {} });
+    const lan = createLanServer({ distDir: dist, mediaDir: media, bundledDir: null, store, live, getConfig: () => cfg });
+    return { lan, store, live, cfg };
 }
 
 async function started(config) {
-    const f = fixture(config);
+    const f = await fixture(config);
     const { port } = await f.lan.start({ port: 0, host: "127.0.0.1" });
     f.base = `http://127.0.0.1:${port}`;
     f.db = (body, headers = { "x-keryx": "1" }) => fetch(`${f.base}/api/db`, {
@@ -38,12 +40,12 @@ const page = (base, p, headers = {}) => fetch(base + p, { redirect: "manual", he
 test("serves only screen pages and '/', with the network flag injected", async (t) => {
     const f = await started();
     t.after(() => f.lan.stop());
-    for (const p of ["/", "/LyricProjection", "/StageView/", "/DeviceView?device=x"]) {
+    for (const p of ["/", "/Projection", "/LyricProjection", "/StageView/", "/PastorView", "/CommunicationProjection", "/VideoProjection"]) {
         const res = await page(f.base, p);
         assert.equal(res.status, 200, p);
         assert.match(await res.text(), /<head><script>window\.keryxLan=true;<\/script>/, p);
     }
-    for (const p of ["/Home", "/Settings", "/Services", "/Projection", "/login"]) {
+    for (const p of ["/Console", "/Home", "/Settings", "/DeviceView", "/BibleMaterialProjection", "/login"]) {
         const res = await page(f.base, p);
         assert.equal(res.status, 404, `${p} must not be reachable from the network`);
         assert.match(await res.text(), /computador do operador/);
@@ -66,7 +68,7 @@ test("static files: assets yes, nothing outside dist or media", async (t) => {
     assert.equal((await ranged.arrayBuffer()).byteLength, 10);
 });
 
-test("the database is read-only except for the screen writes", async (t) => {
+test("the database is read-only from the network", async (t) => {
     const f = await started();
     t.after(() => f.lan.stop());
     const song = f.store.call("Song", "create", [{ title: "A" }]);
@@ -82,16 +84,16 @@ test("the database is read-only except for the screen writes", async (t) => {
         ["Song", "update", [song.id, { title: "x" }]],
         ["Song", "delete", [song.id]],
         ["User", "update", ["local", { logo_url: "x" }]],
+        ["ProjectionDevice", "update", [device.id, { is_online: true }]],
         ["ProjectionDevice", "delete", [device.id]],
         ["VideoSync", "create", [{ video_url: "x" }]],
+        ["VideoSync", "update", ["x", { status: "played" }]],
     ]) {
         const res = await f.db({ entity, op, args });
         assert.equal(res.status, 403, `${entity}.${op}`);
     }
     assert.equal(f.store.call("Song", "get", [song.id]).title, "A");
 
-    const beat = await (await f.db({ entity: "ProjectionDevice", op: "update", args: [device.id, { is_online: true }] })).json();
-    assert.equal(beat.data.is_online, true);
     const missing = await (await f.db({ entity: "Song", op: "get", args: ["nope"] })).json();
     assert.equal(missing.error.status, 404);
 });
@@ -105,6 +107,21 @@ test("/api/db needs the custom header, valid JSON and a sane size", async (t) =>
     const huge = await fetch(`${f.base}/api/db`, { method: "POST", headers: { "x-keryx": "1" }, body: "x".repeat(2 * 1024 * 1024) }).catch(() => ({ status: 413 }));
     assert.equal(huge.status, 413);
     assert.equal((await fetch(`${f.base}/api/db`)).status, 405);
+});
+
+test("a screen says which page it shows; unknown pages are not recorded", async (t) => {
+    const f = await started();
+    t.after(() => f.lan.stop());
+    const a = new AbortController();
+    const b = new AbortController();
+    await fetch(`${f.base}/api/events?screen=%2FStageView`, { signal: a.signal });
+    await fetch(`${f.base}/api/events?screen=%2FConsole`, { signal: b.signal });
+    await new Promise((r) => setTimeout(r, 100));
+    const seen = f.lan.clients().map((c) => [c.screen, c.label]).sort();
+    assert.deepEqual(seen, [["", ""], ["/StageView", "Palco"]]);
+    a.abort();
+    b.abort();
+    await new Promise((r) => setTimeout(r, 100));
 });
 
 test("store changes reach /api/events", async (t) => {
@@ -129,6 +146,36 @@ test("store changes reach /api/events", async (t) => {
     assert.equal(f.lan.clients().length, 0);
 });
 
+test("the live state: readable at /api/live, streamed as 'live' events, never writable", async (t) => {
+    const f = await started();
+    t.after(() => f.lan.stop());
+    f.live.call("content.show", { title: "Hino", slides: ["Santo, santo, santo"], style: { background_image: "keryx-media://fundo.png" } });
+    const res = await fetch(`${f.base}/api/live`);
+    assert.equal(res.status, 200);
+    const { data } = await res.json();
+    assert.equal(data.rev, 1);
+    assert.equal(data.content.slides[0].text, "Santo, santo, santo");
+    assert.equal(data.content.style.background_image, "keryx-media://fundo.png", "the screen maps media URLs itself");
+    assert.equal(typeof data.serverNow, "number");
+    for (const method of ["POST", "PUT", "DELETE"]) {
+        const refused = await fetch(`${f.base}/api/live`, { method, headers: { "x-keryx": "1" }, body: method === "DELETE" ? undefined : "{}" });
+        assert.equal(refused.status, 405, method);
+    }
+
+    const controller = new AbortController();
+    const events = await fetch(`${f.base}/api/events`, { signal: controller.signal });
+    const reader = events.body.getReader();
+    await new Promise((r) => setTimeout(r, 100));
+    f.live.call("content.show", { title: "Outro", slides: ["Aleluia"] });
+    let text = "";
+    while (!text.includes("Aleluia")) text += new TextDecoder().decode((await reader.read()).value);
+    const lines = text.split("\n");
+    const at = lines.indexOf("event: live");
+    assert.ok(at >= 0, "named live event");
+    assert.equal(JSON.parse(lines[at + 1].slice(6)).rev, 2);
+    controller.abort();
+});
+
 test("with a PIN: pages redirect to the PIN form, APIs say 401, the right PIN sets a cookie", async (t) => {
     const f = await started({ pin: "4321", secret: "s3cret" });
     t.after(() => f.lan.stop());
@@ -137,6 +184,7 @@ test("with a PIN: pages redirect to the PIN form, APIs say 401, the right PIN se
     assert.equal(redirect.headers.get("location"), "/lan/pin?next=%2FLyricProjection%3Fch%3D1");
     assert.equal((await f.db({ entity: "Song", op: "list", args: [] })).status, 401);
     assert.equal((await fetch(`${f.base}/api/events`)).status, 401);
+    assert.equal((await fetch(`${f.base}/api/live`)).status, 401);
     assert.equal((await fetch(`${f.base}/media/a.png`)).status, 401);
 
     const form = await page(f.base, "/lan/pin?next=%2FStageView");

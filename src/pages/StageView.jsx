@@ -1,164 +1,41 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Music2, Clock, Guitar, Activity, ChevronRight, StickyNote, Timer, Plus, Minus } from "lucide-react";
 import { transposeChords, semitoneLabel } from "@/utils/chordTranspose";
 import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
-import { keryx } from "@/api/keryxClient";
-import { useLiveSessionChannel } from "@/hooks/useLiveSessionChannel";
-import { useProjectionReconnect } from "@/hooks/useProjectionReconnect";
+import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 
+// The stage monitor: current and next slide, key, BPM, chords and musician
+// notes from the live state (shared/live-state.mjs), on the operator's PC or
+// a screen on the network alike. It keeps showing while the main projector
+// is black: the band still needs the lyrics.
 export default function StageView() {
-    const [songData, setSongData] = useState(null);
-    const [slideIndex, setSlideIndex] = useState(0);
-    const [now, setNow] = useState(new Date());
-    const [elapsed, setElapsed] = useState(0);
+    const content = useLiveState((s) => s?.content);
+    const nowMs = useLiveNow(1000);
+    const now = new Date(nowMs);
     const [transpose, setTranspose] = useState(0);
-    const readySent = useRef(false);
-    const channelRef = useLiveSessionChannel();
-    const songStartRef = useRef(null);
 
-    // Reconexão automática — re-busca letra ao voltar online
-    useProjectionReconnect((rec) => {
-        if (rec && rec.status === "active") {
-            setSongData({
-                title: rec.song_title,
-                artist: rec.artist || "",
-                slides: rec.slides || [],
-                text_color: rec.text_color,
-                background_image: rec.background_image,
-            });
-            setSlideIndex(rec.slide_index || 0);
-            songStartRef.current = Date.now();
-        } else if (rec && rec.status === "stopped") {
-            setSongData(null);
-            setSlideIndex(0);
-            songStartRef.current = null;
-        }
-    }, "LyricSync");
+    // A new song starts untransposed.
+    const songKey = content?.startedAt ?? null;
+    useEffect(() => { setTranspose(0); }, [songKey]);
 
-    // Clock
     useEffect(() => {
-        const timer = setInterval(() => setNow(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    // Elapsed timer (counts up while a song is active)
-    useEffect(() => {
-        if (!songData) {
-            setElapsed(0);
-            songStartRef.current = null;
-            return;
-        }
-        if (!songStartRef.current) songStartRef.current = Date.now();
-        const interval = setInterval(() => {
-            if (songStartRef.current) {
-                setElapsed(Math.floor((Date.now() - songStartRef.current) / 1000));
-            }
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [songData]);
-
-    // Subscrição da LiveSession — limpa o palco quando a sessão termina (com filtro por canal)
-    useEffect(() => {
-        const unsubscribe = keryx.entities.LiveSession.subscribe((event) => {
-            if (event.type === 'create' && event.data?.status === "active" && !channelRef.current) {
-                channelRef.current = event.data.channel;
-            }
-            if ((event.type === 'create' || event.type === 'update') && event.data?.status === "ended") {
-                if (!channelRef.current || event.data.channel === channelRef.current) {
-                    setSongData(null);
-                    setSlideIndex(0);
-                    setElapsed(0);
-                    songStartRef.current = null;
-                }
-            }
-        });
-        return () => unsubscribe();
-    }, []);
-
-    // Sem janela do operador (monitor de palco na rede): a letra ativa vem da
-    // base de dados. Com janela do operador, os dados ricos (cifras, notas)
-    // chegam por postMessage e têm prioridade, por isso isto fica de fora.
-    useEffect(() => {
-        if (window.opener) return undefined;
-        let activeId = null;
-        const show = (rec) => {
-            if (rec.id !== activeId) {
-                activeId = rec.id;
-                songStartRef.current = Date.now();
-                setElapsed(0);
-            }
-            setSongData({
-                title: rec.song_title,
-                artist: rec.artist || "",
-                slides: rec.slides || [],
-                text_color: rec.text_color,
-                background_image: rec.background_image,
-            });
-            setSlideIndex(rec.slide_index || 0);
-        };
-        const clear = () => {
-            activeId = null;
-            setSongData(null);
-            setSlideIndex(0);
-            setElapsed(0);
-            songStartRef.current = null;
-        };
-        keryx.entities.LyricSync.list("-timestamp", 1)
-            .then(([rec]) => { if (rec && rec.status === "active") show(rec); })
-            .catch(() => {});
-        return keryx.entities.LyricSync.subscribe((event) => {
-            const rec = event.data;
-            if (!rec) return;
-            if ((event.type === "create" || event.type === "update") && rec.status === "active") show(rec);
-            else if (rec.id === activeId && (event.type === "delete" || rec.status === "stopped")) clear();
-        });
-    }, []);
-
-    // Listen for messages from opener
-    useEffect(() => {
-        const handleMessage = (event) => {
-            const msg = event.data;
-
-            if (msg.type === "PROJECTION_DATA") {
-                setSongData(msg);
-                setSlideIndex(0);
-                songStartRef.current = Date.now();
-                setElapsed(0);
-            }
-
-            if (msg.type === "SLIDE_INDEX") {
-                setSlideIndex(msg.index);
-            }
-
-            if (msg.type === "PROJECTION_STOP") {
-                setSongData(null);
-                setSlideIndex(0);
-                setElapsed(0);
-                songStartRef.current = null;
-            }
-        };
-
-        window.addEventListener("message", handleMessage);
-
-        if (window.opener && !readySent.current) {
-            readySent.current = true;
-            window.opener.postMessage({ type: "STAGE_READY" }, "*");
-        }
-
         const tryFullscreen = () => {
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen().catch(() => {});
             }
         };
         document.addEventListener("click", tryFullscreen, { once: true });
-
-        return () => window.removeEventListener("message", handleMessage);
+        return () => document.removeEventListener("click", tryFullscreen);
     }, []);
 
-    const slides = songData?.slides?.length
-        ? songData.slides
-        : [{ text: songData?.lyrics || "", duration: 30 }];
+    const songData = content
+        ? { title: content.title, artist: content.artist, background_image: content.style?.background_image, ...content.stage }
+        : null;
+    const slideIndex = content?.index || 0;
+    // Time since the operator put this song up (the same on every screen).
+    const elapsed = content ? Math.max(0, Math.floor((nowMs - content.startedAt) / 1000)) : 0;
 
+    const slides = content?.slides?.length ? content.slides : [{ text: "" }];
     const current = slides[slideIndex] || {};
     const next = slides[slideIndex + 1];
 
@@ -186,7 +63,7 @@ export default function StageView() {
             <div className="fixed inset-0 bg-black flex flex-col items-center justify-center text-white">
                 <div className="text-center">
                     <Music2 className="w-24 h-24 mx-auto mb-6 opacity-30" />
-                    <h1 className="text-5xl font-bold mb-4">Stage View</h1>
+                    <h1 className="text-5xl font-bold mb-4">Palco</h1>
                     <p className="text-2xl text-gray-500">Aguardando projeção...</p>
                     <div className="mt-12 text-7xl font-mono tracking-wider text-gray-400">
                         {formatTime(now)}

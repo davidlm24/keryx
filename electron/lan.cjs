@@ -4,11 +4,12 @@
 //
 //   - it serves the app only for the screen pages (NETWORK_SCREENS) and "/";
 //     the operator pages are never reachable from the network
-//   - /api/db is read-only except for the two writes a screen performs
-//     (ProjectionDevice heartbeat, VideoSync "played")
+//   - /api/db is read-only: screens never write
 //   - an optional PIN, remembered by a cookie, rate-limited per address
-//   - /api/events (Server-Sent Events) pushes every store change, which is what
-//     keeps screens in step; EventSource reconnects by itself
+//   - /api/events (Server-Sent Events) pushes every store change, and the
+//     whole live state as "live" events, which is what keeps screens in step;
+//     EventSource reconnects by itself
+//   - /api/live is the live state (electron/live.cjs), read-only from here
 //
 // Pure Node (no Electron), so it is unit tested.
 
@@ -19,20 +20,20 @@ const os = require("node:os");
 const path = require("node:path");
 const { MEDIA_PREFIX, BUNDLED_PREFIX, within, sendFile } = require("./server.cjs");
 
-// Pages that work from the database alone (no window.opener to talk to).
+// Pages that work from the live state and the database alone (no
+// window.opener to talk to).
 const NETWORK_SCREENS = [
+    { path: "/Projection", label: "Projeção principal", hint: "O mesmo que o projetor: letras, Bíblia, mídia e avisos" },
     { path: "/LyricProjection", label: "Letras", hint: "Tablet ou TV com a letra da música" },
     { path: "/StageView", label: "Palco", hint: "Monitor do palco: letra atual, próxima e relógio" },
     { path: "/VideoProjection", label: "Vídeo", hint: "Recebe os vídeos enviados pelo operador" },
-    { path: "/BibleMaterialProjection", label: "Material bíblico", hint: "Escola bíblica: slides, imagens e quiz" },
-    { path: "/AnnouncementCarousel", label: "Anúncios", hint: "Carrossel de avisos" },
-    { path: "/DeviceView", label: "Saída configurada", hint: "Mostra uma saída criada no Gestor de Projeção" },
+    { path: "/CommunicationProjection", label: "Avisos", hint: "Contagens regressivas e avisos" },
+    { path: "/PastorView", label: "Tela do pastor", hint: "O que está projetado, relógio e tempo do culto" },
 ];
 const SCREEN_PATHS = new Set(NETWORK_SCREENS.map((s) => s.path));
 
-// A screen may read everything and write only these.
+// A screen may only read.
 const READ_OPS = new Set(["list", "filter", "get"]);
-const SCREEN_WRITES = { ProjectionDevice: new Set(["update"]), VideoSync: new Set(["update"]) };
 
 const COOKIE = "keryx_lan";
 const MAX_BODY = 1024 * 1024;
@@ -104,7 +105,7 @@ function readBody(req, limit = MAX_BODY) {
     });
 }
 
-function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log = () => {} }) {
+function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, log = () => {} }) {
     const dist = path.resolve(distDir);
     const media = path.resolve(mediaDir);
     const bundled = bundledDir ? path.resolve(bundledDir) : null;
@@ -113,6 +114,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
     let server = null;
     let keepalive = null;
     let unsubscribe = null;
+    let unsubscribeLive = null;
 
     const json = (res, status, body, headers = {}) => {
         const data = Buffer.from(JSON.stringify(body));
@@ -156,11 +158,15 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
         return html(res, 401, pinPage(next, "PIN incorreto."));
     }
 
-    function handleEvents(req, res) {
+    // Each screen says which page it shows (?screen=/StageView): the
+    // console lists the screens connected right now from this.
+    function handleEvents(req, res, url) {
         if (clients.size >= MAX_CLIENTS) return json(res, 503, { error: { message: "Telas demais ligadas." } });
         res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
         res.write("retry: 3000\n\n");
-        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString() };
+        const asked = url ? String(url.searchParams.get("screen") || "").replace(/\/+$/, "") : "";
+        const screen = SCREEN_PATHS.has(asked) ? asked : "";
+        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen };
         clients.add(client);
         req.on("close", () => clients.delete(client));
     }
@@ -177,7 +183,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
             return json(res, err.status || 400, { error: { message: err.status === 413 ? err.message : "Pedido inválido.", status: err.status || 400 } });
         }
         const { entity, op, args } = payload || {};
-        const allowed = READ_OPS.has(op) || (SCREEN_WRITES[entity] && SCREEN_WRITES[entity].has(op));
+        const allowed = READ_OPS.has(op);
         if (!allowed) return json(res, 403, { error: { message: "Esta tela só pode ler os dados.", status: 403 } });
         try {
             return json(res, 200, { data: store.call(entity, op, args) });
@@ -229,9 +235,15 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
             return json(res, 401, { error: { message: "PIN necessário.", status: 401 } });
         }
 
-        if (pathname === "/api/events" && req.method === "GET") return handleEvents(req, res);
+        if (pathname === "/api/events" && req.method === "GET") return handleEvents(req, res, url);
         if (pathname === "/api/db") return handleDb(req, res);
         if (pathname === "/api/screens" && req.method === "GET") return json(res, 200, NETWORK_SCREENS);
+        if (pathname === "/api/live") {
+            // Screens only watch; the operator changes the live state on the KERYX computer.
+            if (req.method !== "GET") return json(res, 405, { error: { message: "Esta tela só pode ler os dados.", status: 405 } }, { Allow: "GET" });
+            if (!live) return json(res, 503, { error: { message: "Projeção indisponível.", status: 503 } });
+            return json(res, 200, { data: live.get() });
+        }
 
         if (req.method !== "GET" && req.method !== "HEAD") return res.writeHead(405, { Allow: "GET, HEAD" }).end();
 
@@ -270,6 +282,12 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
                 const frame = `data: ${JSON.stringify(change)}\n\n`;
                 for (const client of clients) client.res.write(frame);
             });
+            if (live) {
+                unsubscribeLive = live.onChange((snapshot) => {
+                    const frame = `event: live\ndata: ${JSON.stringify(snapshot)}\n\n`;
+                    for (const client of clients) client.res.write(frame);
+                });
+            }
             keepalive = setInterval(() => {
                 for (const client of clients) client.res.write(": ping\n\n");
             }, KEEPALIVE_MS);
@@ -285,8 +303,10 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
         stop() {
             if (keepalive) clearInterval(keepalive);
             if (unsubscribe) unsubscribe();
+            if (unsubscribeLive) unsubscribeLive();
             keepalive = null;
             unsubscribe = null;
+            unsubscribeLive = null;
             for (const client of clients) client.res.end();
             clients.clear();
             if (server) {
@@ -297,7 +317,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, getConfig, log 
         },
         running: () => Boolean(server && server.listening),
         port: () => (server && server.listening ? server.address().port : null),
-        clients: () => [...clients].map(({ ip, agent, since }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since })),
+        clients: () => [...clients].map(({ ip, agent, since, screen }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, label: NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })),
     };
 }
 

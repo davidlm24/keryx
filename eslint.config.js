@@ -12,6 +12,12 @@ export default [
     languageOptions: { sourceType: "commonjs", ecmaVersion: 2022, globals: globals.node },
   },
   {
+    // Runs in the Electron main process and in the pages.
+    files: ["shared/**/*.mjs"],
+    ...pluginJs.configs.recommended,
+    languageOptions: { sourceType: "module", ecmaVersion: 2022, globals: { ...globals.node, ...globals.browser } },
+  },
+  {
     files: ["scripts/**/*.mjs"],
     ...pluginJs.configs.recommended,
     languageOptions: { sourceType: "module", ecmaVersion: 2022, globals: globals.node },

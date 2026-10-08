@@ -3,6 +3,7 @@
 // window.keryxDesktop from electron/preload.cjs. No login, no network.
 
 import { ClientError } from "../errors";
+import { createLiveClient } from "../liveClient";
 
 // The database stores media as keryx-media://<file>, independent of the
 // local server's host and port; windows get a URL they can load. Pages test
@@ -139,9 +140,20 @@ export function createDesktopBackend(bridge) {
         return { file_url: mediaBase + res.data.fileName };
     }
 
+    // { urls } -> { [url]: { exists, size } } for files in the media folder;
+    // other URLs (YouTube, the web) are left out: nothing to check.
+    async function FileInfo({ urls = [] } = {}) {
+        const local = urls.filter((u) => typeof u === "string" && u.startsWith(mediaBase) && !u.startsWith(mediaBase + "bundled/"));
+        if (!local.length || !bridge.media.info) return {};
+        const res = await bridge.media.info(local.map((u) => decodeURIComponent(u.slice(mediaBase.length))));
+        if (res.error) throw new ClientError(res.error.message, res.error.status);
+        return Object.fromEntries(local.map((u) => [u, res.data[decodeURIComponent(u.slice(mediaBase.length))] || { exists: false, size: 0 }]));
+    }
+
     const integrations = {
         Core: {
             UploadFile,
+            FileInfo,
             // AI features are out of v1 (docs/desktop-architecture.md, section 11).
             InvokeLLM: notInDesktop("A IA"),
             SendEmail: notInDesktop("Envio de email"),
@@ -153,5 +165,9 @@ export function createDesktopBackend(bridge) {
 
     const appLogs = { async logUserInApp() {} };
 
-    return { entities, auth, integrations, appLogs };
+    // What is on screen: media in the document is keryx-media:// like in the
+    // database, so each window and network screen gets URLs it can load.
+    const live = createLiveClient(bridge.live, { toStore, fromStore });
+
+    return { entities, auth, integrations, appLogs, live };
 }

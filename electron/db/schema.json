@@ -1490,6 +1490,12 @@
         "logo_url": {
           "type": "text"
         },
+        "church_name": {
+          "type": "text"
+        },
+        "church_city": {
+          "type": "text"
+        },
         "primary_color": {
           "type": "text",
           "default": "#84cc16"

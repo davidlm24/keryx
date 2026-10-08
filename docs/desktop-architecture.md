@@ -1,8 +1,24 @@
 # KERYX as an offline-first desktop app
 
 Status: decisions settled 2026-10-06. Phases 0–5 (shell, local data, outputs,
-media and Bible, shipping, network screens) are built; the redesign is not. Installing on the booth PC and running a real service is the last step of
-phase 4 and is the church's to do.
+media and Bible, shipping, network screens) are built, and so is the
+redesign: the operator console is the whole app (migration phases 2–8,
+`docs/migration-inventory.md`). Installing on the booth PC and running a
+real service is the church's to do.
+
+**Current state (2026-10-08, after migration phase 8).** KERYX is desktop
+only: the web build on Supabase, its login pages and backend were retired
+(desktop projection apps don't run in a browser; tablets and TVs join
+through the computer's network server). The app is `/Console` plus the
+output pages (`/Projection`, `/LyricProjection`, `/StageView`,
+`/VideoProjection`, `/CommunicationProjection`, `/PastorView`); every old
+page, the brown "mc-" shell, the postMessage path to a projector window, the
+`AlertMessage` and `BibleProjectionSync` fallbacks, the live state's
+`school` layer with `/BibleMaterialProjection`, `DeviceView` and its
+heartbeat (the one write network screens had) are gone. Network screens
+only read, and say which page they show when they connect; the console lists
+them from that. The sections below keep the plan as it was written, phase by
+phase; where they describe a page or path listed here, that is history.
 
 ## Why
 
@@ -110,13 +126,337 @@ control logic.
 - **Phase 1 (no page changes):** those tables become SQLite tables like any
   other, and the change-event broadcast carries their updates to outputs and
   network screens. Everything works as now, minus the internet.
-- **Later (the redesign):** replace the tables with a single **live state**
-  document held in the main process (`{ lyrics, video, tools, overlays,
-  alert, stage }`). Operator pages mutate it through one `projection`
-  service; outputs render it. This is where the duplicated control code in
-  `Home`/`Services` collapses into one module, and where `postMessage` goes
-  away. It's listed here so phase 1 doesn't paint us into a corner, not as
-  phase-1 work.
+- **Phase 6 (the redesign):** replace the tables with a single **live state**
+  document held in the main process. Operator pages mutate it through one
+  `projection` service; outputs render it. This is where the duplicated
+  control code in `Home`/`Services` collapses into one module, and where
+  `postMessage` goes away.
+
+### The live-state engine (phase 6, part 1)
+
+Decided 2026-10-06. Built in steps; the app runs end to end after each.
+
+**The document** (`shared/live-state.mjs`, one module for the main process,
+the pages and node:test):
+
+```
+{ version, rev, updatedAt,            // rev: a newer snapshot always wins
+  screen: "show" | "black" | "logo",  // overrides everything; Esc = black
+  session: { id, serviceId, startedAt },
+  background: { kind: image|video|color, value },     // under everything
+  content: { kind: lyrics|bible|text, ref, title, artist,
+             slides: [{ text, duration, is_chorus }], index,
+             style: { font_size, font_family, text_effect, text_color, text_color_2, background_image },
+             stage: { song_key, bpm, chords, musician_notes } },
+  media: { kind, url, title, playlist, playlistIndex,  // main projector
+           playback: { paused, position, at, volume } },
+  video: { kind, url, title, playback },               // video screens / tablets
+  tool: { mode: clock|stopwatch|timer|freetext, text, style, startedAt, endsAt },
+  communication: { item, playlist, playlistIndex, startedAt },
+  school: { content_type, slides, index, quiz_questions, quiz_index, quiz_reveal, media_url, style },
+  overlays: [...], alert: { message, type, since } }
+```
+
+- **Main projector priority** (`mainLayer`): screen black/logo › tool ›
+  communication › media › content; background under, overlays and alert
+  over. Showing content takes down tool/communication/media, so "nothing
+  appears after black or a clock" can't happen. Other outputs pick their
+  layers: lyrics screen = content; stage = content + next slide + `stage`;
+  video screens = `video`; Escola bíblica = `school`.
+- **Shared clock:** timers store `endsAt`/`startedAt`, video stores the
+  position at time `at`; every snapshot carries `serverNow` so a tablet with
+  a wrong clock still counts the same seconds (`keryx.live.now()`).
+- **Restart:** `live.json` in the data folder (debounced); restored with the
+  same content and `screen: "black"`, playback paused. One click resumes.
+- **Media** in the document is `keryx-media://` like the database; each
+  window and network screen maps it to a URL it can load.
+
+**Plumbing (step 1, built):** `electron/live.cjs` holds it and broadcasts the
+whole snapshot after each change (a few KB; no diffs to get out of order).
+IPC `keryx:live:get` / `keryx:live:call` / `keryx:live-change`; network
+screens read `GET /api/live` and `event: live` on `/api/events`, never write.
+In the pages: `keryx.live` (`src/api/liveClient.js`), `useLiveState()` /
+`useLiveNow()` (`src/hooks/useLiveState.js`), and the operator API
+`src/lib/projection.js` (`showLyrics`, `goTo`, `next`, `showMedia`,
+`transport.*`, `showTool`, `alert`, `setScreen`, `clear`, …). The web build
+runs the same rules in the browser (`backends/localLive.js`, localStorage +
+`storage` events: the operator tab and its own windows; no remote screens).
+
+**Migration steps:**
+
+1. Engine only (above). No page uses it yet. **Done.**
+2. Lyrics and Bible. **Done.** Home and Services share
+   `src/hooks/useProjectionControl.js` (go live with a song or passage,
+   Parar, Esc, the close warning; `songContent`/`passageContent` turn rows
+   into content); Bible uses the same content helpers. `LyricPlayerPanel`
+   moves the live slide (Modo Ensaio steps locally). `/Projection`,
+   `LyricProjection`, `StageView` and `PastorView` render `content`;
+   video and Escola bíblica screens clear when the session ends
+   (`useLiveSessionEnded`). Nothing writes `LyricSync`, `LiveSession` or
+   `ProjectionState` any more; `LatencyIndicator`, `useLiveSessionChannel`
+   and `sessionCleanup` are gone. Behaviour changes:
+   - the projector no longer advances slides on its own timer (it used to,
+     every 10 s, until the operator touched a key); the panel's Auto button
+     (Space) advances every screen together;
+   - the stage gets chords, key, BPM and notes on network screens too, and
+     clears on Parar (it used to miss the stop message); its song time counts
+     from when the operator put the song up;
+   - Bible passages from Cultos get the Bible layout (they lost it before);
+   - arrows/clicks on the projector window move the live slide everywhere;
+   - the QR code / OBS links no longer carry a `?ch=` no screen read.
+   The smoke run clicks through Músicas (Projetar, arrow key, Parar
+   Projeção) and checks the projector; `KERYX_SMOKE_SHOTS=<folder>` saves
+   screenshots of projector, stage and operator page.
+3. Video, media, YouTube. **Done.** One player, `LiveVideo`, follows the
+   shared playback (`playbackPlan` in the rules: late joiners seek, small
+   drift is left alone, a finished video rests on its last frame). Video
+   screens, the tablet overlay, the projector media layer (`LiveMediaView`,
+   playlists advanced by the desktop projector) and the operator panels'
+   muted previews all use it. Nothing writes `VideoSync`/`VideoControl`;
+   network screens no longer write anything but the DeviceView heartbeat.
+   **Audio channel (2026-10-07):** `live.audio` holds music or a playback
+   track (`audio.show`, `audio.playlist`, `audio.advance`, `audio.clear`;
+   `playlist.goTo` jumps within a media or audio list; `transport` takes
+   `layer: "audio"`). It is not a main layer: it plays under whatever the
+   screens show, and Encerrar/Esc leave it playing (the player's Parar stops
+   it). Only the desktop's own `/Projection` window plays it, so a TV on
+   the network showing that page stays silent. Media rows may be `audio`.
+   **Level meters:** where sound plays (`LiveVideo` with a `meter` layer:
+   the projector's media and audio, the video screens), `useAudioMeter`
+   routes the element through Web Audio (element to the speakers and to two
+   analysers), built only when the context runs and the file is readable,
+   so a file is never silenced; `captureStream()` was tried and broke
+   seeking. It measures L/R peaks after the volume and
+   sends them with the duration over `keryx:meter` a dozen times a second;
+   the main process relays them to the other windows. Nothing is stored.
+   Local media is loaded in CORS mode for this (the media server sends
+   `Access-Control-Allow-Origin`); YouTube reports its duration only.
+4. The rest of the engine and outputs. **Done** (decided 2026-10-06: engine
+   and outputs only; today's operator pages are not rewired, because the
+   redesign replaces them).
+   - `/Projection` renders every layer: tools on the shared clock,
+     communication (`CommunicationProjectionView` live mode: counted from
+     `startedAt`, sequences advanced by the desktop projector), media,
+     content over the background layer (image, colour or video loop),
+     overlays (`LiveOverlays`) and the alert on top, black/logo over all.
+   - `CommunicationProjection` is a view of the communication layer;
+     `BibleMaterialProjection` of the school layer (no `?channel=` needed);
+     the alert renderer and the video screen show the live alert.
+   - Outputs can be opened by the main process (`keryx:displays:open`,
+     `outputs.open`), and each has "Abrir ao iniciar" in Telas e saídas
+     (`openAtLaunch` in the assignment). Comunicação is an output too.
+   - Network screens: `/Projection`, `/PastorView` and
+     `/CommunicationProjection` join the list.
+   - Still on the old paths at the time, until the redesign replaced their
+     pages: the Ferramentas and Comunicação pages (postMessage), the Painel
+     do operador's alerts (`AlertMessage`) and BibleSchool
+     (`BibleProjectionSync`). All retired in migration phase 8 (2026-10-08);
+     the tables stay as user data.
+
+Not in part 1: devices and scenes (`ProjectionDevice.current_output`,
+`DeviceView`, `OperatorPanel`) and `BannerProjection` wait for the UI
+redesign.
+
+### The console (phase 6, part 2)
+
+Decided 2026-10-07 after the mockup in Claude Design (`docs/design-system.md`
+has the link and the tokens). One screen, `/Console`, replaces the operator
+pages: the library (Letras, Mídia, Avisos), the slides in hand, Programa and
+Prévia, Camadas, Roteiro, Linha do tempo, Bíblia as its own environment, the
+command palette (`/`), Saídas, and Ensaio.
+
+- **Programa / Prévia.** A click anywhere prepares a *stage*
+  (`src/lib/console/stage.js`: the live-state operation that would put the
+  item on air, plus title, slides and a start index). Only "Enviar ao ar"
+  (Enter) sends it. The Prévia monitor is the stage applied with `applyOp` to
+  a copy of the current look; both monitors are `ScreenRenderer`, the
+  projector's own component, scaled by container units.
+- **Ensaio.** `useConsole` keeps a local copy of the document and applies
+  operations to it with the same rules (`applyOp` from the shared module);
+  nothing reaches the main process until "Armar saídas", which discards the
+  copy. The outputs never know a rehearsal happened.
+- **Engine additions for it:** `history` (what the main layer showed before
+  each change, for "Voltar ao anterior" — back through the Prévia, never
+  straight to air), `session.item` (the ServiceItem on air), the `logo`
+  layer, and the style keys `text_align`, `text_position`, `transition`.
+- **Camadas** edit the live state directly: Logo = `logo.set`, Sobreposição
+  = `overlays.set`, Texto principal = `content.update { style }`, Fundo =
+  `background.set/clear`. A theme is a `ProjectionTheme` row; the panel
+  shows "Modificado" when the style on air differs from it.
+- **Roteiro** is `ServiceItem` rows of the service in hand (today's by
+  default); drag reorders by writing `order`. The timeline's real lane is
+  the console's own log of when each item went on air (localStorage per
+  service); the planned lane is `Service.startTime` plus durations.
+- **Saídas** = the main process's output windows (`keryx:displays:list`,
+  polled) plus network `ProjectionDevice` heartbeats. The quick alert is the
+  one control that bypasses the Prévia (`alert.show`).
+- The layout (module sizes, collapsed, hidden) is saved per profile in
+  localStorage (`src/lib/console/layout.js`); "Restaurar layout" resets it.
+- **One console, always live (2026-10-07).** The top bar is a menu bar: the
+  KERYX mark opens the menu, the tabs **KERYX | Bíblia** switch environment,
+  then the search, **Ensaio | Ao vivo**, the clock, the outputs status and
+  the emergency glyphs. There are no steps: preparing while live is safe
+  because nothing reaches the screens without sending, and Ensaio is the one
+  sandbox (a local copy under `applyOp`). **Verificar** (`VerifyView`) is an
+  overlay opened from the Saídas popover or the KERYX menu: output windows
+  and network screens, every media file of the setlist (a HEAD request to
+  the local media server, which answers 404 when a file is gone), fonts, the
+  Bible versions installed for offline use and what needs the internet. The
+  bar never wraps: container queries drop the clock, then shorten the
+  outputs label and the search as the window narrows. The projector output
+  opens with the app on first run, and a live send reopens it if closed;
+  the idle screen is the church logo or plain black (`idle.set`, in the
+  live state so every screen renders the same emptiness).
+- **Tela preta and Mostrar logo always act on the real screens**, in every
+  view and mode: they are the emergency actions. A failing output is a banner
+  under the top bar in every view, never over a monitor.
+- **Selection vs. on air (Holyrics, 2026-10-07):** the slide or verse on
+  air is red, the selection is green. ←/→ move the air; ↑/↓ move the
+  selection (`selUp`/`selDown` in `keys.js`) without touching the screens;
+  Enter or a double click projects it. In the Bible a single verse goes out
+  as the **whole chapter**, one verse per slide, starting there (each slide
+  carries its own reference, `slide.ref` in the live state), so ←/→ keep
+  walking the chapter; a range picked on purpose goes out as that passage.
+  The Bible column shows "No ar agora" only (no Prévia).
+- **Layer order:** `live.layerOrder` (top first: logo, overlays, content,
+  background; op `layers.order`) stacks the look layers on every screen;
+  Camadas reorders them by dragging. Alert, video-channel cover and
+  black/logo stay above all.
+- **Editor de música** is a view inside the console (`SongEditor.jsx`,
+  canvas artboard 16), opened from Biblioteca › Letras (Editar, "+ › Nova
+  música") and after a web import. Lyrics split live into slides
+  (`slidesFromLyrics`, `withTimings` in `src/lib/songImport.js`, tested);
+  a song keeps its saved slides until its lyrics change. On the desktop
+  `/Home` redirects to the console. A live send of a song records
+  SongHistory and play_count.
+- **Bíblia environment, the rest** (phase 6): the centre panel reads
+  (Ler), searches (Buscar) or compares (Comparar). Buscar is `searchBible`
+  over the installed Bíblia: every word and "quoted phrase", accents and
+  case ignored (`src/lib/bibleSearch.js`, tested; the store's `$regex` is a
+  folded substring match, so no pattern reaches it), whole Bíblia / AT / NT /
+  this book, canonical order, the hits marked; ↑/↓ walk the results, Enter
+  or a double click projects from that verse (its chapter, as in Ler); the
+  top field and the palette ("Buscar … na Bíblia") start a search when the
+  text is not a reference. Comparar sets up to four versions side by side
+  (text through `getChapter`; a version that cannot load says why in its
+  column), each with Enviar and Usar. Notes on one verse and favourites are
+  `BibleNote` rows (`useBibleNotes`; the old local favourites move there
+  once); a verse with a note is marked in Ler; notes never reach the
+  screens. Bible slides mark only verse numbers in sequence
+  (`src/lib/verseMarks.js`): "930 anos" stays text on the screen. On the
+  desktop `/Bible` redirects to `/Console?env=biblia`.
+- **Escola bíblica** is a view inside the console (`SchoolView.jsx`, canvas
+  artboard "Escola bíblica"): turmas (`BibleSchoolClass`) with their data
+  and students — a click marks today's presence (`attendance` dates) —,
+  the lesson materials (`BibleMaterial`, grouped by lesson, edited in place:
+  slides, quiz, text, video, image, teacher's notes, colours) and, on the
+  right, the console's own Programa and Prévia. Materials go on air like
+  any stage (`stageFromMaterial`, `src/lib/console/school.js`, tested):
+  slides and text as `content` slides (a slide's image is drawn above its
+  text), a quiz as a question slide then its answer slide (→ reveals), video
+  and image through the media layer. The teacher's notes travel in
+  `content.stage` (the stage screen's notes banner) and show in the
+  console's Prévia column; the projector never draws them. Materials join
+  the Setlist (ServiceItem type `MATERIAL`; planner "EBD"; "Setlist" in the
+  view) and the palette. (The live state's old `school` layer and
+  `/BibleMaterialProjection` were removed in phase 8.)
+- **Relatórios** is a view inside the console (`ReportsView.jsx`;
+  arithmetic in `src/lib/console/reports.js`, tested): by period (30 dias,
+  3 meses, 12 meses, tudo), the songs most sent live (SongHistory, written by
+  the console's send), plays by song category, cultos per month, the CCLI
+  report (songs with a CCLI number played in the period; Copiar as
+  tab-separated text, Salvar CSV) and the history with a filter. On the
+  desktop `/Analytics` and `/SongHistoryPage` redirect to
+  `/Console?reports=1`.
+- **Planejador de culto** is a view inside the console
+  (`ServicePlanner.jsx`, canvas artboard 17): the culto and its team on the
+  left, the Setlist on the right with sections (ServiceItem type `SECTION`),
+  planned times, total and end (`plan()` in `src/lib/console/setlist.js`,
+  tested), templates that keep `contentId`, duplicating the previous culto
+  and the PDF. It writes only the database; nothing there touches the
+  screens. Sections never reach `buildStage`, the Próximo line, the
+  timeline or the palette (`playableItems`). ANNOUNCEMENT items play as
+  `communication.show`. On the desktop `/Services` and `/Services/:id`
+  redirect to `/Console?planner=…`.
+- **Configurações** is a view inside the console (`settings/SettingsView`,
+  canvas artboard 20): Telas e saídas, Telas na rede, Bíblias instaladas,
+  Igreja (name, city, logo on the profile), Temas, Letras, Dados e
+  atualizações, over the same desktop bridges the old page used. Esc goes
+  back to the console and never ends the projection from there. On the
+  desktop `/Settings` redirects to `/Console?config=telas`.
+- **Setlist without a service:** the first item added (drop, "Adicionar",
+  the Bible's "Adicionar à setlist") creates a draft Service "Setlist de
+  dd/mm" for today. Today's service is matched by the local date.
+- **"+" beside every search** (`AddMenu`): Letras — "Do computador…" (txt,
+  ChordPro, cifra, the JSON export; parsers in `src/lib/songImport.js`) and
+  "Na internet…" (`LyricsSearch`, main process `electron/lyrics.cjs`:
+  Vagalume through its API with the church's key in settings.json, plus the
+  letras.mus.br search index; letras.mus.br lyric pages refuse automated
+  reading, so those open in the browser and are pasted — KERYX does not get
+  around that block). Mídia — files via `src/lib/mediaImport.js` and
+  "Biblioteca de mídia…". Avisos — "Novo aviso…" opens the aviso editor.
+  Bíblia — install a version.
+- **Biblioteca de mídia** is a view inside the console (`MediaView.jsx`,
+  canvas artboard "Biblioteca de mídia"): grid or list, kind tabs and
+  categories (pt-BR labels over the stored sermon/worship/… values),
+  "Enviar arquivos" (several, with progress), YouTube links, rename (F2),
+  recategorise, "Tocar em sequência" (`media.playlist` for pictures and
+  videos, the audio channel for audio; PowerPoint is said to be skipped),
+  Delete asks twice and only takes the row out (the file stays in the media
+  folder). A Media row whose file is gone is flagged `missing` by
+  `useLibrary` from `integrations.Core.FileInfo` (desktop:
+  `keryx:media-info`, a stat in the media folder; network screens report
+  nothing) and offers "Localizar…"; the console refuses to send it. A
+  file's duration is read from the file the first time its thumbnail loads.
+- **Avisos** (CommunicationVideo) go on air as `communication.show` (one, or
+  a playlist with "Tocar todos"). `ScreenRenderer` draws them in full on
+  every output: the five kinds (Contagem regressiva, Cronômetro, Chamar
+  atenção — new type `attention` —, Anúncio, Imagem + texto), size, font,
+  colour or gradient, effect, alignment and position, a background image,
+  colour, video or a loop of files (`fileAt` in
+  `src/lib/console/notice.js`, the same file at the same second on every
+  screen), the church logo in a corner, and — only on outputs of this
+  computer (`audio`) — background audio and a Web Audio chime. The last
+  ten seconds of a countdown pulse red. `useNoticeAdvance` (projector and
+  `/CommunicationProjection`, which now renders with ScreenRenderer too)
+  moves a sequence on at the end of each piece. The **Editor de aviso**
+  (`NoticeEditor.jsx`) edits all of it with a live 16:9 preview; saving
+  touches the library only, "Pôr na prévia do console" prepares it.
+- **The player** (`PlayerBar`, logic in `src/lib/console/player.js`) sits
+  on top of the Programa, always (idle when nothing plays, so the monitors
+  never move): what plays with sound (video screens, a video or YouTube on
+  the projector, the audio channel; a switch when several play), Anterior
+  (previous in a list, else back to the start), −10 s, Tocar/Pausar (Space),
+  +10 s, Próximo, Parar, position and seek, mute and a volume slider, the
+  L/R meters (live only) and where the sound comes out, with a warning when
+  the projector window is closed. In the library, an audio file prepares on
+  the audio channel and "Tocar em sequência" queues every audio of the list.
+- Keys (`src/lib/console/keys.js`): a mouse click never leaves focus on a
+  control (the console blurs it), so after clicking a song Enter sends it and
+  the arrows move the slide or verse on air, as in Holyrics. A control
+  focused with Tab keeps its own Enter/Space; Ctrl+Enter sends from anywhere
+  but a text field. **A double click sends to air** (user decision
+  2026-10-07, replacing the earlier no-double-click rule): library rows,
+  setlist rows, slides and Bible verses; one click still only prepares, and
+  Esc plus "Voltar ao anterior" are the net. Dragging does the same spatially:
+  a row dropped on the Prévia prepares, on the Programa sends, on the Setlist
+  becomes a ServiceItem (`src/lib/console/dragStage.js`). **Esc takes the
+  projection down at once** (closing an open popover first; in a text field
+  it only leaves the field); the audio channel keeps playing. AltGr
+  (Ctrl+Alt) is typing. In the Bible environment a letter or digit opens the
+  quick jump (`BibleQuickJump`, `src/lib/console/quickRef.js`): "jo 3 16-18"
+  fills Livro, Capítulo, Versículo — Space or Tab completes the book; Enter
+  selects the verses, Enter again sends. B stays Tela preta there. Output
+  windows give the keyboard back to the window that opened them, never
+  throttle and never pause covered video (occlusion tracking off), and the
+  projector itself handles Esc, B and L if clicked.
+
+Everything the old pages did is in the console (Músicas, Cultos, Mídia,
+Comunicação, Configurações, the Bíblia, the Escola bíblica, Relatórios); the
+old pages, their shell and their projection paths were removed in phase 8.
+`docs/migration-inventory.md` lists every function of the old pages and
+where it went (or why it was retired), the bugs not carried over, and the
+phases of the migration.
 
 ## 3. Outputs and displays
 
@@ -135,8 +475,9 @@ control logic.
 - **As built (phase 2):** the main process places windows, it does not open
   them. Pages hold the `window.open` handle and `postMessage` through it
   (`/Projection` receives slides only that way), so a window the main
-  process opened itself would be deaf. Opening outputs automatically at
-  launch therefore waits for the live-state engine in phase 6. Settings has
+  process opened itself would be deaf. **Phase 6:** outputs render the live
+  state, so the main process opens them too: "Abrir ao iniciar" per output,
+  and `keryx:displays:open` (Testar uses it). Settings has
   "Testar" and "Fechar" per output; Ctrl+W closes a fullscreen output; the
   numbers are primary display first. Unit tests cover the placement rules
   (`electron/outputs.test.cjs`), and the smoke run opens a real output
@@ -182,10 +523,9 @@ Before phase 3 nothing read the `bible_verse` table; every verse came from
   Bíblia › Mais › Bíblias instaladas, and a prompt above the verse search
   while none is installed (`BibleInstaller`, `electron/bible.cjs`).
 - **One source of verse text:** `src/lib/bibleText.js` (`getChapter`,
-  `getPassage`, `searchVerses`). Order: local database → abibliadigital
-  online → AI (web build only). The reader, selector, compare view,
-  `QuickVerseBar`, word search and the Home search all use it. The desktop
-  build never asks the AI for scripture.
+  `getPassage`, `searchVerses`, `searchBible`). Order: local database →
+  abibliadigital online. The console's Bíblia (read, search, compare), the
+  planner and the palette all use it. KERYX never asks an AI for scripture.
 - **References and books:** `src/lib/bibleBooks.js` parses "Jo 3:16",
   "1Co 13:4-7", "salmo 23" (accents optional), and holds the version list.
   Its verse-count table was wrong in ~165 chapters (Levítico 23 listed 9
@@ -293,6 +633,53 @@ Original plan, for reference:
 - **Logs:** `electron-log` to `%APPDATA%/KERYX/logs/`, with "Enviar
   diagnóstico" zipping the last log.
 
+## 8a. Prévia no navegador (dev)
+
+`npm run dev` (and the side-panel preview, `.claude/launch.json` "keryx-ui")
+runs the whole console in a plain browser on sample data, for a quick look
+at the UI. It is the real store and live engine, not a mock:
+`scripts/preview/server.cjs` opens `electron/db/store.cjs` and
+`electron/live.cjs` on a throwaway folder (`%TEMP%\keryx-preview`, wiped on
+every start, or `keryx-preview-<pid>` when another preview holds it),
+seeds `scripts/preview/fixtures.cjs` (invented songs, a culto with
+sections, avisos, media on the bundled backgrounds, a turma with a quiz, and
+João 3:14-18 as "Texto de exemplo do versículo N" — never real Bible text)
+and answers an HTTP API with the shape of the desktop IPC (`/__keryx/db`,
+`/__keryx/live`, `/__keryx/events` over SSE, media at `/media/`), mounted
+by a Vite plugin in `vite.config.js`. Loopback only (by address and Host
+name), writes need the `X-Keryx` header; tested in
+`scripts/preview/server.test.cjs`. In the browser,
+`src/api/backends/preview.js` is installed as `window.keryxDesktop` (same
+shape as `preload.cjs`), so every desktop path runs unchanged; monitors,
+Bible downloads, web lyrics, the network server, backups and the audio
+meters answer "Disponível no aplicativo do computador" or a harmless
+default, and outputs open as browser tabs only from Saídas (a send never
+takes the tab). A strip says "PRÉVIA DE DESENVOLVIMENTO". None of it is in
+a production build (`import.meta.env.DEV`; a plain browser there still gets
+`DesktopOnly`), in the packaged app (scripts/ is not in electron-builder's
+files) or in `npm run desktop:dev` (`KERYX_NO_PREVIEW`). The smoke and
+`desktop:dev` remain the truth for outputs, audio and displays.
+
+## 8b. Nuvem (futuro)
+
+Recorded so the decision is not lost (2026-10-08; nothing built):
+
+- The web build was retired on purpose: projection apps are desktop apps;
+  the hybrid parts exist around them (phone control on the local network,
+  optional accounts for sync), not instead of them.
+- The local SQLite stays the source of truth (local-first): the church
+  projects with no internet.
+- Optional cloud features live inside the desktop app, not in a web UI:
+  - "Conectar conta" in Configurações, signing in through the system
+    browser (OAuth with a loopback or deep-link return);
+  - a scheduled copy of the existing backup file to Google Drive (or
+    Supabase Storage);
+  - later, sync of rows and media to Supabase for a second computer or the
+    team's phones, conflict rule "last edit wins" per row by
+    `updated_date`.
+- `supabase/` (migrations, Edge Functions) is kept, unused, as the starting
+  point for that.
+
 ## 9. Project layout after the change
 
 ```
@@ -322,11 +709,11 @@ development time, not calendar time.
 | --- | --- | --- | --- |
 | 0 | Scaffold | **Done.** Electron shell opens the current UI from a loopback server; 13 dead dependencies removed (Stripe, Leaflet, three, Quill, lodash, moment, …) | 1–2 days |
 | 1 | Local data | **Done.** SQLite store with Base44 query semantics (20 tests), adapter over IPC, change events, local operator profile, uploads to `media/`, import script from Base44. No Supabase requests in the desktop build. | 4–5 days |
-| 2 | Outputs | **Done**, except opening outputs at launch (see section 3). Display placement of the windows pages open, hot-plug re-placement, "Telas e saídas" settings, identify, test/close | 2–3 days |
+| 2 | Outputs | **Done** (opening at launch came with phase 6, section 3). Display placement of the windows pages open, hot-plug re-placement, "Telas e saídas" settings, identify, test/close | 2–3 days |
 | 3 | Media + Bible | **Done** (thumbnails skipped, Bibles installed rather than bundled; sections 4–5). Media library on disk, offline verse lookup and search, bundled backgrounds and logo | 2–3 days |
 | 4 | Ship it | **Built.** Backups, export/import, updater (off until a release repo exists), unsigned NSIS installer, logs and diagnostics. Not yet done: install on the booth PC and run a service with it | 2 days |
 | 5 | Network screens | **Built.** LAN server (off until enabled), screen routes only, read-only API, PIN, QR code in Settings, auto-reconnect, StageView fed from the database | 2–3 days |
-| 6 | Redesign | Live-state projection engine, one control module, then the UI/UX work | separate plan |
+| 6 | Redesign | Live-state projection engine (section 2; engine and outputs built), one control module, then the UI/UX work | separate plan |
 
 Phases 1 and 2 are the risk; after them, nothing depends on the internet.
 

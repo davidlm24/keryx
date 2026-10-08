@@ -20,7 +20,7 @@ test("outputKeyForUrl matches only same-origin output paths", () => {
     assert.equal(outputKeyForUrl("http://127.0.0.1:7700/Projection", origin), "/Projection");
     assert.equal(outputKeyForUrl("http://127.0.0.1:7700/Projection/", origin), "/Projection");
     assert.equal(outputKeyForUrl("/Projection", origin), null, "relative URLs are resolved by Electron before the handler");
-    assert.equal(outputKeyForUrl("http://127.0.0.1:7700/BibleMaterialProjection?channel=x", origin), "/BibleMaterialProjection");
+    assert.equal(outputKeyForUrl("http://127.0.0.1:7700/CommunicationProjection?x=1", origin), "/CommunicationProjection");
     assert.equal(outputKeyForUrl("http://127.0.0.1:7700/Home", origin), null);
     assert.equal(outputKeyForUrl("http://evil.example/Projection", origin), null);
     assert.equal(outputKeyForUrl("about:blank", origin), null);
@@ -73,10 +73,16 @@ test("windowed bounds are centred in the primary work area and never larger than
 });
 
 test("normalizeAssignment accepts what the app writes and nothing else", () => {
-    assert.deepEqual(normalizeAssignment({ target: "window" }), { target: "window" });
-    assert.deepEqual(normalizeAssignment({ target: displayRef(tv) }), { target: displayRef(tv) });
-    assert.deepEqual(normalizeAssignment({ target: { id: "x" } }), { target: "auto" });
-    assert.deepEqual(normalizeAssignment({ target: "fullscreen" }), { target: "auto" });
-    assert.deepEqual(normalizeAssignment(null), { target: "auto" });
-    assert.deepEqual(normalizeAssignment({ target: { id: 3, label: "A", width: 10, height: 20, extra: 1 } }), { target: { id: 3, label: "A", width: 10, height: 20 } });
+    const off = { openAtLaunch: false };
+    assert.deepEqual(normalizeAssignment({ target: "window" }), { target: "window", ...off });
+    assert.deepEqual(normalizeAssignment({ target: displayRef(tv) }), { target: displayRef(tv), ...off });
+    assert.deepEqual(normalizeAssignment({ target: { id: "x" } }), { target: "auto", ...off });
+    assert.deepEqual(normalizeAssignment({ target: "fullscreen" }), { target: "auto", ...off });
+    assert.deepEqual(normalizeAssignment(null), { target: "auto", ...off });
+    assert.deepEqual(normalizeAssignment({ target: { id: 3, label: "A", width: 10, height: 20, extra: 1 } }), { target: { id: 3, label: "A", width: 10, height: 20 }, ...off });
+    // Opening at launch is kept only when it is exactly true.
+    assert.deepEqual(normalizeAssignment({ target: "auto", openAtLaunch: true }), { target: "auto", openAtLaunch: true });
+    assert.deepEqual(normalizeAssignment({ target: displayRef(tv), openAtLaunch: true }), { target: displayRef(tv), openAtLaunch: true });
+    assert.deepEqual(normalizeAssignment({ target: "window", openAtLaunch: "yes" }), { target: "window", ...off });
+    assert.deepEqual(normalizeAssignment({ openAtLaunch: true }), { target: "auto", openAtLaunch: true });
 });

@@ -16,6 +16,28 @@ ipcRenderer.on("keryx:db-change", (_event, change) => {
     }
 });
 
+const liveListeners = new Set();
+ipcRenderer.on("keryx:live-change", (_event, snapshot) => {
+    for (const listener of liveListeners) {
+        try {
+            listener(snapshot);
+        } catch (err) {
+            console.error("[keryx] live listener failed:", err);
+        }
+    }
+});
+
+const meterListeners = new Set();
+ipcRenderer.on("keryx:meter", (_event, level) => {
+    for (const listener of meterListeners) {
+        try {
+            listener(level);
+        } catch (err) {
+            console.error("[keryx] meter listener failed:", err);
+        }
+    }
+});
+
 contextBridge.exposeInMainWorld("keryxDesktop", {
     isDesktop: true,
     platform: process.platform,
@@ -31,6 +53,7 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     displays: {
         list: () => ipcRenderer.invoke("keryx:displays:list"),
         set: (key, assignment) => ipcRenderer.invoke("keryx:displays:set", { key, assignment }),
+        open: (key) => ipcRenderer.invoke("keryx:displays:open", { key }),
         close: (key) => ipcRenderer.invoke("keryx:displays:close", { key }),
         identify: () => ipcRenderer.invoke("keryx:displays:identify"),
     },
@@ -39,8 +62,29 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         install: (version) => ipcRenderer.invoke("keryx:bible:install", { version }),
         installFromFile: (version) => ipcRenderer.invoke("keryx:bible:install-file", { version }),
     },
+    // What every output shows right now; pages use keryx.live, not this.
+    live: {
+        get: () => ipcRenderer.invoke("keryx:live:get"),
+        call: (op, args) => ipcRenderer.invoke("keryx:live:call", { op, args }),
+        onChange(listener) {
+            liveListeners.add(listener);
+            return () => liveListeners.delete(listener);
+        },
+    },
     network: {
         call: (op, args) => ipcRenderer.invoke("keryx:network", { op, args }),
+    },
+    // Lyrics from the web (Vagalume + letras.mus.br search), main process.
+    lyrics: {
+        call: (op, args) => ipcRenderer.invoke("keryx:lyrics", { op, args }),
+    },
+    // Audio levels: outputs report where the sound plays, the console listens.
+    meters: {
+        report: (level) => ipcRenderer.send("keryx:meter", level),
+        onLevel(listener) {
+            meterListeners.add(listener);
+            return () => meterListeners.delete(listener);
+        },
     },
     system: {
         call: (op) => ipcRenderer.invoke("keryx:system", { op }),
@@ -59,5 +103,6 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
             const bytes = new Uint8Array(await file.arrayBuffer());
             return ipcRenderer.invoke("keryx:media-import", { bytes, name: file.name });
         },
+        info: (names) => ipcRenderer.invoke("keryx:media-info", { names }),
     },
 });

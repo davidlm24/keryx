@@ -8,6 +8,12 @@
         "value": "montserrat",
         "createdAt": "2026-10-06T09:24:02.403Z",
         "reason": "user confirmed: chose Montserrat for KERYX headings (2026-10-06)"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-10-07T09:18:18.108Z",
+        "reason": "KERYX design system (docs/design-system/tokens.json, made by the user in Claude Design) sets Geist as the one family for the console and the projected screens"
       }
     ]
   }
