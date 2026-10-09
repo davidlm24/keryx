@@ -1518,7 +1518,7 @@ async function checkNetwork({ network, live, videoFile }) {
 }
 
 // Backups, logs and the Settings bridge, as the packaged app runs them.
-async function checkSystem(webContents, { dataDir, system }) {
+async function checkSystem(webContents, { dataDir, system, settings }) {
     const info = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("info")`)).data;
     const made = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("backupNow")`)).data;
     const fs = require("node:fs");
@@ -1540,8 +1540,35 @@ async function checkSystem(webContents, { dataDir, system }) {
         result.backupOpens = db.prepare("SELECT COUNT(*) AS n FROM profile").get().n === 1;
         db.close();
     } catch { /* stays false */ }
+    // Media goes into the backup only in a folder the church chose (here a
+    // stand-in for a USB stick): the default folder, on the same disk, does
+    // not get a second copy of the videos.
+    result.mediaOffByDefault = made.backup.media && made.backup.media.enabled === false;
+    const usb = path.join(dataDir, "smoke-usb");
+    const sample = path.join(dataDir, "media", "smoke-backup-media.txt");
+    try {
+        fs.mkdirSync(path.dirname(sample), { recursive: true });
+        fs.writeFileSync(sample, "mídia do smoke");
+        settings.set("backup", { dir: usb });
+        await webContents.executeJavaScript(`window.keryxDesktop.system.call("backupNow")`);
+        let media = null;
+        for (let i = 0; i < 50; i += 1) {
+            media = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("info")`)).data.backup.media;
+            if (media && media.enabled && !media.running && media.last) break;
+            await new Promise((r) => setTimeout(r, 200));
+        }
+        result.media = media;
+        result.mediaCopied = Boolean(media && media.enabled && media.files >= 1 && !media.error)
+            && fs.readFileSync(path.join(usb, "media", "smoke-backup-media.txt"), "utf8") === "mídia do smoke";
+    } catch (err) {
+        result.mediaCopied = false;
+        result.mediaError = err.message;
+    } finally {
+        settings.set("backup", {});
+        fs.rmSync(sample, { force: true });
+    }
     result.ok = info.dataDir === dataDir && result.backupsAfterLaunch >= 1 && result.backupsAfterManual >= 1
-        && result.backupOpens && logs >= 1 && Boolean(system.info);
+        && result.backupOpens && logs >= 1 && Boolean(system.info) && result.mediaOffByDefault && result.mediaCopied;
     return result;
 }
 
@@ -1566,7 +1593,7 @@ function expectAdapter(a) {
 const VERBOSE = process.env.KERYX_SMOKE_VERBOSE === "1";
 const step = (name) => { if (VERBOSE) console.log(`smoke: ${name}`); };
 
-function runSmokeTest(win, { dev, outputs, screen, system, network, live, dataDir, importOutcome }) {
+function runSmokeTest(win, { dev, outputs, screen, system, settings, network, live, dataDir, importOutcome }) {
     const errors = [];
     const { webContents } = win;
     // Last check, then the report: closing the console must quit KERYX even
@@ -1655,7 +1682,7 @@ function runSmokeTest(win, { dev, outputs, screen, system, network, live, dataDi
             }
             step("bridge ok; checking outputs");
             const outputsResult = await checkOutputs(webContents, outputs, screen, { fullscreen: process.env.KERYX_SMOKE_FULLSCREEN === "1" });
-            const systemResult = await checkSystem(webContents, { dataDir, system });
+            const systemResult = await checkSystem(webContents, { dataDir, system, settings });
             const liveResult = await checkLive(webContents, { live });
             const videoResult = await checkVideo(webContents, { live });
             const layersResult = await checkLayers(webContents, { live, outputs });

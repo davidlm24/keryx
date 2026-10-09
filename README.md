@@ -56,7 +56,13 @@ Configurações › "Dados e atualizações":
 - **Backup automático:** a copy of the database on launch and on close, one per
   day, the last 14 kept, in `%APPDATA%\KERYX\backups` or a folder you choose
   (OneDrive, Google Drive and USB folders work, and give you a copy off this
-  computer). Backups do not include media files.
+  computer). In a folder you chose, the media files (videos, images, the
+  logo) are mirrored too, into `<folder>media`: on launch and with "Fazer
+  backup agora", in the background, copying only what is new or changed;
+  files deleted in KERYX stay there. The default folder (same disk) gets no
+  media copy. There is no "restore a backup" button yet: put the day's
+  `keryx-YYYY-MM-DD.db` and the `media` folder back by hand, or use
+  Exportar/Importar.
 - **Exportar tudo / Importar:** one zip with the database and all media, to move
   to another computer or keep as a full backup. Importing replaces the current
   data and restarts KERYX; what was replaced stays in a `before-import-…`

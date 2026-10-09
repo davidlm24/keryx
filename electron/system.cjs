@@ -45,11 +45,41 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         return { dir: defaultBackupDir, fallback: false };
     }
 
+    // The media folder is mirrored only into a folder the church chose (a USB
+    // stick, another disk, a Google Drive folder): a copy on the same disk as
+    // the data would double the space and protect nothing. It runs in the
+    // background (the first copy of the videos can take minutes) and never on
+    // close, which cannot wait; files added since are copied the next time.
+    let media = { running: false, last: null, error: "" };
+    let mediaJob = null;
+    let statsCache = null;
+    function backupMedia(reason) {
+        const { dir, fallback } = backupDir();
+        if (!configuredDir() || fallback) return null;
+        if (mediaJob) return mediaJob;
+        media = { ...media, running: true, error: "" };
+        mediaJob = backup.mirrorMedia({ mediaDir, dir }).then((r) => {
+            media = { running: false, last: { at: new Date().toISOString(), copied: r.copied, bytes: r.bytes }, error: r.failed.length ? `${r.failed.length} arquivo(s) não copiado(s)` : "" };
+            logger.info(`[keryx-backup] mídia (${reason}): ${r.copied} de ${r.files} copiados, ${r.bytes} bytes, em ${dir}`);
+            for (const fail of r.failed.slice(0, 5)) logger.warn(`[keryx-backup] mídia: ${fail.name}: ${fail.error}`);
+        }, (err) => {
+            media = { running: false, last: media.last, error: err.message };
+            logger.error(`[keryx-backup] mídia (${reason}) falhou: ${err.stack || err.message}`);
+        }).finally(() => { mediaJob = null; statsCache = null; });
+        return mediaJob;
+    }
+    function mediaInfo(dir, fallback) {
+        if (!configuredDir() || fallback) return { enabled: false };
+        if (!statsCache || statsCache.dir !== dir) statsCache = { dir, ...backup.mirrorStats(dir) };
+        return { enabled: true, running: media.running, last: media.last, error: media.error, files: statsCache.files, bytes: statsCache.bytes };
+    }
+
     function backupNow(reason) {
         const { dir } = backupDir();
         try {
             const result = backup.runBackup({ store, dir });
             logger.info(`[keryx-backup] ${reason}: ${result.file}${result.removed.length ? ` (removidos ${result.removed.length} antigos)` : ""}`);
+            if (reason !== "ao fechar") backupMedia(reason);
             return result;
         } catch (err) {
             logger.error(`[keryx-backup] ${reason} falhou: ${err.stack || err.message}`);
@@ -72,6 +102,7 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
                 keep: backup.KEEP,
                 count: list.length,
                 last: list[0] ? { name: list[0].name, modified: list[0].modified, size: list[0].size } : null,
+                media: mediaInfo(dir, fallback),
             },
             pendingImport: archive.hasPendingImport(dataDir),
             update: updater.state(),
@@ -174,6 +205,7 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
 
     return {
         backupNow,
+        backupMedia,
         info,
         ops: {
             info: async () => info(),

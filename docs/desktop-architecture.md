@@ -625,7 +625,14 @@ Original plan, for reference:
   (`keryx-YYYY-MM-DD.db`), the newest 14 kept, written under a temporary name
   so a full disk never replaces a good backup. The folder is configurable in
   Settings; an unplugged USB falls back to `%APPDATA%\KERYX\backups` rather
-  than skipping. Backups hold the database only (not media).
+  than skipping. **Media** (2026-10-09): in a folder the church chose (not the
+  default one, which is on the same disk) the media folder is mirrored into
+  `<folder>/media` (`mirrorMedia`): in the background on launch, with
+  "Fazer backup agora" and when the folder changes, never on close (it cannot
+  wait). Only new or changed files are copied (size and mtime; copies keep the
+  source's times), each under a temporary name first; files deleted in KERYX
+  stay in the mirror. Settings shows the files, size and last copy. No restore
+  button yet: by hand, or Exportar/Importar.
 - **Exportar tudo / Importar** (`electron/archive.cjs`): a zip with a
   manifest, the database and `media/`. Import validates the zip (only
   expected names, so a path-traversal entry is refused; the database must pass

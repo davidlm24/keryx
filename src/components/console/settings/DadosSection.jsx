@@ -34,12 +34,18 @@ export default function DadosSection({ c }) {
         <>
             <div className="frm">
                 <FormRow k="Backup">
-                    <Btn kind="outline" disabled={any} onClick={() => run("backupNow", "Backup", () => "Backup feito.")}>{busy === "backupNow" ? "Fazendo…" : "Fazer backup agora"}</Btn>
+                    <Btn kind="outline" disabled={any} onClick={() => run("backupNow", "Backup", (r) => (r?.backup?.media?.enabled ? "Backup feito · copiando as mídias novas." : "Backup feito."))}>{busy === "backupNow" ? "Fazendo…" : "Fazer backup agora"}</Btn>
                     <span className="kx-meta">{backup.last ? `último: ${formatWhen(backup.last.modified)} · ${formatBytes(backup.last.size)} · ${backup.count} ${backup.count === 1 ? "salvo" : "salvos"}` : "ainda não há backups nesta pasta"}</span>
                 </FormRow>
                 <FormRow k="Backup automático">
-                    <span className="kx-meta">ao abrir e ao fechar o KERYX, um por dia · ficam os últimos {backup.keep}</span>
+                    <span className="kx-meta">ao abrir e ao fechar o KERYX, um por dia · ficam os últimos {backup.keep}{backup.media.enabled ? " · as mídias novas são copiadas ao abrir" : ""}</span>
                 </FormRow>
+                <FormRow k="Mídias no backup">
+                    {backup.media.enabled
+                        ? <span className="kx-meta">{backup.media.running ? "copiando as mídias novas…" : `${backup.media.files} ${backup.media.files === 1 ? "arquivo" : "arquivos"} · ${formatBytes(backup.media.bytes)}${backup.media.last ? ` · última cópia ${formatWhen(backup.media.last.at)}${backup.media.last.copied ? ` (${backup.media.last.copied} ${backup.media.last.copied === 1 ? "nova" : "novas"})` : ""}` : ""}`}</span>
+                        : <span className="kx-meta">escolha uma pasta de backup fora deste disco (pen drive, outro disco ou uma pasta do Google Drive) para guardar também vídeos, imagens e o logo</span>}
+                </FormRow>
+                {backup.media.error && <FormRow k=""><span className="kx-warn">Mídias: {backup.media.error} · veja o registro em Salvar diagnóstico</span></FormRow>}
                 <FormRow k="Pasta de backup">
                     <span className="kx-content cfg-path" title={backup.dir}>{backup.dir}</span>
                     <Btn disabled={any} onClick={() => run("chooseBackupDir", "Pasta de backup", () => "Pasta alterada e backup feito.")}>Escolher…</Btn>
