@@ -413,7 +413,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     {mode === "comparar" && <BibleCompareView book={book} chapter={chapter} version={version || wanted} sel={sel} onSelect={pick} onSendVersion={sendVersion} onUseVersion={switchVersion} />}
                 </Panel>
             </div>
-            <div className="kx-split" />
+            <div className="kx-gap" />
             <div className="col bible-air-col" style={{ flex: "0 1 400px", minWidth: 300 }}>
                 <Panel title={<span className={c.isLive ? "kx-air" : "kx-rh"}>{c.isLive ? "No ar agora" : "Ensaio"}</span>} count={airTitle} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="bible-air">

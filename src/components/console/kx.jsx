@@ -23,11 +23,12 @@ export function Panel({ title, count, actions, collapsed, onToggle, className = 
 
 export function Btn({ kind = "", small, on, className = "", children, ...rest }) {
     const cls = `kx-btn kx-t ${kind ? `kx-btn-${kind}` : ""} ${on ? "is-on" : ""} ${className}`;
-    return <button type="button" className={cls} style={small ? { height: 22, padding: "0 6px" } : undefined} {...rest}>{children}</button>;
+    // Small buttons are still 24 px tall: the minimum pointer target (WCAG 2.2).
+    return <button type="button" className={cls} style={small ? { height: 24, padding: "0 6px" } : undefined} {...rest}>{children}</button>;
 }
 
 export function IconBtn({ name, title, small, on, className = "", ...rest }) {
-    const size = small ? { height: 20, width: 20 } : undefined;
+    const size = small ? { height: 24, width: 24 } : undefined;
     return (
         <button type="button" className={`kx-btn kx-btn-icon kx-t ${on ? "is-on" : ""} ${className}`} style={size} aria-label={title} title={title} {...rest}>
             <Icon name={name} />
@@ -114,12 +115,26 @@ export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp }) {
         window.addEventListener("mouseup", up);
         return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
     }, [horizontal, onSize, sign, clamp]);
+    // From the keyboard (Tab to it): the arrows resize in 16 px steps, Enter
+    // or Home restores. The arrows stop here (keys.js leaves a focused
+    // separator alone), so nothing moves on air while resizing.
+    const onKeyDown = (e) => {
+        const grow = horizontal ? { ArrowDown: 1, ArrowUp: -1 } : { ArrowRight: 1, ArrowLeft: -1 };
+        if (grow[e.key]) { e.preventDefault(); e.stopPropagation(); onSize(clamp(size + sign * grow[e.key] * 16)); }
+        else if (e.key === "Enter" || e.key === "Home") { e.preventDefault(); e.stopPropagation(); onReset?.(); }
+    };
     return (
         <div
             className={`kx-split ${horizontal ? "kx-split-h" : ""} ${drag.current ? "is-dragging" : ""}`}
+            role="separator"
+            aria-orientation={horizontal ? "horizontal" : "vertical"}
+            aria-valuenow={Math.round(size)}
+            aria-label="Redimensionar · setas ajustam, Enter restaura"
+            tabIndex={0}
             title="Arraste para redimensionar · duplo clique restaura"
             onMouseDown={(e) => { e.preventDefault(); drag.current = { x: e.clientX, y: e.clientY, size }; document.body.style.cursor = horizontal ? "row-resize" : "col-resize"; }}
             onDoubleClick={onReset}
+            onKeyDown={onKeyDown}
         />
     );
 }

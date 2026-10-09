@@ -33,6 +33,12 @@
 .console .topbar .tb-bell { position: relative; display: inline-flex; flex: none; }
 .console .topbar .tb-bell-dot { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--air); box-shadow: 0 0 0 2px var(--bg-1); pointer-events: none; }
 .console .topbar .tb-outs-s { display: none; font-variant-numeric: tabular-nums; }
+/* Ver, in sight after the environments. */
+.console .topbar .tb-ver { flex: none; padding: 0 var(--space-2); }
+/* "Telas": the actions that change the screens, one framed group with names. */
+.console .topbar .tb-screens { display: inline-flex; align-items: center; gap: 2px; height: var(--row); padding: 0 2px; flex: none; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .topbar .tb-screens-k { padding: 0 6px; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
+.console .topbar .tb-screens .kx-btn { height: 24px; padding: 0 6px; gap: 4px; }
 .console .topbar .kx-seg > button { white-space: nowrap; }
 /* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
 .console .envtabs { height: var(--topbar); border-bottom: 0; padding: 0; }
@@ -47,6 +53,7 @@
 @container topbar (max-width: 1200px) {
     .console .topbar .tb-outs-l { display: none; }
     .console .topbar .tb-outs-s { display: inline; }
+    .console .topbar .tb-screens-k { display: none; }
 }
 @container topbar (max-width: 1080px) {
     .console .topbar .tb-search { width: 32px; max-width: 32px; padding: 0; justify-content: center; }

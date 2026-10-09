@@ -227,7 +227,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                     </div>
                 </Panel>
             </div>
-            <div className="kx-split" />
+            <div className="kx-gap" />
             <div className="col center">
                 <Panel title={<>Setlist <span className="kx-count">· {p.count} {p.count === 1 ? "item" : "itens"} · {total(p.seconds)} · termina às {clockAt(p.ends)}</span></>} actions={<span className="pl-acts">
                     <span className="pl-popwrap">
