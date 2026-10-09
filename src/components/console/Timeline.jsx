@@ -2,25 +2,28 @@ import React from "react";
 import Icon from "./Icon";
 import { IconBtn } from "./kx";
 import { plannedTimes } from "./Rundown";
+import { serviceTiming, lateWords, clock } from "@/lib/console/timeline";
 
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const minutesOf = (hhmm) => { const [h, m] = String(hhmm).split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 
-// Linha do tempo: one line (Agora, Próximo, how late) that opens into the
-// planned blocks (dashed) over the real ones (from the console's log of when
-// each item went on air). A click on a block prepares the item; going to it
+// Linha do tempo: one line about the service as a whole (how many items are
+// done, when it will end, how late it runs) that opens into the planned
+// blocks (dashed) over the real ones (from the console's log of when each
+// item went on air). What is on air and what is next are the live column's
+// job, not repeated here. A click on a block prepares the item; going to it
 // is explicit ("Ir" in the Setlist, or Enter). Opened with no service, or a
 // service with no items, it says so instead of opening onto nothing.
 export default function Timeline({ service, items, airItemId, prevItemId, log, now, open, onToggle, onPrepare }) {
     const times = plannedTimes(service, items);
     const airIdx = items.findIndex((i) => i.id === airItemId);
     const airItem = airIdx >= 0 ? items[airIdx] : null;
-    const nextItem = airIdx >= 0 ? items[airIdx + 1] : items[0];
     const startedAt = airItem && log[airItem.id]?.start;
     const elapsed = startedAt ? (now - startedAt) / 1000 : 0;
     const todayAt = (hhmm) => { const d = new Date(now); d.setHours(0, 0, 0, 0); return d.getTime() + minutesOf(hhmm) * 60000; };
-    const late = airItem && startedAt ? Math.round((startedAt - todayAt(times[airIdx])) / 60000) : 0;
-    const lateText = !airItem ? "" : late > 0 ? `+${late} min atrasado` : late < 0 ? `−${-late} min adiantado` : "no horário";
+    const timing = serviceTiming({ items, times, airIdx, startedAt, now });
+    const { late } = timing;
+    const lateText = lateWords(late, Boolean(airItem && startedAt));
 
     const start = service ? todayAt(times[0] || "19:00") - 5 * 60000 : now;
     const total = items.reduce((a, b) => a + (b.duration || 0), 0) * 1000;
@@ -31,8 +34,15 @@ export default function Timeline({ service, items, airItemId, prevItemId, log, n
     return (
         <>
             <div className="kx-tl">
-                <span className="kx-tl-now"><span className="kx-tl-k">Agora</span><i className="kx-dot" /><span className="kx-tl-v">{airItem ? airItem.title : "—"}</span>{airItem && startedAt && <span className="kx-meta">{mmss(elapsed)}{airItem.duration ? ` de ${mmss(airItem.duration)}` : ""}</span>}</span>
-                <span className="kx-tl-next" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span className="kx-tl-k">Próximo</span><i className="kx-dot" /><span className="kx-tl-v">{nextItem ? nextItem.title : "—"}</span>{nextItem?.duration ? <span className="kx-meta">{mmss(nextItem.duration)}</span> : null}</span>
+                <span className="kx-tl-k">Culto</span>
+                {!service && <span className="kx-meta">nenhum culto escolhido</span>}
+                {service && !timing.count && <span className="kx-meta">sem itens</span>}
+                {timing.count > 0 && <span className="kx-tl-v">{timing.done} de {timing.count} {timing.count === 1 ? "item" : "itens"}</span>}
+                {timing.forecastEnd != null && (
+                    <span className="kx-meta" title={late ? `Previsto ${clock(timing.plannedEnd)}; no ritmo de agora, ${clock(timing.forecastEnd)}` : "Pelo planejado"}>
+                        termina {late ? `~${clock(timing.forecastEnd)}` : clock(timing.forecastEnd)}{late ? ` · previsto ${clock(timing.plannedEnd)}` : ""}
+                    </span>
+                )}
                 <span style={{ flex: 1 }} />
                 <span className={late > 0 ? "kx-warn" : "kx-meta"}>{lateText}</span>
                 <IconBtn name={open ? "chevron-down" : "collapse"} title={open ? "Recolher a linha do tempo" : "Expandir a linha do tempo"} onClick={onToggle} />
