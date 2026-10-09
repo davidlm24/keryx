@@ -481,8 +481,9 @@ window out of Alt+Tab, so output windows are also created with
 `type: "toolbar"` (WS_EX_TOOLWINDOW; creation-time only, in `windowOptions`).
 Measured during a smoke (window styles of the app's windows every 3 s): the
 console was the only KERYX window Alt+Tab would list; the outputs had
-`tool=True`. Not checked by hand: Esc/B/L and Ctrl+W typed into a clicked
-output on a real monitor. `focusable: false` is not an option: outputs handle
+`tool=True`. The smoke clicks into the projector (real focus) and types
+→, B, L, Esc and Ctrl+W there (`outputKeys`); it passed with the projector
+full screen on an external monitor (2026-10-09). `focusable: false` is not an option: outputs handle
 those keys.
 
 - **Display manager** (main process, Electron `screen` API): lists monitors,

@@ -1273,6 +1273,47 @@ async function checkConsole(webContents, { live, outputs }) {
 
         await click(".tl-panel .kx-tl button", "");
         result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
+
+        // The operator clicks the projector (a tool window, out of Alt+Tab):
+        // it takes the keyboard and its keys work there. → moves the slide,
+        // B and L toggle Tela preta and the logo, Esc ends, Ctrl+W closes it.
+        // Keys go to the projector's page; focus is the real one.
+        let proj = windowFor("/Projection");
+        if (!proj) { outputs.open("/Projection"); proj = await waitWindow("/Projection", 10000); }
+        live.call("content.show", { kind: "lyrics", title: "Teclas no projetor", slides: [{ text: "Slide um das teclas" }, { text: "Slide dois das teclas" }] });
+        const outKeys = {};
+        if (proj) {
+            const pressOn = async (k, modifiers = []) => {
+                const keyCode = KEYCODE[k] || k;
+                proj.webContents.sendInputEvent({ type: "keyDown", keyCode, modifiers });
+                if (k.length === 1 && !modifiers.includes("control")) proj.webContents.sendInputEvent({ type: "char", keyCode: k, modifiers });
+                proj.webContents.sendInputEvent({ type: "keyUp", keyCode, modifiers });
+                await sleep(120);
+            };
+            const screenIs = async (mode) => { const ok = await waitFor(() => live.get().screen === mode, 3000); await sleep(300); return ok; };
+            outKeys.shown = await waitText(proj, "Slide um das teclas");
+            proj.focus();
+            outKeys.focus = await waitFor(() => proj.isFocused(), 3000);
+            if (!outKeys.focus) { const fw = BrowserWindow.getFocusedWindow(); outKeys.focusedInstead = fw ? fw.webContents.getURL() : "nenhuma janela do KERYX"; }
+            await pressOn("ArrowRight");
+            outKeys.next = await waitFor(() => live.get().content && live.get().content.index === 1, 3000);
+            await pressOn("b");
+            outKeys.black = await screenIs("black");
+            await pressOn("b");
+            outKeys.unblack = await screenIs("show");
+            await pressOn("l");
+            outKeys.logo = await screenIs("logo");
+            await pressOn("l");
+            outKeys.unlogo = await screenIs("show");
+            await pressOn("Escape");
+            outKeys.esc = await waitFor(() => !live.get().content, 3000);
+            await pressOn("w", ["control"]);
+            outKeys.ctrlW = await waitFor(() => !windowFor("/Projection"), 3000);
+        }
+        result.outputKeys = outKeys;
+        result.outputKeysOk = Boolean(proj && outKeys.shown && outKeys.focus && outKeys.next && outKeys.black && outKeys.unblack
+            && outKeys.logo && outKeys.unlogo && outKeys.esc && outKeys.ctrlW);
+        if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
     } finally {
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         live.call("clear");
@@ -1310,6 +1351,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
+        && result.outputKeysOk
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
