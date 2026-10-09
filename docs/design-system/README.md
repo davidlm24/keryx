@@ -31,7 +31,7 @@ Projected screens are a different world: `screen-bg` black, `screen-fg` white te
 
 ## Typography
 
-One family, `sans` (Geist, Inter as fallback, loaded from Google Fonts with `tnum`). Eight console styles, three screen styles: `meta` 11/16 for the grey line under every title; `section` 11/16 500 uppercase with 0.06em tracking for module headers and monitor captions; `ui` 12/16 and `ui-strong` 12/16 500 for controls; `content` 13/18 for titles in lists; `content-lg` 14/20 for slide and verse text; `clock` 20/24 and `countdown` 28/32 for time only. On the console nothing is larger than 14px except those two. Weight is 400 or 500; 600 exists only on projected lyrics and the cover.
+One family, `sans` (Geist, Inter as fallback, shipped with the app, never loaded from the internet, with `tnum`). Eight console styles, three screen styles: `meta` 11/16 for the grey line under every title; `section` 11/16 500 uppercase with 0.06em tracking for module headers and monitor captions; `ui` 12/16 and `ui-strong` 12/16 500 for controls; `content` 13/18 for titles in lists; `content-lg` 14/20 for slide and verse text; `clock` 20/24 and `countdown` 28/32 for time only. On the console nothing is larger than 14px except those two. Weight is 400 or 500; 600 exists only on projected lyrics and the cover.
 
 Screens use `display` (the same family at heavier weight): `screen-lyrics`, `screen-verse`, `screen-ref`, sized in container units of the monitor so a preview at 320px wide and the real 1920px screen keep the same proportions.
 

@@ -1,5 +1,9 @@
+// "sans" (Sem serifa, the default) is Geist, shipped with the app
+// (src/fonts.css): the same letters on the projector, the console's monitors
+// and every network screen, so lines break in the same places. The others
+// are the device's own fonts and may differ from one screen to another.
 export const FONT_MAP = {
-  sans: "ui-sans-serif, system-ui, sans-serif",
+  sans: "\"Geist\", ui-sans-serif, system-ui, sans-serif",
   serif: "ui-serif, Georgia, serif",
   mono: "ui-monospace, monospace",
   cursive: "cursive",

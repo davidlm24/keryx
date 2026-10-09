@@ -69,6 +69,10 @@ Configurações › "Dados e atualizações":
   folder inside the data folder until you delete it.
 - **Salvar diagnóstico:** a zip with recent logs and system info for support.
 - **Atualizações:** from 0.2.1 on, new versions come from the releases repository (see "Releasing" below).
+  The bell in the top bar says when one is out; "Atualizar agora" (KERYX menu, under Configurações)
+  downloads it with a progress bar and restarts. With "Atualizar automaticamente" on, KERYX downloads
+  by itself and, right after opening, installs with the progress popup. It never restarts with
+  something on air without asking.
 
 ### Releasing a new version
 

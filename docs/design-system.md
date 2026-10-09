@@ -100,7 +100,12 @@ a control (`src/lib/console/keys.js`).
   from `tokens.json`) and `tokens.css` is loaded globally; components in
   `src/components/console/` follow `bundle.css` class by class (`kx-panel`,
   `kx-row`, `kx-mon`, …) so the mockup and the app read the same.
-- Fonts: Geist (Google Fonts) with Inter/system fallback; `tnum` everywhere.
+- Fonts: Geist, shipped with the app (variable woff2 in `src/assets/fonts/`,
+  `@font-face` in `src/fonts.css`, SIL OFL 1.1 in `public/fonts/`), with
+  Inter/system fallback; `tnum` everywhere. Nothing is fetched from the
+  internet: the console, the output windows and the network screens load
+  the same file, so projected lines break in the same places. It is also
+  the "Sem serifa" of every theme (`FONT_MAP.sans`).
 - Projected screens are not styled by these tokens: they use the church's
   themes and backgrounds (user data) and only the `screen-*` styles.
 

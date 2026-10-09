@@ -1,5 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap");
-/* KERYX — component stylesheet. Every colour, size and radius is a token from tokens.json (tokens.css loads first).
+/* Geist is not fetched here: the app ships it (src/fonts.css, @font-face over a
+   bundled woff2), so the console looks the same offline.
+   KERYX — component stylesheet. Every colour, size and radius is a token from tokens.json (tokens.css loads first).
    Rules of the console: colour means state; 28px rows; 2px state bar + 10% tint on a highlighted row; bare glyphs;
    one 120ms ease-out; no shadows inside panels. Class prefix: kx- */
 

@@ -27,6 +27,21 @@ ipcRenderer.on("keryx:live-change", (_event, snapshot) => {
     }
 });
 
+// Updates and the bell, pushed by the main process (electron/updater.cjs,
+// electron/notifications.cjs).
+const updateListeners = new Set();
+ipcRenderer.on("keryx:update", (_event, state) => {
+    for (const listener of updateListeners) {
+        try { listener(state); } catch (err) { console.error("[keryx] update listener failed:", err); }
+    }
+});
+const notificationListeners = new Set();
+ipcRenderer.on("keryx:notifications", (_event, list) => {
+    for (const listener of notificationListeners) {
+        try { listener(list); } catch (err) { console.error("[keryx] notifications listener failed:", err); }
+    }
+});
+
 const meterListeners = new Set();
 ipcRenderer.on("keryx:meter", (_event, level) => {
     for (const listener of meterListeners) {
@@ -88,7 +103,15 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         },
     },
     system: {
-        call: (op) => ipcRenderer.invoke("keryx:system", { op }),
+        call: (op, args) => ipcRenderer.invoke("keryx:system", { op, args }),
+        onUpdate(listener) {
+            updateListeners.add(listener);
+            return () => updateListeners.delete(listener);
+        },
+        onNotifications(listener) {
+            notificationListeners.add(listener);
+            return () => notificationListeners.delete(listener);
+        },
     },
     media: {
         // Files picked from disk are copied by path in the main process, so a

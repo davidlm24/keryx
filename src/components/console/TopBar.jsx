@@ -14,7 +14,7 @@ const elapsed = (ms) => {
 // the window narrows the bar drops the clock, then shortens the outputs
 // label and the search (container queries in console.css). Tela preta and
 // Mostrar logo act on the real screens in every mode.
-export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsCount, outsState, logoUrl }) {
+export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsCount, outsState, logoUrl, unread = 0 }) {
     const { live, now, mode } = c;
     const since = live?.session?.startedAt;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -54,6 +54,10 @@ export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsC
                 <button type="button" className={`kx-status kx-t ${outsState ? `is-${outsState}` : ""}`} onClick={() => toggle("outs")} title={`Telas e saídas · ${outsLabel}`} aria-expanded={open === "outs"}>
                     <i className="kx-dot" /><span className="tb-outs-l">{outsLabel}</span><span className="tb-outs-s">{outsCount}</span>
                 </button>
+                <span className="tb-bell">
+                    <IconBtn name="bell" title={unread ? `Notificações · ${unread} ${unread === 1 ? "nova" : "novas"}` : "Notificações"} on={open === "notifs"} onClick={() => toggle("notifs")} aria-expanded={open === "notifs"} />
+                    {unread > 0 && open !== "notifs" && <i className="tb-bell-dot" aria-hidden="true" />}
+                </span>
                 <span className="tb-sep" />
                 <IconBtn name="black" title="Tela preta · B · nas telas, na hora" on={live?.screen === "black"} onClick={() => c.toggleScreen("black")} />
                 <IconBtn name="logo" title="Mostrar logo · L · nas telas" on={live?.screen === "logo"} onClick={() => c.toggleScreen("logo")} />

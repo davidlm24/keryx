@@ -123,7 +123,7 @@ function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaD
         const op = payload && payload.op;
         if (!Object.prototype.hasOwnProperty.call(system.ops, op)) return { error: { message: `Operação desconhecida: ${op}.`, status: 400 } };
         try {
-            return { data: await system.ops[op](event) };
+            return { data: await system.ops[op](event, (payload && payload.args) || {}) };
         } catch (err) {
             log(`[keryx-system] ${op}: ${err && err.stack}`);
             return { error: { message: err.message || "Falha na operação.", status: err.status || 500 } };

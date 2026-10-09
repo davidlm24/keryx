@@ -644,9 +644,24 @@ Original plan, for reference:
   in `%APPDATA%\KERYX\logs` (7 days) including crashes; "Salvar diagnóstico"
   saves a zip of the recent logs plus system info (versions, displays, output
   assignments, installed Bibles, backup state). Nothing is sent anywhere.
-- **Updates** (`electron/updater.cjs`, electron-updater): checks on launch,
-  never downloads or installs without a click. **Disabled** until a build has a
-  `publish` target (no GitHub repository exists yet); Settings says so.
+- **Updates** (`electron/updater.cjs`, electron-updater, from
+  comunidadegerar/keryx-releases): checks on launch and every 6 hours. By
+  default it only tells (the bell, and "Atualizar agora" under Configurações
+  in the KERYX menu); **Atualizar automaticamente** (Configurações › Dados)
+  checks at once on launch and downloads what it finds. Every state change is
+  pushed to the console (`keryx:update`), which shows a popup with a progress
+  bar (MB, speed, time left): opened by "Atualizar agora", or by itself when
+  auto is on and an update turns up in the first 3 minutes after opening.
+  Installing (a silent `quitAndInstall`, about 30 s with the outputs closed)
+  is the console's call, never the main process's: with nothing on air it
+  counts down 5 s (Cancelar stops it), with something on air it waits for
+  "Instalar mesmo assim". Rules in `src/lib/console/updates.js` (tested).
+- **Notifications** (`electron/notifications.cjs`, tested): the console's
+  bell, red dot while unread, kept in settings.json (30 at most, one per
+  key). Today: an update found, downloaded or failed, "KERYX atualizado para
+  a versão X" after one, and backups that went to the default folder or left
+  media out. Each may carry an action the console runs (`update`,
+  `settings:dados`).
 - **Installer:** `npm run dist` → `release/KERYX-Setup-<version>.exe` (NSIS,
   per user, pt-BR, desktop and Start-menu shortcuts, unsigned: Windows shows
   the "Run anyway" prompt once). Uninstalling does not delete
