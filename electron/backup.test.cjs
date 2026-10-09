@@ -8,7 +8,7 @@ const { DatabaseSync } = require("node:sqlite");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
 const { runBackup, listBackups, dayStamp, mirrorMedia, mirrorStats } = require("./backup.cjs");
-const { exportAll, stageImport, applyPendingImport, hasPendingImport, discardPendingImport } = require("./archive.cjs");
+const { exportAll, stageImport, stageRestore, applyPendingImport, hasPendingImport, discardPendingImport } = require("./archive.cjs");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "keryx-bk-"));
 const openAt = (dir) => createStore({ file: path.join(dir, "keryx.db"), schema, log: () => {} });
@@ -257,4 +257,41 @@ test("no media folder yet: an empty mirror, no error", async () => {
     const r = await mirrorMedia({ mediaDir: path.join(data, "media"), dir: path.join(data, "usb") });
     assert.deepEqual([r.files, r.copied, r.failed.length], [0, 0, 0]);
     assert.deepEqual(mirrorStats(path.join(data, "usb")), { files: 0, bytes: 0 });
+});
+
+test("restoring a daily backup: the old data comes back, today's media stays, deleted media returns from the mirror", async () => {
+    const data = tmp();
+    const media = path.join(data, "media");
+    fs.mkdirSync(media);
+    const usb = path.join(data, "usb");
+    let store = openAt(data);
+    store.call("Song", "create", [{ title: "A" }]);
+    fs.writeFileSync(path.join(media, "a.jpg"), "image a");
+    runBackup({ store, dir: usb, now: new Date(2026, 9, 6, 10, 0) });
+    await mirrorMedia({ mediaDir: media, dir: usb });
+
+    // Later that week: a new song, a.jpg deleted, b.jpg added.
+    store.call("Song", "create", [{ title: "B" }]);
+    fs.rmSync(path.join(media, "a.jpg"));
+    fs.writeFileSync(path.join(media, "b.jpg"), "image b");
+    store.close();
+
+    const staged = await stageRestore({ dataDir: data, dbFile: listBackups(usb)[0].file, mediaDir: media, mirrorDir: path.join(usb, "media") });
+    assert.deepEqual(staged, { media: 2, fromBackup: 1 });
+    assert.ok(hasPendingImport(data));
+    const result = applyPendingImport(data);
+    assert.ok(result && fs.existsSync(path.join(result.archived, "keryx.db")), "today's data kept aside");
+    assert.deepEqual(fs.readdirSync(path.join(data, "media")).sort(), ["a.jpg", "b.jpg"]);
+    store = openAt(data);
+    assert.equal(titles(store), "A");
+    store.close();
+});
+
+test("a broken backup file is refused and nothing stays staged", async () => {
+    const data = tmp();
+    const bad = path.join(data, "keryx-2026-10-06.db");
+    fs.writeFileSync(bad, "not a database");
+    await assert.rejects(stageRestore({ dataDir: data, dbFile: bad, mediaDir: path.join(data, "media") }), /corrompido/);
+    assert.equal(hasPendingImport(data), false);
+    assert.equal(fs.existsSync(path.join(data, "pending-import")), false);
 });

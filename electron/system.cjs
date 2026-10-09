@@ -161,6 +161,47 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         return { restarting: true };
     }
 
+    // The daily backups in the backup folder, newest first, for "Restaurar".
+    function backupList() {
+        const { dir } = backupDir();
+        return {
+            dir,
+            backups: backup.listBackups(dir).map(({ name, day, size, modified }) => ({ name, day, size, modified })),
+            mirror: backup.mirrorStats(dir),
+        };
+    }
+
+    // "Restaurar um backup": staged like an import (archive.stageRestore), then
+    // asked once more, then a restart applies it before the database opens.
+    // Today's data is moved to before-import-<time>/, never deleted.
+    async function restoreBackup(event, name) {
+        const { dir } = backupDir();
+        const found = backup.listBackups(dir).find((b) => b.name === name);
+        if (!found) throw new Error("Esse backup não está mais na pasta de backup.");
+        const mirrorDir = path.join(dir, "media");
+        const staged = await archive.stageRestore({ dataDir, dbFile: found.file, mediaDir, mirrorDir: fs.existsSync(mirrorDir) ? mirrorDir : null });
+        const day = found.day.split("-").reverse().join("/");
+        const answer = await message(event, {
+            type: "warning",
+            title: "Restaurar backup",
+            message: `Restaurar o backup de ${day} substitui os dados atuais.`,
+            detail: `Músicas, setlists, avisos, anotações e configurações das telas voltam a como estavam em ${day}.` +
+                (staged.fromBackup ? ` ${staged.fromBackup} arquivo(s) de mídia apagados desde então voltam da cópia no backup.` : "") +
+                "\n\nOs dados de hoje não são apagados: ficam numa pasta “before-import-…” dentro da pasta de dados. O KERYX vai reiniciar agora.",
+            buttons: ["Restaurar e reiniciar", "Cancelar"],
+            defaultId: 1,
+            cancelId: 1,
+        });
+        if (answer.response !== 0) {
+            archive.discardPendingImport(dataDir);
+            return { cancelled: true };
+        }
+        logger.info(`[keryx-restore] ${found.file} preparado (${staged.media} mídias, ${staged.fromBackup} do backup); reiniciando para aplicar`);
+        app.relaunch();
+        app.exit(0);
+        return { restarting: true };
+    }
+
     async function chooseBackupDir(event) {
         const { canceled, filePaths } = await dialog.showOpenDialog(parentWindow(event), {
             title: "Pasta para os backups automáticos",
@@ -225,6 +266,8 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             openDataDir: async () => { await shell.openPath(dataDir); return null; },
             exportAll: async (event) => exportAll(event),
             importAll: async (event) => importAll(event),
+            backupList: async () => backupList(),
+            restoreBackup: async (event, { name }) => restoreBackup(event, name),
             diagnostics: async (event) => diagnostics(event),
             updateCheck: async () => { await updater.check(); return info(); },
             updateState: async () => updateState(),

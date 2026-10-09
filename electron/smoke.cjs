@@ -1595,6 +1595,10 @@ async function checkSystem(webContents, { dataDir, system, settings }) {
     // Media goes into the backup only in a folder the church chose (here a
     // stand-in for a USB stick): the default folder, on the same disk, does
     // not get a second copy of the videos.
+    // Restaurar lists the daily backups of the folder (restoring itself asks in a
+    // native dialog and restarts; archive.stageRestore is unit tested).
+    const listed = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("backupList")`)).data;
+    result.restoreListed = Boolean(listed && listed.backups.length >= 1 && /^keryx-\d{4}-\d{2}-\d{2}\.db$/.test(listed.backups[0].name));
     result.mediaOffByDefault = made.backup.media && made.backup.media.enabled === false;
     const usb = path.join(dataDir, "smoke-usb");
     const sample = path.join(dataDir, "media", "smoke-backup-media.txt");
@@ -1620,7 +1624,7 @@ async function checkSystem(webContents, { dataDir, system, settings }) {
         fs.rmSync(sample, { force: true });
     }
     result.ok = info.dataDir === dataDir && result.backupsAfterLaunch >= 1 && result.backupsAfterManual >= 1
-        && result.backupOpens && logs >= 1 && Boolean(system.info) && result.mediaOffByDefault && result.mediaCopied;
+        && result.backupOpens && logs >= 1 && Boolean(system.info) && result.mediaOffByDefault && result.mediaCopied && result.restoreListed;
     return result;
 }
 
