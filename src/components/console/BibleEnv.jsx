@@ -75,8 +75,8 @@ function chapterStageOf({ verses, n, version, book, chapter, onAir }) {
     return { ...st, id, title: `${book} ${chapter}:${n}`, index };
 }
 
-// The Bíblia environment, Holyrics-style: books and chapters on the left
-// (with recent chapters, favourites and notes), the chapter in the middle —
+// The Bíblia environment, Holyrics-style: books and chapters in a band on
+// top (with recent chapters, favourites and notes), the chapter below it —
 // read it (Ler), search the installed Bíblia by word (Buscar), or set
 // versions side by side (Comparar) — and, on the right, what is on air, the
 // selection, its note and the actions.
@@ -87,12 +87,37 @@ function chapterStageOf({ verses, n, version, book, chapter, onAir }) {
 //     the whole chapter (one verse per slide) starting there, so ←/→ keep
 //     walking the chapter; a range picked on purpose (Shift/Ctrl+click) goes
 //     out as that passage, grouped 1/2/3/Auto per slide.
+// Favoritos and Anotações: a button with a dropdown list (the selector band
+// stays one line high).
+function ListMenu({ icon, label, count, empty, rows }) {
+    const [open, setOpen] = useState(false);
+    const box = useRef(null);
+    useEffect(() => {
+        if (!open) return undefined;
+        const away = (e) => { if (!box.current?.contains(e.target)) setOpen(false); };
+        const esc = (e) => { if (e.key === "Escape") { e.stopPropagation(); setOpen(false); } };
+        window.addEventListener("mousedown", away);
+        window.addEventListener("keydown", esc, true);
+        return () => { window.removeEventListener("mousedown", away); window.removeEventListener("keydown", esc, true); };
+    }, [open]);
+    return (
+        <span className="addmenu" ref={box}>
+            <button type="button" className={`bchip kx-t ${open ? "is-on" : ""}`} onClick={() => setOpen((o) => !o)} aria-expanded={open}><Icon name={icon} size={12} />{label} · {count}</button>
+            {open && (
+                <div className="kx-pop addmenu-pop blist-pop" role="menu">
+                    {!rows.length && <div className="be-hint kx-meta">{empty}</div>}
+                    {rows.map((r) => <Row key={r.key} single={!r.meta} icon={r.icon} title={r.title} meta={r.meta} onClick={() => { setOpen(false); r.onPick(); }} />)}
+                </div>
+            )}
+        </span>
+    );
+}
+
 export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend }) {
     const [mem, setMem] = useState(load);
     const [version, setVersion] = useState(null);
     const [book, setBook] = useState(mem.book || "João");
     const [chapter, setChapter] = useState(mem.chapter || 3);
-    const [grid, setGrid] = useState(false);
     const [sel, setSel] = useState([]);
     const [how, setHow] = useState("auto");
     const [verses, setVerses] = useState([]);
@@ -129,7 +154,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             search.run(request.search, "all");
             return;
         }
-        setBook(request.book); setChapter(request.chapter); setGrid(false);
+        setBook(request.book); setChapter(request.chapter);
         const nums = request.verseStart ? Array.from({ length: request.verseEnd - request.verseStart + 1 }, (_, i) => request.verseStart + i) : [];
         setSel(nums);
         setAnchor(nums[0] ?? null);
@@ -171,7 +196,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
 
     // A search result: its chapter opens behind and the verse is selected.
     const pickResult = useCallback((r) => {
-        setBook(r.book); setChapter(r.chapter); setGrid(false);
+        setBook(r.book); setChapter(r.chapter);
         setSel([r.verse]); setAnchor(r.verse);
     }, []);
     // A double click on a result: project from that verse right away.
@@ -221,7 +246,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         setSel([n]);
         setAnchor(n);
     };
-    const goRef = (text) => { const r = parseReference(text); if (!r) { c.say("Referência não reconhecida. Ex.: Jo 3:16-21"); return false; } setBook(r.book); setChapter(r.chapter); setGrid(false); setSel(r.verseStart ? Array.from({ length: r.verseEnd - r.verseStart + 1 }, (_, i) => r.verseStart + i) : []); setAnchor(r.verseStart || null); setQ(""); return true; };
+    const goRef = (text) => { const r = parseReference(text); if (!r) { c.say("Referência não reconhecida. Ex.: Jo 3:16-21"); return false; } setBook(r.book); setChapter(r.chapter); setSel(r.verseStart ? Array.from({ length: r.verseEnd - r.verseStart + 1 }, (_, i) => r.verseStart + i) : []); setAnchor(r.verseStart || null); setQ(""); return true; };
     // The top field: a reference opens it; anything else searches by word.
     const submitTop = () => {
         const text = q.trim();
@@ -285,39 +310,33 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
 
     return (
         <>
-            <div className="col" style={{ flex: "0 1 340px", minWidth: 260 }}>
-                <Panel title="Bíblia" count={version || wanted} actions={<select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: 4, font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+            <div className="col center">
+                <Panel className="bband" title="Bíblia" count={version || wanted} actions={<select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: 4, font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>}>
                     {version && version !== wanted && <div className="warnline"><Icon name="warn" /><span>{wanted} não instalada · mostrando {version}</span></div>}
                     <div className="searchrow">
                         <Field value={q} onChange={setQ} placeholder="Referência (Jo 3:16) ou palavra" onKeyDown={(e) => { if (e.key === "Enter") submitTop(); }} />
                         <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}`, icon: "book", onClick: () => installVersion(v.id) }))} />
                     </div>
-                    {grid ? (
-                        <div className="bgrid" style={{ overflow: "auto" }}>
-                            {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} onClick={() => { setBook(b.name); setChapter(1); setSel([]); setGrid(false); }}>{b.short}</button>)}
+                    <div className="bgrid">
+                        {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{b.short}</button>)}
+                    </div>
+                    <div className="bchap">
+                        <span className="bchap-name" style={{ "--group": groupColor(bookIdx) }}>{bookRow.name}<small>{bookRow.chapters} cap.</small></span>
+                        <div className="chapters">
+                            {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
                         </div>
-                    ) : (
-                        <>
-                            <div className="bstrip"><button type="button" className="kx-book kx-t is-selected" style={{ "--group": groupColor(bookIdx) }} onClick={() => setGrid(true)} title="Trocar de livro">{bookRow.name}<small>{bookRow.chapters} cap.</small></button><span className="kx-meta">Capítulo</span></div>
-                            <div className="chapters" style={{ overflow: "auto", maxHeight: 240 }}>
-                                {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
-                            </div>
-                        </>
-                    )}
-                    <div className="be-lists">
-                        <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Recentes</span></div>
-                        {(mem.recent || []).map(([b, ch]) => <Row key={`${b}${ch}`} single icon="history" title={`${b} ${ch}`} onClick={() => { setBook(b); setChapter(ch); setSel([]); setGrid(false); setMode("ler"); }} />)}
-                        <div className="listhead"><span className="kx-section">Favoritos <span className="kx-count">· {notesApi.favorites.length}</span></span></div>
-                        {!notesApi.favorites.length && <div className="be-hint kx-meta">Selecione versículos e use a estrela.</div>}
-                        {notesApi.favorites.map((f) => <Row key={f.id} single icon="star" title={f.reference} onClick={() => { if (goRef(f.reference)) setMode("ler"); }} />)}
-                        <div className="listhead"><span className="kx-section">Anotações <span className="kx-count">· {notesApi.notes.length}</span></span></div>
-                        {!notesApi.notes.length && <div className="be-hint kx-meta">Selecione um versículo e escreva à direita.</div>}
-                        {notesApi.notes.map((n) => <Row key={n.id} icon="text" title={n.reference} meta={n.note_text} onClick={() => { if (goRef(n.reference)) setMode("ler"); }} />)}
+                    </div>
+                    <div className="bband-lists">
+                        <span className="kx-section">Recentes</span>
+                        {!(mem.recent || []).length && <span className="kx-meta">nenhum</span>}
+                        {(mem.recent || []).map(([b, ch]) => <button type="button" key={`${b}${ch}`} className="bchip kx-t" onClick={() => { setBook(b); setChapter(ch); setSel([]); setMode("ler"); }}><Icon name="history" size={12} />{b} {ch}</button>)}
+                        <span style={{ flex: 1 }} />
+                        <ListMenu icon="star" label="Favoritos" count={notesApi.favorites.length} empty="Selecione versículos e use a estrela."
+                            rows={notesApi.favorites.map((fv) => ({ key: fv.id, icon: "star", title: fv.reference, onPick: () => { if (goRef(fv.reference)) setMode("ler"); } }))} />
+                        <ListMenu icon="text" label="Anotações" count={notesApi.notes.length} empty="Selecione um versículo e escreva à direita."
+                            rows={notesApi.notes.map((n) => ({ key: n.id, icon: "text", title: n.reference, meta: n.note_text, onPick: () => { if (goRef(n.reference)) setMode("ler"); } }))} />
                     </div>
                 </Panel>
-            </div>
-            <div className="kx-split" />
-            <div className="col center">
                 <Panel title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}${version ? ` · ${version}` : ""}`}
                     count={mode === "ler" ? "clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" : mode === "buscar" ? "↑↓ percorre os resultados · Enter ou 2 cliques projeta" : "versões lado a lado"}
                     actions={<>

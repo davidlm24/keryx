@@ -758,6 +758,28 @@ async function checkConsole(webContents, { live, outputs }) {
         // Bíblia: a letter opens the quick jump; "jo 3 16" reads as João 3:16.
         await click(".envtabs button", "Bíblia");
         await waitText(webContents, "SELECIONADO");
+        // The selector is a band on top of the reading: every book and every
+        // chapter of Salmos (150) in view without scrolling, the reading
+        // still roomy below it.
+        await click(".bgrid .kx-book", "Sl");
+        await waitFor(() => js("document.querySelectorAll('.bband .chapters button').length === 150"));
+        result.bibleNoScroll = {};
+        for (const [w, h] of [[1366, 768], [1920, 1080]]) {
+            if (operatorWin) operatorWin.setContentSize(w, h);
+            await sleep(500);
+            result.bibleNoScroll[`${w}x${h}`] = await js(`(() => {
+                const band = document.querySelector(".console .bband");
+                const body = band && band.querySelector(".kx-panel-b");
+                const last = [...document.querySelectorAll(".bband .chapters button")].pop();
+                const reading = document.querySelector(".console .col.center > .kx-panel:not(.bband)");
+                if (!band || !body || !last || !reading) return false;
+                const r = last.getBoundingClientRect(); const b = band.getBoundingClientRect(); const rd = reading.getBoundingClientRect();
+                return body.scrollHeight <= body.clientHeight + 1 && r.bottom <= b.bottom && r.bottom <= innerHeight && rd.top >= b.bottom - 1 && rd.height >= 150;
+            })()`);
+        }
+        if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
+        await sleep(300);
+        result.bibleBandFits = Object.values(result.bibleNoScroll).every(Boolean);
         await press("j");
         result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
         await type("o 3 16");
@@ -1195,10 +1217,16 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("document.activeElement && document.activeElement.blur(); true");
         const notesOf = async (type) => ((await js(`window.keryxDesktop.db.call("BibleNote", "filter", [{ note_type: "${type}" }])`)).data || []);
         result.noteSaved = await waitFor(async () => (await notesOf("note")).some((n) => n.book === "João" && n.chapter === 3 && n.verse === 16 && n.note_text === "Nota do smoke"), 6000);
-        result.noteMarked = await waitFor(() => js("Boolean(document.querySelector('.reading .kx-verse.has-note[data-verse=\"16\"]')) && document.body.innerText.includes('Nota do smoke')"));
+        // Marked in the reading, and listed (with its text) under Anotações.
+        const verseMarked = await waitFor(() => js("Boolean(document.querySelector('.reading .kx-verse.has-note[data-verse=\"16\"]'))"));
+        await click(".bband-lists .bchip", "Anotações");
+        result.noteMarked = verseMarked && await waitFor(() => js("[...document.querySelectorAll('.blist-pop .kx-row')].some((n) => n.textContent.includes('Nota do smoke'))"));
+        await click(".bband-lists .bchip", "Anotações");
         await js("(() => { const b = [...document.querySelectorAll('.console .main button')].find((x) => x.getAttribute('title') === 'Favoritar'); if (b) b.click(); return Boolean(b); })()");
         result.favSaved = await waitFor(async () => (await notesOf("favorite")).some((n) => n.reference === "João 3:16"), 6000);
-        result.favListed = await waitFor(() => js("[...document.querySelectorAll('.be-lists .kx-row')].some((n) => n.textContent.includes('João 3:16'))"));
+        await click(".bband-lists .bchip", "Favoritos");
+        result.favListed = await waitFor(() => js("[...document.querySelectorAll('.blist-pop .kx-row')].some((n) => n.textContent.includes('João 3:16'))"));
+        await click(".bband-lists .bchip", "Favoritos");
         await press("/");
         await waitFor(() => js("Boolean(document.querySelector('.palette input'))"));
         await type("verso teste");
@@ -1348,7 +1376,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
         && result.tlEmpty && result.tlBlocks && result.tlClosed
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
-        && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && result.chapterSent && result.chapterRef === "João 3:16 · NVI"
+        && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && result.bibleBandFits && result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk

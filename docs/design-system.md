@@ -80,6 +80,14 @@ uses bigger targets (books 44 px, chapters 36 px), and the Bible column has
 no Prévia. The player's seek is a 6 px progress bar (red while live) with
 the remaining time and the length beside it.
 
+**Bíblia selector band (2026-10-09):** the picker left the side column. It
+is a band on top of the reading (`.bband`): search and version, all 66
+books at once (26 px, coloured by group), the chosen book with every
+chapter (26 px), and a line with Recentes as chips and Favoritos/Anotações
+as dropdowns. Nothing in it scrolls (Salmos 150 included); the reading
+below takes the rest of the height. This replaces the 44/36 px targets of
+round 3: the user preferred finding things without scrolling.
+
 The canvas still has things the app does differently, on purpose: slides
 send on double click there (never in the app), and Esc there asks before
 ending (the app ends at once; the Encerrar button asks). Plain Enter sends
