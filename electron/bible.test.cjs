@@ -5,7 +5,7 @@ const { pathToFileURL } = require("node:url");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
 const {
-    BOOK_NAMES, SOURCES, parseBibleJson, installFromJson, installFromSource, installedVersions, verseId,
+    BOOK_NAMES, SOURCES, parseBibleJson, installFromJson, installFromSource, fetchOnlineChapter, installedVersions, verseId,
 } = require("./bible.cjs");
 
 const BOM = String.fromCharCode(0xfeff);
@@ -95,4 +95,34 @@ test("installFromSource reports offline and HTTP failures in Portuguese", async 
     assert.equal(ok.version, "NVI");
     await assert.rejects(installFromSource(s, "NVI", async () => { throw new Error("ENOTFOUND"); }), { status: 503 });
     await assert.rejects(installFromSource(s, "NVI", async () => ({ ok: false, status: 404 })), { status: 502 });
+});
+
+test("fetchOnlineChapter reads the verses of the site's answer", async () => {
+    let seen;
+    const fetchImpl = async (url) => {
+        seen = url;
+        return { ok: true, status: 200, json: async () => ({ verses: [{ number: 1, text: " Bem-aventurado o homem " }, { number: "x", text: "ignorado" }, { number: 2 }] }) };
+    };
+    const verses = await fetchOnlineChapter({ api: "ara", slug: "salmos", chapter: 1 }, fetchImpl);
+    assert.equal(seen, "https://www.abibliadigital.com.br/api/chapters/ara/salmos/1");
+    assert.deepEqual(verses, [{ number: 1, text: "Bem-aventurado o homem" }]);
+});
+
+test("fetchOnlineChapter: unknown chapter is empty, failures speak pt-BR", async () => {
+    const reply = (status, body) => async () => ({ ok: status < 400, status, json: async () => body });
+    const args = { api: "ara", slug: "salmos", chapter: 1 };
+    assert.deepEqual(await fetchOnlineChapter(args, reply(404, {})), []);
+    await assert.rejects(fetchOnlineChapter(args, reply(500, {})), /HTTP 500/);
+    await assert.rejects(fetchOnlineChapter(args, async () => ({ ok: true, status: 200, json: async () => { throw new Error("x"); } })), /resposta inválida/);
+    await assert.rejects(fetchOnlineChapter(args, async () => { throw new TypeError("fetch failed"); }), /Sem conexão/);
+});
+
+test("fetchOnlineChapter refuses parts that could change the URL", async () => {
+    const never = async () => { throw new Error("no request expected"); };
+    for (const args of [
+        { api: "../x", slug: "salmos", chapter: 1 },
+        { api: "ara", slug: "salmos/1?x=", chapter: 1 },
+        { api: "ara", slug: "salmos", chapter: 0 },
+        { api: "ara", slug: "salmos", chapter: "1/2" },
+    ]) await assert.rejects(fetchOnlineChapter(args, never), /inválido/);
 });

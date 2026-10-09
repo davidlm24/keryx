@@ -92,6 +92,7 @@ export function createPreviewBridge() {
         displays,
         bible: {
             status: () => request("bible"),
+            onlineChapter: unavailable,
             install: unavailable,
             installFromFile: unavailable,
         },

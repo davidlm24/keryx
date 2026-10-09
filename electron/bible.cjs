@@ -100,6 +100,39 @@ async function installFromSource(store, version, fetchImpl = fetch) {
     return installFromJson(store, version, await response.text());
 }
 
+// One chapter from abibliadigital.com.br, for versions not installed. It runs
+// here, not in the page: the site sends no CORS headers, so the renderer's
+// fetch is blocked. `api` and `slug` come from the page, so they are checked
+// before they go into the URL. -> [{ number, text }]; [] when the site has no
+// such chapter.
+const API_PART = /^[a-z0-9]{1,16}$/;
+async function fetchOnlineChapter({ api, slug, chapter }, fetchImpl = fetch) {
+    const number = Number(chapter);
+    if (!API_PART.test(String(api)) || !API_PART.test(String(slug)) || !Number.isInteger(number) || number < 1 || number > 150) {
+        throw new BibleError("Capítulo inválido para a busca online.");
+    }
+    let response;
+    try {
+        response = await fetchImpl(`https://www.abibliadigital.com.br/api/chapters/${api}/${slug}/${number}`, {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(10000),
+        });
+    } catch {
+        throw new BibleError("Sem conexão com a internet para buscar este capítulo.", 503);
+    }
+    if (response.status === 404) return [];
+    if (!response.ok) throw new BibleError(`O serviço online não respondeu (HTTP ${response.status}).`, 502);
+    let data;
+    try {
+        data = await response.json();
+    } catch {
+        throw new BibleError("O serviço online enviou uma resposta inválida.", 502);
+    }
+    return (Array.isArray(data && data.verses) ? data.verses : [])
+        .filter((v) => v && Number.isInteger(v.number) && typeof v.text === "string")
+        .map((v) => ({ number: v.number, text: v.text.trim() }));
+}
+
 // { NVI: 31105, ... } for every version with verses in the database.
 function installedVersions(store) {
     return store.countBy("BibleVerse", "version");
@@ -113,5 +146,6 @@ module.exports = {
     parseBibleJson,
     installFromJson,
     installFromSource,
+    fetchOnlineChapter,
     installedVersions,
 };
