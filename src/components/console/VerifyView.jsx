@@ -70,16 +70,21 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
         }));
         out.push({ name: "Mídia da setlist", lines: media.length ? media : [line("Nenhum arquivo na setlist", "Músicas, leituras e avisos não dependem de arquivos", "info", null, "film")] });
 
-        // Fontes: the console's own, and the ones themes ask for.
+        // Fontes: Geist ships with KERYX (src/fonts.css) and is the "Sem
+        // serifa" of every screen. Loading it for real (document.fonts.check
+        // says true even when no Geist face exists) tells whether the bundled
+        // file reached this window.
         const fonts = [];
         await document.fonts.ready.catch(() => {});
-        const geist = document.fonts.check("12px Geist");
-        fonts.push(line("Geist", geist ? "Fonte do console · carregada" : "Fonte do console · não carregou, usando a do sistema", geist ? "ok" : "warn", null, "text"));
+        const geist = (await document.fonts.load("12px Geist").catch(() => [])).length > 0;
+        fonts.push(line("Geist", geist ? "Instalada com o KERYX · a mesma no console e em todas as telas" : "Não carregou: o console e as telas usam a do sistema, e as linhas podem quebrar diferente. Reinicie o KERYX; se continuar, reinstale.", geist ? "ok" : "warn", null, "text"));
         const families = Array.from(new Set(data.themes.map((t) => t.font_family).filter(Boolean)));
         for (const f of families) {
+            if (f === "sans") continue; // Geist, above
             const css = FONT_MAP[f];
-            const ok = css ? document.fonts.check(`16px ${css}`) : false;
-            fonts.push(line(f, css ? (ok ? "Usada por um tema · disponível" : "Usada por um tema · não instalada, usando a padrão") : "Fonte desconhecida · usando a padrão", ok ? "ok" : "warn", null, "text"));
+            fonts.push(css
+                ? line(f, "Usada por um tema · fonte do aparelho: uma tela na rede sem ela usa outra e pode quebrar as linhas diferente", "info", null, "text")
+                : line(f, "Fonte desconhecida · as telas usam a Geist", "warn", null, "text"));
         }
         out.push({ name: "Fontes", lines: fonts });
 

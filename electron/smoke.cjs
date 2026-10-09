@@ -655,6 +655,14 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Enter");
         result.sent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
         result.projected = Boolean(main) && await waitText(main, "Primeiro slide do console");
+        // The projector's letters are the Geist that ships with KERYX (src/fonts.css),
+        // loaded from the app, never from the internet.
+        result.projectorFont = Boolean(main) && await main.webContents.executeJavaScript(`(async () => {
+            const faces = await document.fonts.load("40px Geist");
+            const text = [...document.querySelectorAll(".ks [style]")].find((n) => n.textContent.includes("Primeiro slide do console"));
+            const remote = performance.getEntriesByType("resource").some((e) => /googleapis|gstatic/.test(e.name));
+            return faces.length > 0 && Boolean(text) && /^"?Geist/.test(getComputedStyle(text).fontFamily) && !remote;
+        })()`).catch(() => false);
         // Click a tab again, then the arrow: the slide moves on the projector.
         await click(".envtabs button", "KERYX");
         await press("ArrowRight");
@@ -1398,7 +1406,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.advanced && result.barFits && result.escEnded && result.escToast
+        && result.sent && result.projected && result.projectorFont && result.advanced && result.barFits && result.escEnded && result.escToast
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
@@ -1469,6 +1477,14 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             stage: { song_key: "Sol maior", chords: "G D Em C" },
         });
         result.lyrics = await waitFor(lyrics, "Primeira linha da letra");
+        // A screen on the network gets the same Geist from the KERYX computer
+        // (dist/assets), so its lines break as on the projector.
+        result.lanFont = await lyrics.webContents.executeJavaScript(`(async () => {
+            const faces = await document.fonts.load("40px Geist");
+            const remote = performance.getEntriesByType("resource").some((e) => /googleapis|gstatic/.test(e.name));
+            const local = performance.getEntriesByType("resource").some((e) => /\\/assets\\/Geist-Variable[^/]*\\.woff2$/.test(new URL(e.name).pathname));
+            return faces.length > 0 && local && !remote;
+        })()`).catch(() => false);
         live.call("content.goTo", { index: 1 });
         result.stage = await waitFor(stage, "Segunda linha da letra");
         result.stageChords = (await textOf(stage)).includes("Sol maior");
@@ -1540,7 +1556,7 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         await network.ops.setEnabled(null, false);
     }
     const l = result.live;
-    result.ok = result.started && result.isNetworkScreen && result.lyrics && result.stage && result.lyricsAdvanced
+    result.ok = result.started && result.isNetworkScreen && result.lyrics && result.lanFont && result.stage && result.lyricsAdvanced
         && result.stageChords && result.lyricsBlack && result.stageDuringBlack
         && result.videoSrc === `${base}/media/${videoFile}`
         && result.projectorScreen && result.pastorScreen
