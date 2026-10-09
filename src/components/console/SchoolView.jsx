@@ -161,7 +161,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                     </div>
                 </Panel>
             </div>
-            <div className="kx-split" />
+            <div className="kx-gap" />
             <div className="col center sv-center">
                 {editing ? (
                     <MaterialEditor c={c} draft={editing} setDraft={setEditing} classes={classes} media={media} confirm={confirm} onSave={saveMaterial} onCancel={() => setEditing(null)} onRemove={removeMaterial} onPreview={() => c.setPrev(stageFromMaterial({ ...editing, id: editing.id || "rascunho" }))} />
@@ -191,7 +191,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                     </Panel>
                 )}
             </div>
-            <div className="kx-split" />
+            <div className="kx-gap" />
             <div className="col" style={{ flex: "0 1 400px", minWidth: 300 }}>
                 <Panel title={<>Projetar <span className="kx-count">· o mesmo Programa e Prévia do console</span></>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "auto" }}>
                     <div className="sv-mons">

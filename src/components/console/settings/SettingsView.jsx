@@ -38,7 +38,7 @@ export default function SettingsView({ c, section, setSection, onClose }) {
                     ))}
                 </Panel>
             </div>
-            <div className="kx-split" />
+            <div className="kx-gap" />
             <div className="col center cfg">
                 <Panel title={current[2]} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "auto" }}>
                     <Body c={c} />

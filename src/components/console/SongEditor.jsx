@@ -251,7 +251,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                     <input ref={bgFileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; upload(f, "background_image"); }} />
                 </Panel>
             </div>
-            <div className="kx-split" />
+            <div className="kx-gap" />
             <div className="col" style={{ flex: "0 1 480px", minWidth: 300 }}>
                 <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="ed-tools">
@@ -264,7 +264,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                     <div className="ed-lyrics"><textarea ref={lyricsRef} className="ed-text" value={song.lyrics || ""} onChange={(e) => setLyrics(e.target.value)} aria-label="Letra" placeholder={"[Verso 1]\nPrimeira linha\nsegunda linha\n\n[Refrão]\n…"} spellCheck={false} /></div>
                 </Panel>
             </div>
-            <div className="kx-split" />
+            <div className="kx-gap" />
             <div className="col center song-ed-r" style={{ gap: "var(--gutter)" }}>
                 <Panel title={<>Slides <span className="kx-count">· {resplit ? "divisão ao vivo" : "slides salvos · editar a letra refaz"}</span></>} style={{ flex: 1.3 }} actions={<Seg small value={split} onChange={(v) => { setSplit(v); setResplit(true); setDirty(true); }} options={SPLITS} />} bodyStyle={{ overflow: "auto" }}>
                     {!slides.length && <Empty icon="list" title="Nenhum slide">Escreva a letra; cada estrofe vira um slide.</Empty>}

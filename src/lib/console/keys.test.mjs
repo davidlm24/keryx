@@ -65,6 +65,20 @@ test("↑/↓ move the selection, ←/→ the air (Holyrics)", () => {
     assert.equal(key("ArrowDown", nothing, { ctrlKey: true }), null);
 });
 
+test("a splitter focused with Tab keeps the arrows: nothing moves on air", () => {
+    // <div class="kx-split" role="separator" tabindex="0">
+    const splitter = el("DIV", ["[tabindex]:not([data-live-keys])", "[role='separator']"]);
+    assert.equal(focusKind(splitter), "control");
+    assert.equal(key("ArrowRight", splitter), null);
+    assert.equal(key("ArrowLeft", splitter), null);
+    assert.equal(key("ArrowUp", splitter), null);
+    assert.equal(key("ArrowDown", splitter), null);
+    assert.equal(key("Enter", splitter), null, "Enter restores the size; it never sends");
+    assert.equal(key("Enter", splitter, { ctrlKey: true }), "send", "Ctrl+Enter still sends from anywhere");
+    assert.equal(key("b", splitter), "black", "the screen keys still work");
+    assert.equal(key("Escape", splitter), "end");
+});
+
 test("AltGr (Ctrl+Alt with a character) is typing, not a shortcut", () => {
     assert.equal(key("/", nothing, { ctrlKey: true, altKey: true }), "search", "ABNT2: AltGr+Q gives /");
     assert.equal(key("?", nothing, { ctrlKey: true, altKey: true }), "help");

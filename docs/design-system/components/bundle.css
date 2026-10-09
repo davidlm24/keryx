@@ -20,6 +20,13 @@
 .kx-section { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
 .kx-content { font-size: 13px; line-height: 18px; color: var(--fg-1); }
 .kx-content-lg { font-size: 14px; line-height: 20px; color: var(--fg-1); }
+/* Live information gets its own steps (the rest of the console stays 11-14px):
+   the state word, what is on air (once per screen), what is prepared / next,
+   what failed. 11px (meta) is for telemetry only. */
+.kx-live-cap { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.kx-live-title { font-size: 16px; line-height: 22px; font-weight: 600; color: var(--fg-1); }
+.kx-next-title { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--fg-1); }
+.kx-alert-title { font-size: 13px; line-height: 18px; font-weight: 600; }
 .kx-clock { font-size: 20px; line-height: 24px; font-weight: 500; color: var(--fg-2); }
 .kx-countdown { font-size: 28px; line-height: 32px; font-weight: 500; color: var(--fg-1); }
 .kx-air { color: var(--air-fg); } .kx-prev { color: var(--prev-fg); } .kx-rh { color: var(--rh-fg); } .kx-warn { color: var(--warn-fg); }
@@ -91,8 +98,9 @@
 .kx-row .kx-row-acts { display: none; gap: 2px; flex: none; }
 .kx-row:hover .kx-row-acts, .kx-row:focus-within .kx-row-acts { display: inline-flex; }
 .kx-row:hover .kx-row-time.kx-hide-on-hover { display: none; }
-.kx-row .kx-btn { height: 20px; min-width: 20px; padding: 0 4px; font-size: 11px; }
-.kx-row .kx-btn.kx-btn-icon { width: 20px; }
+/* 24 px: the minimum pointer target (WCAG 2.2), the glyph stays 16 px. */
+.kx-row .kx-btn { height: 24px; min-width: 24px; padding: 0 4px; font-size: 11px; }
+.kx-row .kx-btn.kx-btn-icon { width: 24px; }
 .kx-row .kx-glyph { color: var(--fg-3); flex: none; display: inline-flex; }
 
 /* ---- Tabs (library) ---- */
@@ -107,10 +115,16 @@
 .kx-mon-cap { height: 20px; display: flex; align-items: center; gap: var(--space-2); padding: 0 2px; }
 .kx-mon-cap .kx-section { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kx-mon-screen { position: relative; aspect-ratio: 16 / 9; background: var(--screen-bg); border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); container-type: inline-size; font-family: var(--font-display); color: var(--screen-fg); }
-.kx-mon.is-air .kx-mon-screen { box-shadow: 0 0 0 1px var(--air); } .kx-mon.is-air .kx-mon-cap .kx-section { color: var(--air-fg); }
-.kx-mon.is-prev .kx-mon-screen { box-shadow: 0 0 0 1px var(--prev); } .kx-mon.is-prev .kx-mon-cap .kx-section { color: var(--prev-fg); }
-.kx-mon.is-rh .kx-mon-screen { box-shadow: 0 0 0 1px var(--rh); } .kx-mon.is-rh .kx-mon-cap .kx-section { color: var(--rh-fg); }
-.kx-mon.is-warn .kx-mon-screen { box-shadow: 0 0 0 1px var(--warn); } .kx-mon.is-warn .kx-mon-cap .kx-section { color: var(--warn-fg); }
+.kx-mon.is-air .kx-mon-screen { box-shadow: 0 0 0 1px var(--air); } .kx-mon.is-air .kx-mon-cap :is(.kx-section, .kx-live-cap) { color: var(--air-fg); }
+.kx-mon.is-prev .kx-mon-screen { box-shadow: 0 0 0 1px var(--prev); } .kx-mon.is-prev .kx-mon-cap :is(.kx-section, .kx-live-cap) { color: var(--prev-fg); }
+.kx-mon.is-rh .kx-mon-screen { box-shadow: 0 0 0 1px var(--rh); } .kx-mon.is-rh .kx-mon-cap :is(.kx-section, .kx-live-cap) { color: var(--rh-fg); }
+.kx-mon.is-warn .kx-mon-screen { box-shadow: 0 0 0 1px var(--warn); } .kx-mon.is-warn .kx-mon-cap :is(.kx-section, .kx-live-cap) { color: var(--warn-fg); }
+/* A live caption: state word, title (live-title or next-title), telemetry. */
+.kx-mon-cap.is-cap.is-live { height: 26px; }
+.kx-mon-cap.is-cap.is-next { height: 24px; }
+.kx-mon-cap .kx-live-cap { flex: none; }
+.kx-mon-cap .kx-mon-t { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-mon-cap .kx-meta { flex: none; white-space: nowrap; }
 .kx-screen-bg { position: absolute; inset: 0; }
 .kx-screen-txt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 8cqw 10cqw; gap: 2cqw; }
 .kx-screen-lyrics { font-size: 5.2cqw; line-height: 1.2; font-weight: 600; white-space: pre-line; text-shadow: var(--screen-text); }
@@ -161,8 +175,18 @@
 .kx-tip .kx-kbd { color: var(--fg-3); font-size: 11px; }
 
 /* ---- Splitter: invisible until hover ---- */
-.kx-split { position: relative; flex: none; width: var(--gutter); cursor: col-resize; }
-.kx-split.kx-split-h { width: auto; height: var(--gutter); cursor: row-resize; }
+/* A fixed gutter between two modules that cannot be resized (no grip, no cursor). */
+.kx-gap { flex: none; width: var(--gutter); }
+/* The splitter takes the 6 px gutter in the layout but answers the pointer
+   over 12 px (padding pulled back by margins), and shows a grip on hover and
+   on keyboard focus so it can be found without knowing it is there. */
+.kx-split { position: relative; z-index: 2; flex: none; width: var(--gutter); cursor: col-resize; box-sizing: content-box; padding: 0 3px; margin: 0 -3px; outline: none; }
+.kx-split.kx-split-h { width: auto; height: var(--gutter); cursor: row-resize; padding: 3px 0; margin: -3px 0; }
+.kx-split::before { content: ""; position: absolute; left: 50%; top: 50%; width: 2px; height: 24px; margin: -12px 0 0 -1px; border-radius: 1px;
+  background: radial-gradient(circle, var(--fg-3) 1px, transparent 1.5px) 0 0 / 2px 6px; opacity: 0; transition: opacity var(--duration-fast) var(--ease-out); pointer-events: none; }
+.kx-split.kx-split-h::before { width: 24px; height: 2px; margin: -1px 0 0 -12px; background-size: 6px 2px; }
+.kx-split:hover::before, .kx-split:focus-visible::before, .kx-split.is-dragging::before { opacity: 1; }
+.kx-split:focus-visible::after { background: var(--brand); }
 .kx-split::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; margin-left: -.5px; background: transparent; transition: background-color var(--duration-fast) var(--ease-out); }
 .kx-split.kx-split-h::after { left: 0; right: 0; top: 50%; bottom: auto; height: 1px; width: auto; margin: -.5px 0 0; }
 .kx-split:hover::after, .kx-split.is-dragging::after { background: var(--line-strong); }
@@ -184,7 +208,7 @@
 .kx-layer:hover { background: var(--bg-2); }
 .kx-layer.is-selected { background: var(--bg-3); }
 .kx-layer .kx-glyph { color: var(--fg-3); display: inline-flex; justify-content: center; }
-.kx-layer .kx-btn { height: 20px; width: 20px; padding: 0; color: var(--fg-2); }
+.kx-layer .kx-btn { height: 24px; width: 24px; padding: 0; color: var(--fg-2); }
 .kx-layer .kx-btn.is-off { color: var(--fg-3); opacity: var(--dim); }
 .kx-layer.is-hidden .kx-layer-name { color: var(--fg-3); }
 .kx-layer .kx-layer-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

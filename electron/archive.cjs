@@ -169,6 +169,62 @@ async function stageImport({ zipFile, dataDir }) {
     return { media, manifest };
 }
 
+// "Restaurar um backup": a daily backup (keryx-YYYY-MM-DD.db) staged like an
+// import, so the next launch swaps it in and keeps today's data in
+// before-import-<time>/. The media folder staged with it is today's (hard
+// links: instant, no extra space; a copy where links are not possible) plus
+// whatever only the backup's media mirror still has (files deleted since),
+// so the songs and avisos brought back find their files. Returns
+// { media, fromBackup }.
+const MEDIA_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+async function stageRestore({ dataDir, dbFile, mediaDir, mirrorDir = null }) {
+    const staging = path.join(dataDir, PENDING);
+    const target = path.join(staging, "media");
+    fs.rmSync(staging, { recursive: true, force: true });
+    fs.mkdirSync(target, { recursive: true });
+    const names = (dir) => {
+        try {
+            return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && MEDIA_NAME.test(e.name) && !e.name.endsWith(".partial")).map((e) => e.name);
+        } catch {
+            return [];
+        }
+    };
+    try {
+        await fs.promises.copyFile(dbFile, path.join(staging, "keryx.db"));
+        try {
+            checkDatabase(path.join(staging, "keryx.db"));
+        } catch {
+            throw new ArchiveError("Este backup está corrompido ou não é do KERYX. Escolha outro dia.");
+        }
+        let media = 0;
+        let fromBackup = 0;
+        for (const name of names(mediaDir)) {
+            const from = path.join(mediaDir, name);
+            const to = path.join(target, name);
+            try {
+                fs.linkSync(from, to);
+            } catch {
+                await fs.promises.copyFile(from, to);
+            }
+            media += 1;
+        }
+        if (mirrorDir) {
+            for (const name of names(mirrorDir)) {
+                const to = path.join(target, name);
+                if (fs.existsSync(to)) continue;
+                await fs.promises.copyFile(path.join(mirrorDir, name), to);
+                media += 1;
+                fromBackup += 1;
+            }
+        }
+        return { media, fromBackup };
+    } catch (err) {
+        fs.rmSync(staging, { recursive: true, force: true });
+        throw err;
+    }
+}
+
 function discardPendingImport(dataDir) {
     fs.rmSync(path.join(dataDir, PENDING), { recursive: true, force: true });
 }
@@ -215,4 +271,4 @@ function applyPendingImport(dataDir, now = new Date()) {
     return { archived };
 }
 
-module.exports = { ArchiveError, FORMAT, exportAll, stageImport, applyPendingImport, discardPendingImport, hasPendingImport };
+module.exports = { ArchiveError, FORMAT, exportAll, stageImport, stageRestore, applyPendingImport, discardPendingImport, hasPendingImport };

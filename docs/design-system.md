@@ -107,6 +107,17 @@ a control (`src/lib/console/keys.js`).
   internet: the console, the output windows and the network screens load
   the same file, so projected lines break in the same places. It is also
   the "Sem serifa" of every theme (`FONT_MAP.sans`).
+- Live information has its own type steps (2026-10-09, addendum finding 2):
+  `live-cap` 12/16 600 for the state word (PROGRAMA, PRÉVIA), `live-title`
+  16/22 600 for what is on air (once per screen), `next-title` 14/20 500 for
+  the Prévia and the Próximo line, `alert-title` 13/18 600 for an output
+  failure. `meta` (11 px) is telemetry only, never a live or prepared
+  item's name. The live column's monitors use `Monitor`'s `cap` prop
+  (word, title, position).
+- Density (Ver › Densidade, saved with the layout): **Confortável** is the
+  default (user decision 2026-10-09): 32 px list rows (`row-comfortable`),
+  14 px titles up to two lines, 14 px slide text. **Compacta** keeps 28 px
+  single lines. Headers, controls and the live column do not change.
 - Projected screens are not styled by these tokens: they use the church's
   themes and backgrounds (user data) and only the `screen-*` styles.
 

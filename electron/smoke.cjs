@@ -527,6 +527,12 @@ async function checkConsole(webContents, { live, outputs }) {
         return false;
     };
     const js = (code) => webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← ${String(code).replace(/s+/g, " ").slice(0, 160)}`); });
+    // The live column's monitors caption in parts (state word, title, position):
+    // read the title of the Programa (".prog") or the Prévia (".subrow .kx-mon").
+    const PROG = ".prog";
+    const PREV = ".subrow .kx-mon";
+    const capTitle = (mon) => js(`(document.querySelector(${JSON.stringify(`${mon} .kx-mon-t`)}) || {}).textContent || ""`).catch(() => "");
+    const waitCap = (mon, title, ms = 8000) => waitFor(async () => (await capTitle(mon)) === title, ms);
     // Real key presses. Printable keys also send the "char" event that types.
     const KEYCODE = { ArrowRight: "Right", ArrowLeft: "Left", ArrowUp: "Up", ArrowDown: "Down", " ": "Space" };
     const press = async (k, modifiers = []) => {
@@ -635,14 +641,17 @@ async function checkConsole(webContents, { live, outputs }) {
         await js(`history.pushState({}, "", "/Console"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         // Section captions are uppercase on screen (CSS), so innerText is too.
         // The console opens live, one screen, with the full module layout.
-        result.opened = await waitText(webContents, "PROGRAMA · NADA", true, 15000);
+        result.opened = await waitCap(PROG, "nada", 15000);
         result.listed = await waitText(webContents, "Canto do console", true, 15000);
         result.fullConsole = await js("Boolean(document.querySelector('.console .main .kx-split')) && !document.querySelector('.topbar .kx-seg + .kx-seg')");
 
         // Click a top-bar tab (a control that used to keep the keys), then a song: Enter sends.
         await click(".envtabs button", "KERYX");
         await click(".kx-row", "Canto do console");
-        result.prepared = await waitText(webContents, "PRÉVIA · CANTO DO CONSOLE");
+        result.prepared = await waitCap(PREV, "Canto do console");
+        // Live information has its own type steps: what is prepared at 14 px
+        // (next-title); the Programa's title is 16 px (live-title) once on air.
+        result.prevTitle14 = await js(`getComputedStyle(document.querySelector("${PREV} .kx-mon-t")).fontSize === "14px"`).catch(() => false);
         result.airUntouched = !live.get().content;
         result.clickLeftNoFocus = (await active()) === "BODY";
         // A control focused from the keyboard keeps its own Enter.
@@ -651,12 +660,13 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(300);
         result.focusedEnterKeptAir = !live.get().content;
         await js("document.activeElement && document.activeElement.blur(); true");
-        if (!(await js("document.body.innerText.includes('PRÉVIA · CANTO DO CONSOLE')"))) await click(".kx-row", "Canto do console");
+        if ((await capTitle(PREV)) !== "Canto do console") await click(".kx-row", "Canto do console");
         await press("Enter");
         result.sent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
         result.projected = Boolean(main) && await waitText(main, "Primeiro slide do console");
         // The projector's letters are the Geist that ships with KERYX (src/fonts.css),
         // loaded from the app, never from the internet.
+        result.progTitle16 = (await capTitle(PROG)) === "Canto do console" && await js(`getComputedStyle(document.querySelector("${PROG} .kx-mon-t")).fontSize === "16px"`).catch(() => false);
         result.projectorFont = Boolean(main) && await main.webContents.executeJavaScript(`(async () => {
             const faces = await document.fonts.load("40px Geist");
             const text = [...document.querySelectorAll(".ks [style]")].find((n) => n.textContent.includes("Primeiro slide do console"));
@@ -686,6 +696,28 @@ async function checkConsole(webContents, { live, outputs }) {
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.barFits = Object.values(result.bar).every(Boolean);
+        // Discoverability (addendum finding 3): the screen actions named under
+        // "Telas"; a splitter focused with Tab resizes with the arrows while the
+        // slide on air stays put; no visible control smaller than 24 x 24.
+        result.telasNamed = await js(`(() => {
+            const g = document.querySelector(".topbar .tb-screens");
+            return Boolean(g) && ["Tela preta", "Logo", "Limpar", "Encerrar"].every((t) => [...g.querySelectorAll("button")].some((b) => b.textContent.trim() === t));
+        })()`);
+        const airIndex = () => (live.get().content ? live.get().content.index : null);
+        const indexBefore = airIndex();
+        const SPLIT = `document.querySelector(".console .main > .kx-split[role='separator']")`;
+        const splitWidth = () => js(`(() => { const s = ${SPLIT}; return s && s.previousElementSibling ? Math.round(s.previousElementSibling.getBoundingClientRect().width) : null; })()`);
+        result.splitterFound = await js(`(() => { const s = ${SPLIT}; if (s) s.focus(); return s ? document.activeElement === s : [...document.querySelector(".console .main").children].map((c) => c.className).join(" | "); })()`);
+        const widthBefore = await splitWidth();
+        if (result.splitterFound === true) { await press("ArrowRight"); await sleep(300); }
+        const widthAfter = await splitWidth();
+        if (result.splitterFound === true) { await press("Enter"); await sleep(300); } // Enter restores the width
+        const widthRestored = await splitWidth();
+        result.splitterDiag = { widthBefore, widthAfter, widthRestored, indexBefore, indexAfter: airIndex(), active: await js("document.activeElement ? document.activeElement.className : null") };
+        result.splitterKeys = result.splitterFound === true && widthAfter > widthBefore && airIndex() === indexBefore && widthRestored === widthBefore;
+        await js("document.activeElement && document.activeElement.blur(); true");
+        result.smallTargets = await js(`[...document.querySelectorAll(".console button, .console [role=button]")].filter((b) => b.offsetParent).filter((b) => { const r = b.getBoundingClientRect(); return r.width < 23.5 || r.height < 23.5; }).map((b) => ((b.textContent || "").trim() || b.title || b.getAttribute("aria-label") || b.className).slice(0, 30) + " " + Math.round(b.getBoundingClientRect().width) + "x" + Math.round(b.getBoundingClientRect().height))`);
+        result.targets24 = Array.isArray(result.smallTargets) && result.smallTargets.length === 0;
         for (const w of [1460]) {
             if (operatorWin) operatorWin.setContentSize(w, 820);
             await sleep(500);
@@ -869,7 +901,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-tabs button", "Mídia");
         result.audioListed = await waitText(webContents, "Tom de teste");
         await click(".kx-row", "Tom de teste");
-        result.audioPrepared = await waitText(webContents, "PRÉVIA · TOM DE TESTE");
+        result.audioPrepared = await waitCap(PREV, "Tom de teste");
         await press("Enter");
         result.audioOn = await waitFor(() => live.get().audio && live.get().audio.title === "Tom de teste");
         result.audioUnderSong = Boolean(live.get().content) && live.get().content.title === "Canto do console";
@@ -976,7 +1008,7 @@ async function checkConsole(webContents, { live, outputs }) {
             return true;
         })()`);
         await sleep(300);
-        result.dragPrepared = await waitText(webContents, "PRÉVIA · CANTO DO CONSOLE");
+        result.dragPrepared = await waitCap(PREV, "Canto do console");
         result.dragDidNotSend = !live.get().content;
         result.dragSetlist = await js(`(() => {
             const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
@@ -1407,7 +1439,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.advanced && result.barFits && result.escEnded && result.escToast
+        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.advanced && result.barFits && result.telasNamed && result.splitterKeys && result.targets24 && result.escEnded && result.escToast
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
@@ -1549,7 +1581,10 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             while (Date.now() < end && !(await consoleText()).includes("Palco desconectada")) await sleep(300);
             const text = await consoleText();
             result.dropBanner = text.includes("Palco desconectada");
-            result.dropStatus = /Saídas · \d+ com problema/.test(text);
+            // The status button's title carries the whole label; the bar hides the
+            // text itself below 1200 px (console.css), so read the title too.
+            result.dropLabel = await webContents.executeJavaScript("(() => { const b = document.querySelector('.kx-status'); const t = document.querySelector('.topbar'); return { title: b ? b.title : null, shown: b ? b.innerText : null, bar: t ? Math.round(t.getBoundingClientRect().width) : null, hidden: document.hidden }; })()").catch(() => null);
+            result.dropStatus = /Saídas · \d+ com problema/.test(text) || /Saídas · \d+ com problema/.test((result.dropLabel && result.dropLabel.title) || "");
         }
     } finally {
         if (!lyrics.isDestroyed()) lyrics.close();
@@ -1593,6 +1628,10 @@ async function checkSystem(webContents, { dataDir, system, settings }) {
     // Media goes into the backup only in a folder the church chose (here a
     // stand-in for a USB stick): the default folder, on the same disk, does
     // not get a second copy of the videos.
+    // Restaurar lists the daily backups of the folder (restoring itself asks in a
+    // native dialog and restarts; archive.stageRestore is unit tested).
+    const listed = (await webContents.executeJavaScript(`window.keryxDesktop.system.call("backupList")`)).data;
+    result.restoreListed = Boolean(listed && listed.backups.length >= 1 && /^keryx-\d{4}-\d{2}-\d{2}\.db$/.test(listed.backups[0].name));
     result.mediaOffByDefault = made.backup.media && made.backup.media.enabled === false;
     const usb = path.join(dataDir, "smoke-usb");
     const sample = path.join(dataDir, "media", "smoke-backup-media.txt");
@@ -1618,7 +1657,7 @@ async function checkSystem(webContents, { dataDir, system, settings }) {
         fs.rmSync(sample, { force: true });
     }
     result.ok = info.dataDir === dataDir && result.backupsAfterLaunch >= 1 && result.backupsAfterManual >= 1
-        && result.backupOpens && logs >= 1 && Boolean(system.info) && result.mediaOffByDefault && result.mediaCopied;
+        && result.backupOpens && logs >= 1 && Boolean(system.info) && result.mediaOffByDefault && result.mediaCopied && result.restoreListed;
     return result;
 }
 

@@ -20,6 +20,10 @@ export const TIER_WIDE = 1400;
 export const TIER_MEDIUM = 1100;
 export const tierFor = (width) => (width >= TIER_WIDE ? "wide" : width >= TIER_MEDIUM ? "medium" : "narrow");
 
+// List density (Ver › Densidade): confortável, 32 px rows with titles up to
+// two lines; compacta, today's 28 px single lines. Saved with the layout.
+export const DENSITIES = [["comfortable", "Confortável"], ["compact", "Compacta"]];
+
 export const DEFAULT_LAYOUT = {
     hidden: {},
     collapsed: {},
@@ -28,7 +32,10 @@ export const DEFAULT_LAYOUT = {
     rightW: 320,
     camadasH: 300,
     tlOpen: false,
+    density: "comfortable",
 };
+
+export const densityOf = (layout) => (DENSITIES.some(([k]) => k === layout?.density) ? layout.density : DEFAULT_LAYOUT.density);
 
 export const LIMITS = { libW: [200, 480], slidesW: [200, 520], rightW: [280, 520], camadasH: [120, 600] };
 

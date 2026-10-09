@@ -27,18 +27,27 @@ export function previewDoc(stage, cur, now) {
     }
 }
 
-export const captionOf = (doc, word) => {
-    if (!doc) return word;
+// What a screen shows, as a title and its position ("2/6" or ""): the parts
+// of a monitor's caption.
+export const captionParts = (doc) => {
+    if (!doc) return { title: "", pos: "" };
     const layer = mainLayer(doc);
     // A video-channel clip covers the screens over every layer.
-    if (doc.video && layer !== "black" && layer !== "logo") return `${word} · ${doc.video.title || "Vídeo"}`;
-    if (layer === "black") return `${word} · Tela preta`;
-    if (layer === "logo") return `${word} · Logo`;
-    if (layer === "content") return `${word} · ${doc.content.title || "Texto"}${doc.content.slides.length > 1 ? ` · ${doc.content.index + 1}/${doc.content.slides.length}` : ""}`;
-    if (layer === "media") return `${word} · ${doc.media.title || "Mídia"}`;
-    if (layer === "communication") return `${word} · ${doc.communication.item?.title || "Aviso"}`;
-    if (layer === "tool") return `${word} · ${{ clock: "Relógio", stopwatch: "Cronômetro", timer: "Timer", freetext: "Texto livre" }[doc.tool.mode]}`;
-    return `${word} · nada`;
+    if (doc.video && layer !== "black" && layer !== "logo") return { title: doc.video.title || "Vídeo", pos: "" };
+    if (layer === "black") return { title: "Tela preta", pos: "" };
+    if (layer === "logo") return { title: "Logo", pos: "" };
+    if (layer === "content") return { title: doc.content.title || "Texto", pos: doc.content.slides.length > 1 ? `${doc.content.index + 1}/${doc.content.slides.length}` : "" };
+    if (layer === "media") return { title: doc.media.title || "Mídia", pos: "" };
+    if (layer === "communication") return { title: doc.communication.item?.title || "Aviso", pos: "" };
+    if (layer === "tool") return { title: { clock: "Relógio", stopwatch: "Cronômetro", timer: "Timer", freetext: "Texto livre" }[doc.tool.mode], pos: "" };
+    return { title: "nada", pos: "" };
+};
+
+// The same as one line: "Programa · Canto · 2/6" (Escola bíblica, Saídas).
+export const captionOf = (doc, word) => {
+    if (!doc) return word;
+    const { title, pos } = captionParts(doc);
+    return `${word} · ${title}${pos ? ` · ${pos}` : ""}`;
 };
 
 // An Escola bíblica material's notes for the teacher: the Prévia's, else
@@ -80,14 +89,20 @@ function sendNote(stage, mode) {
 export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick }) {
     const { live, cur, prev, now, isLive, mode } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
+    const [dropOn, setDropOn] = useState(null);
     const progState = projectorDown ? "warn" : isLive ? "air" : "rh";
     const progWord = isLive ? "Programa" : "Programa · Ensaio";
     const sendLabel = isLive ? "Enviar ao ar" : "Mostrar no ensaio";
-    const prevCap = prev ? `Prévia · ${prev.title}${prev.slides.length > 1 ? ` · ${prev.index + 1}/${prev.slides.length}` : ""}` : "Prévia";
+    // Captions with their own hierarchy: the state word, the title (on air:
+    // live-title, 16px; prepared: next-title, 14px) and the position (meta).
+    const airParts = captionParts(cur);
+    const progCap = dropOn === "air" ? { word: progWord, title: "solte para enviar", pos: "", size: "live" } : { word: progWord, ...airParts, size: "live" };
+    const prevCap = dropOn === "prev" ? { word: "Prévia", title: "solte para preparar", pos: "", size: "next" }
+        : { word: "Prévia", title: prev ? prev.title : "", pos: prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "", size: "next" };
     const note = sendNote(prev, mode);
 
     // Drops from the Biblioteca: the Prévia prepares, the Programa sends.
-    const [dropOn, setDropOn] = useState(null);
+    // (Declared before the captions, which say "solte para…" during a drag.)
     const dropProps = (where) => ({
         onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (dropOn !== where) setDropOn(where); } },
         onDragLeave: () => setDropOn((d) => (d === where ? null : d)),
@@ -98,7 +113,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     return (
         <div className="mons" data-live-keys="" tabIndex={-1}>
             <div className="liveblock">
-                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} caption={captionOf(cur, dropOn === "air" ? `${progWord} · solte para enviar` : progWord)} live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}
+                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} cap={progCap} live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}
                     right={onAir ? <span className={`kx-meta prog-where ${onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{onAir.text}</span> : null}>
                     {!isLive && (
                         <div className="pipwrap">
@@ -108,7 +123,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                     )}
                 </Monitor>
                 <div className="subrow">
-                    <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} caption={dropOn === "prev" ? "Prévia · solte para preparar" : prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={dropProps("prev")}>
+                    <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} cap={prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={dropProps("prev")}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
                         {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
@@ -129,7 +144,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                 </div>
                 <div className="nextline">
                     <span className="kx-section">Próximo</span>
-                    <span className="t">{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>
+                    <span className={`t ${nextItem ? "kx-next-title" : "kx-meta"}`}>{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>
                     {nextItem && <Btn small onClick={onPrepNext} title="Pôr o próximo item da Setlist na Prévia">Preparar</Btn>}
                 </div>
                 {later.length > 0 && (

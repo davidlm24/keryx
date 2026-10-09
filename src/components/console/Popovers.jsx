@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
-import { MODULES } from "@/lib/console/layout";
+import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
 import { restoreArgs } from "@/lib/projection";
 import { stageFromHistory, stageFromSong, stageFromMedia, stageFromPiece, stageFromMaterial } from "@/lib/console/stage";
 import { materialIcon, materialMeta } from "@/lib/console/school";
@@ -17,13 +17,20 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     if (open === "ver") {
         return (
-            <div className="pop kx-pop" style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 220 }}>
+            // Under the top bar's Ver button.
+            <div className="pop kx-pop" style={{ left: Math.max(8, Math.round(document.querySelector(".topbar .tb-ver")?.getBoundingClientRect().left ?? 8)), top: "var(--pop-top)", width: 220 }}>
                 <div className="kx-menu-h"><span className="kx-section">Ver</span></div>
                 {MODULES.map(([key, name]) => (
                     <MenuItem key={key} checked={!layout.hidden[key]} onClick={() => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } })}>{name}</MenuItem>
                 ))}
                 <div className="kx-menu-sep" />
+                <div className="kx-menu-h"><span className="kx-section">Densidade</span></div>
+                {DENSITIES.map(([key, name]) => (
+                    <MenuItem key={key} checked={densityOf(layout) === key} onClick={() => setLayout({ ...layout, density: key })} title={key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item"}>{name}</MenuItem>
+                ))}
+                <div className="kx-menu-sep" />
                 <MenuItem onClick={() => { restoreLayout(); setOpen(null); }}>Restaurar layout</MenuItem>
+                <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos do teclado</MenuItem>
             </div>
         );
     }
@@ -56,7 +63,6 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <div className="kx-menu-sep" />
             <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Telas e saídas</MenuItem>
             <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>
-            <MenuItem icon="layers" onClick={() => setOpen("ver")}>Ver<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
             <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>
             <MenuItem icon="sliders" onClick={() => { setOpen(null); onSettings?.("telas"); }}>Configurações</MenuItem>
             {hasUpdate(update) && (

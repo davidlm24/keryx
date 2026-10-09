@@ -12,6 +12,7 @@ const TEXT = "input, textarea, select, [contenteditable='true'], [contenteditabl
 const CONTROL = "button, a[href], [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='option'], [role='slider'], summary, [tabindex]:not([data-live-keys])";
 // Areas whose focus means "aimed at what goes on air": Enter sends there.
 const LIVE_AREA = "[data-live-keys]";
+const ARROW_CONTROLS = "[role='radiogroup'], [role='tablist'], [role='menu'], [role='separator']";
 
 const isElement = (t) => Boolean(t && typeof t.closest === "function" && t.tagName);
 
@@ -47,11 +48,14 @@ export function liveAction(e) {
         return kind === "control" ? null : "send";
     }
     if (mod || (e.altKey && !altGr)) return null;
+    // Arrows belong to the control when it uses them itself: radio groups,
+    // tab lists, menus, and a splitter focused with Tab (it resizes).
+    const ownsArrows = kind === "control" && e.target.closest(ARROW_CONTROLS);
     switch (e.key) {
-        case "ArrowRight": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu']") ? null : "next";
-        case "ArrowLeft": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu']") ? null : "prev";
-        case "ArrowUp": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu'], select") ? null : "selUp";
-        case "ArrowDown": return kind === "control" && e.target.closest("[role='radiogroup'], [role='tablist'], [role='menu'], select") ? null : "selDown";
+        case "ArrowRight": return ownsArrows ? null : "next";
+        case "ArrowLeft": return ownsArrows ? null : "prev";
+        case "ArrowUp": return ownsArrows || (kind === "control" && e.target.closest("select")) ? null : "selUp";
+        case "ArrowDown": return ownsArrows || (kind === "control" && e.target.closest("select")) ? null : "selDown";
         case " ": return kind === "control" ? null : "play";
         case "b": case "B": return "black";
         case "l": case "L": return "logo";

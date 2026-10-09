@@ -9,6 +9,14 @@ export default function DadosSection({ c }) {
     const system = useBridge("system");
     const [info, refresh, setInfo] = usePoll(() => system?.call("info"), 4000);
     const [busy, setBusy] = useState("");
+    // The backups to restore from, listed on demand (Restaurar um backup…).
+    const [restoreList, setRestoreList] = useState(null);
+    const toggleRestore = async () => {
+        if (restoreList) { setRestoreList(null); return; }
+        const res = await system.call("backupList");
+        if (res?.error) c.say(`Restaurar: ${res.error.message}`);
+        else setRestoreList(res.data);
+    };
     if (!system) return <Empty icon="save" title="Dados e atualizações">{desktopOnly}</Empty>;
     if (!info) return <Empty title="Lendo os dados…" />;
 
@@ -53,6 +61,29 @@ export default function DadosSection({ c }) {
                     <Btn disabled={any} onClick={() => run("openBackupDir", "Abrir pasta")}>Abrir</Btn>
                 </FormRow>
                 {backup.fallback && <FormRow k=""><span className="kx-warn">A pasta escolhida não está disponível · usando a pasta padrão</span></FormRow>}
+                <FormRow k="Restaurar">
+                    <Btn disabled={any} on={Boolean(restoreList)} onClick={toggleRestore}>{restoreList ? "Fechar a lista" : "Restaurar um backup…"}</Btn>
+                    <span className="kx-meta">volta músicas, setlists, avisos e anotações a como estavam num dia · os dados de hoje ficam guardados à parte</span>
+                </FormRow>
+                {restoreList && (
+                    <FormRow k="">
+                        <div className="cfg-restore">
+                            {!restoreList.backups.length && <span className="kx-meta">Nenhum backup nesta pasta ainda.</span>}
+                            {restoreList.backups.map((b) => (
+                                <div key={b.name} className="cfg-restore-row">
+                                    <span className="kx-content">{b.day.split("-").reverse().join("/")}</span>
+                                    <span className="kx-meta">salvo {formatWhen(b.modified)} · {formatBytes(b.size)}</span>
+                                    <Btn small kind="outline" disabled={any} onClick={() => run("restoreBackup", "Restaurar", () => "", { name: b.name })}>{busy === "restoreBackup" ? "Preparando…" : "Restaurar"}</Btn>
+                                </div>
+                            ))}
+                            {restoreList.backups.length > 0 && (
+                                <span className="kx-meta">{restoreList.mirror.files
+                                    ? `As mídias vêm de hoje; as apagadas desde então voltam da cópia no backup (${restoreList.mirror.files} ${restoreList.mirror.files === 1 ? "arquivo" : "arquivos"}).`
+                                    : "As mídias vêm de hoje: esta pasta não guarda cópia das mídias."}</span>
+                            )}
+                        </div>
+                    </FormRow>
+                )}
                 <FormRow k="Outro computador">
                     <Btn disabled={any} onClick={() => run("exportAll", "Exportar", (r) => (r ? `Exportado: ${r.media} ${r.media === 1 ? "arquivo" : "arquivos"} de mídia, ${formatBytes(r.bytes)}.` : ""))}>{busy === "exportAll" ? "Exportando…" : "Exportar tudo…"}</Btn>
                     <Btn disabled={any} onClick={() => run("importAll", "Importar")}>{busy === "importAll" ? "Importando…" : "Importar…"}</Btn>

@@ -23,11 +23,12 @@ export function Panel({ title, count, actions, collapsed, onToggle, className = 
 
 export function Btn({ kind = "", small, on, className = "", children, ...rest }) {
     const cls = `kx-btn kx-t ${kind ? `kx-btn-${kind}` : ""} ${on ? "is-on" : ""} ${className}`;
-    return <button type="button" className={cls} style={small ? { height: 22, padding: "0 6px" } : undefined} {...rest}>{children}</button>;
+    // Small buttons are still 24 px tall: the minimum pointer target (WCAG 2.2).
+    return <button type="button" className={cls} style={small ? { height: 24, padding: "0 6px" } : undefined} {...rest}>{children}</button>;
 }
 
 export function IconBtn({ name, title, small, on, className = "", ...rest }) {
-    const size = small ? { height: 20, width: 20 } : undefined;
+    const size = small ? { height: 24, width: 24 } : undefined;
     return (
         <button type="button" className={`kx-btn kx-btn-icon kx-t ${on ? "is-on" : ""} ${className}`} style={size} aria-label={title} title={title} {...rest}>
             <Icon name={name} />
@@ -75,11 +76,22 @@ export function Row({ icon, title, meta, metaClass = "", time, state = "", actio
     );
 }
 
-// A monitor: caption line (state word first) and the screen, 16:9.
-export function Monitor({ state, caption, live, now, logoUrl, right, motion = false, className = "", style, dropProps, children }) {
+// A monitor: caption line (state word first) and the screen, 16:9. `cap`
+// ({ word, title, pos, size: "live" | "next" }) gives the caption its own
+// hierarchy (the live column); `caption` is the plain one-line form.
+export function Monitor({ state, caption, cap, live, now, logoUrl, right, motion = false, className = "", style, dropProps, children }) {
     return (
         <div className={`kx-mon ${state ? `is-${state}` : ""} ${className}`} style={style} {...dropProps}>
-            <div className="kx-mon-cap"><span className="kx-section">{caption}</span>{right}</div>
+            {cap ? (
+                <div className={`kx-mon-cap is-cap is-${cap.size}`}>
+                    <span className="kx-live-cap">{cap.word}</span>
+                    <span className={`kx-mon-t ${cap.size === "live" ? "kx-live-title" : "kx-next-title"}`} title={cap.title || undefined}>{cap.title}</span>
+                    {cap.pos && <span className="kx-meta">{cap.pos}</span>}
+                    {right}
+                </div>
+            ) : (
+                <div className="kx-mon-cap"><span className="kx-section">{caption}</span>{right}</div>
+            )}
             <div className="kx-mon-screen">
                 {live && <ScreenRenderer state={live} now={now} logoUrl={logoUrl} preview motion={motion} />}
                 {children}
@@ -103,12 +115,26 @@ export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp }) {
         window.addEventListener("mouseup", up);
         return () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
     }, [horizontal, onSize, sign, clamp]);
+    // From the keyboard (Tab to it): the arrows resize in 16 px steps, Enter
+    // or Home restores. The arrows stop here (keys.js leaves a focused
+    // separator alone), so nothing moves on air while resizing.
+    const onKeyDown = (e) => {
+        const grow = horizontal ? { ArrowDown: 1, ArrowUp: -1 } : { ArrowRight: 1, ArrowLeft: -1 };
+        if (grow[e.key]) { e.preventDefault(); e.stopPropagation(); onSize(clamp(size + sign * grow[e.key] * 16)); }
+        else if (e.key === "Enter" || e.key === "Home") { e.preventDefault(); e.stopPropagation(); onReset?.(); }
+    };
     return (
         <div
             className={`kx-split ${horizontal ? "kx-split-h" : ""} ${drag.current ? "is-dragging" : ""}`}
+            role="separator"
+            aria-orientation={horizontal ? "horizontal" : "vertical"}
+            aria-valuenow={Math.round(size)}
+            aria-label="Redimensionar · setas ajustam, Enter restaura"
+            tabIndex={0}
             title="Arraste para redimensionar · duplo clique restaura"
             onMouseDown={(e) => { e.preventDefault(); drag.current = { x: e.clientX, y: e.clientY, size }; document.body.style.cursor = horizontal ? "row-resize" : "col-resize"; }}
             onDoubleClick={onReset}
+            onKeyDown={onKeyDown}
         />
     );
 }

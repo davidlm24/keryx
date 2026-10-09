@@ -228,7 +228,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                     </div>
                 </Panel>
             </div>
-            <div className="kx-split" />
+            <div className="kx-gap" />
             <div className="col center">
                 <Panel title={<>Prévia do aviso <span className="kx-count">· ao vivo · 16:9</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-stage">
