@@ -89,35 +89,49 @@ export function Shortcuts({ open, setOpen }) {
     );
 }
 
-// Saídas: the windows the main process places and the screens on the network.
-export function Outputs({ open, setOpen, outputs, network, isLive, onOpen, onClose, tries, idle, onIdle, onSettings }) {
+const atTime = (t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+// Saídas: the windows the main process places and the screens on the
+// network, each with its state, what it shows and the way to fix it
+// (src/lib/console/outputs.js says which is which).
+export function Outputs({ open, setOpen, health, isLive, onOpen, onClose, onForget, tries, idle, onIdle, onSettings }) {
     if (open !== "outs") return null;
-    const local = outputs.map((o) => {
-        const bad = o.placement.missing;
-        const st = !isLive ? ["is-rh", "Desarmada", "var(--rh)"] : bad ? ["is-warn", `Reconectando… tentativa ${tries}`, "var(--warn)"] : o.open ? ["", "Conectada", "var(--prev)"] : ["is-off", "Fechada", "var(--fg-3)"];
-        const meta = bad ? "O monitor escolhido não está ligado · mostrando numa janela" : o.placement.mode === "fullscreen" ? `Tela ${o.placement.displayId ?? ""}`.trim() : "Janela";
-        return { key: o.key, name: o.label, icon: OUTPUT_ICON[o.key] || "monitor", meta, cls: st[0], state: st[1], dot: st[2], open: o.open };
-    });
-    const remote = network.map((d) => ({ key: d.id, name: d.name, icon: DEVICE_ICON[d.kind] || "tv", meta: `Rede · ${d.ip || ""}`, cls: d.online ? "" : "is-off", state: d.online ? "Conectada" : "Desconectada", dot: d.online ? "var(--prev)" : "var(--fg-3)", remote: true }));
-    const all = [...local, ...remote];
-    const okCount = all.filter((o) => o.state === "Conectada").length;
+    const view = (r) => {
+        const icon = r.local ? OUTPUT_ICON[r.key] || "monitor" : DEVICE_ICON[r.kind] || "tv";
+        if (r.state === "reconnecting") return { icon, cls: "is-warn", state: `Reconectando… tentativa ${tries}`, dot: "var(--warn)" };
+        if (r.state === "closed") return { icon, cls: "is-warn", state: `Fechada às ${atTime(r.droppedAt)}`, dot: "var(--warn)" };
+        if (r.state === "disconnected") return { icon, cls: "is-warn", state: `Desconectada às ${atTime(r.droppedAt)}`, dot: "var(--warn)" };
+        if (r.state === "unused") return { icon, cls: "is-off", state: "Fechada", dot: "var(--fg-3)" };
+        return isLive ? { icon, cls: "", state: "Conectada", dot: "var(--prev)" } : { icon, cls: "is-rh", state: "Desarmada", dot: "var(--rh)" };
+    };
+    const rows = health.rows;
+    const summary = !isLive ? "desarmadas · mantêm o que já estava no ar" : health.total ? `${health.connected} de ${health.total} conectadas` : "nenhuma aberta";
     return (
-        <div className="pop kx-pop" style={{ right: 130, top: 40, width: 420, maxHeight: "calc(100vh - 60px)", overflow: "auto" }}>
-            <div className="kx-menu-h"><span className="kx-section">Saídas</span><span style={{ flex: 1 }} /><span className="kx-meta">{isLive ? `${okCount} de ${all.length} conectadas` : "desarmadas · mantêm o que já estava no ar"}</span></div>
-            {all.map((o) => (
-                <div key={o.key} className={`kx-out ${o.cls}`}>
-                    <span className="kx-glyph"><Icon name={o.icon} /></span>
-                    <div><div className="kx-out-name">{o.name}</div><div className="kx-out-meta">{o.meta}</div></div>
-                    <span className="kx-out-st" style={{ gap: 8 }}>
-                        <i className="kx-dot" style={{ background: o.dot }} />{o.state}
-                        {/* Outputs have no taskbar button: "Trazer para a frente" is how to see one again. */}
-                        {!o.remote && (o.open
-                            ? <><Btn small onClick={() => onOpen(o.key)} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn small onClick={() => onClose(o.key)}>Fechar</Btn></>
-                            : <Btn small onClick={() => onOpen(o.key)}>Abrir</Btn>)}
-                    </span>
-                </div>
-            ))}
-            {!all.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
+        <div className="pop kx-pop" style={{ right: 130, top: 40, width: 440, maxHeight: "calc(100vh - 60px)", overflow: "auto" }}>
+            <div className="kx-menu-h"><span className="kx-section">Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${isLive && !health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
+            {rows.map((r) => {
+                const v = view(r);
+                return (
+                    <div key={r.id} className={`kx-out is-tall ${v.cls}`}>
+                        <span className="kx-glyph"><Icon name={v.icon} /></span>
+                        <div style={{ minWidth: 0 }}>
+                            <div className="kx-out-name">{r.name}</div>
+                            <div className="kx-out-meta">{r.meta}</div>
+                            {r.shows && <div className="kx-out-meta" style={{ color: "var(--fg-2)" }}>Mostra: {r.shows}</div>}
+                            {r.state === "disconnected" && <div className="kx-out-meta">A tela volta sozinha quando a rede voltar.</div>}
+                        </div>
+                        <span className="kx-out-st" style={{ gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                            <i className="kx-dot" style={{ background: v.dot }} />{v.state}
+                            {/* Outputs have no taskbar button: "Trazer para a frente" is how to see one again. */}
+                            {r.local && (r.state === "connected" || r.state === "reconnecting") && <><Btn small onClick={() => onOpen(r.key)} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn small onClick={() => onClose(r.key)}>Fechar</Btn></>}
+                            {r.local && r.state === "closed" && <><Btn small kind="outline" onClick={() => onOpen(r.key)}>Reabrir</Btn><Btn small onClick={() => onForget(r.id)} title="Fechada de propósito: não avisar mais">Esquecer</Btn></>}
+                            {r.local && r.state === "unused" && <Btn small onClick={() => onOpen(r.key)}>Abrir</Btn>}
+                            {!r.local && r.state === "disconnected" && <Btn small onClick={() => onForget(r.id)} title="Não avisar mais sobre esta tela nesta sessão">Esquecer</Btn>}
+                        </span>
+                    </div>
+                );
+            })}
+            {!rows.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
             <div className="kx-menu-sep" />
             <div className="kx-menu-h"><span className="kx-section">Tela ociosa</span><span style={{ flex: 1 }} /><Seg small value={idle} onChange={onIdle} options={[["logo", "Logo da igreja"], ["black", "Preto"]]} /></div>
             <div className="kx-menu-sep" />

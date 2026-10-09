@@ -11,7 +11,8 @@ import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import Library from "@/components/console/Library";
 import SlidesPanel, { handTitle } from "@/components/console/SlidesPanel";
-import CenterPanel from "@/components/console/CenterPanel";
+import CenterPanel, { captionOf } from "@/components/console/CenterPanel";
+import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
 import Timeline from "@/components/console/Timeline";
@@ -137,7 +138,7 @@ export default function Console() {
     useEffect(() => { if (!serviceId && services.length) setServiceId(pickDefaultService(services)?.id || null); }, [services, serviceId]);
     useEffect(() => { if (serviceId) setLog(loadLog(serviceId)); }, [serviceId]);
     const service = services.find((s) => s.id === serviceId) || null;
-    const { outputs, network } = useOutputs();
+    const { outputs, network, seen, forgetOutput } = useOutputs();
     // Outputs: the projector window missing its display, or closed, is the warning.
     const projector = outputs.find((o) => o.key === "/Projection");
 
@@ -274,12 +275,13 @@ export default function Console() {
     const [lastOkAt, setLastOkAt] = useState(null);
     useEffect(() => { if (projector && !projector.placement.missing) setLastOkAt(Date.now()); }, [projector]);
     useEffect(() => { if (!projectorDown) { setTries(1); return undefined; } const id = setInterval(() => setTries((t) => t + 1), 5000); return () => clearInterval(id); }, [projectorDown]);
-    const connected = outputs.filter((o) => o.open).length + network.filter((d) => d.online).length;
-    const outsLabel = projectorDown ? "Saídas · 1 com problema" : c.mode === "ensaio" ? "Saídas desarmadas" : `Saídas · ${connected} ${connected === 1 ? "conectada" : "conectadas"}`;
-    const outsCount = projectorDown ? "!" : c.mode === "ensaio" ? "Ensaio" : String(connected);
-    const outsState = projectorDown ? "warn" : c.mode === "ensaio" ? "rh" : "";
+    // Output health (src/lib/console/outputs.js): the status in the top bar,
+    // the rows of Saídas, "em N telas" beside the Programa and the banner.
+    const airWords = captionOf(c.cur, "No ar").replace(/^No ar · /, "");
+    const health = useMemo(() => outputHealth({ outputs, seen, isLive: c.isLive, air: airWords, tries }), [outputs, seen, c.isLive, airWords, tries]);
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
-    const closeOutput = (key) => window.keryxDesktop?.displays.close(key).catch(() => {});
+    // Closed here on purpose: forgotten, so it is not reported as a problem.
+    const closeOutput = (key) => window.keryxDesktop?.displays.close(key).then(() => forgetOutput(localId(key))).catch(() => {});
 
     // ↑/↓ in the KERYX environment: the selection walks the slides of the
     // item in hand (the Prévia's own, else the ones on air); Enter sends it.
@@ -405,16 +407,26 @@ export default function Console() {
 
     return (
         <div className={`kx console is-${tier} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
-            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={outsLabel} outsCount={outsCount} outsState={outsState} logoUrl={logoUrl} />
-            {/* A failing output: one line under the top bar, in every view, never over a monitor. */}
-            {projectorDown && (
+            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} />
+            {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
+            {health.banner?.kind === "reconnecting" && (
                 <div className="kx-banner is-warn" role="alert">
-                    Projetor · Reconectando… tentativa {tries}
-                    <span className="kx-sub">ATENÇÃO · última conexão boa às {hhmm(lastOkAt)} · o monitor escolhido não está ligado</span>
+                    {health.banner.row.key === "/Projection" ? "Projetor" : health.banner.row.name} · Reconectando… tentativa {tries}
+                    <span className="kx-sub">ATENÇÃO · {health.banner.row.key === "/Projection" ? `última conexão boa às ${hhmm(lastOkAt)} · ` : ""}o monitor escolhido não está ligado</span>
                     <span className="kx-spacer" />
                     <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("black")}>Tela preta</button>
                     <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("logo")}>Mostrar logo</button>
                     <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => setOpen("outs")}>Ver saídas</button>
+                </div>
+            )}
+            {health.banner && health.banner.kind !== "reconnecting" && (
+                <div className="kx-banner is-warn" role="alert">
+                    {health.banner.title}{health.banner.more ? ` · e mais ${health.banner.more}` : ""}
+                    <span className="kx-sub">{health.banner.sub}</span>
+                    <span className="kx-spacer" />
+                    {health.banner.kind === "closed" && <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => openOutput(health.banner.row.key)}>Reabrir</button>}
+                    <button type="button" className={`kx-btn kx-t ${health.banner.kind === "closed" ? "" : "kx-btn-outline"}`} onClick={() => setOpen("outs")}>Ver saídas</button>
+                    <button type="button" className="kx-btn kx-t" onClick={() => forgetOutput(health.banner.row.id)} title="Não avisar mais sobre esta saída nesta sessão">Esquecer</button>
                 </div>
             )}
             {c.mode === "ensaio" && (
@@ -460,7 +472,7 @@ export default function Console() {
                                     <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 22 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco"><Icon name="undo" />Voltar ao anterior</button>
                                 </div>
                             } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick}
+                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
                                     nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))}
                                     later={showRight ? [] : laterItems} onPrepareItem={prepareItem} onGoItem={goItem}
                                     onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
@@ -492,7 +504,7 @@ export default function Console() {
             )}
             <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} outputs={outputs} network={network} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
+            <Outputs open={open} setOpen={setOpen} health={health} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <ArmDialog open={open} setOpen={setOpen} live={c.live} onArm={c.arm} />
             <EndDialog open={open} setOpen={setOpen} mode={c.mode} onEnd={c.end} />

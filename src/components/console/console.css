@@ -62,6 +62,7 @@
 .console .mons { --live-k: 136px; display: flex; flex-direction: column; align-items: center; padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; container-type: size; }
 .console .liveblock { width: min(100cqw, calc((100cqh - var(--live-k)) / 0.82125)); flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .console .liveblock > * { flex: none; }
+.console .prog-where { flex: none; white-space: nowrap; }
 /* Monitor frames are painted inside the box (a ::after on top), never as an
    outer shadow: an outer shadow is cut by the panel's overflow and the
    border vanished at the edges when the window was narrowed. */

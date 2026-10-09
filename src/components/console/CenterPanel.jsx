@@ -77,7 +77,7 @@ function sendNote(stage, mode) {
 // item and, when the Setlist has no column of its own, the items after it.
 // The block is as wide as the column allows and as tall as fits (console.css,
 // .liveblock); spare height goes below it, never between the monitors.
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick }) {
+export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick }) {
     const { live, cur, prev, now, isLive, mode } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const progState = projectorDown ? "warn" : isLive ? "air" : "rh";
@@ -98,7 +98,8 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     return (
         <div className="mons" data-live-keys="" tabIndex={-1}>
             <div className="liveblock">
-                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} caption={captionOf(cur, dropOn === "air" ? `${progWord} · solte para enviar` : progWord)} live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}>
+                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} caption={captionOf(cur, dropOn === "air" ? `${progWord} · solte para enviar` : progWord)} live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}
+                    right={onAir ? <span className={`kx-meta prog-where ${onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{onAir.text}</span> : null}>
                     {!isLive && (
                         <div className="pipwrap">
                             <span className="kx-pip-cap">NO AR AGORA</span>

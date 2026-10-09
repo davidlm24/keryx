@@ -1,0 +1,110 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { remember, forget, outputHealth, netId, localId, showsOn } from "./outputs.js";
+
+const proj = (open, missing = false) => ({ key: "/Projection", label: "Projeção principal", open, placement: { mode: "fullscreen", displayId: 2, missing } });
+const stage = (open) => ({ key: "/StageView", label: "Palco", open, placement: { mode: "window", displayId: null, missing: false } });
+const tv = { ip: "::ffff:192.168.0.24", screen: "/LyricProjection", label: "Letras", agent: "SmartTV", since: "a" };
+const at = (h, m) => new Date(2026, 9, 9, h, m).getTime();
+
+test("live with nothing open: amber, never a green zero", () => {
+    const h = outputHealth({ outputs: [proj(false), stage(false)], seen: {}, isLive: true });
+    assert.deepEqual(h.status, { label: "Nenhuma saída aberta", short: "0", state: "warn" });
+    assert.deepEqual(h.onAir, { text: "em nenhuma tela", warn: true });
+    assert.equal(h.banner, null); // never opened this session: nothing dropped
+    assert.equal(h.rows.find((r) => r.key === "/Projection").state, "unused");
+});
+
+test("everything there: the count, and what each one shows", () => {
+    const seen = remember({}, { outputs: [proj(true)], clients: [tv] }, at(19, 0));
+    const h = outputHealth({ outputs: [proj(true), stage(false)], seen, isLive: true, air: "Canto · 2/6" });
+    assert.equal(h.status.label, "Saídas · 2 conectadas");
+    assert.equal(h.status.state, "");
+    assert.deepEqual(h.onAir, { text: "em 2 telas", warn: false });
+    assert.equal(h.rows.find((r) => r.key === "/Projection").shows, "Canto · 2/6");
+    assert.equal(h.rows.find((r) => !r.local).shows, "Letras · Canto · 2/6");
+    assert.equal(h.rows.find((r) => !r.local).ip, "192.168.0.24");
+});
+
+test("a network screen that drops stays as Desconectada until it comes back", () => {
+    let seen = remember({}, { outputs: [proj(true)], clients: [tv] }, at(19, 0));
+    seen = remember(seen, { outputs: [proj(true)], clients: [] }, at(19, 42));
+    const h = outputHealth({ outputs: [proj(true)], seen, isLive: true, air: "Canto" });
+    const row = h.rows.find((r) => !r.local);
+    assert.equal(row.state, "disconnected");
+    assert.equal(h.status.label, "Saídas · 1 com problema");
+    assert.equal(h.status.state, "warn");
+    assert.deepEqual(h.onAir, { text: "em 1 de 2 telas", warn: true });
+    assert.equal(h.banner.kind, "disconnected");
+    assert.equal(h.banner.title, "Letras desconectada às 19:42");
+    assert.equal(h.banner.sub, "Rede · 192.168.0.24 · a outra tela continua no ar");
+    // It reconnects (a new "since", same address and page): connected again.
+    seen = remember(seen, { outputs: [proj(true)], clients: [{ ...tv, since: "b" }] }, at(19, 43));
+    assert.equal(outputHealth({ outputs: [proj(true)], seen, isLive: true }).problems, 0);
+});
+
+test("the drop time is kept, not moved by later polls", () => {
+    let seen = remember({}, { clients: [tv] }, at(19, 0));
+    seen = remember(seen, { clients: [] }, at(19, 42));
+    const again = remember(seen, { clients: [] }, at(19, 50));
+    assert.equal(again, seen); // nothing changed: the same object, no re-render
+    assert.equal(again[netId(tv)].droppedAt, at(19, 42));
+});
+
+test("a poll that could not read the network judges no screen gone", () => {
+    const seen = remember({}, { clients: [tv] }, at(19, 0));
+    const after = remember(seen, { outputs: [proj(true)], clients: null }, at(19, 1));
+    assert.equal(after[netId(tv)].droppedAt, null);
+    assert.equal(after[localId("/Projection")].droppedAt, null);
+});
+
+test("an output window that closes is Fechada with Reabrir; it clears when reopened", () => {
+    let seen = remember({}, { outputs: [proj(true)] }, at(19, 0));
+    seen = remember(seen, { outputs: [proj(false)] }, at(19, 30));
+    let h = outputHealth({ outputs: [proj(false)], seen, isLive: true });
+    assert.equal(h.rows[0].state, "closed");
+    assert.equal(h.banner.kind, "closed");
+    assert.equal(h.banner.title, "Projeção principal fechada às 19:30");
+    assert.deepEqual(h.onAir, { text: "em nenhuma tela", warn: true });
+    seen = remember(seen, { outputs: [proj(true)] }, at(19, 31));
+    h = outputHealth({ outputs: [proj(true)], seen, isLive: true });
+    assert.equal(h.rows[0].state, "connected");
+    assert.equal(h.banner, null);
+});
+
+test("closed on purpose: forgotten, no warning", () => {
+    let seen = remember({}, { outputs: [proj(true)] }, at(19, 0));
+    seen = forget(seen, localId("/Projection"));
+    seen = remember(seen, { outputs: [proj(false)] }, at(19, 5));
+    const h = outputHealth({ outputs: [proj(false)], seen, isLive: true });
+    assert.equal(h.rows[0].state, "unused");
+    assert.equal(h.banner, null);
+    assert.equal(forget(seen, "nada"), seen);
+});
+
+test("the projector on the wrong monitor wins the banner", () => {
+    let seen = remember({}, { outputs: [proj(true)], clients: [tv] }, at(19, 0));
+    seen = remember(seen, { outputs: [proj(true, true)], clients: [] }, at(19, 10));
+    const h = outputHealth({ outputs: [proj(true, true)], seen, isLive: true, tries: 3 });
+    assert.equal(h.banner.kind, "reconnecting");
+    assert.equal(h.banner.tries, 3);
+    assert.equal(h.problems, 2);
+});
+
+test("Ensaio: desarmadas unless something is wrong; no 'em N telas'", () => {
+    const seen = remember({}, { outputs: [proj(true)] }, at(19, 0));
+    let h = outputHealth({ outputs: [proj(true)], seen, isLive: false });
+    assert.equal(h.status.label, "Saídas desarmadas");
+    assert.equal(h.status.state, "rh");
+    assert.equal(h.onAir, null);
+    const dropped = remember(seen, { outputs: [proj(false)] }, at(19, 1));
+    h = outputHealth({ outputs: [proj(false)], seen: dropped, isLive: false });
+    assert.equal(h.status.state, "warn");
+});
+
+test("what a page shows", () => {
+    assert.equal(showsOn("/Projection", "Tela preta"), "Tela preta");
+    assert.equal(showsOn("/StageView", "x"), "Palco · atual, próximo e relógio");
+    assert.equal(showsOn("/VideoProjection", "x"), "Só os vídeos enviados");
+    assert.equal(showsOn("/Desconhecida", ""), "nada");
+});
