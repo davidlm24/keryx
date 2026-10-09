@@ -1548,7 +1548,10 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             while (Date.now() < end && !(await consoleText()).includes("Palco desconectada")) await sleep(300);
             const text = await consoleText();
             result.dropBanner = text.includes("Palco desconectada");
-            result.dropStatus = /Saídas · \d+ com problema/.test(text);
+            // The status button's title carries the whole label; the bar hides the
+            // text itself below 1200 px (console.css), so read the title too.
+            result.dropLabel = await webContents.executeJavaScript("(() => { const b = document.querySelector('.kx-status'); const t = document.querySelector('.topbar'); return { title: b ? b.title : null, shown: b ? b.innerText : null, bar: t ? Math.round(t.getBoundingClientRect().width) : null, hidden: document.hidden }; })()").catch(() => null);
+            result.dropStatus = /Saídas · \d+ com problema/.test(text) || /Saídas · \d+ com problema/.test((result.dropLabel && result.dropLabel.title) || "");
         }
     } finally {
         if (!lyrics.isDestroyed()) lyrics.close();
