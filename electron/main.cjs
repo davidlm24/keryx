@@ -10,6 +10,7 @@ const { outputKeyForUrl } = require("./outputs.cjs");
 const { createLogger, captureConsole } = require("./logger.cjs");
 const { applyPendingImport } = require("./archive.cjs");
 const { createUpdater } = require("./updater.cjs");
+const { createNotifications } = require("./notifications.cjs");
 const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
 const { createLive, loadLiveRules } = require("./live.cjs");
@@ -279,8 +280,38 @@ app.whenReady().then(async () => {
         log: (m) => console.warn(m),
     });
 
-    const updater = createUpdater({ app, log: (m) => logger.info(m) });
-    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen });
+    // The bell (notifications.cjs) and the updater push to every window; the
+    // console listens (system.onNotifications / onUpdate in preload.cjs).
+    const broadcast = (channel, payload) => {
+        for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, payload);
+    };
+    const notifications = createNotifications({ settings, onChange: (list) => broadcast("keryx:notifications", list) });
+    const autoUpdates = () => Boolean((settings.get("updates", {}) || {}).auto);
+    const updater = createUpdater({
+        app,
+        log: (m) => logger.info(m),
+        isAuto: autoUpdates,
+        onChange: (state, before) => {
+            broadcast("keryx:update", { ...state, auto: autoUpdates() });
+            const v = state.version;
+            if (state.status === "available" && before.status !== "available") {
+                notifications.add({ key: `update:${v}`, kind: "update", title: `Nova versão do KERYX: ${v}`, body: autoUpdates() ? "Baixando automaticamente." : "Atualize pelo menu do KERYX (Atualizar agora) ou em Configurações.", action: "update" });
+            } else if (state.status === "downloaded" && before.status !== "downloaded") {
+                notifications.add({ key: `update:${v}`, kind: "update", title: `Versão ${v} pronta para instalar`, body: "O KERYX fecha e abre de novo em uns 30 segundos, e as telas apagam nesse tempo. Instale fora do culto.", action: "update" });
+            } else if (state.status === "error" && before.status === "downloading") {
+                notifications.add({ key: "update-error", kind: "warn", title: "A atualização não foi baixada", body: state.message, action: "update" });
+            }
+        },
+    });
+    // After an update: say so once, and drop the notes it answered.
+    const version = app.getVersion();
+    const lastVersion = settings.get("lastVersion", null);
+    if (lastVersion && lastVersion !== version) {
+        notifications.remove((n) => n.key.startsWith("update:") || n.key === "update-error");
+        notifications.add({ key: `updated:${version}`, kind: "info", title: `KERYX atualizado para a versão ${version}`, body: `Antes: ${lastVersion}.` });
+    }
+    if (lastVersion !== version) settings.set("lastVersion", version);
+    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications });
     try {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }
@@ -306,8 +337,13 @@ app.whenReady().then(async () => {
         port: process.env.KERYX_LAN_PORT !== undefined ? Number(process.env.KERYX_LAN_PORT) : undefined,
     });
     await network.startIfEnabled();
-    // Never installs by itself: it only finds out, and Settings says so.
-    if (updater.enabled() && !SMOKE && !DEV_URL) setTimeout(() => updater.check(), 8000);
+    // Finds out on launch (at once with Atualizar automaticamente, which also
+    // downloads) and every 6 hours for a PC left on. It never installs by
+    // itself: the console does, from its popup, only with nothing on air.
+    if (updater.enabled() && !SMOKE && !DEV_URL) {
+        setTimeout(() => updater.check(), autoUpdates() ? 2000 : 8000);
+        setInterval(() => updater.check(), 6 * 60 * 60 * 1000).unref();
+    }
 
     registerDataIpc({
         store,

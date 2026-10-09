@@ -1,6 +1,9 @@
 // Updates from GitHub Releases through electron-updater, on the operator's
-// terms: it checks, it tells, it downloads and installs only when asked
-// (never on its own, never mid-service).
+// terms. By default it checks and tells; it downloads and installs only when
+// asked. With "Atualizar automaticamente" (isAuto) a version it finds is
+// downloaded right away; installing still waits for the console, which does
+// it only while nothing is on air (src/lib/console/updates.js). Every state
+// change is pushed (onChange) so the console shows the progress live.
 //
 // It is off unless the build was made with a `publish` target: electron-builder
 // then writes resources/app-update.yml, and only a packaged app with that file
@@ -9,11 +12,15 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-function createUpdater({ app, log = () => {}, loadUpdater = () => require("electron-updater").autoUpdater }) {
-    let state = { status: "disabled", message: "As atualizações automáticas não estão configuradas nesta instalação.", version: null, percent: 0 };
+function createUpdater({ app, log = () => {}, loadUpdater = () => require("electron-updater").autoUpdater, isAuto = () => false, onChange = () => {} }) {
+    let state = { status: "disabled", message: "As atualizações automáticas não estão configuradas nesta instalação.", version: null, percent: 0, transferred: 0, total: 0, bytesPerSecond: 0 };
     let updater = null;
 
-    const set = (patch) => { state = { ...state, ...patch }; };
+    const set = (patch) => {
+        const before = state;
+        state = { ...state, ...patch };
+        try { onChange(state, before); } catch (err) { log(`[keryx-updater] onChange: ${err.message}`); }
+    };
     const configured = app.isPackaged && fs.existsSync(path.join(process.resourcesPath || "", "app-update.yml"));
 
     if (configured) {
@@ -24,9 +31,19 @@ function createUpdater({ app, log = () => {}, loadUpdater = () => require("elect
             updater.allowPrerelease = false;
             updater.logger = { info: log, warn: log, error: log, debug: () => {} };
             updater.on("checking-for-update", () => set({ status: "checking", message: "Procurando atualizações…" }));
-            updater.on("update-available", (info) => set({ status: "available", version: info.version, message: `A versão ${info.version} está disponível.` }));
+            updater.on("update-available", (info) => {
+                set({ status: "available", version: info.version, message: `A versão ${info.version} está disponível.` });
+                if (isAuto()) updater.downloadUpdate().catch(() => { /* error event */ });
+            });
             updater.on("update-not-available", () => set({ status: "none", message: "Você está na versão mais recente." }));
-            updater.on("download-progress", (p) => set({ status: "downloading", percent: Math.round(p.percent || 0), message: `Baixando… ${Math.round(p.percent || 0)}%` }));
+            updater.on("download-progress", (p) => set({
+                status: "downloading",
+                percent: Math.round(p.percent || 0),
+                transferred: p.transferred || 0,
+                total: p.total || 0,
+                bytesPerSecond: p.bytesPerSecond || 0,
+                message: `Baixando… ${Math.round(p.percent || 0)}%`,
+            }));
             updater.on("update-downloaded", (info) => set({ status: "downloaded", version: info.version, percent: 100, message: `A versão ${info.version} foi baixada e será instalada ao reiniciar.` }));
             updater.on("error", (err) => set({ status: "error", message: `Não foi possível verificar atualizações: ${err && err.message ? err.message.split("\n")[0] : err}` }));
             set({ status: "idle", message: "Nenhuma verificação feita ainda." });
@@ -40,14 +57,15 @@ function createUpdater({ app, log = () => {}, loadUpdater = () => require("elect
         state: () => state,
         enabled: () => Boolean(updater),
         async check() {
-            if (!updater) return state;
+            if (!updater || state.status === "downloading" || state.status === "downloaded") return state;
             try {
                 await updater.checkForUpdates();
             } catch { /* the error event already set the state */ }
             return state;
         },
         async download() {
-            if (!updater || state.status !== "available") return state;
+            if (!updater || (state.status !== "available" && state.status !== "error") || !state.version) return state;
+            set({ status: "downloading", percent: 0, transferred: 0, total: 0, bytesPerSecond: 0, message: "Baixando… 0%" });
             try {
                 await updater.downloadUpdate();
             } catch { /* error event */ }

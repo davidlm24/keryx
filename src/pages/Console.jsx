@@ -27,7 +27,9 @@ import NoticeEditor from "@/components/console/NoticeEditor";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
-import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
+import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette, UpdateDialog, Notifications } from "@/components/console/Popovers";
+import { useUpdates } from "@/components/console/useUpdates";
+import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor } from "@/lib/console/layout";
 import { liveAction, quickJumpKey } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
@@ -279,6 +281,40 @@ export default function Console() {
     // the rows of Saídas, "em N telas" beside the Programa and the banner.
     const airWords = captionOf(c.cur, "No ar").replace(/^No ar · /, "");
     const health = useMemo(() => outputHealth({ outputs, seen, isLive: c.isLive, air: airWords, tries }), [outputs, seen, c.isLive, airWords, tries]);
+
+    // Updates (electron/updater.cjs): with Atualizar automaticamente a version
+    // found right after opening shows its popup by itself, once; later it only
+    // rings the bell. "Atualizar agora" (menu, bell) opens it any time.
+    const upd = useUpdates();
+    const mountedAt = useRef(Date.now());
+    const [updDismissed, setUpdDismissed] = useState(false);
+    const lastOpen = useRef(open);
+    useEffect(() => {
+        if (lastOpen.current === "update" && open !== "update") setUpdDismissed(true);
+        lastOpen.current = open;
+    }, [open]);
+    useEffect(() => {
+        if (open || view) return;
+        if (shouldOpenOnLaunch({ update: upd.update, sinceMountMs: Date.now() - mountedAt.current, dismissed: updDismissed })) setOpen("update");
+    }, [upd.update, open, view, updDismissed]);
+    const updateNow = useCallback(() => {
+        const u = upd.update;
+        if (!hasUpdate(u)) return;
+        if (u.status === "available" || u.status === "error") upd.call("updateDownload").catch((err) => c.say(err.message));
+        setView(null);
+        setOpen("update");
+    }, [upd.update, upd.call, c]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Opening the bell reads what is in it.
+    const { unread: updUnread, call: updCall } = upd;
+    useEffect(() => {
+        if (open !== "notifs" || !updUnread) return undefined;
+        const id = setTimeout(() => updCall("notificationsRead").catch(() => {}), 800);
+        return () => clearTimeout(id);
+    }, [open, updUnread, updCall]);
+    const noteAction = (action) => {
+        if (action === "update") updateNow();
+        else if (action.startsWith("settings:")) openSettings(action.slice("settings:".length));
+    };
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
     // Closed here on purpose: forgotten, so it is not reported as a problem.
     const closeOutput = (key) => window.keryxDesktop?.displays.close(key).then(() => forgetOutput(localId(key))).catch(() => {});
@@ -407,7 +443,7 @@ export default function Console() {
 
     return (
         <div className={`kx console is-${tier} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
-            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} />
+            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} />
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
                 <div className="kx-banner is-warn" role="alert">
@@ -493,7 +529,7 @@ export default function Console() {
                 </div>
             )}
 
-            {open && <div className={`scrim ${open === "palette" || open === "arm" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open && <div className={`scrim ${open === "palette" || open === "arm" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
@@ -502,7 +538,9 @@ export default function Console() {
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} onOpenMedia={openMedia} />
                 </div>
             )}
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} />
+            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} />
+            <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
+            <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />

@@ -6,13 +6,14 @@ import { restoreArgs } from "@/lib/projection";
 import { stageFromHistory, stageFromSong, stageFromMedia, stageFromPiece, stageFromMaterial } from "@/lib/console/stage";
 import { materialIcon, materialMeta } from "@/lib/console/school";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
+import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
 
 const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv" };
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
 // The KERYX menu: pages that stay outside the console, the service picker,
 // Ver (modules) and the layout reset.
-export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports }) {
+export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow }) {
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     if (open === "ver") {
         return (
@@ -58,6 +59,12 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <MenuItem icon="layers" onClick={() => setOpen("ver")}>Ver<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
             <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>
             <MenuItem icon="sliders" onClick={() => { setOpen(null); onSettings?.("telas"); }}>Configurações</MenuItem>
+            {hasUpdate(update) && (
+                <MenuItem icon="download" onClick={() => onUpdateNow?.()}>
+                    <span style={{ flex: 1 }}>{update.status === "downloading" ? "Atualizando…" : "Atualizar agora"}</span>
+                    <span className="kx-kbd">{update.status === "downloading" ? `${update.percent}%` : update.version}</span>
+                </MenuItem>
+            )}
         </div>
     );
 }
@@ -238,6 +245,91 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
                 ))}
                 {!flat.length && <Empty title={ql ? `Nada com "${q}"` : "Digite para buscar"}>{ql ? "Tente um título, um trecho ou uma referência como Jo 3:16." : "Músicas, versículos, mídia, avisos e itens da setlist."}</Empty>}
             </div>
+        </div>
+    );
+}
+
+// The update popup: the download's progress, live (the main process pushes
+// it), then a restart to install. With nothing on air it restarts by itself
+// after a short countdown the operator can cancel; with something on air it
+// only installs on an explicit click. "Agora não" closes it and the download
+// goes on in the background (the bell and the menu say when it is ready).
+export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
+    const [count, setCount] = useState(null);
+    const [stopped, setStopped] = useState(false);
+    const [installing, setInstalling] = useState(false);
+    const ready = canInstallNow({ update, live });
+    const visible = open === "update" && Boolean(update);
+    useEffect(() => { if (!visible) { setCount(null); setStopped(false); setInstalling(false); } }, [visible]);
+    useEffect(() => {
+        if (!visible || !ready || stopped || installing) { setCount(null); return undefined; }
+        setCount(5);
+        const id = setInterval(() => setCount((n) => (n === null ? null : n - 1)), 1000);
+        return () => clearInterval(id);
+    }, [visible, ready, stopped, installing]);
+    // If KERYX is still here after a while, the restart did not happen: say so.
+    const install = () => {
+        setInstalling(true);
+        call("updateInstall").catch(() => setInstalling(false));
+        setTimeout(() => setInstalling(false), 20000);
+    };
+    useEffect(() => { if (count === 0) install(); }, [count]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!visible) return null;
+    const { title, line } = phaseOf(update);
+    const pct = update.status === "downloaded" ? 100 : update.status === "downloading" ? update.percent || 0 : 0;
+    const busy = update.status === "available" || (update.status === "downloading" && !update.total);
+    const close = () => { setOpen(null); onDismiss?.(); };
+    return (
+        <div className="dialog upd" role="dialog" aria-label="Atualização do KERYX">
+            <div className="kx-section" style={{ color: "var(--fg-1)" }}>{installing ? "Reiniciando o KERYX…" : title}</div>
+            <div className={`upd-bar ${busy ? "is-busy" : ""} ${update.status === "error" ? "is-error" : ""}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+                <b style={{ width: `${busy ? 30 : pct}%` }} />
+            </div>
+            <div className="upd-line"><span>{installing ? "As telas voltam sozinhas quando ele abrir." : line}</span>{update.status === "downloading" && <span className="kx-meta">{pct}%</span>}</div>
+            {update.status === "downloaded" && !installing && onAir(live) && (
+                <div className="kx-warn">Há algo no ar. Instalar agora apaga as telas por uns 30 segundos: prefira depois do culto.</div>
+            )}
+            {count !== null && !installing && <div style={{ color: "var(--fg-2)" }}>Reiniciando em {count} s…</div>}
+            <div className="acts">
+                {!installing && <Btn onClick={close}>{update.status === "downloaded" ? "Depois" : "Agora não"}</Btn>}
+                {count !== null && !installing && <Btn onClick={() => setStopped(true)}>Cancelar</Btn>}
+                {update.status === "error" && <Btn kind="outline" onClick={() => call("updateDownload").catch(() => {})}>Tentar de novo</Btn>}
+                {update.status === "downloaded" && !installing && count === null && (
+                    <button type="button" className={`kx-btn kx-t ${onAir(live) ? "kx-btn-air" : "kx-btn-prev"}`} onClick={install}>{onAir(live) ? "Instalar mesmo assim" : "Instalar e reiniciar"}</button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+const NOTE_ICON = { update: "download", warn: "warn", info: "check" };
+const ACTION_LABEL = { update: "Atualizar agora", "settings:dados": "Abrir Dados" };
+
+// The bell's list: newest first, each with what can be done about it.
+export function Notifications({ open, setOpen, notes, update, onAction, onDismiss, onClear }) {
+    if (open !== "notifs") return null;
+    const when = (at) => new Date(at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return (
+        <div className="pop kx-pop notifs" style={{ right: 130, top: 40, width: 360, maxHeight: "calc(100vh - 60px)", overflow: "auto" }} role="dialog" aria-label="Notificações">
+            <div className="kx-menu-h"><span className="kx-section">Notificações</span><span style={{ flex: 1 }} />{notes.length > 0 && <Btn small onClick={onClear}>Limpar</Btn>}</div>
+            {!notes.length && <div className="kx-menu-h"><span className="kx-meta">Nada por aqui. Atualizações e avisos de backup aparecem aqui.</span></div>}
+            {notes.map((n) => {
+                const act = n.action === "update" ? (hasUpdate(update) ? "update" : null) : n.action;
+                return (
+                    <div key={n.id} className={`note ${n.read ? "" : "is-new"} is-${n.kind}`}>
+                        <Icon name={NOTE_ICON[n.kind] || "dot"} />
+                        <div className="note-b">
+                            <div className="note-t">{n.title}</div>
+                            {n.body && <div className="note-d">{n.body}</div>}
+                            <div className="note-f">
+                                <span className="kx-meta">{when(n.at)}</span>
+                                {act && ACTION_LABEL[act] && <Btn small kind="outline" onClick={() => { setOpen(null); onAction(act); }}>{ACTION_LABEL[act]}</Btn>}
+                            </div>
+                        </div>
+                        <button type="button" className="kx-btn kx-btn-icon kx-t note-x" title="Dispensar" aria-label="Dispensar" onClick={() => onDismiss(n.id)}><Icon name="x" /></button>
+                    </div>
+                );
+            })}
         </div>
     );
 }

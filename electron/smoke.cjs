@@ -1626,6 +1626,69 @@ function expectAdapter(a) {
 const VERBOSE = process.env.KERYX_SMOKE_VERBOSE === "1";
 const step = (name) => { if (VERBOSE) console.log(`smoke: ${name}`); };
 
+// Updates and the bell, without a real update: the smoke pushes updater
+// states over the same channel the main process uses (keryx:update) and adds
+// a notification through the main process. The menu offers "Atualizar agora",
+// the popup shows the progress, a downloaded update with something on air
+// waits for a click, with nothing on air it counts down (cancelled here; the
+// updater is off in an unpackaged app anyway). The bell's dot goes when read.
+async function checkUpdates(webContents, { system, live }) {
+    const result = { ok: false };
+    const js = (code) => webContents.executeJavaScript(code);
+    const waitFor = async (test, ms = 5000) => {
+        const end = Date.now() + ms;
+        while (Date.now() < end) { if (await test()) return true; await sleep(150); }
+        return false;
+    };
+    const has = (sel, text = "") => js(`[...document.querySelectorAll(${JSON.stringify(sel)})].some((n) => n.textContent.includes(${JSON.stringify(text)}))`);
+    const clickText = (sel, text) => js(`(() => { const n = [...document.querySelectorAll(${JSON.stringify(sel)})].find((x) => x.textContent.includes(${JSON.stringify(text)})); if (n) n.click(); return Boolean(n); })()`);
+    const push = (state) => webContents.send("keryx:update", { status: "none", version: null, percent: 0, transferred: 0, total: 0, bytesPerSecond: 0, message: "", auto: false, ...state });
+    const shot = async (suffix) => {
+        if (!process.env.KERYX_CONSOLE_SHOT) return;
+        await sleep(500);
+        fs.writeFileSync(process.env.KERYX_CONSOLE_SHOT.replace(/\.png$/i, `-${suffix}.png`), (await webContents.capturePage()).toPNG());
+    };
+    try {
+        // The bell: a red dot for an unread notification; opening it reads it.
+        system.notifications.add({ key: "smoke", kind: "warn", title: "Aviso do smoke", body: "Só um teste.", action: "settings:dados" });
+        result.bellDot = await waitFor(() => js("Boolean(document.querySelector('.tb-bell-dot'))"));
+        await js("document.querySelector('.tb-bell button').click(); true");
+        result.bellList = await waitFor(() => has(".notifs .note-t", "Aviso do smoke"));
+        await shot("sino");
+        result.bellRead = await waitFor(() => system.notifications.unread() === 0, 4000) && await waitFor(() => js("!document.querySelector('.tb-bell-dot')"));
+        await js("document.querySelector('.scrim') && document.querySelector('.scrim').click(); true");
+
+        // The menu offers the update while it comes down; the popup follows it.
+        push({ status: "downloading", version: "9.9.9", percent: 40, transferred: 56e6, total: 140e6, bytesPerSecond: 2e6 });
+        await js("document.querySelector('.markbtn').click(); true");
+        result.menuItem = await waitFor(() => has(".kx-pop", "Atualizando…")) && await has(".kx-pop", "40%");
+        await clickText(".kx-pop button, .kx-pop [role=menuitem]", "Atualizando…");
+        result.popup = await waitFor(() => has(".dialog.upd", "Baixando a versão 9.9.9")) && await has(".dialog.upd", "56 de 140 MB");
+        result.bar = await js("(() => { const b = document.querySelector('.upd-bar > b'); return b ? b.style.width : null; })()");
+        await shot("atualizacao");
+
+        // Downloaded with something on air: no countdown, an explicit button.
+        live.call("content.show", { kind: "lyrics", title: "No ar", slides: [{ text: "Algo no ar" }] });
+        push({ status: "downloaded", version: "9.9.9", percent: 100 });
+        result.waitsOnAir = await waitFor(() => has(".dialog.upd", "Instalar mesmo assim")) && !(await has(".dialog.upd", "Reiniciando em"));
+        // Nothing on air: it counts down by itself; Cancelar stops it.
+        live.call("clear");
+        result.countdown = await waitFor(() => has(".dialog.upd", "Reiniciando em"));
+        await clickText(".dialog.upd button", "Cancelar");
+        result.cancelled = await waitFor(() => has(".dialog.upd", "Instalar e reiniciar")) && !(await has(".dialog.upd", "Reiniciando em"));
+        await clickText(".dialog.upd button", "Depois");
+        result.closed = await waitFor(() => js("!document.querySelector('.dialog.upd')"));
+    } catch (err) {
+        result.error = String(err && err.message);
+    } finally {
+        push({ status: "none" });
+        try { system.notifications.clear(); } catch { /* not there */ }
+    }
+    result.ok = Boolean(result.bellDot && result.bellList && result.bellRead && result.menuItem && result.popup && result.bar === "40%"
+        && result.waitsOnAir && result.countdown && result.cancelled && result.closed);
+    return result;
+}
+
 function runSmokeTest(win, { dev, outputs, screen, system, settings, network, live, dataDir, importOutcome }) {
     const errors = [];
     const { webContents } = win;
@@ -1720,10 +1783,11 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
             const videoResult = await checkVideo(webContents, { live });
             const layersResult = await checkLayers(webContents, { live, outputs });
             const consoleResult = await checkConsole(webContents, { live, outputs });
+            const updatesResult = await checkUpdates(webContents, { system, live });
             // The LAN server serves the built app (dist/), so this runs in built mode only.
             const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live, videoFile: videoResult.fileName, webContents });
-            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && videoResult.ok && layersResult.ok && consoleResult.ok && !importOutcome && (dev || networkResult.ok),
-                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, video: videoResult, layers: layersResult, console: consoleResult, network: networkResult });
+            finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && videoResult.ok && layersResult.ok && consoleResult.ok && updatesResult.ok && !importOutcome && (dev || networkResult.ok),
+                { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, video: videoResult, layers: layersResult, console: consoleResult, updates: updatesResult, network: networkResult });
         } catch (err) {
             finish(false, { rendered, exception: String(err && (err.stack || err.message)).slice(0, 800) });
         }
