@@ -1,14 +1,14 @@
 /* KERYX — generated from tokens.json (local compile for the canvas; the system page generates its own) */
 :root, [data-theme="dark"] {
-  --bg-0: #0c0c0d;
-  --bg-1: #141415;
-  --bg-2: #1c1c1e;
-  --bg-3: #242427;
-  --line: #2a2a2e;
-  --line-strong: #3a3a40;
-  --fg-1: #ededee;
-  --fg-2: #a3a3a8;
-  --fg-3: #8b8b92;
+  --bg-0: #0d0d0c;
+  --bg-1: #171715;
+  --bg-2: #20201d;
+  --bg-3: #2a2925;
+  --line: #35342f;
+  --line-strong: #4a4840;
+  --fg-1: #f4f1ea;
+  --fg-2: #bbb6ac;
+  --fg-3: #9b958a;
   --air: #e5484d;
   --air-fg: #ff6b70;
   --air-fill: #cf343a;
@@ -26,11 +26,14 @@
   --warn-tint: #f5a5241a;
   --on-state: #ffffff;
   --on-warn: #1a1300;
-  --brand: #c9a461;
-  --on-brand: #1a1200;
+  --brand: #c19959;
+  --brand-hover: #d0a968;
+  --brand-pressed: #a47d43;
+  --brand-tint: #c199591a;
+  --on-brand: #20180c;
   --screen-bg: #000000;
   --screen-fg: #ffffff;
-  --popover: 0 0 0 1px #2a2a2e, 0 8px 24px #00000080;
+  --popover: 0 0 0 1px #35342f, 0 8px 24px #00000080;
   --screen-text: 0 2px 12px #000000b3;
 }
 :root {
@@ -39,12 +42,12 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-6: 24px;
-  --gutter: 6px;
+  --gutter: 8px;
   --row: 28px;
-  --topbar: 36px;
+  --topbar: 40px;
   --bar: 2px;
-  --radius-control: 6px;
-  --radius-panel: 10px;
+  --radius-control: 8px;
+  --radius-panel: 14px;
   --radius-round: 999px;
   --duration-fast: 120ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);

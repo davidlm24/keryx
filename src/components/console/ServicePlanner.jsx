@@ -169,7 +169,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                 <Empty icon="list" title={services.length ? "Escolha um culto" : "Nenhum culto ainda"}>Crie um culto para planejar a setlist.</Empty>
                 <div className="pl-pad">
                     {services.slice(0, 12).map((s) => <Row key={s.id} single icon="list" title={s.title} time={s.date ? s.date.split("-").reverse().slice(0, 2).join("/") : ""} onClick={() => setServiceId(s.id)} />)}
-                    <Btn kind="outline" onClick={newService}><Icon name="plus" />Novo culto</Btn>
+                    <Btn kind="brand" onClick={newService}><Icon name="plus" />Novo culto</Btn>
                 </div>
             </Panel></div>
         );

@@ -32,7 +32,8 @@ app is one console, always live, Ensaio as the only sandbox, Verificar as an
 overlay from the Saídas popover, and a double click (or a drag onto the
 Programa) sends to air. Artboards 8–15 stay in the canvas as a record; the
 app follows the full modular layout of artboards 1–7. "Roteiro" is called
-**Setlist** in the app. The top bar is a menu bar: the KERYX mark
+**Setlist** in the app. The top bar is a menu bar, drawn straight on the window
+(`bg-0`, no panel, 2026-10-09): the KERYX mark
 (menu), the environment tabs **KERYX | Bíblia** (`kx-tabs`, underline in
 brand), the step selector, the search, Ensaio | Ao vivo, a compact clock, the
 outputs status and the emergency glyphs, on one line at every width. The

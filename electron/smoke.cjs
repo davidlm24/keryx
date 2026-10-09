@@ -1119,6 +1119,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(150);
         await js(`(() => {
             const dst = document.querySelector(".pl-list .kx-row");
+            if (!dst) return false;
             const dt = new DataTransfer();
             dst.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt }));
             dst.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt }));

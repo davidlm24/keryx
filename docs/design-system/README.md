@@ -3,9 +3,9 @@ KERYX is the live operator console a Brazilian church volunteer runs for 90 minu
 ## Principles
 
 - **Programa / Prévia discipline.** Nothing reaches the screens by being clicked. A click prepares (`prev`); only `Enviar ao ar`, Enter or the arrow keys change what is on air (`air`). Design every new feature so that this stays true.
-- **Colour is state.** `air` red = on air, `prev` green = prepared, `rh` blue = rehearsal (outputs disarmed), `warn` amber = warning or failure. `brand` gold is reserved for the logo mark and the focus ring. Everything else is one of four greys. If a colour is not telling the operator a state, remove it.
+- **Colour is state.** `air` red = on air, `prev` green = prepared, `rh` blue = rehearsal (outputs disarmed), `warn` amber = warning or failure. `brand` gold is the KERYX identity: the logo mark, the active environment tab, the focus ring and ordinary primary actions (Salvar, Novo culto), never a live state. Everything else is one of four warm greys. If a colour is not telling the operator a state, remove it.
 - **Dense, small, quiet.** 11px metadata, 12px UI, 13–14px content, nothing larger except `clock` and `countdown`. Bare glyphs, no boxes around icons, no badges, no pills, no inline help. Explanations live in tooltips and empty states.
-- **One rhythm.** A 4px grid, 28px rows and controls, 6px gutters between modules, 6px radius on controls, 10px on panels. Hover and state changes take 120ms ease-out; a slide change on a screen is a hard cut.
+- **One rhythm.** A 4px grid, 28px rows and controls, 8px gutters between modules, 8px radius on controls, 14px on panels. Hover and state changes take 120ms ease-out; a slide change on a screen is a hard cut.
 
 ## Content fundamentals
 
@@ -25,7 +25,7 @@ State colours come in four tokens each — the mark (`air`), the text (`air-fg`)
 
 Red and green are distinguishable by lightness (4.7:1 and 5.8:1 on `bg-1`, text variants 6.7:1 and 9.4:1) and always carry a word as well: `PROGRAMA`, `PRÉVIA`, `Conectada`, `Reconectando`. Never signal a state with colour alone.
 
-`brand` gold appears in exactly two places: the KERYX mark and the 2px focus ring, which lands solid at 7.9:1 on every surface. Never use it for a button, a selection, a chart or emphasis.
+`brand` gold (`#C19959`) marks identity and ordinary interaction, sparingly — one or two gold cues per region: the KERYX mark, the 2px underline of the active environment tab (KERYX | Bíblia), the 2px focus ring (5.5:1 on `bg-3`), the bars of a report chart, and the gold button `kx-btn-brand` for non-live primary actions (Salvar, Salvar aviso, Novo culto, Importar). The gold button's label is `on-brand` (6.7:1); hover is `brand-hover`, pressed `brand-pressed` (4.7:1, never as text on `bg-2`/`bg-3`), disabled goes neutral (`bg-3`, `fg-3`), and its focus ring turns `fg-1` so it shows on the fill. `brand-tint` is a 10% wash for the rare neutral selection that needs a gold edge. Gold never recolours Programa, Prévia, Enviar ao ar, Ao vivo, Ensaio, an output fault or a warning, and never appears on a projected screen.
 
 Projected screens are a different world: `screen-bg` black, `screen-fg` white text with the `screen-text` shadow, the church logo in a corner. Console tokens never leak onto a screen and screen styles never appear on the console.
 
@@ -37,7 +37,7 @@ Screens use `display` (the same family at heavier weight): `screen-lyrics`, `scr
 
 ## Spacing, radii, layout
 
-`space-1` (4px) is the unit; controls and rows are `row` (28px) tall, the top bar `topbar` (36px), gutters between modules `gutter` (6px). Horizontal padding inside a row or control is `space-2`; popovers and menus pad `space-3`; dialogs `space-4`. Radii: `radius-control` on anything you click or type into and on slide rows, `radius-panel` on modules, popovers, dialogs and banners, `radius-round` only on 6px state dots and the seek handle.
+`space-1` (4px) is the unit; controls and rows are `row` (28px) tall, the top bar `topbar` (40px, on `bg-0` with no panel: the search is a round `bg-1` field and the screen glyphs sit in round `bg-1` buttons), gutters between modules `gutter` (8px), module headers 32px with `space-3` on the left. Horizontal padding inside a row is `space-3` (it lines up with the module header), inside a control `space-2`; popovers and menus pad `space-3`; dialogs `space-4`. Radii: `radius-control` on anything you click or type into and on slide rows, `radius-panel` on modules, popovers and dialogs, `radius-round` on 6px state dots, the seek handle, the top bar's search and its glyph buttons.
 
 The console is a grid of modules. Every module has a 28px header (`section` style, collapse glyph, module actions), can be resized with an invisible splitter (a 1px `line-strong` line on hover, double-click resets), collapsed to its header, or hidden and restored from the *Ver* menu. Layouts are saved per operator; *Restaurar layout* returns the default. At 1366px wide the right-hand modules become a drawer and the rundown moves into the library tabs; nothing ever scrolls sideways.
 
@@ -53,7 +53,7 @@ Banners are one 28px line across the grid, tinted, with a 2px top rule in the st
 
 ## Iconography
 
-Bare glyphs from the KERYX set (`components/bundle.js`, `window.KERYX.icon(name)`, SVGs under `assets/Icons`): 24-unit grid drawn for 16px, 1.5 stroke, round caps and joins, no fill, no box, border or background around them. A glyph sits at `fg-2` and lightens to `fg-1` on hover; a glyph next to a label that already says the same thing is removed. Shortcuts appear in tooltips (`Tela preta · B`), never printed on buttons.
+Bare glyphs from the KERYX set (`components/bundle.js`, `window.KERYX.icon(name)`, SVGs under `assets/Icons`): 24-unit grid drawn for 16px, 1.5 stroke, round caps and joins, no fill, no box, border or background around them (the one exception: the top bar's glyphs sit in round `bg-1` buttons, because the bar itself has no panel). A glyph sits at `fg-2` and lightens to `fg-1` on hover; a glyph next to a label that already says the same thing is removed. Shortcuts appear in tooltips (`Tela preta · B`), never printed on buttons.
 
 ## Motion
 
