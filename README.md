@@ -60,9 +60,11 @@ Configurações › "Dados e atualizações":
   logo) are mirrored too, into `<folder>media`: on launch and with "Fazer
   backup agora", in the background, copying only what is new or changed;
   files deleted in KERYX stay there. The default folder (same disk) gets no
-  media copy. There is no "restore a backup" button yet: put the day's
-  `keryx-YYYY-MM-DD.db` and the `media` folder back by hand, or use
-  Exportar/Importar.
+  media copy.
+- **Restaurar um backup:** lists the daily backups of the backup folder; pick
+  a day and KERYX restarts with the data of that day. Today's data is moved
+  to a `before-import-…` folder inside the data folder, never deleted.
+  Media files deleted since come back from the backup's media copy.
 - **Exportar tudo / Importar:** one zip with the database and all media, to move
   to another computer or keep as a full backup. Importing replaces the current
   data and restarts KERYX; what was replaced stays in a `before-import-…`

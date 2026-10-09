@@ -631,8 +631,14 @@ Original plan, for reference:
   "Fazer backup agora" and when the folder changes, never on close (it cannot
   wait). Only new or changed files are copied (size and mtime; copies keep the
   source's times), each under a temporary name first; files deleted in KERYX
-  stay in the mirror. Settings shows the files, size and last copy. No restore
-  button yet: by hand, or Exportar/Importar.
+  stay in the mirror. Settings shows the files, size and last copy.
+- **Restaurar um backup** (2026-10-09, `archive.stageRestore`): Settings
+  lists the folder's daily backups; one is staged like an import (copied to
+  `pending-import/`, `quick_check`ed), with a media folder made of today's
+  files (hard links, a copy where linking fails) plus what only the backup's
+  mirror still has; a native dialog asks once more, the app restarts, and
+  `applyPendingImport` swaps it in, moving today's data to
+  `before-import-<time>/`.
 - **Exportar tudo / Importar** (`electron/archive.cjs`): a zip with a
   manifest, the database and `media/`. Import validates the zip (only
   expected names, so a path-traversal entry is refused; the database must pass
