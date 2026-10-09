@@ -41,6 +41,7 @@
   --space-6: 24px;
   --gutter: 6px;
   --row: 28px;
+  --row-comfortable: 32px;
   --topbar: 36px;
   --bar: 2px;
   --radius-control: 6px;
@@ -59,6 +60,10 @@
 .ui-strong { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 500; }
 .content { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 400; }
 .content-lg { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 400; }
+.live-cap { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; }
+.live-title { font-family: var(--font-sans); font-size: 16px; line-height: 22px; font-weight: 600; }
+.next-title { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 500; }
+.alert-title { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 600; }
 .clock { font-family: var(--font-sans); font-size: 20px; line-height: 24px; font-weight: 500; }
 .countdown { font-family: var(--font-sans); font-size: 28px; line-height: 32px; font-weight: 500; }
 .screen-lyrics { font-family: var(--font-display); font-size: 56px; line-height: 1.2; font-weight: 600; }

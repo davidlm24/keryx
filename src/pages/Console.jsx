@@ -30,7 +30,7 @@ import SettingsView, { sectionIds } from "@/components/console/settings/Settings
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette, UpdateDialog, Notifications } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
-import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor } from "@/lib/console/layout";
+import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor, densityOf } from "@/lib/console/layout";
 import { liveAction, quickJumpKey } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
@@ -442,14 +442,14 @@ export default function Console() {
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
     return (
-        <div className={`kx console is-${tier} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
+        <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
                 <div className="kx-banner is-warn" role="alert">
-                    {health.banner.row.key === "/Projection" ? "Projetor" : health.banner.row.name} · Reconectando… tentativa {tries}
+                    <span className="kx-alert-title">{health.banner.row.key === "/Projection" ? "Projetor" : health.banner.row.name} · Reconectando… tentativa {tries}</span>
                     <span className="kx-sub">ATENÇÃO · {health.banner.row.key === "/Projection" ? `última conexão boa às ${hhmm(lastOkAt)} · ` : ""}o monitor escolhido não está ligado</span>
                     <span className="kx-spacer" />
                     <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("black")}>Tela preta</button>
@@ -459,7 +459,7 @@ export default function Console() {
             )}
             {health.banner && health.banner.kind !== "reconnecting" && (
                 <div className="kx-banner is-warn" role="alert">
-                    {health.banner.title}{health.banner.more ? ` · e mais ${health.banner.more}` : ""}
+                    <span className="kx-alert-title">{health.banner.title}{health.banner.more ? ` · e mais ${health.banner.more}` : ""}</span>
                     <span className="kx-sub">{health.banner.sub}</span>
                     <span className="kx-spacer" />
                     {health.banner.kind === "closed" && <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={() => openOutput(health.banner.row.key)}>Reabrir</button>}
