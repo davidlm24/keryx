@@ -27,7 +27,12 @@ const HOST = "127.0.0.1";
 // KERYX_PORT=0 picks a free port; smoke runs do, so a test never collides with
 // a KERYX that is open on the same machine.
 const PORT = process.env.KERYX_PORT !== undefined ? Number(process.env.KERYX_PORT) : 7700;
-const BG = "#1a1714";
+// The console's own background (--bg-0 in docs/design-system/tokens.css): the
+// window paints it before the page loads, and the Windows title bar uses it so
+// the bar and the app read as one surface. Keep it in step with the token.
+const BG = "#0c0c0d";
+const TITLEBAR_SYMBOLS = "#a3a3a8"; // --fg-2
+const TITLEBAR_HEIGHT = 32;
 
 // KERYX_DEV_URL: a running Vite dev server (npm run desktop:dev).
 // KERYX_DATA_DIR: where the database and media live (tests use a temp dir).
@@ -177,6 +182,12 @@ function createMainWindow() {
         backgroundColor: BG,
         title: "KERYX",
         autoHideMenuBar: true,
+        // Windows: no native bar. The minimize/maximize/close buttons stay (drawn
+        // by the system over the page) in the console's colour; the page leaves
+        // the strip to them with env(titlebar-area-height) (console.css).
+        ...(process.platform === "win32"
+            ? { titleBarStyle: "hidden", titleBarOverlay: { color: BG, symbolColor: TITLEBAR_SYMBOLS, height: TITLEBAR_HEIGHT } }
+            : {}),
         webPreferences,
     });
     guardWindow(mainWindow);

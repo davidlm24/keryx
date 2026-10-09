@@ -407,6 +407,7 @@ export default function Console() {
 
     return (
         <div className={`kx console is-${tier} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
+            <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} />
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
