@@ -2,6 +2,12 @@
    monitors. Everything else (rows, buttons, fields, monitors' look) comes
    from the design system: docs/design-system/components/bundle.css. */
 .console { position: fixed; inset: 0; display: flex; flex-direction: column; gap: var(--gutter); padding: var(--gutter); background: var(--bg-0); color: var(--fg-2); user-select: none; outline: 0; }
+/* Windows draws the window buttons over the page (titleBarOverlay in
+   electron/main.cjs) and reports the strip they occupy: that strip is the
+   window's drag handle and the console starts below it. Anywhere else the
+   variable is unset, the strip has no height and nothing changes. */
+.console { padding-top: calc(env(titlebar-area-height, 0px) + var(--gutter)); }
+.console .winbar { position: absolute; top: 0; left: 0; right: 0; height: env(titlebar-area-height, 0px); -webkit-app-region: drag; overflow: hidden; display: flex; align-items: center; padding-left: var(--space-3); font-size: 11px; font-weight: 500; letter-spacing: .08em; color: var(--fg-3); }
 .console .main { flex: 1; min-height: 0; display: flex; align-items: stretch; overflow: hidden; }
 /* Side columns shrink down to their minimum (inline flex-basis/min-width
    from Console.jsx); the center keeps room for the monitors. */
