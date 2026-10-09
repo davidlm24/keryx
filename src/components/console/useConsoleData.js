@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
+import { remember, forget } from "@/lib/console/outputs";
 
 // What the console reads: the library (songs, media, communication pieces),
 // the services and the chosen service's items, the themes. Each list follows
@@ -64,32 +65,46 @@ export function pickDefaultService(services) {
 }
 
 // The outputs: the windows the main process places (desktop) and the
-// screens on the church network connected right now (each says which page
-// it shows; electron/lan.cjs). Polled, since window state has no event.
+// screens on the church network (each says which page it shows;
+// electron/lan.cjs). Polled, since window state has no event. The session
+// memory (src/lib/console/outputs.js) keeps the ones that dropped, so a
+// screen that leaves shows as Desconectada instead of vanishing.
 export function useOutputs() {
     const [local, setLocal] = useState({ displays: [], outputs: [] });
-    const [clients, setClients] = useState([]);
+    const [seen, setSeen] = useState({});
     useEffect(() => {
         const bridge = window.keryxDesktop;
         if (!bridge) return undefined;
         let alive = true;
         // The bridge answers { data, error }; data = { displays, outputs }.
-        const read = () => {
-            bridge.displays.list().then((r) => { if (alive && r && r.data) setLocal(r.data); }).catch(() => {});
-            bridge.network?.call("info").then((r) => { if (alive && r && r.data) setClients(r.data.clients || []); }).catch(() => {});
+        // Both reads land before the memory is updated, so a window and the
+        // network are judged from the same poll.
+        const read = async () => {
+            const [d, n] = await Promise.all([
+                bridge.displays.list().catch(() => null),
+                bridge.network ? bridge.network.call("info").catch(() => null) : null,
+            ]);
+            if (!alive) return;
+            const data = d?.data || null;
+            if (data) setLocal(data);
+            const clients = n?.data ? n.data.clients || [] : null;
+            setSeen((prev) => remember(prev, { outputs: data ? data.outputs : [], clients }, Date.now()));
         };
         read();
         const id = setInterval(read, 5000);
         return () => { alive = false; clearInterval(id); };
     }, []);
-    const network = useMemo(() => clients.map((cl) => ({
-        id: `${cl.ip}|${cl.screen}|${cl.since}`,
-        name: cl.label || "Tela na rede",
-        ip: cl.ip,
-        kind: /iPad|Tablet|Android(?!.*Mobile)/i.test(cl.agent || "") ? "tablet" : "tv",
-        online: true,
-        lastSeen: cl.since,
-        role: cl.screen === "/VideoProjection" ? "media" : "lyrics",
-    })), [clients]);
-    return { displays: local.displays, outputs: local.outputs, network };
+    // The shape Verificar and the player use: one entry per network screen,
+    // online or not (lastSeen: when it dropped).
+    const network = useMemo(() => Object.values(seen).filter((v) => v.kind === "net").map((v) => ({
+        id: v.key,
+        name: v.name,
+        ip: v.ip,
+        kind: /iPad|Tablet|Android(?!.*Mobile)/i.test(v.agent || "") ? "tablet" : "tv",
+        online: !v.droppedAt,
+        lastSeen: v.droppedAt,
+        role: v.screen === "/VideoProjection" ? "media" : "lyrics",
+    })), [seen]);
+    const forgetOutput = useCallback((id) => setSeen((prev) => forget(prev, id)), []);
+    return { displays: local.displays, outputs: local.outputs, network, seen, forgetOutput };
 }

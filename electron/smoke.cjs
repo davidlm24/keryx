@@ -711,7 +711,8 @@ async function checkConsole(webContents, { live, outputs }) {
         // Sending live reopens a closed projector, without taking the keyboard.
         outputs.close("/Projection");
         await waitFor(() => !windowFor("/Projection"), 5000);
-        await sleep(3600); // the console's outputs poll runs every 3 s
+        // Closed by something other than the operator: a banner says so (outputs.js).
+        result.closedBanner = await waitText(webContents, "Projeção principal fechada", true, 8000);
         await press("Escape");
         await waitFor(() => !live.get().content);
         await dblclick(".kx-row", "Canto do console");
@@ -721,6 +722,9 @@ async function checkConsole(webContents, { live, outputs }) {
         result.autoFocusKept = keptFocus("autoFocusKept");
         if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
         result.projected2 = Boolean(main) && await waitText(main, "Primeiro slide do console");
+        // Back on: the banner goes, and the Programa says where it is.
+        result.closedCleared = await waitText(webContents, "Projeção principal fechada", false, 8000);
+        result.onScreens = await waitFor(() => js("/^em \\d+ telas?$/.test((document.querySelector('.prog-where') || {}).textContent || '')"), 8000);
 
         // Verificar is a panel on demand now: Saídas -> "Verificar tudo…".
         // Esc closes the overlay and leaves the projection alone.
@@ -1386,6 +1390,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
         && result.sent && result.projected && result.advanced && result.barFits && result.escEnded && result.escToast
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
+        && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
         && result.resent && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
         && result.armed && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
@@ -1412,7 +1417,7 @@ async function checkConsole(webContents, { live, outputs }) {
 
 // A tablet on the network: a plain browser window (no preload, no desktop
 // bridge) opening screen pages from the LAN server, fed by store changes.
-async function checkNetwork({ network, live, videoFile }) {
+async function checkNetwork({ network, live, videoFile, webContents }) {
     const result = { started: false, lyrics: false, stage: false, live: null, operatorPageBlocked: false, pinForm: false, tabletErrors: [], ok: false };
     await network.ops.setPin(null, ""); // start open, whatever the data folder had
     await network.ops.setEnabled(null, true);
@@ -1506,9 +1511,22 @@ async function checkNetwork({ network, live, videoFile }) {
         result.pinForm = (await textOf(locked)).includes("PIN") && locked.webContents.getURL().includes("/lan/pin");
         locked.close();
         await network.ops.setPin(null, "");
+
+        // The stage tablet drops mid-service: the console says which one and when,
+        // instead of the screen silently leaving the list (outputs.js).
+        if (webContents) {
+            const consoleText = () => bodyText(webContents);
+            await sleep(5500); // one outputs poll with the stage tablet connected
+            stage.close();
+            const end = Date.now() + 14000;
+            while (Date.now() < end && !(await consoleText()).includes("Palco desconectada")) await sleep(300);
+            const text = await consoleText();
+            result.dropBanner = text.includes("Palco desconectada");
+            result.dropStatus = /Saídas · \d+ com problema/.test(text);
+        }
     } finally {
-        lyrics.close();
-        stage.close();
+        if (!lyrics.isDestroyed()) lyrics.close();
+        if (!stage.isDestroyed()) stage.close();
         await network.ops.setEnabled(null, false);
     }
     const l = result.live;
@@ -1517,7 +1535,8 @@ async function checkNetwork({ network, live, videoFile }) {
         && result.videoSrc === `${base}/media/${videoFile}`
         && result.projectorScreen && result.pastorScreen
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
-        && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0;
+        && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
+        && (!webContents || (result.dropBanner && result.dropStatus));
     return result;
 }
 
@@ -1692,7 +1711,7 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
             const layersResult = await checkLayers(webContents, { live, outputs });
             const consoleResult = await checkConsole(webContents, { live, outputs });
             // The LAN server serves the built app (dist/), so this runs in built mode only.
-            const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live, videoFile: videoResult.fileName });
+            const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live, videoFile: videoResult.fileName, webContents });
             finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && videoResult.ok && layersResult.ok && consoleResult.ok && !importOutcome && (dev || networkResult.ok),
                 { rendered, bridge, adapter, outputs: outputsResult, system: systemResult, live: liveResult, video: videoResult, layers: layersResult, console: consoleResult, network: networkResult });
         } catch (err) {
