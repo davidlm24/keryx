@@ -43,8 +43,8 @@
   --row: 28px;
   --topbar: 36px;
   --bar: 2px;
-  --radius-control: 4px;
-  --radius-panel: 6px;
+  --radius-control: 6px;
+  --radius-panel: 10px;
   --radius-round: 999px;
   --duration-fast: 120ms;
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
