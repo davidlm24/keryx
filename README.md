@@ -240,6 +240,7 @@ Tables are the entities in snake_case; columns are the entity fields verbatim
    `react-hooks/exhaustive-deps`.
 3. **Tables without a writer** (listed above) are kept until a schema round
    decides; they hold the church's old data.
-4. **The smoke needs a quiet computer:** its audio-meter check hears every
-   sound of the PC and its focus check needs the KERYX window to be able to
-   take focus (see CLAUDE.md).
+4. **The smoke's focus and audio-meter checks can only be inconclusive on a
+   computer in use** (another program in front, or playing sound): they are
+   listed in `console.inconclusive` instead of failing the run (see
+   CLAUDE.md). A quiet computer still gives the full answer.
