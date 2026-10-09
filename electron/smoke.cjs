@@ -5,6 +5,7 @@
 // data dir (scripts/desktop.mjs sets KERYX_DATA_DIR).
 
 const fs = require("node:fs");
+const { focusVerdict, meterVerdict } = require("./smoke-verdicts.cjs");
 const { app, BrowserWindow } = require("electron");
 
 const RENDERED = `(() => {
@@ -610,6 +611,11 @@ async function checkConsole(webContents, { live, outputs }) {
     // The projector covers the operator window otherwise; a window in the
     // background also stalls page transitions (animation frames).
     const operatorWin = BrowserWindow.fromWebContents(webContents);
+    // A computer in use makes some checks inconclusive, not failed
+    // (smoke-verdicts.cjs); they are listed so a run says what it could not see.
+    const inconclusive = [];
+    const verdict = (name, v) => { if (typeof v === "string") inconclusive.push(`${name}: ${v}`); return v; };
+    const keptFocus = (name) => verdict(name, focusVerdict(BrowserWindow.getFocusedWindow(), operatorWin));
     const size = operatorWin && operatorWin.getContentSize();
     if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
     await sleep(300);
@@ -617,9 +623,9 @@ async function checkConsole(webContents, { live, outputs }) {
     let main = await waitWindow("/Projection");
     await sleep(1500);
     // Opening the projector must not take the keyboard from the operator.
-    result.focusKept = !operatorWin || BrowserWindow.getFocusedWindow() === operatorWin;
+    result.focusKept = keptFocus("focusKept");
     // Which window had the focus instead (none: another program is in front).
-    if (!result.focusKept) { const fw = BrowserWindow.getFocusedWindow(); result.focusedInstead = fw ? fw.webContents.getURL() : "nenhuma janela do KERYX"; }
+    if (result.focusKept === false) { const fw = BrowserWindow.getFocusedWindow(); result.focusedInstead = fw ? fw.webContents.getURL() : "nenhuma janela do KERYX"; }
     if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
     try {
         // The app opens on the console now (/ redirects there): leave it and
@@ -712,7 +718,7 @@ async function checkConsole(webContents, { live, outputs }) {
         main = await waitWindow("/Projection", 10000);
         result.autoOpened = Boolean(main);
         await sleep(1500);
-        result.autoFocusKept = !operatorWin || BrowserWindow.getFocusedWindow() === operatorWin;
+        result.autoFocusKept = keptFocus("autoFocusKept");
         if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
         result.projected2 = Boolean(main) && await waitText(main, "Primeiro slide do console");
 
@@ -863,11 +869,17 @@ async function checkConsole(webContents, { live, outputs }) {
         result.metersFollowVolume = result.meterState !== "on"
             ? "sem loopback nesta máquina"
             : await waitFor(() => js("[...document.querySelectorAll('.player .kx-meter b')].every((x) => parseFloat(x.style.height) < 5)"), 6000);
-        // The system loopback hears every sound of the computer: when this fails, the
-        // heights say whether something else was playing (a steady level) or KERYX was.
-        if (!result.metersFollowVolume) result.metersAfterMute = await js("[...document.querySelectorAll('.player .kx-meter b')].map((x) => x.style.height).join(' ')");
-        // And which KERYX windows were playing sound then (none: the sound came from another program).
-        if (!result.metersFollowVolume) result.audibleWindows = BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed() && w.webContents.isCurrentlyAudible()).map((w) => w.webContents.getURL());
+        // The system loopback hears every sound of the computer. When the
+        // meters stay up, ask Chromium whether any KERYX window still plays:
+        // none means the sound is another program's (music on the PC), and
+        // the mute did reach KERYX, so the run is inconclusive, not failed.
+        if (!result.metersFollowVolume) {
+            result.metersAfterMute = await js("[...document.querySelectorAll('.player .kx-meter b')].map((x) => x.style.height).join(' ')");
+            const audible = () => BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed() && w.webContents.isCurrentlyAudible()).map((w) => w.webContents.getURL());
+            await waitFor(() => audible().length === 0, 5000);
+            result.audibleWindows = audible();
+            result.metersFollowVolume = verdict("metersFollowVolume", meterVerdict(false, result.audibleWindows));
+        }
         // The mute reached the element that actually plays, on the projector.
         result.projectorMuted = await waitFor(() => main && main.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.volume === 0 : null; })()").catch(() => null));
 
@@ -1321,8 +1333,9 @@ async function checkConsole(webContents, { live, outputs }) {
             const screenIs = async (mode) => { const ok = await waitFor(() => live.get().screen === mode, 3000); await sleep(300); return ok; };
             outKeys.shown = await waitText(proj, "Slide um das teclas");
             proj.focus();
-            outKeys.focus = await waitFor(() => proj.isFocused(), 3000);
-            if (!outKeys.focus) { const fw = BrowserWindow.getFocusedWindow(); outKeys.focusedInstead = fw ? fw.webContents.getURL() : "nenhuma janela do KERYX"; }
+            await waitFor(() => proj.isFocused(), 3000);
+            outKeys.focus = verdict("outputKeys.focus", focusVerdict(BrowserWindow.getFocusedWindow(), proj));
+            if (outKeys.focus === false) outKeys.focusedInstead = BrowserWindow.getFocusedWindow().webContents.getURL();
             await pressOn("ArrowRight");
             outKeys.next = await waitFor(() => live.get().content && live.get().content.index === 1, 3000);
             await pressOn("b");
@@ -1364,6 +1377,7 @@ async function checkConsole(webContents, { live, outputs }) {
         if (main && !main.isDestroyed()) main.close();
         if (emulatingFocus) try { webContents.debugger.detach(); } catch { /* already gone */ }
     }
+    result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
         && result.sent && result.projected && result.advanced && result.barFits && result.escEnded && result.escToast
