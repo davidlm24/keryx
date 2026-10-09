@@ -7,7 +7,7 @@ const yazl = require("yazl");
 const { DatabaseSync } = require("node:sqlite");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
-const { runBackup, listBackups, dayStamp } = require("./backup.cjs");
+const { runBackup, listBackups, dayStamp, mirrorMedia, mirrorStats } = require("./backup.cjs");
 const { exportAll, stageImport, applyPendingImport, hasPendingImport, discardPendingImport } = require("./archive.cjs");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "keryx-bk-"));
@@ -215,4 +215,46 @@ test("a re-staged import replaces the earlier one; discard removes it", async ()
     assert.ok(hasPendingImport(dest));
     discardPendingImport(dest);
     assert.ok(!hasPendingImport(dest));
+});
+
+test("media is mirrored: new and changed files copied, deletions kept, odd names skipped", async () => {
+    const data = tmp();
+    const media = path.join(data, "media");
+    fs.mkdirSync(media);
+    fs.writeFileSync(path.join(media, "a.mp4"), "video a");
+    fs.writeFileSync(path.join(media, "b.jpg"), "image b");
+    fs.writeFileSync(path.join(media, ".hidden"), "not media");
+    const dir = path.join(data, "usb");
+
+    const first = await mirrorMedia({ mediaDir: media, dir });
+    assert.deepEqual([first.files, first.copied, first.failed.length], [2, 2, 0]);
+    assert.equal(fs.readFileSync(path.join(dir, "media", "a.mp4"), "utf8"), "video a");
+    assert.ok(!fs.existsSync(path.join(dir, "media", ".hidden")));
+
+    const again = await mirrorMedia({ mediaDir: media, dir });
+    assert.equal(again.copied, 0, "unchanged files are not copied again");
+
+    fs.writeFileSync(path.join(media, "b.jpg"), "image b, edited");
+    fs.writeFileSync(path.join(media, "c.png"), "image c");
+    fs.rmSync(path.join(media, "a.mp4"));
+    const third = await mirrorMedia({ mediaDir: media, dir });
+    assert.equal(third.copied, 2, "the changed one and the new one");
+    assert.equal(fs.readFileSync(path.join(dir, "media", "b.jpg"), "utf8"), "image b, edited");
+    assert.ok(fs.existsSync(path.join(dir, "media", "a.mp4")), "deleted in KERYX, kept in the backup");
+    assert.deepEqual(mirrorStats(dir), { files: 3, bytes: "video a".length + "image b, edited".length + "image c".length });
+    assert.deepEqual(fs.readdirSync(path.join(dir, "media")).filter((n) => n.endsWith(".partial")), []);
+
+    // The daily database backups beside it are pruned as before; the mirror is not touched.
+    const store = openAt(data);
+    for (let d = 1; d <= 16; d += 1) runBackup({ store, dir, now: new Date(2026, 9, d, 10, 0) });
+    store.close();
+    assert.equal(listBackups(dir).length, 14);
+    assert.equal(mirrorStats(dir).files, 3);
+});
+
+test("no media folder yet: an empty mirror, no error", async () => {
+    const data = tmp();
+    const r = await mirrorMedia({ mediaDir: path.join(data, "media"), dir: path.join(data, "usb") });
+    assert.deepEqual([r.files, r.copied, r.failed.length], [0, 0, 0]);
+    assert.deepEqual(mirrorStats(path.join(data, "usb")), { files: 0, bytes: 0 });
 });

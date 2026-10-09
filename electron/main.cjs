@@ -325,7 +325,7 @@ app.whenReady().then(async () => {
     const win = createMainWindow();
     // Outputs set to "Abrir ao iniciar" in Telas e saídas.
     win.once("ready-to-show", () => outputs.openAtLaunch());
-    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, network, live, dataDir, importOutcome });
+    if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, settings, network, live, dataDir, importOutcome });
 });
 
 app.on("window-all-closed", () => app.quit());
