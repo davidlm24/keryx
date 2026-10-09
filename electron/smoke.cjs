@@ -787,6 +787,16 @@ async function checkConsole(webContents, { live, outputs }) {
                 return body.scrollHeight <= body.clientHeight + 1 && r.bottom <= b.bottom && r.bottom <= innerHeight && rd.top >= b.bottom - 1 && rd.height >= 150;
             })()`);
         }
+        // The smallest window: the book grid folds (the book's name opens it)
+        // and the air column's Enviar ao ar stays on screen.
+        if (operatorWin) operatorWin.setContentSize(960, 600);
+        await sleep(500);
+        result.bibleShort = await js(`(() => {
+            const grid = document.querySelector(".bgrid");
+            const send = [...document.querySelectorAll(".bible-air-col button")].find((b) => /Enviar ao ar|Mostrar no ensaio/.test(b.textContent));
+            const r = send && send.getBoundingClientRect();
+            return Boolean(grid) && getComputedStyle(grid).display === "none" && Boolean(r) && r.height > 0 && r.bottom <= innerHeight;
+        })()`);
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.bibleBandFits = Object.values(result.bibleNoScroll).every(Boolean);
@@ -1399,7 +1409,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
         && result.tlEmpty && result.tlBlocks && result.tlClosed
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
-        && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && result.bibleBandFits && result.chapterSent && result.chapterRef === "João 3:16 · NVI"
+        && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk

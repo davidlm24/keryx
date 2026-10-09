@@ -117,12 +117,27 @@
 .console .warnline { display: flex; align-items: center; gap: 6px; padding: 0 var(--space-2); height: var(--row); color: var(--warn-fg); font-size: 11px; white-space: nowrap; overflow: hidden; }
 .console .warnline .kx-i { color: var(--warn); flex: none; }
 .console .warnline span { overflow: hidden; text-overflow: ellipsis; }
+.console .warnline .kx-btn { margin-left: auto; flex: none; color: var(--fg-1); }
 /* Camadas: a drawer over the source columns, so the Programa stays in view while editing what is on air. */
 .console .drawer { position: absolute; z-index: 32; top: 48px; left: 6px; bottom: 40px; width: 360px; display: flex; flex-direction: column; gap: var(--gutter); }
 .console .drawer > .kx-panel { flex: 1; box-shadow: var(--popover); }
 /* The Bible picker: a band on top of the reading, every book and every
    chapter of the book at once, so nothing needs scrolling to be found. */
 .console .col.center > .bband { flex: none; margin-bottom: var(--gutter); }
+/* A short column folds the 66-book grid (the reading keeps its height); the
+   book's name in the chapters row opens it again. The operator's choice
+   (books-open / books-closed) wins over the room. */
+.console .col.bible-center { container: bible / size; }
+@container bible (max-height: 680px) { .console .bible-center:not(.books-open) .bgrid { display: none; } }
+.console .bible-center.books-closed .bgrid { display: none; }
+.console .bible-center .bchap-name .kx-i { margin-left: auto; color: var(--fg-3); transition: transform var(--duration-fast) var(--ease-out); }
+.console .bible-center.books-closed .bchap-name .kx-i { transform: rotate(-90deg); }
+@container bible (max-height: 680px) { .console .bible-center:not(.books-open) .bchap-name .kx-i { transform: rotate(-90deg); } }
+.console .bchap-name:hover { background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
+/* The edition: installed here, from the internet (amber) or missing (amber). */
+.console .bsrc { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.console .bsrc.kx-warn { color: var(--warn-fg); }
+.console .bunavail-acts { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1); margin-top: var(--space-2); }
 .console .bband .kx-panel-b { overflow: visible; }
 .console .bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 3px; padding: 0 var(--space-2) var(--space-1); }
 .console .bgrid .kx-book { height: 26px; font-size: 12px; }
@@ -247,8 +262,11 @@
 
 /* Bíblia: "No ar agora" fills the column (no Prévia here: the selection in
    the chapter is what goes next). */
-.console .bible-air { padding: 0 var(--space-2) var(--space-2); }
-.console .bible-air .kx-mon { width: 100%; }
+/* The "No ar agora" monitor: at most 35 % of the column's height, so the
+   selection and the actions below it stay in view on short windows. */
+.console .bible-air-col .kx-panel-b { container-type: size; }
+.console .bible-air { padding: 0 var(--space-2) var(--space-2); flex: none; display: flex; justify-content: center; }
+.console .bible-air .kx-mon { width: min(100%, calc(35cqh * 16 / 9)); }
 
 /* "+" beside a search field: the menu of what can be added there. */
 .console .searchrow { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); }

@@ -8,7 +8,7 @@ import BibleCompareView from "./BibleCompareView";
 import { useBibleNotes } from "./useBibleNotes";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { bibleBooks, BIBLE_VERSIONS, parseReference } from "@/lib/bibleBooks";
-import { getChapter, preferredVersion } from "@/lib/bibleText";
+import { getChapter, preferredVersion, installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
 import { stageFromPassage, stageAirSlide } from "@/lib/console/stage";
 import { verseNumbers } from "@/lib/verseMarks";
 
@@ -137,11 +137,18 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // is not installed, another installed one is used — and said so, never
     // swapped silently.
     const [wanted, setWanted] = useState(mem.version || "NVI");
+    // Bumped after an install, so the installed list and the version are read again.
+    const [installRev, setInstallRev] = useState(0);
+    const [installed, setInstalled] = useState([]);
     useEffect(() => {
         let alive = true;
         preferredVersion(wanted).then((v) => { if (alive) setVersion(v); }).catch(() => { if (alive) setVersion(wanted); });
+        installedVersions().then((m) => { if (alive) setInstalled(Object.keys(m || {})); }).catch(() => {});
         return () => { alive = false; };
-    }, [wanted]);
+    }, [wanted, installRev]);
+    // Where the chapter on screen came from: "local" (installed on this
+    // computer), "online" (abibliadigital, needs internet) or null.
+    const [source, setSource] = useState(null);
     const search = useBibleSearch(version || wanted, book);
 
     // A reference from the palette, the quick jump or the top field; or a
@@ -163,14 +170,14 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     useEffect(() => {
         if (!version) return undefined;
         let alive = true;
-        setError(""); setVerses([]);
-        getChapter(version, book, chapter).then((r) => { if (alive) setVerses(r.verses); }).catch((err) => { if (alive) setError(err?.message || "Não foi possível carregar o capítulo."); });
+        setError(""); setVerses([]); setSource(null);
+        getChapter(version, book, chapter).then((r) => { if (alive) { setVerses(r.verses); setSource(r.source || null); } }).catch((err) => { if (alive) setError(err?.message || "Não foi possível carregar o capítulo."); });
         // Walking search results does not fill "Recentes".
         const recent = modeRef.current === "buscar" ? (mem.recent || []) : [[book, chapter], ...(mem.recent || []).filter(([b, ch]) => !(b === book && ch === chapter))].slice(0, 6);
         const next = { ...mem, version: wanted, book, chapter, recent };
         setMem(next); save(next);
         return () => { alive = false; };
-    }, [version, book, chapter]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [version, book, chapter, installRev]); // eslint-disable-line react-hooks/exhaustive-deps
     useEffect(() => { if (mode === "buscar") setTimeout(() => searchInputRef.current?.focus(), 0); }, [mode]);
 
     // What is on air, when it is this chapter.
@@ -263,7 +270,11 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             const res = await bible.install(v);
             if (res?.error) throw new Error(res.error.message);
             c.say(`${v} instalada para uso sem internet.`);
+            // The installed list changed: read it again (the cache would keep
+            // showing the old fallback), and the chapter with it.
+            forgetInstalledVersions();
             setWanted(v);
+            setInstallRev((n) => n + 1);
         } catch (err) { c.say(err?.message || `Não foi possível instalar a ${v}.`); }
     };
     const toggleFav = async () => {
@@ -291,7 +302,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         const st = sel.length === 1 ? chapterStageOf({ verses: vs, n: sel[0], version: v, book, chapter, onAir }) : passageStageOf({ verses: vs, nums: sel, how, version: v, book, chapter });
         if (st) onSend(st);
     };
-    const useVersion = (v) => { setWanted(v); c.say(`Bíblia na ${v}.`); };
+    const switchVersion = (v) => { setWanted(v); c.say(`Bíblia na ${v}.`); };
 
     const marked = notesApi.versesWithNotes(book, chapter);
     const oneVerse = sel.length === 1 ? verses.find((v) => v.number === sel[0]) : null;
@@ -304,24 +315,49 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             if (r === "removed") c.say("Anotação apagada.");
         } catch (err) { c.say(err?.message || "Não foi possível salvar a anotação."); }
     };
+    // The 66-book grid: open or closed by the operator, else by the room
+    // (console.css folds it when the column is short, so the reading keeps
+    // its height). The book's name in the chapters row opens and closes it.
+    const gridRef = useRef(null);
+    const toggleBooks = () => {
+        const shown = gridRef.current && getComputedStyle(gridRef.current).display !== "none";
+        const next = { ...mem, books: shown ? "closed" : "open" };
+        setMem(next); save(next);
+    };
+    // The edition, said plainly: installed here, from the internet, or missing.
+    // (The browser preview's verses are samples, never a real edition: said so.)
+    const badge = error ? { text: `${version || wanted} · não disponível`, warn: true }
+        : keryx.isPreview && source ? { text: `${version} · texto de exemplo (prévia)`, warn: true, title: "Na prévia de desenvolvimento os versículos são de exemplo; no aplicativo vêm da Bíblia instalada." }
+        : source === "local" ? { text: `${version} · instalada neste computador`, warn: false }
+            : source === "online" ? { text: `${version} · pela internet`, warn: true, title: "Sem internet, este capítulo não abre. Instale a versão pelo + para usar sem internet." }
+                : null;
+    const canInstall = (v) => Boolean(BIBLE_VERSIONS.find((x) => x.id === v)?.install) && !installed.includes(v);
+    const others = installed.filter((v) => v !== (version || wanted));
     const airTitle = c.cur?.content ? c.cur.content.title : c.cur?.media ? c.cur.media.title : "nada";
     const sendLabel = c.isLive ? "Enviar ao ar" : "Mostrar no ensaio";
     const searchSel = sel.length === 1 ? { book, chapter, verse: sel[0] } : null;
 
     return (
         <>
-            <div className="col center">
-                <Panel className="bband" title="Bíblia" count={version || wanted} actions={<select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: 4, font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>}>
-                    {version && version !== wanted && <div className="warnline"><Icon name="warn" /><span>{wanted} não instalada · mostrando {version}</span></div>}
+            <div className={`col center bible-center ${mem.books === "open" ? "books-open" : mem.books === "closed" ? "books-closed" : ""}`}>
+                <Panel className="bband" title="Bíblia" count={version || wanted} actions={<>
+                    {badge && <span className={`bsrc ${badge.warn ? "kx-warn" : ""}`} title={badge.title || badge.text}><Icon name={badge.warn ? "warn" : "check"} size={12} />{badge.text}</span>}
+                    <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
+                </>}>
+                    {version && version !== wanted && (
+                        <div className="warnline"><Icon name="warn" /><span>{wanted} não instalada · mostrando {version}</span>
+                            {canInstall(wanted) && <Btn small kind="outline" onClick={() => installVersion(wanted)} title={`Baixar a ${wanted} para usar sem internet`}>Instalar {wanted}</Btn>}
+                        </div>
+                    )}
                     <div className="searchrow">
                         <Field value={q} onChange={setQ} placeholder="Referência (Jo 3:16) ou palavra" onKeyDown={(e) => { if (e.key === "Enter") submitTop(); }} />
                         <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}`, icon: "book", onClick: () => installVersion(v.id) }))} />
                     </div>
-                    <div className="bgrid">
+                    <div className="bgrid" ref={gridRef}>
                         {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{b.short}</button>)}
                     </div>
                     <div className="bchap">
-                        <span className="bchap-name" style={{ "--group": groupColor(bookIdx) }}>{bookRow.name}<small>{bookRow.chapters} cap.</small></span>
+                        <button type="button" className="bchap-name kx-t" style={{ "--group": groupColor(bookIdx) }} onClick={toggleBooks} title="Mostrar ou esconder os livros">{bookRow.name}<small>{bookRow.chapters} cap.</small><Icon name="chevron-down" size={12} /></button>
                         <div className="chapters">
                             {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
                         </div>
@@ -345,7 +381,20 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     </>} bodyStyle={mode === "ler" ? undefined : { display: "flex", flexDirection: "column" }}>
                     {mode === "ler" && (
                         <>
-                            {error && <Empty icon="warn" title="Capítulo indisponível">{error}</Empty>}
+                            {error && (
+                                <div className="kx-empty">
+                                    <span className="kx-glyph"><Icon name="book" /></span>
+                                    <span className="kx-empty-t">Capítulo indisponível</span>
+                                    <span>{error}</span>
+                                    <span>O KERYX nunca mostra texto de exemplo no lugar de uma Bíblia.</span>
+                                    {(canInstall(version || wanted) || others.length > 0) && (
+                                        <span className="bunavail-acts">
+                                            {canInstall(version || wanted) && <Btn kind="outline" onClick={() => installVersion(version || wanted)}>Instalar {version || wanted}</Btn>}
+                                            {others.map((v) => <Btn key={v} onClick={() => switchVersion(v)}>Usar {v}</Btn>)}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                             {!error && !verses.length && <Empty title="Carregando…" />}
                             <div className="reading" ref={readingRef}>
                                 {verses.map((v) => (
@@ -361,11 +410,11 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                         </>
                     )}
                     {mode === "buscar" && <BibleSearchPanel search={search} selected={searchSel} onPick={pickResult} onSend={sendResult} inputRef={searchInputRef} />}
-                    {mode === "comparar" && <BibleCompareView book={book} chapter={chapter} version={version || wanted} sel={sel} onSelect={pick} onSendVersion={sendVersion} onUseVersion={useVersion} />}
+                    {mode === "comparar" && <BibleCompareView book={book} chapter={chapter} version={version || wanted} sel={sel} onSelect={pick} onSendVersion={sendVersion} onUseVersion={switchVersion} />}
                 </Panel>
             </div>
             <div className="kx-split" />
-            <div className="col" style={{ flex: "0 1 400px", minWidth: 300 }}>
+            <div className="col bible-air-col" style={{ flex: "0 1 400px", minWidth: 300 }}>
                 <Panel title={<span className={c.isLive ? "kx-air" : "kx-rh"}>{c.isLive ? "No ar agora" : "Ensaio"}</span>} count={airTitle} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="bible-air">
                         <div className={`kx-mon ${c.isLive ? "is-air" : "is-rh"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview /></div></div>
