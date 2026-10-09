@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import Icon from "./Icon";
-import { Monitor, Btn } from "./kx";
+import { Monitor, Btn, Row } from "./kx";
+import { typeIcon } from "@/lib/console/setlist";
 import PlayerBar from "./PlayerBar";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState, mainLayer } from "@shared/live-state.mjs";
@@ -67,11 +68,16 @@ function sendNote(stage, mode) {
     return null;
 }
 
-// The player on top (whatever plays with sound), the Programa (what is on
-// air, or the local copy with the real screen in a PiP; an output failure is
-// the banner under the top bar, never here), the Prévia with its one send
-// button and the next item.
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, nextItem, onPrepNext, onSend, onDropStage, videoScreens, playerPick, setPlayerPick }) {
+// The live column, one block the same at every width
+// (docs/presenter-layout-proposal-2026-10-09.md, P0): the Programa (what is
+// on air, or the local copy with the real screen in a PiP; an output failure
+// is the banner under the top bar, never here), the Prévia docked right
+// under it with its one send button, a reserved slot where the player shows
+// while something plays (reserved, so the monitors never move), the next
+// item and, when the Setlist has no column of its own, the items after it.
+// The block is as wide as the column allows and as tall as fits (console.css,
+// .liveblock); spare height goes below it, never between the monitors.
+export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick }) {
     const { live, cur, prev, now, isLive, mode } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const progState = projectorDown ? "warn" : isLive ? "air" : "rh";
@@ -91,36 +97,48 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
 
     return (
         <div className="mons" data-live-keys="" tabIndex={-1}>
-            <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
-            <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} caption={captionOf(cur, dropOn === "air" ? `${progWord} · solte para enviar` : progWord)} live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}>
-                {!isLive && (
-                    <div className="pipwrap">
-                        <span className="kx-pip-cap">NO AR AGORA</span>
-                        <ScreenRenderer state={live} now={now} logoUrl={logoUrl} preview />
-                    </div>
-                )}
-            </Monitor>
-            <div className="subrow">
-                <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} caption={dropOn === "prev" ? "Prévia · solte para preparar" : prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={dropProps("prev")}>
-                    {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
-                    {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
-                    {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
+            <div className="liveblock">
+                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} caption={captionOf(cur, dropOn === "air" ? `${progWord} · solte para enviar` : progWord)} live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}>
+                    {!isLive && (
+                        <div className="pipwrap">
+                            <span className="kx-pip-cap">NO AR AGORA</span>
+                            <ScreenRenderer state={live} now={now} logoUrl={logoUrl} preview />
+                        </div>
+                    )}
                 </Monitor>
-                <div className="side">
-                    <div className="sendrow">
-                        <Btn kind={isLive ? "prev" : "rh"} className="kx-btn-send" onClick={() => onSend()} disabled={!prev} title={`${sendLabel} · Ctrl+Enter`}>
-                            {sendLabel}
-                        </Btn>
-                        <span className="kx-meta">Ctrl+Enter</span>
-                    </div>
-                    {note && <div className="kx-meta sendnote">{note}</div>}
-                    <TeacherNotes prev={prev} cur={cur} />
-                    <div className="nextline">
-                        <span className="kx-meta">Próximo:</span>
-                        <span className="t">{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>
-                        {nextItem && <><span className="kx-meta">·</span><Btn small onClick={onPrepNext} title="Pôr o próximo item da Setlist na Prévia">Preparar</Btn></>}
+                <div className="subrow">
+                    <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} caption={dropOn === "prev" ? "Prévia · solte para preparar" : prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={dropProps("prev")}>
+                        {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
+                        {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
+                        {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
+                    </Monitor>
+                    <div className="side">
+                        <div className="sendrow">
+                            <Btn kind={isLive ? "prev" : "rh"} className="kx-btn-send" onClick={() => onSend()} disabled={!prev} title={`${sendLabel} · Ctrl+Enter`}>
+                                {sendLabel}
+                            </Btn>
+                            <span className="kx-meta">Ctrl+Enter</span>
+                        </div>
+                        {note && <div className="kx-meta sendnote">{note}</div>}
+                        <TeacherNotes prev={prev} cur={cur} />
                     </div>
                 </div>
+                <div className="pslot">
+                    <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
+                </div>
+                <div className="nextline">
+                    <span className="kx-section">Próximo</span>
+                    <span className="t">{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>
+                    {nextItem && <Btn small onClick={onPrepNext} title="Pôr o próximo item da Setlist na Prévia">Preparar</Btn>}
+                </div>
+                {later.length > 0 && (
+                    <div className="later">
+                        <div className="kx-menu-h"><span className="kx-section">Depois</span></div>
+                        {later.map(({ item, index }) => (
+                            <Row key={item.id} single icon={typeIcon(item.type)} title={item.title || "Item"} onClick={() => onPrepareItem?.(item, index)} onDoubleClick={() => onGoItem?.(item, index)} />
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

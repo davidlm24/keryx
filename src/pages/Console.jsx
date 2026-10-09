@@ -27,7 +27,7 @@ import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
 import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette } from "@/components/console/Popovers";
-import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol } from "@/lib/console/layout";
+import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor } from "@/lib/console/layout";
 import { liveAction, quickJumpKey } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
@@ -111,15 +111,24 @@ export default function Console() {
     });
     const [log, setLog] = useState({});
     const [bibleRequest, setBibleRequest] = useState(null);
-    const [width, setWidth] = useState(() => window.innerWidth);
     const [tries, setTries] = useState(1);
-    const compact = width < 1440;
+    // The width tier of the console's grid (src/lib/console/layout.js): wide,
+    // medium or narrow. Measured on .main, so banners and the window frame
+    // count, not the window.
+    const mainRef = useRef(null);
+    const centerRef = useRef(null);
+    const [tier, setTier] = useState(() => tierFor(window.innerWidth - 12));
+    const compact = tier !== "wide";
 
     useEffect(() => {
         keryx.auth.me().then((u) => { const p = u?.email || u?.full_name || ""; setProfile(p); setLayoutState(loadLayout(p)); }).catch(() => {});
-        const onResize = () => setWidth(window.innerWidth);
-        window.addEventListener("resize", onResize);
-        return () => window.removeEventListener("resize", onResize);
+    }, []);
+    useEffect(() => {
+        const el = mainRef.current;
+        if (!el || typeof ResizeObserver === "undefined") return undefined;
+        const ro = new ResizeObserver(([entry]) => setTier(tierFor(entry.contentRect.width)));
+        ro.observe(el);
+        return () => ro.disconnect();
     }, []);
     const setLayout = useCallback((next) => { setLayoutState(next); saveLayout(profile, next); }, [profile]);
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT }); c.say("Layout padrão restaurado."); };
@@ -139,6 +148,12 @@ export default function Console() {
     // Sections (Pré-culto, Culto…) are headers: never prepared, never next.
     const playable = useMemo(() => playableItems(items), [items]);
     const nextItem = (airIdx >= 0 ? items.slice(airIdx + 1) : items).find((i) => !isSection(i)) || null;
+    // After the next one, for the live column when the Setlist has no column of its own.
+    const laterItems = useMemo(() => {
+        if (!nextItem) return [];
+        const from = items.indexOf(nextItem) + 1;
+        return items.slice(from).map((item, k) => ({ item, index: from + k })).filter(({ item }) => !isSection(item)).slice(0, 8);
+    }, [items, nextItem]);
     const setPlan = useMemo(() => plan(service, items), [service, items]);
 
     // A rundown item as a stage: the row it points at, with the item's id in ref.
@@ -366,32 +381,31 @@ export default function Console() {
 
     const rundownProps = { service, items, airItemId, prevItemId, prepare: prepareItem, go: goItem, addStage: addStageToSetlist };
     const histLeft = useMemo(() => (layout.hidden.lib ? 0 : layout.libW + 6) + (layout.hidden.slides ? 0 : layout.slidesW + 6) + 6, [layout]);
-    const showRight = !compact && !(layout.hidden.camadas && layout.hidden.roteiro);
-    const rightPanels = (inDrawer) => (
-        <>
-            {!layout.hidden.camadas && (
-                <Panel title="Camadas" collapsed={!inDrawer && layout.collapsed.camadas} onToggle={inDrawer ? undefined : () => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })} style={inDrawer ? { flex: "none", maxHeight: "48%" } : { flex: layout.collapsed.camadas ? "none" : `0 0 ${layout.camadasH}px` }}
-                    actions={inDrawer ? <IconBtn name="x" title="Fechar" small onClick={() => setDrawer(false)} /> : null}>
-                    <Layers c={c} themes={data.themes} />
-                </Panel>
-            )}
-            {!inDrawer && !layout.hidden.camadas && !layout.hidden.roteiro && !layout.collapsed.camadas && (
-                <Split horizontal size={layout.camadasH} onSize={(v) => setLayout({ ...layout, camadasH: v })} onReset={() => setLayout({ ...layout, camadasH: DEFAULT_LAYOUT.camadasH })} clamp={(v) => clampSize("camadasH", v)} />
-            )}
-            {!layout.hidden.roteiro && (
-                <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"} collapsed={!inDrawer && layout.collapsed.roteiro} onToggle={inDrawer ? undefined : () => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
-                    actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} /></>}>
-                    <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
-                </Panel>
-            )}
-        </>
+    // Wide: the Setlist is a column of its own; otherwise it is the Biblioteca's first tab.
+    const showRight = tier === "wide" && !layout.hidden.roteiro;
+    useEffect(() => { if (!compact && libTab === "roteiro") setLibTab("letras"); }, [compact, libTab]);
+    const setlistPanel = (
+        <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"} collapsed={layout.collapsed.roteiro} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
+            actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} /></>}>
+            <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
+        </Panel>
+    );
+    const libraryPanel = (
+        <Panel title="Biblioteca" collapsed={layout.collapsed.lib} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, lib: !layout.collapsed.lib } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
+        </Panel>
+    );
+    const slidesPanel = (
+        <Panel title="Slides" count={handTitle(c) || "—"} collapsed={layout.collapsed.slides} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, slides: !layout.collapsed.slides } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
+        </Panel>
     );
 
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
     return (
-        <div className={`kx console ${compact ? "is-compact" : ""} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
-            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={outsLabel} outsCount={outsCount} outsState={outsState} compact={compact} drawerOpen={drawer} toggleDrawer={() => setDrawer((d) => !d)} logoUrl={logoUrl} />
+        <div className={`kx console is-${tier} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
+            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={outsLabel} outsCount={outsCount} outsState={outsState} logoUrl={logoUrl} />
             {/* A failing output: one line under the top bar, in every view, never over a monitor. */}
             {projectorDown && (
                 <div className="kx-banner is-warn" role="alert">
@@ -406,7 +420,7 @@ export default function Console() {
             {c.mode === "ensaio" && (
                 <div className="kx-banner is-rh">MODO ENSAIO — nada será enviado às saídas<span className="kx-sub">As telas continuam com o que estava no ar.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setOpen("arm")}>Armar saídas</button></div>
             )}
-            <div className="main">
+            <div className="main" ref={mainRef}>
                 {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeView} />}
                 {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} />}
                 {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { if (editSong === "new" && row?.id) setView({ song: row.id }); }} />}
@@ -417,39 +431,45 @@ export default function Console() {
                 {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} />}
                 {!view && env === "culto" && (
                     <>
-                        {!layout.hidden.lib && (
+                        {/* Narrow: Biblioteca (Setlist first among its tabs) over Slides, one column. */}
+                        {tier === "narrow" && !(layout.hidden.lib && layout.hidden.slides) && (
                             <>
-                                <div className="col" style={sideCol("libW", layout.libW)}>
-                                    <Panel title="Biblioteca" collapsed={layout.collapsed.lib} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, lib: !layout.collapsed.lib } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                        <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
-                                    </Panel>
+                                <div className="col source" style={{ ...sideCol("libW", layout.libW), gap: "var(--gutter)" }}>
+                                    {!layout.hidden.lib && libraryPanel}
+                                    {!layout.hidden.slides && slidesPanel}
                                 </div>
                                 <Split size={layout.libW} onSize={(v) => setLayout({ ...layout, libW: v })} onReset={() => setLayout({ ...layout, libW: DEFAULT_LAYOUT.libW })} clamp={(v) => clampSize("libW", v)} />
                             </>
                         )}
-                        {!layout.hidden.slides && (
+                        {tier !== "narrow" && !layout.hidden.lib && (
                             <>
-                                <div className="col" style={sideCol("slidesW", layout.slidesW)}>
-                                    <Panel title="Slides" count={handTitle(c) || "—"} collapsed={layout.collapsed.slides} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, slides: !layout.collapsed.slides } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                        <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
-                                    </Panel>
-                                </div>
+                                <div className="col" style={sideCol("libW", layout.libW)}>{libraryPanel}</div>
+                                <Split size={layout.libW} onSize={(v) => setLayout({ ...layout, libW: v })} onReset={() => setLayout({ ...layout, libW: DEFAULT_LAYOUT.libW })} clamp={(v) => clampSize("libW", v)} />
+                            </>
+                        )}
+                        {tier !== "narrow" && !layout.hidden.slides && (
+                            <>
+                                <div className="col" style={sideCol("slidesW", layout.slidesW)}>{slidesPanel}</div>
                                 <Split size={layout.slidesW} onSize={(v) => setLayout({ ...layout, slidesW: v })} onReset={() => setLayout({ ...layout, slidesW: DEFAULT_LAYOUT.slidesW })} clamp={(v) => clampSize("slidesW", v)} />
                             </>
                         )}
-                        <div className="col center">
+                        <div className="col center" ref={centerRef}>
                             <Panel title={c.isLive ? "Programa" : "Programa · Ensaio"} actions={
-                                <div style={{ position: "relative" }}>
+                                <div style={{ position: "relative", display: "flex", gap: 2 }}>
+                                    <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 22 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>
                                     <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 22 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco"><Icon name="undo" />Voltar ao anterior</button>
                                 </div>
                             } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))} onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
+                                <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick}
+                                    nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))}
+                                    later={showRight ? [] : laterItems} onPrepareItem={prepareItem} onGoItem={goItem}
+                                    onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
                             </Panel>
                         </div>
                         {showRight && (
                             <>
                                 <Split size={layout.rightW} sign={-1} onSize={(v) => setLayout({ ...layout, rightW: v })} onReset={() => setLayout({ ...layout, rightW: DEFAULT_LAYOUT.rightW })} clamp={(v) => clampSize("rightW", v)} />
-                                <div className="col" style={{ ...sideCol("rightW", layout.rightW), gap: "var(--gutter)" }}>{rightPanels(false)}</div>
+                                <div className="col" style={sideCol("rightW", layout.rightW)}>{setlistPanel}</div>
                             </>
                         )}
                     </>
@@ -477,7 +497,14 @@ export default function Console() {
             <ArmDialog open={open} setOpen={setOpen} live={c.live} onArm={c.arm} />
             <EndDialog open={open} setOpen={setOpen} mode={c.mode} onEnd={c.end} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onBibleSearch={searchBibleFor} />
-            {compact && drawer && <div className="drawer">{rightPanels(true)}</div>}
+            {drawer && !view && env === "culto" && (
+                // Over the source columns, never over the Programa: up to the live column's left edge.
+                <div className="drawer" style={{ width: Math.max(240, Math.min(360, (centerRef.current?.getBoundingClientRect().left ?? 372) - 12)) }}>
+                    <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
+                        <Layers c={c} themes={data.themes} />
+                    </Panel>
+                </div>
+            )}
             {quick !== null && env === "biblia" && (
                 <BibleQuickJump initial={quick} onCancel={() => setQuick(null)}
                     onPick={(r) => { setQuick(null); setBibleRequest({ book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart, at: Date.now() }); }} />

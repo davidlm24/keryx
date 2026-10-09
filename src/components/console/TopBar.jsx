@@ -14,7 +14,7 @@ const elapsed = (ms) => {
 // the window narrows the bar drops the clock, then shortens the outputs
 // label and the search (container queries in console.css). Tela preta and
 // Mostrar logo act on the real screens in every mode.
-export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsCount, outsState, compact, drawerOpen, toggleDrawer, logoUrl }) {
+export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsCount, outsState, logoUrl }) {
     const { live, now, mode } = c;
     const since = live?.session?.startedAt;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -51,7 +51,6 @@ export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsC
                     />
                 )}
                 <span className="tb-clock" title="Hora">{clock}</span>
-                {compact && env === "culto" && <IconBtn name="layers" title="Camadas e Setlist" on={drawerOpen} onClick={toggleDrawer} />}
                 <button type="button" className={`kx-status kx-t ${outsState ? `is-${outsState}` : ""}`} onClick={() => toggle("outs")} title={`Telas e saídas · ${outsLabel}`} aria-expanded={open === "outs"}>
                     <i className="kx-dot" /><span className="tb-outs-l">{outsLabel}</span><span className="tb-outs-s">{outsCount}</span>
                 </button>
