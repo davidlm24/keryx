@@ -103,16 +103,25 @@
 .console .warnline span { overflow: hidden; text-overflow: ellipsis; }
 .console .drawer { position: absolute; z-index: 32; top: 48px; right: 6px; bottom: 40px; width: 360px; display: flex; flex-direction: column; gap: var(--gutter); }
 .console .drawer > .kx-panel { flex: 1; box-shadow: var(--popover); }
-/* The Bible picker: big targets, read at a glance from the booth. */
-.console .bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; padding: var(--space-2); }
-.console .bgrid .kx-book { height: 44px; font-size: 13px; }
-.console .bstrip { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); min-height: 48px; overflow: hidden; }
-.console .bstrip .kx-book { height: 40px; flex-direction: row; gap: 6px; padding: 0 12px; font-size: 14px; }
-.console .bstrip .kx-book small { font-size: 11px; }
-.console .chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; padding: var(--space-1) var(--space-2) var(--space-2); }
-.console .chapters button { height: 36px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+/* The Bible picker: a band on top of the reading, every book and every
+   chapter of the book at once, so nothing needs scrolling to be found. */
+.console .col.center > .bband { flex: none; margin-bottom: var(--gutter); }
+.console .bband .kx-panel-b { overflow: visible; }
+.console .bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 3px; padding: 0 var(--space-2) var(--space-1); }
+.console .bgrid .kx-book { height: 26px; font-size: 12px; }
+.console .bchap { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); }
+.console .bchap-name { position: relative; flex: none; width: 112px; height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; }
+.console .bchap-name::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); border-radius: 4px 0 0 4px; background: var(--group, var(--line-strong)); }
+.console .bchap-name small { font-size: 11px; font-weight: 400; color: var(--fg-3); }
+.console .chapters { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); gap: 3px; }
+.console .chapters button { height: 26px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; font-variant-numeric: tabular-nums; }
 .console .chapters button:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .chapters button.is-on { background: var(--bg-3); color: var(--fg-1); outline: 1px solid var(--line-strong); outline-offset: -1px; }
+.console .bband-lists { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); }
+.console .bband-lists > .kx-section { margin-right: var(--space-1); }
+.console .bchip { height: 24px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }
+.console .bchip:hover, .console .bchip.is-on { background: var(--bg-3); color: var(--fg-1); }
+.console .blist-pop { width: 300px; max-height: 360px; overflow: auto; }
 .console .reading { padding: var(--space-1) 0 var(--space-2); max-width: 760px; }
 .console .vgroup { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-2) var(--space-2); }
 .console .vslide { display: grid; grid-template-columns: 16px 1fr; gap: var(--space-2); padding: 4px 8px 6px 10px; border-radius: var(--radius-control); background: var(--bg-2); font-size: 12px; line-height: 16px; color: var(--fg-1); }
@@ -410,7 +419,6 @@
 .console .nv-note { flex: none; border-top: 1px solid var(--line); gap: var(--space-2); height: auto; min-height: var(--row); padding: var(--space-1) var(--space-2); flex-wrap: wrap; }
 
 /* Bíblia: lists, notes, word search, compare (phase 6) */
-.console .be-lists { flex: 1; min-height: 0; overflow: auto; }
 .console .be-hint { padding: 0 var(--space-2) var(--space-1); font-size: 11px; }
 .console .kx-verse .be-notemark { display: inline-flex; vertical-align: -2px; margin-left: 6px; color: var(--fg-3); }
 .console .kx-verse.has-note .kx-verse-n { color: var(--fg-2); }
