@@ -99,6 +99,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **Files shipped with the app** (backgrounds, default logo) are in
   `resources/` and served as `/media/bundled/…`; reference them through
   `src/lib/backgrounds.js`, not by hard-coded URL.
+- **Fonts ship with the app, never from the internet.** Geist (the
+  console's family and every theme's "Sem serifa", `FONT_MAP.sans`) is a
+  woff2 in `src/assets/fonts/` with its `@font-face` in `src/fonts.css`, so
+  the console, output windows and network screens break lines alike. Don't
+  add a web-font `@import`; a new font needs its file and license (OFL in
+  `public/fonts/`). `src/lib/fonts.test.mjs` checks this.
 - **`window.keryxDesktop.*` returns a fresh object on every access**
   (contextBridge). In a component, read it once into a ref; using it as an
   effect or callback dependency directly re-runs the effect on every render.
