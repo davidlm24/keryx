@@ -5,7 +5,10 @@
 .console .main { flex: 1; min-height: 0; display: flex; align-items: stretch; overflow: hidden; }
 /* Side columns shrink down to their minimum (inline flex-basis/min-width
    from Console.jsx); the center keeps room for the monitors. */
-.console .main > .col.center { min-width: 420px; }
+.console .main > .col.center { min-width: 480px; }
+/* Narrow tier: Biblioteca (with the Setlist tab) over Slides in one column. */
+.console .col.source > .kx-panel { flex: 1 1 0; }
+.console .col.source > .kx-panel.is-collapsed { flex: none; }
 .console .col { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .console .col > .kx-panel { flex: 1; }
 .console .col > .kx-panel.is-collapsed { flex: none; }
@@ -50,25 +53,35 @@
 .console .palette .kx-field input { font-size: 13px; }
 .console .palette .res { overflow: auto; padding: 0 var(--space-1) var(--space-1); }
 .console .palette .kx-row { border-radius: var(--radius-control); }
-.console .mons { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; }
-/* The Programa monitor fills the height it has; the 16:9 screen sits in it and carries the state frame. */
-.console .prog { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.console .prog .kx-mon-screen { aspect-ratio: auto; flex: 1; min-height: 0; container-type: size; background: none; box-shadow: none; border-radius: 0; display: grid; place-items: start center; }
-.console .prog .kx-mon-screen > .ks-box { width: min(100cqw, calc(100cqh * 16 / 9)); border-radius: var(--radius-control); }
+/* The live column: one block (Programa, Prévia + Enviar, player slot,
+   Próximo) as wide as the column allows and as tall as fits. Its width is
+   min(column, (height − K) / 0.82125): 0.82125 = 9/16 for the Programa +
+   0.46 × 9/16 for the Prévia, K = the fixed rows (captions 2 × 24, gaps
+   3 × 8, player slot 36, Próximo 28). Spare height goes below the block
+   ("Depois"), never between the monitors. */
+.console .mons { --live-k: 136px; display: flex; flex-direction: column; align-items: center; padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; container-type: size; }
+.console .liveblock { width: min(100cqw, calc((100cqh - var(--live-k)) / 0.82125)); flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.console .liveblock > * { flex: none; }
 /* Monitor frames are painted inside the box (a ::after on top), never as an
    outer shadow: an outer shadow is cut by the panel's overflow and the
    border vanished at the edges when the window was narrowed. */
 .console .kx-mon .kx-mon-screen { box-shadow: none; }
-.console .kx-mon:not(.prog) .kx-mon-screen::after, .console .prog .kx-mon-screen > .ks-box::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--frame, var(--line)); border-radius: inherit; pointer-events: none; z-index: 200; }
+.console .kx-mon .kx-mon-screen::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--frame, var(--line)); border-radius: inherit; pointer-events: none; z-index: 200; }
 .console .kx-mon.is-air { --frame: var(--air); }
 .console .kx-mon.is-prev { --frame: var(--prev); }
 .console .kx-mon.is-rh { --frame: var(--rh); }
 .console .kx-mon.is-warn { --frame: var(--warn); }
 .console .prog .kx-mon-screen > .kx-screen-hatch, .console .prog .kx-mon-screen > .pipwrap { position: absolute; }
 .console .prog .kx-mon-screen > .kx-screen-hatch { inset: 0; }
-.console .subrow { display: flex; gap: var(--space-3); align-items: flex-start; flex: none; }
+/* The Prévia docked under the Programa; the side (send, note, teacher notes)
+   never makes the row taller than the Prévia (contain: size), it scrolls. */
+.console .subrow { display: flex; gap: var(--space-3); align-items: stretch; }
 .console .subrow .kx-mon { width: 46%; flex: none; }
-.console .subrow .side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding-top: 20px; }
+.console .subrow .side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding-top: 20px; contain: size; overflow: auto; }
+/* The player's slot is always there; the player shows only while something plays. */
+.console .pslot { height: 36px; }
+.console .pslot .player.is-idle { visibility: hidden; }
+.console .liveblock > .later { flex: 1; min-height: 0; overflow: auto; }
 /* Live controls: bigger targets than the dense lists (an occasional
    volunteer under pressure). Rows stay 28 px; these are 36 px. */
 .console .kx-btn-live { height: 32px; padding: 0 var(--space-3); }
@@ -85,7 +98,9 @@
 .console .kx-warnbar .spacer { flex: 1; }
 .console .kx-warnbar .kx-btn { color: var(--fg-1); }
 .console .mons:focus { outline: none; }
-.console .nextline { height: var(--row); display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; min-width: 0; }
+.console .nextline { height: var(--row); display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; min-width: 0; border-top: 1px solid var(--line); }
+.console .nextline .kx-section { flex: none; }
+.console .nextline .kx-btn { margin-left: auto; flex: none; }
 .console .nextline .t { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; }
 .console .tl-panel { flex: none; }
 .console .tl-track { position: relative; height: 72px; margin: 4px var(--space-2) 0; overflow: hidden; }
@@ -101,7 +116,8 @@
 .console .warnline { display: flex; align-items: center; gap: 6px; padding: 0 var(--space-2); height: var(--row); color: var(--warn-fg); font-size: 11px; white-space: nowrap; overflow: hidden; }
 .console .warnline .kx-i { color: var(--warn); flex: none; }
 .console .warnline span { overflow: hidden; text-overflow: ellipsis; }
-.console .drawer { position: absolute; z-index: 32; top: 48px; right: 6px; bottom: 40px; width: 360px; display: flex; flex-direction: column; gap: var(--gutter); }
+/* Camadas: a drawer over the source columns, so the Programa stays in view while editing what is on air. */
+.console .drawer { position: absolute; z-index: 32; top: 48px; left: 6px; bottom: 40px; width: 360px; display: flex; flex-direction: column; gap: var(--gutter); }
 .console .drawer > .kx-panel { flex: 1; box-shadow: var(--popover); }
 /* The Bible picker: a band on top of the reading, every book and every
    chapter of the book at once, so nothing needs scrolling to be found. */
@@ -210,12 +226,6 @@
 .console .verif-sum .t { font-size: 13px; color: var(--fg-1); }
 .console .verif .st { font-size: 11px; min-width: 64px; text-align: right; flex: none; }
 .console .verif .kx-row { min-height: 40px; }
-@media (max-width: 1100px) {
-    .console { position: static; min-height: 100vh; }
-    .console .main { flex-direction: column; }
-    .console .col { width: auto !important; }
-    .console .kx-split { display: none; }
-}
 
 /* Verificar as an overlay (opened from the Saídas popover), over the dim
    scrim; its own rows and summary come from .verif below. */

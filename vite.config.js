@@ -28,6 +28,9 @@ function keryxPreview() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), keryxPreview()],
+  // The side-panel preview passes a free port in PORT (.claude/launch.json,
+  // autoPort); without it Vite keeps its default.
+  server: process.env.PORT ? { port: Number(process.env.PORT), strictPort: true } : {},
   resolve: {
     alias: {
       // The Base44 vite plugin used to provide this alias; jsconfig.json

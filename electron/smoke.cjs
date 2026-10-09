@@ -972,6 +972,9 @@ async function checkConsole(webContents, { live, outputs }) {
             return rows.length === 4 && rows.filter((r) => r.title === "Canto do console" && r.type === "SONG").length === 2;
         }, 8000);
         result.layersBefore = (live.get().layerOrder || []).join(",");
+        // Camadas is a drawer opened from the Programa's header.
+        await click(".center .kx-panel-h .kx-btn", "Camadas");
+        await waitFor(() => js("Boolean(document.querySelector('.drawer .kx-layer'))"), 4000);
         result.layerDrag = await js(`(async () => {
             const rows = [...document.querySelectorAll(".kx-layer")];
             const from = rows.find((n) => n.textContent.includes("Logo"));
@@ -992,6 +995,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.layersMoved = await waitFor(() => (live.get().layerOrder || []).join(",") === "overlays,content,logo,background");
         result.layersAfter = (live.get().layerOrder || []).join(",");
         live.call("layers.order", { order: ["logo", "overlays", "content", "background"] });
+        await click(".drawer .kx-btn", "Fechar");
 
         // The song editor: "+ › Nova música", lyrics split live into slides,
         // Ctrl+S saves, Esc closes; "Editar" reopens it with the song.
