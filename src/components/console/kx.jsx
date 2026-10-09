@@ -75,11 +75,22 @@ export function Row({ icon, title, meta, metaClass = "", time, state = "", actio
     );
 }
 
-// A monitor: caption line (state word first) and the screen, 16:9.
-export function Monitor({ state, caption, live, now, logoUrl, right, motion = false, className = "", style, dropProps, children }) {
+// A monitor: caption line (state word first) and the screen, 16:9. `cap`
+// ({ word, title, pos, size: "live" | "next" }) gives the caption its own
+// hierarchy (the live column); `caption` is the plain one-line form.
+export function Monitor({ state, caption, cap, live, now, logoUrl, right, motion = false, className = "", style, dropProps, children }) {
     return (
         <div className={`kx-mon ${state ? `is-${state}` : ""} ${className}`} style={style} {...dropProps}>
-            <div className="kx-mon-cap"><span className="kx-section">{caption}</span>{right}</div>
+            {cap ? (
+                <div className={`kx-mon-cap is-cap is-${cap.size}`}>
+                    <span className="kx-live-cap">{cap.word}</span>
+                    <span className={`kx-mon-t ${cap.size === "live" ? "kx-live-title" : "kx-next-title"}`} title={cap.title || undefined}>{cap.title}</span>
+                    {cap.pos && <span className="kx-meta">{cap.pos}</span>}
+                    {right}
+                </div>
+            ) : (
+                <div className="kx-mon-cap"><span className="kx-section">{caption}</span>{right}</div>
+            )}
             <div className="kx-mon-screen">
                 {live && <ScreenRenderer state={live} now={now} logoUrl={logoUrl} preview motion={motion} />}
                 {children}
