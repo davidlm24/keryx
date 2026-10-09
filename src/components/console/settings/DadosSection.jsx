@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Btn, Empty } from "../kx";
-import { useBridge, usePoll, FormRow, formatBytes, formatWhen, desktopOnly } from "./parts";
+import { useBridge, usePoll, FormRow, Switch, formatBytes, formatWhen, desktopOnly } from "./parts";
 
 // Dados e atualizações: backups, moving everything to another computer, the
 // data folder, a diagnostics file for support, and updates
@@ -12,10 +12,10 @@ export default function DadosSection({ c }) {
     if (!system) return <Empty icon="save" title="Dados e atualizações">{desktopOnly}</Empty>;
     if (!info) return <Empty title="Lendo os dados…" />;
 
-    const run = async (op, label, onDone) => {
+    const run = async (op, label, onDone, args) => {
         setBusy(op);
         try {
-            const res = await system.call(op);
+            const res = await system.call(op, args);
             if (res?.error) c.say(`${label}: ${res.error.message}`);
             else {
                 if (res?.data?.dataDir) setInfo(res.data);
@@ -73,6 +73,15 @@ export default function DadosSection({ c }) {
                     {update.status === "available" && <Btn kind="outline" disabled={any} onClick={() => run("updateDownload", "Atualizações")}>Baixar a versão {update.version}</Btn>}
                     {update.status === "downloaded" && <Btn kind="outline" disabled={any} onClick={() => run("updateInstall", "Atualizações")}>Reiniciar e instalar</Btn>}
                     <span className="kx-meta">{update.message || "instale fora do horário do culto: o KERYX fecha para atualizar"}</span>
+                </FormRow>
+                <FormRow k="Atualizar automaticamente">
+                    <Switch on={Boolean(update.auto)} disabled={any || update.status === "disabled"} label="Atualizar automaticamente"
+                        onChange={(on) => run("updateSetAuto", "Atualizações", () => (on ? "Atualização automática ligada." : "Atualização automática desligada."), { on })} />
+                    <span className="kx-meta">{update.status === "disabled"
+                        ? "indisponível nesta instalação"
+                        : update.auto
+                            ? "baixa sozinho; ao abrir o KERYX, instala com uma barra de progresso e reinicia (nunca com algo no ar)"
+                            : "desligado: o sino avisa e você atualiza pelo menu do KERYX › Atualizar agora"}</span>
                 </FormRow>
             </div>
         </>
