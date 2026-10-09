@@ -541,11 +541,11 @@
 /* Updates: the popup's progress bar and the bell's list. */
 .console .dialog.upd { width: 440px; }
 .console .upd-bar { position: relative; height: 8px; border-radius: 4px; background: var(--bg-3); overflow: hidden; }
-.console .upd-bar > b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--prev); transition: width .3s var(--ease-out, ease-out); }
+.console .upd-bar > b { position: absolute; inset: 0; border-radius: 4px; background: var(--prev); transform-origin: left center; transition: transform .3s var(--ease-out, ease-out); }
 .console .upd-bar.is-error > b { background: var(--warn); }
-.console .upd-bar.is-busy > b { animation: upd-busy 1.2s ease-in-out infinite; }
-@keyframes upd-busy { from { left: -30%; } to { left: 100%; } }
-@media (prefers-reduced-motion: reduce) { .console .upd-bar.is-busy > b { animation: none; left: 0; } .console .upd-bar > b { transition: none; } }
+.console .upd-bar.is-busy > b { right: auto; width: 30%; animation: upd-busy 1.2s ease-in-out infinite; }
+@keyframes upd-busy { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) { .console .upd-bar.is-busy > b { animation: none; } .console .upd-bar > b { transition: none; } }
 .console .upd-line { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .notifs .note { display: grid; grid-template-columns: 16px 1fr 22px; gap: var(--space-2); align-items: start; padding: var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); }
 .console .notifs .note + .note { border-top: 1px solid var(--line); }

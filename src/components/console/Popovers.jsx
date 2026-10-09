@@ -283,7 +283,7 @@ export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
         <div className="dialog upd" role="dialog" aria-label="Atualização do KERYX">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>{installing ? "Reiniciando o KERYX…" : title}</div>
             <div className={`upd-bar ${busy ? "is-busy" : ""} ${update.status === "error" ? "is-error" : ""}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-                <b style={{ width: `${busy ? 30 : pct}%` }} />
+                <b style={busy ? undefined : { transform: `scaleX(${pct / 100})` }} />
             </div>
             <div className="upd-line"><span>{installing ? "As telas voltam sozinhas quando ele abrir." : line}</span>{update.status === "downloading" && <span className="kx-meta">{pct}%</span>}</div>
             {update.status === "downloaded" && !installing && onAir(live) && (

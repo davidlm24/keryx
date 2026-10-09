@@ -1664,7 +1664,7 @@ async function checkUpdates(webContents, { system, live }) {
         result.menuItem = await waitFor(() => has(".kx-pop", "Atualizando…")) && await has(".kx-pop", "40%");
         await clickText(".kx-pop button, .kx-pop [role=menuitem]", "Atualizando…");
         result.popup = await waitFor(() => has(".dialog.upd", "Baixando a versão 9.9.9")) && await has(".dialog.upd", "56 de 140 MB");
-        result.bar = await js("(() => { const b = document.querySelector('.upd-bar > b'); return b ? b.style.width : null; })()");
+        result.bar = await js("(() => { const b = document.querySelector('.upd-bar > b'); return b ? b.style.transform : null; })()");
         await shot("atualizacao");
 
         // Downloaded with something on air: no countdown, an explicit button.
@@ -1684,7 +1684,7 @@ async function checkUpdates(webContents, { system, live }) {
         push({ status: "none" });
         try { system.notifications.clear(); } catch { /* not there */ }
     }
-    result.ok = Boolean(result.bellDot && result.bellList && result.bellRead && result.menuItem && result.popup && result.bar === "40%"
+    result.ok = Boolean(result.bellDot && result.bellList && result.bellRead && result.menuItem && result.popup && result.bar === "scaleX(0.4)"
         && result.waitsOnAir && result.countdown && result.cancelled && result.closed);
     return result;
 }
