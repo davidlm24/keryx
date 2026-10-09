@@ -2,7 +2,8 @@
 //
 //   1. The local database (once a version is installed): instant, offline,
 //      exact.
-//   2. abibliadigital.com.br, when online and the version exists there.
+//   2. abibliadigital.com.br, when online and the version exists there
+//      (fetched by the main process: the page would hit CORS).
 //
 // KERYX never asks an AI for scripture. Network screens (no desktop bridge)
 // read installed text through the same store, over the church network.
@@ -48,17 +49,14 @@ async function fetchOnline(version, book, chapter) {
 
     const api = versionInfo(version)?.api;
     const slug = BOOK_API_MAP[book];
-    if (!api || !slug || !navigator.onLine) return null;
+    // Only the desktop app can ask: the request goes through the main
+    // process, because the site's CORS policy blocks the page.
+    if (!api || !slug || !keryx.isDesktop || !navigator.onLine) return null;
     try {
-        const resp = await fetch(`https://www.abibliadigital.com.br/api/chapters/${api}/${slug}/${chapter}`, {
-            headers: { Accept: "application/json" },
-        });
-        if (!resp.ok) return null;
-        const data = await resp.json();
-        const verses = (data.verses || []).map((v) => ({ number: v.number, text: v.text }));
-        if (!verses.length) return null;
-        localStorage.setItem(key, JSON.stringify(verses));
-        return verses;
+        const res = await window.keryxDesktop.bible.onlineChapter(api, slug, chapter);
+        if (res.error || !res.data.length) return null;
+        localStorage.setItem(key, JSON.stringify(res.data));
+        return res.data;
     } catch {
         return null;
     }

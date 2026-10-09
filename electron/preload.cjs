@@ -59,6 +59,7 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     },
     bible: {
         status: () => ipcRenderer.invoke("keryx:bible:status"),
+        onlineChapter: (api, slug, chapter) => ipcRenderer.invoke("keryx:bible:online-chapter", { api, slug, chapter }),
         install: (version) => ipcRenderer.invoke("keryx:bible:install", { version }),
         installFromFile: (version) => ipcRenderer.invoke("keryx:bible:install-file", { version }),
     },

@@ -5,7 +5,7 @@
 //   keryx:media-info    invoke  { names } -> { [name]: { exists, size } } files in the media folder
 //   keryx:config        sync    { mediaBaseUrl }
 //   keryx:displays:*    invoke  list / set / open / close / identify for output windows
-//   keryx:bible:*       invoke  installed versions, install from the web or a file
+//   keryx:bible:*       invoke  installed versions, install from the web or a file, one online chapter
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 //   keryx:network       invoke  { op, args } screens on the church network
 //   keryx:lyrics        invoke  { op: search | get | setKey | status, args } lyrics from the web
@@ -106,6 +106,7 @@ function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaD
         }
     };
     ipcMain.handle("keryx:bible:status", bibleOp(() => bible.installedVersions(store)));
+    ipcMain.handle("keryx:bible:online-chapter", bibleOp((_e, args) => bible.fetchOnlineChapter(args)));
     ipcMain.handle("keryx:bible:install", bibleOp((_e, { version }) => bible.installFromSource(store, version)));
     ipcMain.handle("keryx:bible:install-file", bibleOp(async (event, { version }) => {
         const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
