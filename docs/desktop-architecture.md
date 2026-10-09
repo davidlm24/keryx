@@ -262,7 +262,7 @@ redesign.
 Decided 2026-10-07 after the mockup in Claude Design (`docs/design-system.md`
 has the link and the tokens). One screen, `/Console`, replaces the operator
 pages: the library (Letras, Mídia, Avisos), the slides in hand, Programa and
-Prévia, Camadas, Roteiro, Linha do tempo, Bíblia as its own environment, the
+Prévia, Camadas, Setlist, Linha do tempo, Bíblia as its own environment, the
 command palette (`/`), Saídas, and Ensaio.
 
 - **Programa / Prévia.** A click anywhere prepares a *stage*
@@ -283,7 +283,7 @@ command palette (`/`), Saídas, and Ensaio.
   = `overlays.set`, Texto principal = `content.update { style }`, Fundo =
   `background.set/clear`. A theme is a `ProjectionTheme` row; the panel
   shows "Modificado" when the style on air differs from it.
-- **Roteiro** is `ServiceItem` rows of the service in hand (today's by
+- The **Setlist** is `ServiceItem` rows of the service in hand (today's by
   default); drag reorders by writing `order`. The timeline's real lane is
   the console's own log of when each item went on air (localStorage per
   service); the planned lane is `Service.startTime` plus durations.
