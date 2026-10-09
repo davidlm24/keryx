@@ -47,7 +47,7 @@
 
 /* ---- Segmented switch ---- */
 .kx-seg { height: var(--row); display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--radius-control); background: var(--bg-2); }
-.kx-seg > button { height: 24px; padding: 0 10px; border-radius: 3px; color: var(--fg-2); display: inline-flex; align-items: center; gap: 6px; }
+.kx-seg > button { height: 24px; padding: 0 10px; border-radius: calc(var(--radius-control) - 2px); color: var(--fg-2); display: inline-flex; align-items: center; gap: 6px; }
 .kx-seg > button:hover { color: var(--fg-1); }
 .kx-seg > button.is-on { background: var(--bg-3); color: var(--fg-1); font-weight: 500; }
 .kx-seg.kx-seg-mode > button.is-on[data-mode="live"] { background: var(--air-fill); color: var(--on-state); }
@@ -113,7 +113,7 @@
 .kx-screen-hatch { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; gap: 4px; color: var(--warn-fg); font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 500;
   background: repeating-linear-gradient(135deg, var(--warn-tint) 0 12px, #0c0c0dd9 12px 24px); opacity: var(--hatch); }
 .kx-screen-hatch small { display: block; font-weight: 400; font-size: 11px; color: var(--fg-2); }
-.kx-pip { position: absolute; right: 2cqw; bottom: 2cqw; width: 28cqw; aspect-ratio: 16 / 9; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px var(--air); background: var(--screen-bg); container-type: inline-size; }
+.kx-pip { position: absolute; right: 2cqw; bottom: 2cqw; width: 28cqw; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px var(--air); background: var(--screen-bg); container-type: inline-size; }
 .kx-pip-cap { position: absolute; left: 0; top: 0; z-index: 2; padding: 0 5px; height: 14px; display: flex; align-items: center; background: var(--air-fill); color: var(--on-state); font-family: var(--font-sans); font-size: 9px; letter-spacing: .06em; font-weight: 500; }
 
 /* ---- Status (Saídas) ---- */
@@ -218,7 +218,7 @@
 .kx-verse.is-air::before { background: var(--air); } .kx-verse.is-air .kx-verse-n { color: var(--air-fg); }
 .kx-book { height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--fg-1); font-size: 12px; font-weight: 500; line-height: 14px; background: var(--bg-2); position: relative; }
 .kx-book small { font-size: 9px; font-weight: 400; color: var(--fg-3); letter-spacing: .04em; }
-.kx-book::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); border-radius: 4px 0 0 4px; background: var(--group, var(--line-strong)); }
+.kx-book::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); border-radius: var(--radius-control) 0 0 var(--radius-control); background: var(--group, var(--line-strong)); }
 .kx-book:hover { background: var(--bg-3); }
 .kx-book.is-selected { background: var(--bg-3); outline: 1px solid var(--line-strong); outline-offset: -1px; }
 

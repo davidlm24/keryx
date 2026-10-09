@@ -5,7 +5,7 @@ KERYX is the live operator console a Brazilian church volunteer runs for 90 minu
 - **Programa / Prévia discipline.** Nothing reaches the screens by being clicked. A click prepares (`prev`); only `Enviar ao ar`, Enter or the arrow keys change what is on air (`air`). Design every new feature so that this stays true.
 - **Colour is state.** `air` red = on air, `prev` green = prepared, `rh` blue = rehearsal (outputs disarmed), `warn` amber = warning or failure. `brand` gold is reserved for the logo mark and the focus ring. Everything else is one of four greys. If a colour is not telling the operator a state, remove it.
 - **Dense, small, quiet.** 11px metadata, 12px UI, 13–14px content, nothing larger except `clock` and `countdown`. Bare glyphs, no boxes around icons, no badges, no pills, no inline help. Explanations live in tooltips and empty states.
-- **One rhythm.** A 4px grid, 28px rows and controls, 6px gutters between modules, 4px radius on controls, 6px on panels. Hover and state changes take 120ms ease-out; a slide change on a screen is a hard cut.
+- **One rhythm.** A 4px grid, 28px rows and controls, 6px gutters between modules, 6px radius on controls, 10px on panels. Hover and state changes take 120ms ease-out; a slide change on a screen is a hard cut.
 
 ## Content fundamentals
 

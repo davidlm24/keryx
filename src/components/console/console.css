@@ -79,7 +79,7 @@
 .console .slidesnav { height: 40px; display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); border-top: 1px solid var(--line); flex: none; }
 /* An output failure: one line above the monitors, never over them. */
 .console .kx-warnbar { flex: none; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 2px var(--space-1) 2px 10px; position: relative; background: var(--warn-tint); color: var(--warn-fg); border-radius: var(--radius-control); font-size: 12px; }
-.console .kx-warnbar::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: var(--warn); border-radius: 2px 0 0 2px; }
+.console .kx-warnbar::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: var(--warn); border-radius: var(--radius-control) 0 0 var(--radius-control); }
 .console .kx-warnbar .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .kx-warnbar b { font-weight: 500; }
 .console .kx-warnbar .spacer { flex: 1; }
@@ -111,7 +111,7 @@
 .console .bgrid .kx-book { height: 26px; font-size: 12px; }
 .console .bchap { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); }
 .console .bchap-name { position: relative; flex: none; width: 112px; height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; }
-.console .bchap-name::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); border-radius: 4px 0 0 4px; background: var(--group, var(--line-strong)); }
+.console .bchap-name::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); border-radius: var(--radius-control) 0 0 var(--radius-control); background: var(--group, var(--line-strong)); }
 .console .bchap-name small { font-size: 11px; font-weight: 400; color: var(--fg-3); }
 .console .chapters { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); gap: 3px; }
 .console .chapters button { height: 26px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -140,7 +140,7 @@
 .console .meters { display: inline-flex; gap: 6px; align-items: center; flex: none; }
 .console .meters .kx-meter { height: 20px; }
 .console .hatchbtn { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); z-index: 3; background: var(--bg-1); }
-.console .pipwrap { position: absolute; right: 2cqw; bottom: 2cqw; width: 28cqw; aspect-ratio: 16 / 9; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px var(--air); background: var(--screen-bg); z-index: 90; }
+.console .pipwrap { position: absolute; right: 2cqw; bottom: 2cqw; width: 28cqw; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px var(--air); background: var(--screen-bg); z-index: 90; }
 .console .pipwrap .ks-box { width: 100%; }
 .console .pipwrap .kx-pip-cap { z-index: 95; }
 .console .kx-screen-hatch { z-index: 85; }
