@@ -7,7 +7,10 @@ import { applyOp, emptyState, mainLayer } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
-import { OUTPUT_VIEWS, outputView } from "@/lib/network/views";
+import { OUTPUT_VIEWS } from "@/lib/network/views";
+import { prefState, prefVars } from "@/lib/outputPrefs";
+import { useOutputPref } from "@/hooks/useOutputPref";
+import "@/components/screen/output-prefs.css";
 
 // What the Prévia would look like on air: the stage applied with the live
 // state's own rules to a copy of the current look (background, logo,
@@ -111,9 +114,12 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const [dropOn, setDropOn] = useState(null);
     // The Prévia rail: the prepared stage as one output will show it
-    // (Projeção by default; this session only). Enviar ao ar is unchanged.
+    // (Projeção by default; this session only), with that output's own
+    // settings (Configurações › Telas e saídas). Enviar ao ar is unchanged.
     const [railOut, setRailOut] = useState(OUTPUT_VIEWS[0].key);
-    const railDoc = useMemo(() => outputView(railOut, pdoc), [railOut, pdoc]);
+    const { pref: railPref, theme: railTheme } = useOutputPref(railOut);
+    const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
+    const railVars = prefVars(railPref);
     const railName = OUTPUT_VIEWS.find((o) => o.key === railOut)?.name || "";
     // Locked: the screens keep this image, blue (they are not following). On
     // air there is no frame: the red lives in the header's state word and on
@@ -141,7 +147,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                     {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
                 </Monitor>
                 <div className="subrow">
-                    <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
+                    <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         {prev && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
                         <div className="prev-rail" role="group" aria-label="Ver a prévia como a saída" onDoubleClick={(e) => e.stopPropagation()}>

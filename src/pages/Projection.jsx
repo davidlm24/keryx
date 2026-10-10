@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import TabletVideoReceiver from "@/components/projection/TabletVideoReceiver";
 import LiveVideo from "@/components/projection/LiveVideo";
-import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import OutputScreen from "@/components/screen/OutputScreen";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
@@ -10,7 +10,8 @@ import { mainLayer } from "@shared/live-state.mjs";
 import { useNoticeAdvance } from "@/hooks/useNoticeAdvance";
 
 // The main projector: the live state (shared/live-state.mjs) rendered full
-// screen by ScreenRenderer, the same component the console's monitors use.
+// screen by ScreenRenderer, the same component the console's monitors use,
+// with this output's settings (OutputScreen).
 export default function Projection() {
     const live = useLiveState();
     const now = useLiveNow(1000);
@@ -89,7 +90,7 @@ export default function Projection() {
         <>
             {audioPlayer}
             <TabletVideoReceiver />
-            <ScreenRenderer fill state={live} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />
+            <OutputScreen page="/Projection" live={live} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />
         </>
     );
 }
