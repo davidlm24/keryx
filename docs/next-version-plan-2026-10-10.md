@@ -257,6 +257,10 @@ Today `PastorView.jsx`, `StageView.jsx`, `LyricProjection.jsx`,
 
 ## H. Bíblia (item 9)
 
+**Built** (release session, 2026-10-10, with J7). The Nomes grid folds at the
+same 680 px as the short codes, not sooner: choosing Nomes must never hide the
+books (at 1520×900 the column is 816 px, and Nomes leaves 409 px of reading).
+
 - **Verse row in the band** (`BibleEnv.jsx`, `console.css`): under the
   chapters row, `.bverses` — the loaded chapter's verse numbers as 26 px
   cells (auto-fill 32 px). Click selects + scrolls the reading (same model as

@@ -223,6 +223,22 @@
 .console .chapters button { height: 26px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; font-variant-numeric: tabular-nums; }
 .console .chapters button:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .chapters button.is-on { background: var(--bg-3); color: var(--fg-1); outline: 1px solid var(--line-strong); outline-offset: -1px; }
+/* The verse row: the loaded chapter's verses, the same cells as the
+   chapters, green when selected and red when on air, as in the text. It
+   folds before the books on a short column, so the band never scrolls. */
+.console .bverses { display: flex; align-items: flex-start; gap: var(--space-2); padding: 0 var(--space-2) var(--space-1); }
+.console .bverses-k { flex: none; min-width: 120px; height: 26px; display: flex; align-items: center; padding-left: 10px; color: var(--fg-3); font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.console .verse-cells { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); gap: 3px; }
+.console .verse-cells button { height: 26px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.console .verse-cells button:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .verse-cells button.is-prev { background: var(--prev-tint); color: var(--prev-fg); box-shadow: inset 0 0 0 1px var(--prev); }
+.console .verse-cells button.is-air { background: var(--air-tint); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
+@container bible (max-height: 760px) { .console .bible-center .bverses { display: none; } }
+/* Nomes: the books with their whole names (about 8 rows instead of 3); it
+   folds at the same height as the short codes, so choosing Nomes never
+   hides the books. */
+.console .bible-center.names-full .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.console .bible-center.names-full .bgrid .kx-book { align-items: flex-start; padding: 0 6px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 26px; text-align: left; }
 .console .bband-lists { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); }
 .console .bband-lists > .kx-section { margin-right: var(--space-1); }
 .console .bchip { height: 24px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }

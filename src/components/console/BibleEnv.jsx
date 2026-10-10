@@ -217,10 +217,21 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         if (parseReference(text)) { goRef(text); setMode("ler"); return; }
         setMode("buscar"); search.setQ(text); search.run(text); setQ("");
     };
+    // Installing downloads the edition: without internet the buttons say so
+    // instead of failing after a click.
+    const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
+    useEffect(() => {
+        const on = () => setOnline(true);
+        const off = () => setOnline(false);
+        window.addEventListener("online", on);
+        window.addEventListener("offline", off);
+        return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+    }, []);
     // "+": install a version for use without internet (electron/bible.cjs).
     const installVersion = async (v) => {
         const bible = window.keryxDesktop?.bible;
         if (!bible) { c.say("Instalar Bíblias funciona no KERYX do computador."); return; }
+        if (!online) { c.say("Sem internet: conecte o computador para baixar a Bíblia."); return; }
         c.say(`Baixando a ${v}…`);
         try {
             const res = await bible.install(v);
@@ -280,6 +291,19 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         const next = { ...mem, books: shown ? "closed" : "open" };
         setMem(next); save(next);
     };
+    // Abrev | Nomes: the books as short codes (default) or full names, remembered.
+    const fullNames = mem.bookNames === "full";
+    const setBookNames = (v) => { const next = { ...mem, bookNames: v }; setMem(next); save(next); };
+    // The verse row in the band: the same selection as clicking the text
+    // (Ctrl adds, Shift makes a range, a double click projects), and it
+    // brings the verse into view in the reading.
+    const pickCell = (n, e) => {
+        if (mode !== "ler") setMode("ler");
+        pick(n, e);
+        requestAnimationFrame(() => readingRef.current?.querySelector(`[data-verse="${n}"]`)?.scrollIntoView({ block: "nearest" }));
+    };
+    const sendCell = (n) => { const st = verseStage(n); if (st) { setSel([n]); setAnchor(n); onSend(st); } };
+    const installHint = online ? "" : " · sem internet";
     // The edition, said plainly: installed here, from the internet, or missing.
     // (The browser preview's verses are samples, never a real edition: said so.)
     const badge = error ? { text: `${version || wanted} · não disponível`, warn: true }
@@ -294,22 +318,23 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
 
     return (
         <>
-            <div className={`col center bible-center ${mem.books === "open" ? "books-open" : mem.books === "closed" ? "books-closed" : ""}`}>
+            <div className={`col center bible-center ${mem.books === "open" ? "books-open" : mem.books === "closed" ? "books-closed" : ""} ${fullNames ? "names-full" : ""}`}>
                 <Panel className="bband" title="Bíblia" count={version || wanted} actions={<>
+                    <Seg small value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
                     {badge && <span className={`bsrc ${badge.warn ? "kx-warn" : ""}`} title={badge.title || badge.text}><Icon name={badge.warn ? "warn" : "check"} size={12} />{badge.text}</span>}
                     <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
                 </>}>
                     {version && version !== wanted && (
                         <div className="warnline"><Icon name="warn" /><span>{wanted} não instalada · mostrando {version}</span>
-                            {canInstall(wanted) && <Btn small kind="outline" onClick={() => installVersion(wanted)} title={`Baixar a ${wanted} para usar sem internet`}>Instalar {wanted}</Btn>}
+                            {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
                         </div>
                     )}
                     <div className="searchrow">
                         <Field value={q} onChange={setQ} placeholder="Referência (Jo 3:16) ou palavra" onKeyDown={(e) => { if (e.key === "Enter") submitTop(); }} />
-                        <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}`, icon: "book", onClick: () => installVersion(v.id) }))} />
+                        <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
                     </div>
                     <div className="bgrid" ref={gridRef}>
-                        {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{b.short}</button>)}
+                        {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{fullNames ? b.name : b.short}</button>)}
                     </div>
                     <div className="bchap">
                         <button type="button" className="bchap-name kx-t" style={{ "--group": groupColor(bookIdx) }} onClick={toggleBooks} title="Mostrar ou esconder os livros">{bookRow.name}<small>{bookRow.chapters} cap.</small><Icon name="chevron-down" size={12} /></button>
@@ -317,6 +342,19 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                             {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
                         </div>
                     </div>
+                    {!error && verses.length > 0 && (
+                        <div className="bverses">
+                            <span className="bverses-k">Versículo</span>
+                            <div className="verse-cells" role="group" aria-label={`Versículos de ${book} ${chapter}`}>
+                                {verses.map((v) => (
+                                    <button type="button" key={v.number}
+                                        className={`kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`}
+                                        onClick={(e) => pickCell(v.number, e)} onDoubleClick={() => sendCell(v.number)}
+                                        title={`${book} ${chapter}:${v.number} · clique seleciona · 2 cliques projetam`}>{v.number}</button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     <div className="bband-lists">
                         <span className="kx-section">Recentes</span>
                         {!(mem.recent || []).length && <span className="kx-meta">nenhum</span>}
@@ -344,7 +382,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                                     <span>O KERYX nunca mostra texto de exemplo no lugar de uma Bíblia.</span>
                                     {(canInstall(version || wanted) || others.length > 0) && (
                                         <span className="bunavail-acts">
-                                            {canInstall(version || wanted) && <Btn kind="outline" onClick={() => installVersion(version || wanted)}>Instalar {version || wanted}</Btn>}
+                                            {canInstall(version || wanted) && <Btn kind="outline" disabled={!online} onClick={() => installVersion(version || wanted)} title={online ? undefined : "Sem internet agora: conecte o computador para baixar"}>Instalar {version || wanted}{installHint}</Btn>}
                                             {others.map((v) => <Btn key={v} onClick={() => switchVersion(v)}>Usar {v}</Btn>)}
                                         </span>
                                     )}

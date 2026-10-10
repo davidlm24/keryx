@@ -926,6 +926,20 @@ async function checkConsole(webContents, { live, outputs }) {
         result.quickPicked = await waitFor(() => js("!document.querySelector('.qj') && [...document.querySelectorAll('.kx-panel-h')].some((n) => n.textContent.startsWith('João 3'))"));
         // The Bible shows "No ar" only (no Prévia monitor).
         result.bibleOneMonitor = await js("document.querySelectorAll('.console .main .kx-mon').length === 1");
+        // The verse row in the band (when the column is tall enough to show
+        // it): the chapter's verses, the quick jump's verse selected (green).
+        // Abrev | Nomes switches the books to their whole names and back.
+        result.bibleVerseRow = await js(`(() => {
+            const row = document.querySelector(".bband .bverses");
+            if (!row || getComputedStyle(row).display === "none") return "dobrada";
+            const cells = [...row.querySelectorAll(".verse-cells button")];
+            const sel = cells.filter((b) => b.classList.contains("is-prev")).map((b) => b.textContent);
+            return cells.length === 5 && sel.join(",") === "16" ? true : { cells: cells.length, sel };
+        })()`);
+        await click(".bband .kx-seg button", "Nomes");
+        result.bibleNames = await waitFor(() => js(`(() => { const g = document.querySelector(".bband .bgrid"); if (!g || getComputedStyle(g).display === "none") return true; const b = g.querySelector(".kx-book"); return b && b.textContent === "Gênesis"; })()`), 3000);
+        await click(".bband .kx-seg button", "Abrev");
+        result.bibleNamesBack = await waitFor(() => js(`(() => { const b = document.querySelector(".bband .bgrid .kx-book"); return !b || b.textContent === "Gn"; })()`), 3000);
         // One verse (Enter) goes out as the whole chapter, at that verse.
         await waitFor(() => js("document.querySelectorAll('.kx-verse').length === 5"), 8000);
         await js("document.activeElement && document.activeElement.blur(); true");
@@ -1586,7 +1600,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
         && result.tlEmpty && result.tlBlocks && result.tlClosed
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
-        && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
+        && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
