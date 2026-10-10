@@ -616,7 +616,7 @@ export default function Console() {
                             } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
                                 <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
                                     nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))}
-                                    later={setlistRight ? [] : laterItems} onPrepareItem={prepareItem} onGoItem={goItem}
+                                    later={setlistRight ? [] : laterItems} items={playable} onPrepareItem={prepareItem} onGoItem={goItem}
                                     onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
                                     onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
                                         { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },

@@ -147,8 +147,15 @@ view of the live state is a pure function in `src/lib/network/views.js`
 (`outputView`, `OUTPUT_VIEWS`; the pages already used `lyricView` and
 `standbyView` from there), so the renderer is untouched. An output that
 shows nothing of the stage (Avisos with a song) says so on the monitor.
-Phase 2 (Palco, Pastor) still needs those pages to render from a given
-state instead of reading the live state themselves.
+**Phase 2 built** (release session, 2026-10-10): the pages' layouts are
+`StageScreen` and `PastorScreen` (`src/components/network/`), fed the live
+state by `StageView`/`PastorView` and the prepared stage by the rail
+(`embed`: absolute inside the monitor, no transpose buttons). Owner's
+answers: Pastor is the tablet upright, centred (3:4, black on the sides);
+Palco's "Próximo" is the slide after the prepared one. The pastor's
+"Próximo" follows the prepared Setlist item (`previewSession` in
+`views.js`). `captionParts` moved to `src/lib/console/caption.js` so the
+screens do not import the console.
 
 - A slim vertical rail on the right edge of the Prévia monitor: icon buttons
   for Projeção, Letras, Vídeo, Avisos, Palco, Pastor (icons from the set:

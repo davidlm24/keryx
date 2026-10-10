@@ -735,3 +735,11 @@
 .console .fg-sample { width: 100%; }
 .console .fg-input { height: 24px; flex: 1; min-width: 0; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; }
 @media (max-width: 1180px) { .console .fg-body { flex-direction: column; } .console .cfg .fg-detail { flex: none; width: 100%; position: static; } }
+
+/* The Prévia as Palco or Pastor: the pages' own screens inside the monitor;
+   the pastor's tablet upright, centred (3:4). */
+.net.net-embed { position: absolute; inset: 0; z-index: 1; }
+/* The rail (28 px) sits over the right edge: the stage chips stay clear of it. */
+.console .kx-mon .net-stage.net-embed { padding-right: 36px; }
+.console .kp-portrait { position: absolute; inset: 0; z-index: 1; display: flex; justify-content: center; background: #000; }
+.console .kp-portrait > .net.net-embed { position: relative; inset: auto; height: 100%; aspect-ratio: 3 / 4; }

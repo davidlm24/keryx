@@ -43,3 +43,20 @@ export function outputView(key, live) {
     const out = OUTPUT_VIEWS.find((o) => o.key === key) || OUTPUT_VIEWS[0];
     return out.view(live);
 }
+
+// The screens with a layout of their own (not ScreenRenderer views), which the
+// Prévia rail draws with the pages' own screen components.
+export const SCREEN_PAGES = [
+    { key: "/StageView", name: "Palco", icon: "monitor" },
+    { key: "/PastorView", name: "Pastor", icon: "tablet" },
+];
+export const RAIL_VIEWS = [...OUTPUT_VIEWS, ...SCREEN_PAGES];
+
+// The session the pastor's screen would see once a prepared stage goes on
+// air: the live one, at the stage's Setlist item when it has one (so "Próximo"
+// lists what follows it), or just that item when nothing has started.
+export function previewSession(session, ref) {
+    const itemId = ref?.serviceItemId || null;
+    if (!session) return itemId ? { itemId, itemIndex: Number.isInteger(ref.serviceItemIndex) ? ref.serviceItemIndex : null } : null;
+    return itemId ? { ...session, itemId, itemIndex: Number.isInteger(ref.serviceItemIndex) ? ref.serviceItemIndex : session.itemIndex } : session;
+}
