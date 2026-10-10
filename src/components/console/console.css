@@ -332,8 +332,6 @@
 /* Lyrics from the web (LyricsSearch): the Holyrics-style search dialog. */
 .console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); color: var(--fg-1); }
 .console .lyr-h { display: flex; align-items: center; gap: var(--space-2); height: 40px; padding: 0 var(--space-2) 0 var(--space-3); border-bottom: 1px solid var(--line); flex: none; }
-.console .lyr-key { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); flex: none; flex-wrap: wrap; }
-.console .lyr-key .kx-field { flex: 1; min-width: 220px; background: var(--bg-3); }
 .console .lyr-q { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); flex: none; }
 .console .lyr-q .kx-field { flex: 1; height: 36px; background: var(--bg-3); }
 .console .lyr-q .kx-field input { font-size: 14px; }
