@@ -6,12 +6,12 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 // pieces: a module, its header, buttons, a field, a row, a monitor, a
 // splitter. Visual rules live in the stylesheet; these only lay out markup.
 
-export function Panel({ title, count, lead, actions, collapsed, onToggle, className = "", style, children, bodyStyle }) {
+export function Panel({ title, count, lead, caption, actions, collapsed, onToggle, className = "", style, children, bodyStyle }) {
     return (
         <div className={`kx-panel ${collapsed ? "is-collapsed" : ""} ${className}`} style={style}>
             <div className="kx-panel-h">
                 {lead}
-                <span className="kx-section">{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>
+                {caption ? <span className="kx-panel-cap">{caption}</span> : <span className="kx-section">{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>}
                 {actions}
                 {onToggle && (
                     <IconBtn name={collapsed ? "chevron-right" : "chevron-down"} title={collapsed ? "Expandir" : "Recolher"} onClick={onToggle} small />
@@ -91,10 +91,11 @@ export function Row({ icon, title, meta, metaClass = "", time, state = "", actio
 // A monitor: caption line (state word first) and the screen, 16:9. `cap`
 // ({ word, title, pos, size: "live" | "next" }) gives the caption its own
 // hierarchy (the live column); `caption` is the plain one-line form.
-export function Monitor({ state, caption, cap, live, now, logoUrl, right, motion = false, className = "", style, dropProps, children }) {
+// `noCap`: no caption row (the Programa's caption is its panel's header).
+export function Monitor({ state, caption, cap, noCap = false, live, now, logoUrl, right, motion = false, className = "", style, dropProps, children }) {
     return (
         <div className={`kx-mon ${state ? `is-${state}` : ""} ${className}`} style={style} {...dropProps}>
-            {cap ? (
+            {noCap ? null : cap ? (
                 <div className={`kx-mon-cap is-cap is-${cap.size}`}>
                     <span className="kx-live-cap">{cap.word}</span>
                     <span className={`kx-mon-t ${cap.size === "live" ? "kx-live-title" : "kx-next-title"}`} title={cap.title || undefined}>{cap.title}</span>

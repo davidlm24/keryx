@@ -78,6 +78,24 @@ function sendNote(stage, locked) {
     return null;
 }
 
+// The Programa's caption, in its panel's header (one title, not a header and a
+// caption line): the state word (red only while something is on air, amber
+// for a failed output, blue when locked, grey when nothing is on air), what
+// is on air at 16px and its position. Used by Console.jsx's Programa panel.
+export function ProgramaCaption({ c, projectorDown }) {
+    const { cur, locked } = c;
+    const { title, pos } = captionParts(cur);
+    const idle = title === "nada";
+    const tone = projectorDown ? "warn" : locked ? "rh" : idle ? "idle" : "air";
+    return (
+        <span className={`kx-prog-cap is-${tone}`}>
+            <span className="kx-live-cap">{locked ? "Programa · travado" : "Programa"}</span>
+            <span className="kx-mon-t kx-live-title" title={title}>{title}</span>
+            {pos && <span className="kx-meta">{pos}</span>}
+        </span>
+    );
+}
+
 // The live column, one block the same at every width
 // (docs/presenter-layout-proposal-2026-10-09.md, P0): the Programa (what is
 // on air, or the local copy with the real screen in a PiP; an output failure
@@ -91,13 +109,12 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const { cur, prev, now, locked } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const [dropOn, setDropOn] = useState(null);
-    // Locked: the screens keep this image, blue (they are not following).
-    const progState = projectorDown ? "warn" : locked ? "rh" : "air";
-    const progWord = locked ? "Programa · travado" : "Programa";
-    // Captions with their own hierarchy: the state word, the title (on air:
-    // live-title, 16px; prepared: next-title, 14px) and the position (meta).
-    const airParts = captionParts(cur);
-    const progCap = dropOn === "air" ? { word: progWord, title: "solte para enviar", pos: "", size: "live" } : { word: progWord, ...airParts, size: "live" };
+    // Locked: the screens keep this image, blue (they are not following). On
+    // air there is no frame: the red lives in the header's state word and on
+    // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
+    const progState = projectorDown ? "warn" : locked ? "rh" : "";
+    // The Prévia's caption: the state word, the title (prepared: next-title,
+    // 14px) and the position (meta).
     const prevCap = dropOn === "prev" ? { word: "Prévia", title: "solte para preparar", pos: "", size: "next" }
         : { word: "Prévia", title: prev ? prev.title : "", pos: prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "", size: "next" };
     const note = sendNote(prev, locked);
@@ -114,8 +131,8 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     return (
         <div className="mons" data-live-keys="" tabIndex={-1}>
             <div className="liveblock">
-                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} cap={progCap} live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}
-                    right={onAir ? <span className={`kx-meta prog-where ${onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{onAir.text}</span> : null}>
+                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}>
+                    {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
                 </Monitor>
                 <div className="subrow">
                     <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} cap={prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={dropProps("prev")}>
