@@ -139,7 +139,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                 <div className="nextline">
                     <span className="kx-section">Próximo</span>
                     <span className={`t ${nextItem ? "kx-next-title" : "kx-meta"}`}>{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>
-                    {nextItem && <Btn small onClick={onPrepNext} title="Pôr o próximo item da Setlist na Prévia">Preparar</Btn>}
+                    {nextItem && <Btn small onClick={onPrepNext} title="Pôr o próximo item da Setlist na Prévia">Pôr na prévia</Btn>}
                 </div>
                 {later.length > 0 && (
                     <div className="later">

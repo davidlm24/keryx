@@ -766,10 +766,17 @@ async function checkConsole(webContents, { live, outputs }) {
             return ok;
         })()`);
 
-        // Esc: off the air at once, with a way back.
+        // Esc: off the air at once, with a way back: the toast's Desfazer puts
+        // the same slide back on air; Esc again takes it off for what follows.
+        const beforeEsc = live.get().content ? { title: live.get().content.title, index: live.get().content.index } : null;
         await press("Escape");
         result.escEnded = await waitFor(() => !live.get().content);
-        result.escToast = await waitText(webContents, "Voltar ao anterior desfaz");
+        result.escToast = await waitText(webContents, "Projeção encerrada") && await waitFor(() => js("Boolean(document.querySelector('.toast .toast-act'))"));
+        await click(".toast .toast-act", "Desfazer");
+        result.escUndo = Boolean(beforeEsc) && await waitFor(() => live.get().content && live.get().content.title === beforeEsc.title && live.get().content.index === beforeEsc.index);
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("Escape");
+        await waitFor(() => !live.get().content);
 
         // One click prepares; a double click sends straight to air (Holyrics).
         await dblclick(".kx-row", "Canto do console");
@@ -1516,7 +1523,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast
+        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack

@@ -80,7 +80,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   container units — so a preview is the output; the Programa monitor plays
   videos muted (`motion`). Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc ends at
-  once (music on the audio channel keeps playing). The rundown is called
+  once (music on the audio channel keeps playing) and its toast offers
+  Desfazer, which puts back what was on air (`undoEndOps` in
+  `src/lib/console/restore.js`). The rundown is called
   **"Setlist"** in the UI. Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
   taps — the level meters read the system loopback in the console.

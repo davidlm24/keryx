@@ -1,0 +1,53 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { applyOp, emptyState } from "../../../shared/live-state.mjs";
+import { restoreArgs, undoEndOps } from "./restore.js";
+
+const T = 1_000_000;
+const run = (state, ops, at = T + 10) => ops.reduce((s, [op, args]) => applyOp(s, op, args, at), state);
+const song = (s) => applyOp(s, "content.show", { kind: "lyrics", title: "Canto", slides: [{ text: "um" }, { text: "dois" }, { text: "três" }], style: { font_size: "large" } }, T);
+
+test("Desfazer after Esc puts the song back on the same slide", () => {
+    const before = applyOp(song(emptyState(T)), "content.goTo", { index: 2 }, T + 1);
+    const after = run(applyOp(before, "clear", {}, T + 2), undoEndOps(before));
+    assert.equal(after.content.title, "Canto");
+    assert.equal(after.content.index, 2);
+    assert.deepEqual(after.content.slides, before.content.slides);
+    assert.equal(after.screen, "show");
+});
+
+test("a picture over the song comes back over it; the video channel and Tela preta too", () => {
+    let before = song(emptyState(T));
+    before = applyOp(before, "media.show", { kind: "image", url: "keryx-media://a.png", title: "Foto" }, T + 1);
+    before = applyOp(before, "video.show", { kind: "video", url: "keryx-media://v.mp4", title: "Clipe" }, T + 2);
+    before = applyOp(before, "screen.set", { mode: "black" }, T + 3);
+    const after = run(applyOp(before, "clear", {}, T + 4), undoEndOps(before));
+    assert.equal(after.content.title, "Canto");
+    assert.equal(after.media.title, "Foto");
+    assert.equal(after.video.title, "Clipe");
+    assert.equal(after.screen, "black");
+});
+
+test("an aviso or a tool over the song comes back over it", () => {
+    const aviso = applyOp(song(emptyState(T)), "communication.show", { item: { type: "text", title: "Aviso", text: "Culto às 19h" } }, T + 1);
+    assert.deepEqual(undoEndOps(aviso).map(([op]) => op), ["content.show", "communication.show"]);
+    assert.equal(run(applyOp(aviso, "clear", {}, T + 2), undoEndOps(aviso)).communication.item.title, "Aviso");
+    // (A tool and an aviso replace each other: never both on air.)
+    const timer = applyOp(song(emptyState(T)), "tool.show", { mode: "timer", durationMs: 300000 }, T + 1);
+    const back = run(applyOp(timer, "clear", {}, T + 2), undoEndOps(timer));
+    assert.equal(back.tool.mode, "timer");
+    assert.equal(back.content.title, "Canto");
+});
+
+test("nothing was on air: nothing to undo (not even Tela preta)", () => {
+    assert.deepEqual(undoEndOps(null), []);
+    assert.deepEqual(undoEndOps(applyOp(emptyState(T), "screen.set", { mode: "black" }, T)), []);
+});
+
+test("a history entry still restores as before (Voltar ao anterior)", () => {
+    const s = applyOp(song(emptyState(T)), "content.clear", {}, T + 1);
+    const [op, args] = restoreArgs(s.history[0]);
+    assert.equal(op, "content.show");
+    assert.equal(args.title, "Canto");
+    assert.throws(() => restoreArgs({ layer: "nada", data: {} }));
+});

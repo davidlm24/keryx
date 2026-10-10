@@ -62,7 +62,8 @@ leaves the field. A control focused with Tab keeps its own Enter and Space.
 air; ↑/↓ move the selection (green); Space plays or pauses; **B** Tela preta,
 **L** Mostrar logo, **C** Limpar texto; **Esc** ends the projection at once
 (after closing whatever is open; in Configurações it goes back to the console)
-and *Voltar ao anterior* undoes it; **/** searches; **?** lists the keys. The
+and its toast's *Desfazer* puts back what was on air, on the same slide;
+*Voltar ao anterior* still brings one earlier item back through the Prévia; **/** searches; **?** lists the keys. The
 *Encerrar* button, unlike Esc, asks first. In the Bíblia a letter or digit
 opens the quick jump. A splitter focused with Tab keeps ←/→ and ↑/↓ for
 itself, so resizing never moves what is on air.
@@ -83,10 +84,18 @@ the real screens at once, locked or not. The *Alerta rápido* (its
 Enter in the field) is the one control that bypasses the Prévia. Camadas edits
 (logo, overlays, background, theme, layer order) apply as made while live.
 
+**Settled 2026-10-10.** Esc keeps ending the projection at once, and its
+toast (and *Encerrar*'s) offers **Desfazer**, which puts back everything
+the screens showed: the text on the same slide, media, avisos or a tool,
+the video channel, Tela preta or Logo (media start again from the
+beginning; refused while the screens are locked). **Camadas edits go live
+as made**: Camadas is its own section, a deliberate place, and *Travar
+telas* holds them during a rehearsal. The Próximo line's button says **Pôr
+na prévia**, like every other place.
+
 **Open decisions** — behaviour the owner has not settled, so the docs state
-what the app does, not what it should: Esc ending at once; Camadas edits going live as made; the Próximo line's
-button reading *Preparar* where the vocabulary says *Pôr na prévia*; whether
-an online-only Bible edition (ARA) may be used on a PC with NVI installed.
+what the app does, not what it should: whether an online-only Bible edition
+(ARA) may be used on a PC with NVI installed.
 
 **Travar telas and the service clock (decided 2026-10-09, built
 2026-10-10).** The owner dropped the Ensaio | Ao vivo toggle
