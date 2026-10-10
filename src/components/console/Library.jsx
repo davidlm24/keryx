@@ -123,7 +123,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
             {tab === "letras" && (() => {
                 const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, s.lyrics));
                 return (
-                    <div style={{ overflow: "auto", flex: 1 }}>
+                    <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
                         {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma música"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
                         {songs.map((s) => (
                             <Row
@@ -137,8 +137,8 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                 dragProps={dragProps(stageFromSong(s))}
                                 actions={<>
                                     <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
-                                    {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música">Editar</Btn>}
-                                    {onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist">Adicionar</Btn>}
+                                    {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música" aria-label="Editar"><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>}
+                                    {onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist" aria-label="Adicionar"><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar</span></Btn>}
                                 </>}
                             />
                         ))}

@@ -50,6 +50,8 @@ Every module has a 32px header (`section` style, collapse glyph, module actions)
 
 ## States
 
+A row's hover actions (Favoritar, Editar, Adicionar) never cover the middle of the row, because a click there prepares: in the Biblioteca's song list (`kx-acts-list`) they show their names from 300px of row width up and shrink to glyphs below it (the star, a pencil, a plus), leaving at least 16px between the actions and the middle at the column's 200px minimum.
+
 A highlighted row is a 2px bar on its left edge in the state colour plus the matching 10% tint; the title takes the state's text colour. Selected-but-neutral rows use `bg-3`. Done items take `dim` opacity on the whole row. Disabled controls take `dim` and lose hover. Hover lightens the glyph (`fg-2` → `fg-1`) and adds a `bg-2` background; pressed is `bg-3`. Focus is the `brand` ring, inset so it never grows the control.
 
 Monitors carry state in their 1px frame and caption: `air` on Programa, `prev` on Prévia, `rh` on Programa while the screens are locked (*Programa · travado*), `warn` on the Programa while the projector's monitor is not connected (the banner says why). The amber hatch belongs to a Prévia whose file is missing (*Arquivo não encontrado*). With the screens locked the Programa still shows the real screen: they are the same image.
