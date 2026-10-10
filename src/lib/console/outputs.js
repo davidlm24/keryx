@@ -1,7 +1,7 @@
 // Output health: what the Saídas status, its popover, the Programa caption
 // and the warning banner say. Three questions kept apart
 // (docs/presenter-layout-proposal-2026-10-09.md, "Output state"):
-//   1. are we live?            (Ensaio | Ao vivo, elsewhere)
+//   1. are the screens following? (Travar telas: the status says so)
 //   2. are the destinations there?   the status and the rows
 //   3. what is each one showing?     the rows' "Mostra" line
 //
@@ -81,8 +81,8 @@ export const showsOn = (screen, air) => (SHOWS[screen] || ((a) => a))(air || "na
 const isTablet = (agent) => /iPad|Tablet|Android(?!.*Mobile)/i.test(agent || "");
 
 // Everything the UI says about the outputs, from the main process's list,
-// the session memory, the mode and what is on air.
-export function outputHealth({ outputs = [], seen = {}, isLive = true, air = "", tries = 1 }) {
+// the session memory, the lock and what is on air.
+export function outputHealth({ outputs = [], seen = {}, locked = false, air = "", tries = 1 }) {
     const rows = [];
     for (const o of outputs) {
         const id = localId(o.key);
@@ -117,21 +117,20 @@ export function outputHealth({ outputs = [], seen = {}, isLive = true, air = "",
     const problems = rows.filter((r) => r.problem);
     const total = connected + problems.length;
 
-    // The status in the top bar: a problem wins, then Ensaio, then nothing
-    // open (amber: a green dot never sits next to a zero).
+    // The status in the top bar: a problem wins, then the lock (blue: the
+    // screens are not following the console), then nothing open (amber: a
+    // green dot never sits next to a zero).
     let status;
     if (problems.length) status = { label: `Saídas · ${problems.length} com problema`, short: "!", state: "warn" };
-    else if (!isLive) status = { label: "Saídas desarmadas", short: "Ensaio", state: "rh" };
+    else if (locked) status = { label: "Telas travadas", short: "Travadas", state: "rh" };
     else if (!connected) status = { label: "Nenhuma saída aberta", short: "0", state: "warn" };
     else status = { label: `Saídas · ${connected} ${connected === 1 ? "conectada" : "conectadas"}`, short: String(connected), state: "" };
 
-    // Where the Programa is: beside its caption, only when live.
-    let onAir = null;
-    if (isLive) {
-        if (!connected) onAir = { text: "em nenhuma tela", warn: true };
-        else if (problems.length) onAir = { text: `em ${connected} de ${total} telas`, warn: true };
-        else onAir = { text: connected === 1 ? "em 1 tela" : `em ${connected} telas`, warn: false };
-    }
+    // Where the Programa is: beside its caption.
+    let onAir;
+    if (!connected) onAir = { text: "em nenhuma tela", warn: true };
+    else if (problems.length) onAir = { text: `em ${connected} de ${total} telas`, warn: true };
+    else onAir = { text: connected === 1 ? "em 1 tela" : `em ${connected} telas`, warn: false };
 
     // One banner (banners never stack): the projector on the wrong monitor
     // first (it has its own, with Tela preta and Mostrar logo), else the

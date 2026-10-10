@@ -28,7 +28,7 @@ const themeStyle = (t) => ({ font_size: t.font_size || "large", font_family: t.f
 const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v]) => (style?.[k] || (k === "text_color_2" ? "" : undefined) || v) === v);
 
 export default function Layers({ c, themes }) {
-    const { cur, isLive } = c;
+    const { cur } = c;
     const [sel, setSel] = useState("text");
     const [locked, setLocked] = useState({ bg: false });
     const [themeId, setThemeId] = useState(null);
@@ -122,7 +122,7 @@ export default function Layers({ c, themes }) {
                 </div>
             ))}
             <div className="layerprops">
-                <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{LAYERS.find((l) => l.id === sel)?.name}{disabled ? " · bloqueada" : ""}{!isLive ? " · ensaio" : ""}</span>
+                <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{LAYERS.find((l) => l.id === sel)?.name}{disabled ? " · bloqueada" : ""}</span>
                 {sel === "text" && (!content ? <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Nada no ar.</span> : <>
                     <span className="k">Fonte</span>
                     <select value={style.font_family || "sans"} disabled={disabled} onChange={(e) => setStyle({ font_family: e.target.value })} aria-label="Fonte">{FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>

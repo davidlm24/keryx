@@ -1,23 +1,18 @@
 import React from "react";
 import Icon from "./Icon";
-import { Seg, IconBtn } from "./kx";
-
-const two = (n) => String(n).padStart(2, "0");
-const elapsed = (ms) => {
-    const s = Math.max(0, Math.floor(ms / 1000));
-    return `${two(Math.floor(s / 3600))}:${two(Math.floor((s % 3600) / 60))}:${two(s % 60)}`;
-};
+import { IconBtn } from "./kx";
 
 // The top bar, a menu bar: the KERYX menu (the mark), the environments
-// KERYX | Bíblia as tabs, Ver, the search, Ensaio | Ao vivo, a compact
+// KERYX | Bíblia as tabs, Ver, the search, the service clock (how long
+// the service has been running, from its scheduled time: serviceClock in
+// src/lib/console/timeline.js; a click opens Planejar o culto), a compact
 // clock, the outputs status and the "Telas" group (Tela preta, Logo,
 // Limpar, Encerrar, named). Nothing wraps: as the window narrows the bar
-// drops the clock, then shortens the outputs label and the search, then
-// the group's caption (container queries in console.css). Tela preta and
-// Mostrar logo act on the real screens in every mode.
-export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsCount, outsState, logoUrl, unread = 0 }) {
-    const { live, now, mode } = c;
-    const since = live?.session?.startedAt;
+// drops the service's end, then the clock, then shortens the outputs label
+// and the search, then the group's caption (container queries in
+// console.css). Tela preta and Mostrar logo act even with the screens locked.
+export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsCount, outsState, logoUrl, unread = 0, svc, onPlanner }) {
+    const { live, now } = c;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const toggle = (name) => setOpen(open === name ? null : name);
     const envTab = (value, label, title) => (
@@ -42,16 +37,11 @@ export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsC
                 </div>
             </div>
             <div className="tb-r">
-                {(
-                    <Seg
-                        mode
-                        value={mode === "live" ? "live" : "ensaio"}
-                        onChange={(v) => (v === "ensaio" ? c.goEnsaio() : setOpen("arm"))}
-                        options={[
-                            ["ensaio", <>{mode === "ensaio" && <i className="kx-dot" />}Ensaio</>, { title: "Ensaiar sem mudar as telas" }],
-                            ["live", <>{mode === "live" && <i className="kx-dot" />}Ao vivo{since && mode === "live" ? <span className="tb-el"> · {elapsed(now - since)}</span> : ""}</>, { title: "Saídas armadas" }],
-                        ]}
-                    />
+                {svc && (
+                    <button type="button" className={`kx-btn kx-t tb-svc ${svc.muted ? "is-muted" : ""}`} onClick={onPlanner} title={svc.title} aria-label={`${svc.text}${svc.more ? ` · ${svc.more}` : ""} · Planejar o culto`}>
+                        <Icon name="clock" /><span className="tb-svc-t">{svc.text}</span>
+                        {svc.more && <span className={`tb-svc-more ${svc.warn ? "kx-warn" : ""}`}> · {svc.more}</span>}
+                    </button>
                 )}
                 <span className="tb-clock" title="Hora">{clock}</span>
                 <button type="button" className={`kx-status kx-t ${outsState ? `is-${outsState}` : ""}`} onClick={() => toggle("outs")} title={`Telas e saídas · ${outsLabel}`} aria-expanded={open === "outs"}>

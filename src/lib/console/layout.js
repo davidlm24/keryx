@@ -2,17 +2,19 @@
 // the splitter sizes. Saved per operator profile in localStorage; "Restaurar
 // layout" returns to DEFAULT_LAYOUT.
 
-// Camadas is not a module any more: it is a drawer opened from the Programa
-// (docs/presenter-layout-proposal-2026-10-09.md, P0).
+// Camadas is a section above the Setlist in the wide tier's right column
+// (owner's request, 2026-10-10); narrower, it is a drawer opened from the
+// Programa.
 export const MODULES = [
     ["lib", "Biblioteca"],
     ["slides", "Slides"],
+    ["camadas", "Camadas"],
     ["roteiro", "Setlist"],
     ["tl", "Linha do tempo"],
 ];
 
 // The console's width tiers, measured on its grid (.main), not the window:
-// wide shows Biblioteca | Slides | Programa | Setlist; medium puts the
+// wide shows Biblioteca | Slides | Programa | Camadas over Setlist; medium puts the
 // Setlist in the Biblioteca's tabs; narrow stacks Biblioteca over Slides in
 // one column beside the Programa. The live column is never stacked below
 // anything and the page never scrolls.

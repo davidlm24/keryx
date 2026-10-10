@@ -1,8 +1,8 @@
 // The live state: one document saying what every output shows right now.
 // Operator pages change it only through applyOp (by way of src/lib/projection.js);
 // outputs render it. The same module runs in the Electron main process
-// (electron/live.cjs holds the document there), in the console (Ensaio and
-// the previews apply operations to a local copy) and in node:test.
+// (electron/live.cjs holds the document there), in the console (its previews
+// apply operations to a local copy) and in node:test.
 //
 // Layers, top to bottom on the main projector (mainLayer):
 //   screen black/logo > tool > communication > media > content
@@ -82,8 +82,23 @@ export function emptyState(now = Date.now()) {
         // so the operator can bring it back (through the preview, never
         // straight to air).
         history: [],
+        // "Travar telas" (Saídas): the screens keep what they show; nothing
+        // new goes on until it is unlocked, though anything can come off
+        // (WHILE_LOCKED). Rehearsal is the console with the screens locked.
+        // Not kept across a restart (restoreState).
+        locked: false,
     };
 }
+
+// What still works while the screens are locked: taking things off the air,
+// Tela preta / Logo, the idle screen, unlocking, ending the session, and the
+// outputs carrying on with what was already playing (the next video of a
+// list, the next aviso of a "Tocar todos").
+export const WHILE_LOCKED = new Set([
+    "screens.lock", "screen.set", "idle.set", "session.end",
+    "clear", "content.clear", "media.clear", "video.clear", "audio.clear", "tool.clear", "communication.clear", "alert.clear", "background.clear",
+    "media.advance", "audio.advance", "communication.advance",
+]);
 
 // -- Checking what pages send -------------------------------------------------
 
@@ -222,6 +237,12 @@ function remember(s, now, only = null) {
 
 const OPS = {
     "screen.set": (_s, { mode }) => ({ screen: oneOf(mode, SCREEN_MODES, "Modo da tela") }),
+
+    // "Travar telas" on or off (see WHILE_LOCKED).
+    "screens.lock": (s, { locked }) => {
+        if (typeof locked !== "boolean") throw new LiveError("Travar telas: diga sim ou não.");
+        return Boolean(s.locked) === locked ? null : { locked };
+    },
 
     "session.start": (_s, { id, serviceId }, now) => ({
         session: {
@@ -449,6 +470,8 @@ export const OP_NAMES = Object.keys(OPS);
 // The next document, or the same object when nothing changed.
 export function applyOp(state, op, args = {}, now = Date.now()) {
     if (!Object.prototype.hasOwnProperty.call(OPS, op)) throw new LiveError(`Operação desconhecida: ${op}.`);
+    // The one place the lock holds, whoever sends: the console, an output, a test.
+    if (state.locked && !WHILE_LOCKED.has(op)) throw new LiveError("Telas travadas: destrave em Saídas para enviar.", 423);
     if (args === null || args === undefined) args = {};
     if (!isPlainObject(args)) throw new LiveError("Argumentos inválidos.");
     const patch = OPS[op](state, args, now);
@@ -458,7 +481,8 @@ export function applyOp(state, op, args = {}, now = Date.now()) {
 
 // A document read back from disk after a restart: same content, screen
 // black (nothing reappears on the projector by itself), playback paused
-// where the last command left it (how far it played after that is unknown).
+// where the last command left it (how far it played after that is unknown),
+// and the screens unlocked (a lock is for the session it was set in).
 export function restoreState(saved, now = Date.now()) {
     const base = emptyState(now);
     if (!isPlainObject(saved) || saved.version !== LIVE_VERSION || !Number.isInteger(saved.rev)) return base;

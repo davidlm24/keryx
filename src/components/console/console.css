@@ -19,15 +19,23 @@
 .console .col > .kx-panel { flex: 1; }
 .console .col > .kx-panel.is-collapsed { flex: none; }
 .console .center { flex: 1; min-width: 0; }
-/* The top bar is a menu bar: left (menu, environments, steps), the search in
-   the middle, right (mode, clock, outputs, screen glyphs). Nothing wraps; as
-   it narrows it drops the clock, then shortens the outputs and the search. */
+/* The top bar is a menu bar: left (menu, environments, Ver), the search in
+   the middle, right (service clock, clock, outputs, Telas). Nothing wraps; as
+   it narrows it drops the service's end and the clock, then shortens the
+   outputs and the search. */
 .console .topbar { height: var(--topbar); flex: none; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-1); background: var(--bg-1); border-radius: var(--radius-panel); white-space: nowrap; container: topbar / inline-size; overflow: hidden; }
 .console .topbar > div { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .console .topbar .tb-l, .console .topbar .tb-r { flex: none; }
 .console .topbar .tb-c { flex: 1; justify-content: center; }
 .console .topbar .tb-search { width: 100%; max-width: 340px; min-width: 0; cursor: text; }
 .console .topbar .tb-sep { width: 1px; height: 16px; background: var(--line); flex: none; margin: 0 var(--space-1); }
+/* The service clock: how long the service has been running (a click opens
+   Planejar o culto); muted with no service or no time set. */
+.console .topbar .tb-svc { flex: none; padding: 0 var(--space-2); gap: 6px; font-variant-numeric: tabular-nums; max-width: 300px; }
+.console .topbar .tb-svc .tb-svc-t { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.console .topbar .tb-svc .tb-svc-more { color: var(--fg-2); margin-left: -2px; }
+.console .topbar .tb-svc .tb-svc-more.kx-warn { color: var(--warn-fg); }
+.console .topbar .tb-svc.is-muted { color: var(--fg-3); }
 .console .topbar .tb-clock { font-size: 12px; font-weight: 500; color: var(--fg-2); font-variant-numeric: tabular-nums; padding: 0 var(--space-1); }
 /* The bell: a red dot while something is unread. */
 .console .topbar .tb-bell { position: relative; display: inline-flex; flex: none; }
@@ -48,7 +56,7 @@
 .console .markbtn { height: var(--row); width: 32px; display: inline-grid; place-items: center; border-radius: var(--radius-control); flex: none; }
 .console .markbtn img { width: 18px; height: 18px; border-radius: 999px; object-fit: cover; }
 .console .markbtn:hover, .console .markbtn.is-on { background: var(--bg-2); }
-@container topbar (max-width: 1400px) { .console .topbar .tb-el { display: none; } }
+@container topbar (max-width: 1400px) { .console .topbar .tb-svc-more { display: none; } }
 @container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
 @container topbar (max-width: 1200px) {
     .console .topbar .tb-outs-l { display: none; }
@@ -58,6 +66,7 @@
 @container topbar (max-width: 1080px) {
     .console .topbar .tb-search { width: 32px; max-width: 32px; padding: 0; justify-content: center; }
     .console .topbar .tb-search input, .console .topbar .tb-search kbd { display: none; }
+    .console .topbar .tb-svc { max-width: 168px; }
 }
 .console .pop { position: absolute; z-index: 30; }
 .console .scrim { position: absolute; inset: 0; z-index: 25; }
@@ -88,7 +97,7 @@
 .console .kx-mon.is-prev { --frame: var(--prev); }
 .console .kx-mon.is-rh { --frame: var(--rh); }
 .console .kx-mon.is-warn { --frame: var(--warn); }
-.console .prog .kx-mon-screen > .kx-screen-hatch, .console .prog .kx-mon-screen > .pipwrap { position: absolute; }
+.console .prog .kx-mon-screen > .kx-screen-hatch { position: absolute; }
 .console .prog .kx-mon-screen > .kx-screen-hatch { inset: 0; }
 /* The Prévia docked under the Programa; the side (send, note, teacher notes)
    never makes the row taller than the Prévia (contain: size), it scrolls. */
@@ -132,7 +141,8 @@
 .console .tl-empty { height: 72px; display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--fg-3); font-size: 12px; }
 .console .layerprops { padding: var(--space-1) var(--space-2) var(--space-2); display: grid; grid-template-columns: 80px 1fr; gap: var(--space-1) var(--space-2); align-items: center; border-top: 1px solid var(--line); }
 .console .layerprops .k { font-size: 11px; color: var(--fg-3); }
-.console .layerprops .kx-seg { height: 24px; padding: 2px; } .console .layerprops .kx-seg > button { height: 20px; padding: 0 8px; font-size: 11px; }
+/* Camadas is on screen in the wide tier: its choices are 24 px targets like every control (the Seg "small" inline sizes are overridden). */
+.console .layerprops .kx-seg { height: var(--row) !important; padding: 2px !important; } .console .layerprops .kx-seg > button { height: 24px !important; min-width: 24px; padding: 0 8px !important; font-size: 11px !important; justify-content: center; }
 .console .layerprops select { height: 24px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; }
 .console .themerow { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1) 0 var(--space-2); height: var(--row); white-space: nowrap; }
 .console .themerow .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg-1); }
@@ -196,9 +206,6 @@
 .console .meters { display: inline-flex; gap: 6px; align-items: center; flex: none; }
 .console .meters .kx-meter { height: 20px; }
 .console .hatchbtn { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); z-index: 3; background: var(--bg-1); }
-.console .pipwrap { position: absolute; right: 2cqw; bottom: 2cqw; width: 28cqw; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px var(--air); background: var(--screen-bg); z-index: 90; }
-.console .pipwrap .ks-box { width: 100%; }
-.console .pipwrap .kx-pip-cap { z-index: 95; }
 .console .kx-screen-hatch { z-index: 85; }
 .console .kx-screen-hatch > div { background: var(--bg-1); padding: 6px 12px; border-radius: var(--radius-control); box-shadow: 0 0 0 1px var(--warn); }
 .console .svcpick { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); height: var(--row); }

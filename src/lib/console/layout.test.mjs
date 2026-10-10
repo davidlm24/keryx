@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, densityOf } from "./layout.js";
+import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf } from "./layout.js";
 
 test("density: Confortável or Compacta, anything else falls back to the default", () => {
     assert.deepEqual(DENSITIES.map(([k]) => k), ["comfortable", "compact"]);
@@ -25,7 +25,8 @@ test("the default Electron window (1440) is wide, not compact", () => {
     assert.equal(tierFor(1440 - 12), "wide");
 });
 
-test("Camadas is a drawer, not a module in Ver", () => {
-    assert.ok(!MODULES.some(([key]) => key === "camadas"));
-    assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "roteiro", "tl"]);
+test("Camadas is a module in Ver again, above the Setlist", () => {
+    assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "camadas", "roteiro", "tl"]);
+    assert.deepEqual(LIMITS.camadasH, [120, 600]);
+    assert.equal(DEFAULT_LAYOUT.camadasH, 300);
 });

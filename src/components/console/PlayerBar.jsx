@@ -91,7 +91,7 @@ function Volume({ volume, onVolume, disabled }) {
 // Anterior, −10 s, Tocar/Pausar, +10 s, Próximo, Parar, the position, the
 // volume and the output's level meters. Always there, so the monitors never
 // move; idle when nothing plays. Acts on the document the console drives
-// (the screens live, the local copy in Ensaio or Preparar).
+// (the live state; while the screens are locked its controls are refused).
 export default function PlayerBar({ c, picked, setPicked, videoScreens, projectorOpen }) {
     const { cur, now } = c;
     const layers = playerLayers(cur);
@@ -133,7 +133,7 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
                 <IconBtn name="stop" title="Parar e tirar do ar" disabled={off} onClick={() => run("stop")} />
             </span>
             <span className="kx-time pl-time">{clock(shownPos)}</span>
-            <span className={`pl-seek ${c.isLive ? "is-live" : ""} ${duration ? "" : "is-unknown"}`} role="slider" aria-label="Posição" aria-valuemin={0} aria-valuemax={Math.round(duration || 0)} aria-valuenow={Math.round(shownPos)}
+            <span className={`pl-seek is-live ${duration ? "" : "is-unknown"}`} role="slider" aria-label="Posição" aria-valuemin={0} aria-valuemax={Math.round(duration || 0)} aria-valuenow={Math.round(shownPos)}
                 onClick={(e) => { if (!duration || off) return; const r = e.currentTarget.getBoundingClientRect(); run("seek", { pos: ((e.clientX - r.left) / r.width) * duration }); }}>
                 <i style={{ width: `${duration ? pct : 0}%` }} /><b style={{ left: `${duration ? pct : 0}%` }} />
             </span>
