@@ -3,7 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn } from "./kx";
 import { installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
-import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
+import { BIBLE_VERSIONS, editionPlan } from "@/lib/bibleBooks";
 import { FONT_MAP } from "@/lib/deviceStyles";
 
 // Verificar: the readiness check before the service. Every line is a real
@@ -101,12 +101,17 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
             const passages = await Promise.all(items.filter((it) => String(it.type).toUpperCase() === "BIBLE" && it.contentId)
                 .map((it) => keryx.entities.BiblePassage.get(it.contentId).catch(() => null)));
             for (const p of passages) if (p?.version) used.add(p.version);
+            // Not installed: read from the internet, and without it the
+            // chapters not read yet come from an installed edition (editionPlan).
             for (const v of used) {
                 const info = BIBLE_VERSIONS.find((b) => b.id === v);
                 const count = installed[v];
+                const plan = editionPlan(v, Object.keys(installed));
+                const offline = plan.fallback ? `sem internet, os capítulos ainda não lidos vêm da ${plan.fallback}` : "sem internet, não aparece";
+                const fix = info?.install ? { label: installing === v ? "Instalando…" : "Instalar", run: () => installBible(v) } : null;
                 if (count) bible.push(line(v, `Instalada para uso sem internet · ${count.toLocaleString("pt-BR")} versículos`, "ok", null, "book"));
-                else if (info?.install) bible.push(line(v, "Não instalada · sem internet, não aparece", "warn", { label: installing === v ? "Instalando…" : "Instalar", run: () => installBible(v) }, "book"));
-                else bible.push(line(v, "Só disponível com internet", navigator.onLine ? "warn" : "miss", null, "book"));
+                else if (plan.online) bible.push(line(v, `${info?.install ? "Não instalada" : "Só existe pela internet"} · ${offline}`, navigator.onLine || plan.fallback ? "warn" : "miss", fix, "book"));
+                else bible.push(line(v, `Não instalada · usando a ${plan.use}`, "warn", fix, "book"));
             }
         } else {
             bible.push(line("Bíblia", "No navegador, os textos vêm da internet", "info", null, "book"));

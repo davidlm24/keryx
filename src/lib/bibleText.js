@@ -10,7 +10,7 @@
 
 import { keryx } from "@/api/keryxClient";
 import { ClientError } from "@/api/errors";
-import { BIBLE_VERSIONS, BOOK_API_MAP, bibleBooks } from "@/lib/bibleBooks";
+import { BIBLE_VERSIONS, BOOK_API_MAP, bibleBooks, editionPlan, readByPlan } from "@/lib/bibleBooks";
 import { searchTerms, anchorTerm, verseMatches } from "@/lib/bibleSearch";
 
 const ONLINE_CACHE_PREFIX = "bible_";
@@ -28,12 +28,19 @@ export async function installedVersions({ refresh = false } = {}) {
     return installedCache;
 }
 
-// `wanted` if it is installed (or on web), else the first installed version,
-// else `wanted` (it may still be found online).
+// The edition to read for `wanted` (editionPlan in bibleBooks.js): itself
+// when installed or online, else the first installed one.
 export async function preferredVersion(wanted) {
-    const installed = Object.keys(await installedVersions());
-    if (!installed.length || installed.includes(wanted)) return wanted;
-    return installed[0];
+    return editionPlan(wanted, Object.keys(await installedVersions())).use;
+}
+
+// A chapter in the edition the operator chose: online when it is not
+// installed, and from the first installed edition when the internet fails
+// (`fellBack` names the edition that could not be read).
+// -> { verses, source, version, fellBack }
+export async function readChapter(wanted, book, chapter) {
+    const plan = editionPlan(wanted, Object.keys(await installedVersions()));
+    return readByPlan(plan, (edition) => getChapter(edition, book, chapter));
 }
 
 export function forgetInstalledVersions() {
