@@ -6,7 +6,7 @@ import { songFromText, importLines } from "@/lib/songImport";
 
 // "+ › Na internet…" for songs, like the Holyrics search: one field, the
 // results of several sources in one list, the lyrics beside it, Importar.
-// Vagalume (with the church's key) brings the lyrics; letras.mus.br results
+// Vagalume (with the church's key) and LRCLIB (no key) bring the lyrics; letras.mus.br results
 // open in the browser and the lyrics are pasted (the site refuses automated
 // reading). The search runs in the main process (electron/lyrics.cjs).
 export default function LyricsSearch({ c, onClose, onImported }) {
@@ -99,7 +99,7 @@ export default function LyricsSearch({ c, onClose, onImported }) {
             </div>
             {keyOpen && (
                 <div className="lyr-key">
-                    <span className="kx-meta">Crie uma chave grátis em vagalume.com.br/api e cole aqui. Fica só neste computador.</span>
+                    <span className="kx-meta">Crie uma chave grátis na área de API do Vagalume (api.vagalume.com.br) e cole aqui. Fica só neste computador. Sem ela, o LRCLIB e o letras.mus.br continuam.</span>
                     <Field icon={null} value={keyText} onChange={setKeyText} placeholder="Chave da API do Vagalume" onKeyDown={(e) => { if (e.key === "Enter") saveKey(); }} />
                     <Btn kind="outline" onClick={saveKey}>Salvar</Btn>
                 </div>
@@ -110,7 +110,7 @@ export default function LyricsSearch({ c, onClose, onImported }) {
             </div>
             <div className="lyr-b">
                 <div className="lyr-list">
-                    {results === null && !busy && <Empty icon="music" title="Digite e tecle Enter">Resultados do Vagalume e do letras.mus.br numa lista só.</Empty>}
+                    {results === null && !busy && <Empty icon="music" title="Digite e tecle Enter">Resultados do Vagalume, do LRCLIB e do letras.mus.br numa lista só.</Empty>}
                     {busy && <Empty title="Procurando…" />}
                     {results && !results.length && !busy && <Empty icon="music" title={`Nada para "${q}"`}>Tente o título exato ou o nome do artista.</Empty>}
                     {(results || []).map((r, i) => (
