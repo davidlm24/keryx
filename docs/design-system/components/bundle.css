@@ -80,7 +80,7 @@
 .kx-field kbd { font: inherit; font-size: 11px; color: var(--fg-3); }
 
 /* ---- Row (list item): title + one grey line. State = 2px bar on the left edge + 10% tint. Never a badge. ---- */
-.kx-row { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 0 var(--space-3) 0 var(--space-3); width: 100%; text-align: left; border-radius: 0; color: var(--fg-1); }
+.kx-row { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 0 var(--space-2) 0 var(--space-3); width: 100%; text-align: left; border-radius: 0; color: var(--fg-1); }
 .kx-row::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
 .kx-row:hover { background: var(--bg-2); }
 .kx-row.is-selected { background: var(--bg-3); }
