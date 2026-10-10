@@ -3,11 +3,14 @@ import Icon from "./Icon";
 import { Monitor, Btn, Row } from "./kx";
 import { typeIcon } from "@/lib/console/setlist";
 import PlayerBar from "./PlayerBar";
-import { applyOp, emptyState, mainLayer } from "@shared/live-state.mjs";
+import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
-import { OUTPUT_VIEWS } from "@/lib/network/views";
+import { captionParts } from "@/lib/console/caption";
+import { OUTPUT_VIEWS, RAIL_VIEWS, SCREEN_PAGES, nextItems, previewSession } from "@/lib/network/views";
+import StageScreen from "@/components/network/StageScreen";
+import PastorScreen from "@/components/network/PastorScreen";
 import { prefState, prefVars } from "@/lib/outputPrefs";
 import { useOutputPref } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
@@ -32,21 +35,7 @@ export function previewDoc(stage, cur, now, stamp) {
     }
 }
 
-// What a screen shows, as a title and its position ("2/6" or ""): the parts
-// of a monitor's caption.
-export const captionParts = (doc) => {
-    if (!doc) return { title: "", pos: "" };
-    const layer = mainLayer(doc);
-    // A video-channel clip covers the screens over every layer.
-    if (doc.video && layer !== "black" && layer !== "logo") return { title: doc.video.title || "Vídeo", pos: "" };
-    if (layer === "black") return { title: "Tela preta", pos: "" };
-    if (layer === "logo") return { title: "Logo", pos: "" };
-    if (layer === "content") return { title: doc.content.title || "Texto", pos: doc.content.slides.length > 1 ? `${doc.content.index + 1}/${doc.content.slides.length}` : "" };
-    if (layer === "media") return { title: doc.media.title || "Mídia", pos: "" };
-    if (layer === "communication") return { title: doc.communication.item?.title || "Aviso", pos: "" };
-    if (layer === "tool") return { title: { clock: "Relógio", stopwatch: "Cronômetro", timer: "Timer", freetext: "Texto livre" }[doc.tool.mode], pos: "" };
-    return { title: "nada", pos: "" };
-};
+export { captionParts };
 
 // The same as one line: "Programa · Canto · 2/6" (Escola bíblica, Saídas).
 export const captionOf = (doc, word) => {
@@ -109,7 +98,7 @@ export function ProgramaCaption({ c, projectorDown }) {
 // item and, when the Setlist has no column of its own, the items after it.
 // The block is as wide as the column allows and as tall as fits (console.css,
 // .liveblock); spare height goes below it, never between the monitors.
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu }) {
+export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu, items = [] }) {
     const { cur, prev, now, locked, stamp } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
     const [dropOn, setDropOn] = useState(null);
@@ -118,9 +107,13 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     // settings (Configurações › Telas e saídas). Enviar ao ar is unchanged.
     const [railOut, setRailOut] = useState(OUTPUT_VIEWS[0].key);
     const { pref: railPref, theme: railTheme } = useOutputPref(railOut);
-    const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
-    const railVars = prefVars(railPref);
-    const railName = OUTPUT_VIEWS.find((o) => o.key === railOut)?.name || "";
+    // Palco and Pastor have layouts of their own: their screen components
+    // draw the prepared stage (the pastor's Próximo follows its Setlist item).
+    const railPage = SCREEN_PAGES.find((p) => p.key === railOut) || null;
+    const railDoc = useMemo(() => (railPage ? null : prefState(railOut, pdoc, railPref, railTheme)), [railPage, railOut, pdoc, railPref, railTheme]);
+    const pastorDoc = useMemo(() => (railPage?.key === "/PastorView" && pdoc ? { ...pdoc, session: previewSession(cur?.session || null, prev?.args?.ref) } : null), [railPage, pdoc, cur?.session, prev]);
+    const railVars = railPage ? null : prefVars(railPref);
+    const railName = RAIL_VIEWS.find((o) => o.key === railOut)?.name || "";
     // Locked: the screens keep this image, blue (they are not following). On
     // air there is no frame: the red lives in the header's state word and on
     // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
@@ -149,9 +142,17 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                 <div className="subrow">
                     <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
-                        {prev && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
+                        {prev && !railPage && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
+                        {prev && railPage?.key === "/StageView" && (pdoc?.content
+                            ? <StageScreen content={pdoc.content} nowMs={now} embed />
+                            : <div className="kx-screen-empty">A saída Palco não mostra este item</div>)}
+                        {prev && pastorDoc && (
+                            <div className="kp-portrait">
+                                <PastorScreen live={pastorDoc} nowMs={now} logo={logoUrl} upcoming={nextItems(items, pastorDoc.session, 3)} hasService={items.length > 0} embed />
+                            </div>
+                        )}
                         <div className="prev-rail" role="group" aria-label="Ver a prévia como a saída" onDoubleClick={(e) => e.stopPropagation()}>
-                            {OUTPUT_VIEWS.map((o) => (
+                            {RAIL_VIEWS.map((o) => (
                                 <button type="button" key={o.key} className={`kx-t ${railOut === o.key ? "is-on" : ""}`} title={`Prévia como ${o.name}`} aria-label={`Prévia como ${o.name}`} aria-pressed={railOut === o.key}
                                     onClick={(e) => { e.stopPropagation(); setRailOut(o.key); }}><Icon name={o.icon} size={14} /></button>
                             ))}

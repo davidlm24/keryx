@@ -1316,9 +1316,22 @@ async function checkConsole(webContents, { live, outputs }) {
         await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Letras"); if (b) b.click(); return Boolean(b); })()`);
         await sleep(300);
         const asLyrics = await railShows();
+        // Palco: the stage monitor's own layout, the prepared slide and the
+        // one after it. Pastor: the tablet upright in the middle, the
+        // congregation's view inside it.
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Palco"); if (b) b.click(); return Boolean(b); })()`);
+        await sleep(300);
+        const asStage = await js(`(() => { const m = document.querySelector(".subrow .kx-mon .net-stage.net-embed"); return m ? { cur: (m.querySelector(".ns-cur") || {}).textContent || "", next: (m.querySelector(".ns-next p") || {}).textContent || "" } : null; })()`);
+        result.shotRailStage = await shot("prevRail-palco");
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Pastor"); if (b) b.click(); return Boolean(b); })()`);
+        await sleep(300);
+        const asPastor = await js(`(() => { const p = document.querySelector(".subrow .kx-mon .kp-portrait > .net-embed"); const s = document.querySelector(".subrow .kx-mon .kx-mon-screen"); if (!p || !s) return null; const r = p.getBoundingClientRect(); const q = s.getBoundingClientRect(); return { upright: r.height > r.width, centred: Math.abs((r.left + r.right) / 2 - (q.left + q.right) / 2) < 2, screen: Boolean(p.querySelector(".np-mon .ks-text")) }; })()`);
+        result.shotRailPastor = await shot("prevRail-pastor");
         await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Projeção"); if (b) b.click(); return Boolean(b); })()`);
         await sleep(300);
-        result.prevRailDiag = { asNotices, asLyrics };
+        result.prevRailDiag = { asNotices, asLyrics, asStage, asPastor };
+        result.prevRailScreens = Boolean(asStage && asStage.cur === "Primeiro slide do console" && asStage.next === "Segundo slide do console"
+            && asPastor && asPastor.upright && asPastor.centred && asPastor.screen);
         result.prevRail = Boolean(asNotices && !asNotices.text && /não mostra/.test(asNotices.empty) && asLyrics && asLyrics.text)
             && await js(`(() => { const on = [...document.querySelectorAll(".prev-rail button")].filter((b) => b.getAttribute("aria-pressed") === "true"); return on.length === 1 && on[0].getAttribute("aria-label") === "Prévia como Projeção"; })()`);
         await js("document.activeElement && document.activeElement.blur(); true");
@@ -1798,7 +1811,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
-        && result.prevRail && result.rowActsClear
+        && result.prevRail && result.prevRailScreens && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection

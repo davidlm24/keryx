@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mainLayer } from "../../../shared/live-state.mjs";
-import { lyricView, standbyView, nextItems } from "./views.js";
+import { lyricView, standbyView, nextItems, previewSession, RAIL_VIEWS } from "./views.js";
 
 const song = { title: "Hino", slides: [{ text: "a" }], index: 0 };
 const media = { kind: "image", url: "x.png", title: "Foto" };
@@ -45,4 +45,15 @@ test("outputView: each output's view of a stage, for the Prévia rail", async ()
     assert.deepEqual(outputView("/CommunicationProjection", live), { screen: "show", communication: notice });
     assert.equal(outputView("/CommunicationProjection", { screen: "show", content: song }), null, "no aviso: nothing");
     assert.equal(outputView("/Nope", live), live, "unknown: the projector");
+});
+
+test("previewSession: the pastor's Próximo follows the prepared Setlist item", () => {
+    const items = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }];
+    const live = { startedAt: 5, serviceId: "s", itemId: "a" };
+    assert.deepEqual(nextItems(items, previewSession(live, { serviceItemId: "c", serviceItemIndex: 2 })).map((i) => i.id), ["d"]);
+    assert.equal(previewSession(live, { serviceItemId: "c" }).startedAt, 5, "the service keeps its clock");
+    assert.equal(previewSession(live, {}), live, "a library item: what is on air stays the reference");
+    assert.deepEqual(previewSession(null, { serviceItemId: "b" }), { itemId: "b", itemIndex: null }, "nothing started yet");
+    assert.equal(previewSession(null, {}), null);
+    assert.deepEqual(RAIL_VIEWS.map((v) => v.name), ["Projeção", "Letras", "Vídeo", "Avisos", "Palco", "Pastor"]);
 });
