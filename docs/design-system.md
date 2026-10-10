@@ -120,9 +120,9 @@ to the 960 × 600 window minimum); one live column that never stacks below
 anything; the Setlist a column when wide and the Biblioteca's first tab
 otherwise; Camadas a section above the Setlist in that column when wide
 (owner's request, 2026-10-10; a horizontal splitter between them) and a
-drawer from the Programa's header otherwise; **Ver** and the
-**Telas** group (Tela preta, Logo, Limpar, Encerrar, named) in the top bar,
-which fits on one line at every width.
+drawer from the Programa's header otherwise; **Ver** (beside the bell) and the
+screen actions (Tela preta, Logo, Limpar, Encerrar: one chip of glyphs since
+2026-10-10) in the top bar, which fits on one line at every width.
 
 The live column's fixed height is the sum of its rows (the Programa's caption
 26 px and the Prévia's 24 px, each with 4 px under it, three 8 px gaps, the
@@ -175,8 +175,9 @@ Programa) sends to air. Artboards 8–15 stay in the canvas as a record; the
 app follows the full modular layout of artboards 1–7. The top bar is a menu
 bar, drawn straight on the window (`bg-0`, no panel, 2026-10-09): the KERYX
 mark (menu), the environment tabs **KERYX | Bíblia** (`kx-tabs`, underline in
-brand), Ver, the search, the service clock, a compact clock, the outputs status
-and the Telas group, on one line at every width.
+brand), the search, the service clock, a compact clock, the outputs status,
+Ver and the bell, and the screen actions as one chip of glyphs, on one line at
+every width.
 The Bible quick jump (Holyrics-style "jo 3 16") is a `kx-pop` with Livro /
 Capítulo / Versículo captions over the typed text and the candidate books.
 

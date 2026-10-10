@@ -1,6 +1,5 @@
 import React from "react";
-import Icon from "../Icon";
-import { Panel, Btn, Row } from "../kx";
+import { Panel, Row, BackBtn } from "../kx";
 import TelasSection from "./TelasSection";
 import RedeSection from "./RedeSection";
 import BibliasSection from "./BibliasSection";
@@ -32,7 +31,7 @@ export default function SettingsView({ c, section, setSection, onClose }) {
     return (
         <>
             <div className="col" style={{ flex: "0 0 280px" }}>
-                <Panel title="Configurações" actions={<Btn small onClick={onClose} title="Voltar ao console · Esc"><Icon name="arrow-left" />Voltar ao console</Btn>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel lead={<BackBtn onClick={onClose} />} title="Configurações" bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {SECTIONS.map(([id, icon, name]) => (
                         <Row key={id} single icon={icon} title={name} state={id === current[0] ? "is-selected" : ""} onClick={() => setSection(id)} />
                     ))}

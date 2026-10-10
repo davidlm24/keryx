@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, BackBtn } from "./kx";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { getPassage, preferredVersion } from "@/lib/bibleText";
 import { parseDuration, formatDuration } from "@/lib/songImport";
@@ -165,7 +165,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
 
     if (!svc || !form) {
         return (
-            <div className="col center"><Panel title="Planejador de culto" actions={<Btn small onClick={onClose}><Icon name="arrow-left" />Console</Btn>}>
+            <div className="col center"><Panel lead={<BackBtn onClick={onClose} />} title="Planejador de culto">
                 <Empty icon="list" title={services.length ? "Escolha um culto" : "Nenhum culto ainda"}>Crie um culto para planejar a setlist.</Empty>
                 <div className="pl-pad">
                     {services.slice(0, 12).map((s) => <Row key={s.id} single icon="list" title={s.title} time={s.date ? s.date.split("-").reverse().slice(0, 2).join("/") : ""} onClick={() => setServiceId(s.id)} />)}
@@ -197,13 +197,12 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     return (
         <>
             <div className="col" style={{ flex: "0 1 360px", minWidth: 300, gap: "var(--gutter)" }}>
-                <Panel title="Culto" style={{ flex: "none" }} actions={<>
+                <Panel lead={<BackBtn onClick={onClose} />} title="Culto" style={{ flex: "none" }} actions={<>
                     <select className="cfg-select pl-pick" value={serviceId} onChange={(e) => setServiceId(e.target.value)} aria-label="Escolher culto">
                         {services.map((s) => <option key={s.id} value={s.id}>{s.title}{s.date ? ` · ${s.date.split("-").reverse().slice(0, 2).join("/")}` : ""}</option>)}
                     </select>
                     <IconBtn name="plus" small title="Novo culto" onClick={newService} />
-                    <Btn small onClick={onClose} title="Voltar ao console · Esc"><Icon name="arrow-left" />Console</Btn>
-                </>}>
+                                    </>}>
                     <div className="frm pl-frm">
                         <span className="k">Nome</span><Field icon={null} {...f("title")} placeholder="Culto de domingo" />
                         <span className="k">Data</span><input type="date" className="pl-input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} onBlur={() => commit("date")} aria-label="Data" />

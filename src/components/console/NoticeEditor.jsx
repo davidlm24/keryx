@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, BackBtn } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { NOTICE_TYPES, newNotice, noticeLabel } from "@/lib/console/notice";
 import { parseDuration, formatDuration } from "@/lib/songImport";
@@ -141,10 +141,9 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
     return (
         <>
             <div className="col nv-l" style={{ flex: "0 1 420px", minWidth: 340 }}>
-                <Panel title={<>Aviso <span className="kx-count">· {isNew ? "Novo aviso" : draft.title}{dirty ? " · não salvo" : ""}</span></>} actions={<>
+                <Panel lead={<BackBtn onClick={leave} />} title={<>Aviso <span className="kx-count">· {isNew ? "Novo aviso" : draft.title}{dirty ? " · não salvo" : ""}</span></>} actions={<>
                     {!isNew && <Btn small kind={confirm === "delete" ? "air" : ""} onClick={remove}>{confirm === "delete" ? "Excluir mesmo" : "Excluir"}</Btn>}
-                    <Btn small onClick={leave} title="Voltar ao console · Esc"><Icon name="arrow-left" />Console</Btn>
-                </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                                    </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={imgRef} type="file" hidden accept="image/*" onChange={(e) => { upload(e.target.files?.[0], (url) => set({ background_image: url, background_color: "" })); e.target.value = ""; }} />
                     <input ref={fileRef} type="file" hidden onChange={(e) => { fileChosen(e.target.files?.[0]); e.target.value = ""; }} />
                     <div className="nv-scroll">

@@ -6,10 +6,11 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 // pieces: a module, its header, buttons, a field, a row, a monitor, a
 // splitter. Visual rules live in the stylesheet; these only lay out markup.
 
-export function Panel({ title, count, actions, collapsed, onToggle, className = "", style, children, bodyStyle }) {
+export function Panel({ title, count, lead, actions, collapsed, onToggle, className = "", style, children, bodyStyle }) {
     return (
         <div className={`kx-panel ${collapsed ? "is-collapsed" : ""} ${className}`} style={style}>
             <div className="kx-panel-h">
+                {lead}
                 <span className="kx-section">{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>
                 {actions}
                 {onToggle && (
@@ -25,6 +26,17 @@ export function Btn({ kind = "", small, on, className = "", children, ...rest })
     const cls = `kx-btn kx-t ${kind ? `kx-btn-${kind}` : ""} ${on ? "is-on" : ""} ${className}`;
     // Small buttons are still 24 px tall: the minimum pointer target (WCAG 2.2).
     return <button type="button" className={cls} style={small ? { height: 24, padding: "0 6px" } : undefined} {...rest}>{children}</button>;
+}
+
+// The way back from a full-screen view (song editor, planner, media, ...):
+// always the first thing in the view's first header, outlined so it does not
+// blend into the header's ghost buttons. Esc does the same.
+export function BackBtn({ onClick, label = "Console", title = "Voltar ao console · Esc" }) {
+    return (
+        <button type="button" className="kx-btn kx-btn-outline kx-btn-back kx-t" onClick={onClick} title={title}>
+            <Icon name="arrow-left" />{label}
+        </button>
+    );
 }
 
 export function IconBtn({ name, title, small, on, className = "", ...rest }) {

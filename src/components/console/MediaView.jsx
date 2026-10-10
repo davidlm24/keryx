@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Empty } from "./kx";
+import { Panel, Btn, IconBtn, Field, Empty, BackBtn } from "./kx";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { stageFromMedia, stageFromMediaList, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
@@ -169,7 +169,7 @@ export default function MediaView({ c, media, onSend, onClose }) {
 
     return (
         <div className="col center mv">
-            <Panel title={<>Mídia <span className="kx-count">· {media.length} {media.length === 1 ? "arquivo" : "arquivos"}{totalSize ? ` · ${bytes(totalSize)}` : ""}</span></>} actions={<span className="mv-acts">
+            <Panel lead={<BackBtn onClick={onClose} />} title={<>Mídia <span className="kx-count">· {media.length} {media.length === 1 ? "arquivo" : "arquivos"}{totalSize ? ` · ${bytes(totalSize)}` : ""}</span></>} actions={<span className="mv-acts">
                 <div className="kx-tabs mv-cats" role="tablist">
                     {CATS.filter(([k]) => k !== "doc" || hasDocs).map(([k, label]) => <button type="button" role="tab" aria-selected={cat === k} key={k} className={`kx-t ${cat === k ? "is-on" : ""}`} onClick={() => setCat(k)}>{label}</button>)}
                 </div>
@@ -177,8 +177,7 @@ export default function MediaView({ c, media, onSend, onClose }) {
                 <Btn small kind="outline" onClick={() => fileRef.current?.click()}><Icon name="plus" />Enviar arquivos</Btn>
                 <IconBtn name="layers" small on={view === "grid"} title="Grade" onClick={() => setView("grid")} />
                 <IconBtn name="list" small on={view === "list"} title="Lista" onClick={() => setView("list")} />
-                <Btn small onClick={onClose} title="Voltar ao console · Esc"><Icon name="arrow-left" />Console</Btn>
-            </span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                            </span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                 <input ref={fileRef} type="file" multiple hidden accept="video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
                 <input ref={locateRef} type="file" hidden onChange={(e) => { located(e.target.files?.[0]); e.target.value = ""; }} />
                 <div className="mv-bar">
