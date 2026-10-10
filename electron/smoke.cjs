@@ -801,6 +801,17 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-status", "");
         await click(".kx-pop .kx-seg button", "Preto");
         result.idleSet = await waitFor(() => live.get().idle === "black");
+        // When the click misses, say where it went.
+        if (!result.idleSet) {
+            result.idleDiag = await js(`(() => {
+                const b = [...document.querySelectorAll(".kx-pop .kx-seg button")].find((n) => n.textContent.includes("Preto"));
+                const r = b ? b.getBoundingClientRect() : null;
+                const at = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+                const name = (el) => (el ? el.tagName + "." + String(el.className || "").slice(0, 40) : null);
+                return { button: r ? [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)] : null, atCentre: name(at), atIsButton: Boolean(b && at && b.contains(at)), pops: [...document.querySelectorAll(".kx-pop, .pop, .scrim, .dialog, .verif-overlay")].map(name), win: [innerWidth, innerHeight] };
+            })()`);
+            result.idleDiag.idle = live.get().idle;
+        }
         await press("Escape"); // closes the popover
         await press("Escape"); // ends the projection
         await waitFor(() => !live.get().content);
@@ -1344,6 +1355,33 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("document.activeElement && document.activeElement.blur(); true");
         await click(".envtabs button", "KERYX");
 
+        // An unexpected Scripture from the KERYX environment: "/ jo 3 16",
+        // Enter puts it in the Prévia without leaving the console (nothing
+        // goes on air) and the palette never covers the Programa; Shift+Enter
+        // adds "jo 3 15-16" to the Setlist as a passage.
+        const airBefore = JSON.stringify(live.get().content || null);
+        await press("/");
+        await waitFor(() => js("Boolean(document.querySelector('.palette input'))"));
+        await type("jo 3 16");
+        await waitFor(() => js("[...document.querySelectorAll('.palette .kx-row')].some((n) => n.textContent.includes('Abrir na Bíblia'))"));
+        result.paletteClear = await js(`(() => {
+            const p = document.querySelector(".palette").getBoundingClientRect();
+            const c = document.querySelector(".console .center .prog");
+            return !c || p.right <= c.getBoundingClientRect().left + 1;
+        })()`);
+        await press("Enter");
+        result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'KERYX') && [...document.querySelectorAll('.subrow .kx-mon-cap, .subrow .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
+            && JSON.stringify(live.get().content || null) === airBefore;
+        await press("/");
+        await waitFor(() => js("Boolean(document.querySelector('.palette input'))"));
+        await type("jo 3 15-16");
+        await waitFor(() => js("[...document.querySelectorAll('.palette .kx-row')].some((n) => n.textContent.includes('João 3:15'))"));
+        await press("Enter", ["shift"]);
+        result.paletteRefAdded = await waitFor(async () => {
+            const rows = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc?.id}" }])`)).data || [];
+            return rows.some((r) => r.type === "BIBLE" && r.title === "João 3:15-16");
+        }, 6000);
+
         // Escola bíblica in the console: a student's presence for today, a
         // quiz prepared with its teacher's notes (console only), Enter sends
         // the question and → reveals the answer; a new material saved with
@@ -1493,7 +1531,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
-        && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch
+        && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch && result.paletteClear && result.paletteRefHere && result.paletteRefAdded
         && result.svOpen && result.svPresence && result.svPrepared && result.svNotes && result.svSent && result.svNotesOffAir && result.svReveal && result.svEdited && result.svSetlist && result.svClosed
         && result.rpOpen && result.rpTop && result.rpCcli && result.rpCopied && result.rpClosed);
     return result;

@@ -16,7 +16,7 @@ import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
 import Timeline from "@/components/console/Timeline";
-import BibleEnv from "@/components/console/BibleEnv";
+import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
 import LyricsSearch from "@/components/console/LyricsSearch";
@@ -33,9 +33,12 @@ import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor, densityOf } from "@/lib/console/layout";
 import { liveAction, quickJumpKey } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
-import { stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
+import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
+import { getChapter, preferredVersion } from "@/lib/bibleText";
+import { formatReference } from "@/lib/bibleBooks";
 
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
 const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LOG_KEY(serviceId)) || "{}"); } catch { return {}; } };
@@ -349,6 +352,39 @@ export default function Console() {
     }, [c]);
 
     const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
+    // A reference from the palette, without leaving the console, in the
+    // version chosen in the Bíblia (another installed one when it is not,
+    // and said so).
+    const referenceVerses = async (ref) => {
+        const wanted = bibleVersionWanted();
+        const version = await preferredVersion(wanted);
+        const { verses } = await getChapter(version, ref.book, ref.chapter);
+        if (version !== wanted) c.say(`${wanted} não está instalada · usando a ${version}.`);
+        return { version, verses };
+    };
+    // Its verses in the Prévia (one verse: its chapter from there, as in the Bíblia).
+    const prepareReference = async (ref) => {
+        try {
+            const { version, verses } = await referenceVerses(ref);
+            const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
+            const st = stageFromVerses({ verses, nums: referenceNums(ref), version, book: ref.book, chapter: ref.chapter, onAir });
+            if (!st) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
+            c.setPrev(st);
+        } catch (err) { c.say(err?.message || "Não foi possível abrir a passagem."); }
+    };
+    // Or as a passage at the end of the Setlist (never the whole chapter).
+    const addReference = async (ref) => {
+        try {
+            const { version, verses } = await referenceVerses(ref);
+            const passage = passageOf({ verses, nums: referenceNums(ref), version, book: ref.book, chapter: ref.chapter });
+            if (!passage) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
+            const sid = await ensureService();
+            const row = await keryx.entities.BiblePassage.create(passage);
+            const title = `${ref.book} ${ref.chapter}:${passage.verses}`;
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "BIBLE", title, contentId: row.id, order: items.length, duration: 120 });
+            c.say(`${title} adicionado ao fim da setlist.`);
+        } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
+    };
     const searchBibleFor = (text) => { setBibleRequest({ search: text, at: Date.now() }); setOpen(null); setEnv("biblia"); };
 
     // Keys (src/lib/console/keys.js). A mouse click never leaves focus on a
@@ -456,6 +492,13 @@ export default function Console() {
     const playAirIdx = playable.findIndex((i) => i.id === airItemId);
     const late = service ? serviceTiming({ items: playable, times: plannedTimes(service, playable), airIdx: playAirIdx, startedAt: playAirIdx >= 0 ? log[airItemId]?.start : null, now: c.now }).late : 0;
     const svc = serviceClock({ service, seconds: setPlan.seconds, late, now: c.now });
+
+    // The palette opens left-anchored and stops short of the Programa monitor
+    // (the live column may have spare width beside it); 620 px at most.
+    const paletteWidth = () => {
+        const prog = centerRef.current?.querySelector(".prog")?.getBoundingClientRect();
+        return prog ? Math.max(300, Math.min(620, prog.left - 16)) : 620;
+    };
 
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
@@ -572,7 +615,8 @@ export default function Console() {
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
-            <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onBibleSearch={searchBibleFor} />
+            <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor}
+                style={{ width: paletteWidth() }} />
             {drawer && !camadasRight && !view && env === "culto" && (
                 // Over the source columns, never over the Programa: up to the live column's left edge.
                 <div className="drawer" style={{ width: Math.max(240, Math.min(360, (centerRef.current?.getBoundingClientRect().left ?? 372) - 12)) }}>
