@@ -22,3 +22,24 @@ export function nextItems(items, session, count = 3) {
     const from = at >= 0 ? at + 1 : Number.isInteger(session.itemIndex) ? session.itemIndex + 1 : 0;
     return items.slice(from, from + count);
 }
+
+// Vídeo: the clip on the video channel while there is one (the page plays it
+// full screen, whatever Tela preta says), else the idle look.
+export const videoView = (live) => (live && live.video ? { screen: "show", video: live.video, idle: live.idle, idleUrl: live.idleUrl } : standbyView(live));
+
+// Avisos: only the aviso on air; nothing (null) when there is none.
+export const noticeView = (live) => (live && live.communication ? { screen: "show", communication: live.communication } : null);
+
+// The outputs drawn by ScreenRenderer, and what each shows from a live state:
+// the console's Prévia rail previews a stage "as that output will show it".
+export const OUTPUT_VIEWS = [
+    { key: "/Projection", name: "Projeção", icon: "projector", view: (live) => live },
+    { key: "/LyricProjection", name: "Letras", icon: "tv", view: lyricView },
+    { key: "/VideoProjection", name: "Vídeo", icon: "film", view: videoView },
+    { key: "/CommunicationProjection", name: "Avisos", icon: "megaphone", view: noticeView },
+];
+
+export function outputView(key, live) {
+    const out = OUTPUT_VIEWS.find((o) => o.key === key) || OUTPUT_VIEWS[0];
+    return out.view(live);
+}
