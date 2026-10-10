@@ -1748,11 +1748,12 @@ async function checkUpdates(webContents, { system, live }) {
         await js("document.querySelector('.scrim') && document.querySelector('.scrim').click(); true");
 
         // The menu offers the update while it comes down; the popup follows it.
-        push({ status: "downloading", version: "9.9.9", percent: 40, transferred: 56e6, total: 140e6, bytesPerSecond: 2e6 });
+        push({ status: "downloading", version: "9.9.9", percent: 40, transferred: 56e6, total: 140e6, bytesPerSecond: 2e6, notes: "• Nota da versão do smoke" });
         await js("document.querySelector('.markbtn').click(); true");
         result.menuItem = await waitFor(() => has(".kx-pop", "Atualizando…")) && await has(".kx-pop", "40%");
         await clickText(".kx-pop button, .kx-pop [role=menuitem]", "Atualizando…");
         result.popup = await waitFor(() => has(".dialog.upd", "Baixando a versão 9.9.9")) && await has(".dialog.upd", "56 de 140 MB");
+        result.notes = await has(".dialog.upd .upd-notes", "Nota da versão do smoke");
         result.bar = await js("(() => { const b = document.querySelector('.upd-bar > b'); return b ? b.style.transform : null; })()");
         await shot("atualizacao");
 
@@ -1773,7 +1774,7 @@ async function checkUpdates(webContents, { system, live }) {
         push({ status: "none" });
         try { system.notifications.clear(); } catch { /* not there */ }
     }
-    result.ok = Boolean(result.bellDot && result.bellList && result.bellRead && result.menuItem && result.popup && result.bar === "scaleX(0.4)"
+    result.ok = Boolean(result.bellDot && result.bellList && result.bellRead && result.menuItem && result.popup && result.notes && result.bar === "scaleX(0.4)"
         && result.waitsOnAir && result.countdown && result.cancelled && result.closed);
     return result;
 }

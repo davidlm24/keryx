@@ -87,7 +87,10 @@ downloads it when asked and installs it on the next restart, never on its own
 and never mid-service.
 
 ```bash
-# 1. bump "version" in package.json (and commit)
+# 1. bump "version" in package.json (and commit), and write
+#    docs/release-notes/<version>.md: what changed, in pt-BR, for the operator
+#    (docs/release-notes/README.md). It becomes the release text, and KERYX
+#    shows it in the update popup and the bell.
 # 2. build from a clean copy with its own install (npm ci): electron-builder
 #    packs the main process's dependencies from ./node_modules, which a git
 #    worktree sharing the main folder's node_modules does not have
@@ -95,7 +98,7 @@ npm ci
 # 3. build and publish, with a token of the account that owns keryx-releases
 #    (GH_TOKEN; never commit it). In Git Bash, from the GitHub CLI:
 GH_TOKEN="$(gh auth token --user comunidadegerar)" npx vite build
-GH_TOKEN="$(gh auth token --user comunidadegerar)" npx electron-builder --win --publish always
+GH_TOKEN="$(gh auth token --user comunidadegerar)" npx electron-builder --win --publish always -c.releaseInfo.releaseNotesFile=docs/release-notes/<version>.md
 ```
 
 The release goes out as a normal release (not a draft), so installed copies
