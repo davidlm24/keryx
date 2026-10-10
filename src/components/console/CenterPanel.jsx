@@ -7,6 +7,7 @@ import { applyOp, emptyState, mainLayer } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
+import { OUTPUT_VIEWS, outputView } from "@/lib/network/views";
 
 // What the Prévia would look like on air: the stage applied with the live
 // state's own rules to a copy of the current look (background, logo,
@@ -109,6 +110,11 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const { cur, prev, now, locked } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const [dropOn, setDropOn] = useState(null);
+    // The Prévia rail: the prepared stage as one output will show it
+    // (Projeção by default; this session only). Enviar ao ar is unchanged.
+    const [railOut, setRailOut] = useState(OUTPUT_VIEWS[0].key);
+    const railDoc = useMemo(() => outputView(railOut, pdoc), [railOut, pdoc]);
+    const railName = OUTPUT_VIEWS.find((o) => o.key === railOut)?.name || "";
     // Locked: the screens keep this image, blue (they are not following). On
     // air there is no frame: the red lives in the header's state word and on
     // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
@@ -135,8 +141,15 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                     {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
                 </Monitor>
                 <div className="subrow">
-                    <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} cap={prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
+                    <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
+                        {prev && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
+                        <div className="prev-rail" role="group" aria-label="Ver a prévia como a saída" onDoubleClick={(e) => e.stopPropagation()}>
+                            {OUTPUT_VIEWS.map((o) => (
+                                <button type="button" key={o.key} className={`kx-t ${railOut === o.key ? "is-on" : ""}`} title={`Prévia como ${o.name}`} aria-label={`Prévia como ${o.name}`} aria-pressed={railOut === o.key}
+                                    onClick={(e) => { e.stopPropagation(); setRailOut(o.key); }}><Icon name={o.icon} size={14} /></button>
+                            ))}
+                        </div>
                         {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
                         {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
                     </Monitor>

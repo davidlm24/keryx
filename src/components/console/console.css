@@ -697,3 +697,11 @@
 /* A toast with an action (Desfazer after Esc): the button is a 24 px target. */
 .console .toast .toast-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .console .toast .toast-act { height: 24px; margin-right: calc(-1 * var(--space-2)); padding: 0 var(--space-2); color: var(--fg-1); font-weight: 500; }
+
+/* The Prévia rail: preview the prepared stage as one output will show it
+   (src/lib/network/views.js). Slim, on the monitor's right edge; Projeção
+   is the default and the choice is not kept. */
+.console .prev-rail { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 2px; padding: 2px; border-radius: var(--radius-control); background: #0d0d0ccc; z-index: 320; }
+.console .prev-rail button { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--fg-2); }
+.console .prev-rail button:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .prev-rail button.is-on { background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }

@@ -141,6 +141,15 @@ to the Aparência page (section I).
 
 **D-rail — output preview switcher beside the Prévia** (`CenterPanel.jsx`)
 
+**Phase 1 built** (release session, 2026-10-10): Projeção, Letras, Vídeo and
+Avisos. Instead of a `rendersFor` param on `ScreenRenderer`, each output's
+view of the live state is a pure function in `src/lib/network/views.js`
+(`outputView`, `OUTPUT_VIEWS`; the pages already used `lyricView` and
+`standbyView` from there), so the renderer is untouched. An output that
+shows nothing of the stage (Avisos with a song) says so on the monitor.
+Phase 2 (Palco, Pastor) still needs those pages to render from a given
+state instead of reading the live state themselves.
+
 - A slim vertical rail on the right edge of the Prévia monitor: icon buttons
   for Projeção, Letras, Vídeo, Avisos, Palco, Pastor (icons from the set:
   projector/tv/film/megaphone/monitor/tablet; tooltips with the output name).
