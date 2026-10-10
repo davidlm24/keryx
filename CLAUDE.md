@@ -187,6 +187,13 @@ Installed copies read whatever is "Latest" in
 so a release follows these rules. The steps and commands are in README ›
 "Releasing a new version".
 
+- **Only the release session releases** (user decision, 2026-10-10: the
+  session "Plan KERYX phase 6"). Every other session ships features as normal
+  PRs but never changes `version` in `package.json`, never opens a
+  `release/<version>` branch or PR, and never runs
+  `electron-builder --publish`. A session that is asked for a release by the
+  user while it is not that session says so and leaves it to the release
+  session. The rules below are that session's.
 - **Claim the version first.** The next patch after the latest published
   release is taken only when `release/<version>` is on origin with the
   version bump. Before pushing it, look for a claim: a `release/*` branch on
