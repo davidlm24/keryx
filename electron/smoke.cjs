@@ -1254,6 +1254,10 @@ async function checkConsole(webContents, { live, outputs }) {
             edSong = rows[0] || null;
             return Boolean(edSong) && edSong.slides?.length === 2 && edSong.slides[1].label === "Refrão" && edSong.slides[1].is_chorus === true;
         }, 6000);
+        // A new song reopens as itself (?song=<id>) once saved: Esc waits for
+        // that editor, or it lands while the first one is going away.
+        if (edSong) await waitFor(() => js(`location.search.includes(${JSON.stringify(edSong.id)}) && (document.querySelector('.song-ed-l .kx-field input') || {}).value === 'Música do editor'`), 4000);
+        await sleep(300);
         await press("Escape");
         result.edClosed = await waitFor(() => js("!document.querySelector('.song-ed-l')"));
         result.edListed = await waitText(webContents, "Música do editor");
