@@ -169,7 +169,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                         {audios.length > 1 && (
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar em sequência</Btn></div>
                         )}
-                        <div style={{ overflow: "auto", flex: 1 }}>
+                        <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
                             {!media.length && <Empty icon="film" title={ql ? `Nenhuma mídia com "${q}"` : "Nenhuma mídia"}>Use + para adicionar arquivos do computador.</Empty>}
                             {media.map((m) => (
                                 <Row
@@ -188,7 +188,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                         onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
                                     ] })}
                                     dragProps={dragProps(stageFromMedia(m))}
-                                    actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo">Telas de vídeo</Btn>}
+                                    actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label="Telas de vídeo"><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
                                 />
                             ))}
                         </div>
@@ -235,7 +235,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                             </div>
                         )}
                         <div className="listhead"><span className="kx-section">Avisos <span className="kx-count">· {pieces.length}</span></span><span style={{ flex: 1 }} />{pieces.length > 1 && <Btn small onClick={() => onPrepare(stageFromPieceList(pieces))} title="Pôr na prévia todos os avisos desta lista, um depois do outro, em loop">Tocar todos</Btn>}</div>
-                        <div style={{ overflow: "auto", flex: 1 }}>
+                        <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
                             {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (
                                 <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p))}
@@ -244,7 +244,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                         onEditNotice && { label: "Editar", icon: "edit", onSelect: () => onEditNotice(p.id) },
                                         onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromPiece(p)) },
                                     ] })}
-                                    actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso">Editar</Btn>} />
+                                    actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso" aria-label="Editar"><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>} />
                             ))}
                         </div>
                     </>
