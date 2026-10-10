@@ -19,6 +19,10 @@
       "type": "string",
       "description": "Horario de inicio do culto"
     },
+    "standby_background": {
+      "type": "string",
+      "description": "Fundo de espera do culto: a imagem das telas quando nada esta no ar (URL de midia ou fundo incluido)"
+    },
     "location": {
       "type": "string",
       "description": "Local do culto"

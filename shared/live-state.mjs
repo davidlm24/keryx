@@ -17,6 +17,8 @@
 export const LIVE_VERSION = 1;
 // The look layers the operator can stack (live.layerOrder), top first.
 export const LAYER_ORDER = ["logo", "overlays", "content", "background"];
+// Tela ociosa: the church logo, plain black, or a wallpaper the operator chose.
+export const IDLE_MODES = ["logo", "black", "background"];
 const layerOrderOf = (value) => {
     if (!Array.isArray(value) || value.length !== LAYER_ORDER.length || !LAYER_ORDER.every((k) => value.includes(k))) return null;
     return [...value];
@@ -72,8 +74,10 @@ export function emptyState(now = Date.now()) {
         // and screen "logo" are separate). Off until a theme turns it on.
         logo: { visible: false, corner: "bottom-right", size: "medium" },
         // What an idle screen shows (nothing on air, screen "show"): the
-        // church logo, or plain black (Holyrics-style, nothing lingers).
+        // church logo, plain black (Holyrics-style, nothing lingers), or a
+        // wallpaper the operator chose (idleUrl, a media or bundled image).
         idle: "logo",
+        idleUrl: null,
         // The stacking of the look layers, top first (Camadas, drag to
         // reorder). The alert, a video-channel clip and the black/logo
         // screens always stay above all of them.
@@ -446,9 +450,13 @@ const OPS = {
         return next.join() === (s.layerOrder || LAYER_ORDER).join() ? null : { layerOrder: next };
     },
 
-    "idle.set": (s, { mode }) => {
-        const m = oneOf(mode, ["logo", "black"], "Tela ociosa");
-        return s.idle === m ? null : { idle: m };
+    // Fundo needs its image; Logo or Preto keep the last one, so choosing
+    // Fundo again brings it back. A url alone (no mode) never changes the mode.
+    "idle.set": (s, { mode, url }) => {
+        const m = oneOf(mode, IDLE_MODES, "Tela ociosa");
+        const u = url === undefined ? (s.idleUrl ?? null) : url === null || url === "" ? null : text(url, "Fundo de espera", { max: MAX_URL, required: true });
+        if (m === "background" && !u) throw new LiveError("Escolha a imagem do fundo de espera.");
+        return s.idle === m && (s.idleUrl ?? null) === u ? null : { idle: m, idleUrl: u };
     },
 
     "alert.show": (_s, a, now) => ({
@@ -503,10 +511,18 @@ export function restoreState(saved, now = Date.now()) {
         overlays: Array.isArray(saved.overlays) ? saved.overlays.filter(isPlainObject) : [],
         alert: layer(saved.alert),
         logo: { ...base.logo, ...(layer(saved.logo) || {}) },
-        idle: saved.idle === "black" ? "black" : "logo",
+        ...restoreIdle(saved),
         layerOrder: layerOrderOf(saved.layerOrder) || [...LAYER_ORDER],
         history: Array.isArray(saved.history) ? saved.history.filter((h) => isPlainObject(h) && isPlainObject(h.data)).slice(0, MAX_HISTORY) : [],
     };
+}
+
+// Saves from before the wallpaper (a bare "logo" / "black") still load; a
+// wallpaper without its image falls back to the logo.
+function restoreIdle(saved) {
+    const url = typeof saved.idleUrl === "string" && saved.idleUrl ? saved.idleUrl : null;
+    const mode = IDLE_MODES.includes(saved.idle) ? saved.idle : "logo";
+    return { idle: mode === "background" && !url ? "logo" : mode, idleUrl: url };
 }
 
 // -- Reading the document (outputs and operator previews) ---------------------

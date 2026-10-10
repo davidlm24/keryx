@@ -434,6 +434,12 @@
 .console .bgpick button { aspect-ratio: 16 / 10; border-radius: var(--radius-control); overflow: hidden; position: relative; box-shadow: inset 0 0 0 1px var(--line); background: var(--bg-2); color: var(--fg-2); font-size: 11px; }
 .console .bgpick button img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .console .bgpick button.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
+/* The idle wallpaper: the chosen image beside Trocar…, and the picker. */
+.console .wallpick { display: flex; flex-direction: column; gap: var(--space-1); }
+.console .wallpick-h { padding-top: var(--space-1); }
+.console .bgpick button.wallpick-none { aspect-ratio: auto; height: 32px; grid-column: 1 / -1; }
+.console .idle-pick { max-height: 300px; overflow: auto; padding: 0 var(--space-1) var(--space-1); }
+.console .idle-wall img { width: 48px; height: 27px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
 .console .ed-tools { display: flex; gap: var(--space-1); align-items: center; padding: 0 var(--space-2) var(--space-1); }
 .console .ed-lyrics { flex: 1; min-height: 0; display: flex; padding: 0 var(--space-2) var(--space-2); }
 .console .ed-lyrics .ed-text { flex: 1; font-size: 14px; line-height: 21px; }
@@ -462,6 +468,10 @@
 .console .pl-pick { height: 22px; max-width: 210px; min-width: 0; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 4px; font: inherit; font-size: 12px; }
 .console .pl-pad { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2); }
 .console .pl-danger { display: flex; justify-content: flex-end; padding: 0 var(--space-2) var(--space-2); }
+.console .cfg-wall { width: 48px; height: 27px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
+.console .pl-wall { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.console .pl-wall img { width: 64px; height: 36px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
+.console .pl-wallpick { grid-column: 1 / -1; max-height: 260px; overflow: auto; padding: var(--space-1); border-radius: var(--radius-control); background: var(--bg-2); }
 .console .pl-acts { display: flex; gap: var(--space-1); flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 /* The Setlist header keeps its count, length and end time readable: when the
    four buttons do not fit beside it, they drop to a second line. */

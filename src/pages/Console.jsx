@@ -144,6 +144,26 @@ export default function Console() {
     useEffect(() => { if (!serviceId && services.length) setServiceId(pickDefaultService(services)?.id || null); }, [services, serviceId]);
     useEffect(() => { if (serviceId) setLog(loadLog(serviceId)); }, [serviceId]);
     const service = services.find((s) => s.id === serviceId) || null;
+    // Fundo de espera: picking a service applies its wallpaper, else the
+    // church's default (User.standby_background); with neither the idle look
+    // stays as the operator left it. A choice in Saídas wins until the next
+    // service is picked (docs/next-version-plan-2026-10-10.md, C6).
+    const [globalWall, setGlobalWall] = useState(null);
+    useEffect(() => {
+        const take = (u) => setGlobalWall(u?.standby_background || null);
+        keryx.auth.me().then(take).catch(() => {});
+        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
+    }, []);
+    const wantWall = service?.standby_background || globalWall || null;
+    const appliedWall = useRef(null);
+    useEffect(() => {
+        if (!serviceId || !wantWall) return;
+        const key = `${serviceId}|${wantWall}`;
+        if (appliedWall.current === key) return;
+        appliedWall.current = key;
+        if (c.live?.idle === "background" && c.live?.idleUrl === wantWall) return;
+        c.liveOp("idle.set", { mode: "background", url: wantWall }).catch(() => {});
+    }, [serviceId, wantWall]); // eslint-disable-line react-hooks/exhaustive-deps
     const { outputs, network, seen, forgetOutput } = useOutputs();
     // Outputs: the projector window missing its display, or closed, is the warning.
     const projector = outputs.find((o) => o.key === "/Projection");
@@ -612,7 +632,7 @@ export default function Console() {
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} idleUrl={c.live?.idleUrl || null} media={data.media} onIdle={(m, url) => c.liveOp("idle.set", url ? { mode: m, url } : { mode: m }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."))} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor}

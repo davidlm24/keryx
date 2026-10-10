@@ -8,6 +8,7 @@ import { readChapter } from "@/lib/bibleText";
 import { bibleVersionWanted } from "./BibleEnv";
 import { parseDuration, formatDuration } from "@/lib/songImport";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
+import WallpaperPicker from "./WallpaperPicker";
 import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
 
 const ADD = [
@@ -38,7 +39,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const [sel, setSel] = useState(focusId);
     const [adding, setAdding] = useState(null); // an ADD type
     const [pick, setPick] = useState("");
-    const [pop, setPop] = useState(null); // "tpl" | "saveTpl"
+    const [pop, setPop] = useState(null); // "tpl" | "saveTpl" | "wall"
     const [tplName, setTplName] = useState("");
     const [confirm, setConfirm] = useState(null);
     const [drag, setDrag] = useState(null);
@@ -217,6 +218,18 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         {form.service_type === "evento" && <><span className="k">Evento</span><Field icon={null} {...f("event_description")} placeholder="Descrição do evento" /></>}
                         <span className="k">Status</span><Seg small value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
                         <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
+                        <span className="k">Fundo de espera</span>
+                        <div className="pl-wall">
+                            {svc.standby_background ? <img src={svc.standby_background} alt="" /> : <span className="kx-meta">nenhum · usa o da igreja</span>}
+                            <Btn small on={pop === "wall"} onClick={() => setPop(pop === "wall" ? null : "wall")} title="A imagem das telas quando nada está no ar, neste culto">{svc.standby_background ? "Trocar…" : "Escolher…"}</Btn>
+                        </div>
+                        {pop === "wall" && (
+                            <div className="pl-wallpick">
+                                <WallpaperPicker value={svc.standby_background || null} media={data.media}
+                                    onNone={() => { saveSvc({ standby_background: "" }, "Fundo de espera removido."); setPop(null); }} noneLabel="Sem fundo próprio (usa o da igreja)"
+                                    onPick={(url) => { saveSvc({ standby_background: url }, "Fundo de espera do culto salvo."); setPop(null); }} />
+                            </div>
+                        )}
                     </div>
                     <div className="pl-danger"><Btn small kind={confirm === "svc" ? "air" : ""} onClick={deleteService}>{confirm === "svc" ? "Excluir mesmo" : "Excluir culto"}</Btn></div>
                 </Panel>

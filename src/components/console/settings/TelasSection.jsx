@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import Icon from "../Icon";
 import { Btn, Seg, Empty } from "../kx";
 import { useBridge, usePoll, Switch, desktopOnly } from "./parts";
+import WallpaperPicker from "../WallpaperPicker";
+import { useLibrary } from "../useConsoleData";
 
 const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv", "/StreamView": "external" };
 
@@ -11,6 +13,8 @@ const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/Vid
 export default function TelasSection({ c }) {
     const displays = useBridge("displays");
     const [state, , setState] = usePoll(() => displays?.list(), 3000);
+    const { media } = useLibrary();
+    const [picking, setPicking] = useState(false);
     if (!displays) return <Empty icon="monitor" title="Telas e saídas">{desktopOnly}</Empty>;
     if (!state) return <Empty title="Lendo as telas…" />;
 
@@ -40,6 +44,8 @@ export default function TelasSection({ c }) {
         return "Abre numa janela";
     };
     const idle = c.live?.idle || "logo";
+    const idleUrl = c.live?.idleUrl || null;
+    const setIdle = (mode, url) => c.liveOp("idle.set", url ? { mode, url } : { mode }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."));
 
     return (
         <>
@@ -80,9 +86,15 @@ export default function TelasSection({ c }) {
             <div className="frm" style={{ borderTop: "1px solid var(--line)", marginTop: "var(--space-1)", paddingTop: "var(--space-2)" }}>
                 <span className="k">Tela ociosa</span>
                 <div className="frm-v">
-                    <Seg small value={idle} onChange={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} options={[["logo", "Logo da igreja"], ["black", "Preto"]]} />
-                    <span className="kx-meta">o que as telas mostram quando nada está no ar</span>
+                    <Seg small value={idle} onChange={(m) => { if (m === "background" && !idleUrl) setPicking(true); else { setPicking(false); setIdle(m); } }} options={[["logo", "Logo da igreja"], ["black", "Preto"], ["background", "Fundo"]]} />
+                    {idle === "background" && idleUrl && <><img className="cfg-wall" src={idleUrl} alt="" /><Btn small onClick={() => setPicking(!picking)}>Trocar…</Btn></>}
+                    <span className="kx-meta">o que as telas mostram quando nada está no ar · o culto pode ter o seu fundo (Planejar o culto)</span>
                 </div>
+                {picking && (
+                    <div className="pl-wallpick">
+                        <WallpaperPicker value={idleUrl} media={media} onPick={(url) => { setPicking(false); setIdle("background", url); }} />
+                    </div>
+                )}
             </div>
             <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas: use Trazer para a frente para ver uma de novo. Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou Fechar aqui. Fechar o KERYX fecha todas. Ligar um monitor aparece aqui em poucos segundos.</span></div>
         </>

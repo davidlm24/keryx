@@ -1213,6 +1213,9 @@
         "startTime": {
           "type": "text"
         },
+        "standby_background": {
+          "type": "text"
+        },
         "location": {
           "type": "text"
         },
@@ -1488,6 +1491,9 @@
           "type": "text"
         },
         "logo_url": {
+          "type": "text"
+        },
+        "standby_background": {
           "type": "text"
         },
         "church_name": {

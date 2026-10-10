@@ -33,7 +33,7 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
         <div className={cls}>
             <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} /></div>
             <div className="ks-z" style={{ zIndex: z("content") }}>
-                {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} />)}
+                {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} />)}
                 {layer === "content" && <Content content={state.content} />}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
                 {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={audio} />}
@@ -54,7 +54,10 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
     );
 }
 
-function Idle({ logoUrl }) {
+// Nothing on air: the operator's wallpaper (cover, no logo over it: it was
+// chosen instead of the logo), else the default gradient with the logo.
+function Idle({ logoUrl, wallpaper }) {
+    if (wallpaper) return <div className="ks-bg-img ks-idle-wall" style={{ backgroundImage: `url("${String(wallpaper).replace(/"/g, "%22")}")` }} />;
     return <><div className="ks-bg-default" /><div className="ks-idle">{logoUrl && <img src={logoUrl} alt="" />}</div></>;
 }
 
