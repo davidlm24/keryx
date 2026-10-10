@@ -391,7 +391,8 @@ command palette (`/`), Saídas, and Ensaio.
   ChordPro, cifra, the JSON export; parsers in `src/lib/songImport.js`) and
   "Na internet…" (`LyricsSearch`, main process `electron/lyrics.cjs`:
   Vagalume through its API with the church's key in settings.json, plus the
-  letras.mus.br search index; letras.mus.br lyric pages refuse automated
+  letras.mus.br search index, plus LRCLIB (lrclib.net, open API, no key,
+  full lyrics; duplicates folded by title and artist); letras.mus.br lyric pages refuse automated
   reading, so those open in the browser and are pasted — KERYX does not get
   around that block). Mídia — files via `src/lib/mediaImport.js` and
   "Biblioteca de mídia…". Avisos — "Novo aviso…" opens the aviso editor.
