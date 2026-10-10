@@ -368,7 +368,7 @@ app.whenReady().then(async () => {
         system,
         network,
         live,
-        lyrics: createLyrics({ settings }),
+        lyrics: createLyrics(),
         mediaDir,
         mediaBaseUrl: serverUrl + MEDIA_PREFIX,
         isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),

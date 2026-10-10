@@ -50,7 +50,7 @@ Legend for the destination column:
 | Gerar slides automaticamente | Preparar · editor de música |
 | Imprimir letra | Preparar · editor de música, "Imprimir" (escape the title and artist) |
 | Exportar / Importar músicas (JSON) | Importar: done (console "+ › Do computador", also txt/ChordPro/cifra). Exportar: Configurações › Dados |
-| Busca de letras na internet | Done: "+ › Na internet…" (Vagalume API + letras.mus.br search; letras pages pasted) |
+| Busca de letras na internet | Done: "+ › Na internet…" (LRCLIB + letras.mus.br search; letras pages pasted) |
 | Apagar todas | Retire (destructive, no real use; Exportar + a fresh database covers it) |
 | Busca Global button | Done (top bar search, `/`) |
 | Letra para Tablet (actually opens the main projector) | Retire (the label is wrong; outputs open from Saídas) |
@@ -232,7 +232,7 @@ smoke and a look at the page.
    iniciar, Tela ociosa), Telas na rede (on/off, QR, PIN, clients), Bíblias
    instaladas (install, default version), Igreja (name, city, logo — new
    profile fields church_name/church_city), Temas (rename, default,
-   delete), Letras (Vagalume key, "Ao importar" lines), Dados e
+   delete), Letras ("Ao importar" lines), Dados e
    atualizações. On the desktop `/Settings` redirects to
    `/Console?config=telas`; the appearance options are gone there. The web
    build keeps the old page (account deletion) until a web settings pass.

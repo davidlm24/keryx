@@ -6,7 +6,7 @@ import { songFromText, importLines } from "@/lib/songImport";
 
 // "+ › Na internet…" for songs, like the Holyrics search: one field, the
 // results of several sources in one list, the lyrics beside it, Importar.
-// Vagalume (with the church's key) and LRCLIB (no key) bring the lyrics; letras.mus.br results
+// LRCLIB (no key) brings the lyrics; letras.mus.br results
 // open in the browser and the lyrics are pasted (the site refuses automated
 // reading). The search runs in the main process (electron/lyrics.cjs).
 export default function LyricsSearch({ c, onClose, onImported }) {
@@ -18,9 +18,6 @@ export default function LyricsSearch({ c, onClose, onImported }) {
     const [pick, setPick] = useState(0);
     const [preview, setPreview] = useState({ loading: false, lyrics: "", error: "" });
     const [pasted, setPasted] = useState("");
-    const [hasKey, setHasKey] = useState(true);
-    const [keyOpen, setKeyOpen] = useState(false);
-    const [keyText, setKeyText] = useState("");
     const inputRef = useRef(null);
     const call = async (op, args) => {
         if (!bridge.current) throw new Error("A busca na internet funciona no KERYX do computador.");
@@ -31,7 +28,6 @@ export default function LyricsSearch({ c, onClose, onImported }) {
 
     useEffect(() => {
         setTimeout(() => inputRef.current?.focus(), 0);
-        call("status").then((s) => setHasKey(Boolean(s?.hasKey))).catch(() => {});
     }, []);
 
     const search = async () => {
@@ -77,16 +73,6 @@ export default function LyricsSearch({ c, onClose, onImported }) {
             c.say(err?.message || "Não foi possível importar.");
         }
     };
-    const saveKey = async () => {
-        try {
-            const s = await call("setKey", keyText);
-            setHasKey(Boolean(s?.hasKey));
-            setKeyOpen(false);
-            setKeyText("");
-            c.say(s?.hasKey ? "Chave do Vagalume salva." : "Chave do Vagalume removida.");
-            if (results) search();
-        } catch (err) { c.say(err.message); }
-    };
 
     return (
         <div className="lyr" role="dialog" aria-label="Procurar letra na internet">
@@ -94,23 +80,15 @@ export default function LyricsSearch({ c, onClose, onImported }) {
                 <Icon name="search" />
                 <span className="kx-section" style={{ color: "var(--fg-1)" }}>Procurar letra na internet</span>
                 <span style={{ flex: 1 }} />
-                <Btn small onClick={() => setKeyOpen((o) => !o)} title="A chave da API do Vagalume, da igreja">{hasKey ? "Chave do Vagalume ✓" : "Chave do Vagalume"}</Btn>
                 <Btn small onClick={onClose}>Fechar</Btn>
             </div>
-            {keyOpen && (
-                <div className="lyr-key">
-                    <span className="kx-meta">Crie uma chave grátis na área de API do Vagalume (api.vagalume.com.br) e cole aqui. Fica só neste computador. Sem ela, o LRCLIB e o letras.mus.br continuam.</span>
-                    <Field icon={null} value={keyText} onChange={setKeyText} placeholder="Chave da API do Vagalume" onKeyDown={(e) => { if (e.key === "Enter") saveKey(); }} />
-                    <Btn kind="brand" onClick={saveKey}>Salvar</Btn>
-                </div>
-            )}
             <div className="lyr-q">
                 <Field inputRef={inputRef} value={q} onChange={setQ} placeholder="Título ou artista (ex.: algo novo)" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); search(); } }} kbd="Enter" />
                 <Btn kind="outline" onClick={search} disabled={busy || q.trim().length < 2}>{busy ? "Procurando…" : "Procurar"}</Btn>
             </div>
             <div className="lyr-b">
                 <div className="lyr-list">
-                    {results === null && !busy && <Empty icon="music" title="Digite e tecle Enter">Resultados do Vagalume, do LRCLIB e do letras.mus.br numa lista só.</Empty>}
+                    {results === null && !busy && <Empty icon="music" title="Digite e tecle Enter">Resultados do LRCLIB e do letras.mus.br numa lista só.</Empty>}
                     {busy && <Empty title="Procurando…" />}
                     {results && !results.length && !busy && <Empty icon="music" title={`Nada para "${q}"`}>Tente o título exato ou o nome do artista.</Empty>}
                     {(results || []).map((r, i) => (

@@ -11,7 +11,7 @@ import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import Library from "@/components/console/Library";
 import SlidesPanel, { handTitle } from "@/components/console/SlidesPanel";
-import CenterPanel, { captionOf } from "@/components/console/CenterPanel";
+import CenterPanel, { captionOf, ProgramaCaption } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
@@ -565,10 +565,11 @@ export default function Console() {
                             </>
                         )}
                         <div className="col center" ref={centerRef}>
-                            <Panel title={c.locked ? "Programa · travado" : "Programa"} actions={
-                                <div style={{ position: "relative", display: "flex", gap: 2 }}>
+                            <Panel className="prog-panel" caption={<ProgramaCaption c={c} projectorDown={projectorDown} />} actions={
+                                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 2 }}>
+                                    {health.onAir && <span className={`kx-meta prog-where ${health.onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{health.onAir.text}</span>}
                                     {!camadasRight && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
-                                    <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco"><Icon name="undo" />Voltar ao anterior</button>
+                                    <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco" aria-label="Voltar ao anterior"><Icon name="undo" /><span className="hist-lbl">Voltar ao anterior</span></button>
                                 </div>
                             } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
                                 <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}

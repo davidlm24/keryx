@@ -532,7 +532,9 @@ async function checkConsole(webContents, { live, outputs }) {
     // read the title of the Programa (".prog") or the Prévia (".subrow .kx-mon").
     const PROG = ".prog";
     const PREV = ".subrow .kx-mon";
-    const capTitle = (mon) => js(`(document.querySelector(${JSON.stringify(`${mon} .kx-mon-t`)}) || {}).textContent || ""`).catch(() => "");
+    // The Programa's caption is its panel's header (.kx-prog-cap); the Prévia's is on its monitor.
+    const capSel = (mon) => (mon === PROG ? ".kx-prog-cap .kx-mon-t" : `${mon} .kx-mon-t`);
+    const capTitle = (mon) => js(`(document.querySelector(${JSON.stringify(capSel(mon))}) || {}).textContent || ""`).catch(() => "");
     const waitCap = (mon, title, ms = 8000) => waitFor(async () => (await capTitle(mon)) === title, ms);
     // Real key presses. Printable keys also send the "char" event that types.
     const KEYCODE = { ArrowRight: "Right", ArrowLeft: "Left", ArrowUp: "Up", ArrowDown: "Down", " ": "Space" };
@@ -687,7 +689,15 @@ async function checkConsole(webContents, { live, outputs }) {
         result.projected = Boolean(main) && await waitText(main, "Primeiro slide do console");
         // The projector's letters are the Geist that ships with KERYX (src/fonts.css),
         // loaded from the app, never from the internet.
-        result.progTitle16 = (await capTitle(PROG)) === "Canto do console" && await js(`getComputedStyle(document.querySelector("${PROG} .kx-mon-t")).fontSize === "16px"`).catch(() => false);
+        result.progTitle16 = (await capTitle(PROG)) === "Canto do console" && await js(`getComputedStyle(document.querySelector("${capSel(PROG)}")).fontSize === "16px"`).catch(() => false);
+        // One PROGRAMA title (the panel header's caption, red while on air) and no
+        // permanent red frame on the monitor; the panel header no longer repeats it.
+        result.progOneTitle = await js(`(() => {
+            const caps = [...document.querySelectorAll(".console .col.center .kx-live-cap")].filter((e) => /^programa/i.test(e.textContent.trim()));
+            const word = caps[0] && getComputedStyle(caps[0]).color;
+            const frame = getComputedStyle(document.querySelector(".prog .kx-mon-screen"), "::after").borderTopColor;
+            return caps.length === 1 && word === "rgb(255, 107, 112)" && frame !== "rgb(229, 72, 77)" && !document.querySelector(".prog .kx-mon-cap");
+        })()`).catch(() => false);
         result.projectorFont = Boolean(main) && await main.webContents.executeJavaScript(`(async () => {
             const faces = await document.fonts.load("40px Geist");
             const text = [...document.querySelectorAll(".ks [style]")].find((n) => n.textContent.includes("Primeiro slide do console"));
@@ -741,7 +751,12 @@ async function checkConsole(webContents, { live, outputs }) {
         if (result.splitterFound === true) { await press("Enter"); await sleep(300); } // Enter restores the width
         const widthRestored = await splitWidth();
         result.splitterDiag = { widthBefore, widthAfter, widthRestored, indexBefore, indexAfter: airIndex(), active: await js("document.activeElement ? document.activeElement.className : null") };
-        result.splitterKeys = result.splitterFound === true && widthAfter > widthBefore && airIndex() === indexBefore && widthRestored === widthBefore;
+        const splitOk = result.splitterFound === true && widthAfter > widthBefore && airIndex() === indexBefore && widthRestored === widthBefore;
+        // With another program in front the arrow may never reach the splitter:
+        // the width stays and so does the air. That is inconclusive (like
+        // focusKept). The air moving is a real failure whoever is in front.
+        const keyNeverArrived = result.splitterFound === true && widthAfter === widthBefore && airIndex() === indexBefore;
+        result.splitterKeys = splitOk ? true : keyNeverArrived && !BrowserWindow.getFocusedWindow() ? verdict("splitterKeys", "outro programa na frente") : false;
         await js("document.activeElement && document.activeElement.blur(); true");
         result.smallTargets = await js(`[...document.querySelectorAll(".console button, .console [role=button]")].filter((b) => b.offsetParent).filter((b) => { const r = b.getBoundingClientRect(); return r.width < 23.5 || r.height < 23.5; }).map((b) => ((b.textContent || "").trim() || b.title || b.getAttribute("aria-label") || b.className).slice(0, 30) + " " + Math.round(b.getBoundingClientRect().width) + "x" + Math.round(b.getBoundingClientRect().height))`);
         result.targets24 = Array.isArray(result.smallTargets) && result.smallTargets.length === 0;
@@ -804,6 +819,8 @@ async function checkConsole(webContents, { live, outputs }) {
         // Esc closes the overlay and leaves the projection alone.
         await click(".kx-status", "");
         result.outsPopover = await waitText(webContents, "Verificar tudo…");
+        // Top-bar popovers open under their own button, inside the window.
+        result.outsAnchored = await js("(() => { const p = document.querySelector('.pop-outs'); const b = document.querySelector('.topbar .kx-status'); if (!p || !b) return false; const pr = p.getBoundingClientRect(), br = b.getBoundingClientRect(); return pr.left >= 0 && pr.right <= innerWidth + 1 && Math.abs(pr.right - br.right) <= 2; })()");
         await click(".kx-pop button", "Verificar tudo");
         result.verify = await waitText(webContents, "SAÍDAS") && await waitText(webContents, "BÍBLIA") && await waitText(webContents, "Fechar");
         result.verifyProjector = (await bodyText(webContents)).includes("Projeção principal");
@@ -1140,6 +1157,41 @@ async function checkConsole(webContents, { live, outputs }) {
         result.shotEditor = await shot("editor");
         await press("Escape");
         await waitFor(() => js("!document.querySelector('.song-ed-l')"));
+
+        // Hover actions never reach the middle of a row, in every Biblioteca
+        // list, at the column's default width and at its 200 px minimum: a
+        // click there prepares the item (PR #38). Measured with the actions
+        // forced visible; a list with no actions on its rows passes.
+        result.rowActs = await js(`(async () => {
+            const st = document.createElement("style");
+            st.textContent = ".kx-row .kx-row-acts{display:inline-flex !important}";
+            document.head.appendChild(st);
+            const panel = [...document.querySelectorAll(".kx-tabs")].map((t) => t.closest(".kx-panel")).find((p) => p && p.textContent.includes("Letras"));
+            if (!panel) { st.remove(); return { error: "sem Biblioteca" }; }
+            const box = panel.parentElement;
+            const keep = box.getAttribute("style") || "";
+            const tabs = [...panel.querySelectorAll(".kx-tabs button")];
+            const out = {};
+            for (const width of [0, 200]) {
+                if (width) box.setAttribute("style", keep + ";flex:0 0 " + width + "px !important;width:" + width + "px !important;min-width:" + width + "px !important;max-width:" + width + "px !important");
+                for (const b of tabs) {
+                    b.click();
+                    await new Promise((r) => setTimeout(r, 500));
+                    const row = [...panel.querySelectorAll(".kx-row")].find((r) => r.querySelector(".kx-row-acts") && r.querySelector(".kx-row-acts").children.length);
+                    const name = b.textContent.trim() + "@" + (width || "padrão");
+                    if (!row) { out[name] = "sem botões"; continue; }
+                    const rr = row.getBoundingClientRect();
+                    const ar = row.querySelector(".kx-row-acts").getBoundingClientRect();
+                    out[name] = Math.round(ar.left - (rr.left + rr.width / 2));
+                }
+            }
+            box.setAttribute("style", keep);
+            st.remove();
+            const letras = tabs.find((b) => b.textContent.trim() === "Letras");
+            if (letras) letras.click();
+            return out;
+        })()`);
+        result.rowActsClear = Boolean(result.rowActs && !result.rowActs.error && Object.values(result.rowActs).every((v) => v === "sem botões" || v >= 16));
 
         // Configurações inside the console: from the KERYX menu, every
         // section renders, Tela ociosa and Igreja save, Esc goes back.
@@ -1523,10 +1575,10 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
+        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
@@ -1538,6 +1590,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
+        && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
@@ -1803,6 +1856,7 @@ async function checkUpdates(webContents, { system, live }) {
         result.bellDot = await waitFor(() => js("Boolean(document.querySelector('.tb-bell-dot'))"));
         await js("document.querySelector('.tb-bell button').click(); true");
         result.bellList = await waitFor(() => has(".notifs .note-t", "Aviso do smoke"));
+        result.bellAnchored = await js("(() => { const p = document.querySelector('.notifs'); const b = document.querySelector('.topbar .tb-bell button'); if (!p || !b) return false; const pr = p.getBoundingClientRect(), br = b.getBoundingClientRect(); return pr.left >= 0 && pr.right <= innerWidth + 1 && Math.abs(pr.right - br.right) <= 2; })()");
         await shot("sino");
         result.bellRead = await waitFor(() => system.notifications.unread() === 0, 4000) && await waitFor(() => js("!document.querySelector('.tb-bell-dot')"));
         await js("document.querySelector('.scrim') && document.querySelector('.scrim').click(); true");
@@ -1834,7 +1888,7 @@ async function checkUpdates(webContents, { system, live }) {
         push({ status: "none" });
         try { system.notifications.clear(); } catch { /* not there */ }
     }
-    result.ok = Boolean(result.bellDot && result.bellList && result.bellRead && result.menuItem && result.popup && result.notes && result.bar === "scaleX(0.4)"
+    result.ok = Boolean(result.bellDot && result.bellList && result.bellAnchored && result.bellRead && result.menuItem && result.popup && result.notes && result.bar === "scaleX(0.4)"
         && result.waitsOnAir && result.countdown && result.cancelled && result.closed);
     return result;
 }

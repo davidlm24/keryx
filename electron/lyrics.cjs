@@ -1,7 +1,5 @@
 // Song lyrics from the web, for the console's "+ › Na internet…" dialog.
-// Three sources, one list:
-//   - Vagalume, through its official API (the church's own key, kept in
-//     settings.json as lyrics.vagalumeKey): search and the full lyrics.
+// Two sources, one list:
 //   - LRCLIB (lrclib.net), an open lyrics database with a public API meant
 //     for apps (no key; it asks for a User-Agent naming the app): search and
 //     the full lyrics. Community-made: good on well-known worship songs,
@@ -11,8 +9,9 @@
 //     uses: search only. Its lyric pages refuse automated access, so KERYX
 //     does not fetch them; the operator opens the page in the browser and
 //     pastes the lyrics (the dialog offers both).
-// A source that fails (offline, no key, changed format) never hides the
-// other's results: each reports its own error. Lyrics are copyrighted; the
+// A source that fails (offline, changed format) never hides the other's
+// results: each reports its own error. (Vagalume was dropped 2026-10-10: its
+// API is down and no longer hands out keys.) Lyrics are copyrighted; the
 // dialog says so, as the Holyrics one does.
 
 class LyricsError extends Error {
@@ -102,42 +101,9 @@ function parseLrclibSong(body) {
     return { title: clean(data.trackName), artist: clean(data.artistName), lyrics: text };
 }
 
-// -- Vagalume -----------------------------------------------------------------
-
-const vagalumeSearchUrl = (q, key) => `https://api.vagalume.com.br/search.excerpt?q=${encodeURIComponent(q)}&limit=${MAX_RESULTS}&apikey=${encodeURIComponent(key)}`;
-const vagalumeSongUrl = (id, key) => `https://api.vagalume.com.br/search.php?musid=${encodeURIComponent(id)}&apikey=${encodeURIComponent(key)}`;
-
-function parseVagalumeSearch(body) {
-    let data;
-    try { data = typeof body === "string" ? JSON.parse(body) : body; } catch { throw new LyricsError("Vagalume respondeu num formato desconhecido."); }
-    const docs = data?.response?.docs || [];
-    return docs
-        .filter((d) => d.id && d.title)
-        .map((d) => ({
-            source: "vagalume",
-            sourceLabel: "Vagalume",
-            id: `vagalume:${d.id}`,
-            title: clean(d.title),
-            artist: clean(d.band),
-            extra: "",
-            pageUrl: d.url ? `https://www.vagalume.com.br${d.url}` : "",
-            hasLyrics: true,
-        }));
-}
-
-function parseVagalumeSong(body) {
-    let data;
-    try { data = typeof body === "string" ? JSON.parse(body) : body; } catch { throw new LyricsError("Vagalume respondeu num formato desconhecido."); }
-    if (data?.type === "notfound" || data?.type === "song_notfound") throw new LyricsError("Letra não encontrada no Vagalume.", 404);
-    const mus = Array.isArray(data?.mus) ? data.mus[0] : null;
-    if (!mus?.text) throw new LyricsError("Letra não encontrada no Vagalume.", 404);
-    return { title: clean(mus.name), artist: clean(data?.art?.name), lyrics: String(mus.text).replace(/\r\n/g, "\n").trim() };
-}
-
 // -- The service -----------------------------------------------------------------
 
-function createLyrics({ settings, fetchImpl = fetch }) {
-    const key = () => String(settings.get("lyrics", {})?.vagalumeKey || "").trim();
+function createLyrics({ fetchImpl = fetch } = {}) {
     const getText = async (url, label) => {
         let res;
         try {
@@ -154,9 +120,8 @@ function createLyrics({ settings, fetchImpl = fetch }) {
         const q = String(query || "").trim();
         if (q.length < 2) throw new LyricsError("Digite pelo menos duas letras do título ou do artista.", 400);
         const jobs = [
-            getText(letrasSearchUrl(q), "letras.mus.br").then(parseLetrasSearch),
             getText(lrclibSearchUrl(q), "LRCLIB").then(parseLrclibSearch),
-            key() ? getText(vagalumeSearchUrl(q, key()), "Vagalume").then(parseVagalumeSearch) : Promise.reject(new LyricsError("Vagalume: sem chave (cadastre em Chave do Vagalume).", 401)),
+            getText(letrasSearchUrl(q), "letras.mus.br").then(parseLetrasSearch),
         ];
         const settled = await Promise.allSettled(jobs);
         const results = [];
@@ -167,29 +132,20 @@ function createLyrics({ settings, fetchImpl = fetch }) {
         }
         // Interleave the sources so each shows at the top (the ones that bring
         // the lyrics first), then trim.
-        const bySource = ["vagalume", "lrclib", "letras"].map((src) => results.filter((r) => r.source === src));
+        const bySource = ["lrclib", "letras"].map((src) => results.filter((r) => r.source === src));
         const merged = [];
         for (let i = 0; merged.length < results.length; i++) for (const list of bySource) if (list[i]) merged.push(list[i]);
         return { results: merged.slice(0, MAX_RESULTS * 3), errors };
     }
 
-    // -> { title, artist, lyrics } (Vagalume or LRCLIB; letras.mus.br pages are pasted)
+    // -> { title, artist, lyrics } (LRCLIB; letras.mus.br pages are pasted)
     async function get(id) {
         const lr = /^lrclib:(\d+)$/.exec(String(id || ""));
         if (lr) return parseLrclibSong(await getText(lrclibSongUrl(lr[1]), "LRCLIB"));
-        const m = /^vagalume:(.+)$/.exec(String(id || ""));
-        if (!m) throw new LyricsError("A letra do letras.mus.br abre no navegador: copie e cole aqui.", 400);
-        if (!key()) throw new LyricsError("Cadastre a chave do Vagalume para trazer a letra.", 401);
-        return parseVagalumeSong(await getText(vagalumeSongUrl(m[1], key()), "Vagalume"));
+        throw new LyricsError("A letra do letras.mus.br abre no navegador: copie e cole aqui.", 400);
     }
 
-    const setKey = (value) => {
-        settings.set("lyrics", { ...(settings.get("lyrics", {}) || {}), vagalumeKey: String(value || "").trim() });
-        return { hasKey: Boolean(key()) };
-    };
-    const status = () => ({ hasKey: Boolean(key()) });
-
-    return { search, get, setKey, status };
+    return { search, get };
 }
 
-module.exports = { createLyrics, LyricsError, parseLetrasSearch, parseLrclibSearch, parseLrclibSong, parseVagalumeSearch, parseVagalumeSong };
+module.exports = { createLyrics, LyricsError, parseLetrasSearch, parseLrclibSearch, parseLrclibSong };
