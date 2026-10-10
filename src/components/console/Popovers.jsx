@@ -283,6 +283,12 @@ export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
                 <b style={busy ? undefined : { transform: `scaleX(${pct / 100})` }} />
             </div>
             <div className="upd-line"><span>{installing ? "As telas voltam sozinhas quando ele abrir." : line}</span>{update.status === "downloading" && <span className="kx-meta">{pct}%</span>}</div>
+            {update.notes && !installing && (
+                <div className="upd-notes">
+                    <div className="kx-section">O que há de novo</div>
+                    <div className="upd-notes-t">{update.notes}</div>
+                </div>
+            )}
             {update.status === "downloaded" && !installing && onAir(live) && (
                 <div className="kx-warn">Há algo no ar. Instalar agora apaga as telas por uns 30 segundos: prefira depois do culto.</div>
             )}

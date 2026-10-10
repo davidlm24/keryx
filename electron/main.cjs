@@ -9,7 +9,7 @@ const { createSettings } = require("./settings.cjs");
 const { outputKeyForUrl } = require("./outputs.cjs");
 const { createLogger, captureConsole } = require("./logger.cjs");
 const { applyPendingImport } = require("./archive.cjs");
-const { createUpdater } = require("./updater.cjs");
+const { createUpdater, installedNote } = require("./updater.cjs");
 const { createNotifications } = require("./notifications.cjs");
 const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
@@ -308,6 +308,8 @@ app.whenReady().then(async () => {
             if (state.status === "available" && before.status !== "available") {
                 notifications.add({ key: `update:${v}`, kind: "update", title: `Nova versão do KERYX: ${v}`, body: autoUpdates() ? "Baixando automaticamente." : "Atualize pelo menu do KERYX (Atualizar agora) ou em Configurações.", action: "update" });
             } else if (state.status === "downloaded" && before.status !== "downloaded") {
+                // Kept for after the restart: the bell says what this version brings.
+                settings.set("pendingNotes", { version: v, notes: state.notes || "" });
                 notifications.add({ key: `update:${v}`, kind: "update", title: `Versão ${v} pronta para instalar`, body: "O KERYX fecha e abre de novo em uns 30 segundos, e as telas apagam nesse tempo. Instale fora do culto.", action: "update" });
             } else if (state.status === "error" && before.status === "downloading") {
                 notifications.add({ key: "update-error", kind: "warn", title: "A atualização não foi baixada", body: state.message, action: "update" });
@@ -317,11 +319,15 @@ app.whenReady().then(async () => {
     // After an update: say so once, and drop the notes it answered.
     const version = app.getVersion();
     const lastVersion = settings.get("lastVersion", null);
-    if (lastVersion && lastVersion !== version) {
+    const updated = installedNote({ lastVersion, version, pending: settings.get("pendingNotes", null) });
+    if (updated) {
         notifications.remove((n) => n.key.startsWith("update:") || n.key === "update-error");
-        notifications.add({ key: `updated:${version}`, kind: "info", title: `KERYX atualizado para a versão ${version}`, body: `Antes: ${lastVersion}.` });
+        notifications.add(updated);
     }
-    if (lastVersion !== version) settings.set("lastVersion", version);
+    if (lastVersion !== version) {
+        settings.set("lastVersion", version);
+        settings.set("pendingNotes", null);
+    }
     system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications });
     try {
         system.backupNow("ao abrir");
