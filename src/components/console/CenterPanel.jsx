@@ -3,7 +3,6 @@ import Icon from "./Icon";
 import { Monitor, Btn, Row } from "./kx";
 import { typeIcon } from "@/lib/console/setlist";
 import PlayerBar from "./PlayerBar";
-import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState, mainLayer } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
@@ -15,7 +14,8 @@ import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 export function previewDoc(stage, cur, now) {
     if (!stage) return null;
     if (stage.airSlide && cur?.content) {
-        try { return applyOp(cur, "content.goTo", { index: stage.index }, now); } catch { return cur; }
+        // A preview, never sent: the lock (which refuses goTo) does not apply to it.
+        try { return applyOp({ ...cur, locked: false }, "content.goTo", { index: stage.index }, now); } catch { return cur; }
     }
     const base = { ...emptyState(now), background: cur?.background || null, logo: cur?.logo || emptyState().logo, overlays: cur?.overlays || [] };
     try {
@@ -68,9 +68,9 @@ export function TeacherNotes({ prev, cur }) {
 
 // What sending the Prévia will do, in one line, when it is not obvious from
 // the monitor: which screens it reaches.
-function sendNote(stage, mode) {
+function sendNote(stage, locked) {
     if (!stage) return null;
-    if (mode === "ensaio") return "Só no ensaio: as telas não mudam.";
+    if (locked) return "Telas travadas: nada vai ao ar. Destrave em Saídas.";
     if (stage.kind === "video") return "Ao enviar: toca nas telas de vídeo; o projetor continua como está.";
     if (stage.kind === "audio") return "Ao enviar: toca no computador do projetor; as telas não mudam.";
     if (stage.airSlide) return `Ao enviar: o slide no ar passa para o ${stage.index + 1}.`;
@@ -87,19 +87,20 @@ function sendNote(stage, mode) {
 // The block is as wide as the column allows and as tall as fits (console.css,
 // .liveblock); spare height goes below it, never between the monitors.
 export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick }) {
-    const { live, cur, prev, now, isLive, mode } = c;
+    const { cur, prev, now, locked } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const [dropOn, setDropOn] = useState(null);
-    const progState = projectorDown ? "warn" : isLive ? "air" : "rh";
-    const progWord = isLive ? "Programa" : "Programa · Ensaio";
-    const sendLabel = isLive ? "Enviar ao ar" : "Mostrar no ensaio";
+    // Locked: the screens keep this image, blue (they are not following).
+    const progState = projectorDown ? "warn" : locked ? "rh" : "air";
+    const progWord = locked ? "Programa · travado" : "Programa";
+    const sendLabel = "Enviar ao ar";
     // Captions with their own hierarchy: the state word, the title (on air:
     // live-title, 16px; prepared: next-title, 14px) and the position (meta).
     const airParts = captionParts(cur);
     const progCap = dropOn === "air" ? { word: progWord, title: "solte para enviar", pos: "", size: "live" } : { word: progWord, ...airParts, size: "live" };
     const prevCap = dropOn === "prev" ? { word: "Prévia", title: "solte para preparar", pos: "", size: "next" }
         : { word: "Prévia", title: prev ? prev.title : "", pos: prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "", size: "next" };
-    const note = sendNote(prev, mode);
+    const note = sendNote(prev, locked);
 
     // Drops from the Biblioteca: the Prévia prepares, the Programa sends.
     // (Declared before the captions, which say "solte para…" during a drag.)
@@ -115,12 +116,6 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
             <div className="liveblock">
                 <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} cap={progCap} live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}
                     right={onAir ? <span className={`kx-meta prog-where ${onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{onAir.text}</span> : null}>
-                    {!isLive && (
-                        <div className="pipwrap">
-                            <span className="kx-pip-cap">NO AR AGORA</span>
-                            <ScreenRenderer state={live} now={now} logoUrl={logoUrl} preview />
-                        </div>
-                    )}
                 </Monitor>
                 <div className="subrow">
                     <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} cap={prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={dropProps("prev")}>
@@ -130,7 +125,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                     </Monitor>
                     <div className="side">
                         <div className="sendrow">
-                            <Btn kind={isLive ? "prev" : "rh"} className="kx-btn-send" onClick={() => onSend()} disabled={!prev} title={`${sendLabel} · Ctrl+Enter`}>
+                            <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={locked ? "Telas travadas · destrave em Saídas" : `${sendLabel} · Ctrl+Enter`}>
                                 {sendLabel}
                             </Btn>
                             <span className="kx-meta">Ctrl+Enter</span>

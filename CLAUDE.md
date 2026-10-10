@@ -65,9 +65,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/lib/console/setlist.js`. A click prepares a *stage* in the Prévia;
   Enter, a **double click** or "Enviar ao ar" sends it (user decision
   2026-10-07; dragging a library row onto the Prévia prepares, onto the
-  Programa sends, onto the Setlist adds a ServiceItem). Ensaio applies
-  operations to a local copy with `applyOp` (`useConsole`), never to the
-  main process. Keys follow Holyrics: ←/→ move what is on air, ↑/↓ move the
+  Programa sends, onto the Setlist adds a ServiceItem). There is no
+  Ensaio: rehearsing is **"Travar telas"** (Saídas), the live state's
+  `locked` flag, enforced in `applyOp` (status 423) so every sender
+  obeys: while locked nothing new goes on air, anything can come off (Tela
+  preta, Logo, Limpar, Esc, the outputs' `*.advance`). The top bar's
+  service clock counts from the service's scheduled time (`serviceClock`
+  in `src/lib/console/timeline.js`; never a default hour). Keys follow Holyrics: ←/→ move what is on air, ↑/↓ move the
   selection (green), Enter or a double click projects it; one Bible verse
   goes out as its whole chapter so the arrows keep walking it. With no
   service chosen, the first item added creates "Setlist de dd/mm" (a draft

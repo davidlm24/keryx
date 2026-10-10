@@ -35,9 +35,10 @@ page and the running app win.
 
 ## Comportamento
 
-The console is one screen, always live: no steps. **Ensaio** is the only
-sandbox (the console works on a local copy and the real screens keep what was
-on air); **Verificar** is an overlay opened from the Saídas popover. The
+The console is one screen, always live: no steps and no sandbox. To rehearse,
+the operator **locks the screens** (*Travar telas*, in Saídas): the screens
+keep what they show, the console prepares and browses freely, and sending is
+refused until *Destravar* (built 2026-10-10, below). **Verificar** is an overlay opened from the Saídas popover. The
 rundown is called **Setlist**. These are user decisions (2026-10-07, also in
 `CLAUDE.md`) recorded here so the design system, `CLAUDE.md` and the running
 UI tell one story.
@@ -67,36 +68,50 @@ opens the quick jump. A splitter focused with Tab keeps ←/→ and ↑/↓ for
 itself, so resizing never moves what is on air.
 
 **What acts on the real screens at once.** Tela preta and Mostrar logo act on
-the real screens in every mode, Ensaio included. The *Alerta rápido* (its
+the real screens at once, locked or not. The *Alerta rápido* (its
 Enter in the field) is the one control that bypasses the Prévia. Camadas edits
 (logo, overlays, background, theme, layer order) apply as made while live.
 
 **Open decisions** — behaviour the owner has not settled, so the docs state
-what the app does, not what it should: Esc ending at once; Tela preta and
-Mostrar logo in Ensaio; Camadas edits going live as made; the printed
+what the app does, not what it should: Esc ending at once; Camadas edits going live as made; the printed
 `Ctrl+Enter` beside *Enviar ao ar* and the `Enter` on the Bíblia's send
 button (the README says shortcuts live in tooltips); the Próximo line's
 button reading *Preparar* where the vocabulary says *Pôr na prévia*; whether
 an online-only Bible edition (ARA) may be used on a PC with NVI installed.
 
-**Planned, decided, not built.** On 2026-10-09 the owner reconsidered the
-Ensaio | Ao vivo toggle and the send step
-(`docs/send-and-live-research-2026-10-09.md`). Answers so far: rehearsal
-becomes a **lock** on the screens (they freeze; the console can still prepare
-and browse), replacing the toggle; a **service clock** takes the toggle's slot
-in the top bar and starts at the **service's scheduled time**; and **going
-live is always a double click** (a single click never sends, not even on a
-slide of the item already on air). What becomes of Enter, Ctrl+Enter and the
-*Enviar ao ar* button in that redesign is not decided.
+**Travar telas and the service clock (decided 2026-10-09, built
+2026-10-10).** The owner dropped the Ensaio | Ao vivo toggle
+(`docs/send-and-live-research-2026-10-09.md`):
+
+- **Travar telas** replaces Ensaio. It is the live state's `locked` flag,
+  set from the Saídas popover and enforced in the main process (`applyOp`),
+  so the outputs and network screens obey it too. The rule: *nothing new goes
+  onto the screens; anything can come off*. Tela preta, Logo, Limpar, Esc
+  and what continues on its own (a playlist, a "Tocar todos" sequence) keep
+  working. While locked the Programa's frame and caption are blue (`rh`,
+  "Programa · travado"), *Enviar ao ar* is disabled, a double click or Enter
+  gives one toast, and a blue banner says `TELAS TRAVADAS` with
+  *Destravar*. A restart comes back unlocked.
+- The **service clock** takes the toggle's slot in the top bar: `Sem culto`,
+  `Culto sem horário`, `Culto em 12/10 às 19:00`, `Começa às 19:00 · em 12
+  min`, `Culto 0:42:10 · termina ~20:12` (amber `+N min` when late) and
+  `Culto 1:20:05 · passou 5 min` (amber). It counts from the service's date
+  and start time, never a default hour; a click opens *Planejar o culto*; the
+  part after the dot is the first thing a narrow bar drops.
+- **Going live is a double click** (a single click never sends); Enter,
+  Ctrl+Enter, *Enviar ao ar*, the explicit send buttons (*Ir*, *Tocar*,
+  *Projetar*), the drag onto the Programa and the Alerta rápido stay.
 
 ## Layout
 
-The tiers, the live column, the splitters, Ver and the Camadas drawer are
+The tiers, the live column, the splitters, Ver and Camadas are
 specified in the README (Spacing, radii, layout). In short: three width tiers
 measured on the console grid (wide ≥ 1400, medium ≥ 1100, narrow below, down
 to the 960 × 600 window minimum); one live column that never stacks below
 anything; the Setlist a column when wide and the Biblioteca's first tab
-otherwise; Camadas a drawer from the Programa's header; **Ver** and the
+otherwise; Camadas a section above the Setlist in that column when wide
+(owner's request, 2026-10-10; a horizontal splitter between them) and a
+drawer from the Programa's header otherwise; **Ver** and the
 **Telas** group (Tela preta, Logo, Limpar, Encerrar, named) in the top bar,
 which fits on one line at every width.
 
@@ -144,12 +159,13 @@ bar (red while live) with the remaining time and the length beside it.
 
 After Codex's review the console briefly became three steps (Preparar ·
 Verificar · Apresentar); **later the same day the user cut the steps**: the
-app is one console, always live, Ensaio as the only sandbox, Verificar as an
+app is one console, always live (Ensaio, its sandbox then, became *Travar
+telas* on 2026-10-10), Verificar as an
 overlay from the Saídas popover, and a double click (or a drag onto the
 Programa) sends to air. Artboards 8–15 stay in the canvas as a record; the
 app follows the full modular layout of artboards 1–7. The top bar is a menu
 bar: the KERYX mark (menu), the environment tabs **KERYX | Bíblia**
-(`kx-tabs`, underline in brand), Ver, the search, Ensaio | Ao vivo, a compact
+(`kx-tabs`, underline in brand), Ver, the search, the service clock, a compact
 clock, the outputs status and the Telas group, on one line at every width.
 The Bible quick jump (Holyrics-style "jo 3 16") is a `kx-pop` with Livro /
 Capítulo / Versículo captions over the typed text and the candidate books.
@@ -225,5 +241,4 @@ atualizações, among others).
 Still to design on this system before they are built:
 
 - Lyrics editor refinements (lines per slide, auto break) and online import.
-- Timeline: resizing planned durations in Ensaio; Planejado/Real lanes exist.
-- The send / Ao vivo redesign (Comportamento › Planned).
+- Timeline: resizing planned durations; Planejado/Real lanes exist.

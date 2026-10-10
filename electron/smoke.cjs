@@ -495,7 +495,8 @@ async function checkLayers(webContents, { live, outputs }) {
 // without taking the keyboard; the console is one screen, always live; a
 // mouse click on a control leaves the keys to the console (Enter sends, a
 // double click sends at once, arrows move); a control focused with Tab keeps
-// its own Enter; Esc ends at once; Ensaio never touches the air; Verificar
+// its own Enter; Esc ends at once; Travar telas lets nothing new on air (but
+// Tela preta still works); Verificar
 // opens from the Saídas popover; the Bible quick jump reads "jo 3 16". The
 // projector is opened by the main process, as "Abrir ao iniciar" would.
 async function checkConsole(webContents, { live, outputs }) {
@@ -789,21 +790,31 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => live.get().idle === "logo");
         await press("Escape");
 
-        // The song on air again, then Ensaio.
+        // The song on air again, then Travar telas (Saídas): nothing new goes
+        // on (a double click, Enter and the main process all refuse), anything
+        // can come off (Tela preta), and unlocking sends again.
         await click(".kx-row", "Canto do console");
         await press("Enter");
         result.resent = await waitFor(() => live.get().content && live.get().content.title === "Canto do console");
-        await click(".kx-seg-mode button", "Ensaio");
-        result.rehearsing = await waitText(webContents, "MODO ENSAIO");
-        // In Ensaio a slide click prepares, "Mostrar no ensaio" shows it in the
-        // rehearsal copy only: the screens stay on slide 1.
-        await click(".kx-slide", "Segundo slide do console");
-        result.rehearsalButton = await click("button", "Mostrar no ensaio");
+        await click(".kx-status", "");
+        await click(".kx-pop .kx-seg button", "Travadas");
+        result.locked = await waitFor(() => live.get().locked === true) && await waitText(webContents, "TELAS TRAVADAS");
+        await press("Escape"); // closes the popover
+        await dblclick(".kx-slide", "Segundo slide do console");
+        await press("Enter");
         await sleep(400);
-        result.rehearsalKeptAir = Boolean(live.get().content) && live.get().content.index === 0;
-        await click(".kx-banner button", "Armar saídas");
-        await click(".dialog button", "Armar saídas");
-        result.armed = await waitText(webContents, "MODO ENSAIO", false);
+        result.lockKeptAir = Boolean(live.get().content) && live.get().content.index === 0 && await waitText(webContents, "Telas travadas: nada vai ao ar");
+        result.lockRefusedMain = (() => { try { live.call("content.next", {}); return false; } catch (err) { return err.status === 423; } })();
+        await click('.topbar button[aria-label="Tela preta"]', "");
+        result.lockBlackWorks = await waitFor(() => live.get().screen === "black");
+        await click('.topbar button[aria-label="Tela preta"]', "");
+        await waitFor(() => live.get().screen !== "black");
+        await click(".kx-banner button", "Destravar");
+        result.unlocked = await waitFor(() => live.get().locked === false) && await waitText(webContents, "TELAS TRAVADAS", false);
+        await dblclick(".kx-slide", "Segundo slide do console");
+        result.unlockedSends = await waitFor(() => live.get().content && live.get().content.index === 1);
+        // The service clock took Ensaio | Ao vivo's place in the top bar.
+        result.serviceClock = await js(`(document.querySelector(".topbar .tb-svc")?.textContent || "")`);
 
         // Bíblia: a letter opens the quick jump; "jo 3 16" reads as João 3:16.
         await click(".envtabs button", "Bíblia");
@@ -833,7 +844,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(500);
         result.bibleShort = await js(`(() => {
             const grid = document.querySelector(".bgrid");
-            const send = [...document.querySelectorAll(".bible-air-col button")].find((b) => /Enviar ao ar|Mostrar no ensaio/.test(b.textContent));
+            const send = [...document.querySelectorAll(".bible-air-col button")].find((b) => /Enviar ao ar/.test(b.textContent));
             const r = send && send.getBoundingClientRect();
             return Boolean(grid) && getComputedStyle(grid).display === "none" && Boolean(r) && r.height > 0 && r.bottom <= innerHeight;
         })()`);
@@ -1026,9 +1037,11 @@ async function checkConsole(webContents, { live, outputs }) {
             return rows.length === 4 && rows.filter((r) => r.title === "Canto do console" && r.type === "SONG").length === 2;
         }, 8000);
         result.layersBefore = (live.get().layerOrder || []).join(",");
-        // Camadas is a drawer opened from the Programa's header.
-        await click(".center .kx-panel-h .kx-btn", "Camadas");
-        await waitFor(() => js("Boolean(document.querySelector('.drawer .kx-layer'))"), 4000);
+        // Camadas: a section above the Setlist in the wide tier, else a drawer
+        // opened from the Programa's header.
+        const camadasDrawer = await click(".center .kx-panel-h .kx-btn", "Camadas");
+        result.camadasWhere = camadasDrawer ? "drawer" : "section";
+        await waitFor(() => js("Boolean(document.querySelector('.kx-layer'))"), 4000);
         result.layerDrag = await js(`(async () => {
             const rows = [...document.querySelectorAll(".kx-layer")];
             const from = rows.find((n) => n.textContent.includes("Logo"));
@@ -1049,7 +1062,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.layersMoved = await waitFor(() => (live.get().layerOrder || []).join(",") === "overlays,content,logo,background");
         result.layersAfter = (live.get().layerOrder || []).join(",");
         live.call("layers.order", { order: ["logo", "overlays", "content", "background"] });
-        await click(".drawer .kx-btn", "Fechar");
+        if (camadasDrawer) await click(".drawer .kx-btn", "Fechar");
 
         // The song editor: "+ › Nova música", lyrics split live into slides,
         // Ctrl+S saves, Esc closes; "Editar" reopens it with the song.
@@ -1442,8 +1455,8 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
-        && result.resent && result.rehearsing && result.rehearsalButton && result.rehearsalKeptAir
-        && result.armed && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
+        && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
+        && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped

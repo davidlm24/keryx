@@ -189,7 +189,7 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
    `src/hooks/useProjectionControl.js` (go live with a song or passage,
    Parar, Esc, the close warning; `songContent`/`passageContent` turn rows
    into content); Bible uses the same content helpers. `LyricPlayerPanel`
-   moves the live slide (Modo Ensaio steps locally). `/Projection`,
+   moves the live slide. `/Projection`,
    `LyricProjection`, `StageView` and `PastorView` render `content`;
    video and Escola bíblica screens clear when the session ends
    (`useLiveSessionEnded`). Nothing writes `LyricSync`, `LiveSession` or
@@ -263,7 +263,7 @@ Decided 2026-10-07 after the mockup in Claude Design (`docs/design-system.md`
 has the link and the tokens). One screen, `/Console`, replaces the operator
 pages: the library (Letras, Mídia, Avisos), the slides in hand, Programa and
 Prévia, Camadas, Setlist, Linha do tempo, Bíblia as its own environment, the
-command palette (`/`), Saídas, and Ensaio.
+command palette (`/`) and Saídas (with *Travar telas*).
 
 - **Programa / Prévia.** A click anywhere prepares a *stage*
   (`src/lib/console/stage.js`: the live-state operation that would put the
@@ -271,10 +271,13 @@ command palette (`/`), Saídas, and Ensaio.
   (Enter) sends it. The Prévia monitor is the stage applied with `applyOp` to
   a copy of the current look; both monitors are `ScreenRenderer`, the
   projector's own component, scaled by container units.
-- **Ensaio.** `useConsole` keeps a local copy of the document and applies
-  operations to it with the same rules (`applyOp` from the shared module);
-  nothing reaches the main process until "Armar saídas", which discards the
-  copy. The outputs never know a rehearsal happened.
+- **Travar telas** (2026-10-10; it replaced Ensaio, a local copy of the
+  document). The live state's `locked` flag (`screens.lock`), checked in
+  `applyOp`: while locked every op that would put something new on the
+  screens throws a 423; removals, `screen.set`, `idle.set`,
+  `session.end` and the outputs' `*.advance` pass (`WHILE_LOCKED`).
+  Being in the shared rules, it holds for the console, the outputs and the
+  preview server alike; `restoreState` comes back unlocked.
 - **Engine additions for it:** `history` (what the main layer showed before
   each change, for "Voltar ao anterior" — back through the Prévia, never
   straight to air), `session.item` (the ServiceItem on air), the `logo`
@@ -294,10 +297,11 @@ command palette (`/`), Saídas, and Ensaio.
   localStorage (`src/lib/console/layout.js`); "Restaurar layout" resets it.
 - **One console, always live (2026-10-07).** The top bar is a menu bar: the
   KERYX mark opens the menu, the tabs **KERYX | Bíblia** switch environment,
-  then the search, **Ensaio | Ao vivo**, the clock, the outputs status and
-  the emergency glyphs. There are no steps: preparing while live is safe
-  because nothing reaches the screens without sending, and Ensaio is the one
-  sandbox (a local copy under `applyOp`). **Verificar** (`VerifyView`) is an
+  then the search, the **service clock** (from the service's scheduled time;
+  `serviceClock` in `src/lib/console/timeline.js`), the clock, the outputs
+  status and the Telas group. There are no steps: preparing while live is
+  safe because nothing reaches the screens without sending, and *Travar
+  telas* freezes them for a rehearsal. **Verificar** (`VerifyView`) is an
   overlay opened from the Saídas popover or the KERYX menu: output windows
   and network screens, every media file of the setlist (a HEAD request to
   the local media server, which answers 404 when a file is gone), fonts, the

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { serviceTiming, lateWords } from "./timeline.js";
+import { serviceTiming, lateWords, serviceClock } from "./timeline.js";
 
 const day = new Date(2026, 9, 9);
 const at = (h, m) => new Date(2026, 9, 9, h, m).getTime();
@@ -49,4 +49,42 @@ test("something on air that is not in the Setlist (a song from the Biblioteca) d
     const t = serviceTiming({ items, times, airIdx: -1, startedAt: at(19, 20), now: at(19, 21) });
     assert.equal(t.late, 0);
     assert.equal(t.forecastEnd, t.plannedEnd);
+});
+
+// The service clock: 9 Oct 2026, a service at 19:00 with 1h10 of Setlist.
+const svc = { date: "2026-10-09", startTime: "19:00" };
+const sec = (h, m, s) => new Date(2026, 9, 9, h, m, s).getTime();
+
+test("service clock: nothing chosen, no time set (never a 19:00 fallback)", () => {
+    assert.equal(serviceClock({ service: null, now: at(18, 0) }).text, "Sem culto");
+    const none = serviceClock({ service: { date: "2026-10-09" }, now: at(19, 30) });
+    assert.equal(none.text, "Culto sem horário");
+    assert.equal(none.muted, true);
+    // The legacy "time" field counts.
+    assert.equal(serviceClock({ service: { date: "2026-10-09", time: "18:30" }, now: at(18, 0) }).text, "Começa às 18:30");
+});
+
+test("service clock: another day, and later today", () => {
+    assert.equal(serviceClock({ service: { date: "2026-10-12", startTime: "19:00" }, now: at(18, 0) }).text, "Culto em 12/10 às 19:00");
+    const soon = serviceClock({ service: svc, now: sec(18, 48, 30) });
+    assert.deepEqual([soon.text, soon.more], ["Começa às 19:00", "em 12 min"]);
+    assert.equal(serviceClock({ service: svc, now: at(16, 55) }).more, "em 2h05");
+});
+
+test("service clock: running, with the forecast end", () => {
+    const c = serviceClock({ service: svc, seconds: 70 * 60, now: sec(19, 42, 10) });
+    assert.deepEqual([c.text, c.more, c.warn], ["Culto 0:42:10", "termina ~20:10", false]);
+    // Late: the end moves and turns amber.
+    const late = serviceClock({ service: svc, seconds: 70 * 60, late: 4, now: sec(19, 42, 10) });
+    assert.deepEqual([late.more, late.warn], ["termina ~20:14 · +4 min", true]);
+    // No durations in the Setlist: no end is invented.
+    assert.equal(serviceClock({ service: svc, now: at(19, 5) }).more, "");
+});
+
+test("service clock: past the end, and a service long over", () => {
+    const over = serviceClock({ service: svc, seconds: 70 * 60, now: sec(20, 15, 5) });
+    assert.deepEqual([over.text, over.more, over.warn], ["Culto 1:15:05", "passou 5 min", true]);
+    // Running past midnight still counts from the start.
+    assert.equal(serviceClock({ service: { date: "2026-10-09", startTime: "23:00" }, now: new Date(2026, 9, 10, 0, 30).getTime() }).text, "Culto 1:30:00");
+    assert.equal(serviceClock({ service: { date: "2026-10-05", startTime: "19:00" }, now: at(10, 0) }).text, "Culto de 05/10 às 19:00");
 });

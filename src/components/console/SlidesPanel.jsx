@@ -7,7 +7,7 @@ import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 // is on air. A click prepares (that slide goes to the Prévia); a double
 // click puts that slide on air, besides "Enviar ao ar" and the arrows.
 export default function SlidesPanel({ c, onGo }) {
-    const { cur, prev, isLive } = c;
+    const { cur, prev } = c;
     const air = cur?.content;
     const airId = liveStageId(cur);
     const handIsPrev = Boolean(prev && prev.slides.length > 1);
@@ -18,12 +18,12 @@ export default function SlidesPanel({ c, onGo }) {
     const listRef = useRef(null);
 
     useEffect(() => {
-        const el = listRef.current?.querySelector(".is-prev, .is-air, .is-rh");
+        const el = listRef.current?.querySelector(".is-prev, .is-air");
         el?.scrollIntoView({ block: "nearest" });
     }, [index, slides]);
 
-    const airWord = isLive ? "is-air" : "is-rh";
-    const pos = slides.length ? `${handIsPrev ? "prévia" : isLive ? "no ar" : "ensaio"} ${index + 1}/${slides.length}` : "";
+    const airWord = "is-air";
+    const pos = slides.length ? `${handIsPrev ? "prévia" : "no ar"} ${index + 1}/${slides.length}` : "";
     const pick = (i) => {
         if (handIsPrev) c.setPrev(stageAt(prev, i));
         else if (air && i !== air.index) c.setPrev(stageAirSlide(air, i, airId));
