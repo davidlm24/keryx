@@ -751,7 +751,12 @@ async function checkConsole(webContents, { live, outputs }) {
         if (result.splitterFound === true) { await press("Enter"); await sleep(300); } // Enter restores the width
         const widthRestored = await splitWidth();
         result.splitterDiag = { widthBefore, widthAfter, widthRestored, indexBefore, indexAfter: airIndex(), active: await js("document.activeElement ? document.activeElement.className : null") };
-        result.splitterKeys = result.splitterFound === true && widthAfter > widthBefore && airIndex() === indexBefore && widthRestored === widthBefore;
+        const splitOk = result.splitterFound === true && widthAfter > widthBefore && airIndex() === indexBefore && widthRestored === widthBefore;
+        // With another program in front the arrow may never reach the splitter:
+        // the width stays and so does the air. That is inconclusive (like
+        // focusKept). The air moving is a real failure whoever is in front.
+        const keyNeverArrived = result.splitterFound === true && widthAfter === widthBefore && airIndex() === indexBefore;
+        result.splitterKeys = splitOk ? true : keyNeverArrived && !BrowserWindow.getFocusedWindow() ? verdict("splitterKeys", "outro programa na frente") : false;
         await js("document.activeElement && document.activeElement.blur(); true");
         result.smallTargets = await js(`[...document.querySelectorAll(".console button, .console [role=button]")].filter((b) => b.offsetParent).filter((b) => { const r = b.getBoundingClientRect(); return r.width < 23.5 || r.height < 23.5; }).map((b) => ((b.textContent || "").trim() || b.title || b.getAttribute("aria-label") || b.className).slice(0, 30) + " " + Math.round(b.getBoundingClientRect().width) + "x" + Math.round(b.getBoundingClientRect().height))`);
         result.targets24 = Array.isArray(result.smallTargets) && result.smallTargets.length === 0;
@@ -807,6 +812,8 @@ async function checkConsole(webContents, { live, outputs }) {
         // Esc closes the overlay and leaves the projection alone.
         await click(".kx-status", "");
         result.outsPopover = await waitText(webContents, "Verificar tudo…");
+        // Top-bar popovers open under their own button, inside the window.
+        result.outsAnchored = await js("(() => { const p = document.querySelector('.pop-outs'); const b = document.querySelector('.topbar .kx-status'); if (!p || !b) return false; const pr = p.getBoundingClientRect(), br = b.getBoundingClientRect(); return pr.left >= 0 && pr.right <= innerWidth + 1 && Math.abs(pr.right - br.right) <= 2; })()");
         await click(".kx-pop button", "Verificar tudo");
         result.verify = await waitText(webContents, "SAÍDAS") && await waitText(webContents, "BÍBLIA") && await waitText(webContents, "Fechar");
         result.verifyProjector = (await bodyText(webContents)).includes("Projeção principal");
@@ -1143,6 +1150,41 @@ async function checkConsole(webContents, { live, outputs }) {
         result.shotEditor = await shot("editor");
         await press("Escape");
         await waitFor(() => js("!document.querySelector('.song-ed-l')"));
+
+        // Hover actions never reach the middle of a row, in every Biblioteca
+        // list, at the column's default width and at its 200 px minimum: a
+        // click there prepares the item (PR #38). Measured with the actions
+        // forced visible; a list with no actions on its rows passes.
+        result.rowActs = await js(`(async () => {
+            const st = document.createElement("style");
+            st.textContent = ".kx-row .kx-row-acts{display:inline-flex !important}";
+            document.head.appendChild(st);
+            const panel = [...document.querySelectorAll(".kx-tabs")].map((t) => t.closest(".kx-panel")).find((p) => p && p.textContent.includes("Letras"));
+            if (!panel) { st.remove(); return { error: "sem Biblioteca" }; }
+            const box = panel.parentElement;
+            const keep = box.getAttribute("style") || "";
+            const tabs = [...panel.querySelectorAll(".kx-tabs button")];
+            const out = {};
+            for (const width of [0, 200]) {
+                if (width) box.setAttribute("style", keep + ";flex:0 0 " + width + "px !important;width:" + width + "px !important;min-width:" + width + "px !important;max-width:" + width + "px !important");
+                for (const b of tabs) {
+                    b.click();
+                    await new Promise((r) => setTimeout(r, 500));
+                    const row = [...panel.querySelectorAll(".kx-row")].find((r) => r.querySelector(".kx-row-acts") && r.querySelector(".kx-row-acts").children.length);
+                    const name = b.textContent.trim() + "@" + (width || "padrão");
+                    if (!row) { out[name] = "sem botões"; continue; }
+                    const rr = row.getBoundingClientRect();
+                    const ar = row.querySelector(".kx-row-acts").getBoundingClientRect();
+                    out[name] = Math.round(ar.left - (rr.left + rr.width / 2));
+                }
+            }
+            box.setAttribute("style", keep);
+            st.remove();
+            const letras = tabs.find((b) => b.textContent.trim() === "Letras");
+            if (letras) letras.click();
+            return out;
+        })()`);
+        result.rowActsClear = Boolean(result.rowActs && !result.rowActs.error && Object.values(result.rowActs).every((v) => v === "sem botões" || v >= 16));
 
         // Configurações inside the console: from the KERYX menu, every
         // section renders, Tela ociosa and Igreja save, Esc goes back.
@@ -1529,7 +1571,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
@@ -1541,6 +1583,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
+        && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
@@ -1614,6 +1657,15 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         result.projectorScreen = await waitFor(projectorTablet, "Segunda linha da letra");
         await projectorTablet.loadURL(`${base}/PastorView`);
         result.pastorScreen = await waitFor(projectorTablet, "Segunda linha da letra");
+        // Transmissão (an OBS Browser Source): the slide as a lower third on
+        // a transparent page; Tela preta clears it.
+        await projectorTablet.loadURL(`${base}/StreamView`);
+        result.streamScreen = await waitFor(projectorTablet, "Segunda linha da letra")
+            && await projectorTablet.webContents.executeJavaScript(`getComputedStyle(document.body).backgroundColor === "rgba(0, 0, 0, 0)" && getComputedStyle(document.documentElement).colorScheme === "normal"`).catch(() => false);
+        live.call("screen.set", { mode: "black" });
+        await sleep(500);
+        result.streamBlack = !(await textOf(projectorTablet)).includes("Segunda linha da letra");
+        live.call("screen.set", { mode: "show" });
         projectorTablet.close();
         live.call("screen.set", { mode: "black" });
         await sleep(500);
@@ -1682,7 +1734,7 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
     result.ok = result.started && result.isNetworkScreen && result.lyrics && result.lanFont && result.stage && result.lyricsAdvanced
         && result.stageChords && result.lyricsBlack && result.stageDuringBlack
         && result.videoSrc === `${base}/media/${videoFile}`
-        && result.projectorScreen && result.pastorScreen
+        && result.projectorScreen && result.pastorScreen && result.streamScreen && result.streamBlack
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
         && (!webContents || (result.dropBanner && result.dropStatus));
@@ -1797,6 +1849,7 @@ async function checkUpdates(webContents, { system, live }) {
         result.bellDot = await waitFor(() => js("Boolean(document.querySelector('.tb-bell-dot'))"));
         await js("document.querySelector('.tb-bell button').click(); true");
         result.bellList = await waitFor(() => has(".notifs .note-t", "Aviso do smoke"));
+        result.bellAnchored = await js("(() => { const p = document.querySelector('.notifs'); const b = document.querySelector('.topbar .tb-bell button'); if (!p || !b) return false; const pr = p.getBoundingClientRect(), br = b.getBoundingClientRect(); return pr.left >= 0 && pr.right <= innerWidth + 1 && Math.abs(pr.right - br.right) <= 2; })()");
         await shot("sino");
         result.bellRead = await waitFor(() => system.notifications.unread() === 0, 4000) && await waitFor(() => js("!document.querySelector('.tb-bell-dot')"));
         await js("document.querySelector('.scrim') && document.querySelector('.scrim').click(); true");
@@ -1828,7 +1881,7 @@ async function checkUpdates(webContents, { system, live }) {
         push({ status: "none" });
         try { system.notifications.clear(); } catch { /* not there */ }
     }
-    result.ok = Boolean(result.bellDot && result.bellList && result.bellRead && result.menuItem && result.popup && result.notes && result.bar === "scaleX(0.4)"
+    result.ok = Boolean(result.bellDot && result.bellList && result.bellAnchored && result.bellRead && result.menuItem && result.popup && result.notes && result.bar === "scaleX(0.4)"
         && result.waitsOnAir && result.countdown && result.cancelled && result.closed);
     return result;
 }

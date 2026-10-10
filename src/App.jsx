@@ -16,6 +16,7 @@ import StageView from './pages/StageView';
 import VideoProjection from './pages/VideoProjection';
 import CommunicationProjection from './pages/CommunicationProjection';
 import PastorView from './pages/PastorView';
+import StreamView from './pages/StreamView';
 
 // The screens every output shows (the projector, the stage, the video
 // screens…): opened by the console or the main process on this computer,
@@ -29,6 +30,7 @@ const screens = (
     <Route path="/VideoProjection" element={<VideoProjection />} />
     <Route path="/CommunicationProjection" element={<CommunicationProjection />} />
     <Route path="/PastorView" element={<PastorView />} />
+    <Route path="/StreamView" element={<StreamView />} />
   </>
 );
 

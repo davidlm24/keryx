@@ -29,6 +29,7 @@ const NETWORK_SCREENS = [
     { path: "/VideoProjection", label: "Vídeo", hint: "Recebe os vídeos enviados pelo operador" },
     { path: "/CommunicationProjection", label: "Avisos", hint: "Contagens regressivas e avisos" },
     { path: "/PastorView", label: "Tela do pastor", hint: "O que está projetado, relógio e tempo do culto" },
+    { path: "/StreamView", label: "Transmissão", hint: "Legenda para a live: no OBS, Fonte de navegador 1920 × 1080, fundo transparente" },
 ];
 const SCREEN_PATHS = new Set(NETWORK_SCREENS.map((s) => s.path));
 

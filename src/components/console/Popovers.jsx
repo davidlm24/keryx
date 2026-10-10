@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
@@ -8,8 +8,9 @@ import { materialIcon, materialMeta } from "@/lib/console/school";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { readQuickRef } from "@/lib/console/quickRef";
 import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
+import { byGroup } from "@/lib/console/outputs";
 
-const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv" };
+const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv", "/StreamView": "external" };
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
 // The KERYX menu: pages that stay outside the console, the service picker,
@@ -106,9 +107,32 @@ export function Shortcuts({ open, setOpen }) {
 const atTime = (t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 // Saídas: the windows the main process places and the screens on the
-// network, each with its state, what it shows and the way to fix it
+// network, grouped by what they are for (Público, Palco, Transmissão), each
+// with its state, what it shows and the way to fix it
 // (src/lib/console/outputs.js says which is which).
+// A top-bar popover sits under the button that opened it, right edges
+// aligned, and never leaves the window (a fixed offset drifted off on
+// narrow windows and whenever the bar's buttons moved).
+function useAnchor(selector, width, active) {
+    const [box, setBox] = useState(null);
+    useLayoutEffect(() => {
+        if (!active) return undefined;
+        const place = () => {
+            const w = Math.min(width, window.innerWidth - 12);
+            const el = document.querySelector(selector);
+            const r = el ? el.getBoundingClientRect() : null;
+            const left = r ? r.right - w : window.innerWidth - w - 6;
+            setBox({ left: Math.round(Math.min(Math.max(6, left), window.innerWidth - w - 6)), width: w });
+        };
+        place();
+        window.addEventListener("resize", place);
+        return () => window.removeEventListener("resize", place);
+    }, [selector, width, active]);
+    return box;
+}
+
 export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, tries, idle, onIdle, onSettings }) {
+    const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
     if (open !== "outs") return null;
     const view = (r) => {
         const icon = r.local ? OUTPUT_ICON[r.key] || "monitor" : DEVICE_ICON[r.kind] || "tv";
@@ -121,9 +145,12 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
     const rows = health.rows;
     const summary = health.total ? `${health.connected} de ${health.total} conectadas${locked ? " · travadas" : ""}` : "nenhuma aberta";
     return (
-        <div className="pop kx-pop" style={{ right: 130, top: "var(--pop-top)", width: 440, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }}>
-            <div className="kx-menu-h"><span className="kx-section">Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${!health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
-            {rows.map((r) => {
+        <div className="pop kx-pop pop-outs" style={{ left: anchor?.left ?? 6, top: "var(--pop-top)", width: anchor?.width ?? 440, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }}>
+            <div className="kx-menu-h"><span className="kx-section" style={{ color: "var(--fg-1)" }}>Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${!health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
+            {byGroup(rows, (r) => (r.local ? r.key : r.screen)).map((g) => (
+                <React.Fragment key={g.key}>
+                <div className="kx-menu-h out-group"><span className="kx-section">{g.label}</span></div>
+                {g.items.map((r) => {
                 const v = view(r);
                 return (
                     <div key={r.id} className={`kx-out is-tall ${v.cls}`}>
@@ -144,7 +171,16 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                         </span>
                     </div>
                 );
-            })}
+                })}
+                </React.Fragment>
+            ))}
+            {/* Transmissão is an OBS Browser Source: until OBS connects, say where its address is. */}
+            {!rows.some((r) => r.group === "transmissao") && (
+                <div className="kx-menu-h out-group" title="No OBS: Fonte de navegador com o endereço da Transmissão, 1920 × 1080">
+                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda para a live no OBS</span>
+                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço…</Btn>
+                </div>
+            )}
             {!rows.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
             <div className="kx-menu-sep" />
             {/* Travar telas: rehearse with the screens frozen (shared/live-state.mjs, WHILE_LOCKED). */}
@@ -329,10 +365,11 @@ const ACTION_LABEL = { update: "Atualizar agora", "settings:dados": "Abrir Dados
 
 // The bell's list: newest first, each with what can be done about it.
 export function Notifications({ open, setOpen, notes, update, onAction, onDismiss, onClear }) {
+    const anchor = useAnchor(".topbar .tb-bell", 360, open === "notifs");
     if (open !== "notifs") return null;
     const when = (at) => new Date(at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     return (
-        <div className="pop kx-pop notifs" style={{ right: 130, top: "var(--pop-top)", width: 360, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }} role="dialog" aria-label="Notificações">
+        <div className="pop kx-pop notifs" style={{ left: anchor?.left ?? 6, top: "var(--pop-top)", width: anchor?.width ?? 360, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }} role="dialog" aria-label="Notificações">
             <div className="kx-menu-h"><span className="kx-section">Notificações</span><span style={{ flex: 1 }} />{notes.length > 0 && <Btn small onClick={onClear}>Limpar</Btn>}</div>
             {!notes.length && <div className="kx-menu-h"><span className="kx-meta">Nada por aqui. Atualizações e avisos de backup aparecem aqui.</span></div>}
             {notes.map((n) => {

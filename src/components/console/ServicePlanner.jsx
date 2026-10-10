@@ -228,7 +228,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
             </div>
             <div className="kx-gap" />
             <div className="col center">
-                <Panel title={<>Setlist <span className="kx-count">· {p.count} {p.count === 1 ? "item" : "itens"} · {total(p.seconds)} · termina às {clockAt(p.ends)}</span></>} actions={<span className="pl-acts">
+                <Panel className="pl-setlist" title={<>Setlist <span className="kx-count">· {p.count} {p.count === 1 ? "item" : "itens"} · {total(p.seconds)} · termina às {clockAt(p.ends)}</span></>} actions={<span className="pl-acts">
                     <span className="pl-popwrap">
                         <Btn small on={pop === "tpl"} onClick={() => setPop(pop === "tpl" ? null : "tpl")}>Criar a partir de modelo</Btn>
                         {pop === "tpl" && <div className="kx-pop pl-pop">{templates.length ? templates.map((t) => <Row key={t.id} single icon="list" title={t.name} time={`${(t.items || []).length} itens`} onClick={() => fromTemplate(t)} />) : <div className="listhead"><span className="kx-meta">Nenhum modelo ainda: use "Salvar como modelo".</span></div>}</div>}

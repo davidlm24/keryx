@@ -148,7 +148,7 @@ npm run dev            # dev only: the console in a plain browser on sample data
 
 Smoke runs use a free port and a temp data folder, so they never collide with a KERYX that is open. In Git Bash set `KERYX_START_PATH=Console?config=telas` (no leading slash; `/Console` is rewritten to a Windows path), and `KERYX_SCREENSHOT=file.png` with `KERYX_SCREENSHOT_TEXT="some heading"` to capture a page; `KERYX_CONSOLE_SHOT=file.png` saves the console check's screenshots.
 
-The smoke's audio-meter check (`metersFollowVolume`) hears every sound of the computer, and the focus checks (`focusKept`, `autoFocusKept`, `outputKeys.focus`) need KERYX to be the program in front. When someone uses the PC during a run they do not fail: another program in front (no KERYX window focused) or another program playing (meters up, no KERYX window audible) marks them inconclusive, listed in `console.inconclusive`, and the run can still pass. An output holding the focus, or a KERYX window still audible after the mute, fails. The console page itself is told it has focus (CDP focus emulation), so fields that save on blur work regardless.
+The smoke's audio-meter check (`metersFollowVolume`) hears every sound of the computer, and the focus checks (`focusKept`, `autoFocusKept`, `outputKeys.focus`, and `splitterKeys` when its arrow never arrived) need KERYX to be the program in front. When someone uses the PC during a run they do not fail: another program in front (no KERYX window focused) or another program playing (meters up, no KERYX window audible) marks them inconclusive, listed in `console.inconclusive`, and the run can still pass. An output holding the focus, or a KERYX window still audible after the mute, fails. The console page itself is told it has focus (CDP focus emulation), so fields that save on blur work regardless.
 
 Outputs (projector, stage, ...) render the live state, so either the console (`window.open`) or the main process (`outputs.open`, `keryx:displays:open`, "Abrir ao iniciar") can open them; `electron/outputs*.cjs` places and tracks them.
 
@@ -224,6 +224,10 @@ so a release follows these rules. The steps and commands are in README ›
   process), not rejected. Unknown fields in a filter or sort are errors.
 - **Routes are in `src/App.jsx` only:** `/Console` and the output pages
   (`/Projection`, `/LyricProjection`, `/StageView`, `/VideoProjection`,
-  `/CommunicationProjection`, `/PastorView`), the same output pages for
-  network screens. A new output page goes there, in `electron/outputs.cjs`
-  and, if screens on the network may open it, in `NETWORK_SCREENS`.
+  `/CommunicationProjection`, `/PastorView`, `/StreamView`), the same output
+  pages for network screens. A new output page goes there, in
+  `electron/outputs.cjs` and, if screens on the network may open it, in
+  `NETWORK_SCREENS`, and in a group of `GROUPS` (`src/lib/console/outputs.js`:
+  Público, Palco, Transmissão). `/StreamView` (Transmissão) is network only:
+  an OBS Browser Source, a transparent lower third, text only
+  (`src/lib/streamCaption.js`); it is not an output window.

@@ -75,8 +75,26 @@ const SHOWS = {
     "/VideoProjection": () => "Só os vídeos enviados",
     "/CommunicationProjection": () => "Avisos e contagens",
     "/PastorView": (air) => `Pastor · ${air}`,
+    "/StreamView": () => "Transmissão · só o texto, em legenda",
 };
 export const showsOn = (screen, air) => (SHOWS[screen] || ((a) => a))(air || "nada");
+
+// The outputs by what they are for (the UX research's presets, P2): the
+// audience in the room, the people on the platform, the live stream. Saídas,
+// Telas na rede and the network's screen picker group them this way.
+export const GROUPS = [["publico", "Público"], ["palco", "Palco"], ["transmissao", "Transmissão"]];
+const GROUP_OF = {
+    "/Projection": "publico", "/LyricProjection": "publico", "/VideoProjection": "publico", "/CommunicationProjection": "publico",
+    "/StageView": "palco", "/PastorView": "palco",
+    "/StreamView": "transmissao",
+};
+export const groupOf = (page) => GROUP_OF[page] || "publico";
+
+// [{ key, label, items }] in GROUPS order, empty groups left out; items keep
+// their order. `pageOf` says which page an item shows.
+export function byGroup(items, pageOf) {
+    return GROUPS.map(([key, label]) => ({ key, label, items: items.filter((it) => groupOf(pageOf(it)) === key) })).filter((g) => g.items.length);
+}
 
 const isTablet = (agent) => /iPad|Tablet|Android(?!.*Mobile)/i.test(agent || "");
 
@@ -93,7 +111,7 @@ export function outputHealth({ outputs = [], seen = {}, locked = false, air = ""
         else if (mem?.droppedAt) state = "closed";
         else state = "unused";
         rows.push({
-            id, local: true, key: o.key, name: o.label || o.key, state,
+            id, local: true, key: o.key, name: o.label || o.key, state, group: groupOf(o.key),
             problem: state === "reconnecting" || state === "closed",
             droppedAt: mem?.droppedAt || null,
             shows: state === "connected" || state === "reconnecting" ? showsOn(o.key, air) : null,
@@ -107,7 +125,7 @@ export function outputHealth({ outputs = [], seen = {}, locked = false, air = ""
         rows.push({
             id: v.key, local: false, key: v.key, name: v.name, ip: v.ip, screen: v.screen,
             kind: isTablet(v.agent) ? "tablet" : "tv",
-            role: v.screen === "/VideoProjection" ? "media" : "lyrics",
+            role: v.screen === "/VideoProjection" ? "media" : "lyrics", group: groupOf(v.screen),
             state, problem: state === "disconnected", droppedAt: v.droppedAt,
             shows: state === "connected" ? showsOn(v.screen, air) : null,
             meta: `Rede · ${v.ip}`,
