@@ -162,7 +162,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                 </Panel>
             </div>
             <div className="kx-gap" />
-            <div className="col center">
+            <div className="col center sv-center">
                 {editing ? (
                     <MaterialEditor c={c} draft={editing} setDraft={setEditing} classes={classes} media={media} confirm={confirm} onSave={saveMaterial} onCancel={() => setEditing(null)} onRemove={removeMaterial} onPreview={() => c.setPrev(stageFromMaterial({ ...editing, id: editing.id || "rascunho" }))} />
                 ) : (
@@ -303,7 +303,7 @@ function MaterialEditor({ c, draft, setDraft, classes, media, confirm, onSave, o
                 <span style={{ flex: 1 }} />
                 <Btn onClick={onPreview} title="Ver como fica, na Prévia">Pôr na prévia</Btn>
                 <Btn onClick={onCancel}>Cancelar</Btn>
-                <Btn kind="outline" onClick={onSave} title="Ctrl+S">Salvar material</Btn>
+                <Btn kind="brand" onClick={onSave} title="Ctrl+S">Salvar material</Btn>
             </div>
         </Panel>
     );

@@ -101,7 +101,7 @@ export default function LyricsSearch({ c, onClose, onImported }) {
                 <div className="lyr-key">
                     <span className="kx-meta">Crie uma chave grátis na área de API do Vagalume (api.vagalume.com.br) e cole aqui. Fica só neste computador. Sem ela, o LRCLIB e o letras.mus.br continuam.</span>
                     <Field icon={null} value={keyText} onChange={setKeyText} placeholder="Chave da API do Vagalume" onKeyDown={(e) => { if (e.key === "Enter") saveKey(); }} />
-                    <Btn kind="outline" onClick={saveKey}>Salvar</Btn>
+                    <Btn kind="brand" onClick={saveKey}>Salvar</Btn>
                 </div>
             )}
             <div className="lyr-q">
@@ -140,7 +140,7 @@ export default function LyricsSearch({ c, onClose, onImported }) {
                 {errors.length > 0 && <span className="kx-warn">{errors.join(" · ")}</span>}
                 <span style={{ flex: 1 }} />
                 <span className="kx-meta lyr-legal">Letras têm direitos autorais. Use conforme a licença da sua igreja (ex.: CCLI).</span>
-                <Btn kind="prev" onClick={importSong} disabled={!hit || !lyrics.trim()}>Importar</Btn>
+                <Btn kind="brand" onClick={importSong} disabled={!hit || !lyrics.trim()}>Importar</Btn>
             </div>
         </div>
     );

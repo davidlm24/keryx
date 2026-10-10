@@ -18,7 +18,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
     if (open === "ver") {
         return (
             // Under the top bar's Ver button.
-            <div className="pop kx-pop" style={{ left: Math.max(6, Math.round(document.querySelector(".topbar .tb-ver")?.getBoundingClientRect().left ?? 6)), top: 40, width: 220 }}>
+            <div className="pop kx-pop" style={{ left: Math.max(8, Math.round(document.querySelector(".topbar .tb-ver")?.getBoundingClientRect().left ?? 8)), top: "var(--pop-top)", width: 220 }}>
                 <div className="kx-menu-h"><span className="kx-section">Ver</span></div>
                 {MODULES.map(([key, name]) => (
                     <MenuItem key={key} checked={!layout.hidden[key]} onClick={() => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } })}>{name}</MenuItem>
@@ -36,7 +36,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
     }
     if (open === "cultos") {
         return (
-            <div className="pop kx-pop" style={{ left: 6, top: 40, width: 300, maxHeight: 420, overflow: "auto" }}>
+            <div className="pop kx-pop" style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 300, maxHeight: 420, overflow: "auto" }}>
                 <div className="kx-menu-h"><span className="kx-section">Culto</span></div>
                 {!services.length && <div className="kx-menu-h"><span className="kx-meta">Nenhum culto ainda.</span></div>}
                 {services.slice(0, 20).map((s) => (
@@ -52,7 +52,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
         );
     }
     return (
-        <div className="pop kx-pop" style={{ left: 6, top: 40, width: 230 }}>
+        <div className="pop kx-pop" style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }}>
             <MenuItem icon="list" onClick={() => setOpen("cultos")}>Culto<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
             <MenuItem icon="list" onClick={() => { setOpen(null); onPlanner?.(serviceId); }}>Planejar o culto</MenuItem>
             <MenuItem icon="film" onClick={() => { setOpen(null); onMedia?.(); }}>Biblioteca de mídia</MenuItem>
@@ -120,7 +120,7 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
     const rows = health.rows;
     const summary = health.total ? `${health.connected} de ${health.total} conectadas${locked ? " · travadas" : ""}` : "nenhuma aberta";
     return (
-        <div className="pop kx-pop" style={{ right: 130, top: 40, width: 440, maxHeight: "calc(100vh - 60px)", overflow: "auto" }}>
+        <div className="pop kx-pop" style={{ right: 130, top: "var(--pop-top)", width: 440, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }}>
             <div className="kx-menu-h"><span className="kx-section">Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${!health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
             {rows.map((r) => {
                 const v = view(r);
@@ -292,7 +292,7 @@ export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
                 {count !== null && !installing && <Btn onClick={() => setStopped(true)}>Cancelar</Btn>}
                 {update.status === "error" && <Btn kind="outline" onClick={() => call("updateDownload").catch(() => {})}>Tentar de novo</Btn>}
                 {update.status === "downloaded" && !installing && count === null && (
-                    <button type="button" className={`kx-btn kx-t ${onAir(live) ? "kx-btn-air" : "kx-btn-prev"}`} onClick={install}>{onAir(live) ? "Instalar mesmo assim" : "Instalar e reiniciar"}</button>
+                    <button type="button" className={`kx-btn kx-t ${onAir(live) ? "kx-btn-air" : "kx-btn-brand"}`} onClick={install}>{onAir(live) ? "Instalar mesmo assim" : "Instalar e reiniciar"}</button>
                 )}
             </div>
         </div>
@@ -307,7 +307,7 @@ export function Notifications({ open, setOpen, notes, update, onAction, onDismis
     if (open !== "notifs") return null;
     const when = (at) => new Date(at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     return (
-        <div className="pop kx-pop notifs" style={{ right: 130, top: 40, width: 360, maxHeight: "calc(100vh - 60px)", overflow: "auto" }} role="dialog" aria-label="Notificações">
+        <div className="pop kx-pop notifs" style={{ right: 130, top: "var(--pop-top)", width: 360, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }} role="dialog" aria-label="Notificações">
             <div className="kx-menu-h"><span className="kx-section">Notificações</span><span style={{ flex: 1 }} />{notes.length > 0 && <Btn small onClick={onClear}>Limpar</Btn>}</div>
             {!notes.length && <div className="kx-menu-h"><span className="kx-meta">Nada por aqui. Atualizações e avisos de backup aparecem aqui.</span></div>}
             {notes.map((n) => {

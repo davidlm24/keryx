@@ -223,7 +223,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                     {cifraOpen && (
                         <div className="ed-pad ed-cifra">
                             <textarea className="ed-text ed-mono" style={{ height: 120 }} value={cifraText} onChange={(e) => setCifraText(e.target.value)} placeholder="Cole a cifra (acordes sobre a letra) ou ChordPro" aria-label="Cifra para importar" autoFocus />
-                            <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small kind="outline" disabled={!cifraText.trim()} onClick={importCifra}>Montar a letra</Btn></div>
+                            <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small kind="brand" disabled={!cifraText.trim()} onClick={importCifra}>Montar a letra</Btn></div>
                         </div>
                     )}
                     <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => set({ chords: e.target.value })} aria-label="Cifra" placeholder="Acordes para o Palco (opcional)" /></div>
@@ -311,7 +311,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                     {dirty && <span className="kx-meta">alterações não salvas</span>}
                     <Btn onClick={() => printSong({ ...song, duration: parseDuration(durationText) }, slides)} disabled={!slides.length}>Imprimir</Btn>
                     <Btn onClick={close}>{confirm === "close" ? "Descartar" : "Cancelar"}</Btn>
-                    <Btn kind="outline" disabled={busy === "save"} onClick={save} title="Salvar · Ctrl+S">{busy === "save" ? "Salvando…" : "Salvar"}</Btn>
+                    <Btn kind="brand" disabled={busy === "save"} onClick={save} title="Salvar · Ctrl+S">{busy === "save" ? "Salvando…" : "Salvar"}</Btn>
                 </div>
             </div>
         </>

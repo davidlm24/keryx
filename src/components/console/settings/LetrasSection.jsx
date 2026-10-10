@@ -28,7 +28,7 @@ export default function LetrasSection({ c }) {
             <div className="frm">
                 <FormRow k="Chave do Vagalume">
                     <Field icon={null} value={key} onChange={setKey} placeholder={status?.hasKey ? "Chave salva · cole outra para trocar" : "Cole a chave da API do Vagalume"} onKeyDown={(e) => { if (e.key === "Enter" && key.trim()) saveKey(key.trim()); }} style={{ maxWidth: 420 }} />
-                    <Btn kind="outline" disabled={!key.trim()} onClick={() => saveKey(key.trim())}>Salvar</Btn>
+                    <Btn kind="brand" disabled={!key.trim()} onClick={() => saveKey(key.trim())}>Salvar</Btn>
                     {status?.hasKey && <Btn onClick={() => saveKey("")}>Remover</Btn>}
                     <span className={status?.hasKey ? "kx-prev" : "kx-meta"}>{status?.hasKey ? "Ativa" : "Sem chave"}</span>
                 </FormRow>

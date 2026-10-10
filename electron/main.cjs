@@ -31,8 +31,8 @@ const PORT = process.env.KERYX_PORT !== undefined ? Number(process.env.KERYX_POR
 // The console's own background (--bg-0 in docs/design-system/tokens.css): the
 // window paints it before the page loads, and the Windows title bar uses it so
 // the bar and the app read as one surface. Keep it in step with the token.
-const BG = "#0c0c0d";
-const TITLEBAR_SYMBOLS = "#a3a3a8"; // --fg-2
+const BG = "#0d0d0c";
+const TITLEBAR_SYMBOLS = "#bbb6ac"; // --fg-2
 const TITLEBAR_HEIGHT = 32;
 
 // KERYX_DEV_URL: a running Vite dev server (npm run desktop:dev).

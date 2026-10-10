@@ -554,6 +554,7 @@ async function checkConsole(webContents, { live, outputs }) {
             return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
         })()`);
         if (!at) return false;
+        click.last = at;
         webContents.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y });
         webContents.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "left", clickCount: 1 });
         webContents.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "left", clickCount: 1 });
@@ -650,6 +651,25 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".envtabs button", "KERYX");
         await click(".kx-row", "Canto do console");
         result.prepared = await waitCap(PREV, "Canto do console");
+        // When the first click misses, say where it went: the row's box, what
+        // sits at its centre, what holds the focus and what the Prévia shows.
+        if (!result.prepared) {
+            result.prepDiag = await js(`(() => {
+                const row = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
+                const r = row ? row.getBoundingClientRect() : null;
+                const at = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+                const name = (el) => (el ? el.tagName + "." + String(el.className || "").slice(0, 40) : null);
+                return {
+                    row: r ? [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)] : null,
+                    atCentre: name(at), atIsRow: Boolean(row && at && row.contains(at)),
+                    active: name(document.activeElement),
+                    prevCap: (document.querySelector(${JSON.stringify(`${PREV} .kx-mon-cap`)}) || {}).textContent || null,
+                    overlays: [...document.querySelectorAll(".scrim, .pop, .drawer, .dialog")].map(name),
+                    win: [innerWidth, innerHeight, devicePixelRatio],
+                };
+            })()`).catch((err) => String(err.message || err));
+            if (result.prepDiag && typeof result.prepDiag === "object") result.prepDiag.clickedAt = click.last || null;
+        }
         // Live information has its own type steps: what is prepared at 14 px
         // (next-title); the Programa's title is 16 px (live-title) once on air.
         result.prevTitle14 = await js(`getComputedStyle(document.querySelector("${PREV} .kx-mon-t")).fontSize === "14px"`).catch(() => false);
@@ -1164,6 +1184,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(150);
         await js(`(() => {
             const dst = document.querySelector(".pl-list .kx-row");
+            if (!dst) return false;
             const dt = new DataTransfer();
             dst.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt }));
             dst.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt }));

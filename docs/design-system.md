@@ -164,9 +164,10 @@ telas* on 2026-10-10), Verificar as an
 overlay from the Saídas popover, and a double click (or a drag onto the
 Programa) sends to air. Artboards 8–15 stay in the canvas as a record; the
 app follows the full modular layout of artboards 1–7. The top bar is a menu
-bar: the KERYX mark (menu), the environment tabs **KERYX | Bíblia**
-(`kx-tabs`, underline in brand), Ver, the search, the service clock, a compact
-clock, the outputs status and the Telas group, on one line at every width.
+bar, drawn straight on the window (`bg-0`, no panel, 2026-10-09): the KERYX
+mark (menu), the environment tabs **KERYX | Bíblia** (`kx-tabs`, underline in
+brand), Ver, the search, the service clock, a compact clock, the outputs status
+and the Telas group, on one line at every width.
 The Bible quick jump (Holyrics-style "jo 3 16") is a `kx-pop` with Livro /
 Capítulo / Versículo captions over the typed text and the candidate books.
 

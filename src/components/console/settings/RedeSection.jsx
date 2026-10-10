@@ -55,7 +55,7 @@ export default function RedeSection({ c }) {
                 <span className="k" />
                 <div className="frm-v">
                     <Field icon={null} value={pin} onChange={(v) => setPin(v.replace(/\D/g, "").slice(0, 8))} placeholder="Ou digite um PIN (4 a 8 números)" onKeyDown={(e) => { if (e.key === "Enter" && pin.length >= 4) savePin(pin); }} style={{ maxWidth: 280 }} />
-                    <Btn disabled={busy || pin.length < 4} onClick={() => savePin(pin)}>Salvar PIN</Btn>
+                    <Btn kind="brand" disabled={busy || pin.length < 4} onClick={() => savePin(pin)}>Salvar PIN</Btn>
                 </div>
             </div>
             {info.running && (

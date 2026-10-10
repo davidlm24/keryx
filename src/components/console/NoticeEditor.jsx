@@ -224,7 +224,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                     </div>
                     <div className="nv-foot">
                         <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
-                        <Btn kind="outline" disabled={busy} onClick={save} title="Ctrl+S">Salvar aviso</Btn>
+                        <Btn kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar aviso</Btn>
                     </div>
                 </Panel>
             </div>

@@ -2,14 +2,16 @@
    bundled woff2), so the console looks the same offline.
    KERYX — component stylesheet. Every colour, size and radius is a token from tokens.json (tokens.css loads first).
    Rules of the console: colour means state; 28px rows; 2px state bar + 10% tint on a highlighted row; bare glyphs;
-   one 120ms ease-out; no shadows inside panels. Class prefix: kx- */
+   one 120ms ease-out; no shadows inside panels. Gold (brand) marks identity, focus and ordinary primary actions,
+   never a live state. Class prefix: kx- */
 
 :root { color-scheme: dark; }
 .kx, .kx * { box-sizing: border-box; }
 .kx { font-family: var(--font-sans); font-size: 12px; line-height: 16px; color: var(--fg-2); background: var(--bg-0);
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; -webkit-font-smoothing: antialiased; }
-.kx button, .kx input { font: inherit; color: inherit; font-variant-numeric: inherit; }
-.kx button { background: none; border: 0; padding: 0; cursor: default; }
+/* The reset weighs nothing (:where), so every kx- class below keeps its own padding, fill and colour. */
+:where(.kx) :where(button, input) { font: inherit; color: inherit; font-variant-numeric: inherit; }
+:where(.kx) :where(button) { background: none; border: 0; padding: 0; cursor: default; }
 .kx :is(button, input, [tabindex]):focus-visible { outline: var(--bar) solid var(--brand); outline-offset: -1px; }
 .kx-t { transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .kx *, .kx-t { transition: none !important; animation: none !important; } }
@@ -32,14 +34,14 @@
 
 /* ---- Panel (module) ---- */
 .kx-panel { background: var(--bg-1); border-radius: var(--radius-panel); display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
-.kx-panel-h { height: var(--row); flex: none; display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1) 0 var(--space-2); }
+.kx-panel-h { height: 32px; flex: none; display: flex; align-items: center; gap: var(--space-1); padding: 0 6px 0 var(--space-3); }
 .kx-panel-h .kx-section { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kx-panel-h .kx-count { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--fg-3); }
 .kx-panel-b { flex: 1; min-height: 0; overflow: auto; }
 .kx-panel.is-collapsed .kx-panel-b { display: none; }
-.kx-panel.is-collapsed { height: var(--row); }
+.kx-panel.is-collapsed { height: 32px; }
 
-/* ---- Button: ghost by default, 28px, radius 4. Only two fills exist on the console. ---- */
+/* ---- Button: ghost by default, 28px. Fills: the state buttons (prev, rh, air) and the gold one for ordinary primary actions. ---- */
 .kx-btn { height: var(--row); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 var(--space-2); border-radius: var(--radius-control);
   color: var(--fg-2); white-space: nowrap; font-size: 12px; line-height: 16px; }
 .kx-btn:hover { background: var(--bg-2); color: var(--fg-1); }
@@ -51,6 +53,13 @@
 .kx-btn.kx-btn-rh { background: var(--rh-fill); color: var(--on-state); font-weight: 500; padding: 0 var(--space-3); }
 .kx-btn.kx-btn-air { background: var(--air-fill); color: var(--on-state); font-weight: 500; padding: 0 var(--space-3); }
 .kx-btn.kx-btn-outline { box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-1); }
+/* Gold: Salvar, Novo culto, Importar… never Enviar ao ar, Ao vivo, Ensaio or a warning. Disabled goes neutral
+   (a dimmed gold reads as brown); the focus ring turns light so it shows on the fill. */
+.kx-btn.kx-btn-brand { background: var(--brand); color: var(--on-brand); font-weight: 500; padding: 0 var(--space-3); }
+.kx-btn.kx-btn-brand:hover { background: var(--brand-hover); color: var(--on-brand); }
+.kx-btn.kx-btn-brand:active { background: var(--brand-pressed); color: var(--on-brand); }
+.kx-btn.kx-btn-brand:disabled { background: var(--bg-3); color: var(--fg-3); opacity: 1; }
+.kx .kx-btn.kx-btn-brand:focus-visible { outline-color: var(--fg-1); outline-offset: 2px; }
 .kx-btn.kx-btn-outline:hover { background: var(--bg-2); }
 
 /* ---- Segmented switch ---- */
@@ -71,7 +80,7 @@
 .kx-field kbd { font: inherit; font-size: 11px; color: var(--fg-3); }
 
 /* ---- Row (list item): title + one grey line. State = 2px bar on the left edge + 10% tint. Never a badge. ---- */
-.kx-row { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 0 var(--space-2) 0 10px; width: 100%; text-align: left; border-radius: 0; color: var(--fg-1); }
+.kx-row { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 0 var(--space-2) 0 var(--space-3); width: 100%; text-align: left; border-radius: 0; color: var(--fg-1); }
 .kx-row::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
 .kx-row:hover { background: var(--bg-2); }
 .kx-row.is-selected { background: var(--bg-3); }
@@ -126,7 +135,7 @@
 .kx-screen-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-3); font-family: var(--font-sans); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
   background: repeating-linear-gradient(135deg, transparent 0 10px, var(--bg-1) 10px 11px); }
 .kx-screen-hatch { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; gap: 4px; color: var(--warn-fg); font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 500;
-  background: repeating-linear-gradient(135deg, var(--warn-tint) 0 12px, #0c0c0dd9 12px 24px); opacity: var(--hatch); }
+  background: repeating-linear-gradient(135deg, var(--warn-tint) 0 12px, #0d0d0cd9 12px 24px); opacity: var(--hatch); }
 .kx-screen-hatch small { display: block; font-weight: 400; font-size: 11px; color: var(--fg-2); }
 .kx-pip { position: absolute; right: 2cqw; bottom: 2cqw; width: 28cqw; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 1px var(--air); background: var(--screen-bg); container-type: inline-size; }
 .kx-pip-cap { position: absolute; left: 0; top: 0; z-index: 2; padding: 0 5px; height: 14px; display: flex; align-items: center; background: var(--air-fill); color: var(--on-state); font-family: var(--font-sans); font-size: 9px; letter-spacing: .06em; font-weight: 500; }
@@ -146,7 +155,7 @@
 .kx-out.is-rh .kx-out-st { color: var(--rh-fg); }
 
 /* ---- Banner: one thin line across the grid. The colour is the state's tint + a 2px top rule. ---- */
-.kx-banner { height: var(--row); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3); border-radius: var(--radius-panel); font-size: 12px; font-weight: 500; }
+.kx-banner { height: var(--row); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-3); border-radius: var(--radius-control); font-size: 12px; font-weight: 500; }
 .kx-banner span.kx-sub { font-weight: 400; color: var(--fg-2); }
 .kx-banner .kx-spacer { flex: 1; }
 .kx-banner.is-rh { background: var(--rh-tint); color: var(--rh-fg); box-shadow: inset 0 var(--bar) 0 var(--rh); }
@@ -154,7 +163,7 @@
 .kx-banner .kx-btn { height: 22px; padding: 0 var(--space-2); }
 
 /* ---- Popover, menu, tooltip ---- */
-.kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: var(--space-1); min-width: 180px; }
+.kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: 6px; min-width: 180px; }
 .kx-menu-item { display: flex; align-items: center; gap: var(--space-2); width: 100%; height: var(--row); padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-1); text-align: left; }
 .kx-menu-item:hover { background: var(--bg-3); }
 .kx-menu-item .kx-kbd { margin-left: auto; color: var(--fg-3); font-size: 11px; }
@@ -184,7 +193,7 @@
 .kx-split.is-dragging::after { background: var(--fg-3); }
 
 /* ---- Slide (slides column) ---- */
-.kx-slide { position: relative; display: grid; grid-template-columns: 20px 1fr; gap: var(--space-2); padding: 6px var(--space-2) 6px 10px; width: 100%; text-align: left; color: var(--fg-1); font-size: 13px; line-height: 18px; white-space: pre-line; }
+.kx-slide { position: relative; display: grid; grid-template-columns: 20px 1fr; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: 13px; line-height: 18px; white-space: pre-line; }
 .kx-slide::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
 .kx-slide:hover { background: var(--bg-2); }
 .kx-slide .kx-slide-n { font-size: 11px; color: var(--fg-3); line-height: 18px; }
@@ -195,7 +204,7 @@
 .kx-slide.is-next .kx-slide-n { color: var(--fg-2); }
 
 /* ---- Layer row (Camadas) ---- */
-.kx-layer { display: grid; grid-template-columns: 16px 20px 20px 1fr; gap: var(--space-1); align-items: center; height: var(--row); padding: 0 var(--space-2) 0 var(--space-1); width: 100%; text-align: left; color: var(--fg-1); }
+.kx-layer { display: grid; grid-template-columns: 16px 20px 20px 1fr; gap: var(--space-1); align-items: center; height: var(--row); padding: 0 var(--space-3) 0 var(--space-2); width: 100%; text-align: left; color: var(--fg-1); }
 .kx-layer:hover { background: var(--bg-2); }
 .kx-layer.is-selected { background: var(--bg-3); }
 .kx-layer .kx-glyph { color: var(--fg-3); display: inline-flex; justify-content: center; }
@@ -235,7 +244,7 @@
 .kx-meter > i > b.is-hot { background: var(--warn); }
 
 /* ---- Verse (Bíblia reading view) ---- */
-.kx-verse { display: grid; grid-template-columns: 24px 1fr; gap: var(--space-2); padding: 3px var(--space-2) 3px 10px; width: 100%; text-align: left; font-size: 14px; line-height: 20px; color: var(--fg-1); position: relative; }
+.kx-verse { display: grid; grid-template-columns: 24px 1fr; gap: var(--space-2); padding: 3px var(--space-3) 3px 10px; width: 100%; text-align: left; font-size: 14px; line-height: 20px; color: var(--fg-1); position: relative; }
 .kx-verse::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: transparent; }
 .kx-verse .kx-verse-n { font-size: 11px; color: var(--fg-3); line-height: 20px; text-align: right; }
 .kx-verse:hover { background: var(--bg-2); }
@@ -257,14 +266,14 @@
 .kx-mark::after { content: "K"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--on-brand); font-family: var(--font-display); font-weight: 600; font-size: 10px; line-height: 1; }
 
 /* ---- Alert (Alerta rápido): the one thing that bypasses Prévia. A warn line in the console, a thin amber bar on the screen. ---- */
-.kx-alert { position: relative; display: flex; align-items: center; gap: var(--space-2); height: var(--row); padding: 0 var(--space-1) 0 10px; background: var(--warn-tint); color: var(--warn-fg); font-size: 12px; }
+.kx-alert { position: relative; display: flex; align-items: center; gap: var(--space-2); height: var(--row); padding: 0 var(--space-1) 0 var(--space-3); background: var(--warn-tint); color: var(--warn-fg); font-size: 12px; }
 .kx-alert::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--bar); background: var(--warn); }
 .kx-alert .kx-alert-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kx-alert .kx-btn { height: 22px; padding: 0 6px; color: var(--fg-1); }
 .kx-screen-alert { position: absolute; left: 0; right: 0; top: 0; z-index: 6; height: 7cqw; display: flex; align-items: center; justify-content: center; padding: 0 3cqw; background: var(--warn); color: var(--on-warn); font-family: var(--font-sans); font-size: 2.6cqw; font-weight: 500; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---- Tools (Relógio, Cronômetro, Timer, Texto livre): ghost buttons in a 2×2 grid; on screen a countdown-style figure with a label. ---- */
-.kx-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); padding: 0 var(--space-2); }
+.kx-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); padding: 0 var(--space-3); }
 .kx-tool { height: var(--row); display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); white-space: nowrap; }
 .kx-tool:hover { background: var(--bg-2); color: var(--fg-1); }
 .kx-tool.is-on { background: var(--bg-3); color: var(--fg-1); }
