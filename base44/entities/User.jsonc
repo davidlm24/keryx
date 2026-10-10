@@ -21,6 +21,10 @@
       "type": "string",
       "description": "URL do logo"
     },
+    "standby_background": {
+      "type": "string",
+      "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido)"
+    },
     "church_name": {
       "type": "string",
       "description": "Nome da igreja (Configurações › Igreja)"

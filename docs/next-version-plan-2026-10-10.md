@@ -109,6 +109,14 @@ um). No fim, um lote de consertos achados durante o trabalho.
 
 **C6 — operator-chosen standby wallpaper** (live state + schema + UI)
 
+**Built** (release session, 2026-10-10). One change from the outline below:
+`idle` stays a string (`"logo" | "black" | "background"`) and the image is a
+separate `idleUrl`, instead of turning `idle` into `{mode, url}`; the console,
+the renderer and the smoke compare `idle` as a string, and old saves need no
+conversion. The op is `idle.set {mode, url}` as planned. The global default's
+field (`User.standby_background`) exists and is applied; its control belongs
+to the Aparência page (section I).
+
 - Live state: `idle` becomes `{ mode: "logo" | "black" | "background", url }`
   (strings still accepted and normalised; persistence in `electron/live.cjs`
   keeps old saves working). `idle.set` takes `{ mode, url }`. Test in

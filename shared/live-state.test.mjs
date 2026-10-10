@@ -306,6 +306,30 @@ test("idle screen: logo or black, part of the document", () => {
     assert.equal(restoreState({ version: back.version, rev: 1 }, T0).idle, "logo");
 });
 
+test("idle screen: a wallpaper the operator chose, kept across Logo and Preto", () => {
+    const wall = "http://127.0.0.1:7700/media/bundled/backgrounds/1557672172-298e090bd0f1.webp";
+    let s = emptyState(T0);
+    assert.equal(s.idleUrl, null);
+    assert.throws(() => applyOp(s, "idle.set", { mode: "background" }, T0), /Escolha a imagem/, "Fundo needs its image");
+    s = applyOp(s, "idle.set", { mode: "background", url: wall }, T0);
+    assert.deepEqual([s.idle, s.idleUrl], ["background", wall]);
+    assert.equal(applyOp(s, "idle.set", { mode: "background", url: wall }, T0), s, "same wallpaper: no change");
+    s = applyOp(s, "idle.set", { mode: "logo" }, T0);
+    assert.deepEqual([s.idle, s.idleUrl], ["logo", wall], "Logo keeps the last wallpaper");
+    s = applyOp(s, "idle.set", { mode: "background" }, T0);
+    assert.equal(s.idle, "background", "Fundo again: the same image comes back");
+    assert.throws(() => applyOp(s, "idle.set", { mode: "background", url: { src: wall } }, T0), LiveError);
+    assert.throws(() => applyOp(s, "idle.set", { mode: "background", url: "x".repeat(5000) }, T0), LiveError, "too long");
+    // Locked screens still change their idle look (nothing new goes on air).
+    const locked = applyOp(s, "screens.lock", { locked: true }, T0);
+    assert.equal(applyOp(locked, "idle.set", { mode: "black" }, T0).idle, "black");
+    // Restarts: kept; an old save ("logo"/"black") loads; a wallpaper with no image falls back.
+    const back = restoreState(JSON.parse(JSON.stringify(s)), T0 + 99);
+    assert.deepEqual([back.idle, back.idleUrl], ["background", wall]);
+    assert.deepEqual([restoreState({ version: back.version, rev: 1, idle: "black" }, T0).idle, restoreState({ version: back.version, rev: 1, idle: "black" }, T0).idleUrl], ["black", null]);
+    assert.equal(restoreState({ version: back.version, rev: 1, idle: "background" }, T0).idle, "logo");
+});
+
 test("audio channel: plays under the screens, survives Encerrar, has its own transport and list", () => {
     let s = run([["content.show", song], ["audio.show", { url: "keryx-media://ofertorio.mp3", title: "Ofertório" }, T0]]);
     assert.equal(s.audio.kind, "audio", "kind defaults to audio");

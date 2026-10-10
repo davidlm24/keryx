@@ -850,6 +850,18 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-pop .kx-seg button", "Logo da igreja");
         await waitFor(() => live.get().idle === "logo");
         await press("Escape");
+        // Fundo de espera: the wallpaper the operator chose is what the idle
+        // projector shows, cover and without the logo on it, and the image
+        // really loads; Logo brings the logo back.
+        const wallUrl = String(await js("window.keryxDesktop.mediaBaseUrl")) + "bundled/backgrounds/1557672172-298e090bd0f1.webp";
+        live.call("idle.set", { mode: "background", url: wallUrl });
+        result.idleWall = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript(`(() => {
+            const w = document.querySelector(".ks-idle-wall");
+            return Boolean(w && w.style.backgroundImage.includes("1557672172-298e090bd0f1") && !document.querySelector(".ks-idle img"));
+        })()`).catch(() => false));
+        result.idleWallLoads = Boolean(main) && await main.webContents.executeJavaScript(`new Promise((ok) => { const i = new Image(); i.onload = () => ok(i.naturalWidth > 0); i.onerror = () => ok(false); i.src = ${JSON.stringify(wallUrl)}; setTimeout(() => ok(false), 5000); })`).catch(() => false);
+        live.call("idle.set", { mode: "logo" });
+        result.idleWallOff = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("!document.querySelector('.ks-idle-wall')").catch(() => false));
 
         // The song on air again, then Travar telas (Saídas): nothing new goes
         // on (a double click, Enter and the main process all refuse), anything
@@ -1592,7 +1604,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended

@@ -327,8 +327,17 @@ command palette (`/`) and Saídas (with *Travar telas*).
   bar never wraps: container queries drop the clock, then shorten the
   outputs label and the search as the window narrows. The projector output
   opens with the app on first run, and a live send reopens it if closed;
-  the idle screen is the church logo or plain black (`idle.set`, in the
-  live state so every screen renders the same emptiness).
+  the idle screen is the church logo, plain black, or a **wallpaper** the
+  operator chose (`idle.set {mode, url}`: `idle` stays the mode string,
+  `"logo" | "black" | "background"`, and the image is `idleUrl`, so old
+  saves and every `idle === "black"` check keep working; in the live state
+  so every screen renders the same emptiness). Logo or Preto keep the last
+  wallpaper, so Fundo brings it back. Picking a service applies its
+  `standby_background` (Planejar o culto › Fundo de espera), else the
+  church's `User.standby_background` (set from the Aparência page, still to
+  come); an operator's choice in Saídas wins until the next service is
+  picked. The url goes through the live client like every media URL
+  (`keryx-media://` in the document), so network screens load it too.
 - **Tela preta and Mostrar logo always act on the real screens**, in every
   view and mode: they are the emergency actions. A failing output is a banner
   under the top bar in every view, never over a monitor.
