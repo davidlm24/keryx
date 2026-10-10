@@ -174,6 +174,23 @@ for keyboard focus on buttons). Monitor frames are drawn inside the box, so
 narrowing the window never cuts them. The player's seek is a 6 px progress
 bar (red while live) with the remaining time and the length beside it.
 
+**Screens on the network (2026-10-10):** every page a tablet, TV or stage
+monitor opens is on this system (`src/components/network/net.css`): `bg-0`
+ground, Geist, tokens, sized in container units so a phone, an upright
+tablet and a 4K TV get the same layout in proportion. Letras and Vídeo are
+views of the live state drawn by `ScreenRenderer` (`src/lib/network/views.js`):
+waiting, they show the live idle look, never a page of their own. Palco: title,
+Tom / BPM / time chips, the slide large, the cifra beside it (under it when
+upright), the next slide, slide dots (red = on air). Tela do pastor: the
+projected image as the projector draws it, the clock, how long the service
+has run, and the next items of the Setlist (the service of the item on air).
+The start page groups the screens (Público, Palco, Transmissão) as cards and
+offers the last one used (gold, the one ordinary action). Connection, said
+once for every page but Transmissão (`NetStatus`): a full screen while it has
+never connected (*Conectando ao KERYX…*), then an amber chip over the last
+image while it reconnects (*Reconectando… tentativa N*); the PIN and "not
+available" pages the server writes use the same colours.
+
 ## Histórico: Preparar · Verificar · Apresentar (canvas artboards 8–15, 2026-10-07)
 
 > **Historical.** Kept as a record of the canvas, not as a specification. The

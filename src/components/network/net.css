@@ -1,0 +1,122 @@
+/* The pages screens on the church network show, beyond the projected image:
+   the start page, the stage monitor, the pastor's screen, the connection
+   states. Built on the design system's tokens (docs/design-system/tokens.css,
+   loaded app-wide) and sized in container units, so a phone, a tablet held
+   upright and a 4K TV all get the same layout in proportion. Projected
+   content keeps its own screen-* styles (ScreenRenderer). */
+
+.net { position: fixed; inset: 0; background: var(--bg-0); color: var(--fg-1); font-family: var(--font-sans); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; container: net / size; overflow: hidden; }
+.net * { box-sizing: border-box; }
+.net-section { font-size: max(11px, 1.4cqmin); line-height: 1.3; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-3); }
+
+/* ---- Connection: first connection (full screen) and a drop (a chip) ---- */
+.net-connecting { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; background: var(--bg-0); color: var(--fg-1); font-family: var(--font-sans); text-align: center; padding: 6vmin; }
+.net-connecting img { width: 14vmin; height: 14vmin; min-width: 72px; min-height: 72px; border-radius: 999px; object-fit: cover; margin: 0 auto 3vmin; box-shadow: 0 0 0 1px var(--line); }
+.net-connecting b { display: block; font-size: max(18px, 3.2vmin); font-weight: 600; }
+.net-connecting small { display: block; margin-top: 1.4vmin; font-size: max(13px, 1.9vmin); color: var(--fg-2); max-width: 46ch; margin-inline: auto; }
+.net-connecting .net-dots { display: inline-flex; gap: .6vmin; margin-top: 2.4vmin; }
+.net-connecting .net-dots i { width: max(6px, .9vmin); height: max(6px, .9vmin); border-radius: 999px; background: var(--fg-3); animation: net-pulse 1.2s ease-in-out infinite; }
+.net-connecting .net-dots i:nth-child(2) { animation-delay: .2s; } .net-connecting .net-dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes net-pulse { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+.net-reconnect { position: fixed; z-index: 900; top: max(10px, 2vmin); left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 999px; background: color-mix(in srgb, var(--bg-1) 88%, transparent); box-shadow: 0 0 0 1px var(--warn), 0 8px 24px #00000080; color: var(--warn-fg); font-family: var(--font-sans); font-size: max(13px, 1.8vmin); font-weight: 600; white-space: nowrap; max-width: calc(100vw - 24px); }
+.net-reconnect i { width: 8px; height: 8px; border-radius: 999px; background: var(--warn); flex: none; animation: net-pulse 1.2s ease-in-out infinite; }
+.net-reconnect small { font-weight: 400; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .net-connecting .net-dots i, .net-reconnect i { animation: none; opacity: 1; } }
+
+/* ---- Start page: which screen this device shows ---- */
+.net-home { overflow: auto; display: flex; justify-content: center; padding: max(20px, 5vmin) 16px; }
+.net-home-in { width: min(100%, 760px); display: flex; flex-direction: column; gap: 24px; }
+.net-home-h { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.net-home-h img { width: 64px; height: 64px; border-radius: 999px; object-fit: cover; box-shadow: 0 0 0 1px var(--line); }
+.net-home-h h1 { margin: 4px 0 0; font-size: 22px; font-weight: 600; letter-spacing: .02em; }
+.net-home-h p { margin: 0; color: var(--fg-2); font-size: 15px; }
+.net-again { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--radius-panel); background: var(--brand-tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent); color: var(--fg-1); text-decoration: none; font-size: 15px; }
+.net-again b { font-weight: 600; }
+.net-again span { flex: 1; min-width: 0; }
+.net-again em { font-style: normal; flex: none; padding: 8px 14px; border-radius: var(--radius-control); background: var(--brand); color: var(--on-brand); font-weight: 600; font-size: 14px; }
+.net-group { display: flex; flex-direction: column; gap: 10px; }
+.net-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+.net-card { display: flex; flex-direction: column; gap: 4px; min-height: 76px; padding: 14px 16px; border-radius: var(--radius-panel); background: var(--bg-1); color: var(--fg-1); text-decoration: none; box-shadow: inset 0 0 0 1px var(--line); transition: background-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out); }
+.net-card:hover, .net-card:focus-visible { background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-strong); outline: none; }
+.net-card:focus-visible { box-shadow: inset 0 0 0 2px var(--brand); }
+.net-card b { font-size: 16px; font-weight: 600; }
+.net-card span { font-size: 13px; line-height: 18px; color: var(--fg-2); }
+.net-home-err { text-align: center; color: var(--warn-fg); background: var(--warn-tint); border-radius: var(--radius-panel); padding: 14px 16px; font-size: 15px; }
+.net-home-f { text-align: center; color: var(--fg-3); font-size: 13px; line-height: 18px; }
+
+/* ---- Palco (stage monitor): read from a few metres, every size in cqmin ---- */
+.net-stage { display: flex; flex-direction: column; gap: 2cqmin; padding: 3cqmin 3.5cqmin; }
+.net-stage .ns-bg { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; }
+.net-stage .ns-bg::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--bg-0) 72%, transparent); }
+.net-stage > :not(.ns-bg) { position: relative; z-index: 1; }
+.ns-h { display: flex; align-items: flex-start; gap: 2cqmin; flex: none; }
+.ns-title { flex: 1; min-width: 0; }
+.ns-title b { display: block; font-size: 4.2cqmin; line-height: 1.15; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-title span { display: block; margin-top: .6cqmin; font-size: 2.4cqmin; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-chips { display: flex; gap: 1.2cqmin; flex: none; }
+.ns-chip { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .3cqmin; padding: 1cqmin 1.8cqmin; border-radius: 1.4cqmin; background: color-mix(in srgb, var(--bg-1) 85%, transparent); box-shadow: inset 0 0 0 1px var(--line); min-width: 9cqmin; }
+.ns-chip small { font-size: 1.5cqmin; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-3); font-weight: 600; }
+.ns-chip b { font-size: 3.4cqmin; line-height: 1.1; font-weight: 600; }
+.ns-chip.is-clock b { font-size: 4.2cqmin; }
+.ns-notes { flex: none; padding: 1.4cqmin 2cqmin; border-radius: 1.4cqmin; background: var(--warn-tint); box-shadow: inset 3px 0 0 var(--warn); font-size: 2.4cqmin; line-height: 1.35; color: var(--fg-1); }
+.ns-main { flex: 1; min-height: 0; display: flex; gap: 2.5cqmin; }
+.ns-cur { flex: 1; min-width: 0; display: grid; place-items: center; text-align: center; font-size: 7.4cqmin; line-height: 1.2; font-weight: 700; white-space: pre-line; text-shadow: 0 .4cqmin 2cqmin #000000b3; overflow: hidden; }
+.ns-chords { flex: 0 0 34cqmin; min-height: 0; display: flex; flex-direction: column; gap: 1cqmin; padding: 1.6cqmin 2cqmin; border-radius: 1.6cqmin; background: color-mix(in srgb, var(--bg-1) 90%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.ns-chords-h { display: flex; align-items: center; gap: 1cqmin; }
+.ns-chords-h .net-section { flex: 1; }
+.ns-chords-h button { width: 5cqmin; height: 5cqmin; min-width: 32px; min-height: 32px; border: 0; border-radius: 999px; background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 2.8cqmin; line-height: 1; cursor: pointer; }
+.ns-chords-h button:active { background: var(--bg-3); }
+.ns-chords-h output { min-width: 6cqmin; text-align: center; font-size: 2cqmin; color: var(--fg-2); }
+.ns-chords pre { flex: 1; min-height: 0; overflow: auto; margin: 0; font: 500 2.2cqmin/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; color: var(--fg-1); }
+.ns-next { flex: none; display: flex; align-items: baseline; gap: 2cqmin; padding: 1.4cqmin 2cqmin; border-radius: 1.4cqmin; background: color-mix(in srgb, var(--bg-1) 85%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.ns-next p { margin: 0; flex: 1; min-width: 0; font-size: 3cqmin; line-height: 1.3; color: var(--fg-2); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ns-dots { flex: none; display: flex; justify-content: center; gap: .8cqmin; }
+.ns-dots i { height: 1cqmin; min-height: 5px; width: 1cqmin; min-width: 5px; border-radius: 999px; background: var(--line-strong); }
+.ns-dots i.is-on { width: 5cqmin; background: var(--air); }
+.ns-dots i.is-done { background: var(--fg-3); }
+.ns-idle { flex: 1; display: grid; place-content: center; justify-items: center; gap: 2cqmin; text-align: center; }
+.ns-idle .ns-clock { font-size: 16cqmin; line-height: 1; font-weight: 500; letter-spacing: .02em; }
+.ns-idle p { margin: 0; font-size: 3cqmin; color: var(--fg-2); }
+/* A stage monitor held upright or a phone: the chords go under the slide. */
+@container net (orientation: portrait) {
+    .ns-main { flex-direction: column; }
+    .ns-chords { flex: 0 1 34%; }
+    .ns-chips { flex-wrap: wrap; justify-content: flex-end; max-width: 50%; }
+}
+
+/* ---- Tela do pastor: what the congregation sees, the time, what comes next ---- */
+.net-pastor { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 2.4cqmin 3cqmin; padding: 3cqmin 3.5cqmin; }
+.np-h { grid-column: 1 / -1; display: flex; align-items: center; gap: 2.5cqmin; }
+.np-h .np-who { flex: 1; min-width: 0; }
+.np-h .np-who b { display: block; font-size: 2.6cqmin; font-weight: 600; }
+.np-h .np-who span { display: block; font-size: 1.9cqmin; color: var(--fg-2); }
+.np-time { display: flex; flex-direction: column; align-items: flex-end; }
+.np-time b { font-size: 6cqmin; line-height: 1; font-weight: 500; }
+.np-time span { font-size: 1.9cqmin; color: var(--fg-2); margin-top: .5cqmin; }
+.np-time span.is-run { color: var(--air-fg); }
+.np-air { min-height: 0; display: flex; flex-direction: column; gap: 1.2cqmin; }
+.np-cap { display: flex; align-items: baseline; gap: 1.4cqmin; min-width: 0; }
+.np-cap .net-section.is-air { color: var(--air-fg); }
+.np-cap b { flex: 0 1 auto; min-width: 0; font-size: 3cqmin; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-cap span { flex: none; font-size: 2cqmin; color: var(--fg-2); }
+.np-mon { position: relative; width: 100%; max-height: 100%; aspect-ratio: 16 / 9; border-radius: 1.4cqmin; overflow: hidden; background: var(--screen-bg); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; isolation: isolate; align-self: start; }
+.np-mon > * { position: absolute; inset: 0; }
+.np-side { min-height: 0; display: flex; flex-direction: column; gap: 1.6cqmin; overflow: hidden; }
+.np-list { display: flex; flex-direction: column; gap: .8cqmin; }
+.np-item { display: flex; align-items: baseline; gap: 1.4cqmin; padding: 1.4cqmin 1.8cqmin; border-radius: 1.2cqmin; background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); }
+.np-item b { flex: 1; min-width: 0; font-size: 2.8cqmin; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-item span { flex: none; font-size: 1.9cqmin; color: var(--fg-3); }
+.np-item.is-next { background: var(--prev-tint); box-shadow: inset 3px 0 0 var(--prev); }
+.np-empty { font-size: 2.2cqmin; color: var(--fg-3); }
+.np-prog { display: flex; gap: .6cqmin; }
+.np-prog i { flex: 1; height: 1cqmin; min-height: 5px; border-radius: 999px; background: var(--bg-3); }
+.np-prog i.is-done { background: color-mix(in srgb, var(--air) 45%, var(--bg-3)); }
+.np-prog i.is-on { background: var(--air); }
+/* A tablet held upright: the screen on top, the rest under it. */
+@container net (orientation: portrait) {
+    .net-pastor { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
+    .np-time b { font-size: 7cqmin; }
+}
+
+/* ---- Vídeo: the clip's name over the picture ---- */
+.net-vtitle { position: absolute; top: max(14px, 3vmin); left: 50%; transform: translateX(-50%); z-index: 10; pointer-events: none; padding: 1.2vmin 2.4vmin; border-radius: 999px; background: #000000a6; color: #fff; font-family: var(--font-sans); font-size: max(15px, 2.6vmin); font-weight: 600; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }

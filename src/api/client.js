@@ -50,13 +50,20 @@ function unavailableBackend() {
     };
 }
 
+const networkBridge = !isDesktop && isNetworkScreen ? createNetworkBridge() : null;
 const backend = isDesktop
     ? createDesktopBackend(desktopBridge)
-    : isNetworkScreen
-        ? createDesktopBackend(createNetworkBridge())
+    : networkBridge
+        ? createDesktopBackend(networkBridge)
         : unavailableBackend();
 
 export const { entities, auth, integrations, appLogs, live } = backend;
 
-export const keryx = { entities, auth, integrations, appLogs, live, isDesktop, isNetworkScreen, isPreview };
+// The link to the KERYX computer, for a screen on the network to show while
+// it (re)connects (src/lib/network/connection.js). Everywhere else there is
+// no link to lose: always open.
+const OPEN = Object.freeze({ phase: "open", attempt: 0, everOpen: true });
+export const connection = networkBridge ? networkBridge.connection : { current: () => OPEN, subscribe: () => () => {} };
+
+export const keryx = { entities, auth, integrations, appLogs, live, connection, isDesktop, isNetworkScreen, isPreview };
 export default keryx;

@@ -77,12 +77,15 @@ function lanAddresses(interfaces = os.networkInterfaces()) {
     return found.sort((x, y) => rank(x.address) - rank(y.address));
 }
 
-const page = (title, body) => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#1a1714;color:#e6ebe0;font:16px system-ui,sans-serif}
-main{width:min(92vw,360px);text-align:center}h1{font-size:22px;margin:0 0 8px}p{color:#a39b8b;margin:0 0 20px}
-input{width:100%;box-sizing:border-box;padding:14px;font-size:28px;text-align:center;letter-spacing:.4em;border-radius:10px;border:1px solid #3b362f;background:#26211c;color:inherit}
-button{width:100%;margin-top:12px;padding:14px;font-size:17px;border:0;border-radius:10px;background:#7d8470;color:#1a1714;font-weight:600}
-.err{color:#e57373;margin-top:12px}</style></head><body><main>${body}</main></body></html>`;
+// The two pages the server writes itself (PIN, not available), in the design
+// system's colours (docs/design-system/tokens.css: bg-0, bg-1/2, line-strong,
+// fg-1/2, brand + on-brand for the one action, warn-fg for the error).
+const page = (title, body) => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>${title}</title><style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0d0d0c;color:#f4f1ea;font:16px system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px;box-sizing:border-box}
+main{width:min(100%,360px);text-align:center;background:#171715;border-radius:14px;padding:28px 24px;box-shadow:0 0 0 1px #35342f}h1{font-size:22px;margin:0 0 8px;font-weight:600;letter-spacing:.02em}p{color:#bbb6ac;margin:0 0 20px;line-height:1.45}
+input{width:100%;box-sizing:border-box;padding:14px;font-size:28px;text-align:center;letter-spacing:.4em;border-radius:8px;border:0;box-shadow:inset 0 0 0 1px #4a4840;background:#20201d;color:inherit;outline:none}input:focus{box-shadow:inset 0 0 0 2px #c19959}
+button{width:100%;margin-top:12px;padding:14px;font-size:17px;border:0;border-radius:8px;background:#c19959;color:#20180c;font-weight:600;cursor:pointer}button:hover{background:#d0a968}button:active{background:#a47d43}
+.err{color:#ffc24d;background:#f5a5241a;border-radius:8px;padding:10px 12px;margin:14px 0 0}</style></head><body><main>${body}</main></body></html>`;
 
 const pinPage = (next, error) => page("KERYX", `<h1>KERYX</h1><p>Digite o PIN desta tela</p>
 <form method="post" action="/lan/pin"><input type="hidden" name="next" value="${next.replace(/[&"<>]/g, "")}">

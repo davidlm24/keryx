@@ -375,10 +375,14 @@ async function checkVideo(webContents, { live }) {
         }
     }
     live.call("video.clear");
+    // Cleared, the video screen falls back to the live idle look (the church
+    // logo or black, src/lib/network/views.js standbyView): the clip no longer
+    // plays there (a background loop may) and its name is gone.
     result.cleared = await (async () => {
         const end = Date.now() + 5000;
         while (Date.now() < end) {
-            if ((await bodyText(screenWin)).includes("Dispositivo de Vídeo")) return true;
+            const idle = screenWin ? await screenWin.webContents.executeJavaScript(`![...document.querySelectorAll("video")].some((v) => v.src.includes(${JSON.stringify(fileName)})) && Boolean(document.querySelector(".ks-idle, .ks-black"))`).catch(() => false) : false;
+            if (idle && !(await bodyText(screenWin)).includes("Vídeo de teste")) return true;
             await sleep(250);
         }
         return false;
