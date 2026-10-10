@@ -40,7 +40,7 @@ const page = (base, p, headers = {}) => fetch(base + p, { redirect: "manual", he
 test("serves only screen pages and '/', with the network flag injected", async (t) => {
     const f = await started();
     t.after(() => f.lan.stop());
-    for (const p of ["/", "/Projection", "/LyricProjection", "/StageView/", "/PastorView", "/CommunicationProjection", "/VideoProjection"]) {
+    for (const p of ["/", "/Projection", "/LyricProjection", "/StageView/", "/PastorView", "/CommunicationProjection", "/VideoProjection", "/StreamView"]) {
         const res = await page(f.base, p);
         assert.equal(res.status, 200, p);
         assert.match(await res.text(), /<head><script>window\.keryxLan=true;<\/script>/, p);

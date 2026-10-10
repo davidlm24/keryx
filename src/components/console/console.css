@@ -620,3 +620,6 @@
 .console .upd-notes-t { max-height: 180px; overflow: auto; white-space: pre-line; overflow-wrap: anywhere; color: var(--fg-2); font-size: 12px; line-height: 17px; }
 .console .notifs .note-f { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: 4px; }
 .console .notifs .note-x { height: 22px; width: 22px; }
+/* Telas na rede: each screen with its own address (OBS needs Transmissão's). */
+.console .cfg .cfg-screen { cursor: default; }
+.console .cfg .cfg-screen .cfg-screen-url { font: inherit; font-size: 12px; color: var(--fg-2); user-select: text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }

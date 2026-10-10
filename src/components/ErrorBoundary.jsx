@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 
 // Unattended screens (TVs, tablets) have nobody to press "Recarregar".
-const SCREEN_PATHS = ["/Projection", "/LyricProjection", "/VideoProjection", "/CommunicationProjection", "/StageView", "/PastorView"];
+const SCREEN_PATHS = ["/Projection", "/LyricProjection", "/VideoProjection", "/CommunicationProjection", "/StageView", "/PastorView", "/StreamView"];
 const SCREEN_RELOAD_MS = 10000;
 
 class Boundary extends React.Component {

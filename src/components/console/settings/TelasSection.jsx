@@ -3,7 +3,7 @@ import Icon from "../Icon";
 import { Btn, Seg, Empty } from "../kx";
 import { useBridge, usePoll, Switch, desktopOnly } from "./parts";
 
-const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv" };
+const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv", "/StreamView": "external" };
 
 // Telas e saídas: the monitors as a diagram, each output's screen, "Abrir
 // ao iniciar", open/close, Identificar, and the idle look of the screens.
