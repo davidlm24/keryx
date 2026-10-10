@@ -1200,6 +1200,27 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         await waitFor(() => js("!document.querySelector('.song-ed-l')"));
 
+        // The Prévia rail: the prepared song as each output will show it.
+        // Letras shows its text, Avisos says it shows nothing of a song, and
+        // Projeção (the default) comes back.
+        await click(".envtabs button", "KERYX");
+        await click(".kx-tabs button", "Letras");
+        await click(".kx-row", "Canto do console");
+        await waitCap(PREV, "Canto do console");
+        const railShows = () => js(`(() => { const m = document.querySelector(".subrow .kx-mon"); return m ? { text: Boolean(m.querySelector(".ks-text")), empty: (m.querySelector(".kx-screen-empty") || {}).textContent || "" } : null; })()`);
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Avisos"); if (b) b.click(); return Boolean(b); })()`);
+        await sleep(300);
+        const asNotices = await railShows();
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Letras"); if (b) b.click(); return Boolean(b); })()`);
+        await sleep(300);
+        const asLyrics = await railShows();
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Projeção"); if (b) b.click(); return Boolean(b); })()`);
+        await sleep(300);
+        result.prevRailDiag = { asNotices, asLyrics };
+        result.prevRail = Boolean(asNotices && !asNotices.text && /não mostra/.test(asNotices.empty) && asLyrics && asLyrics.text)
+            && await js(`(() => { const on = [...document.querySelectorAll(".prev-rail button")].filter((b) => b.getAttribute("aria-pressed") === "true"); return on.length === 1 && on[0].getAttribute("aria-label") === "Prévia como Projeção"; })()`);
+        await js("document.activeElement && document.activeElement.blur(); true");
+
         // Hover actions never reach the middle of a row, in every Biblioteca
         // list, at the column's default width and at its 200 px minimum: a
         // click there prepares the item (PR #38). Measured with the actions
@@ -1675,7 +1696,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
-        && result.rowActsClear
+        && result.prevRail && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection

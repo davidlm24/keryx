@@ -30,3 +30,19 @@ test("nextItems: the items after the one on air, by id, else by position", () =>
     assert.deepEqual(nextItems(items, { serviceId: "s" }).map((i) => i.id), ["a", "b", "c"]);
     assert.deepEqual(nextItems(items, null), []);
 });
+
+test("outputView: each output's view of a stage, for the Prévia rail", async () => {
+    const { outputView, OUTPUT_VIEWS } = await import("./views.js");
+    const clip = { kind: "video", url: "clip.mp4", title: "Clipe" };
+    const notice = { item: { title: "Aviso" } };
+    const live = { screen: "show", content: song, media, video: clip, communication: notice, idle: "logo" };
+    assert.deepEqual(OUTPUT_VIEWS.map((o) => o.name), ["Projeção", "Letras", "Vídeo", "Avisos"]);
+    assert.equal(outputView("/Projection", live), live, "the projector shows everything");
+    assert.equal(outputView("/LyricProjection", live).media, null);
+    assert.equal(outputView("/VideoProjection", live).video, clip);
+    assert.equal(outputView("/VideoProjection", live).content, undefined, "only the clip");
+    assert.equal(mainLayer(outputView("/VideoProjection", { screen: "show", content: song })), "none", "no clip: the idle look");
+    assert.deepEqual(outputView("/CommunicationProjection", live), { screen: "show", communication: notice });
+    assert.equal(outputView("/CommunicationProjection", { screen: "show", content: song }), null, "no aviso: nothing");
+    assert.equal(outputView("/Nope", live), live, "unknown: the projector");
+});
