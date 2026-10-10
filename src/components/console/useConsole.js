@@ -3,6 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
+import { undoEndOps } from "@/lib/console/restore";
 
 // The console's own state around the live state. One console, always live:
 // every operation goes to the live state (shared/live-state.mjs).
@@ -25,10 +26,12 @@ export function useConsole() {
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 
-    const say = useCallback((text) => {
-        setToastState(text);
+    // A toast: one line, 3 s; with an action ({ label, run }) a button and
+    // 8 s, so there is time to reach it.
+    const say = useCallback((text, action = null) => {
+        setToastState({ text, action });
         clearTimeout(toastTimer.current);
-        toastTimer.current = setTimeout(() => setToastState(null), 3000);
+        toastTimer.current = setTimeout(() => setToastState(null), action ? 8000 : 3000);
     }, []);
     useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -93,9 +96,27 @@ export function useConsole() {
         for (const op of ["tool.clear", "communication.clear", "content.clear"]) await callOp(op).catch(() => {});
     }, [callOp]);
 
-    // Encerrar: everything on the main projector and the video screens goes;
-    // background, logo, overlays and the alert have their own controls.
-    const end = useCallback(() => callOp("clear").catch(() => {}), [callOp]);
+    // Desfazer (the toast after Esc / Encerrar): what the screens showed goes
+    // straight back (src/lib/console/restore.js). Not while locked: putting
+    // something on air is what the lock refuses.
+    const undoEnd = useCallback(async (before) => {
+        if (locked) { say(LOCKED_SAY); return; }
+        try {
+            for (const [op, args] of undoEndOps(before)) await liveOp(op, args);
+            say("Projeção de volta.");
+        } catch { /* liveOp said why */ }
+    }, [locked, liveOp, say]);
+
+    // Encerrar (Esc, at once; the button, after asking): everything on the
+    // main projector and the video screens goes; background, logo, overlays
+    // and the alert have their own controls. The toast offers Desfazer
+    // (owner's decision 2026-10-10).
+    const end = useCallback(async () => {
+        const before = live;
+        try { await callOp("clear"); } catch { return; }
+        if (undoEndOps(before).length) say("Projeção encerrada.", { label: "Desfazer", run: () => undoEnd(before) });
+        else say("Projeção encerrada.");
+    }, [live, callOp, say, undoEnd]);
 
     // Travar telas / Destravar (Saídas, the banner).
     const setLocked = useCallback((on) => {
@@ -104,5 +125,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, callOp, liveOp, toast, say };
+    return { live, now, cur: live, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, toast: toast?.text || null, toastAction: toast?.action || null, say };
 }

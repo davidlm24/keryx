@@ -85,16 +85,7 @@ export const projection = {
     setItem: (itemId, index = null) => keryx.live.call("session.item", { itemId, index }),
 };
 
-// "Voltar ao anterior": the op and args that put a history entry
-// (live.history[i], see shared/live-state.mjs) back on the projector.
-// The console sends it only after the operator confirms (through the preview).
-export function restoreArgs(entry) {
-    const d = entry.data;
-    if (entry.layer === "content") return ["content.show", { kind: d.kind, ref: d.ref, title: d.title, artist: d.artist, slides: d.slides, index: d.index, style: d.style, stage: d.stage, audio: d.audio }];
-    if (entry.layer === "media") return d.playlist ? ["media.playlist", { items: d.playlist, index: d.playlistIndex }] : ["media.show", { kind: d.kind, url: d.url, title: d.title, duration: d.duration, id: d.id }];
-    if (entry.layer === "communication") return d.playlist ? ["communication.show", { playlist: d.playlist, index: d.playlistIndex }] : ["communication.show", { item: d.item }];
-    if (entry.layer === "tool") return ["tool.show", { mode: d.mode, text: d.text, style: d.style, durationMs: d.mode === "timer" ? Math.max(1, d.endsAt - d.startedAt) : undefined }];
-    throw new Error(`Entrada de histórico desconhecida: ${entry.layer}`);
-}
+// "Voltar ao anterior": src/lib/console/restore.js (pure, tested).
+export { restoreArgs } from "@/lib/console/restore";
 
 export default projection;

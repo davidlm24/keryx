@@ -430,8 +430,7 @@ export default function Console() {
             else if (action === "end") {
                 e.preventDefault();
                 if (drawer) { setDrawer(false); return; }
-                c.end();
-                c.say("Projeção encerrada · Voltar ao anterior desfaz.");
+                c.end(); // its toast offers Desfazer
             }
             else if (action === "search") { e.preventDefault(); setOpen("palette"); }
             else if (action === "help") setOpen("atalhos");
@@ -630,7 +629,12 @@ export default function Console() {
                 <BibleQuickJump initial={quick} onCancel={() => setQuick(null)}
                     onPick={(r) => { setQuick(null); setBibleRequest({ book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart, at: Date.now() }); }} />
             )}
-            {c.toast && <div className="toast">{c.toast}</div>}
+            {c.toast && (
+                <div className="toast" role="status">
+                    <span className="toast-t">{c.toast}</span>
+                    {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
+                </div>
+            )}
         </div>
     );
 }

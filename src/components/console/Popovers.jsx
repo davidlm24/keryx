@@ -88,7 +88,7 @@ export function Shortcuts({ open, setOpen }) {
         ["B", "Tela preta (na hora)"],
         ["L", "Mostrar logo"],
         ["C", "Limpar texto"],
-        ["Esc", "Tirar tudo do ar na hora (Voltar ao anterior desfaz) ou fechar o que está aberto"],
+        ["Esc", "Tirar tudo do ar na hora (o aviso traz Desfazer) ou fechar o que está aberto"],
         ["Letra", "Na Bíblia: digitar a referência (ex.: jo 3 16)"],
         ["/", "Buscar em tudo"],
         ["?", "Esta lista"],

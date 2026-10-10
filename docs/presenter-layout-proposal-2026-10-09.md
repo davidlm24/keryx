@@ -182,7 +182,7 @@ These do **not** change an output: ↑ / ↓ (selection), palette Enter (Prévia
 
 **Focus model.** Typing is safe. Every live key returns null inside `input`, `textarea`, `select` and contenteditable, and AltGr counts as typing (`keys.js:29,44`). The exceptions are deliberate (the aviso field) or listed below.
 
-**Decisions for you.** Each of these is a product decision, so I have not changed any of them.
+**Decisions for you.** Each of these is a product decision, so I have not changed any of them. *Answered 2026-10-10: 1. Esc stays instant, its toast offers Desfazer, which restores the Programa; 2. moot (Ensaio became Travar telas, where B and L keep working); 3. Camadas edits stay live as made; 4. built (one send tooltip). The Próximo line says "Pôr na prévia".*
 
 1. **Esc ends the projection at once.** This is recorded in `design-system.md` as a deliberate departure from the canvas. The risk the research points at: Esc in a text field blurs it, and a second Esc ends the service. One option keeps Esc instant but makes the toast's "Voltar ao anterior" restore the Programa, not only the Prévia. Another is to ask only when Esc follows a blur within ~1s.
 2. **B and L act on the real screens in Ensaio.** That suits an emergency. Confirm it is intended.
