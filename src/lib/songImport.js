@@ -118,6 +118,8 @@ export function songFromText(raw, { name = "", title = "", artist = "", lines = 
         artist: artist || directive(text, "artist", "subtitle", "st"),
         lyrics,
         slides: sections.map((s) => ({ text: s.text, duration: 0, ...(CHORUS_RE.test(s.section) ? { is_chorus: true } : {}) })),
+        // The editor redoes the slides with the same split when the lyrics change.
+        lines_per_slide: [2, 4].includes(lines) ? lines : 0,
     };
 }
 

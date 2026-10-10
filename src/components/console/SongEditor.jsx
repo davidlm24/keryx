@@ -8,13 +8,19 @@ import { songContent, isVideoUrl } from "@/lib/console/content";
 import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
 import { parseChords, slidesFromLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { printSong } from "@/lib/printSong";
+import { slideFit, stanzaAt } from "@/lib/console/lyricFit";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["cursive", "Cursiva"], ["arial", "Arial"], ["georgia", "Georgia"], ["times", "Times"], ["verdana", "Verdana"]];
 const SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const SWATCHES = [["#ffffff", "Branco"], ["#f3e6c9", "Creme"], ["#c9dcff", "Azul claro"], ["#ffe08a", "Amarelo"], ["#1a1a1a", "Preto"]];
-const SPLITS = [["0", "Estrofe"], ["2", "2 linhas"], ["4", "4 linhas"]];
+const SPLITS = [["0", "Estrofe", { title: "Uma estrofe por slide" }], ["2", "2 linhas", { title: "No máximo 2 linhas por slide" }], ["4", "4 linhas", { title: "No máximo 4 linhas por slide" }]];
+// The slide previews' size, remembered on this computer.
+const THUMBS = [["s", "P", { title: "Prévias pequenas" }], ["m", "M", { title: "Prévias médias" }], ["l", "G", { title: "Prévias grandes" }]];
+const THUMBS_KEY = "keryx.console.editor.thumbs";
+const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); return ["s", "m", "l"].includes(v) ? v : "m"; } catch { return "m"; } };
+const splitOf = (n) => (Number(n) === 2 || Number(n) === 4 ? String(Number(n)) : "0");
 const BG_IDS = [...new Set(Object.entries(BACKGROUNDS).filter(([k]) => k !== "Comunicação").flatMap(([, ids]) => ids))];
 
 const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", slides: [], font_size: "large", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false };
@@ -29,6 +35,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     const [song, setSong] = useState(null);
     const [error, setError] = useState("");
     const [split, setSplit] = useState("0");
+    const [thumbs, setThumbsState] = useState(readThumbs);
+    const setThumbs = (v) => { setThumbsState(v); try { localStorage.setItem(THUMBS_KEY, v); } catch { /* not remembered */ } };
     const [resplit, setResplit] = useState(false);
     const [durationText, setDurationText] = useState("");
     const [sel, setSel] = useState(0);
@@ -55,6 +63,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
         keryx.entities.Song.get(songId).then((row) => {
             if (!alive) return;
             setSong({ ...NEW_SONG, ...row });
+            setSplit(splitOf(row.lines_per_slide));
             setDurationText(formatDuration(row.duration));
             setStarts((row.slides || []).map((s) => (Number.isFinite(s.start) ? s.start : null)));
             setResplit(!(row.slides || []).length);
@@ -92,6 +101,28 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
         const insert = `${before ? "\n\n" : ""}[${label}]\n`;
         setLyrics(before + insert + text.slice(at).replace(/^\s*/, ""));
         setTimeout(() => { if (el) { const p = (before + insert).length; el.focus(); el.setSelectionRange(p, p); } }, 0);
+    };
+    // Dividir aqui: a blank line at the cursor, so the stanza becomes two slides.
+    const splitHere = () => {
+        const el = lyricsRef.current;
+        const text = song.lyrics || "";
+        const at = el ? el.selectionStart : text.length;
+        const before = text.slice(0, at).replace(/\s*$/, "");
+        const after = text.slice(at).replace(/^\s*/, "");
+        if (!before || !after) { c.say("Ponha o cursor no meio de uma estrofe para dividir."); return; }
+        setLyrics(before + "\n\n" + after);
+        setTimeout(() => { if (el) { const p = before.length + 2; el.focus(); el.setSelectionRange(p, p); } }, 0);
+    };
+    // Duplicar estrofe: the stanza under the cursor, again right after it.
+    const duplicateStanza = () => {
+        const el = lyricsRef.current;
+        const text = song.lyrics || "";
+        const [a, b] = stanzaAt(text, el ? el.selectionStart : text.length);
+        const stanza = text.slice(a, b);
+        if (!stanza.trim()) { c.say("Ponha o cursor numa estrofe para duplicar."); return; }
+        setLyrics(text.slice(0, b) + "\n\n" + stanza + text.slice(b));
+        setTimeout(() => { if (el) { const p = b + 2; el.focus(); el.setSelectionRange(p, p + stanza.length); } }, 0);
+        c.say("Estrofe duplicada logo abaixo.");
     };
     const importCifra = () => {
         const raw = cifraText.trim();
@@ -158,6 +189,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
             title: song.title.trim(),
             duration: parseDuration(durationText) ?? song.duration ?? null,
             bpm: song.bpm ? Number(song.bpm) || null : null,
+            lines_per_slide: Number(split),
             slides: slides.map(({ text, duration, is_chorus, start, label }) => ({ text, ...(label ? { label } : {}), ...(is_chorus ? { is_chorus } : {}), ...(Number.isFinite(start) ? { start } : {}), ...(Number.isFinite(duration) ? { duration } : {}) })),
         };
         for (const k of ["id", "created_date", "updated_date", "created_by_id"]) delete data[k];
@@ -168,7 +200,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
             onSaved?.(row);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
         setBusy("");
-    }, [song, slides, durationText, songId, c, onSaved]);
+    }, [song, slides, durationText, songId, split, c, onSaved]);
 
     const remove = async () => {
         if (confirm !== "delete") { setConfirm("delete"); c.say(`Clique de novo em Excluir para apagar "${song.title}".`); return; }
@@ -255,11 +287,15 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
             </div>
             <div className="kx-gap" />
             <div className="col" style={{ flex: "0 1 480px", minWidth: 300 }}>
-                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<Seg small value={split} onChange={(v) => { setSplit(v); setResplit(true); setDirty(true); }} options={SPLITS} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="ed-tools">
                         <Btn small kind="outline" onClick={() => addMarker("Verso")}>[Verso]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Refrão")}>[Refrão]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Ponte")}>[Ponte]</Btn>
+                        <Btn small kind="outline" onClick={() => addMarker("Instrumental")}>[Instrumental]</Btn>
+                        <Btn small kind="outline" onClick={() => addMarker("Final")}>[Final]</Btn>
+                        <Btn small onClick={splitHere} title="Uma linha vazia no cursor: a estrofe vira dois slides">Dividir aqui</Btn>
+                        <Btn small onClick={duplicateStanza} title="Repete a estrofe onde está o cursor, logo abaixo">Duplicar estrofe</Btn>
                         <span style={{ flex: 1 }} />
                         <span className="kx-meta">{slides.length} {slides.length === 1 ? "slide" : "slides"}</span>
                     </div>
@@ -268,16 +304,23 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
             </div>
             <div className="kx-gap" />
             <div className="col center song-ed-r" style={{ gap: "var(--gutter)" }}>
-                <Panel title={<>Slides <span className="kx-count">· {resplit ? "divisão ao vivo" : "slides salvos · editar a letra refaz"}</span></>} style={{ flex: 1.3 }} actions={<Seg small value={split} onChange={(v) => { setSplit(v); setResplit(true); setDirty(true); }} options={SPLITS} />} bodyStyle={{ overflow: "auto" }}>
+                <Panel title={<>Slides <span className="kx-count">· {resplit ? "divisão ao vivo" : "slides salvos · editar a letra refaz"}</span></>} style={{ flex: 1.3 }} actions={<Seg small value={thumbs} onChange={setThumbs} options={THUMBS} />} bodyStyle={{ overflow: "auto" }}>
                     {!slides.length && <Empty icon="list" title="Nenhum slide">Escreva a letra; cada estrofe vira um slide.</Empty>}
-                    <div className="ed-thumbs">
-                        {doc && slides.map((s, i) => (
+                    <div className={"ed-thumbs is-" + thumbs}>
+                        {doc && slides.map((s, i) => {
+                            const fit = slideFit(s.text, song.font_size);
+                            const fitTitle = fit.wraps.length
+                                ? (fit.wraps.length === 1 ? "A linha " + fit.wraps[0] + " quebra" : "As linhas " + fit.wraps.join(", ") + " quebram") + " na tela neste tamanho de letra (cabem uns " + fit.limit + " caracteres por linha; a mais longa tem " + fit.longest + ")"
+                                : fit.lines + (fit.lines === 1 ? " linha, " : " linhas, ") + fit.chars + " caracteres · cabe na tela";
+                            return (
                             <button type="button" key={i} className={`ed-th kx-t ${i === sel ? "is-sel" : ""} ${marking && i === nextMark ? "is-next" : ""}`} onClick={() => setSel(i)} title={s.label || `Slide ${i + 1}`}>
                                 <ScreenRenderer state={{ ...doc, content: { ...doc.content, index: i } }} now={c.now} preview />
                                 <span className="n">{i + 1}{Number.isFinite(starts[i]) ? ` · ${mmss(starts[i])}` : ""}</span>
                                 {s.label && (i === 0 || slides[i - 1].label !== s.label) && <span className="lab">{s.label}</span>}
+                                <span className={"fit" + (fit.wraps.length ? " is-warn" : "")} title={fitTitle}>{fit.lines} l · {fit.chars} c{fit.wraps.length ? " · quebra" : ""}</span>
                             </button>
-                        ))}
+                            );
+                        })}
                     </div>
                 </Panel>
                 <Panel title="Vídeo e sincronização" style={{ flex: 1 }} actions={<>

@@ -248,6 +248,16 @@ Today `PastorView.jsx`, `StageView.jsx`, `LyricProjection.jsx`,
 
 ## G. Song editor (item 7)
 
+**Built** (release session, 2026-10-10). Differences from the outline below:
+there is no SLIDES split seg in the console to turn into a "da música"
+override, so that part is moot; songs keep their saved slides, and
+`content.js` uses `lines_per_slide` only for a song with lyrics but no saved
+slides. The P/M/G size is remembered per computer (localStorage), not in the
+console layout. The duplicate-stanza action duplicates the stanza under the
+lyrics cursor (the slide right-click menu is section F's). The wrap hint
+estimates characters per line from the screen's 84 % text width and the
+font size (`src/lib/console/lyricFit.js`).
+
 - **Bigger previews**: `ed-thumbs` `minmax(168px → 230px)` plus a P/M/G
   density seg in the SLIDES header (stored in the layout object).
 - **Split control in the editor, persisted**: new Song field
