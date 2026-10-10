@@ -30,7 +30,14 @@ export const MEDIA_KINDS = ["video", "image", "gif", "pdf", "powerpoint", "youtu
 export const BACKGROUND_KINDS = ["image", "video", "color"];
 export const TOOL_MODES = ["clock", "stopwatch", "timer", "freetext"];
 export const ALERT_TYPES = ["alert", "message"];
-export const STYLE_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "background_image", "background_color", "text_align", "text_position", "transition"];
+// The text's look. The first ten are free text (as saved in songs and themes);
+// the rest (Camadas, 2026-10-10) are typed: a number in a range or a choice.
+export const STYLE_RANGES = { text_opacity: [0.2, 1], text_max_width: [40, 100], text_box_opacity: [0, 0.9], text_nudge: [-20, 20] };
+export const STYLE_CHOICES = { line_height: ["tight", "normal", "loose"], text_case: ["none", "upper"], text_box: ["none", "band", "block"] };
+export const STYLE_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "background_image", "background_color", "text_align", "text_position", "transition",
+    ...Object.keys(STYLE_RANGES), ...Object.keys(STYLE_CHOICES), "text_box_color"];
+export const BACKGROUND_FITS = ["cover", "contain"];
+export const BACKGROUND_POSITIONS = ["center", "top", "bottom"];
 export const LOGO_CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
 export const LOGO_SIZES = ["small", "medium", "large"];
 // The main layers, top to bottom: what "Voltar ao anterior" remembers.
@@ -130,6 +137,16 @@ function count(value, label, { min = 0 } = {}) {
     return n;
 }
 
+// A number for a slider: not a number is an error, out of range is clamped
+// (a control may send its last step; the screens never get a wild value).
+function ranged(value, [min, max], label) {
+    const n = Number(value);
+    if (value === "" || value === null || typeof value === "boolean" || !Number.isFinite(n)) throw new LiveError(`${label} inválido.`);
+    return Math.round(Math.min(max, Math.max(min, n)) * 100) / 100;
+}
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
 // Free-form JSON (chords, quiz questions, a communication item): kept as is,
 // but it must be plain data and not huge.
 function loose(value, label) {
@@ -156,9 +173,12 @@ function style(value) {
     if (!isPlainObject(value)) throw new LiveError("Estilo inválido.");
     const out = {};
     for (const key of STYLE_KEYS) {
-        if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
-            out[key] = text(value[key], key, { max: key.startsWith("background") ? MAX_URL * 1024 : 200 });
-        }
+        const v = value[key];
+        if (v === undefined || v === null || v === "") continue;
+        if (STYLE_RANGES[key]) out[key] = ranged(v, STYLE_RANGES[key], key);
+        else if (STYLE_CHOICES[key]) out[key] = oneOf(v, STYLE_CHOICES[key], key);
+        else if (key === "text_box_color") { if (!HEX.test(String(v))) throw new LiveError("Cor da caixa inválida."); out[key] = String(v).toLowerCase(); }
+        else out[key] = text(v, key, { max: key.startsWith("background") ? MAX_URL * 1024 : 200 });
     }
     return out;
 }
@@ -272,16 +292,29 @@ const OPS = {
         if (a.visible !== undefined) next.visible = Boolean(a.visible);
         if (a.corner !== undefined) next.corner = oneOf(a.corner, LOGO_CORNERS, "Canto do logo");
         if (a.size !== undefined) next.size = oneOf(a.size, LOGO_SIZES, "Tamanho do logo");
-        return next.visible === s.logo.visible && next.corner === s.logo.corner && next.size === s.logo.size ? null : { logo: next };
+        // Camadas: how see-through, how far from the corner (% of the width),
+        // and a free width (% of the width) that overrides the size; null resets.
+        if (a.opacity !== undefined) next.opacity = a.opacity === null ? undefined : ranged(a.opacity, [0.2, 1], "Opacidade do logo");
+        if (a.margin !== undefined) next.margin = a.margin === null ? undefined : ranged(a.margin, [1, 10], "Margem do logo");
+        if (a.width !== undefined) next.width = a.width === null ? undefined : ranged(a.width, [4, 30], "Largura do logo");
+        for (const k of ["opacity", "margin", "width"]) if (next[k] === undefined) delete next[k];
+        return JSON.stringify(next) === JSON.stringify(s.logo) ? null : { logo: next };
     },
 
-    "background.set": (_s, a) => ({
-        background: {
+    "background.set": (_s, a) => {
+        const background = {
             kind: oneOf(a.kind, BACKGROUND_KINDS, "Tipo de fundo"),
             value: text(a.value, "Fundo", { max: MAX_URL * 1024, required: true }),
             title: text(a.title, "Título", { max: 500 }),
-        },
-    }),
+        };
+        // Camadas: how the picture fills the screen, how dark, how blurred
+        // (px at 1920 wide) and which part shows; only when set.
+        if (a.fit !== undefined && a.fit !== null) background.fit = oneOf(a.fit, BACKGROUND_FITS, "Ajuste do fundo");
+        if (a.dim !== undefined && a.dim !== null) background.dim = ranged(a.dim, [0, 0.9], "Escurecer");
+        if (a.blur !== undefined && a.blur !== null) background.blur = ranged(a.blur, [0, 20], "Desfoque");
+        if (a.position !== undefined && a.position !== null) background.position = oneOf(a.position, BACKGROUND_POSITIONS, "Posição do fundo");
+        return { background };
+    },
     "background.clear": (s) => (s.background ? { background: null } : null),
 
     "content.show": (s, a, now) => {

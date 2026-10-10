@@ -370,3 +370,35 @@ test("playlist.goTo: Anterior / Próximo in the player keep the volume", () => {
     const single = run([["media.show", { kind: "video", url: "v" }, T0]]);
     assert.throws(() => applyOp(single, "playlist.goTo", { layer: "media", index: 1 }, T0), LiveError);
 });
+
+test("Camadas text style: typed keys clamp or choose; bad values are errors; old keys stay text", () => {
+    const s = run([["content.show", { ...song, style: { font_size: "large", text_opacity: 1.7, text_max_width: 10, line_height: "loose", text_case: "upper", text_box: "block", text_box_color: "#1A2B3C", text_box_opacity: 0.5, text_nudge: -50 } }]]);
+    assert.deepEqual(s.content.style, { font_size: "large", text_opacity: 1, text_max_width: 40, line_height: "loose", text_case: "upper", text_box: "block", text_box_opacity: 0.5, text_nudge: -20, text_box_color: "#1a2b3c" });
+    assert.throws(() => run([["content.show", { ...song, style: { line_height: "huge" } }]]), LiveError);
+    assert.throws(() => run([["content.show", { ...song, style: { text_box_color: "red" } }]]), LiveError);
+    assert.throws(() => run([["content.show", { ...song, style: { text_opacity: "muito" } }]]), LiveError);
+    // content.update keeps them too (Camadas edits what is on air).
+    const u = applyOp(s, "content.update", { style: { ...s.content.style, text_case: "none" } }, T0);
+    assert.equal(u.content.style.text_case, "none");
+    assert.equal(u.content.style.text_box, "block");
+});
+
+test("Camadas logo: opacity, margin and free width, clamped; null resets; no change, no broadcast", () => {
+    let s = applyOp(emptyState(T0), "logo.set", { visible: true, opacity: 0.05, margin: 4, width: 50 }, T0);
+    assert.deepEqual(s.logo, { visible: true, corner: "bottom-right", size: "medium", opacity: 0.2, margin: 4, width: 30 });
+    assert.equal(applyOp(s, "logo.set", { opacity: 0.2 }, T0), s, "same values: the same object");
+    s = applyOp(s, "logo.set", { width: null }, T0);
+    assert.equal("width" in s.logo, false);
+    assert.throws(() => applyOp(s, "logo.set", { opacity: "x" }, T0), LiveError);
+});
+
+test("Camadas background: fit, dim, blur and position, only when set", () => {
+    const plain = run([["background.set", { kind: "image", value: "keryx-media://a.jpg" }]]).background;
+    assert.deepEqual(Object.keys(plain).sort(), ["kind", "title", "value"], "an old call keeps the old shape");
+    const b = run([["background.set", { kind: "image", value: "keryx-media://a.jpg", fit: "contain", dim: 2, blur: 8, position: "top" }]]).background;
+    assert.equal(b.fit, "contain");
+    assert.equal(b.dim, 0.9);
+    assert.equal(b.blur, 8);
+    assert.equal(b.position, "top");
+    assert.throws(() => run([["background.set", { kind: "image", value: "x", fit: "stretch" }]]), LiveError);
+});
