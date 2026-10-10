@@ -10,6 +10,7 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { bibleBooks, BIBLE_VERSIONS, parseReference } from "@/lib/bibleBooks";
 import { getChapter, preferredVersion, installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
 import { stageFromVerses } from "@/lib/console/stage";
+import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { rangeLabel, groupVerses, passageOf, chapterOnAir } from "@/lib/console/bibleVerses";
 import { verseNumbers } from "@/lib/verseMarks";
 
@@ -289,7 +290,6 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const canInstall = (v) => Boolean(BIBLE_VERSIONS.find((x) => x.id === v)?.install) && !installed.includes(v);
     const others = installed.filter((v) => v !== (version || wanted));
     const airTitle = c.cur?.content ? c.cur.content.title : c.cur?.media ? c.cur.media.title : "nada";
-    const sendLabel = "Enviar ao ar";
     const searchSel = sel.length === 1 ? { book, chapter, verse: sel[0] } : null;
 
     return (
@@ -394,7 +394,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                         </div>
                     )}
                     <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-2)", flexWrap: "wrap", borderTop: "1px solid var(--line)" }}>
-                        <Btn kind="prev" className="kx-btn-live" disabled={!stage || c.locked} onClick={() => onSend(stage)} title={c.locked ? "Telas travadas · destrave em Saídas" : "Enviar ao ar · Enter"}>{sendLabel}<kbd className="kx-kbd">Enter</kbd></Btn>
+                        <Btn kind="prev" className="kx-btn-live" disabled={!stage || c.locked} onClick={() => onSend(stage)} title={sendTip(c.locked)}>{SEND_LABEL}</Btn>
                         <Btn disabled={!sel.length} onClick={addToService}>Adicionar à setlist</Btn>
                         <Btn kind="icon" on={notesApi.isFavorite(reference)} disabled={!reference} onClick={toggleFav} title={notesApi.isFavorite(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
                     </div>
