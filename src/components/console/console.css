@@ -96,13 +96,30 @@
 /* The live column: one block (Programa, Prévia + Enviar, player slot,
    Próximo) as wide as the column allows and as tall as fits. Its width is
    min(column, (height − K) / 0.82125): 0.82125 = 9/16 for the Programa +
-   0.46 × 9/16 for the Prévia, K = the fixed rows (Programa caption 26 + 4,
-   Prévia caption 24 + 4, gaps 3 × 8, player slot 36, Próximo 28). Spare
+   0.46 × 9/16 for the Prévia, K = the fixed rows (the Programa has no
+   caption row: it is the panel's header; Prévia caption 24 + 4, gaps 3 × 8, player slot 36, Próximo 28). Spare
    height goes below the block ("Depois"), never between the monitors. */
-.console .mons { --live-k: 146px; display: flex; flex-direction: column; align-items: center; padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; container-type: size; }
+.console .mons { --live-k: 116px; display: flex; flex-direction: column; align-items: center; padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; container-type: size; }
 .console .liveblock { width: min(100cqw, calc((100cqh - var(--live-k)) / 0.82125)); flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .console .liveblock > * { flex: none; }
-.console .prog-where { flex: none; white-space: nowrap; margin-left: auto; }
+.console .prog-where { flex: none; white-space: nowrap; margin-right: var(--space-2); }
+/* The Programa's caption is its panel's header: word, title, position on one line.
+   The header gives way before the title does: first the names of the secondary
+   controls (Voltar ao anterior becomes its glyph), then the screen count's words. */
+.console .prog-panel > .kx-panel-h { container: prog-h / inline-size; }
+@container prog-h (max-width: 700px) { .console .hist-lbl { display: none; } }
+@container prog-h (max-width: 560px) { .console .prog-where { display: none; } }
+.console .kx-panel-h .kx-panel-cap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-2); }
+.kx-prog-cap { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.kx-prog-cap .kx-live-cap { flex: none; color: var(--fg-3); }
+.kx-prog-cap .kx-mon-t { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kx-prog-cap .kx-meta { flex: none; white-space: nowrap; }
+.kx-prog-cap.is-air .kx-live-cap { color: var(--air-fg); }
+.kx-prog-cap.is-rh .kx-live-cap { color: var(--rh-fg); }
+.kx-prog-cap.is-warn .kx-live-cap { color: var(--warn-fg); }
+.kx-prog-cap.is-idle .kx-mon-t { color: var(--fg-2); font-weight: 500; }
+/* Dragging a library row over the Programa: what a drop does, on the screen. */
+.console .kx-drop-hint { position: absolute; inset: auto 0 0 0; z-index: 210; padding: var(--space-2); text-align: center; font-size: 13px; font-weight: 600; color: var(--on-state); background: var(--air-fill); }
 /* Monitor frames are painted inside the box (a ::after on top), never as an
    outer shadow: an outer shadow is cut by the panel's overflow and the
    border vanished at the edges when the window was narrowed. */
@@ -111,7 +128,7 @@
    (z-index 85–200) never paint over a popover or drawer that covers the monitor. */
 .console .kx-mon-screen, .console .ed-th, .console .mv-th, .console .nv-screen { isolation: isolate; }
 .console .kx-mon .kx-mon-screen::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--frame, var(--line)); border-radius: inherit; pointer-events: none; z-index: 200; }
-.console .kx-mon.is-air { --frame: var(--air); }
+.console .kx-mon.is-air { --frame: var(--air); } /* only the Bíblia's and Escola's monitors: the Programa is unframed on air */
 .console .kx-mon.is-prev { --frame: var(--prev); }
 .console .kx-mon.is-rh { --frame: var(--rh); }
 .console .kx-mon.is-warn { --frame: var(--warn); }

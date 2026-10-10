@@ -532,7 +532,9 @@ async function checkConsole(webContents, { live, outputs }) {
     // read the title of the Programa (".prog") or the Prévia (".subrow .kx-mon").
     const PROG = ".prog";
     const PREV = ".subrow .kx-mon";
-    const capTitle = (mon) => js(`(document.querySelector(${JSON.stringify(`${mon} .kx-mon-t`)}) || {}).textContent || ""`).catch(() => "");
+    // The Programa's caption is its panel's header (.kx-prog-cap); the Prévia's is on its monitor.
+    const capSel = (mon) => (mon === PROG ? ".kx-prog-cap .kx-mon-t" : `${mon} .kx-mon-t`);
+    const capTitle = (mon) => js(`(document.querySelector(${JSON.stringify(capSel(mon))}) || {}).textContent || ""`).catch(() => "");
     const waitCap = (mon, title, ms = 8000) => waitFor(async () => (await capTitle(mon)) === title, ms);
     // Real key presses. Printable keys also send the "char" event that types.
     const KEYCODE = { ArrowRight: "Right", ArrowLeft: "Left", ArrowUp: "Up", ArrowDown: "Down", " ": "Space" };
@@ -687,7 +689,15 @@ async function checkConsole(webContents, { live, outputs }) {
         result.projected = Boolean(main) && await waitText(main, "Primeiro slide do console");
         // The projector's letters are the Geist that ships with KERYX (src/fonts.css),
         // loaded from the app, never from the internet.
-        result.progTitle16 = (await capTitle(PROG)) === "Canto do console" && await js(`getComputedStyle(document.querySelector("${PROG} .kx-mon-t")).fontSize === "16px"`).catch(() => false);
+        result.progTitle16 = (await capTitle(PROG)) === "Canto do console" && await js(`getComputedStyle(document.querySelector("${capSel(PROG)}")).fontSize === "16px"`).catch(() => false);
+        // One PROGRAMA title (the panel header's caption, red while on air) and no
+        // permanent red frame on the monitor; the panel header no longer repeats it.
+        result.progOneTitle = await js(`(() => {
+            const caps = [...document.querySelectorAll(".console .col.center .kx-live-cap")].filter((e) => /^programa/i.test(e.textContent.trim()));
+            const word = caps[0] && getComputedStyle(caps[0]).color;
+            const frame = getComputedStyle(document.querySelector(".prog .kx-mon-screen"), "::after").borderTopColor;
+            return caps.length === 1 && word === "rgb(255, 107, 112)" && frame !== "rgb(229, 72, 77)" && !document.querySelector(".prog .kx-mon-cap");
+        })()`).catch(() => false);
         result.projectorFont = Boolean(main) && await main.webContents.executeJavaScript(`(async () => {
             const faces = await document.fonts.load("40px Geist");
             const text = [...document.querySelectorAll(".ks [style]")].find((n) => n.textContent.includes("Primeiro slide do console"));
@@ -1516,7 +1526,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast
+        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack
