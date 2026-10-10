@@ -32,7 +32,7 @@ export const TOOL_MODES = ["clock", "stopwatch", "timer", "freetext"];
 export const ALERT_TYPES = ["alert", "message"];
 // The text's look. The first ten are free text (as saved in songs and themes);
 // the rest (Camadas, 2026-10-10) are typed: a number in a range or a choice.
-export const STYLE_RANGES = { text_opacity: [0.2, 1], text_max_width: [40, 100], text_box_opacity: [0, 0.9], text_nudge: [-20, 20], transition_ms: [120, 600] };
+export const STYLE_RANGES = { text_opacity: [0.2, 1], text_max_width: [40, 100], text_box_opacity: [0, 0.9], text_nudge: [-20, 20], transition_ms: [120, 600], background_dim: [0, 0.9], background_blur: [0, 20] };
 export const STYLE_CHOICES = { line_height: ["tight", "normal", "loose"], text_case: ["none", "upper"], text_box: ["none", "band", "block"] };
 export const STYLE_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "background_image", "background_color", "text_align", "text_position", "transition",
     ...Object.keys(STYLE_RANGES), ...Object.keys(STYLE_CHOICES), "text_box_color"];

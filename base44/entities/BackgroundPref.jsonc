@@ -1,0 +1,41 @@
+{
+  "name": "BackgroundPref",
+  "type": "object",
+  "properties": {
+    "source": {
+      "type": "string",
+      "description": "Qual fundo: bundled:<id> para os que vêm com o KERYX, o endereço da imagem para os da Mídia"
+    },
+    "name": {
+      "type": "string",
+      "default": "",
+      "description": "Nome mostrado nas galerias; vazio usa o nome da imagem"
+    },
+    "category": {
+      "type": "string",
+      "default": "",
+      "description": "Categoria nas galerias; vazio usa a de fábrica (ou Suas imagens)"
+    },
+    "dim_pct": {
+      "type": "number",
+      "description": "Escurecer padrão em % (0 a 90); vazio usa o da tela (45%)"
+    },
+    "blur_px": {
+      "type": "number",
+      "description": "Desfoque padrão em px numa tela de 1920 (0 a 20)"
+    },
+    "hidden": {
+      "type": "boolean",
+      "default": false,
+      "description": "Fora das galerias (continua em Configurações › Aparência)"
+    },
+    "favorite": {
+      "type": "boolean",
+      "default": false,
+      "description": "Aparece primeiro nas galerias"
+    }
+  },
+  "required": [
+    "source"
+  ]
+}

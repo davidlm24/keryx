@@ -927,6 +927,21 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear", {});
         await waitFor(() => !live.get().content);
 
+        // Aparência › Fundos: a song whose background has its own dim and
+        // blur goes on air with them, and the projector draws them.
+        const BG = "1557672172-298e090bd0f1";
+        const bgPref = (await js(`window.keryxDesktop.db.call("BackgroundPref", "create", [{ source: "bundled:${BG}", dim_pct: 70, blur_px: 6 }])`)).data;
+        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "keryx-media://bundled/backgrounds/${BG}.webp" }])`);
+        await sleep(800);
+        await dblclick(".kx-row", "Canto do console");
+        result.bgPrefStamped = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.background_dim === 0.7 && st.background_blur === 6); }, 5000);
+        result.bgPrefDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("(() => { const d = document.querySelector('.ks-bg-dim'); const i = document.querySelector('.ks-bg-img'); return Boolean(d && i && getComputedStyle(d).backgroundColor === 'rgba(0, 0, 0, 0.7)' && getComputedStyle(i).filter.startsWith('blur(')); })()").catch(() => false), 3000);
+        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "" }])`);
+        if (bgPref && bgPref.id) await js(`window.keryxDesktop.db.call("BackgroundPref", "delete", [${JSON.stringify(bgPref.id)}])`);
+        live.call("clear", {});
+        await waitFor(() => !live.get().content);
+        await sleep(800);
+
         // The song on air again, then Travar telas (Saídas): nothing new goes
         // on (a double click, Enter and the main process all refuse), anything
         // can come off (Tela preta), and unlocking sends again.
@@ -1386,7 +1401,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Over the console, which stays mounted behind it.
         result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .col.center') && document.querySelector('.console .cfg-scrim'))");
         result.cfgSections = {};
-        for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Letras", "Dados e atualizações"]) {
+        for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Aparência", "Letras", "Dados e atualizações"]) {
             await click(".console .cfg-dialog .kx-row", name);
             result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
         }
@@ -1771,7 +1786,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.bgPrefStamped && result.bgPrefDrawn
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended

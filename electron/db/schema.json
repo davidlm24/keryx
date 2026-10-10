@@ -34,6 +34,51 @@
         }
       }
     },
+    "BackgroundPref": {
+      "table": "background_pref",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "source": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text",
+          "default": ""
+        },
+        "category": {
+          "type": "text",
+          "default": ""
+        },
+        "dim_pct": {
+          "type": "real"
+        },
+        "blur_px": {
+          "type": "real"
+        },
+        "hidden": {
+          "type": "boolean",
+          "default": false
+        },
+        "favorite": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
     "BannerTemplate": {
       "table": "banner_template",
       "columns": {

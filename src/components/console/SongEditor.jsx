@@ -5,7 +5,8 @@ import { Panel, Btn, IconBtn, Field, Seg, Empty, BackBtn } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
-import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
+import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
+import { useBackgrounds } from "./useConsoleData";
 import { parseChords, slidesFromLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { printSong } from "@/lib/printSong";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
@@ -22,7 +23,6 @@ const THUMBS = [["s", "P", { title: "Prévias pequenas" }], ["m", "M", { title: 
 const THUMBS_KEY = "keryx.console.editor.thumbs";
 const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); return ["s", "m", "l"].includes(v) ? v : "m"; } catch { return "m"; } };
 const splitOf = (n) => (Number(n) === 2 || Number(n) === 4 ? String(Number(n)) : "0");
-const BG_IDS = [...new Set(Object.entries(BACKGROUNDS).filter(([k]) => k !== "Comunicação").flatMap(([, ids]) => ids))];
 
 const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", slides: [], font_size: "large", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false };
 const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
@@ -33,6 +33,7 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 // changes what is on air. Opening a song keeps its saved slides; editing the
 // lyrics (or the split) redoes them, keeping timings by position.
 export default function SongEditor({ c, songId, themes = [], onClose, onSaved }) {
+    const backgrounds = useBackgrounds(null);
     const [song, setSong] = useState(null);
     const [error, setError] = useState("");
     const [split, setSplit] = useState("0");
@@ -260,6 +261,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     const media = song.audio_url;
     const video = isVideoUrl(media);
     const bg = song.background_image;
+    const galleryBgs = visibleBackgrounds(backgrounds, { except: "Comunicação" });
     const marked = starts.filter((x) => Number.isFinite(x)).length;
 
     return (
@@ -304,8 +306,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                     <div className="listhead"><span className="kx-meta">Fundo</span><span style={{ flex: 1 }} /><Btn small disabled={busy === "background_image"} onClick={() => bgFileRef.current?.click()}>{busy === "background_image" ? "Enviando…" : "Arquivo…"}</Btn></div>
                     <div className="ed-pad"><div className="bgpick">
                         <button type="button" className={`kx-t bg-none ${!bg ? "is-on" : ""}`} onClick={() => set({ background_image: "" })} aria-label="Sem fundo próprio" title="Sem fundo próprio (usa o do tema)">Tema</button>
-                        {bg && !BG_IDS.some((id) => backgroundUrl(id) === bg) && <button type="button" className="kx-t is-on" title="Fundo enviado"><img src={bg} alt="" /></button>}
-                        {BG_IDS.map((id) => <button type="button" key={id} className={`kx-t ${bg === backgroundUrl(id) ? "is-on" : ""}`} onClick={() => set({ background_image: backgroundUrl(id) })} aria-label="Fundo"><img src={backgroundUrl(id)} alt="" loading="lazy" /></button>)}
+                        {bg && !galleryBgs.some((b) => b.url === bg) && <button type="button" className="kx-t is-on" title="Fundo deste item"><img src={bg} alt="" /></button>}
+                        {galleryBgs.map((b) => <button type="button" key={b.source} className={`kx-t ${bg === b.url ? "is-on" : ""}`} onClick={() => set({ background_image: b.url })} aria-label={b.name} title={b.name}><img src={b.url} alt="" loading="lazy" /></button>)}
                     </div></div>
                     <input ref={bgFileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; upload(f, "background_image"); }} />
                 </Panel>

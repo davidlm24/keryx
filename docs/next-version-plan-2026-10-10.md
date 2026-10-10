@@ -317,6 +317,19 @@ wrapper's children (`screen.css`), with its length in `--ks-tr`
 `useConsole` (`src/lib/console/look.js`), not in `content.js`, so every kind
 of stage gets it. The section's icon is `image` (Temas keeps `palette`).
 
+**Fundos built** (release session, 2026-10-10), under Aparência
+(`settings/FundosGallery.jsx`). Owner's answers: categories are the fixed
+list as suggestions plus any name (a datalist); dim and blur are a starting
+point. A BackgroundPref's `source` is `bundled:<id>` for the shipped ones
+(any host) or the image URL (`sourceOf` in `src/lib/console/backgroundPrefs.js`).
+The galleries (song editor, avisos, Camadas › Fundo, every WallpaperPicker)
+read `useBackgrounds`: hidden ones gone, favourites first, the church's names.
+The dim and blur ride as new style keys `background_dim`/`background_blur`
+(live state), stamped by `useConsole.stamp` at send and in the Prévia, so
+the preview shows them; Camadas › Fundo passes them into `background.set`
+when a tile is picked. Not applied (no style to carry them): the avisos'
+own background and the idle wallpaper.
+
 New Configurações section **Aparência** (icon `palette`; Temas stays its own
 section). Lives in the new settings dialog (B).
 

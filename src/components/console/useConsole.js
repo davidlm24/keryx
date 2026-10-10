@@ -5,6 +5,8 @@ import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
+import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
+import { useBackgroundPrefs } from "./useConsoleData";
 
 // The console's own state around the live state. One console, always live:
 // every operation goes to the live state (shared/live-state.mjs).
@@ -32,6 +34,11 @@ export function useConsole() {
         keryx.auth.me().then(take).catch(() => {});
         return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
     }, []);
+    // Each background's dim and blur (Aparência › Fundos), a starting point
+    // for the items that use it. stamp() gives an op the church's defaults;
+    // the Prévia renders through it too, so it shows what will go out.
+    const bgPrefs = useBackgroundPrefs();
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, args, lookRef.current), bgPrefs), [bgPrefs]);
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 
@@ -70,7 +77,7 @@ export function useConsole() {
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
         const [op, stageArgs] = stageOp(stage);
-        const args = withLookDefaults(op, stageArgs, lookRef.current);
+        const args = stamp(op, stageArgs);
         const ref = stage.args?.ref || {};
         try {
             if (!live?.session) await projection.startSession(ref.serviceId || null);
@@ -82,7 +89,7 @@ export function useConsole() {
         }
         setPrevState(null);
         return true;
-    }, [prev, locked, live, callOp, say]);
+    }, [prev, locked, live, callOp, say, stamp]);
 
     const moveSlide = useCallback((d) => {
         if (!live?.content) { say("Nada com slides no ar."); return; }
@@ -135,5 +142,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, toast: toast?.text || null, toastAction: toast?.action || null, say };
+    return { live, now, cur: live, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
 }
