@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Empty } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Empty, BackBtn } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
@@ -206,7 +206,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     return (
         <>
             <div className="col song-ed-l" style={{ flex: "0 1 340px", minWidth: 280 }}>
-                <Panel title={songId === "new" ? "Nova música" : "Dados da música"} actions={<><IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={() => set({ is_favorite: !song.is_favorite })} /><Btn small onClick={close} title="Voltar ao console · Esc"><Icon name="arrow-left" />Console</Btn></>} bodyStyle={{ overflow: "auto" }}>
+                <Panel lead={<BackBtn onClick={close} />} title={songId === "new" ? "Nova música" : "Dados da música"} actions={<><IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={() => set({ is_favorite: !song.is_favorite })} /></>} bodyStyle={{ overflow: "auto" }}>
                     <div className="frm">
                         <span className="k">Título</span><Field icon={null} value={song.title} onChange={(v) => set({ title: v })} placeholder="Título da música" />
                         <span className="k">Artista</span><Field icon={null} value={song.artist || ""} onChange={(v) => set({ artist: v })} placeholder="Artista ou ministério" />

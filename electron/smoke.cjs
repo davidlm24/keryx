@@ -717,12 +717,18 @@ async function checkConsole(webContents, { live, outputs }) {
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.barFits = Object.values(result.bar).every(Boolean);
-        // Discoverability (addendum finding 3): the screen actions named under
-        // "Telas"; a splitter focused with Tab resizes with the arrows while the
-        // slide on air stays put; no visible control smaller than 24 x 24.
-        result.telasNamed = await js(`(() => {
+        // The screen actions are one chip of glyphs (owner decision 2026-10-10):
+        // each named by aria-label and tooltip, none showing text; Ver sits
+        // beside the bell. A splitter focused with Tab resizes with the arrows
+        // while the slide on air stays put; no visible control smaller than 24 x 24.
+        result.telasChip = await js(`(() => {
             const g = document.querySelector(".topbar .tb-screens");
-            return Boolean(g) && ["Tela preta", "Logo", "Limpar", "Encerrar"].every((t) => [...g.querySelectorAll("button")].some((b) => b.textContent.trim() === t));
+            if (!g) return false;
+            const bs = [...g.querySelectorAll("button")];
+            const named = ["Tela preta", "Mostrar logo", "Limpar texto", "Encerrar a projeção"].every((t) => bs.some((b) => b.getAttribute("aria-label") === t && b.title));
+            const ver = document.querySelector(".topbar .tb-ver");
+            const bell = document.querySelector(".topbar .tb-bell");
+            return named && bs.every((b) => !b.textContent.trim()) && Boolean(ver && bell && ver.nextElementSibling === bell);
         })()`);
         const airIndex = () => (live.get().content ? live.get().content.index : null);
         const indexBefore = airIndex();
@@ -1510,7 +1516,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.advanced && result.barFits && result.telasNamed && result.splitterKeys && result.targets24 && result.escEnded && result.escToast
+        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack

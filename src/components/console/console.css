@@ -48,12 +48,9 @@
 .console .topbar .tb-bell { position: relative; display: inline-flex; flex: none; }
 .console .topbar .tb-bell-dot { position: absolute; top: 1px; right: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--air); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
 .console .topbar .tb-outs-s { display: none; font-variant-numeric: tabular-nums; }
-/* Ver, in sight after the environments. */
-.console .topbar .tb-ver { flex: none; padding: 0 var(--space-2); }
-/* "Telas": the actions that change the screens, one framed group with names. */
-.console .topbar .tb-screens { display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 3px 0 4px; flex: none; border-radius: var(--radius-round); background: var(--bg-1); }
-.console .topbar .tb-screens-k { padding: 0 6px; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
-.console .topbar .tb-screens .kx-btn { height: 26px; padding: 0 8px; gap: 4px; border-radius: var(--radius-round); }
+.console .topbar .tb-screens { display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 2px; flex: none; border-radius: var(--radius-round); background: var(--bg-1); }
+/* The screen actions: one round bg-1 chip of 28 px glyph buttons (names in the tooltips). */
+.console .topbar .tb-screens .kx-btn { height: 28px; width: 28px; padding: 0; border-radius: var(--radius-round); }
 .console .topbar .tb-screens .kx-btn:hover { background: var(--bg-2); }
 .console .topbar .tb-screens .kx-btn.is-on { background: var(--bg-3); }
 .console .topbar .kx-seg > button { white-space: nowrap; }
@@ -64,6 +61,8 @@
 .console .envtabs > button.is-on { color: var(--fg-1); }
 .console .envtabs > button.is-on::after { bottom: 8px; background: var(--brand); height: 2px; border-radius: 1px; }
 .console .envtabs > button:disabled { opacity: .4; cursor: default; }
+/* The way back from a full-screen view: first in its header, outlined, never a ghost. */
+.console .kx-panel-h .kx-btn-back { height: 26px; padding: 0 10px 0 6px; gap: 4px; margin-left: -6px; margin-right: var(--space-1); flex: none; font-weight: 500; }
 .console .markbtn { height: 32px; width: 32px; display: inline-grid; place-items: center; border-radius: var(--radius-round); flex: none; margin-right: var(--space-1); }
 .console .markbtn img { width: 26px; height: 26px; border-radius: 999px; object-fit: cover; box-shadow: 0 0 0 1px var(--line); }
 .console .markbtn .kx-mark { width: 24px; height: 24px; }
@@ -75,7 +74,6 @@
 @container topbar (max-width: 1200px) {
     .console .topbar .tb-outs-l { display: none; }
     .console .topbar .tb-outs-s { display: inline; }
-    .console .topbar .tb-screens-k { display: none; }
 }
 @container topbar (max-width: 1080px) {
     .console .topbar .tb-search { width: 32px; max-width: 32px; padding: 0; justify-content: center; }

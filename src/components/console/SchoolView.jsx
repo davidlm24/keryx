@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, Monitor } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, Monitor, BackBtn } from "./kx";
 import { previewDoc, captionOf, TeacherNotes } from "./CenterPanel";
 import { stageFromMaterial, stageFromTool, liveStageId } from "@/lib/console/stage";
 import { AGE_GROUPS, ageLabel, MATERIAL_TYPES, materialIcon, materialMeta, quizQuestions, slidesFromText, textFromSlides, dayOf, isPresent, toggleAttendance, attendanceNote, presentCount } from "@/lib/console/school";
@@ -123,7 +123,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     return (
         <>
             <div className="col" style={{ flex: "0 1 340px", minWidth: 280 }}>
-                <Panel title={<>Turmas <span className="kx-count">· {classes.length}</span></>} actions={<><IconBtn name="plus" small title="Nova turma" onClick={newClass} /><Btn small onClick={onClose} title="Voltar ao console · Esc"><Icon name="arrow-left" />Console</Btn></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel lead={<BackBtn onClick={onClose} />} title={<>Turmas <span className="kx-count">· {classes.length}</span></>} actions={<><IconBtn name="plus" small title="Nova turma" onClick={newClass} /></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="sv-scroll">
                         {!classes.length && <Empty icon="user" title="Nenhuma turma">Crie uma turma com +. Os materiais funcionam mesmo sem turma.</Empty>}
                         {classes.map((k) => (

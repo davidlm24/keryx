@@ -18,8 +18,8 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     if (open === "ver") {
         return (
-            // Under the top bar's Ver button.
-            <div className="pop kx-pop" style={{ left: Math.max(8, Math.round(document.querySelector(".topbar .tb-ver")?.getBoundingClientRect().left ?? 8)), top: "var(--pop-top)", width: 220 }}>
+            // Under the top bar's Ver button, its right edge on the button's.
+            <div className="pop kx-pop" style={{ right: Math.max(8, Math.round(window.innerWidth - (document.querySelector(".topbar .tb-ver")?.getBoundingClientRect().right ?? window.innerWidth - 8))), top: "var(--pop-top)", width: 220 }}>
                 <div className="kx-menu-h"><span className="kx-section">Ver</span></div>
                 {MODULES.map(([key, name]) => (
                     <MenuItem key={key} checked={!layout.hidden[key]} onClick={() => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } })}>{name}</MenuItem>

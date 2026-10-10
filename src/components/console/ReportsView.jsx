@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, Field, Seg } from "./kx";
+import { Panel, Btn, Field, Seg, BackBtn } from "./kx";
 import { PERIODS, periodStart, topSongs, playsByCategory, servicesByMonth, ccliReport, ccliText, ccliCsv } from "@/lib/console/reports";
 
 const EMPTY = [];
@@ -78,10 +78,9 @@ export default function ReportsView({ c, onClose }) {
 
     return (
         <div className="col center rp">
-            <Panel title={<>Relatórios <span className="kx-count">· {periodLabel} · {plays.length} {plays.length === 1 ? "projeção" : "projeções"} de músicas</span></>} actions={<>
+            <Panel lead={<BackBtn onClick={onClose} />} title={<>Relatórios <span className="kx-count">· {periodLabel} · {plays.length} {plays.length === 1 ? "projeção" : "projeções"} de músicas</span></>} actions={<>
                 <Seg small value={period} onChange={setPeriod} options={PERIODS} />
-                <Btn small onClick={onClose} title="Voltar ao console · Esc"><Icon name="arrow-left" />Console</Btn>
-            </>} bodyStyle={{ overflow: "auto" }}>
+                            </>} bodyStyle={{ overflow: "auto" }}>
                 <div className="rp-grid">
                     <section className="rp-card rp-wide">
                         <div className="listhead"><span className="kx-section">Músicas mais projetadas <span className="kx-count">· {top.length}</span></span></div>
