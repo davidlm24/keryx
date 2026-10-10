@@ -41,3 +41,36 @@ export function stanzaAt(text, at) {
     const end = after < 0 ? s.length : after;
     return [start, Math.max(start, end)];
 }
+
+// Where slide `index` sits in the lyrics, as [start, end) offsets of its
+// lines, for the slide's right-click menu (Duplicar estrofe, Dividir em
+// dois, Mostrar na letra). Slides are matched in order, line by line (whole
+// lines, trailing spaces ignored), so a repeated chorus finds its own copy.
+// null when the slide is not in the lyrics (saved slides edited apart).
+export function slideSpan(lyrics, slides, index) {
+    const text = String(lyrics || "").replace(/\r/g, "");
+    const lineAt = (line, from) => {
+        for (let p = text.indexOf(line, from); p >= 0; p = text.indexOf(line, p + 1)) {
+            const startsLine = p === 0 || text[p - 1] === "\n";
+            const rest = text.slice(p + line.length, (text.indexOf("\n", p + line.length) + 1 || text.length + 1) - 1);
+            if (startsLine && !rest.trim()) return p;
+        }
+        return -1;
+    };
+    let cursor = 0;
+    for (let j = 0; j <= index && j < (slides || []).length; j += 1) {
+        const rows = String(slides[j]?.text || "").split("\n").map((l) => l.trim()).filter(Boolean);
+        if (!rows.length) { if (j === index) return null; continue; }
+        let at = cursor, start = -1, end = -1;
+        for (const row of rows) {
+            const p = lineAt(row, at);
+            if (p < 0) return null;
+            if (start < 0) start = p;
+            end = p + row.length;
+            at = end;
+        }
+        if (j === index) return [start, end];
+        cursor = end;
+    }
+    return null;
+}

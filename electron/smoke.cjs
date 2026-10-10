@@ -1254,6 +1254,35 @@ async function checkConsole(webContents, { live, outputs }) {
             const row = edSong && (await js(`window.keryxDesktop.db.call("Song", "get", ["${edSong && edSong.id}"])`)).data;
             return Boolean(row) && row.lines_per_slide === 4;
         }, 6000);
+        // A slide's right-click menu (real right button): editing only. On
+        // the Refrão slide, Duplicar estrofe repeats its stanza in the lyrics,
+        // the song saves with three slides, and the air is not touched.
+        const edAt = await js(`(() => {
+            const t = document.querySelectorAll(".ed-th")[1];
+            if (!t) return null;
+            t.scrollIntoView({ block: "nearest" });
+            const r = t.getBoundingClientRect();
+            return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+        })()`);
+        const edAirBefore = JSON.stringify(live.get().content ? [live.get().content.startedAt, live.get().content.index] : null);
+        if (edAt) {
+            webContents.sendInputEvent({ type: "mouseMove", x: edAt.x, y: edAt.y });
+            webContents.sendInputEvent({ type: "mouseDown", x: edAt.x, y: edAt.y, button: "right", clickCount: 1 });
+            webContents.sendInputEvent({ type: "mouseUp", x: edAt.x, y: edAt.y, button: "right", clickCount: 1 });
+        }
+        const edMenuLabels = (await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000))
+            ? await js("[...document.querySelectorAll('.console .ctx-menu button')].map((b) => b.textContent.trim()).join('|')") : "";
+        await click(".console .ctx-menu button", "Duplicar estrofe");
+        const edDuplicated = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 3 && (document.querySelector('textarea[aria-label=Letra]').value.match(/refrão um/g) || []).length === 2"), 3000);
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("s", ["control"]);
+        const edDupSaved = await waitFor(async () => {
+            const row = edSong && (await js(`window.keryxDesktop.db.call("Song", "get", ["${edSong && edSong.id}"])`)).data;
+            return Boolean(row) && row.slides?.length === 3 && row.slides[2].label === "Refrão";
+        }, 6000);
+        const edAirAfter = JSON.stringify(live.get().content ? [live.get().content.startedAt, live.get().content.index] : null);
+        result.edSlideMenu = { labels: edMenuLabels, duplicated: edDuplicated, saved: edDupSaved, airUntouched: edAirAfter === edAirBefore };
+        result.edSlideMenuOk = edMenuLabels === "Mostrar na letra|Duplicar estrofe|Dividir em dois" && edDuplicated && edDupSaved && edAirAfter === edAirBefore;
         result.shotEditor = await shot("editor");
         await press("Escape");
         await waitFor(() => js("!document.querySelector('.song-ed-l')"));
@@ -1756,7 +1785,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outputKeysOk
         && result.prevRail && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
-        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved
+        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced

@@ -265,7 +265,10 @@ slides. The P/M/G size is remembered per computer (localStorage), not in the
 console layout. The duplicate-stanza action duplicates the stanza under the
 lyrics cursor (the slide right-click menu is section F's). The wrap hint
 estimates characters per line from the screen's 84 % text width and the
-font size (`src/lib/console/lyricFit.js`).
+font size (`src/lib/console/lyricFit.js`). The slide's right-click menu
+came after (2026-10-10): Mostrar na letra, Duplicar estrofe and Dividir em
+dois act on the slide's own lines in the lyrics (`slideSpan`, tested; a
+repeated chorus finds its own copy); editing only, nothing on air.
 
 - **Bigger previews**: `ed-thumbs` `minmax(168px → 230px)` plus a P/M/G
   density seg in the SLIDES header (stored in the layout object).

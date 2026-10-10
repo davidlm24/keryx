@@ -8,7 +8,8 @@ import { songContent, isVideoUrl } from "@/lib/console/content";
 import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
 import { parseChords, slidesFromLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { printSong } from "@/lib/printSong";
-import { slideFit, stanzaAt } from "@/lib/console/lyricFit";
+import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
+import { useContextMenu } from "./ContextMenu";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["cursive", "Cursiva"], ["arial", "Arial"], ["georgia", "Georgia"], ["times", "Times"], ["verdana", "Verdana"]];
@@ -113,16 +114,40 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
         setLyrics(before + "\n\n" + after);
         setTimeout(() => { if (el) { const p = before.length + 2; el.focus(); el.setSelectionRange(p, p); } }, 0);
     };
-    // Duplicar estrofe: the stanza under the cursor, again right after it.
-    const duplicateStanza = () => {
+    // Duplicar estrofe: the stanza under the cursor (or at `at`, a slide's
+    // place in the lyrics), again right after it.
+    const duplicateStanza = (at) => {
         const el = lyricsRef.current;
         const text = song.lyrics || "";
-        const [a, b] = stanzaAt(text, el ? el.selectionStart : text.length);
+        const [a, b] = stanzaAt(text, at ?? (el ? el.selectionStart : text.length));
         const stanza = text.slice(a, b);
         if (!stanza.trim()) { c.say("Ponha o cursor numa estrofe para duplicar."); return; }
         setLyrics(text.slice(0, b) + "\n\n" + stanza + text.slice(b));
         setTimeout(() => { if (el) { const p = b + 2; el.focus(); el.setSelectionRange(p, p + stanza.length); } }, 0);
         c.say("Estrofe duplicada logo abaixo.");
+    };
+    // A slide's right-click menu: it acts on the slide's own lines in the
+    // lyrics (slideSpan). Editing only: nothing here touches the screens.
+    const menu = useContextMenu();
+    const slideMenu = (e, i) => {
+        const text = song.lyrics || "";
+        const span = slideSpan(text, slides, i);
+        const rows = span ? text.slice(span[0], span[1]).split("\n") : [];
+        const showInLyrics = () => {
+            const el = lyricsRef.current;
+            if (!el || !span) return;
+            setTimeout(() => { el.focus(); el.setSelectionRange(span[0], span[1]); }, 0);
+        };
+        const splitInTwo = () => {
+            const at = span[0] + rows.slice(0, Math.ceil(rows.length / 2)).join("\n").length;
+            setLyrics(text.slice(0, at) + "\n\n" + text.slice(at + 1));
+            c.say("Slide dividido em dois.");
+        };
+        menu(e, { title: slides[i]?.label || `Slide ${i + 1}`, items: [
+            { label: "Mostrar na letra", icon: "text", disabled: !span, onSelect: showInLyrics },
+            { label: "Duplicar estrofe", icon: "plus", disabled: !span, onSelect: () => duplicateStanza(span[0]) },
+            { label: "Dividir em dois", icon: "minus", disabled: !span || rows.length < 2, onSelect: splitInTwo },
+        ] });
     };
     const importCifra = () => {
         const raw = cifraText.trim();
@@ -295,7 +320,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                         <Btn small kind="outline" onClick={() => addMarker("Instrumental")}>[Instrumental]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Final")}>[Final]</Btn>
                         <Btn small onClick={splitHere} title="Uma linha vazia no cursor: a estrofe vira dois slides">Dividir aqui</Btn>
-                        <Btn small onClick={duplicateStanza} title="Repete a estrofe onde está o cursor, logo abaixo">Duplicar estrofe</Btn>
+                        <Btn small onClick={() => duplicateStanza()} title="Repete a estrofe onde está o cursor, logo abaixo">Duplicar estrofe</Btn>
                         <span style={{ flex: 1 }} />
                         <span className="kx-meta">{slides.length} {slides.length === 1 ? "slide" : "slides"}</span>
                     </div>
@@ -313,7 +338,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                                 ? (fit.wraps.length === 1 ? "A linha " + fit.wraps[0] + " quebra" : "As linhas " + fit.wraps.join(", ") + " quebram") + " na tela neste tamanho de letra (cabem uns " + fit.limit + " caracteres por linha; a mais longa tem " + fit.longest + ")"
                                 : fit.lines + (fit.lines === 1 ? " linha, " : " linhas, ") + fit.chars + " caracteres · cabe na tela";
                             return (
-                            <button type="button" key={i} className={`ed-th kx-t ${i === sel ? "is-sel" : ""} ${marking && i === nextMark ? "is-next" : ""}`} onClick={() => setSel(i)} title={s.label || `Slide ${i + 1}`}>
+                            <button type="button" key={i} className={`ed-th kx-t ${i === sel ? "is-sel" : ""} ${marking && i === nextMark ? "is-next" : ""}`} onClick={() => setSel(i)} onContextMenu={(e) => slideMenu(e, i)} title={s.label || `Slide ${i + 1}`}>
                                 <ScreenRenderer state={{ ...doc, content: { ...doc.content, index: i } }} now={c.now} preview />
                                 <span className="n">{i + 1}{Number.isFinite(starts[i]) ? ` · ${mmss(starts[i])}` : ""}</span>
                                 {s.label && (i === 0 || slides[i - 1].label !== s.label) && <span className="lab">{s.label}</span>}
