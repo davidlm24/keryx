@@ -6,6 +6,7 @@ import PlayerBar from "./PlayerBar";
 import { applyOp, emptyState, mainLayer } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
+import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 
 // What the Prévia would look like on air: the stage applied with the live
 // state's own rules to a copy of the current look (background, logo,
@@ -93,7 +94,6 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     // Locked: the screens keep this image, blue (they are not following).
     const progState = projectorDown ? "warn" : locked ? "rh" : "air";
     const progWord = locked ? "Programa · travado" : "Programa";
-    const sendLabel = "Enviar ao ar";
     // Captions with their own hierarchy: the state word, the title (on air:
     // live-title, 16px; prepared: next-title, 14px) and the position (meta).
     const airParts = captionParts(cur);
@@ -125,10 +125,9 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                     </Monitor>
                     <div className="side">
                         <div className="sendrow">
-                            <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={locked ? "Telas travadas · destrave em Saídas" : `${sendLabel} · Ctrl+Enter`}>
-                                {sendLabel}
+                            <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={sendTip(locked)}>
+                                {SEND_LABEL}
                             </Btn>
-                            <span className="kx-meta">Ctrl+Enter</span>
                         </div>
                         {note && <div className="kx-meta sendnote">{note}</div>}
                         <TeacherNotes prev={prev} cur={cur} />

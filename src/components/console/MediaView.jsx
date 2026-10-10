@@ -4,6 +4,7 @@ import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Empty } from "./kx";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { stageFromMedia, stageFromMediaList, stageFromAudioList, liveStageId } from "@/lib/console/stage";
+import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
@@ -207,7 +208,7 @@ export default function MediaView({ c, media, onSend, onClose }) {
                         <span className="kx-section">{picked.length} {picked.length === 1 ? "selecionado" : "selecionados"}</span>
                         <span style={{ flex: 1 }} />
                         {picked.length === 1 && <Btn small onClick={() => c.setPrev(stageFromMedia(picked[0]))} title="Pôr na Prévia do console">Prévia</Btn>}
-                        {picked.length === 1 && <Btn small onClick={() => send(picked[0])} title="Enviar ao ar · Enter">Enviar ao ar</Btn>}
+                        {picked.length === 1 && <Btn small onClick={() => send(picked[0])} title={sendTip(false)}>{SEND_LABEL}</Btn>}
                         {picked.length === 1 && <Btn small onClick={() => setRenaming(picked[0].id)} title="Renomear · F2">Renomear</Btn>}
                         <select className="pl-pick" value="" onChange={(e) => e.target.value && recategorise(e.target.value)} aria-label="Mudar categoria">
                             <option value="">Categoria…</option>

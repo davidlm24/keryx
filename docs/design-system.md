@@ -51,7 +51,7 @@ row only prepares it in the Prévia (green). It reaches the screens by one of:
 | **Double click** on the item | Biblioteca, Setlist, slides, verses, search results, Escola bíblica materials, Mídia |
 | **Enter** | with nothing focused (or the monitors focused): sends the Prévia / the Bíblia's selection |
 | **Ctrl+Enter** | from anywhere except a text field |
-| **Enviar ao ar** | the button (the Setlist's *Ir* and the Bíblia's own send button too) |
+| **Enviar ao ar** | the button (the Setlist's *Ir* and the Bíblia's own send button too). Its keys live in one tooltip on every send button, never printed: "Enviar ao ar · Enter (Ctrl+Enter de qualquer lugar)" (`SEND_TIP` in `src/lib/console/copy.js`) |
 | **Drag onto the Programa** | from the Biblioteca (onto the Prévia it prepares; onto the Setlist it adds) |
 
 A click on one control never leaves focus on it, so the next key works on the
@@ -84,9 +84,7 @@ Enter in the field) is the one control that bypasses the Prévia. Camadas edits
 (logo, overlays, background, theme, layer order) apply as made while live.
 
 **Open decisions** — behaviour the owner has not settled, so the docs state
-what the app does, not what it should: Esc ending at once; Camadas edits going live as made; the printed
-`Ctrl+Enter` beside *Enviar ao ar* and the `Enter` on the Bíblia's send
-button (the README says shortcuts live in tooltips); the Próximo line's
+what the app does, not what it should: Esc ending at once; Camadas edits going live as made; the Próximo line's
 button reading *Preparar* where the vocabulary says *Pôr na prévia*; whether
 an online-only Bible edition (ARA) may be used on a PC with NVI installed.
 

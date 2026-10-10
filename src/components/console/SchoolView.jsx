@@ -5,6 +5,7 @@ import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, Monitor } from "./kx";
 import { previewDoc, captionOf, TeacherNotes } from "./CenterPanel";
 import { stageFromMaterial, stageFromTool, liveStageId } from "@/lib/console/stage";
+import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { AGE_GROUPS, ageLabel, MATERIAL_TYPES, materialIcon, materialMeta, quizQuestions, slidesFromText, textFromSlides, dayOf, isPresent, toggleAttendance, attendanceNote, presentCount } from "@/lib/console/school";
 
 const EMPTY = [];
@@ -201,7 +202,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                         </Monitor>
                     </div>
                     <div className="sv-send">
-                        <Btn kind="prev" className="kx-btn-send" disabled={!prev || locked} onClick={() => onSend()} title={locked ? "Telas travadas · destrave em Saídas" : "Enter"}>Enviar ao ar</Btn>
+                        <Btn kind="prev" className="kx-btn-send" disabled={!prev || locked} onClick={() => onSend()} title={sendTip(locked)}>{SEND_LABEL}</Btn>
                         <IconBtn name="chevron-left" title="Slide anterior · ←" onClick={() => c.moveSlide(-1)} />
                         <IconBtn name="chevron-right" title="Próximo slide · →" onClick={() => c.moveSlide(1)} />
                         <span className="kx-meta">{reveal ? "A resposta é o próximo slide: → revela." : "Enter envia · ←→ no ar"}</span>
