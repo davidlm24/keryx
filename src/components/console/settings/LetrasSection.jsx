@@ -36,7 +36,7 @@ export default function LetrasSection({ c }) {
                     <Seg small value={lines} onChange={pickLines} options={[["0", "Estrofe inteira"], ["2", "2 linhas por slide"], ["4", "4 linhas por slide"]]} />
                 </FormRow>
             </div>
-            <div className="listhead"><span className="kx-meta">Com a chave, "+ › Na internet" traz a letra direto do Vagalume. Sem ela, a busca mostra os resultados do letras.mus.br, que abrem no navegador para copiar e colar. A chave é grátis em vagalume.com.br/api e fica só neste computador.</span></div>
+            <div className="listhead"><span className="kx-meta">"+ › Na internet" busca no Vagalume (com a chave), no LRCLIB (sem chave) e no letras.mus.br. Vagalume e LRCLIB trazem a letra direto; os do letras.mus.br abrem no navegador para copiar e colar. A chave do Vagalume é grátis na área de API dele (api.vagalume.com.br) e fica só neste computador.</span></div>
         </>
     );
 }

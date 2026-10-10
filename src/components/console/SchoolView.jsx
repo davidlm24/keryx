@@ -112,10 +112,10 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         return () => window.removeEventListener("keydown", onKey, true);
     }, []);
 
-    const { cur, prev, now, isLive } = c;
+    const { cur, prev, now, locked } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const airId = liveStageId(cur);
-    const stateOf = (m) => (airId === `material:${m.id}` || (cur?.media?.id === m.id && !cur?.content) ? (isLive ? "is-air" : "is-rh") : prev?.id === `material:${m.id}` ? "is-prev" : "");
+    const stateOf = (m) => (airId === `material:${m.id}` || (cur?.media?.id === m.id && !cur?.content) ? "is-air" : prev?.id === `material:${m.id}` ? "is-prev" : "");
     const airSlide = cur?.content?.slides?.[cur.content.index];
     const nextSlide = cur?.content?.slides?.[cur.content.index + 1];
     const reveal = cur?.content?.ref?.materialId && /^Pergunta/.test(airSlide?.label || "") && /^Resposta/.test(nextSlide?.label || "");
@@ -195,13 +195,13 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
             <div className="col" style={{ flex: "0 1 400px", minWidth: 300 }}>
                 <Panel title={<>Projetar <span className="kx-count">· o mesmo Programa e Prévia do console</span></>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "auto" }}>
                     <div className="sv-mons">
-                        <Monitor state={isLive ? "air" : "rh"} caption={captionOf(cur, isLive ? "No ar" : "Ensaio")} live={cur} now={now} logoUrl={logoUrl} motion />
+                        <Monitor state={locked ? "rh" : "air"} caption={captionOf(cur, locked ? "No ar · travado" : "No ar")} live={cur} now={now} logoUrl={logoUrl} motion />
                         <Monitor state={prev ? "prev" : ""} caption={prev ? `Prévia · ${prev.title}${prev.slides?.length > 1 ? ` · ${prev.index + 1}/${prev.slides.length}` : ""}` : "Prévia"} live={pdoc} now={now} logoUrl={logoUrl}>
                             {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         </Monitor>
                     </div>
                     <div className="sv-send">
-                        <Btn kind={isLive ? "prev" : "rh"} className="kx-btn-send" disabled={!prev} onClick={() => onSend()} title="Enter">{isLive ? "Enviar ao ar" : "Mostrar no ensaio"}</Btn>
+                        <Btn kind="prev" className="kx-btn-send" disabled={!prev || locked} onClick={() => onSend()} title={locked ? "Telas travadas · destrave em Saídas" : "Enter"}>Enviar ao ar</Btn>
                         <IconBtn name="chevron-left" title="Slide anterior · ←" onClick={() => c.moveSlide(-1)} />
                         <IconBtn name="chevron-right" title="Próximo slide · →" onClick={() => c.moveSlide(1)} />
                         <span className="kx-meta">{reveal ? "A resposta é o próximo slide: → revela." : "Enter envia · ←→ no ar"}</span>

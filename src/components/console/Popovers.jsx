@@ -107,7 +107,7 @@ const atTime = (t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit",
 // Saídas: the windows the main process places and the screens on the
 // network, each with its state, what it shows and the way to fix it
 // (src/lib/console/outputs.js says which is which).
-export function Outputs({ open, setOpen, health, isLive, onOpen, onClose, onForget, tries, idle, onIdle, onSettings }) {
+export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, tries, idle, onIdle, onSettings }) {
     if (open !== "outs") return null;
     const view = (r) => {
         const icon = r.local ? OUTPUT_ICON[r.key] || "monitor" : DEVICE_ICON[r.kind] || "tv";
@@ -115,13 +115,13 @@ export function Outputs({ open, setOpen, health, isLive, onOpen, onClose, onForg
         if (r.state === "closed") return { icon, cls: "is-warn", state: `Fechada às ${atTime(r.droppedAt)}`, dot: "var(--warn)" };
         if (r.state === "disconnected") return { icon, cls: "is-warn", state: `Desconectada às ${atTime(r.droppedAt)}`, dot: "var(--warn)" };
         if (r.state === "unused") return { icon, cls: "is-off", state: "Fechada", dot: "var(--fg-3)" };
-        return isLive ? { icon, cls: "", state: "Conectada", dot: "var(--prev)" } : { icon, cls: "is-rh", state: "Desarmada", dot: "var(--rh)" };
+        return locked ? { icon, cls: "is-rh", state: "Conectada · travada", dot: "var(--rh)" } : { icon, cls: "", state: "Conectada", dot: "var(--prev)" };
     };
     const rows = health.rows;
-    const summary = !isLive ? "desarmadas · mantêm o que já estava no ar" : health.total ? `${health.connected} de ${health.total} conectadas` : "nenhuma aberta";
+    const summary = health.total ? `${health.connected} de ${health.total} conectadas${locked ? " · travadas" : ""}` : "nenhuma aberta";
     return (
         <div className="pop kx-pop" style={{ right: 130, top: "var(--pop-top)", width: 440, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }}>
-            <div className="kx-menu-h"><span className="kx-section">Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${isLive && !health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
+            <div className="kx-menu-h"><span className="kx-section">Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${!health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
             {rows.map((r) => {
                 const v = view(r);
                 return (
@@ -146,6 +146,11 @@ export function Outputs({ open, setOpen, health, isLive, onOpen, onClose, onForg
             })}
             {!rows.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
             <div className="kx-menu-sep" />
+            {/* Travar telas: rehearse with the screens frozen (shared/live-state.mjs, WHILE_LOCKED). */}
+            <div className="kx-menu-h" title="Com as telas travadas o console prepara normalmente; nada novo vai ao ar. Tela preta, Logo, Limpar e Esc continuam valendo.">
+                <span className="kx-section">Travar telas</span><span style={{ flex: 1 }} />
+                <Seg small value={locked ? "on" : "off"} onChange={(v) => onLock?.(v === "on")} options={[["off", "Destravadas"], ["on", "Travadas"]]} />
+            </div>
             <div className="kx-menu-h"><span className="kx-section">Tela ociosa</span><span style={{ flex: 1 }} /><Seg small value={idle} onChange={onIdle} options={[["logo", "Logo da igreja"], ["black", "Preto"]]} /></div>
             <div className="kx-menu-sep" />
             <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}>
@@ -175,33 +180,19 @@ export function History({ open, setOpen, history, onPick, left }) {
 
 // Encerrar takes everything off the main projector: it asks first. Tela preta
 // is the immediate emergency action and never asks.
-export function EndDialog({ open, setOpen, mode, onEnd }) {
-    const isLive = mode === "live";
+export function EndDialog({ open, setOpen, onEnd }) {
     const goRef = useRef(null);
     useEffect(() => { if (open === "encerrar") setTimeout(() => goRef.current?.focus(), 0); }, [open]);
     if (open !== "encerrar") return null;
     return (
         <div className="dialog" role="alertdialog" aria-label="Encerrar a projeção">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>Encerrar a projeção?</div>
-            <div>{isLive ? "Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam." : "Só o ensaio é encerrado; as telas não mudam."}</div>
+            <div>Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
             <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta (B).</div>
             <div className="acts">
                 <Btn onClick={() => setOpen(null)}>Cancelar</Btn>
                 <button ref={goRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => { onEnd(); setOpen(null); }}>Encerrar</button>
             </div>
-        </div>
-    );
-}
-
-export function ArmDialog({ open, setOpen, live, onArm }) {
-    if (open !== "arm") return null;
-    const what = live?.content ? `${live.content.title}${live.content.slides.length > 1 ? `, slide ${live.content.index + 1}` : ""}` : live?.media ? live.media.title : live?.communication ? live.communication.item?.title || "um aviso" : "nada (telas livres)";
-    return (
-        <div className="dialog">
-            <div className="kx-section" style={{ color: "var(--fg-1)" }}>Armar saídas e ir ao vivo?</div>
-            <div>O que está no ar <b style={{ fontWeight: 500 }}>continua no ar</b>: {what}.</div>
-            <div style={{ color: "var(--fg-2)" }}>Depois de armar, Enviar ao ar muda as telas. O que você ensaiou não é enviado.</div>
-            <div className="acts"><Btn onClick={() => setOpen(null)}>Continuar em ensaio</Btn><Btn kind="rh" onClick={() => { onArm(); setOpen(null); }}>Armar saídas</Btn></div>
         </div>
     );
 }

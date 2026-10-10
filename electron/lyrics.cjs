@@ -1,7 +1,12 @@
 // Song lyrics from the web, for the console's "+ › Na internet…" dialog.
-// Two sources, one list:
+// Three sources, one list:
 //   - Vagalume, through its official API (the church's own key, kept in
 //     settings.json as lyrics.vagalumeKey): search and the full lyrics.
+//   - LRCLIB (lrclib.net), an open lyrics database with a public API meant
+//     for apps (no key; it asks for a User-Agent naming the app): search and
+//     the full lyrics. Community-made: good on well-known worship songs,
+//     thin on old hymns. It lists the same song many times (live, acoustic,
+//     each upload): duplicates are folded.
 //   - letras.mus.br, through the public suggestion index its own search box
 //     uses: search only. Its lyric pages refuse automated access, so KERYX
 //     does not fetch them; the operator opens the page in the browser and
@@ -17,7 +22,9 @@ class LyricsError extends Error {
     }
 }
 
-const UA = "KERYX (church projection; https://github.com/)";
+let appVersion = "0";
+try { appVersion = require("../package.json").version; } catch { /* unknown */ }
+const UA = `KERYX ${appVersion} (church projection app; https://github.com/comunidadegerar/keryx-releases)`;
 const MAX_RESULTS = 15;
 
 const decode = (s) => String(s || "")
@@ -51,6 +58,48 @@ function parseLetrasSearch(body) {
             pageUrl: `https://www.letras.mus.br/${d.dns}/${d.url}/`,
             hasLyrics: false,
         }));
+}
+
+// -- LRCLIB -------------------------------------------------------------------
+
+const lrclibSearchUrl = (q) => `https://lrclib.net/api/search?q=${encodeURIComponent(q)}`;
+const lrclibSongUrl = (id) => `https://lrclib.net/api/get/${encodeURIComponent(id)}`;
+const fold = (s) => clean(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+// An array of { id, trackName, artistName, albumName, instrumental, plainLyrics }.
+// Only songs with lyrics; one per title and artist (accents and case aside).
+function parseLrclibSearch(body) {
+    let data;
+    try { data = typeof body === "string" ? JSON.parse(body) : body; } catch { throw new LyricsError("LRCLIB respondeu num formato desconhecido."); }
+    if (!Array.isArray(data)) throw new LyricsError("LRCLIB respondeu num formato desconhecido.");
+    const seen = new Set();
+    const out = [];
+    for (const d of data) {
+        if (!d || !d.id || !d.trackName || d.instrumental || !String(d.plainLyrics || "").trim()) continue;
+        const key = `${fold(d.trackName)}|${fold(d.artistName)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+            source: "lrclib",
+            sourceLabel: "LRCLIB",
+            id: `lrclib:${d.id}`,
+            title: clean(d.trackName),
+            artist: clean(d.artistName),
+            extra: clean(d.albumName),
+            pageUrl: "",
+            hasLyrics: true,
+        });
+        if (out.length >= MAX_RESULTS) break;
+    }
+    return out;
+}
+
+function parseLrclibSong(body) {
+    let data;
+    try { data = typeof body === "string" ? JSON.parse(body) : body; } catch { throw new LyricsError("LRCLIB respondeu num formato desconhecido."); }
+    const text = String(data?.plainLyrics || "").replace(/\r\n/g, "\n").trim();
+    if (!text) throw new LyricsError("Letra não encontrada no LRCLIB.", 404);
+    return { title: clean(data.trackName), artist: clean(data.artistName), lyrics: text };
 }
 
 // -- Vagalume -----------------------------------------------------------------
@@ -106,6 +155,7 @@ function createLyrics({ settings, fetchImpl = fetch }) {
         if (q.length < 2) throw new LyricsError("Digite pelo menos duas letras do título ou do artista.", 400);
         const jobs = [
             getText(letrasSearchUrl(q), "letras.mus.br").then(parseLetrasSearch),
+            getText(lrclibSearchUrl(q), "LRCLIB").then(parseLrclibSearch),
             key() ? getText(vagalumeSearchUrl(q, key()), "Vagalume").then(parseVagalumeSearch) : Promise.reject(new LyricsError("Vagalume: sem chave (cadastre em Chave do Vagalume).", 401)),
         ];
         const settled = await Promise.allSettled(jobs);
@@ -115,15 +165,18 @@ function createLyrics({ settings, fetchImpl = fetch }) {
             if (r.status === "fulfilled") results.push(...r.value);
             else errors.push(r.reason?.message || "Fonte indisponível.");
         }
-        // Interleave the sources so both show at the top, then trim.
-        const bySource = [results.filter((r) => r.source === "vagalume"), results.filter((r) => r.source === "letras")];
+        // Interleave the sources so each shows at the top (the ones that bring
+        // the lyrics first), then trim.
+        const bySource = ["vagalume", "lrclib", "letras"].map((src) => results.filter((r) => r.source === src));
         const merged = [];
         for (let i = 0; merged.length < results.length; i++) for (const list of bySource) if (list[i]) merged.push(list[i]);
-        return { results: merged.slice(0, MAX_RESULTS * 2), errors };
+        return { results: merged.slice(0, MAX_RESULTS * 3), errors };
     }
 
-    // -> { title, artist, lyrics } (Vagalume only; letras.mus.br pages are pasted)
+    // -> { title, artist, lyrics } (Vagalume or LRCLIB; letras.mus.br pages are pasted)
     async function get(id) {
+        const lr = /^lrclib:(\d+)$/.exec(String(id || ""));
+        if (lr) return parseLrclibSong(await getText(lrclibSongUrl(lr[1]), "LRCLIB"));
         const m = /^vagalume:(.+)$/.exec(String(id || ""));
         if (!m) throw new LyricsError("A letra do letras.mus.br abre no navegador: copie e cole aqui.", 400);
         if (!key()) throw new LyricsError("Cadastre a chave do Vagalume para trazer a letra.", 401);
@@ -139,4 +192,4 @@ function createLyrics({ settings, fetchImpl = fetch }) {
     return { search, get, setKey, status };
 }
 
-module.exports = { createLyrics, LyricsError, parseLetrasSearch, parseVagalumeSearch, parseVagalumeSong };
+module.exports = { createLyrics, LyricsError, parseLetrasSearch, parseLrclibSearch, parseLrclibSong, parseVagalumeSearch, parseVagalumeSong };

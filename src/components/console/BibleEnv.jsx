@@ -334,7 +334,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const canInstall = (v) => Boolean(BIBLE_VERSIONS.find((x) => x.id === v)?.install) && !installed.includes(v);
     const others = installed.filter((v) => v !== (version || wanted));
     const airTitle = c.cur?.content ? c.cur.content.title : c.cur?.media ? c.cur.media.title : "nada";
-    const sendLabel = c.isLive ? "Enviar ao ar" : "Mostrar no ensaio";
+    const sendLabel = "Enviar ao ar";
     const searchSel = sel.length === 1 ? { book, chapter, verse: sel[0] } : null;
 
     return (
@@ -415,9 +415,9 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             </div>
             <div className="kx-gap" />
             <div className="col bible-air-col" style={{ flex: "0 1 400px", minWidth: 300 }}>
-                <Panel title={<span className={c.isLive ? "kx-air" : "kx-rh"}>{c.isLive ? "No ar agora" : "Ensaio"}</span>} count={airTitle} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={<span className={c.locked ? "kx-rh" : "kx-air"}>{c.locked ? "No ar · travado" : "No ar agora"}</span>} count={airTitle} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="bible-air">
-                        <div className={`kx-mon ${c.isLive ? "is-air" : "is-rh"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview /></div></div>
+                        <div className={`kx-mon ${c.locked ? "is-rh" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview /></div></div>
                     </div>
                     <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
                         <span className="kx-section">Selecionado <span className="kx-count">· {sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>
@@ -439,7 +439,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                         </div>
                     )}
                     <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-2)", flexWrap: "wrap", borderTop: "1px solid var(--line)" }}>
-                        <Btn kind={c.isLive ? "prev" : "rh"} className="kx-btn-live" disabled={!stage} onClick={() => onSend(stage)} title={c.isLive ? "Enviar ao ar · Enter" : "As telas não mudam"}>{sendLabel}<kbd className="kx-kbd">Enter</kbd></Btn>
+                        <Btn kind="prev" className="kx-btn-live" disabled={!stage || c.locked} onClick={() => onSend(stage)} title={c.locked ? "Telas travadas · destrave em Saídas" : "Enviar ao ar · Enter"}>{sendLabel}<kbd className="kx-kbd">Enter</kbd></Btn>
                         <Btn disabled={!sel.length} onClick={addToService}>Adicionar à setlist</Btn>
                         <Btn kind="icon" on={notesApi.isFavorite(reference)} disabled={!reference} onClick={toggleFav} title={notesApi.isFavorite(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
                     </div>

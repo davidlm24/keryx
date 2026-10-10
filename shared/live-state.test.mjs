@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, LiveError, OP_NAMES,
+    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, LiveError, OP_NAMES, WHILE_LOCKED,
 } from "./live-state.mjs";
 
 const T0 = 1_000_000;
@@ -261,6 +261,37 @@ test("layer order: the operator stacks the look layers", () => {
     assert.throws(() => applyOp(s, "layers.order", { order: ["logo", "content"] }, T0), LiveError);
     assert.throws(() => applyOp(s, "layers.order", { order: ["logo", "logo", "content", "background"] }, T0), LiveError);
     assert.deepEqual(restoreState(JSON.parse(JSON.stringify(s)), T0).layerOrder, s.layerOrder, "survives a restart");
+});
+
+test("Travar telas: nothing new goes on while locked, anything can come off", () => {
+    let s = run([["content.show", song], ["background.set", { kind: "color", value: "#123456" }]]);
+    s = applyOp(s, "screens.lock", { locked: true }, T0);
+    assert.equal(s.locked, true);
+    assert.equal(applyOp(s, "screens.lock", { locked: true }, T0), s, "already locked: no change");
+    assert.throws(() => applyOp(s, "screens.lock", { locked: "sim" }, T0), LiveError);
+    // Adding or changing what is on air is refused, with 423, for any sender.
+    for (const [op, args] of [["content.show", song], ["content.next"], ["content.goTo", { index: 1 }], ["tool.show", { mode: "clock" }], ["alert.show", { message: "Atenção" }], ["session.item", { itemId: "x", index: 0 }], ["logo.set", { visible: true }], ["transport", { action: "pause", layer: "media" }]]) {
+        assert.throws(() => applyOp(s, op, args, T0), (e) => e instanceof LiveError && e.status === 423, op);
+    }
+    // Taking things off, Tela preta / Logo and the idle screen still work.
+    assert.equal(applyOp(s, "screen.set", { mode: "black" }, T0).screen, "black");
+    assert.equal(applyOp(s, "idle.set", { mode: "black" }, T0).idle, "black");
+    assert.equal(applyOp(s, "content.clear", {}, T0).content, null);
+    const cleared = applyOp(s, "clear", {}, T0);
+    assert.equal(cleared.content, null);
+    assert.equal(cleared.locked, true, "Esc does not unlock");
+    assert.equal(applyOp(s, "background.clear", {}, T0).background, null);
+    // Every op is either allowed or refused: the list names real ops.
+    for (const op of WHILE_LOCKED) assert.ok(OP_NAMES.includes(op), op);
+    // Unlocked, sending works again.
+    s = applyOp(s, "screens.lock", { locked: false }, T0);
+    assert.equal(applyOp(s, "content.next", {}, T0).content.index, 1);
+});
+
+test("Travar telas is for the session: a restart comes back unlocked", () => {
+    const s = run([["content.show", song], ["screens.lock", { locked: true }]]);
+    assert.equal(emptyState(T0).locked, false);
+    assert.equal(restoreState(JSON.parse(JSON.stringify(s)), T0 + 9).locked, false);
 });
 
 test("idle screen: logo or black, part of the document", () => {

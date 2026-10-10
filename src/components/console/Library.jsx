@@ -37,7 +37,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
     const ql = q.trim().toLowerCase();
     const airId = liveStageId(c.cur);
     const prevId = c.prev?.id;
-    const state = (id) => (id === airId ? (c.isLive ? "is-air" : "is-rh") : id === prevId ? "is-prev" : "");
+    const state = (id) => (id === airId ? "is-air" : id === prevId ? "is-prev" : "");
 
     const tabs = [...(compact ? [["roteiro", "Setlist"]] : []), ["letras", "Letras"], ["midia", "Mídia"], ["avisos", "Avisos"]];
 
@@ -169,7 +169,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                     title={m.title}
                                     meta={m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
                                     metaClass={m.missing ? "kx-warn" : ""}
-                                    state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? (c.isLive ? "is-air" : "is-rh") : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
+                                    state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
                                     onClick={() => onPrepare(stageFromMedia(m))}
                                     onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
                                     dragProps={dragProps(stageFromMedia(m))}

@@ -2,27 +2,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
-import { applyOp } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 
-// The console's own state around the live state.
+// The console's own state around the live state. One console, always live:
+// every operation goes to the live state (shared/live-state.mjs).
 //
-// mode:
-//   "live"   Apresentar, outputs armed: operations go to the live state.
-//   "ensaio" rehearsal: operations go to a local copy of the document, with
-//            the same rules (applyOp); the screens keep showing what was on
-//            air. The one sandbox: preparing in live mode is already safe,
-//            because nothing reaches the screens without "Enviar ao ar".
-// Tela preta and Mostrar logo are emergency actions: they always act on the
-// real screens, whatever the mode.
+// Rehearsing is "Travar telas" (Saídas): with the screens locked (live.locked)
+// the console still prepares and browses, nothing new reaches the screens,
+// and anything can still come off (Tela preta, Logo, Limpar, Esc). The lock
+// is enforced where the document changes (applyOp, in the main process), so
+// it holds for every sender; the console only says so first.
 //
-// The Prévia is a stage, never sent until "Enviar ao ar". Every other change
-// of what is on screen goes through callOp.
+// The Prévia is a stage, never sent until the operator sends it (a double
+// click, Enter, or "Enviar ao ar"). Every other change of what is on screen
+// goes through callOp.
+export const LOCKED_SAY = "Telas travadas: nada vai ao ar. Destrave em Saídas.";
+
 export function useConsole() {
     const live = useLiveState();
     const now = useLiveNow(1000);
-    const [mode, setMode] = useState("live");
-    const [rh, setRh] = useState(null);
     const [prev, setPrevState] = useState(null);
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
@@ -34,10 +32,10 @@ export function useConsole() {
     }, []);
     useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-    const isLive = mode === "live";
-    const cur = isLive ? live : rh;
-    const copyOf = (doc) => JSON.parse(JSON.stringify(doc));
+    const locked = Boolean(live?.locked);
 
+    // One operation on the live state. Resolves with the new document; errors
+    // (a refused op while locked, a bad argument) become a toast.
     const liveOp = useCallback(async (op, args = {}) => {
         try {
             return await keryx.live.call(op, args);
@@ -46,38 +44,23 @@ export function useConsole() {
             throw err;
         }
     }, [say]);
-
-    // One operation on what the console is driving: the live state, or the
-    // local copy. Resolves with the new document; errors become a toast.
-    const callOp = useCallback(async (op, args = {}) => {
-        if (isLive) return liveOp(op, args);
-        let next = null;
-        setRh((doc) => {
-            try {
-                next = applyOp(doc, op, args, keryx.live.now());
-                return next;
-            } catch (err) {
-                say(err?.message || "Operação inválida.");
-                return doc;
-            }
-        });
-        return next;
-    }, [isLive, liveOp, say]);
+    const callOp = liveOp;
 
     const setPrev = useCallback((stage) => {
         if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
         setPrevState(stage);
     }, [say]);
 
-    // "Enviar ao ar": the Prévia (or the stage given) goes to the screens, or
-    // to the local copy. Resolves true when it went.
+    // Send: the Prévia (or the stage given) goes to the screens. Resolves
+    // true when it went.
     const send = useCallback(async (stage = prev) => {
+        if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
         const [op, args] = stageOp(stage);
         const ref = stage.args?.ref || {};
         try {
-            if (isLive && !live?.session) await projection.startSession(ref.serviceId || null);
+            if (!live?.session) await projection.startSession(ref.serviceId || null);
             if (stage.video) await callOp("video.show", { kind: "video", url: stage.video, title: stage.title });
             await callOp(op, args);
             if (ref.serviceItemId) await callOp("session.item", { itemId: ref.serviceItemId, index: ref.serviceItemIndex ?? null }).catch(() => {});
@@ -86,23 +69,24 @@ export function useConsole() {
         }
         setPrevState(null);
         return true;
-    }, [prev, isLive, live, callOp, say]);
+    }, [prev, locked, live, callOp, say]);
 
     const moveSlide = useCallback((d) => {
-        if (!cur?.content) { say("Nada com slides no ar."); return; }
+        if (!live?.content) { say("Nada com slides no ar."); return; }
+        if (locked) { say(LOCKED_SAY); return; }
         callOp(d > 0 ? "content.next" : "content.prev").catch(() => {});
-    }, [cur, callOp, say]);
+    }, [live, locked, callOp, say]);
 
-    const goTo = useCallback((index) => callOp("content.goTo", { index }).catch(() => {}), [callOp]);
+    const goTo = useCallback((index) => {
+        if (locked) { say(LOCKED_SAY); return Promise.resolve(); }
+        return callOp("content.goTo", { index }).catch(() => {});
+    }, [locked, callOp, say]);
 
-    // Tela preta / Mostrar logo: always the real screens (emergency). The
-    // local copy follows, so the Programa monitor shows it too.
+    // Tela preta / Mostrar logo: emergency actions, they work locked too.
     const toggleScreen = useCallback((which) => {
         const next = live?.screen === which ? "show" : which;
         liveOp("screen.set", { mode: next }).catch(() => {});
-        if (!isLive) setRh((doc) => (doc ? applyOp(doc, "screen.set", { mode: next }, keryx.live.now()) : doc));
-        if (!isLive) say(next === "show" ? "Telas liberadas." : `${which === "black" ? "Tela preta" : "Logo"} nas telas — vale mesmo fora do ao vivo.`);
-    }, [live, isLive, liveOp, say]);
+    }, [live, liveOp]);
 
     // Limpar texto: the text layers go; background, logo and media stay.
     const clearText = useCallback(async () => {
@@ -113,21 +97,12 @@ export function useConsole() {
     // background, logo, overlays and the alert have their own controls.
     const end = useCallback(() => callOp("clear").catch(() => {}), [callOp]);
 
-    const goEnsaio = useCallback(() => {
-        if (!isLive || !live) return;
-        setRh(copyOf(live));
-        setMode("ensaio");
-        say("Modo ensaio: as telas continuam com o que estava no ar.");
-    }, [isLive, live, say]);
+    // Travar telas / Destravar (Saídas, the banner).
+    const setLocked = useCallback((on) => {
+        liveOp("screens.lock", { locked: Boolean(on) })
+            .then(() => say(on ? "Telas travadas: prepare à vontade, nada novo vai às telas." : "Telas destravadas: enviar volta a mudar as telas."))
+            .catch(() => {});
+    }, [liveOp, say]);
 
-    const arm = useCallback(() => {
-        setRh(null);
-        setMode("live");
-        say("Saídas armadas. Enviar ao ar volta a mudar as telas.");
-    }, [say]);
-
-    // The local copy starts as soon as the live state arrives.
-    useEffect(() => { if (mode !== "live" && !rh && live) setRh(copyOf(live)); }, [mode, rh, live]);
-
-    return { live, now, mode, isLive, cur, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, goEnsaio, arm, callOp, liveOp, toast, say };
+    return { live, now, cur: live, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, callOp, liveOp, toast, say };
 }

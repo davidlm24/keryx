@@ -13,7 +13,7 @@ import Library from "@/components/console/Library";
 import SlidesPanel, { handTitle } from "@/components/console/SlidesPanel";
 import CenterPanel, { captionOf } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
-import Rundown from "@/components/console/Rundown";
+import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
 import Timeline from "@/components/console/Timeline";
 import BibleEnv from "@/components/console/BibleEnv";
@@ -27,7 +27,7 @@ import NoticeEditor from "@/components/console/NoticeEditor";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
-import { Menu, Shortcuts, Outputs, History, ArmDialog, EndDialog, Palette, UpdateDialog, Notifications } from "@/components/console/Popovers";
+import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor, densityOf } from "@/lib/console/layout";
@@ -35,13 +35,14 @@ import { liveAction, quickJumpKey } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
+import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
 const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LOG_KEY(serviceId)) || "{}"); } catch { return {}; } };
 
 // The operator console, driving the live state (shared/live-state.mjs)
 // through useConsole: one console, always ready, as in Holyrics. Two
-// environments (KERYX: projection, Bíblia) and two modes (Ao vivo, Ensaio).
+// environments (KERYX: projection, Bíblia); rehearsing is "Travar telas" (Saídas).
 // Preparing is safe while live — a click or a drag only fills the Prévia;
 // only Enter, a double click or "Enviar ao ar" change the screens. The
 // readiness check (VerifyView) opens on demand from the Saídas popover.
@@ -190,7 +191,7 @@ export default function Console() {
         // (The browser preview opens outputs as tabs only when asked, from
         // Saídas: a send must not take the tab away from the console.)
         const displays = window.keryxDesktop?.displays;
-        if (c.isLive && projector && displays && !keryx.isPreview) {
+        if (!c.locked && projector && displays && !keryx.isPreview) {
             displays.list().then((r) => {
                 const p = r?.data?.outputs?.find((o) => o.key === "/Projection") || projector;
                 if (!p.open) return displays.open("/Projection");
@@ -198,7 +199,7 @@ export default function Console() {
             }).catch(() => {});
         }
         const went = await c.send(stage);
-        if (!went || !c.isLive) return;
+        if (!went) return;
         // A song on air counts for Histórico, Estatísticas and the CCLI report.
         const sent = stage || c.prev;
         if (sent?.kind === "lyrics" && String(sent.id || "").startsWith("song:") && !sent.airSlide) {
@@ -280,7 +281,7 @@ export default function Console() {
     // Output health (src/lib/console/outputs.js): the status in the top bar,
     // the rows of Saídas, "em N telas" beside the Programa and the banner.
     const airWords = captionOf(c.cur, "No ar").replace(/^No ar · /, "");
-    const health = useMemo(() => outputHealth({ outputs, seen, isLive: c.isLive, air: airWords, tries }), [outputs, seen, c.isLive, airWords, tries]);
+    const health = useMemo(() => outputHealth({ outputs, seen, locked: c.locked, air: airWords, tries }), [outputs, seen, c.locked, airWords, tries]);
 
     // Updates (electron/updater.cjs): with Atualizar automaticamente a version
     // found right after opening shows its popup by itself, once; later it only
@@ -394,7 +395,7 @@ export default function Console() {
                 e.preventDefault();
                 if (drawer) { setDrawer(false); return; }
                 c.end();
-                c.say(c.isLive ? "Projeção encerrada · Voltar ao anterior desfaz." : "Encerrado só aqui: as telas não mudam.");
+                c.say("Projeção encerrada · Voltar ao anterior desfaz.");
             }
             else if (action === "search") { e.preventDefault(); setOpen("palette"); }
             else if (action === "help") setOpen("atalhos");
@@ -419,13 +420,25 @@ export default function Console() {
 
     const rundownProps = { service, items, airItemId, prevItemId, prepare: prepareItem, go: goItem, addStage: addStageToSetlist };
     const histLeft = useMemo(() => (layout.hidden.lib ? 0 : layout.libW + 6) + (layout.hidden.slides ? 0 : layout.slidesW + 6) + 6, [layout]);
-    // Wide: the Setlist is a column of its own; otherwise it is the Biblioteca's first tab.
-    const showRight = tier === "wide" && !layout.hidden.roteiro;
+    // Wide: a right column with Camadas over the Setlist (each can be hidden
+    // in Ver). Narrower, the Setlist is the Biblioteca's first tab and
+    // Camadas a drawer opened from the Programa.
+    const setlistRight = tier === "wide" && !layout.hidden.roteiro;
+    const camadasRight = tier === "wide" && !layout.hidden.camadas;
+    const showRight = setlistRight || camadasRight;
+    // Camadas on screen: no drawer left open behind it (Esc would close that first).
+    useEffect(() => { if (camadasRight) setDrawer(false); }, [camadasRight]);
     useEffect(() => { if (!compact && libTab === "roteiro") setLibTab("letras"); }, [compact, libTab]);
     const setlistPanel = (
         <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"} collapsed={layout.collapsed.roteiro} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
             actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} /></>}>
             <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
+        </Panel>
+    );
+    const camadasPanel = (
+        <Panel title="Camadas" count="o que está no ar" collapsed={layout.collapsed.camadas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })}
+            style={setlistRight && !layout.collapsed.camadas ? { flex: `0 0 ${layout.camadasH}px` } : undefined}>
+            <Layers c={c} themes={data.themes} />
         </Panel>
     );
     const libraryPanel = (
@@ -439,12 +452,17 @@ export default function Console() {
         </Panel>
     );
 
+    // The service clock in the top bar, late as the Linha do tempo counts it.
+    const playAirIdx = playable.findIndex((i) => i.id === airItemId);
+    const late = service ? serviceTiming({ items: playable, times: plannedTimes(service, playable), airIdx: playAirIdx, startedAt: playAirIdx >= 0 ? log[airItemId]?.start : null, now: c.now }).late : 0;
+    const svc = serviceClock({ service, seconds: setPlan.seconds, late, now: c.now });
+
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
     return (
-        <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.isLive ? "" : "is-ensaio"}`} onClick={onMouseClick}>
+        <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.locked ? "is-locked" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} />
+            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -467,8 +485,9 @@ export default function Console() {
                     <button type="button" className="kx-btn kx-t" onClick={() => forgetOutput(health.banner.row.id)} title="Não avisar mais sobre esta saída nesta sessão">Esquecer</button>
                 </div>
             )}
-            {c.mode === "ensaio" && (
-                <div className="kx-banner is-rh">MODO ENSAIO — nada será enviado às saídas<span className="kx-sub">As telas continuam com o que estava no ar.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => setOpen("arm")}>Armar saídas</button></div>
+            {/* Travar telas: the console prepares, the screens keep what they show. */}
+            {c.locked && (
+                <div className="kx-banner is-rh" role="status"><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             <div className="main" ref={mainRef}>
                 {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeView} />}
@@ -504,22 +523,28 @@ export default function Console() {
                             </>
                         )}
                         <div className="col center" ref={centerRef}>
-                            <Panel title={c.isLive ? "Programa" : "Programa · Ensaio"} actions={
+                            <Panel title={c.locked ? "Programa · travado" : "Programa"} actions={
                                 <div style={{ position: "relative", display: "flex", gap: 2 }}>
-                                    <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>
+                                    {!camadasRight && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
                                     <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco"><Icon name="undo" />Voltar ao anterior</button>
                                 </div>
                             } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
                                 <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
                                     nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))}
-                                    later={showRight ? [] : laterItems} onPrepareItem={prepareItem} onGoItem={goItem}
+                                    later={setlistRight ? [] : laterItems} onPrepareItem={prepareItem} onGoItem={goItem}
                                     onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
                             </Panel>
                         </div>
                         {showRight && (
                             <>
                                 <Split size={layout.rightW} sign={-1} onSize={(v) => setLayout({ ...layout, rightW: v })} onReset={() => setLayout({ ...layout, rightW: DEFAULT_LAYOUT.rightW })} clamp={(v) => clampSize("rightW", v)} />
-                                <div className="col" style={sideCol("rightW", layout.rightW)}>{setlistPanel}</div>
+                                <div className="col" style={sideCol("rightW", layout.rightW)}>
+                                    {camadasRight && camadasPanel}
+                                    {camadasRight && setlistRight && !layout.collapsed.camadas && (
+                                        <Split horizontal size={layout.camadasH} onSize={(v) => setLayout({ ...layout, camadasH: v })} onReset={() => setLayout({ ...layout, camadasH: DEFAULT_LAYOUT.camadasH })} clamp={(v) => clampSize("camadasH", v)} />
+                                    )}
+                                    {setlistRight && setlistPanel}
+                                </div>
                             </>
                         )}
                     </>
@@ -531,7 +556,7 @@ export default function Console() {
                 </div>
             )}
 
-            {open && <div className={`scrim ${open === "palette" || open === "arm" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open && <div className={`scrim ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
@@ -544,12 +569,11 @@ export default function Console() {
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} isLive={c.isLive} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch(() => {})} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
-            <ArmDialog open={open} setOpen={setOpen} live={c.live} onArm={c.arm} />
-            <EndDialog open={open} setOpen={setOpen} mode={c.mode} onEnd={c.end} />
+            <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onBibleSearch={searchBibleFor} />
-            {drawer && !view && env === "culto" && (
+            {drawer && !camadasRight && !view && env === "culto" && (
                 // Over the source columns, never over the Programa: up to the live column's left edge.
                 <div className="drawer" style={{ width: Math.max(240, Math.min(360, (centerRef.current?.getBoundingClientRect().left ?? 372) - 12)) }}>
                     <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
