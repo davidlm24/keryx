@@ -31,7 +31,7 @@ import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, No
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor, densityOf } from "@/lib/console/layout";
-import { liveAction, quickJumpKey } from "@/lib/console/keys";
+import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
@@ -67,7 +67,7 @@ export default function Console() {
         try { return new URLSearchParams(window.location.search).get("env") === "biblia" ? "biblia" : "culto"; } catch { return "culto"; }
     });
     // The views inside the console, one at a time (null: the console itself):
-    // { cfg: section } Configurações, { song: id | "new" } the song editor,
+    // { song: id | "new" } the song editor,
     // { planner: true } the service planner, { media: true } the media
     // library, { notice: id | "new" } the aviso editor, { school: true } the
     // Escola bíblica, { reports: true } Relatórios. The old pages land here on
@@ -77,7 +77,6 @@ export default function Console() {
     const [view, setView] = useState(() => {
         try {
             const p = new URLSearchParams(window.location.search);
-            if (p.get("config")) return { cfg: sectionIds.includes(p.get("config")) ? p.get("config") : "telas" };
             if (p.get("song")) return { song: p.get("song") };
             if (p.get("planner")) return { planner: true };
             if (p.get("media")) return { media: true };
@@ -87,7 +86,6 @@ export default function Console() {
         } catch { /* no query */ }
         return null;
     });
-    const cfg = view?.cfg || null;
     const editSong = view?.song || null;
     const planner = Boolean(view?.planner);
     const mediaView = Boolean(view?.media);
@@ -95,9 +93,17 @@ export default function Console() {
     const school = Boolean(view?.school);
     const reports = Boolean(view?.reports);
     const closeView = useCallback(() => setView(null), []);
-    const setCfg = useCallback((section) => setView(section ? { cfg: section } : null), []);
     const setEnv = useCallback((v) => { setView(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
-    const openSettings = useCallback((section = "telas") => { setOpen(null); setView({ cfg: section }); }, []);
+    // Configurações: a window over whatever is on screen (the console or a
+    // view), with its section; ?config=<section> opens it at launch.
+    const [cfg, setCfg] = useState(() => {
+        try {
+            const s = new URLSearchParams(window.location.search).get("config");
+            return s ? (sectionIds.includes(s) ? s : "telas") : null;
+        } catch { return null; }
+    });
+    const closeSettings = useCallback(() => setCfg(null), []);
+    const openSettings = useCallback((section = "telas") => { setOpen(null); setCfg(section); }, []);
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
@@ -416,25 +422,34 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && quick === null && !view) {
+            if (env === "biblia" && !open && !cfg && quick === null && !view) {
                 const ch = quickJumpKey(e);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
             const action = liveAction(e);
             if (!action) return;
             if (action === "blur") { e.target.blur?.(); return; }
-            if (open) {
-                if (action === "end") { e.preventDefault(); setOpen(null); }
-                return;
+            // Esc closes the topmost thing open (src/lib/console/keys.js,
+            // escapeTarget); only with nothing open does it end the projection.
+            if (action === "end") {
+                const top = escapeTarget({ popover: open, settings: cfg, drawer });
+                if (top !== "end") {
+                    e.preventDefault();
+                    if (top === "popover") setOpen(null);
+                    else if (top === "settings") setCfg(null);
+                    else if (top === "drawer") setDrawer(false);
+                    return;
+                }
             }
-            // In Configurações Esc goes back to the console; it never ends the projection there.
-            if (cfg && action === "end") { e.preventDefault(); setView(null); return; }
+            if (open) return;
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
             // So do the planner, the media library, the aviso editor and the
             // reports (each closes itself on Esc). The Escola bíblica is a
             // projecting view: every live key works there.
-            if (view && !cfg && !school && !["black", "logo"].includes(action)) return;
+            // Configurações is a window over the console: behind it, as behind
+            // the views, only the emergency keys (Tela preta, Logo) act.
+            if ((cfg || (view && !school)) && !["black", "logo"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -449,8 +464,7 @@ export default function Console() {
             else if (action === "clear") c.clearText();
             else if (action === "end") {
                 e.preventDefault();
-                if (drawer) { setDrawer(false); return; }
-                c.end(); // its toast offers Desfazer
+                c.end(); // nothing open (escapeTarget above); its toast offers Desfazer
             }
             else if (action === "search") { e.preventDefault(); setOpen("palette"); }
             else if (action === "help") setOpen("atalhos");
@@ -552,7 +566,6 @@ export default function Console() {
                 <div className="kx-banner is-rh" role="status"><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             <div className="main" ref={mainRef}>
-                {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeView} />}
                 {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} />}
                 {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { if (editSong === "new" && row?.id) setView({ song: row.id }); }} />}
                 {school && <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={closeView} />}
@@ -619,7 +632,10 @@ export default function Console() {
                 </div>
             )}
 
-            {open && <div className={`scrim ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {/* Configurações: a window over the console or the view behind it. */}
+            {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
+            {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} />}
+            {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">

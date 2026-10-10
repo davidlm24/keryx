@@ -60,8 +60,9 @@ leaves the field. A control focused with Tab keeps its own Enter and Space.
 
 **Keys** (`src/lib/console/keys.js`, tested): ←/→ move the slide or verse on
 air; ↑/↓ move the selection (green); Space plays or pauses; **B** Tela preta,
-**L** Mostrar logo, **C** Limpar texto; **Esc** ends the projection at once
-(after closing whatever is open; in Configurações it goes back to the console)
+**L** Mostrar logo, **C** Limpar texto; **Esc** closes the topmost thing open,
+one per press (a popover or dialog, then Configurações, then the Camadas
+drawer; `escapeTarget`), and with nothing open ends the projection at once
 and its toast's *Desfazer* puts back what was on air, on the same slide;
 *Voltar ao anterior* still brings one earlier item back through the Prévia; **/** searches; **?** lists the keys. The
 *Encerrar* button, unlike Esc, asks first. In the Bíblia a letter or digit

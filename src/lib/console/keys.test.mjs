@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { liveAction, focusKind, quickJumpKey } from "./keys.js";
+import { liveAction, focusKind, quickJumpKey, escapeTarget, ESC_ORDER } from "./keys.js";
 
 // A stand-in element: its own selector matches and those of its ancestors.
 const el = (tagName, self = [], ancestors = []) => ({
@@ -95,4 +95,16 @@ test("Bible quick jump: a letter or digit with nothing focused", () => {
     assert.equal(jump("j", nothing, { ctrlKey: true }), null);
     assert.equal(jump("ArrowRight", nothing), null);
     assert.equal(jump("/", nothing), null);
+});
+
+test("Esc closes the topmost thing open, one per press; with nothing open it ends", () => {
+    assert.equal(escapeTarget({}), "end");
+    assert.equal(escapeTarget(), "end");
+    assert.equal(escapeTarget({ drawer: true }), "drawer");
+    assert.equal(escapeTarget({ settings: true, drawer: true }), "settings");
+    assert.equal(escapeTarget({ popover: "verificar", settings: true, drawer: true }), "popover");
+    assert.equal(escapeTarget({ menu: true, popover: "outs", settings: true }), "menu");
+    assert.equal(escapeTarget({ popover: null, settings: false, drawer: false }), "end");
+    // The order is the visual stacking: a context menu over a popover over Configurações over Camadas.
+    assert.deepEqual(ESC_ORDER, ["menu", "popover", "settings", "drawer"]);
 });
