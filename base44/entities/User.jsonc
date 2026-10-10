@@ -21,6 +21,15 @@
       "type": "string",
       "description": "URL do logo"
     },
+    "transition_type": {
+      "type": "string",
+      "enum": ["fade", "slide", "cut"],
+      "description": "Transicao padrao entre slides nas telas (Configuracoes › Aparencia): esmaecer, deslizar ou corte"
+    },
+    "transition_ms": {
+      "type": "integer",
+      "description": "Duracao padrao da transicao entre slides, em milissegundos (120 a 600)"
+    },
     "standby_background": {
       "type": "string",
       "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido)"

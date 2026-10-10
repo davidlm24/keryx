@@ -178,7 +178,7 @@ function Content({ content }) {
         <>
             {!bible && content.title && <div className="ks-title" style={{ fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }}>{content.title}</div>}
             <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": SIZE_CQW[size], ...(style.text_nudge ? { translate: `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` } : {}) }}>
-                <div key={key} className={anim} style={{ display: "contents" }}>
+                <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
                     {slide.is_chorus && !bible && <div className="ks-chorus">Refrão</div>}
                     {isUrl(slide.image_url) && <img className={`ks-slide-img ${slide.text ? "" : "is-alone"}`} src={slide.image_url} alt="" />}
                     {(slide.text || !slide.image_url) && <div className={`ks-text ks-${size}`} style={{ ...textStyle(style), ...textExtra(style) }}>{bible ? verseNodes(slide.text) : slide.text}</div>}

@@ -1529,6 +1529,12 @@
         "logo_url": {
           "type": "text"
         },
+        "transition_type": {
+          "type": "text"
+        },
+        "transition_ms": {
+          "type": "integer"
+        },
         "standby_background": {
           "type": "text"
         },

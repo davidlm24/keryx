@@ -28,9 +28,14 @@
 .ks-text sup { font-size: .5em; opacity: .65; margin-right: .35em; vertical-align: .6em; font-weight: 500; }
 .ks-chorus { font-size: 1.6cqw; letter-spacing: .2em; text-transform: uppercase; opacity: .6; font-weight: 500; }
 .ks-ref { font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; opacity: .8; }
-.ks-anim-fade { animation: ks-fade .4s ease-out; }
-.ks-anim-slide { animation: ks-slide .35s cubic-bezier(.2, .8, .2, 1); }
-.ks-anim-zoom { animation: ks-zoom .35s ease-out; }
+/* The slide change. The class sits on a display: contents wrapper (keyed by
+   slide, so it remounts), which has no box of its own and animates nothing:
+   the animation is on its children. --ks-tr is the length (Aparência or
+   Camadas, style.transition_ms). Only "from" frames and no fill mode, so a
+   text's own opacity (Camadas) is where the fade ends. */
+.ks-anim-fade > * { animation: ks-fade var(--ks-tr, .4s) ease-out; }
+.ks-anim-slide > * { animation: ks-slide var(--ks-tr, .35s) cubic-bezier(.2, .8, .2, 1); }
+.ks-anim-zoom > * { animation: ks-zoom var(--ks-tr, .35s) ease-out; }
 @keyframes ks-fade { from { opacity: 0; } }
 @keyframes ks-slide { from { opacity: 0; transform: translateY(2cqw); } }
 @keyframes ks-zoom { from { opacity: 0; transform: scale(.96); } }
@@ -84,7 +89,7 @@
 .ks-alert { position: absolute; z-index: 90; left: 0; right: 0; top: 0; min-height: 6cqw; display: flex; align-items: center; justify-content: center; padding: 1cqw 3cqw; background: #f5a524; color: #1a1300; font-size: 2.8cqw; line-height: 1.2; font-weight: 600; text-align: center; white-space: pre-wrap; }
 .ks-alert.ks-alert-alert { background: #e5484d; color: #fff; }
 
-@media (prefers-reduced-motion: reduce) { .ks-anim-fade, .ks-anim-slide, .ks-anim-zoom { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .ks-anim-fade > *, .ks-anim-slide > *, .ks-anim-zoom > * { animation: none; } }
 
 /* The console's Programa monitor mirroring the video channel: the clip
    covers the box, as TabletVideoReceiver covers the projector. */
