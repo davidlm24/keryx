@@ -4,6 +4,7 @@ import { projection } from "@/lib/projection";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
+import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 
 // The console's own state around the live state. One console, always live:
 // every operation goes to the live state (shared/live-state.mjs).
@@ -23,6 +24,14 @@ export function useConsole() {
     const live = useLiveState();
     const now = useLiveNow(1000);
     const [prev, setPrevState] = useState(null);
+    // The church's default transition (Configurações › Aparência, on User),
+    // stamped into each item that goes on air (src/lib/console/look.js).
+    const lookRef = useRef(lookDefaults(null));
+    useEffect(() => {
+        const take = (u) => { lookRef.current = lookDefaults(u); };
+        keryx.auth.me().then(take).catch(() => {});
+        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
+    }, []);
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 
@@ -60,7 +69,8 @@ export function useConsole() {
         if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
-        const [op, args] = stageOp(stage);
+        const [op, stageArgs] = stageOp(stage);
+        const args = withLookDefaults(op, stageArgs, lookRef.current);
         const ref = stage.args?.ref || {};
         try {
             if (!live?.session) await projection.startSession(ref.serviceId || null);

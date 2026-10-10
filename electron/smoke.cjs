@@ -908,6 +908,24 @@ async function checkConsole(webContents, { live, outputs }) {
         result.idleWallLoads = Boolean(main) && await main.webContents.executeJavaScript(`new Promise((ok) => { const i = new Image(); i.onload = () => ok(i.naturalWidth > 0); i.onerror = () => ok(false); i.src = ${JSON.stringify(wallUrl)}; setTimeout(() => ok(false), 5000); })`).catch(() => false);
         live.call("idle.set", { mode: "logo" });
         result.idleWallOff = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("!document.querySelector('.ks-idle-wall')").catch(() => false));
+        // Transitions really animate on the projector (the class sits on a
+        // display: contents wrapper; the animation is on its children), and
+        // they end with the text fully visible.
+        live.call("content.show", { kind: "lyrics", title: "Transição", slides: [{ text: "Primeiro" }, { text: "Segundo" }] });
+        await sleep(400);
+        live.call("content.next", {});
+        result.slideAnimates = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("(() => { const t = document.querySelector('.ks-text'); return Boolean(t && t.textContent === 'Segundo' && t.getAnimations().some((a) => a.animationName === 'ks-fade')); })()").catch(() => false), 1500);
+        await sleep(1000);
+        result.slideSettles = Boolean(main) && await main.webContents.executeJavaScript("(() => { const t = document.querySelector('.ks-text'); return Boolean(t && t.getAnimations().length === 0 && getComputedStyle(t).opacity === '1'); })()").catch(() => false);
+        live.call("clear", {});
+        // Aparência's default transition goes on air with an item that has none.
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { transition_type: "slide", transition_ms: 200 }])`);
+        await sleep(600);
+        await dblclick(".kx-row", "Canto do console");
+        result.lookDefault = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.transition === "slide" && st.transition_ms === 200); }, 5000);
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { transition_type: null, transition_ms: null }])`);
+        live.call("clear", {});
+        await waitFor(() => !live.get().content);
 
         // The song on air again, then Travar telas (Saídas): nothing new goes
         // on (a double click, Enter and the main process all refuse), anything
@@ -1724,7 +1742,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
