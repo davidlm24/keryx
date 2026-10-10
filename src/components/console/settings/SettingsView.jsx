@@ -1,6 +1,5 @@
 import React from "react";
-import Icon from "../Icon";
-import { Panel, Btn, Row, BackBtn } from "../kx";
+import { Panel, Row, BackBtn } from "../kx";
 import TelasSection from "./TelasSection";
 import RedeSection from "./RedeSection";
 import BibliasSection from "./BibliasSection";
