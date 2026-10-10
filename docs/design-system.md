@@ -146,7 +146,14 @@ group), the chosen book with every chapter (26 px), and a line with Recentes
 as chips and Favoritos/Anotações as dropdowns. Nothing in it scrolls (Salmos
 150 included). When the reading column is under 680 px tall the 66-book grid
 folds and the book's name in the chapters row opens it again (the choice is
-remembered). The "No ar agora" monitor takes at most 35 % of its column's
+remembered). Under the chapters a **Versículo** row (2026-10-10) holds the
+chapter's verses as the same 26 px cells: a click selects as clicking the
+text does (Ctrl adds, Shift makes a range, a double click projects), green
+when selected and red when on air, and the reading scrolls to it; it folds
+first, under 760 px. **Abrev | Nomes** in the band's header shows the books
+as short codes or whole names (110 px cells, about 8 rows; same 680 px fold),
+remembered. Without internet every *Instalar* says "sem internet" and does
+nothing. The "No ar agora" monitor takes at most 35 % of its column's
 height. The edition is named beside the version: *instalada neste computador*,
 *pela internet* (amber) or *não disponível* (amber), and a missing edition
 offers *Instalar* or *Usar* an installed one; sample text is never shown in a
