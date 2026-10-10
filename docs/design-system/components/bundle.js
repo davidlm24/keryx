@@ -10,6 +10,7 @@
     'skip-fwd': '<path d="m6 6 10 6-10 6zM18 6v12"/>',
     black: '<rect x="3" y="5" width="18" height="13" rx="1.5"/><path d="m5 18 14-11"/>',
     logo: '<circle cx="12" cy="12" r="8"/><path d="M9.5 8.5v7M14.5 8.5 9.5 12l5 3.5"/>',
+    edit: '<path d="M4.5 19.5 5.3 15 16 4.3a1.7 1.7 0 0 1 2.4 0l1.3 1.3a1.7 1.7 0 0 1 0 2.4L9 18.7z"/><path d="m14 6.3 3.7 3.7"/>',
     eraser: '<path d="m5 15 8.5-8.5a1.5 1.5 0 0 1 2 0l2 2a1.5 1.5 0 0 1 0 2L11 17H7z"/><path d="M5 20h14"/>',
     stop: '<rect x="5.5" y="5.5" width="13" height="13" rx="1.5"/>',
     power: '<path d="M12 3v8"/><path d="M6.5 7a7.5 7.5 0 1 0 11 0"/>',
