@@ -8,7 +8,7 @@
 //   keryx:bible:*       invoke  installed versions, install from the web or a file, one online chapter
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 //   keryx:network       invoke  { op, args } screens on the church network
-//   keryx:lyrics        invoke  { op: search | get | setKey | status, args } lyrics from the web
+//   keryx:lyrics        invoke  { op: search | get, args } lyrics from the web
 //   keryx:live:get      invoke  -> live state snapshot (shared/live-state.mjs)
 //   keryx:live:call     invoke  { op, args } -> the new snapshot | { error }
 //   keryx:live-change   event   the whole snapshot, sent to every window after each change
@@ -130,11 +130,11 @@ function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaD
         }
     });
 
-    // Lyrics from the web (electron/lyrics.cjs): search, get, setKey, status.
+    // Lyrics from the web (electron/lyrics.cjs): search, get.
     ipcMain.handle("keryx:lyrics", async (event, payload) => {
         if (!isTrustedSender(event)) return reject;
         const { op, args } = payload || {};
-        if (!lyrics || !["search", "get", "setKey", "status"].includes(op)) return { error: { message: `Operação desconhecida: ${op}.`, status: 400 } };
+        if (!lyrics || !["search", "get"].includes(op)) return { error: { message: `Operação desconhecida: ${op}.`, status: 400 } };
         try {
             return { data: await lyrics[op](args) };
         } catch (err) {

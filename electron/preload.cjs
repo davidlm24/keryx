@@ -90,7 +90,7 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     network: {
         call: (op, args) => ipcRenderer.invoke("keryx:network", { op, args }),
     },
-    // Lyrics from the web (Vagalume + letras.mus.br search), main process.
+    // Lyrics from the web (LRCLIB + letras.mus.br search), main process.
     lyrics: {
         call: (op, args) => ipcRenderer.invoke("keryx:lyrics", { op, args }),
     },
