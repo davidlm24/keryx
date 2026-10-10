@@ -102,6 +102,15 @@ as made**: Camadas is its own section, a deliberate place, and *Travar
 telas* holds them during a rehearsal. The Próximo line's button says **Pôr
 na prévia**, like every other place.
 
+**Camadas, more control (2026-10-10):** Texto principal adds Opacidade,
+Largura, Entrelinhas, Maiúsculas, a Caixa behind the text (Faixa across the
+screen or Bloco around it, its colour and opacity) and an Ajuste fino
+(nudge up or down); Fundo adds Ajuste (Cobrir / Conter), Posição, Escurecer
+and Desfoque; Logo adds a free Largura, Opacidade and Margem. All are fields
+of the live state (typed and clamped in `shared/live-state.mjs`), so every
+output draws them; a theme saved with *Salvar como novo* keeps the text and
+background ones, and applying a theme without them clears them.
+
 **Bible editions (settled 2026-10-10).** The edition the operator chooses
 is the one used, even when another is installed: ARA with NVI installed is
 read from the internet (the badge says "pela internet", amber), and a

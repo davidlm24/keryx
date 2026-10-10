@@ -15,6 +15,17 @@
       "type": "string",
       "description": "Segunda cor para gradiente"
     },
+    "text_opacity": { "type": "number", "description": "Opacidade do texto (0.2 a 1), Camadas" },
+    "text_max_width": { "type": "number", "description": "Largura máxima do texto (40 a 100 %), Camadas" },
+    "line_height": { "type": "string", "enum": ["tight", "normal", "loose"], "description": "Entrelinhas, Camadas" },
+    "text_case": { "type": "string", "enum": ["none", "upper"], "description": "Caixa alta, Camadas" },
+    "text_box": { "type": "string", "enum": ["none", "band", "block"], "description": "Caixa atrás do texto: faixa ou bloco, Camadas" },
+    "text_box_color": { "type": "string", "description": "Cor da caixa atrás do texto (#rrggbb)" },
+    "text_box_opacity": { "type": "number", "description": "Opacidade da caixa (0 a 0.9)" },
+    "text_nudge": { "type": "number", "description": "Ajuste fino vertical do texto (-20 a 20 % da altura)" },
+    "background_fit": { "type": "string", "enum": ["cover", "contain"], "description": "Ajuste da imagem de fundo" },
+    "background_dim": { "type": "number", "description": "Escurecer o fundo (0 a 0.9)" },
+    "background_blur": { "type": "number", "description": "Desfoque do fundo (px numa tela de 1920)" },
     "font_family": {
       "type": "string",
       "enum": [

@@ -1072,6 +1072,39 @@
         "text_color_2": {
           "type": "text"
         },
+        "text_opacity": {
+          "type": "real"
+        },
+        "text_max_width": {
+          "type": "real"
+        },
+        "line_height": {
+          "type": "text"
+        },
+        "text_case": {
+          "type": "text"
+        },
+        "text_box": {
+          "type": "text"
+        },
+        "text_box_color": {
+          "type": "text"
+        },
+        "text_box_opacity": {
+          "type": "real"
+        },
+        "text_nudge": {
+          "type": "real"
+        },
+        "background_fit": {
+          "type": "text"
+        },
+        "background_dim": {
+          "type": "real"
+        },
+        "background_blur": {
+          "type": "real"
+        },
         "font_family": {
           "type": "text",
           "default": "sans"

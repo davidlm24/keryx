@@ -43,7 +43,7 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
                 <audio key={state.content.startedAt} src={state.content.audio} autoPlay className="hidden" />
             )}
             {state.logo?.visible && logoUrl && layer !== "media" && (
-                <div className="ks-z" style={{ zIndex: z("logo") }}><img className={`ks-logo ks-${state.logo.size} ks-${state.logo.corner}`} src={logoUrl} alt="" /></div>
+                <div className="ks-z" style={{ zIndex: z("logo") }}><img className={`ks-logo ks-${state.logo.size} ks-${state.logo.corner}`} style={logoLook(state.logo)} src={logoUrl} alt="" /></div>
             )}
             {preview && motion && state.video && (
                 <div className="ks-vidcover"><LiveVideo item={state.video} muted className="ks-vidcover-v" /></div>
@@ -56,6 +56,21 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
 
 // Nothing on air: the operator's wallpaper (cover, no logo over it: it was
 // chosen instead of the logo), else the default gradient with the logo.
+// The corner logo's own look (Camadas): opacity, a free width (% of the
+// width) and its distance from the corner; without them, the CSS defaults.
+function logoLook(logo) {
+    const out = {};
+    if (logo.opacity != null) out.opacity = logo.opacity;
+    if (logo.width != null) { out.width = `${logo.width}cqw`; out.height = `${logo.width}cqw`; }
+    if (logo.margin != null) {
+        const m = `${logo.margin}cqw`;
+        const [v, h] = String(logo.corner || "bottom-right").split("-");
+        out[v] = m;
+        out[h] = m;
+    }
+    return out;
+}
+
 function Idle({ logoUrl, wallpaper }) {
     if (wallpaper) return <div className="ks-bg-img ks-idle-wall" style={{ backgroundImage: `url("${String(wallpaper).replace(/"/g, "%22")}")` }} />;
     return <><div className="ks-bg-default" /><div className="ks-idle">{logoUrl && <img src={logoUrl} alt="" />}</div></>;
@@ -83,11 +98,27 @@ function Background({ state, layer }) {
         return <div className="ks-layer" style={{ background: bg }} />;
     }
     if (liveBg) {
-        if (liveBg.kind === "video") return <video className="ks-bg-video" src={liveBg.value} autoPlay loop muted playsInline />;
         if (liveBg.kind === "color") return <div className="ks-layer" style={{ background: liveBg.value }} />;
-        return <><div className="ks-bg-img" style={{ backgroundImage: `url(${liveBg.value})` }} /><div className="ks-bg-dim" /></>;
+        const look = bgLook(liveBg);
+        if (liveBg.kind === "video") return <><video className="ks-bg-video" style={look.media} src={liveBg.value} autoPlay loop muted playsInline />{look.dim}</>;
+        return <><div className="ks-bg-img" style={{ backgroundImage: `url(${liveBg.value})`, ...look.image }} />{look.dim}</>;
     }
     return <div className="ks-bg-default" />;
+}
+
+// The Fundo layer's own look (Camadas): fit, which part shows, blur (px at
+// 1920 wide, so in cqw) and how dark; without them, the old look (cover,
+// centred, .45 dark for pictures, none for videos).
+const PX = 100 / 1920; // 1px of a 1920-wide screen, in cqw
+function bgLook(bg) {
+    const blur = bg.blur ? { filter: `blur(${(bg.blur * PX).toFixed(3)}cqw)`, transform: "scale(1.06)" } : {};
+    const pos = bg.position || "center";
+    const dim = bg.dim ?? (bg.kind === "video" ? 0 : 0.45);
+    return {
+        image: { backgroundSize: bg.fit || "cover", backgroundPosition: pos, backgroundRepeat: "no-repeat", ...blur },
+        media: { objectFit: bg.fit || "cover", objectPosition: pos, ...blur },
+        dim: dim > 0 ? <div className="ks-bg-dim" style={{ background: `rgba(0, 0, 0, ${dim})` }} /> : null,
+    };
 }
 
 const SIZES = ["xsmall", "small", "medium", "large", "xlarge", "xxlarge"];
@@ -101,6 +132,28 @@ function textStyle(style) {
         return { ...base, backgroundImage: `linear-gradient(to right, ${color}, ${style.text_color_2})`, WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color };
     }
     return { ...base, color, ...getTextEffect(style.text_effect || "shadow", color) };
+}
+
+// Camadas' extra text look: how see-through, how wide, the line spacing,
+// capitals, a box behind it (a band across the screen or a block around the
+// text) and a fine vertical nudge (% of the screen's height, in cqw).
+const LINE_HEIGHT = { tight: 1.08, normal: 1.22, loose: 1.45 };
+const rgba = (hex, a) => { const n = parseInt(String(hex || "#000000").slice(1), 16); return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`; };
+function textExtra(style) {
+    const out = {};
+    if (style.text_opacity != null) out.opacity = style.text_opacity;
+    if (style.text_max_width != null) out.maxWidth = `${style.text_max_width}%`;
+    if (style.line_height && LINE_HEIGHT[style.line_height]) out.lineHeight = LINE_HEIGHT[style.line_height];
+    if (style.text_case === "upper") out.textTransform = "uppercase";
+    if (style.text_box === "block" || style.text_box === "band") {
+        out.boxDecorationBreak = "clone";
+        out.WebkitBoxDecorationBreak = "clone";
+        if (!style.text_color_2) out.backgroundColor = rgba(style.text_box_color, style.text_box_opacity ?? 0.55);
+        out.padding = style.text_box === "band" ? "1.4cqw 8cqw" : "1.2cqw 2.4cqw";
+        out.borderRadius = style.text_box === "band" ? 0 : "1cqw";
+        if (style.text_box === "band") { out.alignSelf = "stretch"; out.marginInline = "-8cqw"; out.maxWidth = "none"; }
+    }
+    return out;
 }
 
 // Bible slides carry "16 Porque Deus… 17 Porque…": the numbers become marks.
@@ -124,11 +177,11 @@ function Content({ content }) {
     return (
         <>
             {!bible && content.title && <div className="ks-title" style={{ fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }}>{content.title}</div>}
-            <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": SIZE_CQW[size] }}>
+            <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": SIZE_CQW[size], ...(style.text_nudge ? { translate: `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` } : {}) }}>
                 <div key={key} className={anim} style={{ display: "contents" }}>
                     {slide.is_chorus && !bible && <div className="ks-chorus">Refrão</div>}
                     {isUrl(slide.image_url) && <img className={`ks-slide-img ${slide.text ? "" : "is-alone"}`} src={slide.image_url} alt="" />}
-                    {(slide.text || !slide.image_url) && <div className={`ks-text ks-${size}`} style={textStyle(style)}>{bible ? verseNodes(slide.text) : slide.text}</div>}
+                    {(slide.text || !slide.image_url) && <div className={`ks-text ks-${size}`} style={{ ...textStyle(style), ...textExtra(style) }}>{bible ? verseNodes(slide.text) : slide.text}</div>}
                     {bible && reference && <div className="ks-ref" style={{ color: style.text_color || "#ffffff" }}>{reference}</div>}
                 </div>
             </div>

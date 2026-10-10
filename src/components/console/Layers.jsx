@@ -25,8 +25,16 @@ const TEXT_SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", 
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["georgia", "Georgia"], ["verdana", "Verdana"]];
 const FAMILY_SET = new Set(FONTS.map(([v]) => v));
 
-const themeStyle = (t) => ({ font_size: t.font_size || "large", font_family: t.font_family || "sans", text_effect: t.text_effect || "shadow", text_color: t.text_color || "#ffffff", text_color_2: t.text_color_2 || "" });
-const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v]) => (style?.[k] || (k === "text_color_2" ? "" : undefined) || v) === v);
+// A theme's text look: the five classic keys, plus the Camadas extras it was
+// saved with (absent ones apply as "", so a theme without a box removes one).
+const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge"];
+const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""]));
+const themeStyle = (t) => ({ font_size: t.font_size || "large", font_family: t.font_family || "sans", text_effect: t.text_effect || "shadow", text_color: t.text_color || "#ffffff", text_color_2: t.text_color_2 || "", ...extra(t) });
+const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v]) => (EXTRA_KEYS.includes(k) || k === "text_color_2" ? String(style?.[k] ?? "") === String(v) : (style?.[k] || v) === v));
+// The theme's background look, for background.set.
+const bgOf = (t) => Object.fromEntries([["fit", t.background_fit], ["dim", t.background_dim], ["blur", t.background_blur]].filter(([, v]) => v != null && v !== ""));
+// Seg works on strings; these settings are numbers.
+const num = (v) => (v == null || v === "" ? "" : String(v));
 
 export default function Layers({ c, themes }) {
     const { cur } = c;
@@ -75,12 +83,15 @@ export default function Layers({ c, themes }) {
     const applyTheme = (t) => {
         setThemeId(t.id);
         if (content) setStyle(themeStyle(t));
-        if (t.background_image) op("background.set", { kind: "image", value: t.background_image, title: t.name });
+        if (t.background_image) op("background.set", { kind: "image", value: t.background_image, title: t.name, ...bgOf(t) });
     };
     const saveAsNew = async () => {
         const name = `${theme ? theme.name : "Tema"} ${new Date().toLocaleDateString("pt-BR")}`;
         try {
-            const row = await keryx.entities.ProjectionTheme.create({ name, ...themeStyle({ ...theme, ...style }), background_image: cur?.background?.kind === "image" ? cur.background.value : theme?.background_image || "" });
+            const bg = cur?.background?.kind === "image" ? cur.background : null;
+            const look = Object.fromEntries(Object.entries(themeStyle({ ...theme, ...style })).filter(([, v]) => v !== ""));
+            const row = await keryx.entities.ProjectionTheme.create({ name, ...look, background_image: bg ? bg.value : theme?.background_image || "",
+                ...(bg ? Object.fromEntries([["background_fit", bg.fit], ["background_dim", bg.dim], ["background_blur", bg.blur]].filter(([, v]) => v != null)) : {}) });
             setThemeId(row.id);
             c.say(`Tema salvo como "${name}".`);
         } catch (err) {
@@ -139,6 +150,19 @@ export default function Layers({ c, themes }) {
                     <span className="k">Posição</span><Seg small value={style.text_position || "middle"} options={[["top", "Alto"], ["middle", "Meio"], ["bottom", "Baixo"]]} onChange={(v) => !disabled && setStyle({ text_position: v })} />
                     <span className="k">Sombra</span><Seg small value={style.text_effect === "none" ? "none" : "shadow"} options={[["shadow", "Com"], ["none", "Sem"]]} onChange={(v) => !disabled && setStyle({ text_effect: v })} />
                     <span className="k">Transição</span><Seg small value={style.transition || "fade"} options={[["fade", "Esmaecer"], ["slide", "Deslizar"], ["cut", "Corte"]]} onChange={(v) => !disabled && setStyle({ transition: v })} />
+                    <span className="k">Opacidade</span><Seg small value={num(style.text_opacity ?? 1)} options={[["1", "100%"], ["0.8", "80%"], ["0.6", "60%"]]} onChange={(v) => !disabled && setStyle({ text_opacity: v === "1" ? "" : Number(v) })} />
+                    <span className="k">Largura</span><Seg small value={num(style.text_max_width ?? 100)} options={[["100", "Toda"], ["80", "80%"], ["60", "60%"]]} onChange={(v) => !disabled && setStyle({ text_max_width: v === "100" ? "" : Number(v) })} />
+                    <span className="k">Entrelinhas</span><Seg small value={style.line_height || "normal"} options={[["tight", "Justa"], ["normal", "Normal"], ["loose", "Solta"]]} onChange={(v) => !disabled && setStyle({ line_height: v === "normal" ? "" : v })} />
+                    <span className="k">Maiúsculas</span><Seg small value={style.text_case || "none"} options={[["none", "Não"], ["upper", "Sim"]]} onChange={(v) => !disabled && setStyle({ text_case: v === "none" ? "" : v })} />
+                    <span className="k">Caixa</span><Seg small value={style.text_box || "none"} options={[["none", "Nenhuma"], ["band", "Faixa"], ["block", "Bloco"]]} onChange={(v) => !disabled && setStyle({ text_box: v === "none" ? "" : v })} />
+                    {style.text_box && style.text_box !== "none" && <>
+                        <span className="k">Cor da caixa</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <input type="color" className="ed-color" disabled={disabled} value={style.text_box_color || "#000000"} onChange={(e) => setStyle({ text_box_color: e.target.value })} aria-label="Cor da caixa" />
+                            <Seg small value={num(style.text_box_opacity ?? 0.55)} options={[["0.35", "35%"], ["0.55", "55%"], ["0.75", "75%"]]} onChange={(v) => !disabled && setStyle({ text_box_opacity: Number(v) })} />
+                        </span>
+                    </>}
+                    <span className="k">Ajuste fino</span><Seg small value={num(style.text_nudge ?? 0)} options={[["-10", "↑ 10"], ["-5", "↑ 5"], ["0", "0"], ["5", "↓ 5"], ["10", "↓ 10"]]} onChange={(v) => !disabled && setStyle({ text_nudge: v === "0" ? "" : Number(v) })} />
                 </>)}
                 {sel === "bg" && (<>
                     <span className="k">Fundo</span><span style={{ color: "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? cur.background.title || cur.background.kind : "nenhum"}</span>
@@ -147,6 +171,12 @@ export default function Layers({ c, themes }) {
                             <button type="button" key={id} disabled={disabled} onClick={() => op("background.set", { kind: "image", value: backgroundUrl(id), title: "Fundo" })} style={{ aspectRatio: "16/10", borderRadius: 3, backgroundImage: `url(${backgroundUrl(id)})`, backgroundSize: "cover", backgroundPosition: "center", outline: cur?.background?.value === backgroundUrl(id) ? "2px solid var(--brand)" : "none", outlineOffset: -2 }} aria-label="Fundo" />
                         ))}
                     </div>
+                    {cur?.background && cur.background.kind !== "color" && <>
+                        <span className="k">Ajuste</span><Seg small value={cur.background.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, fit: v })} />
+                        <span className="k">Posição</span><Seg small value={cur.background.position || "center"} options={[["top", "Alto"], ["center", "Centro"], ["bottom", "Baixo"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, position: v })} />
+                        <span className="k">Escurecer</span><Seg small value={num(cur.background.dim ?? (cur.background.kind === "video" ? 0 : 0.45))} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, dim: Number(v) })} />
+                        <span className="k">Desfoque</span><Seg small value={num(cur.background.blur ?? 0)} options={[["0", "Sem"], ["4", "Leve"], ["10", "Forte"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, blur: Number(v) })} />
+                    </>}
                     <span className="k">Cor</span>
                     <div style={{ display: "flex", gap: 4 }}>
                         {["#000000", "#0f1a2e", "#1f1308", "#101f14"].map((hex) => <button type="button" key={hex} disabled={disabled} onClick={() => op("background.set", { kind: "color", value: hex, title: "Cor" })} style={{ width: 20, height: 20, borderRadius: 999, background: hex, boxShadow: "inset 0 0 0 1px rgba(255,255,255,.2)" }} aria-label={hex} />)}
@@ -157,7 +187,14 @@ export default function Layers({ c, themes }) {
                     <select value={logo.corner} disabled={disabled} onChange={(e) => op("logo.set", { corner: e.target.value })} aria-label="Canto do logo">
                         <option value="top-left">Alto esq.</option><option value="top-right">Alto dir.</option><option value="bottom-left">Baixo esq.</option><option value="bottom-right">Baixo dir.</option>
                     </select>
-                    <span className="k">Tamanho</span><Seg small value={logo.size} options={SIZES} onChange={(v) => !disabled && op("logo.set", { size: v })} />
+                    <span className="k">Tamanho</span><Seg small value={logo.width ? "" : logo.size} options={SIZES} onChange={(v) => !disabled && op("logo.set", { size: v, width: null })} />
+                    <span className="k">Largura</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        <input type="range" min={4} max={30} step={1} disabled={disabled} value={logo.width ?? ({ small: 5, medium: 8, large: 12 }[logo.size] || 8)} onChange={(e) => op("logo.set", { width: Number(e.target.value) })} aria-label="Largura do logo (% da tela)" style={{ flex: 1, minWidth: 0 }} />
+                        <span className="kx-meta" style={{ width: 34, textAlign: "right" }}>{logo.width ? `${logo.width}%` : "—"}</span>
+                    </span>
+                    <span className="k">Opacidade</span><Seg small value={num(logo.opacity ?? 1)} options={[["1", "100%"], ["0.7", "70%"], ["0.4", "40%"]]} onChange={(v) => !disabled && op("logo.set", { opacity: v === "1" ? null : Number(v) })} />
+                    <span className="k">Margem</span><Seg small value={num(logo.margin ?? 3)} options={[["1.5", "Junto"], ["3", "Normal"], ["6", "Afastado"]]} onChange={(v) => !disabled && op("logo.set", { margin: v === "3" ? null : Number(v) })} />
                 </>)}
                 {sel === "ov" && (<>
                     <span className="k">Texto</span>

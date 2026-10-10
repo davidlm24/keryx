@@ -475,6 +475,24 @@ async function checkLayers(webContents, { live, outputs }) {
         live.call("screen.set", { mode: "show" });
         live.call("overlays.set", { overlays: [] });
 
+        // Camadas, more control (2026-10-10): the projector window itself
+        // draws the text's box, capitals and opacity, the Fundo's fit and
+        // darkening, and the logo's opacity (shared/live-state.mjs + ScreenRenderer).
+        live.call("content.update", { style: { text_box: "block", text_box_color: "#102030", text_box_opacity: 0.5, text_case: "upper", text_opacity: 0.8 } });
+        live.call("background.set", { kind: "image", value: "keryx-media://bundled/backgrounds/1418065460487-3e41a6c84dc5.webp", title: "Fundo", fit: "contain", dim: 0.6 });
+        live.call("logo.set", { visible: true, opacity: 0.5, width: 15 });
+        await sleep(900);
+        result.layersPlus = main ? await main.webContents.executeJavaScript(`(() => {
+            const t = document.querySelector(".ks-text"), bg = document.querySelector(".ks-bg-img"), dim = document.querySelector(".ks-bg-dim"), logo = document.querySelector(".ks-logo");
+            if (!t || !bg || !dim) return { missing: [!t && "text", !bg && "bg", !dim && "dim"].filter(Boolean) };
+            const ts = getComputedStyle(t);
+            return { box: ts.backgroundColor, upper: ts.textTransform, opacity: ts.opacity, fit: getComputedStyle(bg).backgroundSize, dim: getComputedStyle(dim).backgroundColor, logo: logo ? getComputedStyle(logo).opacity : null };
+        })()`).catch((err) => ({ error: String(err.message || err) })) : null;
+        const lp = result.layersPlus || {};
+        result.layersPlusOk = lp.box === "rgba(16, 32, 48, 0.5)" && lp.upper === "uppercase" && lp.opacity === "0.8" && lp.fit === "contain" && lp.dim === "rgba(0, 0, 0, 0.6)" && lp.logo === "0.5";
+        live.call("logo.set", { visible: false, opacity: null, width: null });
+        live.call("background.clear");
+
         // Abrir ao iniciar: what the main process opens when KERYX starts.
         outputs.setAssignment("/StageView", { openAtLaunch: true });
         const launched = outputs.openAtLaunch().join(",");
@@ -492,7 +510,7 @@ async function checkLayers(webContents, { live, outputs }) {
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.openAtLaunch && result.keptTarget && result.offTaskbar;
+        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
     return result;
 }
 
