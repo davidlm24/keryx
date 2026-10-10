@@ -146,6 +146,22 @@ function guardWindow(win) {
         if (outputs) outputs.track(child, details.url);
     });
 
+    // Right click: in a text field, the system's own Recortar / Copiar /
+    // Colar; everywhere else the console draws its own menus
+    // (src/components/console/ContextMenu.jsx), and a page that shows none
+    // gets nothing.
+    webContents.on("context-menu", (_event, params) => {
+        if (!params.isEditable) return;
+        const can = params.editFlags || {};
+        Menu.buildFromTemplate([
+            { label: "Recortar", role: "cut", enabled: Boolean(can.canCut) },
+            { label: "Copiar", role: "copy", enabled: Boolean(can.canCopy) },
+            { label: "Colar", role: "paste", enabled: Boolean(can.canPaste) },
+            { type: "separator" },
+            { label: "Selecionar tudo", role: "selectAll", enabled: Boolean(can.canSelectAll) },
+        ]).popup({ window: BrowserWindow.fromWebContents(webContents) || undefined });
+    });
+
     if (DEVTOOLS) {
         webContents.on("before-input-event", (event, input) => {
             const toggle = input.key === "F12" || (input.control && input.shift && input.key.toLowerCase() === "i");

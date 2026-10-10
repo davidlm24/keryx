@@ -27,6 +27,7 @@ import NoticeEditor from "@/components/console/NoticeEditor";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
+import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
@@ -103,6 +104,10 @@ export default function Console() {
         } catch { return null; }
     });
     const closeSettings = useCallback(() => setCfg(null), []);
+    // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
+    const [ctxMenu, setCtxMenu] = useState(null);
+    const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
+    const closeMenu = useCallback(() => setCtxMenu(null), []);
     const openSettings = useCallback((section = "telas") => { setOpen(null); setCfg(section); }, []);
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
@@ -432,15 +437,18 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                const top = escapeTarget({ popover: open, settings: cfg, drawer });
+                const top = escapeTarget({ menu: ctxMenu, popover: open, settings: cfg, drawer });
                 if (top !== "end") {
                     e.preventDefault();
-                    if (top === "popover") setOpen(null);
+                    if (top === "menu") setCtxMenu(null);
+                    else if (top === "popover") setOpen(null);
                     else if (top === "settings") setCfg(null);
                     else if (top === "drawer") setDrawer(false);
                     return;
                 }
             }
+            // With a menu open only Tela preta and Logo reach the screens.
+            if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
@@ -476,7 +484,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, open, drawer, sendStage, env, quick, playerPick, selectSlide, view, cfg, school]);
+    }, [c, ctxMenu, open, drawer, sendStage, env, quick, playerPick, selectSlide, view, cfg, school]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -536,6 +544,7 @@ export default function Console() {
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
     return (
+        <ContextMenuProvider value={openMenu}>
         <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.locked ? "is-locked" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
@@ -608,7 +617,18 @@ export default function Console() {
                                 <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
                                     nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))}
                                     later={setlistRight ? [] : laterItems} onPrepareItem={prepareItem} onGoItem={goItem}
-                                    onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
+                                    onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
+                                    onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
+                                        { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
+                                        { label: c.cur?.screen === "logo" ? "Tirar o logo" : "Mostrar logo", icon: "logo", kbd: "L", onSelect: () => c.toggleScreen("logo") },
+                                        { label: "Limpar texto", icon: "eraser", kbd: "C", onSelect: c.clearText },
+                                        { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
+                                        { label: "Encerrar…", icon: "stop", air: true, onSelect: () => setOpen("encerrar") },
+                                    ] })}
+                                    onPrevMenu={(e) => openMenu(e, { title: "Prévia", items: [
+                                        { label: "Limpar a prévia", icon: "x", disabled: !c.prev, onSelect: () => c.setPrev(null) },
+                                        { label: "Enviar ao ar", icon: "play", kbd: "Enter", air: true, disabled: !c.prev || c.locked, onSelect: () => sendStage() },
+                                    ] })} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
                             </Panel>
                         </div>
                         {showRight && (
@@ -671,6 +691,8 @@ export default function Console() {
                     {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
                 </div>
             )}
+            <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
+        </ContextMenuProvider>
     );
 }

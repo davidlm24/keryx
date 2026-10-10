@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import Icon from "./Icon";
 import { Btn, Empty } from "./kx";
+import { useContextMenu } from "./ContextMenu";
 import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 
 // The slides of the item in hand: the Prévia when it has slides, else what
 // is on air. A click prepares (that slide goes to the Prévia); a double
 // click puts that slide on air, besides "Enviar ao ar" and the arrows.
 export default function SlidesPanel({ c, onGo }) {
+    const menu = useContextMenu();
     const { cur, prev } = c;
     const air = cur?.content;
     const airId = liveStageId(cur);
@@ -42,7 +44,11 @@ export default function SlidesPanel({ c, onGo }) {
                     if (handIsPrev) cls = i === index ? "is-prev" : i === airIndex ? airWord : "";
                     else cls = i === index ? airWord : i === index + 1 ? "is-next" : "";
                     return (
-                        <button type="button" key={i} className={`kx-slide kx-t ${cls}`} onClick={() => pick(i)} onDoubleClick={() => go(i)} title={cls === airWord ? "No ar" : "Pôr na prévia · 2 cliques enviam"}>
+                        <button type="button" key={i} className={`kx-slide kx-t ${cls}`} onClick={() => pick(i)} onDoubleClick={() => go(i)}
+                            onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
+                                { label: "Pôr na prévia", icon: "eye", disabled: !handIsPrev && i === index, onSelect: () => pick(i) },
+                                { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
+                            ] })} title={cls === airWord ? "No ar" : "Pôr na prévia · 2 cliques enviam"}>
                             <span className="kx-slide-n">{i + 1}</span>
                             <span>
                                 {sl.label && <span className="kx-slide-lab" style={{ display: "block" }}>{sl.label}</span>}

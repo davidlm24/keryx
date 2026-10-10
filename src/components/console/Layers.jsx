@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn, IconBtn, Seg } from "./kx";
+import { useContextMenu } from "./ContextMenu";
 import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
 import { STYLE_KEYS, LAYER_ORDER } from "@shared/live-state.mjs";
 
@@ -31,6 +32,7 @@ export default function Layers({ c, themes }) {
     const { cur } = c;
     const [sel, setSel] = useState("text");
     const [locked, setLocked] = useState({ bg: false });
+    const menu = useContextMenu();
     const [themeId, setThemeId] = useState(null);
     const [lastBg, setLastBg] = useState(null);
     // Drag to reorder: the list follows live.layerOrder (top first).
@@ -109,6 +111,12 @@ export default function Layers({ c, themes }) {
             {rows.map((L, i) => (
                 <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"} ${drag === L.key ? "is-dragging" : ""} ${over === i && drag && drag !== L.key ? "is-dropbefore" : ""}`}
                     onClick={() => setSel(L.id)} role="button" tabIndex={0}
+                    onContextMenu={(e) => menu(e, { title: L.name, items: [
+                        { label: visible[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] ? "eye-off" : "eye", onSelect: () => toggleEye(L.id) },
+                        { label: locked[L.id] ? "Desbloquear" : "Bloquear", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => setLocked({ ...locked, [L.id]: !locked[L.id] }) },
+                        { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
+                        { label: "Descer", disabled: i === rows.length - 1, onSelect: () => moveLayer(L.key, i + 2) },
+                    ] })}
                     draggable
                     onDragStart={(e) => { setDrag(L.key); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", L.key); }}
                     onDragEnd={() => { setDrag(null); setOver(null); }}

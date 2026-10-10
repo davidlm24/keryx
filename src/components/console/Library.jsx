@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Row, Btn, IconBtn, Field, Empty } from "./kx";
+import { useContextMenu } from "./ContextMenu";
 import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
 import { songsFromFile, importLines } from "@/lib/songImport";
@@ -73,6 +74,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
         setTimeout(() => URL.revokeObjectURL(a.href), 2000);
         c.say(`${songs.length} ${songs.length === 1 ? "música exportada" : "músicas exportadas"}.`);
     };
+    const menu = useContextMenu();
     const toggleFav = (s) => keryx.entities.Song.update(s.id, { is_favorite: !s.is_favorite }).catch((err) => c.say(err?.message || "Não foi possível."));
     // "+ › Do computador" in Mídia: videos, audio, images, PDF, PowerPoint.
     const importMedia = async (files) => {
@@ -134,6 +136,13 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                 state={state(`song:${s.id}`)}
                                 onClick={() => onPrepare(stageFromSong(s))}
                                 onDoubleClick={onGo && (() => onGo(stageFromSong(s)))}
+                                onContextMenu={(e) => menu(e, { title: s.title, items: [
+                                    { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromSong(s)) },
+                                    onAddSong && { label: "Adicionar à setlist", icon: "plus", onSelect: () => onAddSong(s) },
+                                    onEditSong && { label: "Editar", icon: "edit", onSelect: () => onEditSong(s.id) },
+                                    { label: s.is_favorite ? "Tirar dos favoritos" : "Favoritar", icon: "star", onSelect: () => toggleFav(s) },
+                                    onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromSong(s)) },
+                                ] })}
                                 dragProps={dragProps(stageFromSong(s))}
                                 actions={<>
                                     <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
@@ -172,6 +181,12 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                     state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
                                     onClick={() => onPrepare(stageFromMedia(m))}
                                     onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
+                                    onContextMenu={(e) => menu(e, { title: m.title, items: [
+                                        { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromMedia(m)) },
+                                        m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
+                                        onOpenMedia && { label: "Abrir a biblioteca de mídia", icon: "film", onSelect: () => onOpenMedia() },
+                                        onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
+                                    ] })}
                                     dragProps={dragProps(stageFromMedia(m))}
                                     actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo">Telas de vídeo</Btn>}
                                 />
@@ -224,6 +239,11 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                             {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (
                                 <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p))}
+                                    onContextMenu={(e) => menu(e, { title: p.title || p.text, items: [
+                                        { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromPiece(p)) },
+                                        onEditNotice && { label: "Editar", icon: "edit", onSelect: () => onEditNotice(p.id) },
+                                        onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromPiece(p)) },
+                                    ] })}
                                     actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso">Editar</Btn>} />
                             ))}
                         </div>

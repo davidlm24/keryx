@@ -1225,6 +1225,41 @@ async function checkConsole(webContents, { live, outputs }) {
         })()`);
         result.rowActsClear = Boolean(result.rowActs && !result.rowActs.error && Object.values(result.rowActs).every((v) => v === "sem botões" || v >= 16));
 
+        // Right click (ContextMenu.jsx), with the real right button: on a song in
+        // the Biblioteca a menu opens with "Enviar ao ar" last, after a
+        // separator; the click itself prepares nothing and sends nothing; Esc
+        // closes the menu (first in the Esc order) and leaves the air alone.
+        const ctxAt = await js(`(() => {
+            const row = [...document.querySelectorAll(".console .kx-row")].find((n) => n.textContent.includes("Canto do console"));
+            if (!row) return null;
+            row.scrollIntoView({ block: "nearest" });
+            const r = row.getBoundingClientRect();
+            return { x: Math.round(r.left + 24), y: Math.round(r.top + r.height / 2) };
+        })()`);
+        const ctxAirBefore = JSON.stringify(live.get().content ? [live.get().content.startedAt, live.get().content.index] : null);
+        const ctxPrevBefore = await capTitle(PREV);
+        if (ctxAt) {
+            webContents.sendInputEvent({ type: "mouseMove", x: ctxAt.x, y: ctxAt.y });
+            webContents.sendInputEvent({ type: "mouseDown", x: ctxAt.x, y: ctxAt.y, button: "right", clickCount: 1 });
+            webContents.sendInputEvent({ type: "mouseUp", x: ctxAt.x, y: ctxAt.y, button: "right", clickCount: 1 });
+        }
+        const ctxOpened = await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
+        const ctxShape = ctxOpened ? await js(`(() => {
+            const m = document.querySelector(".console .ctx-menu");
+            const kids = [...m.children].filter((k) => !k.classList.contains("kx-menu-h"));
+            const labels = kids.map((k) => (k.getAttribute("role") === "separator" ? "|" : k.textContent.trim()));
+            const r = m.getBoundingClientRect();
+            return { labels, inside: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight };
+        })()`) : null;
+        await sleep(300);
+        const ctxUntouched = JSON.stringify(live.get().content ? [live.get().content.startedAt, live.get().content.index] : null) === ctxAirBefore && (await capTitle(PREV)) === ctxPrevBefore;
+        await press("Escape");
+        const ctxClosed = await waitFor(() => js("!document.querySelector('.console .ctx-menu')"), 3000);
+        const ctxAfterEsc = JSON.stringify(live.get().content ? [live.get().content.startedAt, live.get().content.index] : null) === ctxAirBefore;
+        result.ctxMenu = { opened: ctxOpened, labels: ctxShape && ctxShape.labels, inside: ctxShape && ctxShape.inside, untouched: ctxUntouched, closed: ctxClosed, afterEsc: ctxAfterEsc };
+        const ctxLabels = (ctxShape && ctxShape.labels) || [];
+        result.ctxMenuOk = Boolean(ctxOpened && ctxShape && ctxShape.inside && ctxLabels[0] === "Pôr na prévia" && ctxLabels[ctxLabels.length - 1] === "Enviar ao ar" && ctxLabels[ctxLabels.length - 2] === "|" && ctxUntouched && ctxClosed && ctxAfterEsc);
+
         // Configurações, a window over the console: from the KERYX menu, every
         // section renders, Tela ociosa and Igreja save, Esc closes it, the X too.
         await click(".topbar .markbtn", "");
@@ -1631,7 +1666,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX
+        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

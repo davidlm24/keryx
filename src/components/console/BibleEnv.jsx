@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, Field, Row, Seg, Empty } from "./kx";
+import { useContextMenu } from "./ContextMenu";
 import AddMenu from "./AddMenu";
 import BibleSearchPanel, { useBibleSearch } from "./BibleSearchPanel";
 import BibleCompareView from "./BibleCompareView";
@@ -314,6 +315,12 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         requestAnimationFrame(() => readingRef.current?.querySelector(`[data-verse="${n}"]`)?.scrollIntoView({ block: "nearest" }));
     };
     const sendCell = (n) => { const st = verseStage(n); if (st) { setSel([n]); setAnchor(n); onSend(st); } };
+    // Right-click on a verse (ContextMenu.jsx): select it, copy it, send it.
+    const menu = useContextMenu();
+    const copyVerse = (v) => {
+        const text = `${v.text} (${book} ${chapter}:${v.number}${version ? ` ${version}` : ""})`;
+        Promise.resolve(navigator.clipboard?.writeText(text)).then(() => c.say("Versículo copiado."), () => c.say("Não foi possível copiar o versículo."));
+    };
     const installHint = online ? "" : " · sem internet";
     // The edition, said plainly: installed here, from the internet, or missing.
     // (The browser preview's verses are samples, never a real edition: said so.)
@@ -406,6 +413,11 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                                         className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""} ${marked.has(v.number) ? "has-note" : ""}`}
                                         onClick={(e) => pick(v.number, e)}
                                         onDoubleClick={() => { const st = verseStage(v.number); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }}
+                                        onContextMenu={(e) => menu(e, { title: `${book} ${chapter}:${v.number}`, items: [
+                                            { label: "Selecionar", icon: "check", onSelect: () => pick(v.number) },
+                                            { label: "Copiar o texto", icon: "text", onSelect: () => copyVerse(v) },
+                                            { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => sendCell(v.number) },
+                                        ] })}
                                         title={marked.has(v.number) ? `Anotação: ${notesApi.noteOf(book, chapter, v.number)?.note_text || ""}` : "Clique seleciona · 2 cliques projetam a partir deste versículo"}>
                                         <span className="kx-verse-n">{v.number}</span><span>{v.text}{marked.has(v.number) && <span className="be-notemark" aria-label="tem anotação"><Icon name="text" size={12} /></span>}</span>
                                     </button>
