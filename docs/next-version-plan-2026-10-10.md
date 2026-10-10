@@ -336,6 +336,16 @@ section). Lives in the new settings dialog (B).
 
 Small batch PR (or folded into the section PRs where marked):
 
+**Built** (2026-10-10, slice 13). Already on master before it: 1 (`useAnchor`
+places the Saídas and bell popovers), 4 and 7 (earlier PRs), 5 (the clock
+drops its "more" at 1400 px), 8 (no stray screenshot left), 9 (`autoPort` is
+in `.claude/launch.json` and the README). Done here: 3 (Mídia, Avisos and the
+Setlist are `kx-acts-list` containers with glyph actions under 300 px; the
+smoke `rowActs` check already walks every Biblioteca tab, Setlist included
+when it has rows) and 2 (a `.kx-count` beside a list header's title
+ellipsizes like the title). 6 was checked: the top bar is transparent over
+`bg-0`, so the `bg-0` ring is right. 10 stays with the release session.
+
 1. `Popovers.jsx` Outputs/Notifications hardcoded `right: 130` — anchor to
    the trigger button and clamp to the window; misplaced on narrow windows.
 2. Panel-header counts (`kx-count`) can clip without ellipsis (seen on the
