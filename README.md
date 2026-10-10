@@ -105,6 +105,45 @@ The release goes out as a normal release (not a draft), so installed copies
 see it at once. To build an installer without publishing, `npm run dist`
 (`release/KERYX-Setup-<version>.exe`).
 
+**One releaser at a time.** Before bumping the version, look for a claim on it:
+
+```bash
+gh release list --repo comunidadegerar/keryx-releases --limit 3   # latest published
+git ls-remote --heads origin 'release/*'                          # a release branch is a claim
+gh pr list --search 'release/' --state open                       # so is an open release PR
+git worktree list                                                 # a worktree already on release/*
+```
+
+The next patch after the latest published release is yours only if none of
+those shows it (or a newer one). Push `release/<version>` with the bump
+first: that branch on origin is the claim. If it already exists, stop and ask
+which session releases.
+
+**After every publish, verify** (`V` is the version):
+
+```bash
+R=comunidadegerar/keryx-releases
+gh release view v$V --repo $R --json assets -q '.assets[].name'
+# expect KERYX-Setup-$V.exe, KERYX-Setup-$V.exe.blockmap, latest.yml
+curl -sL https://github.com/$R/releases/latest/download/latest.yml
+mkdir -p release && curl -sL -o release/verify.exe https://github.com/$R/releases/download/v$V/KERYX-Setup-$V.exe
+node -e "console.log(require('crypto').createHash('sha512').update(require('fs').readFileSync('release/verify.exe')).digest('base64'))"
+rm release/verify.exe   # the line above must equal the sha512 in latest.yml
+```
+
+electron-builder creates the GitHub release from two parallel uploads (the
+installer and its blockmap), and when the tag does not exist yet both try to
+create it: one can fail with `422 Published releases must have a valid tag`,
+leaving a published release with only the blockmap (no `latest.yml`, so the
+updater errors). It happened with 0.2.11. If it does, do not re-run the
+publish: look at `gh release view v$V`, then upload what is missing with
+`gh release upload v$V <file> --repo $R` in this order: the installer, the
+blockmap (`--clobber` if it came from another build), and `latest.yml` last.
+The failed run rebuilt the installer, so the `latest.yml` on disk no longer
+matches it: write a new one from the installer you uploaded (`version`,
+`files[0].url`, `.sha512` as base64 of the file's sha512, `.size`, `path`,
+`sha512`, `releaseDate`) and check it with the commands above.
+
 The first install (or a copy older than 0.2.1, which has no update setting)
 is by hand: copy the installer to the church computer and run it; data in
 `%APPDATA%KERYX` is kept. Windows shows "O Windows protegeu o computador" for

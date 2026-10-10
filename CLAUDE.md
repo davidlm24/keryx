@@ -179,6 +179,34 @@ outputs through the live state, on this computer (output windows) and on the
 network (screens fed by `/api/events`). A change that looks right in one
 window may not be in the other.
 
+## Releasing (one session at a time)
+
+Installed copies read whatever is "Latest" in
+`comunidadegerar/keryx-releases`. Two sessions publishing the same version
+(or one publish that dies half-way) leaves a release the updater cannot use,
+so a release follows these rules. The steps and commands are in README ›
+"Releasing a new version".
+
+- **Claim the version first.** The next patch after the latest published
+  release is taken only when `release/<version>` is on origin with the
+  version bump. Before pushing it, look for a claim: a `release/*` branch on
+  origin or in any worktree, an open release PR, or a release already
+  published. If one exists, do not release: tell the user, who picks the
+  session.
+- **Publish only when the user asks, once, from the release branch.** A publish
+  that fails or is interrupted is never re-run blindly: look at the release
+  first.
+- **Verify after every publish:** the release has the installer, its
+  `.blockmap` and `latest.yml`, and the installer downloaded from the public
+  URL has the sha512 that `latest.yml` names.
+- **Repair in this order:** installer, blockmap, `latest.yml` last. Rebuilding
+  changes the installer's hash, so after any rebuild `latest.yml` is written
+  from the installer actually uploaded; an older `latest.yml` is never
+  uploaded. A published version is never reused or deleted: fix forward with
+  the next patch.
+- The `comunidadegerar` token is for the release the user asked for, and
+  nothing else.
+
 ## Watch out for
 
 - **Column names are the entity field names verbatim**, including camelCase
