@@ -224,6 +224,10 @@ so a release follows these rules. The steps and commands are in README ›
   process), not rejected. Unknown fields in a filter or sort are errors.
 - **Routes are in `src/App.jsx` only:** `/Console` and the output pages
   (`/Projection`, `/LyricProjection`, `/StageView`, `/VideoProjection`,
-  `/CommunicationProjection`, `/PastorView`), the same output pages for
-  network screens. A new output page goes there, in `electron/outputs.cjs`
-  and, if screens on the network may open it, in `NETWORK_SCREENS`.
+  `/CommunicationProjection`, `/PastorView`, `/StreamView`), the same output
+  pages for network screens. A new output page goes there, in
+  `electron/outputs.cjs` and, if screens on the network may open it, in
+  `NETWORK_SCREENS`, and in a group of `GROUPS` (`src/lib/console/outputs.js`:
+  Público, Palco, Transmissão). `/StreamView` (Transmissão) is network only:
+  an OBS Browser Source, a transparent lower third, text only
+  (`src/lib/streamCaption.js`); it is not an output window.

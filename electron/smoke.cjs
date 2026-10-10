@@ -1604,6 +1604,15 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         result.projectorScreen = await waitFor(projectorTablet, "Segunda linha da letra");
         await projectorTablet.loadURL(`${base}/PastorView`);
         result.pastorScreen = await waitFor(projectorTablet, "Segunda linha da letra");
+        // Transmissão (an OBS Browser Source): the slide as a lower third on
+        // a transparent page; Tela preta clears it.
+        await projectorTablet.loadURL(`${base}/StreamView`);
+        result.streamScreen = await waitFor(projectorTablet, "Segunda linha da letra")
+            && await projectorTablet.webContents.executeJavaScript(`getComputedStyle(document.body).backgroundColor === "rgba(0, 0, 0, 0)" && getComputedStyle(document.documentElement).colorScheme === "normal"`).catch(() => false);
+        live.call("screen.set", { mode: "black" });
+        await sleep(500);
+        result.streamBlack = !(await textOf(projectorTablet)).includes("Segunda linha da letra");
+        live.call("screen.set", { mode: "show" });
         projectorTablet.close();
         live.call("screen.set", { mode: "black" });
         await sleep(500);
@@ -1672,7 +1681,7 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
     result.ok = result.started && result.isNetworkScreen && result.lyrics && result.lanFont && result.stage && result.lyricsAdvanced
         && result.stageChords && result.lyricsBlack && result.stageDuringBlack
         && result.videoSrc === `${base}/media/${videoFile}`
-        && result.projectorScreen && result.pastorScreen
+        && result.projectorScreen && result.pastorScreen && result.streamScreen && result.streamBlack
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
         && (!webContents || (result.dropBanner && result.dropStatus));

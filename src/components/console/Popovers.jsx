@@ -8,8 +8,9 @@ import { materialIcon, materialMeta } from "@/lib/console/school";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { readQuickRef } from "@/lib/console/quickRef";
 import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
+import { byGroup } from "@/lib/console/outputs";
 
-const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv" };
+const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv", "/StreamView": "external" };
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
 // The KERYX menu: pages that stay outside the console, the service picker,
@@ -106,7 +107,8 @@ export function Shortcuts({ open, setOpen }) {
 const atTime = (t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 // Saídas: the windows the main process places and the screens on the
-// network, each with its state, what it shows and the way to fix it
+// network, grouped by what they are for (Público, Palco, Transmissão), each
+// with its state, what it shows and the way to fix it
 // (src/lib/console/outputs.js says which is which).
 export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, tries, idle, onIdle, onSettings }) {
     if (open !== "outs") return null;
@@ -122,8 +124,11 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
     const summary = health.total ? `${health.connected} de ${health.total} conectadas${locked ? " · travadas" : ""}` : "nenhuma aberta";
     return (
         <div className="pop kx-pop" style={{ right: 130, top: "var(--pop-top)", width: 440, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }}>
-            <div className="kx-menu-h"><span className="kx-section">Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${!health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
-            {rows.map((r) => {
+            <div className="kx-menu-h"><span className="kx-section" style={{ color: "var(--fg-1)" }}>Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${!health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
+            {byGroup(rows, (r) => (r.local ? r.key : r.screen)).map((g) => (
+                <React.Fragment key={g.key}>
+                <div className="kx-menu-h out-group"><span className="kx-section">{g.label}</span></div>
+                {g.items.map((r) => {
                 const v = view(r);
                 return (
                     <div key={r.id} className={`kx-out is-tall ${v.cls}`}>
@@ -144,7 +149,16 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                         </span>
                     </div>
                 );
-            })}
+                })}
+                </React.Fragment>
+            ))}
+            {/* Transmissão is an OBS Browser Source: until OBS connects, say where its address is. */}
+            {!rows.some((r) => r.group === "transmissao") && (
+                <div className="kx-menu-h out-group" title="No OBS: Fonte de navegador com o endereço da Transmissão, 1920 × 1080">
+                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda para a live no OBS</span>
+                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço…</Btn>
+                </div>
+            )}
             {!rows.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
             <div className="kx-menu-sep" />
             {/* Travar telas: rehearse with the screens frozen (shared/live-state.mjs, WHILE_LOCKED). */}

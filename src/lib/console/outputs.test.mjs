@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { remember, forget, outputHealth, netId, localId, showsOn } from "./outputs.js";
+import { remember, forget, outputHealth, netId, localId, showsOn, byGroup, groupOf } from "./outputs.js";
 
 const proj = (open, missing = false) => ({ key: "/Projection", label: "Projeção principal", open, placement: { mode: "fullscreen", displayId: 2, missing } });
 const stage = (open) => ({ key: "/StageView", label: "Palco", open, placement: { mode: "window", displayId: null, missing: false } });
@@ -109,4 +109,20 @@ test("what a page shows", () => {
     assert.equal(showsOn("/StageView", "x"), "Palco · atual, próximo e relógio");
     assert.equal(showsOn("/VideoProjection", "x"), "Só os vídeos enviados");
     assert.equal(showsOn("/Desconhecida", ""), "nada");
+});
+
+test("outputs group by what they are for: Público, Palco, Transmissão", () => {
+    const stream = { ...tv, ip: "::ffff:192.168.0.30", screen: "/StreamView", label: "Transmissão", agent: "OBS" };
+    const seen = remember({}, { outputs: [proj(true), stage(true)], clients: [tv, stream] }, at(19, 0));
+    const h = outputHealth({ outputs: [proj(true), stage(true)], seen, air: "Canto" });
+    const groups = byGroup(h.rows, (r) => (r.local ? r.key : r.screen));
+    assert.deepEqual(groups.map((g) => [g.label, g.items.map((r) => r.name)]), [
+        ["Público", ["Projeção principal", "Letras"]],
+        ["Palco", ["Palco"]],
+        ["Transmissão", ["Transmissão"]],
+    ]);
+    assert.equal(h.rows.find((r) => r.screen === "/StreamView").shows, "Transmissão · só o texto, em legenda");
+    // Empty groups are left out; an unknown page counts as Público.
+    assert.deepEqual(byGroup([{ p: "/Nova" }], (x) => x.p).map((g) => g.key), ["publico"]);
+    assert.equal(groupOf("/PastorView"), "palco");
 });

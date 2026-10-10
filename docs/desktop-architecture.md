@@ -247,6 +247,16 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
      (`openAtLaunch` in the assignment). Comunicação is an output too.
    - Network screens: `/Projection`, `/PastorView` and
      `/CommunicationProjection` join the list.
+   - **Transmissão** (2026-10-10, the UX research's P2 presets):
+     `/StreamView` is a network screen for OBS (Fonte de navegador, 1920 ×
+     1080). A transparent page with the slide as a lower third: lyrics,
+     Bible text without its verse numbers plus the reference, text slides.
+     Media, videos, avisos and tools never reach it, and Tela preta, Logo,
+     Limpar and Encerrar clear it (`src/lib/streamCaption.js`, tested). The
+     outputs are grouped by what they are for (`GROUPS` in
+     `src/lib/console/outputs.js`): Público, Palco, Transmissão, in Saídas,
+     Telas na rede (each screen with its own address to copy) and the
+     network's screen picker.
    - Still on the old paths at the time, until the redesign replaced their
      pages: the Ferramentas and Comunicação pages (postMessage), the Painel
      do operador's alerts (`AlertMessage`) and BibleSchool

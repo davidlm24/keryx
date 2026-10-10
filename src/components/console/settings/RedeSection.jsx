@@ -3,6 +3,7 @@ import QRCode from "react-qr-code";
 import Icon from "../Icon";
 import { Btn, Field, Empty } from "../kx";
 import { useBridge, usePoll, Switch, desktopOnly } from "./parts";
+import { byGroup } from "@/lib/console/outputs";
 
 const newPin = () => String(Math.floor(1000 + Math.random() * 9000));
 
@@ -71,10 +72,24 @@ export default function RedeSection({ c }) {
                                 {i > 0 && <span className="kx-meta">{u.name}</span>}
                             </div>
                         ))}
-                        <span className="kx-meta">Telas disponíveis: {(info.screens || []).map((s) => s.label).join(", ")}.</span>
                     </div>
                 </div>
             )}
+            {/* Each screen by what it is for, with its own address: a device can
+                open it straight away, and OBS needs the Transmissão one. */}
+            {info.running && main && byGroup(info.screens || [], (s) => s.path).map((g) => (
+                <React.Fragment key={g.key}>
+                    <div className="listhead"><span className="kx-section">{g.label}</span></div>
+                    {g.items.map((s) => (
+                        <div key={s.path} className="kx-row cfg-screen">
+                            <span className="kx-glyph"><Icon name={s.path === "/StreamView" ? "external" : s.path === "/StageView" || s.path === "/PastorView" ? "monitor" : "tv"} /></span>
+                            <div className="kx-row-main"><div className="kx-row-title">{s.label}</div><div className="kx-row-meta">{s.hint}</div></div>
+                            <code className="cfg-screen-url">{`${main.url}${s.path}`}</code>
+                            <button type="button" className="kx-btn kx-btn-icon kx-t" onClick={() => copy(`${main.url}${s.path}`)} aria-label={`Copiar o endereço de ${s.label}`} title="Copiar o endereço"><Icon name="external" /></button>
+                        </div>
+                    ))}
+                </React.Fragment>
+            ))}
             <div className="listhead"><span className="kx-section">Telas conectadas pela rede</span></div>
             {!clients.length && <div className="listhead"><span className="kx-meta">{info.running ? "Nenhuma agora." : "Ligue as telas na rede para os aparelhos se conectarem."}</span></div>}
             {clients.map((cl) => (
