@@ -61,8 +61,16 @@ leaves the field. A control focused with Tab keeps its own Enter and Space.
 **Keys** (`src/lib/console/keys.js`, tested): ←/→ move the slide or verse on
 air; ↑/↓ move the selection (green); Space plays or pauses; **B** Tela preta,
 **L** Mostrar logo, **C** Limpar texto; **Esc** closes the topmost thing open,
-one per press (a popover or dialog, then Configurações, then the Camadas
-drawer; `escapeTarget`), and with nothing open ends the projection at once
+one per press (a right-click menu, a popover or dialog, then Configurações,
+then the Camadas drawer; `escapeTarget`), and with nothing open ends the
+projection at once. **Right click** (2026-10-10, `ContextMenu.jsx`): songs,
+media, avisos, Setlist items, slides, verses, the Programa and Prévia
+monitors and the Camadas layers have a menu at the pointer (a `kx-pop`,
+kept inside the window, ↑/↓ and Enter work in it). It never prepares or
+sends by itself; anything that changes what is on air (*Enviar ao ar*,
+*Ir para o item*, *Encerrar…*) is last, after a separator (`orderItems`);
+after an item the keys go back to the console. Text fields keep the
+system's Recortar / Copiar / Colar
 and its toast's *Desfazer* puts back what was on air, on the same slide;
 *Voltar ao anterior* still brings one earlier item back through the Prévia; **/** searches; **?** lists the keys. The
 *Encerrar* button, unlike Esc, asks first. In the Bíblia a letter or digit

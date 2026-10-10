@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { Row, Btn, IconBtn, Empty } from "./kx";
+import { useContextMenu } from "./ContextMenu";
 import Icon from "./Icon";
 import { plan, clockAt, span, total, isSection, typeIcon, typeLabel } from "@/lib/console/setlist";
 
@@ -13,6 +14,7 @@ export const plannedTimes = (service, items) => plan(service, items).rows.map((r
 // "Ir" button prepares and sends — the only send here. Drag reorders
 // (ServiceItem.order), as Cultos does.
 export default function Rundown({ service, items, airItemId, prevItemId, onPrepare, onGo, onAddStage, onPlan, canReorder = true }) {
+    const menu = useContextMenu();
     const [drag, setDrag] = useState(null);
     const [over, setOver] = useState(null);
     // However a drag ends (dropped here, elsewhere or cancelled), no row
@@ -79,6 +81,11 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                         state={`${state} ${drag === it.id ? "is-dragging" : ""} ${over === i ? "is-dropbefore" : ""}`}
                         onClick={() => onPrepare(it, i)}
                         onDoubleClick={() => onGo(it, i)}
+                        onContextMenu={(e) => menu(e, { title: it.title || typeLabel(it.type), items: [
+                            { label: "Preparar", icon: "eye", onSelect: () => onPrepare(it, i) },
+                            onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
+                            { label: "Ir para o item", icon: "play", air: true, onSelect: () => onGo(it, i) },
+                        ] })}
                         dragProps={dragProps}
                         actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Ir para o item · 2 cliques">Ir</Btn>{onPlan && <IconBtn name="more" title="Editar no planejador" onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}
                     />

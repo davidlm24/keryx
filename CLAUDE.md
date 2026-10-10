@@ -81,8 +81,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   container units — so a preview is the output; the Programa monitor plays
   videos muted (`motion`). Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
-  topmost thing open (`escapeTarget`: a popover, then Configurações, then
-  the Camadas drawer; views defer while a `.scrim` is up) and with nothing
+  topmost thing open (`escapeTarget`: a right-click menu, a popover, then
+  Configurações, then the Camadas drawer; views defer while a `.scrim` is
+  up) and with nothing
   open ends at once (music on the audio channel keeps playing); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
   `src/lib/console/restore.js`). The rundown is called

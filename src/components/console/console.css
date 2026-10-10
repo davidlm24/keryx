@@ -83,6 +83,15 @@
 /* Popovers from the top bar open just under it (the Windows title strip included). */
 .console { --pop-top: calc(env(titlebar-area-height, 0px) + var(--gutter) + var(--topbar) + 4px); }
 .console .pop { position: absolute; z-index: 30; }
+/* The right-click menu (ContextMenu.jsx): over everything, its own clear
+   backdrop; fixed, so it is placed in window coordinates (the pointer's)
+   whatever the console's own offset. */
+.console .ctx-scrim { position: fixed; z-index: 45; }
+.console .ctx-menu { position: fixed; z-index: 46; min-width: 220px; max-width: 320px; }
+.console .ctx-menu .ctx-l { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .ctx-menu .kx-menu-item:focus-visible { outline: none; background: var(--bg-3); }
+.console .ctx-menu .kx-menu-item:disabled { opacity: var(--dim); }
+.console .ctx-menu .kx-menu-item:disabled:hover { background: none; }
 .console .scrim { position: absolute; inset: 0; z-index: 25; }
 .console .scrim.is-dim { background: #0d0d0c99; }
 .console .dialog { position: absolute; z-index: 40; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 460px; max-width: calc(100vw - 24px); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); color: var(--fg-1); font-size: 13px; line-height: 18px; }

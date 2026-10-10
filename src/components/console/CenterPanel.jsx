@@ -105,7 +105,7 @@ export function ProgramaCaption({ c, projectorDown }) {
 // item and, when the Setlist has no column of its own, the items after it.
 // The block is as wide as the column allows and as tall as fits (console.css,
 // .liveblock); spare height goes below it, never between the monitors.
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick }) {
+export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu }) {
     const { cur, prev, now, locked } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
     const [dropOn, setDropOn] = useState(null);
@@ -131,11 +131,11 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     return (
         <div className="mons" data-live-keys="" tabIndex={-1}>
             <div className="liveblock">
-                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={now} logoUrl={logoUrl} motion dropProps={dropProps("air")}>
+                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={now} logoUrl={logoUrl} motion dropProps={{ ...dropProps("air"), onContextMenu: onProgMenu }}>
                     {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
                 </Monitor>
                 <div className="subrow">
-                    <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} cap={prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={dropProps("prev")}>
+                    <Monitor className={dropOn === "prev" ? "is-dropover" : ""} state={prev ? "prev" : ""} cap={prevCap} live={pdoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
                         {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
