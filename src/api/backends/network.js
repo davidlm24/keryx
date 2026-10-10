@@ -4,6 +4,8 @@
 // on top of it unchanged: reads over HTTP, changes over Server-Sent Events
 // (store changes as plain messages, the live state as "live" events).
 
+import { initialConnection, nextConnection } from "../../lib/network/connection.js";
+
 const RELOAD_AFTER_AUTH_LOSS_MS = 2000;
 
 export function createNetworkBridge() {
@@ -11,6 +13,17 @@ export function createNetworkBridge() {
     const liveListeners = new Set();
     let source = null;
     let wasOpen = false;
+    // The stream's phase (connecting, open, reconnecting) for the page to show.
+    let conn = initialConnection;
+    const connListeners = new Set();
+    const onConn = (event) => {
+        const next = nextConnection(conn, event);
+        if (next === conn) return;
+        conn = next;
+        for (const listener of [...connListeners]) {
+            try { listener(conn); } catch (err) { console.error("[keryx] connection listener failed:", err); }
+        }
+    };
 
     // A 401 means the PIN changed: reload, which lands on the PIN form.
     const authLost = () => setTimeout(() => window.location.reload(), RELOAD_AFTER_AUTH_LOSS_MS);
@@ -73,8 +86,10 @@ export function createNetworkBridge() {
                 getJson("/api/live").then((res) => { if (res.data) emitLive(res.data); });
             }
             wasOpen = true;
+            onConn("open");
         };
         source.onerror = () => {
+            onConn("error");
             // EventSource retries by itself; CLOSED means it gave up (e.g. 401).
             if (source && source.readyState === EventSource.CLOSED) {
                 source = null;
@@ -120,6 +135,15 @@ export function createNetworkBridge() {
                 liveListeners.add(listener);
                 connect();
                 return () => liveListeners.delete(listener);
+            },
+        },
+        // Only network screens have a link that can drop (desktop and preview are always connected).
+        connection: {
+            current: () => conn,
+            subscribe(listener) {
+                connListeners.add(listener);
+                connect();
+                return () => connListeners.delete(listener);
             },
         },
         media: {

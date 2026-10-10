@@ -1,116 +1,114 @@
-import React from "react";
-import { Clock, Bell, Eye, MessageSquare } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { keryx } from "@/api/keryxClient";
+import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { useChurchLogo } from "@/hooks/useChurchLogo";
+import { captionParts } from "@/components/console/CenterPanel";
+import { playableItems, typeLabel } from "@/lib/console/setlist";
+import { nextItems } from "@/lib/network/views";
+import "@/components/network/net.css";
 
-// The pastor's screen: what the congregation sees now (the live content),
-// the clock and the service time.
+const two = (n) => String(n).padStart(2, "0");
+const hhmm = (d) => `${two(d.getHours())}:${two(d.getMinutes())}`;
+// "Sábado, 10 de outubro": the first letter only (pt-BR keeps months lower case).
+const upperFirst = (t) => (t ? t[0].toUpperCase() + t.slice(1) : t);
+const span = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor((s % 3600) / 60))}:${two(s % 60)}` : `${Math.floor(s / 60)}:${two(s % 60)}`);
+
+// The service on air: the session's, else the service of the item on air (a
+// session that began before a service was picked keeps serviceId empty).
+function useServiceId(session) {
+    const [fromItem, setFromItem] = useState(null);
+    const itemId = session?.serviceId ? null : session?.itemId || null;
+    useEffect(() => {
+        if (!itemId) { setFromItem(null); return undefined; }
+        let alive = true;
+        keryx.entities.ServiceItem.get(itemId).then((it) => { if (alive) setFromItem(it?.serviceId || null); }).catch(() => { if (alive) setFromItem(null); });
+        return () => { alive = false; };
+    }, [itemId]);
+    return session?.serviceId || fromItem;
+}
+
+// The service's items, from the database (a network screen reads it like the
+// console does), kept current by the store's realtime changes.
+function useServiceItems(serviceId) {
+    const [items, setItems] = useState([]);
+    useEffect(() => {
+        if (!serviceId) { setItems([]); return undefined; }
+        let alive = true;
+        const load = () => keryx.entities.ServiceItem.filter({ serviceId }, "order")
+            .then((rows) => { if (alive) setItems(rows || []); })
+            .catch(() => { if (alive) setItems([]); });
+        load();
+        const off = keryx.entities.ServiceItem.subscribe?.((change) => { if (change?.data?.serviceId === serviceId || change?.type === "delete") load(); });
+        window.addEventListener("online", load);
+        return () => { alive = false; off?.(); window.removeEventListener("online", load); };
+    }, [serviceId]);
+    return items;
+}
+
+// The pastor's screen (a tablet on the pulpit, often upright): exactly what
+// the congregation sees, drawn by the projector's own renderer; the time and
+// how long the service has been running; and what comes next in the Setlist.
 export default function PastorView() {
     const live = useLiveState();
-    const content = live?.content || null;
     const nowMs = useLiveNow(1000);
-    const clock = new Date(nowMs);
-    const startedAt = live?.session?.startedAt;
-    const elapsed = startedAt ? Math.max(0, Math.floor((nowMs - startedAt) / 1000)) : 0;
-    const pastorNotes = "Bem-vindo à casa do Senhor! 🙏";
-    const nextItem = "—";
-
-    const slides = (content?.slides || []).map((slide) => ({
-        ...slide,
-        is_bible: content.kind === "bible",
-        bible_reference: content.ref?.reference || content.title,
-    }));
-    const currentSlide = content?.index || 0;
-    const songTitle = content?.title || "";
-
-    const formatTime = (d) => d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const formatDate = (d) => d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
-    const formatElapsed = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60; return `${h > 0 ? String(h).padStart(2, "0") + ":" : ""}${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`; };
-
-    const currentContent = slides[currentSlide];
+    const logo = useChurchLogo();
+    const now = new Date(nowMs);
+    const session = live?.session || null;
+    const serviceId = useServiceId(session);
+    const items = playableItems(useServiceItems(serviceId));
+    const upcoming = nextItems(items, session, 3);
+    const { title, pos } = captionParts(live);
+    const onAir = title !== "nada";
+    const content = live?.content || null;
+    const slides = content?.slides || [];
+    const index = content?.index || 0;
+    const running = session?.startedAt ? Math.max(0, Math.floor((nowMs - session.startedAt) / 1000)) : null;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-card to-background text-foreground p-8 flex flex-col">
-            {/* Top bar */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <Bell className="w-6 h-6 text-accent" />
-                    <span className="text-sm text-accent uppercase tracking-widest font-semibold">Tela do Pastor</span>
+        <div className="net">
+          <div className="net-pastor">
+            <header className="np-h">
+                <div className="np-who">
+                    <b>Tela do pastor</b>
+                    <span>{upperFirst(now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }))}</span>
                 </div>
-                <div className="flex items-center gap-6">
-                    <div className="text-right">
-                        <p className="text-3xl font-mono font-bold">{formatTime(clock)}</p>
-                        <p className="text-xs text-white/50 capitalize">{formatDate(clock)}</p>
-                    </div>
-                    <div className="flex items-center gap-2 text-accent">
-                        <Clock className="w-5 h-5" />
-                        <span className="text-xl font-mono">{formatElapsed(elapsed)}</span>
-                    </div>
+                <div className="np-time">
+                    <b>{hhmm(now)}</b>
+                    <span className={running != null ? "is-run" : ""}>{running == null ? "Nada no ar ainda" : `${serviceId ? "Culto" : "No ar"} há ${span(running)}`}</span>
                 </div>
-            </div>
-
-            {/* Main content area */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Current projection content */}
-                <div className="lg:col-span-2 flex flex-col">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Eye className="w-5 h-5 text-accent" />
-                        <h2 className="text-sm uppercase tracking-widest text-accent">Projetando agora</h2>
+            </header>
+            <section className="np-air" aria-label="No ar agora">
+                <div className="np-cap">
+                    <span className={`net-section ${onAir ? "is-air" : ""}`}>No ar</span>
+                    <b>{title}</b>
+                    {pos && <span>{pos}</span>}
+                </div>
+                <div className="np-mon">
+                    <ScreenRenderer state={live} now={nowMs} logoUrl={logo} preview audio={false} />
+                </div>
+                {slides.length > 1 && (
+                    <div className="np-prog" aria-label={`Slide ${index + 1} de ${slides.length}`}>
+                        {slides.map((_, i) => <i key={i} className={i === index ? "is-on" : i < index ? "is-done" : ""} />)}
                     </div>
-                    <div className="flex-1 bg-black/30 rounded-2xl border border-white/10 p-8 flex items-center justify-center">
-                        {currentContent ? (
-                            <div className="text-center w-full">
-                                {currentContent.is_bible && currentContent.bible_reference && (
-                                    <p className="text-2xl font-semibold text-accent mb-4">{currentContent.bible_reference}</p>
-                                )}
-                                <p className="text-4xl md:text-5xl font-bold leading-relaxed whitespace-pre-wrap">
-                                    {currentContent.text}
-                                </p>
+                )}
+            </section>
+            <aside className="np-side" aria-label="Próximos no culto">
+                <span className="net-section">Próximo</span>
+                {upcoming.length ? (
+                    <div className="np-list">
+                        {upcoming.map((it, i) => (
+                            <div key={it.id} className={`np-item ${i === 0 ? "is-next" : ""}`}>
+                                <b>{it.title || typeLabel(it.type)}</b>
+                                <span>{typeLabel(it.type)}</span>
                             </div>
-                        ) : songTitle ? (
-                            <p className="text-3xl text-white/60">{songTitle}</p>
-                        ) : (
-                            <p className="text-2xl text-white/40">Aguardando projeção...</p>
-                        )}
+                        ))}
                     </div>
-                </div>
-
-                {/* Pastor notes & next */}
-                <div className="flex flex-col gap-4">
-                    {/* Notes */}
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-3">
-                            <MessageSquare className="w-5 h-5 text-amber-400" />
-                            <h2 className="text-sm uppercase tracking-widest text-amber-300">Notas do Pastor</h2>
-                        </div>
-                        <div className="bg-amber-500/5 rounded-2xl border border-amber-500/20 p-6 h-full min-h-32">
-                            <p className="text-2xl leading-relaxed whitespace-pre-wrap">{pastorNotes}</p>
-                        </div>
-                    </div>
-
-                    {/* Next item */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <Bell className="w-4 h-4 text-green-400" />
-                            <h2 className="text-xs uppercase tracking-widest text-green-300">Próximo</h2>
-                        </div>
-                        <div className="bg-green-500/5 rounded-xl border border-green-500/20 p-4">
-                            <p className="text-xl text-green-200">{nextItem}</p>
-                        </div>
-                    </div>
-
-                    {/* Slide progress */}
-                    {slides.length > 1 && (
-                        <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                            <p className="text-xs text-white/50 mb-2">Slide {currentSlide + 1} de {slides.length}</p>
-                            <div className="flex gap-1">
-                                {slides.map((_, i) => (
-                                    <div key={i} className={`flex-1 h-1.5 rounded-full ${i === currentSlide ? "bg-primary" : i < currentSlide ? "bg-primary/40" : "bg-white/10"}`} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+                ) : (
+                    <p className="np-empty">{serviceId ? "Fim da setlist." : "Nenhum culto escolhido no console."}</p>
+                )}
+            </aside>
+          </div>
         </div>
     );
 }

@@ -1,10 +1,14 @@
 import './App.css'
+// The design system's tokens for every page (the console, the screens on the
+// network); projected content uses only its own screen-* styles.
+import '@ds/tokens.css'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import NetworkHome from '@/components/network/NetworkHome';
+import NetStatus from '@/components/network/NetStatus';
 import DesktopOnly from '@/components/DesktopOnly';
 import PreviewBanner from '@/components/PreviewBanner';
 import { keryx } from '@/api/keryxClient';
@@ -34,6 +38,25 @@ const screens = (
   </>
 );
 
+// A screen on the network says when it is (re)connecting, on every page but
+// Transmissão (OBS composes that page over the camera: nothing else on it).
+function NetworkStatus() {
+  const { pathname } = useLocation();
+  return pathname === '/StreamView' ? null : <NetStatus />;
+}
+
+// Development only: the network start page in the browser preview, with the
+// screens electron/lan.cjs lists (NETWORK_SCREENS), to check its layout.
+const PREVIEW_SCREENS = [
+  { path: '/Projection', label: 'Projeção principal', hint: 'O mesmo que o projetor: letras, Bíblia, mídia e avisos' },
+  { path: '/LyricProjection', label: 'Letras', hint: 'Tablet ou TV com a letra da música' },
+  { path: '/StageView', label: 'Palco', hint: 'Monitor do palco: letra atual, próxima e relógio' },
+  { path: '/VideoProjection', label: 'Vídeo', hint: 'Recebe os vídeos enviados pelo operador' },
+  { path: '/CommunicationProjection', label: 'Avisos', hint: 'Contagens regressivas e avisos' },
+  { path: '/PastorView', label: 'Tela do pastor', hint: 'O que está projetado, relógio e tempo do culto' },
+  { path: '/StreamView', label: 'Transmissão', hint: 'Legenda para a live: no OBS, Fonte de navegador 1920 × 1080, fundo transparente' },
+];
+
 // KERYX is the desktop app (docs/desktop-architecture.md): the operator
 // console is the whole app; there is no login. On the church network a
 // screen picks what it shows at "/". In a plain browser there is no backend,
@@ -47,14 +70,18 @@ function App() {
         {import.meta.env.DEV && keryx.isPreview && <PreviewBanner />}
         <ErrorBoundary>
           {keryx.isNetworkScreen ? (
-            <Routes>
-              {screens}
-              <Route path="*" element={<NetworkHome />} />
-            </Routes>
+            <>
+              <NetworkStatus />
+              <Routes>
+                {screens}
+                <Route path="*" element={<NetworkHome />} />
+              </Routes>
+            </>
           ) : (
             <Routes>
               <Route path="/Console" element={<Console />} />
               {screens}
+              {import.meta.env.DEV && keryx.isPreview && <Route path="/Rede" element={<NetworkHome screens={PREVIEW_SCREENS} />} />}
               <Route path="*" element={<Navigate to="/Console" replace />} />
             </Routes>
           )}
