@@ -9,7 +9,8 @@ import { useBibleNotes } from "./useBibleNotes";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { bibleBooks, BIBLE_VERSIONS, parseReference } from "@/lib/bibleBooks";
 import { getChapter, preferredVersion, installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
-import { stageFromPassage, stageAirSlide } from "@/lib/console/stage";
+import { stageFromVerses } from "@/lib/console/stage";
+import { rangeLabel, groupVerses, passageOf, chapterOnAir } from "@/lib/console/bibleVerses";
 import { verseNumbers } from "@/lib/verseMarks";
 
 // Book groups, by position in the canon, for the colour bar of each book.
@@ -27,53 +28,8 @@ const save = (v) => {
     } catch { /* not remembered */ }
 };
 const MODES = [["ler", "Ler"], ["buscar", "Buscar"], ["comparar", "Comparar"]];
-
-const rangeLabel = (nums) => {
-    const s = [...nums].sort((a, b) => a - b);
-    if (!s.length) return "";
-    const parts = []; let a = s[0]; let b = s[0];
-    for (const n of s.slice(1)) { if (n === b + 1) b = n; else { parts.push(a === b ? `${a}` : `${a}-${b}`); a = b = n; } }
-    parts.push(a === b ? `${a}` : `${a}-${b}`);
-    return parts.join(",");
-};
-
-// Verses -> slides: one, two, three per slide, or by length (auto).
-function group(verses, how) {
-    const out = []; let cur = [];
-    const flush = () => { if (cur.length) { out.push({ text: cur.map((v) => `${v.number} ${v.text}`).join(" "), label: cur.length > 1 ? `v. ${cur[0].number}–${cur[cur.length - 1].number}` : `v. ${cur[0].number}` }); cur = []; } };
-    for (const v of verses) {
-        if (how === "auto") { const len = cur.reduce((a, x) => a + x.text.length, 0); if (cur.length && len + v.text.length > 220) flush(); cur.push(v); }
-        else { cur.push(v); if (cur.length >= Number(how)) flush(); }
-    }
-    flush();
-    return out;
-}
-
-// A passage (several verses) as a stage, grouped per slide.
-function passageStageOf({ verses, nums, how, version, book, chapter }) {
-    const chosen = verses.filter((v) => nums.includes(v.number));
-    const parts = group(chosen, how);
-    if (!parts.length || !version) return null;
-    const ref = `${book} ${chapter}:${rangeLabel(nums)}`;
-    return stageFromPassage({ reference: `${ref} · ${version}`, text: chosen.map((v) => `${v.number} ${v.text}`).join("\n"), slides: parts, version });
-}
-
-// One verse: the whole chapter, one verse per slide, starting at it. When
-// that chapter (same version) is already on air it only moves there.
-function chapterStageOf({ verses, n, version, book, chapter, onAir }) {
-    if (!version || !verses.length) return null;
-    const index = verses.findIndex((v) => v.number === n);
-    if (index < 0) return null;
-    const id = `chapter:${book}:${chapter}:${version}`;
-    const airIsChapter = Boolean(onAir && onAir.ref?.wholeChapter && onAir.ref.book === book && Number(onAir.ref.chapter) === Number(chapter) && onAir.ref.version === version);
-    if (airIsChapter) return { ...stageAirSlide(onAir, index, id), title: `${book} ${chapter}:${n}` };
-    const slides = verses.map((v) => ({ text: `${v.number} ${v.text}`, label: `v. ${v.number}`, ref: `${book} ${chapter}:${v.number} · ${version}` }));
-    const st = stageFromPassage(
-        { reference: `${book} ${chapter} · ${version}`, text: verses.map((v) => `${v.number} ${v.text}`).join("\n"), slides, version },
-        { book, chapter, version, wholeChapter: true },
-    );
-    return { ...st, id, title: `${book} ${chapter}:${n}`, index };
-}
+// The version the operator chose here; the palette prepares references in it.
+export const bibleVersionWanted = () => load().version || "NVI";
 
 // The Bíblia environment, Holyrics-style: books and chapters in a band on
 // top (with recent chapters, favourites and notes), the chapter below it —
@@ -182,16 +138,15 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
 
     // What is on air, when it is this chapter.
     const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
-    const airIsChapter = Boolean(onAir && onAir.ref?.wholeChapter && onAir.ref.book === book && Number(onAir.ref.chapter) === Number(chapter) && onAir.ref.version === version);
+    const airIsChapter = chapterOnAir(onAir, { book, chapter, version });
     const airHere = Boolean(onAir && (airIsChapter || String(onAir.ref?.reference || onAir.title).startsWith(`${book} ${chapter}:`)));
     const airSlideText = onAir ? String(onAir.slides[onAir.index]?.text || "") : "";
     const airVerseNums = useMemo(() => verseNumbers(airSlideText), [airSlideText]);
 
-    const passageStage = useCallback((nums) => passageStageOf({ verses, nums, how, version, book, chapter }), [verses, how, version, book, chapter]);
-    const verseStage = useCallback((n) => chapterStageOf({ verses, n, version, book, chapter, onAir }), [verses, version, book, chapter, onAir]);
-    const stageFor = useCallback((nums) => (nums.length === 1 ? verseStage(nums[0]) : nums.length ? passageStage(nums) : null), [verseStage, passageStage]);
+    const verseStage = useCallback((n) => stageFromVerses({ verses, nums: [n], version, book, chapter, onAir }), [verses, version, book, chapter, onAir]);
+    const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version, book, chapter, onAir }), [verses, how, version, book, chapter, onAir]);
     const picked = verses.filter((v) => sel.includes(v.number));
-    const slides = useMemo(() => (sel.length > 1 ? group(picked, how) : picked.map((v) => ({ text: `${v.number} ${v.text}` }))), [picked, how, sel.length]);
+    const slides = useMemo(() => (sel.length > 1 ? groupVerses(picked, how) : picked.map((v) => ({ text: `${v.number} ${v.text}` }))), [picked, how, sel.length]);
     const reference = sel.length ? `${book} ${chapter}:${rangeLabel(sel)}` : "";
     const stage = useMemo(() => stageFor(sel), [stageFor, sel]);
     // The console sends this stage on Enter / Ctrl+Enter in the Bible environment.
@@ -211,7 +166,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         pickResult(r);
         try {
             const { verses: vs } = await getChapter(version, r.book, r.chapter);
-            const st = chapterStageOf({ verses: vs, n: r.verse, version, book: r.book, chapter: r.chapter, onAir });
+            const st = stageFromVerses({ verses: vs, nums: [r.verse], version, book: r.book, chapter: r.chapter, onAir });
             if (st) onSend(st);
         } catch (err) { c.say(err?.message || "Não foi possível abrir o capítulo."); }
     }, [pickResult, version, onAir, onSend, c]);
@@ -286,12 +241,12 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     };
     // Adds the selected verses as a passage (never the whole chapter).
     const addToService = async () => {
-        const passage = passageStage(sel);
+        const passage = passageOf({ verses, nums: sel, how, version, book, chapter });
         if (!passage) { c.say("Selecione versículos do capítulo."); return; }
         try {
             const sid = serviceId || await ensureService?.();
             if (!sid) return;
-            const row = await keryx.entities.BiblePassage.create({ reference: `${reference} · ${version}`, book, chapter, verses: rangeLabel(sel), text: passage.args.slides.map((s) => s.text).join("\n"), slides: passage.args.slides, version });
+            const row = await keryx.entities.BiblePassage.create({ ...passage, text: passage.slides.map((s) => s.text).join("\n") });
             await keryx.entities.ServiceItem.create({ serviceId: sid, type: "BIBLE", title: reference, contentId: row.id, order: itemsCount, duration: 120 });
             c.say("Adicionado ao fim da setlist.");
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
@@ -299,7 +254,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // Comparar › Enviar: the selection in that version (one verse: its
     // chapter from there, as in Ler).
     const sendVersion = (v, vs) => {
-        const st = sel.length === 1 ? chapterStageOf({ verses: vs, n: sel[0], version: v, book, chapter, onAir }) : passageStageOf({ verses: vs, nums: sel, how, version: v, book, chapter });
+        const st = stageFromVerses({ verses: vs, nums: sel, how, version: v, book, chapter, onAir });
         if (st) onSend(st);
     };
     const switchVersion = (v) => { setWanted(v); c.say(`Bíblia na ${v}.`); };

@@ -265,6 +265,14 @@ pages: the library (Letras, Mídia, Avisos), the slides in hand, Programa and
 Prévia, Camadas, Setlist, Linha do tempo, Bíblia as its own environment, the
 command palette (`/`) and Saídas (with *Travar telas*).
 
+- **Verses on screen** follow one set of rules wherever they come from
+  (`src/lib/console/bibleVerses.js`, tested; `stageFromVerses` in
+  `stage.js`): one verse is its whole chapter, one verse per slide,
+  starting there (only a move when that chapter is on air); a range is
+  that passage, grouped per slide. The Bíblia environment and the palette
+  (a reference prepared in the KERYX environment, Shift+Enter a
+  `BiblePassage` + `ServiceItem`) both use it.
+
 - **Programa / Prévia.** A click anywhere prepares a *stage*
   (`src/lib/console/stage.js`: the live-state operation that would put the
   item on air, plus title, slides and a start index). Only "Enviar ao ar"

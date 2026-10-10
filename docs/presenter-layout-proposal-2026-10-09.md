@@ -243,7 +243,7 @@ The P0 goal needs these rule changes in `docs/design-system.md` and the README:
    - Wire it into `TopBar`, `Popovers` and the banner. Add "em N telas" to the Programa caption.
    - Verify with two windows: console and output, local and network.
 3. **P1 Bíblia.** Pin the action row, cap the monitor, add the narrow two-column tier, and add the edition badge from `source`.
-4. **P1 palette.** Anchor it left, and let Enter on a reference put it in the Prévia here (Shift+Enter adds it to the Setlist).
+4. **P1 palette.** Anchor it left, and let Enter on a reference put it in the Prévia here (Shift+Enter adds it to the Setlist). *Built 2026-10-10: it stops short of the Programa monitor and also reads the quick jump's "jo 3 16".*
 5. **Copy.** Unify the send tooltips. Then the decisions above, once you answer them.
 
 ## Limits

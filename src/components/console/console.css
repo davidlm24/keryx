@@ -89,7 +89,8 @@
 .console .scrim.is-dim { background: #0d0d0c99; }
 .console .dialog { position: absolute; z-index: 40; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 460px; max-width: calc(100vw - 24px); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); color: var(--fg-1); font-size: 13px; line-height: 18px; }
 .console .dialog .acts { display: flex; justify-content: flex-end; gap: var(--space-2); }
-.console .palette { position: absolute; z-index: 40; left: 50%; top: 96px; transform: translateX(-50%); width: 620px; max-width: calc(100vw - 24px); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); display: flex; flex-direction: column; max-height: 640px; }
+/* The command palette: left-anchored over the source columns, never over the Programa (its width comes from Console). */
+.console .palette { position: absolute; z-index: 40; left: var(--gutter); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 620px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); display: flex; flex-direction: column; max-height: min(640px, calc(100% - var(--topbar) - 64px)); }
 .console .palette .kx-field { height: 40px; margin: var(--space-1); background: var(--bg-3); }
 .console .palette .kx-field input { font-size: 13px; }
 .console .palette .res { overflow: auto; padding: 0 var(--space-1) var(--space-1); }

@@ -5,6 +5,7 @@
 import { songContent, passageContent, isVideoUrl } from "@/lib/console/content";
 import { noticeLabel } from "@/lib/console/notice";
 import { materialSlides, materialMeta } from "@/lib/console/school";
+import { passageOf, chapterOf, chapterOnAir } from "@/lib/console/bibleVerses";
 
 const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
 
@@ -16,6 +17,21 @@ export function stageFromSong(song, ref = {}) {
 export function stageFromPassage(passage, ref = {}) {
     const content = passageContent(passage, ref);
     return { kind: "bible", id: `passage:${passage.id || passage.reference}`, title: passage.reference || "", meta: passage.version || "", slides: content.slides, index: 0, op: "content.show", args: { ...content, kind: "bible" } };
+}
+
+// Verses of one chapter (bibleVerses.js): one verse is its whole chapter
+// from there (only a move when that chapter is on air: `onAir` is the
+// content on air); several are that passage. Null when nothing fits.
+export function stageFromVerses({ verses, nums, how = "auto", version, book, chapter, onAir = null }) {
+    if (nums.length > 1) {
+        const p = passageOf({ verses, nums, how, version, book, chapter });
+        return p ? stageFromPassage({ reference: p.reference, text: p.text, slides: p.slides, version }) : null;
+    }
+    if (!nums.length) return null;
+    const ch = chapterOf({ verses, n: nums[0], version, book, chapter });
+    if (!ch) return null;
+    if (chapterOnAir(onAir, { book, chapter, version })) return { ...stageAirSlide(onAir, ch.index, ch.id), title: ch.title };
+    return { ...stageFromPassage(ch.passage, ch.ref), id: ch.id, title: ch.title, index: ch.index };
 }
 
 export function stageFromText(title, text) {
