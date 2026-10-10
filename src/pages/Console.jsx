@@ -37,7 +37,7 @@ import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stage
 import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
-import { getChapter, preferredVersion } from "@/lib/bibleText";
+import { readChapter } from "@/lib/bibleText";
 import { formatReference } from "@/lib/bibleBooks";
 
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
@@ -353,13 +353,13 @@ export default function Console() {
 
     const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
     // A reference from the palette, without leaving the console, in the
-    // version chosen in the Bíblia (another installed one when it is not,
-    // and said so).
+    // version chosen in the Bíblia (readChapter: online when not installed,
+    // an installed one when that fails; said so).
     const referenceVerses = async (ref) => {
         const wanted = bibleVersionWanted();
-        const version = await preferredVersion(wanted);
-        const { verses } = await getChapter(version, ref.book, ref.chapter);
-        if (version !== wanted) c.say(`${wanted} não está instalada · usando a ${version}.`);
+        const { verses, version, fellBack } = await readChapter(wanted, ref.book, ref.chapter);
+        if (fellBack) c.say(`${fellBack} sem internet · usando a ${version}.`);
+        else if (version !== wanted) c.say(`${wanted} não está instalada · usando a ${version}.`);
         return { version, verses };
     };
     // Its verses in the Prévia (one verse: its chapter from there, as in the Bíblia).

@@ -103,7 +103,9 @@ const ADAPTER = `(async () => {
     out.bible = {
         passage: passage.verses.map((v) => v.number).join(","),
         source: passage.source,
-        preferred: await bibleText.preferredVersion("NVI"),
+        // ACF installed: NVI is read online (ACF if that fails); AA exists only
+        // as an install, so ACF is used.
+        preferred: (await bibleText.preferredVersion("NVI")) + "|" + (await bibleText.preferredVersion("AA")),
         search: (await bibleText.searchVerses("ENVIOU", "NVI", 5)).map((r) => r.version + " " + r.verse).join(","),
         parsed: bibleBooks.parseReference("jo 3:16").book,
     };
@@ -1839,7 +1841,7 @@ function expectAdapter(a) {
         && a.llm === 501
         && a.live.index === 1 && a.live.heard === true && a.live.rendered && /^keryx-media:\/\/[0-9a-f-]{36}\.png$/.test(a.live.stored)
         && a.live.clock && a.live.bad === 400
-        && a.bible.passage === "16,17" && a.bible.source === "local" && a.bible.preferred === "ACF"
+        && a.bible.passage === "16,17" && a.bible.source === "local" && a.bible.preferred === "NVI|ACF"
         && a.bible.search === "ACF 17" && a.bible.parsed === "João" && a.bible.missing === 404;
 }
 

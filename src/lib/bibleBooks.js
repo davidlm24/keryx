@@ -91,6 +91,32 @@ export const BIBLE_VERSIONS = [
     { id: "BKJ1611", name: "King James Fiel 1611", install: null, api: "bkj" },
 ];
 
+// Which edition to read, from the one the operator chose and the editions
+// installed on this computer (owner's decision 2026-10-10): an installed
+// edition is read here; one that is not installed but exists online (ARA,
+// ARC, NAA, NTLH, King James, or NVI/ACF before installing) is read from the
+// internet, and a chapter that cannot be fetched comes from the first
+// installed edition instead (`fallback`), said so; an edition that is
+// neither (AA not installed) gives way to the first installed one.
+// -> { use, online, fallback }
+export function editionPlan(wanted, installed = []) {
+    if (installed.includes(wanted)) return { use: wanted, online: false, fallback: null };
+    if (BIBLE_VERSIONS.find((v) => v.id === wanted)?.api) return { use: wanted, online: true, fallback: installed.find((v) => v !== wanted) || null };
+    return { use: installed[0] || wanted, online: !installed.length, fallback: null };
+}
+
+// Reads a chapter by a plan: `get(edition)` resolves the chapter or throws;
+// when the planned edition fails and there is a fallback, that one is read.
+// -> { ...chapter, version, fellBack }
+export async function readByPlan(plan, get) {
+    try {
+        return { ...(await get(plan.use)), version: plan.use, fellBack: null };
+    } catch (err) {
+        if (!plan.fallback) throw err;
+        return { ...(await get(plan.fallback)), version: plan.fallback, fellBack: plan.use };
+    }
+}
+
 export const VERSION_API_MAP = Object.fromEntries(BIBLE_VERSIONS.filter((v) => v.api).map((v) => [v.id, v.api]));
 
 export const BOOK_API_MAP = {

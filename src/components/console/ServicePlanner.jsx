@@ -4,7 +4,8 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, BackBtn } from "./kx";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
-import { getPassage, preferredVersion } from "@/lib/bibleText";
+import { readChapter } from "@/lib/bibleText";
+import { bibleVersionWanted } from "./BibleEnv";
 import { parseDuration, formatDuration } from "@/lib/songImport";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
 import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
@@ -98,8 +99,12 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         if (!r) { c.say("Referência não reconhecida. Ex.: Jo 3:16-21"); return; }
         setBusy("bible");
         try {
-            const version = await preferredVersion("NVI");
-            const { verses } = await getPassage(version, r.book, r.chapter, r.verseStart, r.verseEnd);
+            // The edition chosen in the Bíblia (online when not installed, an
+            // installed one when that fails).
+            const got = await readChapter(bibleVersionWanted(), r.book, r.chapter);
+            const version = got.version;
+            const verses = r.verseStart ? got.verses.filter((v) => v.number >= r.verseStart && v.number <= (r.verseEnd || r.verseStart)) : got.verses;
+            if (!verses.length) throw new Error(`${formatReference(r)} não existe na ${version}.`);
             const reference = formatReference(r);
             const row = await keryx.entities.BiblePassage.create({ reference: `${reference} · ${version}`, book: r.book, chapter: r.chapter, verses: r.verseStart ? `${r.verseStart}${r.verseEnd && r.verseEnd !== r.verseStart ? `-${r.verseEnd}` : ""}` : "", text: verses.map((v) => `${v.number} ${v.text}`).join("\n"), slides: verses.map((v) => ({ text: `${v.number} ${v.text}`, label: `v. ${v.number}` })), version });
             await add({ type: "BIBLE", title: reference, contentId: row.id, duration: Math.max(60, verses.length * 20) });

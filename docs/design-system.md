@@ -93,9 +93,14 @@ as made**: Camadas is its own section, a deliberate place, and *Travar
 telas* holds them during a rehearsal. The Próximo line's button says **Pôr
 na prévia**, like every other place.
 
-**Open decisions** — behaviour the owner has not settled, so the docs state
-what the app does, not what it should: whether an online-only Bible edition
-(ARA) may be used on a PC with NVI installed.
+**Bible editions (settled 2026-10-10).** The edition the operator chooses
+is the one used, even when another is installed: ARA with NVI installed is
+read from the internet (the badge says "pela internet", amber), and a
+chapter that cannot be fetched comes from the installed edition, with a
+toast and the warning line saying so. Verificar says, per edition, what
+happens without internet.
+
+**Open decisions** — none at the moment.
 
 **Travar telas and the service clock (decided 2026-10-09, built
 2026-10-10).** The owner dropped the Ensaio | Ao vivo toggle

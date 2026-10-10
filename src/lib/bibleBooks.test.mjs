@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bibleBooks, findBook, parseReference, formatReference } from "./bibleBooks.js";
+import { bibleBooks, findBook, parseReference, formatReference, editionPlan, readByPlan } from "./bibleBooks.js";
 
 const ref = (book, chapter, verseStart = null, verseEnd = verseStart) => ({ book, chapter, verseStart, verseEnd });
 
@@ -54,4 +54,29 @@ test("formatReference", () => {
     assert.equal(formatReference(ref("João", 3, 16)), "João 3:16");
     assert.equal(formatReference(ref("João", 3, 16, 18)), "João 3:16-18");
     assert.equal(formatReference(ref("Salmos", 23)), "Salmos 23");
+});
+
+test("editions: installed here, else online with the installed one as fallback", () => {
+    // ARA with NVI installed: ARA from the internet, NVI when it fails.
+    assert.deepEqual(editionPlan("ARA", ["NVI"]), { use: "ARA", online: true, fallback: "NVI" });
+    // The chosen edition installed: read here, no fallback needed.
+    assert.deepEqual(editionPlan("NVI", ["NVI", "ACF"]), { use: "NVI", online: false, fallback: null });
+    // NVI chosen but only ACF installed: NVI online, ACF if it fails.
+    assert.deepEqual(editionPlan("NVI", ["ACF"]), { use: "NVI", online: true, fallback: "ACF" });
+    // Nothing installed: online, and nothing to fall back to.
+    assert.deepEqual(editionPlan("ARA", []), { use: "ARA", online: true, fallback: null });
+    // AA exists only as an install: not installed, the installed one is used.
+    assert.deepEqual(editionPlan("AA", ["NVI"]), { use: "NVI", online: false, fallback: null });
+    assert.deepEqual(editionPlan("AA", []), { use: "AA", online: true, fallback: null });
+});
+
+test("a chapter that cannot be fetched comes from the installed edition, and says which failed", async () => {
+    const offline = async (edition) => { if (edition === "ARA") throw new Error("sem internet"); return { verses: [{ number: 16, text: "NVI" }], source: "local" }; };
+    const r = await readByPlan(editionPlan("ARA", ["NVI"]), offline);
+    assert.deepEqual([r.version, r.fellBack, r.source], ["NVI", "ARA", "local"]);
+    // Online works: ARA itself, nothing fell back.
+    const ok = await readByPlan(editionPlan("ARA", ["NVI"]), async () => ({ verses: [], source: "online" }));
+    assert.deepEqual([ok.version, ok.fellBack], ["ARA", null]);
+    // Nothing to fall back to: the error stands.
+    await assert.rejects(readByPlan(editionPlan("ARA", []), offline), /sem internet/);
 });

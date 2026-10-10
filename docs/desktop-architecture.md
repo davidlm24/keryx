@@ -572,9 +572,21 @@ Before phase 3 nothing read the `bible_verse` table; every verse came from
   Bíblia › Mais › Bíblias instaladas, and a prompt above the verse search
   while none is installed (`BibleInstaller`, `electron/bible.cjs`).
 - **One source of verse text:** `src/lib/bibleText.js` (`getChapter`,
-  `getPassage`, `searchVerses`, `searchBible`). Order: local database →
-  abibliadigital online. The console's Bíblia (read, search, compare), the
-  planner and the palette all use it. KERYX never asks an AI for scripture.
+  `getPassage`, `searchVerses`, `searchBible`, `readChapter`). Order: local
+  database → abibliadigital online. The console's Bíblia (read, search,
+  compare), the planner and the palette all use it. KERYX never asks an AI
+  for scripture.
+- **Which edition (2026-10-10, owner's decision):** the one the operator
+  chose, even when another is installed: installed, it is read here; not
+  installed but published online (ARA, ARC, NAA, NTLH, King James, or NVI /
+  ACF before installing), from the internet, marked "pela internet"; and a
+  chapter that cannot be fetched comes from the first installed edition, a
+  toast and the Bíblia's warning line saying so ("ARA sem internet · João 3
+  na NVI"). AA exists only as an install, so an installed edition stands in
+  for it. `editionPlan` / `readByPlan` in `bibleBooks.js` (tested),
+  `readChapter` in `bibleText.js`. Comparar shows each edition as itself
+  (no fallback). Verificar says, per edition in use, what happens without
+  internet.
 - **References and books:** `src/lib/bibleBooks.js` parses "Jo 3:16",
   "1Co 13:4-7", "salmo 23" (accents optional), and holds the version list.
   Its verse-count table was wrong in ~165 chapters (Levítico 23 listed 9

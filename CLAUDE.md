@@ -96,7 +96,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **Bible text goes through `src/lib/bibleText.js`** (`getChapter`,
   `getPassage`, `searchVerses`, `searchBible` — the console's word search,
   query rules in `src/lib/bibleSearch.js`): local database, then
-  abibliadigital. Never ask an AI for scripture, and don't fetch verses
+  abibliadigital. The edition the operator chose is read with `readChapter`
+  (`editionPlan` in `bibleBooks.js`): installed, else online (ARA with NVI
+  installed included), and a chapter that cannot be fetched comes from an
+  installed edition, said so. Never ask an AI for scripture, and don't fetch verses
   anywhere else. References parse with `parseReference` in
   `src/lib/bibleBooks.js`. Verse marks inside a slide's text are read with
   `src/lib/verseMarks.js` (numbers in sequence only). Favourites and notes
