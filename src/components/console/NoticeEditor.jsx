@@ -5,7 +5,8 @@ import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, BackBtn } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { NOTICE_TYPES, newNotice, noticeLabel } from "@/lib/console/notice";
 import { parseDuration, formatDuration } from "@/lib/songImport";
-import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
+import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
+import { useBackgrounds } from "./useConsoleData";
 import { FONT_MAP } from "@/lib/deviceStyles";
 import { stageFromPiece } from "@/lib/console/stage";
 
@@ -13,7 +14,6 @@ const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"]
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["georgia", "Georgia"], ["times", "Times"], ["arial", "Arial"], ["verdana", "Verdana"], ["mono", "Monoespaçada"], ["cursive", "Cursiva"]];
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const LOGO = [["none", "Sem"], ["top-left", "Alto esq."], ["top-right", "Alto dir."], ["bottom-left", "Baixo esq."], ["bottom-right", "Baixo dir."]];
-const BG_IDS = BACKGROUNDS["Comunicação"].slice(0, 8);
 const FIELDS = ["type", "title", "text", "subtext", "duration", "text_color", "text_color_2", "font_size", "font_family", "text_effect", "text_position_h", "text_position_v", "show_logo", "logo_position", "sound_alert", "background_image", "background_color", "background_video", "background_audio", "files"];
 const pickFields = (row) => Object.fromEntries(FIELDS.filter((k) => row[k] !== undefined).map((k) => [k, row[k]]));
 
@@ -24,6 +24,8 @@ const pickFields = (row) => Object.fromEntries(FIELDS.filter((k) => row[k] !== u
 // and a live 16:9 preview drawn by ScreenRenderer, so it is the screen.
 // Saving changes the library only; "Pôr na prévia do console" prepares it.
 export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved }) {
+    const backgrounds = useBackgrounds(null);
+    const galleryBgs = (() => { const own = visibleBackgrounds(backgrounds, { only: "Comunicação" }); return (own.length ? own : visibleBackgrounds(backgrounds)).slice(0, 12); })();
     const isNew = noticeId === "new";
     const [draft, setDraft] = useState(() => (isNew ? newNotice("countdown") : null));
     const [saved, setSaved] = useState(() => (isNew ? null : undefined));
@@ -191,7 +193,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                         <div className="listhead"><span className="kx-section">Fundo</span></div>
                         <div className="nv-pad">
                             <div className="bgpick">
-                                {BG_IDS.map((id) => { const url = backgroundUrl(id); return <button type="button" key={id} className={`kx-t ${draft.background_image === url ? "is-on" : ""}`} aria-label="Fundo da galeria" onClick={() => set({ background_image: url, background_color: "" })}><img src={url} alt="" loading="lazy" /></button>; })}
+                                {galleryBgs.map((b) => <button type="button" key={b.source} className={`kx-t ${draft.background_image === b.url ? "is-on" : ""}`} aria-label={b.name} title={b.name} onClick={() => set({ background_image: b.url, background_color: "" })}><img src={b.url} alt="" loading="lazy" /></button>)}
                             </div>
                             <div className="nv-inline">
                                 <Btn small onClick={() => imgRef.current?.click()}><Icon name="image" />Imagem…</Btn>

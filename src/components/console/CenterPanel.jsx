@@ -16,7 +16,7 @@ import "@/components/screen/output-prefs.css";
 // state's own rules to a copy of the current look (background, logo,
 // overlays) — or, for another slide of what is on air, to a copy of what is
 // on air. Never sent.
-export function previewDoc(stage, cur, now) {
+export function previewDoc(stage, cur, now, stamp) {
     if (!stage) return null;
     if (stage.airSlide && cur?.content) {
         // A preview, never sent: the lock (which refuses goTo) does not apply to it.
@@ -26,7 +26,7 @@ export function previewDoc(stage, cur, now) {
     try {
         if (stage.video) return applyOp(base, "content.show", { title: stage.title, slides: [{ text: "" }] }, now);
         const [op, args] = stageOp(stage);
-        return applyOp(base, op, args, now);
+        return applyOp(base, op, stamp ? stamp(op, args) : args, now);
     } catch {
         return base;
     }
@@ -110,8 +110,8 @@ export function ProgramaCaption({ c, projectorDown }) {
 // The block is as wide as the column allows and as tall as fits (console.css,
 // .liveblock); spare height goes below it, never between the monitors.
 export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu }) {
-    const { cur, prev, now, locked } = c;
-    const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
+    const { cur, prev, now, locked, stamp } = c;
+    const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
     const [dropOn, setDropOn] = useState(null);
     // The Prévia rail: the prepared stage as one output will show it
     // (Projeção by default; this session only), with that output's own

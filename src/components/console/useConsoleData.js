@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { remember, forget } from "@/lib/console/outputs";
+import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
+import { backgroundList } from "@/lib/console/backgroundPrefs";
 
 // What the console reads: the library (songs, media, communication pieces),
 // the services and the chosen service's items, the themes. Each list follows
@@ -38,6 +40,23 @@ export function useLibrary() {
     const themes = useList("ProjectionTheme", ["name"]).data;
     const materials = useList("BibleMaterial", ["-created_date"]).data;
     return { songs, media, pieces, themes, materials };
+}
+
+// Every background the galleries can offer, with the church's settings
+// (BackgroundPref, src/lib/console/backgroundPrefs.js): the ones that ship
+// with KERYX by factory category, then the church's images from Mídia.
+const BUNDLED = [...new Set(Object.values(BACKGROUNDS).flat())]
+    .map((id) => ({ id, url: backgroundUrl(id), category: Object.keys(BACKGROUNDS).find((k) => BACKGROUNDS[k].includes(id)) }));
+export function useBackgroundPrefs() {
+    return useList("BackgroundPref", []).data;
+}
+export function useBackgrounds(media) {
+    const prefs = useBackgroundPrefs();
+    return useMemo(() => backgroundList({
+        bundled: BUNDLED,
+        images: (media || []).filter((m) => m.type === "image" && m.file_url && !m.missing).map((m) => ({ id: m.id, url: m.file_url, title: m.title })),
+        prefs,
+    }), [media, prefs]);
 }
 
 // The services, newest first, and the items of the one in hand (today's by

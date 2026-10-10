@@ -410,3 +410,11 @@ test("the slide transition's length rides in the text style, kept between 120 an
     assert.equal(show(10).transition_ms, 120, "too short: 120");
     assert.throws(() => show("depressa"), LiveError);
 });
+
+test("an item's own background takes a dim and a blur (Fundos), kept in range", () => {
+    const show = (extra) => applyOp(emptyState(T0), "content.show", { kind: "lyrics", title: "T", slides: [{ text: "a" }], style: { background_image: "http://x/a.webp", ...extra } }, T0).content.style;
+    assert.equal(show({ background_dim: 0 }).background_dim, 0, "no dim at all is a choice");
+    assert.equal(show({ background_dim: 2 }).background_dim, 0.9);
+    assert.equal(show({ background_blur: 40 }).background_blur, 20);
+    assert.equal(show({}).background_dim, undefined, "unset: the screen's default");
+});

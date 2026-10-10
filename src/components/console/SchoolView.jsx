@@ -113,8 +113,8 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         return () => window.removeEventListener("keydown", onKey, true);
     }, []);
 
-    const { cur, prev, now, locked } = c;
-    const pdoc = useMemo(() => previewDoc(prev, cur, now), [prev, cur, now]);
+    const { cur, prev, now, locked, stamp } = c;
+    const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
     const airId = liveStageId(cur);
     const stateOf = (m) => (airId === `material:${m.id}` || (cur?.media?.id === m.id && !cur?.content) ? "is-air" : prev?.id === `material:${m.id}` ? "is-prev" : "");
     const airSlide = cur?.content?.slides?.[cur.content.index];
