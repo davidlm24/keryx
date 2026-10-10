@@ -1,0 +1,45 @@
+{
+  "name": "OutputPref",
+  "type": "object",
+  "properties": {
+    "screen_path": {
+      "type": "string",
+      "description": "Página da saída (/Projection, /LyricProjection, ...): a janela no computador e as telas na rede que mostram essa página"
+    },
+    "content": {
+      "type": "string",
+      "enum": [
+        "",
+        "all",
+        "lyrics",
+        "video",
+        "notices"
+      ],
+      "default": "",
+      "description": "O que a saída mostra: vazio é o padrão da página"
+    },
+    "text_scale": {
+      "type": "number",
+      "default": 100,
+      "description": "Escala do texto em % (80 a 140)"
+    },
+    "margin_pct": {
+      "type": "number",
+      "default": 0,
+      "description": "Margem extra do texto em % da largura (0 a 10)"
+    },
+    "show_logo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Mostrar o logo da camada Logo nesta saída"
+    },
+    "theme_id": {
+      "type": "string",
+      "default": "",
+      "description": "Tema próprio da saída (ProjectionTheme); vazio herda o da projeção"
+    }
+  },
+  "required": [
+    "screen_path"
+  ]
+}

@@ -416,9 +416,12 @@
 .console .cfg .dmon { display: flex; flex-direction: column; gap: var(--space-1); align-items: center; }
 .console .cfg .dmon .box { border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--fg-2); text-align: center; padding: 4px; }
 .console .cfg .dmon.is-live .box { box-shadow: inset 0 0 0 1px var(--air); color: var(--air-fg); }
-.console .cfg .cfg-out { gap: var(--space-2); }
+.console .cfg .cfg-out { gap: var(--space-1) var(--space-2); flex: none; flex-wrap: wrap; height: auto; min-height: 40px; padding-block: 4px; }
+.console .cfg .cfg-out > .kx-row-main { flex: 1 1 170px; min-width: 150px; }
+.console .cfg .cfg-tune { flex: none; width: 84px; display: flex; justify-content: flex-end; }
 .console .cfg .cfg-select { height: 24px; max-width: 220px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; }
 .console .cfg .cfg-launch { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.console .cfg .cfg-outprefs { flex: none; margin: 0 0 var(--space-2) 34px; border-left: 2px solid var(--line); background: var(--bg-1); border-radius: 0 var(--radius-control) var(--radius-control) 0; }
 .console .cfg .cfg-acts { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
 .console .cfg .cfg-pin { letter-spacing: .2em; color: var(--fg-1); }
 .console .cfg .cfg-qr { display: flex; gap: var(--space-3); padding: var(--space-2) var(--space-3); align-items: flex-start; flex-wrap: wrap; }

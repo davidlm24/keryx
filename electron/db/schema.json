@@ -835,6 +835,49 @@
         }
       }
     },
+    "OutputPref": {
+      "table": "output_pref",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "screen_path": {
+          "type": "text"
+        },
+        "content": {
+          "type": "text",
+          "default": ""
+        },
+        "text_scale": {
+          "type": "real",
+          "default": 100
+        },
+        "margin_pct": {
+          "type": "real",
+          "default": 0
+        },
+        "show_logo": {
+          "type": "boolean",
+          "default": true
+        },
+        "theme_id": {
+          "type": "text",
+          "default": ""
+        }
+      }
+    },
     "Playlist": {
       "table": "playlist",
       "columns": {

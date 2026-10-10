@@ -490,6 +490,28 @@ async function checkLayers(webContents, { live, outputs }) {
         })()`).catch((err) => ({ error: String(err.message || err) })) : null;
         const lp = result.layersPlus || {};
         result.layersPlusOk = lp.box === "rgba(16, 32, 48, 0.5)" && lp.upper === "uppercase" && lp.opacity === "0.8" && lp.fit === "contain" && lp.dim === "rgba(0, 0, 0, 0.6)" && lp.logo === "0.5";
+
+        // Per-output settings (OutputPref, src/lib/outputPrefs.js): a row for
+        // /Projection written like Configurações does reaches the open
+        // projector live: text 120%, 5% margins, no logo; deleting it brings
+        // the output back exactly as before.
+        const prefCall = (op, args) => webContents.executeJavaScript(`window.keryxDesktop.db.call("OutputPref", ${JSON.stringify(op)}, ${JSON.stringify(args)})`);
+        const prefLook = () => (main ? main.webContents.executeJavaScript(`(() => {
+            const t = document.querySelector(".ks-text"), c = document.querySelector(".ks-content"), w = document.querySelector(".kp-out");
+            if (!t || !c) return { missing: true };
+            const size = parseFloat(getComputedStyle(c).getPropertyValue("--ks-size")) / 100 * innerWidth;
+            return { wrapped: Boolean(w), scale: Math.round(parseFloat(getComputedStyle(t).fontSize) / size * 100) / 100,
+                margin: Math.round(c.getBoundingClientRect().top / innerWidth * 100), logo: Boolean(document.querySelector(".ks-logo")) };
+        })()`).catch((err) => ({ error: String(err.message || err) })) : null);
+        const created = await prefCall("create", [{ screen_path: "/Projection", text_scale: 120, margin_pct: 5, show_logo: false }]).catch((err) => ({ error: String(err.message || err) }));
+        await sleep(900);
+        const prefOn = await prefLook();
+        if (created && created.data) await prefCall("delete", [created.data.id]).catch(() => {});
+        await sleep(900);
+        const prefOff = await prefLook();
+        result.outputPref = { created: Boolean(created && created.data), on: prefOn, off: prefOff };
+        result.outputPrefOk = Boolean(created && created.data) && prefOn && prefOn.wrapped && prefOn.scale === 1.2 && prefOn.margin === 5 && prefOn.logo === false
+            && prefOff && !prefOff.wrapped && prefOff.scale === 1 && prefOff.margin === 0 && prefOff.logo === true;
         live.call("logo.set", { visible: false, opacity: null, width: null });
         live.call("background.clear");
 
@@ -510,7 +532,7 @@ async function checkLayers(webContents, { live, outputs }) {
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
+        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
     return result;
 }
 
