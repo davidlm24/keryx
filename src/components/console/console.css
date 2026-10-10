@@ -714,3 +714,23 @@
 .console .ap-ms { min-width: 64px; font-variant-numeric: tabular-nums; }
 .console .ap-sample { width: 240px; max-width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; container-type: inline-size; background: #000; box-shadow: inset 0 0 0 1px var(--line); }
 .console .ap-sample > .ks-box { width: 100%; }
+
+/* Aparência › Fundos: filters, the gallery and one background's settings. */
+.console .fg { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3) var(--space-3); border-top: 1px solid var(--line); }
+.console .fg-h { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.console .fg-filters { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.console .fg-chip { height: 24px; padding: 0 var(--space-2); border-radius: 999px; background: var(--bg-2); color: var(--fg-2); font-size: 11px; }
+.console .fg-chip.is-on { background: var(--fg-1); color: var(--bg-0); }
+.console .fg-body { display: flex; gap: var(--space-3); align-items: flex-start; min-width: 0; }
+.console .fg-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--space-2); align-content: start; }
+.console .fg-tile { display: flex; flex-direction: column; gap: 4px; min-width: 0; text-align: left; border-radius: var(--radius-control); }
+.console .fg-img { position: relative; aspect-ratio: 16 / 10; border-radius: var(--radius-control); overflow: hidden; background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line); }
+.console .fg-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.console .fg-tile.is-on .fg-img { box-shadow: 0 0 0 2px var(--fg-1); }
+.console .fg-tile.is-hidden .fg-img { opacity: .4; }
+.console .fg-name { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.console .fg-name .kx-i { flex: none; color: var(--fg-1); }
+.console .cfg .fg-detail { flex: 0 0 380px; position: sticky; top: 0; padding: 0; grid-template-columns: 84px minmax(0, 1fr); }
+.console .fg-sample { width: 100%; }
+.console .fg-input { height: 24px; flex: 1; min-width: 0; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; }
+@media (max-width: 1180px) { .console .fg-body { flex-direction: column; } .console .cfg .fg-detail { flex: none; width: 100%; position: static; } }

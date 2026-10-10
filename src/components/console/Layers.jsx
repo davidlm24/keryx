@@ -3,7 +3,8 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn, IconBtn, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
-import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
+import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
+import { useBackgrounds } from "./useConsoleData";
 import { STYLE_KEYS, LAYER_ORDER } from "@shared/live-state.mjs";
 
 // Camadas: the look of what is on air, as four layers of the live state —
@@ -37,6 +38,7 @@ const bgOf = (t) => Object.fromEntries([["fit", t.background_fit], ["dim", t.bac
 const num = (v) => (v == null || v === "" ? "" : String(v));
 
 export default function Layers({ c, themes }) {
+    const backgrounds = useBackgrounds(null);
     const { cur } = c;
     const [sel, setSel] = useState("text");
     const [locked, setLocked] = useState({ bg: false });
@@ -100,7 +102,7 @@ export default function Layers({ c, themes }) {
     };
 
     const disabled = locked[sel];
-    const bgIds = Object.values(BACKGROUNDS).flat().filter((v, i, a) => a.indexOf(v) === i);
+    const galleryBgs = visibleBackgrounds(backgrounds).slice(0, 12);
 
     return (
         <>
@@ -167,8 +169,8 @@ export default function Layers({ c, themes }) {
                 {sel === "bg" && (<>
                     <span className="k">Fundo</span><span style={{ color: "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? cur.background.title || cur.background.kind : "nenhum"}</span>
                     <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
-                        {bgIds.slice(0, 12).map((id) => (
-                            <button type="button" key={id} disabled={disabled} onClick={() => op("background.set", { kind: "image", value: backgroundUrl(id), title: "Fundo" })} style={{ aspectRatio: "16/10", borderRadius: 3, backgroundImage: `url(${backgroundUrl(id)})`, backgroundSize: "cover", backgroundPosition: "center", outline: cur?.background?.value === backgroundUrl(id) ? "2px solid var(--brand)" : "none", outlineOffset: -2 }} aria-label="Fundo" />
+                        {galleryBgs.map((b) => (
+                            <button type="button" key={b.source} disabled={disabled} onClick={() => op("background.set", { kind: "image", value: b.url, title: b.name, ...(b.dim !== null ? { dim: b.dim } : {}), ...(b.blur !== null ? { blur: b.blur } : {}) })} style={{ aspectRatio: "16/10", borderRadius: 3, backgroundImage: `url(${b.url})`, backgroundSize: "cover", backgroundPosition: "center", outline: cur?.background?.value === b.url ? "2px solid var(--brand)" : "none", outlineOffset: -2 }} aria-label={b.name} title={b.name} />
                         ))}
                     </div>
                     {cur?.background && cur.background.kind !== "color" && <>

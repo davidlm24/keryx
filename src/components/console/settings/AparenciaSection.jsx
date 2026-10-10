@@ -7,6 +7,7 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { TRANSITIONS, TRANSITION_MS, lookDefaults } from "@/lib/console/look";
 import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
+import FundosGallery from "./FundosGallery";
 
 const SAMPLE = [{ text: "Grande é o Senhor\ne mui digno de louvor" }, { text: "Na cidade do nosso Deus\nno seu santo monte" }];
 
@@ -14,6 +15,7 @@ const SAMPLE = [{ text: "Grande é o Senhor\ne mui digno de louvor" }, { text: "
 // transition between slides (each item can still choose its own in
 // Camadas) and the standby wallpaper the screens show when nothing is on
 // air and the service has none of its own. On the local profile (User).
+// Below, Fundos: each background's own settings (FundosGallery).
 export default function AparenciaSection({ c }) {
     const { media } = useLibrary();
     const [user, setUser] = useState(null);
@@ -76,6 +78,7 @@ export default function AparenciaSection({ c }) {
                     </div>
                 )}
             </div>
+            <FundosGallery c={c} media={media} standby={wall} onStandby={(url) => save({ standby_background: url }, "Fundo de espera padrão salvo.")} />
         </>
     );
 }

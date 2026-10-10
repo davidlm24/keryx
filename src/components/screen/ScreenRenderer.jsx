@@ -94,7 +94,13 @@ function Background({ state, layer }) {
     const liveBg = !bg && state.background ? state.background : null;
     if (layer === "media") return <div className="ks-black" />;
     if (bg) {
-        if (isUrl(bg)) return <><div className="ks-bg-img" style={{ backgroundImage: `url(${bg})` }} /><div className="ks-bg-dim" /></>;
+        if (isUrl(bg)) {
+            // The item's own picture, with the dim and blur its background
+            // brought from Fundos (style.background_dim/_blur).
+            const st = layer === "content" ? state.content.style : layer === "tool" ? state.tool.style : null;
+            const look = bgLook({ kind: "image", dim: st?.background_dim, blur: st?.background_blur });
+            return <><div className="ks-bg-img" style={{ backgroundImage: `url(${bg})`, ...(st?.background_blur ? { filter: look.image.filter, transform: look.image.transform } : {}) }} />{look.dim}</>;
+        }
         return <div className="ks-layer" style={{ background: bg }} />;
     }
     if (liveBg) {
