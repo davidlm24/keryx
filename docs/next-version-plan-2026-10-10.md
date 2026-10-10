@@ -304,6 +304,16 @@ books (at 1520×900 the column is 816 px, and Nomes leaves 409 px of reading).
 
 ## I. Aparência — transitions and backgrounds (item 10)
 
+**Transições and the default standby wallpaper built** (release session,
+2026-10-10); the Fundos gallery (BackgroundPref) is the next PR. Found on
+the way: slide transitions never animated — the `.ks-anim-*` class sat on a
+`display: contents` wrapper, which has no box to animate — so every slide
+change was a hard cut whatever Camadas said. The animation is now on the
+wrapper's children (`screen.css`), with its length in `--ks-tr`
+(`style.transition_ms`, 120–600). The default is stamped at send time in
+`useConsole` (`src/lib/console/look.js`), not in `content.js`, so every kind
+of stage gets it. The section's icon is `image` (Temas keeps `palette`).
+
 New Configurações section **Aparência** (icon `palette`; Temas stays its own
 section). Lives in the new settings dialog (B).
 

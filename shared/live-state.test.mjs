@@ -402,3 +402,11 @@ test("Camadas background: fit, dim, blur and position, only when set", () => {
     assert.equal(b.position, "top");
     assert.throws(() => run([["background.set", { kind: "image", value: "x", fit: "stretch" }]]), LiveError);
 });
+
+test("the slide transition's length rides in the text style, kept between 120 and 600 ms", () => {
+    const show = (ms) => applyOp(emptyState(T0), "content.show", { kind: "lyrics", title: "T", slides: [{ text: "a" }], style: { transition: "slide", transition_ms: ms } }, T0).content.style;
+    assert.equal(show(300).transition_ms, 300);
+    assert.equal(show(5000).transition_ms, 600, "too long: 600");
+    assert.equal(show(10).transition_ms, 120, "too short: 120");
+    assert.throws(() => show("depressa"), LiveError);
+});
