@@ -1370,6 +1370,9 @@
         "background_image": {
           "type": "text"
         },
+        "lines_per_slide": {
+          "type": "integer"
+        },
         "slides": {
           "type": "json"
         },

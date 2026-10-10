@@ -1,13 +1,18 @@
 // What a song or a Bible passage puts on screen: the arguments of
 // content.show (shared/live-state.mjs), used by stage.js and the song editor.
 import { generateSlides } from "@/utils/songSections";
+import { slidesFromLyrics } from "@/lib/songImport";
 import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
 
 // A song's audio_url may be its video clip (sent to the video screen) or a
 // playback track (played by the main projector).
 export const isVideoUrl = (url) => Boolean(url) && (url.includes(".mp4") || url.includes("video") || url.startsWith("data:video"));
 
-const songSlides = (song) => (song.slides?.length ? song.slides : generateSlides(song.lyrics || ""));
+// Its saved slides; else the lyrics split as the song asks (lines_per_slide,
+// set in the editor or at import), else one stanza per slide.
+const songSlides = (song) => (song.slides?.length ? song.slides
+    : [2, 4].includes(Number(song.lines_per_slide)) ? slidesFromLyrics(song.lyrics || "", { lines: Number(song.lines_per_slide) })
+        : generateSlides(song.lyrics || ""));
 
 // What a Song row puts on screen (projection.showLyrics arguments).
 export function songContent(song, ref = {}) {

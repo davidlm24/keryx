@@ -26,6 +26,11 @@
       "type": "string",
       "description": "URL da imagem de fundo personalizada"
     },
+    "lines_per_slide": {
+      "type": "integer",
+      "enum": [0, 2, 4],
+      "description": "Como a letra vira slides: 0 = uma estrofe por slide, 2 ou 4 = no maximo tantas linhas por slide (editor de musica)"
+    },
     "slides": {
       "type": "array",
       "items": {

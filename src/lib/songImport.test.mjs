@@ -41,6 +41,9 @@ test("Ao importar: long stanzas cut into slides of n lines; the lyrics stay whol
     const s = songFromText(raw, { name: "x.txt", lines: 2 });
     assert.deepEqual(s.slides.map((x) => x.text), ["um\ndois", "três\nquatro", "cinco", "seis"]);
     assert.equal(s.lyrics, "um\ndois\ntrês\nquatro\ncinco\n\nseis");
+    assert.equal(s.lines_per_slide, 2, "the song keeps the split it was imported with");
+    assert.equal(songFromText(raw, { name: "x.txt" }).lines_per_slide, 0);
+    assert.equal(songFromText(raw, { name: "x.txt", lines: 3 }).lines_per_slide, 0, "only 0, 2 or 4 are kept");
 });
 
 test("editor: live split with [labels], chorus, line cuts", async () => {

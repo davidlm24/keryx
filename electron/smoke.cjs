@@ -1186,6 +1186,16 @@ async function checkConsole(webContents, { live, outputs }) {
         result.edListed = await waitText(webContents, "Música do editor");
         await js(`(() => { const row = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Música do editor")); const b = row && [...row.querySelectorAll("button")].find((x) => x.textContent === "Editar"); if (b) b.click(); return Boolean(b); })()`);
         result.edReopen = await waitFor(() => js("(document.querySelector('.song-ed-l .kx-field input') || {}).value === 'Música do editor'"));
+        // Each slide says its lines and characters; the split chosen in the
+        // Letra header is saved with the song and comes back when reopened.
+        result.edFit = await waitFor(() => js("[...document.querySelectorAll('.ed-th .fit')].map((n) => n.textContent).join('|') === '2 l · 18 c|2 l · 20 c'"), 3000);
+        await click(".song-ed-l ~ .col .kx-panel-h .kx-seg button, .kx-panel-h .kx-seg button", "4 linhas");
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("s", ["control"]);
+        result.edSplitSaved = await waitFor(async () => {
+            const row = edSong && (await js(`window.keryxDesktop.db.call("Song", "get", ["${edSong && edSong.id}"])`)).data;
+            return Boolean(row) && row.lines_per_slide === 4;
+        }, 6000);
         result.shotEditor = await shot("editor");
         await press("Escape");
         await waitFor(() => js("!document.querySelector('.song-ed-l')"));
@@ -1667,7 +1677,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outputKeysOk
         && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
-        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen
+        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced
