@@ -51,10 +51,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   on the design system in `docs/design-system/` (tokens and `kx-` classes,
   imported as `@ds/…`; read `docs/design-system.md` before touching its
   look). One screen, always live (no steps; Verificar is an overlay from the
-  Saídas popover). Everything else is a view inside it, one at a time (the
-  `view` state in Console.jsx, `?config=`, `?song=`, `?planner=`, `?media=`,
-  `?notice=`, `?school=`, `?reports=`): Configurações
-  (`settings/SettingsView`), the song editor (`SongEditor.jsx`), the
+  Saídas popover; Configurações, `settings/SettingsView`, is a window over
+  whatever is on screen, its own `cfg` state, `?config=`). Everything else
+  is a view inside it, one at a time (the `view` state in Console.jsx,
+  `?song=`, `?planner=`, `?media=`, `?notice=`, `?school=`, `?reports=`):
+  the song editor (`SongEditor.jsx`), the
   planner (`ServicePlanner.jsx`), the media library (`MediaView.jsx`), the
   aviso editor (`NoticeEditor.jsx`), the Escola bíblica (`SchoolView.jsx`;
   it projects through the console's Prévia/Programa and every live key
@@ -79,8 +80,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/components/screen/ScreenRenderer.jsx` — one component, sized in
   container units — so a preview is the output; the Programa monitor plays
   videos muted (`motion`). Keys go through `src/lib/console/keys.js` (with
-  a test); a mouse click must not leave focus on a control, Esc ends at
-  once (music on the audio channel keeps playing) and its toast offers
+  a test); a mouse click must not leave focus on a control, Esc closes the
+  topmost thing open (`escapeTarget`: a popover, then Configurações, then
+  the Camadas drawer; views defer while a `.scrim` is up) and with nothing
+  open ends at once (music on the audio channel keeps playing); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
   `src/lib/console/restore.js`). The rundown is called
   **"Setlist"** in the UI. Output windows are never background (occlusion

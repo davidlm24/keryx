@@ -67,6 +67,21 @@ export function liveAction(e) {
     }
 }
 
+// Esc closes the topmost thing open over the console, one per press, and
+// only with nothing open ends the projection (live safety: closing a menu
+// must never take the screens down). Topmost first: a context menu, a
+// popover or dialog (the menu, Saídas, the palette, Verificar…),
+// Configurações, the Camadas drawer. A text field's first Esc only leaves
+// the field (liveAction's "blur"), before any of these. The Bible quick jump
+// and the full-screen views (editors, planner) handle their own Esc and defer
+// while anything above them is open.
+// layers: { menu, popover, settings, drawer } (truthy = open)
+// -> the layer to close, or "end".
+export const ESC_ORDER = ["menu", "popover", "settings", "drawer"];
+export function escapeTarget(layers = {}) {
+    return ESC_ORDER.find((k) => Boolean(layers[k])) || "end";
+}
+
 // In the Bible environment, typing a reference opens the quick jump (as in
 // Holyrics): a letter or digit, nothing focused, no modifier. "B" stays Tela
 // preta (no book of the Portuguese canon starts with B); L and C start books

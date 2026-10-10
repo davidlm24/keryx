@@ -1225,25 +1225,27 @@ async function checkConsole(webContents, { live, outputs }) {
         })()`);
         result.rowActsClear = Boolean(result.rowActs && !result.rowActs.error && Object.values(result.rowActs).every((v) => v === "sem botões" || v >= 16));
 
-        // Configurações inside the console: from the KERYX menu, every
-        // section renders, Tela ociosa and Igreja save, Esc goes back.
+        // Configurações, a window over the console: from the KERYX menu, every
+        // section renders, Tela ociosa and Igreja save, Esc closes it, the X too.
         await click(".topbar .markbtn", "");
         await click(".kx-pop button", "Configurações");
         result.cfgOpen = await waitFor(() => js("Boolean(document.querySelector('.console .cfg'))"));
+        // Over the console, which stays mounted behind it.
+        result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .col.center') && document.querySelector('.console .cfg-scrim'))");
         result.cfgSections = {};
         for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Letras", "Dados e atualizações"]) {
-            await click(".console .main .kx-row", name);
+            await click(".console .cfg-dialog .kx-row", name);
             result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
         }
         result.cfgAll = Object.values(result.cfgSections).every(Boolean);
         result.shotCfg = await shot("configuracoes");
-        await click(".console .main .kx-row", "Telas e saídas");
+        await click(".console .cfg-dialog .kx-row", "Telas e saídas");
         result.cfgOutputs = await waitText(webContents, "Projeção principal");
         await click(".console .cfg .kx-seg button", "Preto");
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
         await click(".console .cfg .kx-seg button", "Logo da igreja");
         await waitFor(() => live.get().idle === "logo");
-        await click(".console .main .kx-row", "Igreja");
+        await click(".console .cfg-dialog .kx-row", "Igreja");
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg input[placeholder=\"Nome da igreja\"]'))"));
         await click(".console .cfg .kx-field", "");
         await type("Igreja do Teste");
@@ -1253,6 +1255,12 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("Escape");
         result.cfgEsc = await waitFor(() => js("!document.querySelector('.console .cfg') && Boolean(document.querySelector('.console .main .col.center'))"));
+        // The X closes it as well.
+        await click(".topbar .markbtn", "");
+        await click(".kx-pop button", "Configurações");
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg-dialog'))"));
+        await click(".console .cfg-dialog-h button", "");
+        result.cfgX = await waitFor(() => js("!document.querySelector('.console .cfg-dialog')"));
 
         // The planner inside the console: from the KERYX menu; the culto's name
         // saves on blur, a section is added and dragged to the top, the team
@@ -1623,7 +1631,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc
+        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

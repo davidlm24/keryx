@@ -183,6 +183,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     // Ctrl+S saves. Captured here so the console never ends the projection.
     useEffect(() => {
         const onKey = (e) => {
+            // Something open over the editor (a popover, Configurações) takes the keys.
+            if (document.querySelector(".console .scrim")) return;
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (song) save(); return; }
             if (e.key !== "Escape") return;
             e.preventDefault();
