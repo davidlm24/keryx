@@ -4,6 +4,7 @@ import Icon from "../Icon";
 import { Btn, Field, Empty } from "../kx";
 import { useBridge, usePoll, Switch, desktopOnly } from "./parts";
 import { byGroup } from "@/lib/console/outputs";
+import { useOutputLooks } from "@/hooks/useOutputPref";
 
 const newPin = () => String(Math.floor(1000 + Math.random() * 9000));
 
@@ -11,6 +12,7 @@ const newPin = () => String(Math.floor(1000 + Math.random() * 9000));
 // the screen pages in a browser (electron/lan.cjs). On/off, the address and
 // its QR code, the PIN and who is connected now.
 export default function RedeSection({ c }) {
+    const look = useOutputLooks();
     const network = useBridge("network");
     const [info, , setInfo] = usePoll(() => network?.call("info"), 3000);
     const [pin, setPin] = useState("");
@@ -82,7 +84,7 @@ export default function RedeSection({ c }) {
                     <div className="listhead"><span className="kx-section">{g.label}</span></div>
                     {g.items.map((s) => (
                         <div key={s.path} className="kx-row cfg-screen">
-                            <span className="kx-glyph"><Icon name={s.path === "/StreamView" ? "external" : s.path === "/StageView" || s.path === "/PastorView" ? "monitor" : "tv"} /></span>
+                            <span className="kx-glyph"><Icon name={look(s.path).icon} /></span>
                             <div className="kx-row-main"><div className="kx-row-title">{s.label}</div><div className="kx-row-meta">{s.hint}</div></div>
                             <code className="cfg-screen-url">{`${main.url}${s.path}`}</code>
                             <button type="button" className="kx-btn kx-btn-icon kx-t" onClick={() => copy(`${main.url}${s.path}`)} aria-label={`Copiar o endereço de ${s.label}`} title="Copiar o endereço"><Icon name="external" /></button>

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { remember, forget } from "@/lib/console/outputs";
 import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
+import { useOutputLooks } from "@/hooks/useOutputPref";
 import { backgroundList } from "@/lib/console/backgroundPrefs";
 
 // What the console reads: the library (songs, media, communication pieces),
@@ -91,6 +92,11 @@ export function pickDefaultService(services) {
 export function useOutputs() {
     const [local, setLocal] = useState({ displays: [], outputs: [] });
     const [seen, setSeen] = useState({});
+    // The operator's own names (Telas e saídas › Ajustes) go onto every row
+    // here, so the popover, the banner and Verificar all say them.
+    const look = useOutputLooks();
+    const lookRef = useRef(look);
+    lookRef.current = look;
     useEffect(() => {
         const bridge = window.keryxDesktop;
         if (!bridge) return undefined;
@@ -104,9 +110,10 @@ export function useOutputs() {
                 bridge.network ? bridge.network.call("info").catch(() => null) : null,
             ]);
             if (!alive) return;
-            const data = d?.data || null;
+            const name = (path, fallback) => (path && lookRef.current(path).custom) || fallback;
+            const data = d?.data ? { ...d.data, outputs: (d.data.outputs || []).map((o) => ({ ...o, label: name(o.key, o.label) })) } : null;
             if (data) setLocal(data);
-            const clients = n?.data ? n.data.clients || [] : null;
+            const clients = n?.data ? (n.data.clients || []).map((cl) => ({ ...cl, label: name(cl.screen, cl.label) })) : null;
             setSeen((prev) => remember(prev, { outputs: data ? data.outputs : [], clients }, Date.now()));
         };
         read();

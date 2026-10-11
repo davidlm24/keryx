@@ -8,11 +8,11 @@ import { stageOp } from "@/lib/console/stage";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { captionParts } from "@/lib/console/caption";
-import { OUTPUT_VIEWS, RAIL_VIEWS, SCREEN_PAGES, nextItems, previewSession } from "@/lib/network/views";
+import { OUTPUT_VIEWS, SCREEN_PAGES, nextItems, previewSession } from "@/lib/network/views";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import { prefState, prefVars } from "@/lib/outputPrefs";
-import { useOutputPref } from "@/hooks/useOutputPref";
+import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
 
 // What the Prévia would look like on air: the stage applied with the live
@@ -109,11 +109,12 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const { pref: railPref, theme: railTheme } = useOutputPref(railOut);
     // Palco and Pastor have layouts of their own: their screen components
     // draw the prepared stage (the pastor's Próximo follows its Setlist item).
+    const railViews = useRailViews();
     const railPage = SCREEN_PAGES.find((p) => p.key === railOut) || null;
     const railDoc = useMemo(() => (railPage ? null : prefState(railOut, pdoc, railPref, railTheme)), [railPage, railOut, pdoc, railPref, railTheme]);
     const pastorDoc = useMemo(() => (railPage?.key === "/PastorView" && pdoc ? { ...pdoc, session: previewSession(cur?.session || null, prev?.args?.ref) } : null), [railPage, pdoc, cur?.session, prev]);
     const railVars = railPage ? null : prefVars(railPref);
-    const railName = RAIL_VIEWS.find((o) => o.key === railOut)?.name || "";
+    const railName = railViews.find((o) => o.key === railOut)?.name || "";
     // Locked: the screens keep this image, blue (they are not following). On
     // air there is no frame: the red lives in the header's state word and on
     // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
@@ -152,7 +153,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                             </div>
                         )}
                         <div className="prev-rail" role="group" aria-label="Ver a prévia como a saída" onDoubleClick={(e) => e.stopPropagation()}>
-                            {RAIL_VIEWS.map((o) => (
+                            {railViews.map((o) => (
                                 <button type="button" key={o.key} className={`kx-t ${railOut === o.key ? "is-on" : ""}`} title={`Prévia como ${o.name}`} aria-label={`Prévia como ${o.name}`} aria-pressed={railOut === o.key}
                                     onClick={(e) => { e.stopPropagation(); setRailOut(o.key); }}><Icon name={o.icon} size={14} /></button>
                             ))}

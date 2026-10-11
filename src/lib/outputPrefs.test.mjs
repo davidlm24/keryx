@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook } from "./outputPrefs.js";
+import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -14,7 +14,7 @@ const live = {
 test("no row, or an empty one, is the default: the output as before", () => {
     for (const row of [null, undefined, {}, { screen_path: "/Projection" }, { text_scale: "", margin_pct: null, show_logo: true, theme_id: "" }]) {
         const p = normalizePref(row);
-        assert.deepEqual(p, { content: "", scale: 1, margin: 0, showLogo: true, themeId: "" });
+        assert.deepEqual(p, { content: "", scale: 1, margin: 0, showLogo: true, themeId: "", name: "", icon: "" });
         assert.ok(isDefaultPref(p));
         assert.equal(prefVars(p), null);
         assert.deepEqual(prefState("/LyricProjection", live, p), prefState("/LyricProjection", live, null));
@@ -23,8 +23,8 @@ test("no row, or an empty one, is the default: the output as before", () => {
 });
 
 test("normalizePref clamps scale and margins and drops unknown content", () => {
-    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", scale: 1.4, margin: 0, showLogo: true, themeId: "" });
-    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", scale: 0.8, margin: 10, showLogo: false, themeId: "t1" });
+    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", scale: 1.4, margin: 0, showLogo: true, themeId: "", name: "", icon: "" });
+    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", scale: 0.8, margin: 10, showLogo: false, themeId: "t1", name: "", icon: "" });
     assert.equal(normalizePref({ text_scale: 112.4 }).scale, 1.12);
 });
 
@@ -55,4 +55,18 @@ test("a theme sets its text look and background, leaving keys it does not set", 
 
 test("prefVars carries scale and margins as CSS variables", () => {
     assert.deepEqual(prefVars(normalizePref({ text_scale: 120, margin_pct: 5 })), { "--kp-text": "1.2", "--kp-margin": "5cqw" });
+});
+
+test("outputLook: the row's name and icon, else the factory's (today's exactly)", () => {
+    assert.deepEqual(
+        ["/Projection", "/LyricProjection", "/VideoProjection", "/CommunicationProjection", "/StageView", "/PastorView", "/StreamView"].map((p) => outputLook(p, null)),
+        [{ name: "Projeção", custom: "", icon: "projector" }, { name: "Letras", custom: "", icon: "tv" }, { name: "Vídeo", custom: "", icon: "film" }, { name: "Avisos", custom: "", icon: "megaphone" },
+            { name: "Palco", custom: "", icon: "monitor" }, { name: "Pastor", custom: "", icon: "tablet" }, { name: "Transmissão", custom: "", icon: "external" }],
+        "no row = the names and icons the app always had; custom empty keeps each surface's own label");
+    assert.deepEqual(outputLook("/Projection", { name: "  Telão  ", icon: "star" }), { name: "Telão", custom: "Telão", icon: "star" });
+    assert.deepEqual(outputLook("/Projection", { name: "   ", icon: "Má!" }), { name: "Projeção", custom: "", icon: "projector" }, "blank name and a bad icon fall back");
+    assert.equal(outputLook("/Projection", { name: "x".repeat(60) }).name.length, 40, "names are capped");
+    assert.deepEqual(outputMeta("/qualquer"), { name: "/qualquer", icon: "monitor" });
+    assert.ok(ICON_CHOICES.includes("projector") && ICON_CHOICES.includes("tablet"));
+    assert.ok(!isDefaultPref(normalizePref({ name: "Telão" })), "a name alone counts as an adjustment");
 });

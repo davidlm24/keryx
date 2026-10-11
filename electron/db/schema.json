@@ -901,6 +901,14 @@
         "screen_path": {
           "type": "text"
         },
+        "name": {
+          "type": "text",
+          "default": ""
+        },
+        "icon": {
+          "type": "text",
+          "default": ""
+        },
         "content": {
           "type": "text",
           "default": ""
