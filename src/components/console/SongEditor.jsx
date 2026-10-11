@@ -6,7 +6,7 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
 import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
-import { useBackgrounds } from "./useConsoleData";
+import { useBackgrounds, useLibrary } from "./useConsoleData";
 import { parseChords, slidesFromLyrics, reflowLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { chordLinesToInline, hasInlineChords, isChordLine } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
@@ -34,7 +34,7 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 // changes what is on air. Opening a song keeps its saved slides; editing the
 // lyrics (or the split) redoes them, keeping timings by position.
 export default function SongEditor({ c, songId, themes = [], onClose, onSaved }) {
-    const backgrounds = useBackgrounds(null);
+    const backgrounds = useBackgrounds(useLibrary().media);
     const [song, setSong] = useState(null);
     const [error, setError] = useState("");
     const [split, setSplit] = useState("0");
@@ -301,7 +301,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     const media = song.audio_url;
     const video = isVideoUrl(media);
     const bg = song.background_image;
-    const galleryBgs = visibleBackgrounds(backgrounds, { except: "Comunicação" });
+    const galleryBgs = visibleBackgrounds(backgrounds, { except: "Comunicação" }).filter((b) => b.kind !== "video");
     const marked = starts.filter((x) => Number.isFinite(x)).length;
 
     return (

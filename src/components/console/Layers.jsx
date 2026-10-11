@@ -4,6 +4,7 @@ import Icon from "./Icon";
 import { Btn, IconBtn, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
+import { THEME_FONTS, FAMILY_SET, themeStyle, sameLook, bgOf, defaultTheme } from "@/lib/console/themes";
 import { useBackgrounds } from "./useConsoleData";
 import { STYLE_KEYS, LAYER_ORDER } from "@shared/live-state.mjs";
 
@@ -23,22 +24,14 @@ const LAYERS = [
 const BY_KEY = Object.fromEntries(LAYERS.map((l) => [l.key, l]));
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"]];
 const TEXT_SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"]];
-const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["georgia", "Georgia"], ["verdana", "Verdana"]];
-const FAMILY_SET = new Set(FONTS.map(([v]) => v));
-
-// A theme's text look: the five classic keys, plus the Camadas extras it was
-// saved with (absent ones apply as "", so a theme without a box removes one).
-const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge"];
-const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""]));
-const themeStyle = (t) => ({ font_size: t.font_size || "large", font_family: t.font_family || "sans", text_effect: t.text_effect || "shadow", text_color: t.text_color || "#ffffff", text_color_2: t.text_color_2 || "", ...extra(t) });
-const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v]) => (EXTRA_KEYS.includes(k) || k === "text_color_2" ? String(style?.[k] ?? "") === String(v) : (style?.[k] || v) === v));
-// The theme's background look, for background.set.
-const bgOf = (t) => Object.fromEntries([["fit", t.background_fit], ["dim", t.background_dim], ["blur", t.background_blur]].filter(([, v]) => v != null && v !== ""));
+// Theme helpers live in src/lib/console/themes.js, shared with the editor
+// in Configurações › Temas.
+const FONTS = THEME_FONTS;
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));
 
-export default function Layers({ c, themes }) {
-    const backgrounds = useBackgrounds(null);
+export default function Layers({ c, themes, media = null }) {
+    const backgrounds = useBackgrounds(media);
     const { cur } = c;
     const [sel, setSel] = useState("text");
     const [locked, setLocked] = useState({ bg: false });
@@ -61,7 +54,7 @@ export default function Layers({ c, themes }) {
     const logo = cur?.logo || { visible: false, corner: "bottom-right", size: "medium" };
     const overlays = cur?.overlays || [];
     const textOverlay = overlays.find((o) => o.type === "text" || o.type === "announcement") || null;
-    const theme = themes.find((t) => t.id === themeId) || themes[0] || null;
+    const theme = themes.find((t) => t.id === themeId) || defaultTheme(themes);
     const modified = Boolean(theme && content && !sameLook(style, theme));
     const fontMissing = style.font_family && !FAMILY_SET.has(style.font_family) ? style.font_family : null;
 
@@ -102,14 +95,15 @@ export default function Layers({ c, themes }) {
     };
 
     const disabled = locked[sel];
-    const galleryBgs = visibleBackgrounds(backgrounds).slice(0, 12);
+    const galleryBgs = visibleBackgrounds(backgrounds).filter((b) => b.kind !== "video").slice(0, 12);
+    const galleryVids = visibleBackgrounds(backgrounds).filter((b) => b.kind === "video").slice(0, 8);
 
     return (
         <>
             <div className="themerow">
                 <span className="t">Tema: {theme ? theme.name : "nenhum"}{modified && <span> · Modificado</span>}</span>
-                {themes.length > 1 && (
-                    <select value={theme?.id || ""} onChange={(e) => { const t = themes.find((x) => x.id === e.target.value); if (t) applyTheme(t); }} aria-label="Tema" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: 4, font: "inherit", maxWidth: 110 }}>
+                {themes.length > 0 && (
+                    <select value={theme?.id || ""} onChange={(e) => { const t = themes.find((x) => x.id === e.target.value); if (t) applyTheme(t); }} aria-label="Tema" title="Aplica o tema no que está no ar, na hora" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: 4, font: "inherit", maxWidth: 150 }}>
                         {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                 )}
@@ -178,6 +172,17 @@ export default function Layers({ c, themes }) {
                         <span className="k">Posição</span><Seg small value={cur.background.position || "center"} options={[["top", "Alto"], ["center", "Centro"], ["bottom", "Baixo"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, position: v })} />
                         <span className="k">Escurecer</span><Seg small value={num(cur.background.dim ?? (cur.background.kind === "video" ? 0 : 0.45))} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, dim: Number(v) })} />
                         <span className="k">Desfoque</span><Seg small value={num(cur.background.blur ?? 0)} options={[["0", "Sem"], ["4", "Leve"], ["10", "Forte"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, blur: Number(v) })} />
+                    </>}
+                    {galleryVids.length > 0 && <>
+                        <span className="k">Vídeo</span>
+                        <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
+                            {galleryVids.map((b) => (
+                                <button type="button" key={b.source} disabled={disabled} className="lyr-vtile" onClick={() => op("background.set", { kind: "video", value: b.url, title: b.name, ...(b.dim !== null ? { dim: b.dim } : {}), ...(b.blur !== null ? { blur: b.blur } : {}) })}
+                                    style={{ outline: cur?.background?.value === b.url ? "2px solid var(--brand)" : "none", outlineOffset: -2 }} aria-label={b.name} title={`${b.name} · toca em loop, sem som`}>
+                                    <Icon name="film" size={14} /><span>{b.name}</span>
+                                </button>
+                            ))}
+                        </div>
                     </>}
                     <span className="k">Cor</span>
                     <div style={{ display: "flex", gap: 4 }}>

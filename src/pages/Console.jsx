@@ -515,7 +515,7 @@ export default function Console() {
     const camadasPanel = (
         <Panel title="Camadas" count="o que está no ar" collapsed={layout.collapsed.camadas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })}
             style={setlistRight && !layout.collapsed.camadas ? { flex: `0 0 ${layout.camadasH}px` } : undefined}>
-            <Layers c={c} themes={data.themes} />
+            <Layers c={c} themes={data.themes} media={data.media} />
         </Panel>
     );
     const libraryPanel = (
@@ -672,7 +672,7 @@ export default function Console() {
                 // Over the source columns, never over the Programa: up to the live column's left edge.
                 <div className="drawer" style={{ width: Math.max(240, Math.min(360, (centerRef.current?.getBoundingClientRect().left ?? 372) - 12)) }}>
                     <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
-                        <Layers c={c} themes={data.themes} />
+                        <Layers c={c} themes={data.themes} media={data.media} />
                     </Panel>
                 </div>
             )}

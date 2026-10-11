@@ -1217,6 +1217,13 @@
           "type": "text",
           "default": "shadow"
         },
+        "transition": {
+          "type": "text",
+          "default": ""
+        },
+        "transition_ms": {
+          "type": "integer"
+        },
         "background_image": {
           "type": "text"
         },

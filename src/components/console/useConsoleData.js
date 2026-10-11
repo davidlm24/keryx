@@ -56,6 +56,7 @@ export function useBackgrounds(media) {
     return useMemo(() => backgroundList({
         bundled: BUNDLED,
         images: (media || []).filter((m) => m.type === "image" && m.file_url && !m.missing).map((m) => ({ id: m.id, url: m.file_url, title: m.title })),
+        videos: (media || []).filter((m) => m.type === "video" && m.file_url && !m.missing && !/youtu/.test(m.file_url)).map((m) => ({ id: m.id, url: m.file_url, title: m.title })),
         prefs,
     }), [media, prefs]);
 }

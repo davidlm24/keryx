@@ -1556,6 +1556,35 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar padrão'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .np-side'))"), 5000);
         await tuneOf("Tela do pastor");
+
+        // Temas: the editor creates a theme with a live sample; the Fundos
+        // library lives there now, and Aparência no longer has it. Element
+        // clicks (not coordinates): the dialog relayouts while it opens.
+        const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .cfg-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
+        const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
+        await section("Temas");
+        await press2("Novo tema…");
+        await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs input.fg-input'))"));
+        await js(`(() => {
+            const name = document.querySelector(".cfg-outprefs input.fg-input");
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(name, "Tema Smoke");
+            name.dispatchEvent(new Event("input", { bubbles: true }));
+            const font = document.querySelector(".cfg-outprefs select");
+            font.value = "serif"; font.dispatchEvent(new Event("change", { bubbles: true }));
+            return true;
+        })()`);
+        result.themeSample = await waitFor(() => js("(getComputedStyle(document.querySelector('.cfg-prev .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
+        await press2("Salvar tema");
+        result.themeSaved = await waitFor(async () => {
+            const rows = (await js('window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])')).data || [];
+            return rows.length === 1 && rows[0].font_family === "serif";
+        }, 6000);
+        if (!result.themeSaved) result.themeDiag = await js("(document.querySelector('.toast') || {}).textContent || document.querySelector('.console .cfg').innerText.slice(0, 300)");
+        result.fundosInTemas = await waitFor(() => js("Boolean(document.querySelector('.console .cfg .fg'))"), 4000);
+        await section("Aparência");
+        result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .fg') && [...document.querySelectorAll('.console .cfg .kx-meta')].some((n) => n.textContent.includes('moram em Temas'))"), 4000);
+        await section("Telas e saídas");
+        await waitText(webContents, "Projeção principal");
         await click(".console .cfg .kx-seg button", "Preto");
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
         await click(".console .cfg .kx-seg button", "Logo da igreja");
@@ -1576,6 +1605,34 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg-dialog'))"));
         await click(".console .cfg-dialog-h button", "");
         result.cfgX = await waitFor(() => js("!document.querySelector('.console .cfg-dialog')"));
+
+        // Camadas › Fundo: a clip from Mídia plays as the background layer;
+        // the theme select applies a preset to what is on air, at once.
+        const vidFile = require("node:path").join(process.env.KERYX_DATA_DIR || "", "media", "smoke-fundo.mp4");
+        require("node:fs").writeFileSync(vidFile, Buffer.from("smoke-video"));
+        const vidRow = (await js('window.keryxDesktop.db.call("Media", "create", [{ title: "Clipe de fundo", type: "video", file_url: "keryx-media://smoke-fundo.mp4", category: "other", duration: 0 }])')).data;
+        await dblclick(".kx-row", "Canto do console");
+        await waitFor(() => Boolean(live.get().content));
+        const styleBefore = JSON.stringify(live.get().content.style || {});
+        await click(".kx-layer", "Fundo");
+        await waitFor(() => js("Boolean(document.querySelector('[aria-label=\"Clipe de fundo\"]'))"), 8000);
+        await click(".lyr-vtile", "Clipe de fundo");
+        result.bgVideoSet = await waitFor(() => { const b = live.get().background; return Boolean(b && b.kind === "video" && String(b.value).endsWith("smoke-fundo.mp4")); }, 5000);
+        result.bgVideoDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("Boolean(document.querySelector('video.ks-bg-video'))").catch(() => false), 4000);
+        result.themeApplied = await js(`(() => {
+            const sel = document.querySelector(".themerow select");
+            if (!sel) return false;
+            const opt = [...sel.options].find((o) => o.textContent === "Tema Smoke");
+            if (!opt) return false;
+            sel.value = opt.value; sel.dispatchEvent(new Event("change", { bubbles: true }));
+            return true;
+        })()`) && await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000);
+        live.call("content.update", { style: JSON.parse(styleBefore) });
+        live.call("background.clear", {});
+        await js(`window.keryxDesktop.db.call("Media", "delete", [${JSON.stringify(vidRow.id)}])`);
+        await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "delete", [r.id]); return true; })()');
+        live.call("clear", {});
+        await waitFor(() => !live.get().content);
 
         // The planner inside the console: from the KERYX menu; the culto's name
         // saves on blur, a section is added and dragged to the top, the team
@@ -1945,7 +2002,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

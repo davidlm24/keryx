@@ -7,6 +7,7 @@
 
 export const CATEGORY_SUGGESTIONS = ["Adoração", "Natureza", "Abstrato", "Céu/Luz", "Cruz e igreja", "Sazonal", "Comunicação", "Outros"];
 export const OWN_IMAGES = "Suas imagens";
+export const OWN_VIDEOS = "Seus vídeos";
 export const DIM_PCT = [0, 90];
 export const BLUR_PX = [0, 20];
 
@@ -26,13 +27,13 @@ const clamp = (v, [lo, hi]) => {
 // Every background with its settings: bundled ({ id, url, category }) then
 // the church's images ({ id, url, title }), each { source, url, name,
 // category, dim (0-0.9 or null), blur (px or null), hidden, favorite, pref }.
-export function backgroundList({ bundled = [], images = [], prefs = [] }) {
+export function backgroundList({ bundled = [], images = [], videos = [], prefs = [] }) {
     const bySource = new Map(prefs.filter((p) => p?.source).map((p) => [p.source, p]));
-    const entry = (source, url, name, category) => {
+    const entry = (source, url, name, category, kind) => {
         const pref = bySource.get(source) || null;
         const dim = clamp(pref?.dim_pct, DIM_PCT);
         return {
-            source, url, pref,
+            source, url, pref, kind,
             name: pref?.name?.trim() || name,
             category: pref?.category?.trim() || category,
             dim: dim === null ? null : dim / 100,
@@ -42,8 +43,12 @@ export function backgroundList({ bundled = [], images = [], prefs = [] }) {
         };
     };
     return [
-        ...bundled.map((b, i) => entry(`bundled:${b.id}`, b.url, `Fundo ${i + 1}`, b.category || "Outros")),
-        ...images.map((m) => entry(sourceOf(m.url), m.url, m.title || "Imagem", OWN_IMAGES)),
+        ...bundled.map((b, i) => entry(`bundled:${b.id}`, b.url, `Fundo ${i + 1}`, b.category || "Outros", "image")),
+        ...images.map((m) => entry(sourceOf(m.url), m.url, m.title || "Imagem", OWN_IMAGES, "image")),
+        // The church's own clips (Mídia, local files): the Fundo layer plays
+        // them looping and muted; never the idle screen or an item's own
+        // background, which only take pictures.
+        ...videos.map((m) => entry(sourceOf(m.url), m.url, m.title || "Vídeo", OWN_VIDEOS, "video")),
     ];
 }
 
@@ -58,8 +63,8 @@ export function visibleBackgrounds(list, { only, except } = {}) {
 // church's own, alphabetically.
 export function categoriesOf(list) {
     const used = new Set(list.map((b) => b.category));
-    const extra = [...used].filter((c) => !CATEGORY_SUGGESTIONS.includes(c) && c !== OWN_IMAGES).sort((a, b) => a.localeCompare(b, "pt-BR"));
-    return [...CATEGORY_SUGGESTIONS.filter((c) => used.has(c)), ...extra, ...(used.has(OWN_IMAGES) ? [OWN_IMAGES] : [])];
+    const extra = [...used].filter((c) => !CATEGORY_SUGGESTIONS.includes(c) && c !== OWN_IMAGES && c !== OWN_VIDEOS).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return [...CATEGORY_SUGGESTIONS.filter((c) => used.has(c)), ...extra, ...(used.has(OWN_IMAGES) ? [OWN_IMAGES] : []), ...(used.has(OWN_VIDEOS) ? [OWN_VIDEOS] : [])];
 }
 
 // A background's dim and blur from its pref, as live-state values; null

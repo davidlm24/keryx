@@ -728,6 +728,11 @@
     .console .prev-outs button .t { display: none; }
 }
 
+/* Camadas › Fundo: a clip tile (name + film glyph; no frame grab needed). */
+.console .lyr-vtile { display: inline-flex; align-items: center; gap: 4px; min-width: 0; height: 24px; padding: 0 6px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 11px; }
+.console .lyr-vtile span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .lyr-vtile:hover { background: var(--bg-3); color: var(--fg-1); }
+
 /* Telas e saídas › Ajustes: controls on the left, the live preview on the
    right (16:9; the Pastor upright, 3:4). The preview is the real renderer
    in a container, so cqmin/cqw sizes apply as on the output itself. */
@@ -760,7 +765,8 @@
 .console .fg-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--space-2); align-content: start; }
 .console .fg-tile { display: flex; flex-direction: column; gap: 4px; min-width: 0; text-align: left; border-radius: var(--radius-control); }
 .console .fg-img { position: relative; aspect-ratio: 16 / 10; border-radius: var(--radius-control); overflow: hidden; background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line); }
-.console .fg-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.console .fg-img img, .console .fg-img video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.console .fg-kind { position: absolute; right: 3px; bottom: 3px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: var(--radius-control); background: #0d0d0cd9; color: var(--fg-1); }
 .console .fg-tile.is-on .fg-img { box-shadow: 0 0 0 2px var(--fg-1); }
 .console .fg-tile.is-hidden .fg-img { opacity: .4; }
 .console .fg-name { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

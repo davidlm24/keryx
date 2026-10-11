@@ -24,8 +24,8 @@ const pickFields = (row) => Object.fromEntries(FIELDS.filter((k) => row[k] !== u
 // and a live 16:9 preview drawn by ScreenRenderer, so it is the screen.
 // Saving changes the library only; "Pôr na prévia do console" prepares it.
 export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved }) {
-    const backgrounds = useBackgrounds(null);
-    const galleryBgs = (() => { const own = visibleBackgrounds(backgrounds, { only: "Comunicação" }); return (own.length ? own : visibleBackgrounds(backgrounds)).slice(0, 12); })();
+    const backgrounds = useBackgrounds(media);
+    const galleryBgs = (() => { const imgs = visibleBackgrounds(backgrounds).filter((b) => b.kind !== "video"); const own = imgs.filter((b) => b.category === "Comunicação"); return (own.length ? own : imgs).slice(0, 12); })();
     const isNew = noticeId === "new";
     const [draft, setDraft] = useState(() => (isNew ? newNotice("countdown") : null));
     const [saved, setSaved] = useState(() => (isNew ? null : undefined));
