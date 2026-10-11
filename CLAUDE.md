@@ -212,9 +212,11 @@ so a release follows these rules. The steps and commands are in README ›
 - **Publish only when the user asks, once, from the release branch.** A publish
   that fails or is interrupted is never re-run blindly: look at the release
   first.
-- **Verify after every publish:** the release has the installer, its
-  `.blockmap` and `latest.yml`, and the installer downloaded from the public
-  URL has the sha512 that `latest.yml` names.
+- **A publish makes a draft, never a public release** (`releaseType: draft`).
+  `node scripts/release-check.cjs <version> --publish` checks it (the
+  installer, its `.blockmap` and `latest.yml` are there, `latest.yml` names
+  this version, the installer has the sha512 and size it names) and only then
+  makes it public as Latest. Never make a draft public by any other route.
 - **Repair in this order:** installer, blockmap, `latest.yml` last. Rebuilding
   changes the installer's hash, so after any rebuild `latest.yml` is written
   from the installer actually uploaded; an older `latest.yml` is never

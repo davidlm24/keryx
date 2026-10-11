@@ -101,9 +101,11 @@ GH_TOKEN="$(gh auth token --user comunidadegerar)" npx vite build
 GH_TOKEN="$(gh auth token --user comunidadegerar)" npx electron-builder --win --publish always -c.releaseInfo.releaseNotesFile=docs/release-notes/<version>.md
 ```
 
-The release goes out as a normal release (not a draft), so installed copies
-see it at once. To build an installer without publishing, `npm run dist`
-(`release/KERYX-Setup-<version>.exe`).
+The publish creates a **draft** (`releaseType: "draft"` in `package.json`),
+which the updater cannot see: installed copies keep the version they have
+until the draft is made public, by hand, after the check below. Nothing
+half-published is ever "Latest". To build an installer without publishing,
+`npm run dist` (`release/KERYX-Setup-<version>.exe`).
 
 **One releaser at a time.** Before bumping the version, look for a claim on it:
 
@@ -119,30 +121,35 @@ those shows it (or a newer one). Push `release/<version>` with the bump
 first: that branch on origin is the claim. If it already exists, stop and ask
 which session releases.
 
-**After every publish, verify** (`V` is the version):
+**After every publish, check the draft, then make it public** (`V` is the
+version):
 
 ```bash
-R=comunidadegerar/keryx-releases
-gh release view v$V --repo $R --json assets -q '.assets[].name'
-# expect KERYX-Setup-$V.exe, KERYX-Setup-$V.exe.blockmap, latest.yml
-curl -sL https://github.com/$R/releases/latest/download/latest.yml
-mkdir -p release && curl -sL -o release/verify.exe https://github.com/$R/releases/download/v$V/KERYX-Setup-$V.exe
-node -e "console.log(require('crypto').createHash('sha512').update(require('fs').readFileSync('release/verify.exe')).digest('base64'))"
-rm release/verify.exe   # the line above must equal the sha512 in latest.yml
+GH_TOKEN="$(gh auth token --user comunidadegerar)" node scripts/release-check.cjs $V            # check only
+GH_TOKEN="$(gh auth token --user comunidadegerar)" node scripts/release-check.cjs $V --publish  # check, then make public
 ```
 
-electron-builder creates the GitHub release from two parallel uploads (the
-installer and its blockmap), and when the tag does not exist yet both try to
-create it: one can fail with `422 Published releases must have a valid tag`,
-leaving a published release with only the blockmap (no `latest.yml`, so the
-updater errors). It happened with 0.2.11. If it does, do not re-run the
-publish: look at `gh release view v$V`, then upload what is missing with
-`gh release upload v$V <file> --repo $R` in this order: the installer, the
-blockmap (`--clobber` if it came from another build), and `latest.yml` last.
-The failed run rebuilt the installer, so the `latest.yml` on disk no longer
-matches it: write a new one from the installer you uploaded (`version`,
+`scripts/release-check.cjs` looks for the release (draft or public), needs
+the installer, its `.blockmap` and `latest.yml`, reads `latest.yml` (the
+version, the file it points to) and downloads the installer to compare its
+sha512 and size with the ones `latest.yml` names. Only when all of that
+holds does `--publish` make the draft public, as "Latest", and read the
+public `latest.yml` back. On any mismatch it exits 1 and publishes nothing.
+Run it without `--publish` on a release that is already public to verify it
+after the fact.
+
+electron-builder uploads the installer and its blockmap in parallel; as a
+public release this once failed with `422 Published releases must have a
+valid tag` (0.2.11, 0.2.14) and left a "Latest" with only the blockmap, so
+the updater errored. As a draft there is no tag to create and nobody sees a
+partial release, but a publish can still die half-way. If the check lists
+missing files, do not re-run the publish: upload what is missing to the draft
+with `gh release upload v$V <file> --repo $R` in this order: the installer,
+the blockmap (`--clobber` if it came from another build), and `latest.yml`
+last. Rebuilding changes the installer's hash, so after any rebuild
+`latest.yml` is written from the installer actually uploaded: `version`,
 `files[0].url`, `.sha512` as base64 of the file's sha512, `.size`, `path`,
-`sha512`, `releaseDate`) and check it with the commands above.
+`sha512`, `releaseNotes`, `releaseDate`. Then run the check again.
 
 The first install (or a copy older than 0.2.1, which has no update setting)
 is by hand: copy the installer to the church computer and run it; data in

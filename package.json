@@ -140,7 +140,7 @@
         "provider": "github",
         "owner": "comunidadegerar",
         "repo": "keryx-releases",
-        "releaseType": "release"
+        "releaseType": "draft"
       }
     ]
   }
