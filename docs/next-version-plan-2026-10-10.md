@@ -334,8 +334,11 @@ read `useBackgrounds`: hidden ones gone, favourites first, the church's names.
 The dim and blur ride as new style keys `background_dim`/`background_blur`
 (live state), stamped by `useConsole.stamp` at send and in the Prévia, so
 the preview shows them; Camadas › Fundo passes them into `background.set`
-when a tile is picked. Not applied (no style to carry them): the avisos'
-own background and the idle wallpaper.
+when a tile is picked. Avisos and the idle wallpaper follow too (second
+PR): an aviso's `background_dim`/`_blur` ride in its item, the wallpaper's
+in `idleDim`/`idleBlur` (`idle.set {dim, blur}`; a new wallpaper starts
+without the old one's), and `useConsole` keeps the wallpaper in step with its
+settings when they are edited.
 
 New Configurações section **Aparência** (icon `palette`; Temas stays its own
 section). Lives in the new settings dialog (B).

@@ -72,13 +72,34 @@ export function backgroundDefaults(prefs, url) {
     return { dim: dim === null ? null : dim / 100, blur: clamp(pref?.blur_px, BLUR_PX) };
 }
 
-// content.show's arguments with the background's dim and blur filled in where
-// the item has none of its own.
+// The arguments of an op that puts a background on the screens, with that
+// background's dim and blur filled in where the item has none of its own:
+//   content.show   style.background_image  -> style.background_dim/_blur
+//   communication.show  an aviso's (or each of a sequence's) background_image
+//                  -> its background_dim/_blur
+//   idle.set       the wallpaper (url)     -> dim/blur (idle.set keeps a given look)
 export function withBackgroundDefaults(op, args, prefs) {
-    if (op !== "content.show" || !args?.style?.background_image) return args;
-    const { dim, blur } = backgroundDefaults(prefs, args.style.background_image);
-    const style = { ...args.style };
-    if (style.background_dim == null && dim !== null) style.background_dim = dim;
-    if (style.background_blur == null && blur !== null) style.background_blur = blur;
-    return { ...args, style };
+    if (!args) return args;
+    const fill = (obj, pic) => {
+        if (!obj?.[pic]) return obj;
+        const { dim, blur } = backgroundDefaults(prefs, obj[pic]);
+        const next = { ...obj };
+        if (next.background_dim == null && dim !== null) next.background_dim = dim;
+        if (next.background_blur == null && blur !== null) next.background_blur = blur;
+        return next.background_dim === obj.background_dim && next.background_blur === obj.background_blur ? obj : next;
+    };
+    if (op === "content.show") {
+        const style = fill(args.style, "background_image");
+        return style === args.style ? args : { ...args, style };
+    }
+    if (op === "communication.show") {
+        const item = fill(args.item, "background_image");
+        const playlist = Array.isArray(args.playlist) ? args.playlist.map((p) => fill(p, "background_image")) : args.playlist;
+        return item === args.item && (!playlist || playlist.every((p, i) => p === args.playlist[i])) ? args : { ...args, ...(item ? { item } : {}), ...(playlist ? { playlist } : {}) };
+    }
+    if (op === "idle.set" && args.url && args.dim === undefined && args.blur === undefined) {
+        const { dim, blur } = backgroundDefaults(prefs, args.url);
+        return { ...args, dim, blur };
+    }
+    return args;
 }

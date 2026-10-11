@@ -936,10 +936,35 @@ async function checkConsole(webContents, { live, outputs }) {
         await dblclick(".kx-row", "Canto do console");
         result.bgPrefStamped = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.background_dim === 0.7 && st.background_blur === 6); }, 5000);
         result.bgPrefDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("(() => { const d = document.querySelector('.ks-bg-dim'); const i = document.querySelector('.ks-bg-img'); return Boolean(d && i && getComputedStyle(d).backgroundColor === 'rgba(0, 0, 0, 0.7)' && getComputedStyle(i).filter.startsWith('blur(')); })()").catch(() => false), 3000);
-        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "" }])`);
-        if (bgPref && bgPref.id) await js(`window.keryxDesktop.db.call("BackgroundPref", "delete", [${JSON.stringify(bgPref.id)}])`);
         live.call("clear", {});
         await waitFor(() => !live.get().content);
+
+        // The idle wallpaper follows the same settings: set with no look at
+        // all (as the main process does), the console puts the settings' on it,
+        // the projector draws them, and editing the settings moves it.
+        const bgWall = String(await js("window.keryxDesktop.mediaBaseUrl")) + `bundled/backgrounds/${BG}.webp`;
+        live.call("idle.set", { mode: "background", url: bgWall });
+        result.idlePrefStamped = await waitFor(() => live.get().idleDim === 0.7 && live.get().idleBlur === 6, 5000);
+        result.idlePrefDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("(() => { const w = document.querySelector('.ks-idle-wall'); const d = document.querySelector('.ks-bg-dim'); return Boolean(w && d && getComputedStyle(d).backgroundColor === 'rgba(0, 0, 0, 0.7)' && getComputedStyle(w).filter.startsWith('blur(')); })()").catch(() => false), 3000);
+        await js(`window.keryxDesktop.db.call("BackgroundPref", "update", [${JSON.stringify(bgPref.id)}, { dim_pct: 30, blur_px: null }])`);
+        result.idlePrefFollows = await waitFor(() => live.get().idleDim === 0.3 && live.get().idleBlur === null, 5000);
+        await js(`window.keryxDesktop.db.call("BackgroundPref", "update", [${JSON.stringify(bgPref.id)}, { dim_pct: 70, blur_px: 6 }])`);
+        live.call("idle.set", { mode: "logo", url: null });
+
+        // An aviso whose picture has settings goes on air with them.
+        const bgNotice = (await js(`window.keryxDesktop.db.call("CommunicationVideo", "create", [{ title: "BBB aviso fundo", type: "announcement", text: "BBB aviso fundo", background_image: "keryx-media://bundled/backgrounds/${BG}.webp" }])`)).data;
+        await sleep(600);
+        await click(".kx-tabs button", "Avisos");
+        await waitText(webContents, "BBB aviso fundo");
+        await dblclick(".kx-row", "BBB aviso fundo");
+        result.noticePrefStamped = await waitFor(() => { const it = live.get().communication && live.get().communication.item; return Boolean(it && it.background_dim === 0.7 && it.background_blur === 6); }, 5000);
+        result.noticePrefDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("(() => { const d = document.querySelector('.ks-bg-dim'); const i = document.querySelector('.ks-bg-img'); return Boolean(d && i && getComputedStyle(d).backgroundColor === 'rgba(0, 0, 0, 0.7)' && getComputedStyle(i).filter.startsWith('blur(')); })()").catch(() => false), 3000);
+        live.call("clear", {});
+        await waitFor(() => !live.get().communication);
+        if (bgNotice && bgNotice.id) await js(`window.keryxDesktop.db.call("CommunicationVideo", "delete", [${JSON.stringify(bgNotice.id)}])`);
+        await click(".kx-tabs button", "Letras");
+        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "" }])`);
+        if (bgPref && bgPref.id) await js(`window.keryxDesktop.db.call("BackgroundPref", "delete", [${JSON.stringify(bgPref.id)}])`);
         await sleep(800);
 
         // The song on air again, then Travar telas (Saídas): nothing new goes
@@ -1803,7 +1828,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.bgPrefStamped && result.bgPrefDrawn
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended

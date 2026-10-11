@@ -418,3 +418,17 @@ test("an item's own background takes a dim and a blur (Fundos), kept in range", 
     assert.equal(show({ background_blur: 40 }).background_blur, 20);
     assert.equal(show({}).background_dim, undefined, "unset: the screen's default");
 });
+
+test("the idle wallpaper takes a dim and a blur; a new wallpaper starts without the old one's", () => {
+    const a = "http://x/a.webp", b = "http://x/b.webp";
+    let s = applyOp(emptyState(T0), "idle.set", { mode: "background", url: a, dim: 0.6, blur: 40 }, T0);
+    assert.deepEqual([s.idleDim, s.idleBlur], [0.6, 20], "blur kept in range");
+    assert.deepEqual([applyOp(s, "idle.set", { mode: "logo" }, T0).idleDim, applyOp(s, "idle.set", { mode: "black" }, T0).idleBlur], [0.6, 20], "a mode change keeps the look");
+    assert.equal(applyOp(s, "idle.set", { mode: "background", url: a }, T0), s, "same wallpaper, nothing new: no change");
+    assert.deepEqual([applyOp(s, "idle.set", { mode: "background", url: a, dim: null }, T0).idleDim, applyOp(s, "idle.set", { mode: "background", url: a, dim: null }, T0).idleBlur], [null, 20], "null clears one");
+    assert.deepEqual([applyOp(s, "idle.set", { mode: "background", url: b }, T0).idleDim, applyOp(s, "idle.set", { mode: "background", url: b }, T0).idleBlur], [null, null], "another wallpaper: its own look");
+    assert.deepEqual([applyOp(s, "idle.set", { mode: "background", url: b, dim: 0.2 }, T0).idleDim, applyOp(s, "idle.set", { mode: "background", url: b, dim: 0.2 }, T0).idleBlur], [0.2, null]);
+    const back = restoreState(JSON.parse(JSON.stringify(s)), T0);
+    assert.deepEqual([back.idleDim, back.idleBlur], [0.6, 20], "survives a restart");
+    assert.deepEqual([restoreState({ idle: "logo" }, T0).idleDim, emptyState(T0).idleBlur], [null, null]);
+});
