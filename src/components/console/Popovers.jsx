@@ -10,8 +10,8 @@ import { readQuickRef } from "@/lib/console/quickRef";
 import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
 import WallpaperPicker from "./WallpaperPicker";
 import { byGroup } from "@/lib/console/outputs";
+import { useOutputLooks } from "@/hooks/useOutputPref";
 
-const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv", "/StreamView": "external" };
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
 // The KERYX menu: pages that stay outside the console, the service picker,
@@ -133,13 +133,14 @@ function useAnchor(selector, width, active) {
 }
 
 export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, tries, idle, idleUrl, media, onIdle, onSettings }) {
+    const look = useOutputLooks();
     const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
     // Fundo with no image yet (or "Trocar") shows the wallpapers to pick from.
     const [picking, setPicking] = useState(false);
     useEffect(() => { if (open !== "outs") setPicking(false); }, [open]);
     if (open !== "outs") return null;
     const view = (r) => {
-        const icon = r.local ? OUTPUT_ICON[r.key] || "monitor" : DEVICE_ICON[r.kind] || "tv";
+        const icon = r.local ? look(r.key).icon : r.screen ? look(r.screen).icon : DEVICE_ICON[r.kind] || "tv";
         if (r.state === "reconnecting") return { icon, cls: "is-warn", state: `Reconectando… tentativa ${tries}`, dot: "var(--warn)" };
         if (r.state === "closed") return { icon, cls: "is-warn", state: `Fechada às ${atTime(r.droppedAt)}`, dot: "var(--warn)" };
         if (r.state === "disconnected") return { icon, cls: "is-warn", state: `Desconectada às ${atTime(r.droppedAt)}`, dot: "var(--warn)" };

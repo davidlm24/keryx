@@ -33,6 +33,16 @@ const NETWORK_SCREENS = [
 ];
 const SCREEN_PATHS = new Set(NETWORK_SCREENS.map((s) => s.path));
 
+// The operator's names for the outputs (OutputPref rows), over the factory
+// labels. Best-effort: an empty map on any store error.
+function screenLabels(store) {
+    try {
+        return Object.fromEntries((store.call("OutputPref", "list", []) || [])
+            .filter((r) => r && r.screen_path && typeof r.name === "string" && r.name.trim())
+            .map((r) => [r.screen_path, r.name.trim().slice(0, 40)]));
+    } catch { return {}; }
+}
+
 // A screen may only read.
 const READ_OPS = new Set(["list", "filter", "get"]);
 
@@ -110,6 +120,8 @@ function readBody(req, limit = MAX_BODY) {
 }
 
 function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, log = () => {} }) {
+    // NETWORK_SCREENS with the operator's names on them (NetworkHome, Rede).
+    const screensOf = () => { const names = screenLabels(store); return NETWORK_SCREENS.map((sc) => ({ ...sc, label: names[sc.path] || sc.label })); };
     const dist = path.resolve(distDir);
     const media = path.resolve(mediaDir);
     const bundled = bundledDir ? path.resolve(bundledDir) : null;
@@ -241,7 +253,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
 
         if (pathname === "/api/events" && req.method === "GET") return handleEvents(req, res, url);
         if (pathname === "/api/db") return handleDb(req, res);
-        if (pathname === "/api/screens" && req.method === "GET") return json(res, 200, NETWORK_SCREENS);
+        if (pathname === "/api/screens" && req.method === "GET") return json(res, 200, screensOf());
         if (pathname === "/api/live") {
             // Screens only watch; the operator changes the live state on the KERYX computer.
             if (req.method !== "GET") return json(res, 405, { error: { message: "Esta tela só pode ler os dados.", status: 405 } }, { Allow: "GET" });
@@ -273,6 +285,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
 
     return {
         NETWORK_SCREENS,
+        screens: screensOf,
         start({ port, host = "0.0.0.0" }) {
             if (server) return Promise.resolve({ port: server.address().port });
             server = http.createServer((req, res) => {
@@ -321,7 +334,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         },
         running: () => Boolean(server && server.listening),
         port: () => (server && server.listening ? server.address().port : null),
-        clients: () => [...clients].map(({ ip, agent, since, screen }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, label: NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })),
+        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, label: names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
     };
 }
 

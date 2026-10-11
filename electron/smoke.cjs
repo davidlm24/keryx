@@ -1496,6 +1496,29 @@ async function checkConsole(webContents, { live, outputs }) {
         result.shotCfg = await shot("configuracoes");
         await click(".console .cfg-dialog .kx-row", "Telas e saídas");
         result.cfgOutputs = await waitText(webContents, "Projeção principal");
+        // Nome por saída: renaming Projeção reaches its row and the Prévia's
+        // output buttons; clearing the field restores the defaults. (The
+        // button selector covers the rail before and after the left-column
+        // redesign, so merge order between the two PRs does not matter.)
+        const railBtn = ".prev-outs button, .prev-rail button";
+        const nameField = async (v) => js(`(() => {
+            const el = document.querySelector(".cfg-outprefs input.fg-input");
+            if (!el) return false;
+            el.focus();
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, ${JSON.stringify(v)});
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            // A programmatic blur() does nothing when the window has no real
+            // focus; React listens to focusout, so dispatch it directly.
+            el.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+            return true;
+        })()`);
+        await click(".console .cfg .cfg-tune button", "Ajustes");
+        await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs input.fg-input'))"));
+        await nameField("Telão");
+        result.outName = await waitFor(() => js(`Boolean([...document.querySelectorAll("${railBtn}")].find((b) => b.getAttribute("aria-label") === "Prévia como Telão")) && [...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Telão")`), 5000);
+        await nameField("");
+        result.outNameBack = await waitFor(() => js(`Boolean([...document.querySelectorAll("${railBtn}")].find((b) => b.getAttribute("aria-label") === "Prévia como Projeção")) && [...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Projeção principal")`), 5000);
+        await click(".console .cfg .cfg-tune button", "Ajustes");
         await click(".console .cfg .kx-seg button", "Preto");
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
         await click(".console .cfg .kx-seg button", "Logo da igreja");
@@ -1885,7 +1908,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.outName && result.outNameBack && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

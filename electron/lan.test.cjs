@@ -254,3 +254,16 @@ test("safeNext keeps same-site paths only", () => {
     assert.equal(safeNext("https://evil.example"), "/");
     assert.equal(safeNext(null), "/");
 });
+
+test("screens() carries the operator name for an output (OutputPref.name)", async () => {
+    const f = await fixture();
+    f.store.call("OutputPref", "create", [{ screen_path: "/StageView", name: "  Monitor da banda  " }]);
+    f.store.call("OutputPref", "create", [{ screen_path: "/PastorView", name: "" }]);
+    const named = f.lan.screens();
+    assert.equal(named.find((s) => s.path === "/StageView").label, "Monitor da banda");
+    assert.equal(named.find((s) => s.path === "/PastorView").label, "Tela do pastor", "an empty name keeps the factory label");
+    const broken = f.lan; const real = f.store.call.bind(f.store);
+    f.store.call = () => { throw new Error("db quebrou"); };
+    assert.equal(broken.screens().find((s) => s.path === "/StageView").label, "Palco", "a store error falls back to the factory labels");
+    f.store.call = real;
+});

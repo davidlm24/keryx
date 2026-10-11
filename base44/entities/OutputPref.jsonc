@@ -6,6 +6,16 @@
       "type": "string",
       "description": "Página da saída (/Projection, /LyricProjection, ...): a janela no computador e as telas na rede que mostram essa página"
     },
+    "name": {
+      "type": "string",
+      "default": "",
+      "description": "Nome desta saída no console e nas telas na rede; vazio usa o padrão"
+    },
+    "icon": {
+      "type": "string",
+      "default": "",
+      "description": "Ícone da saída (nome do ícone do design system); vazio usa o padrão"
+    },
     "content": {
       "type": "string",
       "enum": [

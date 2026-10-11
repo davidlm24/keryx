@@ -51,7 +51,7 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             error: lastError,
             urls: running ? lanAddresses().map((a) => ({ name: a.name, url: `http://${a.address}:${boundPort}` })) : [],
             clients: lan.clients(),
-            screens: lan.NETWORK_SCREENS,
+            screens: lan.screens ? lan.screens() : lan.NETWORK_SCREENS,
         };
     }
 

@@ -7,9 +7,7 @@ import { useBridge, usePoll, Switch, desktopOnly } from "./parts";
 import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
 import OutputPrefCard from "./OutputPrefCard";
-import { PREF_OUTPUTS, normalizePref, isDefaultPref } from "@/lib/outputPrefs";
-
-const OUTPUT_ICON = { "/Projection": "projector", "/StageView": "monitor", "/VideoProjection": "tv", "/LyricProjection": "tv", "/PastorView": "tablet", "/BibleMaterialProjection": "monitor", "/CommunicationProjection": "tv", "/StreamView": "external" };
+import { PREF_OUTPUTS, normalizePref, isDefaultPref, outputLook } from "@/lib/outputPrefs";
 
 // Telas e saídas: the monitors as a diagram, each output's screen, "Abrir
 // ao iniciar", open/close, Identificar, each output's own settings (Ajustes,
@@ -77,11 +75,14 @@ export default function TelasSection({ c }) {
                 <Btn onClick={() => displays.identify()} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
             </div>
             <div className="listhead"><span className="kx-section">Saídas <span className="kx-count">· cada saída mostra um conteúdo numa tela</span></span></div>
-            {outputs.map((o) => (
+            {outputs.map((raw) => {
+                const lk = outputLook(raw.key, prefRow(raw.key));
+                const o = { ...raw, label: lk.custom || raw.label };
+                return (
                 <React.Fragment key={o.key}>
                 <div className={`kx-row cfg-out ${o.placement?.missing ? "is-warn" : ""}`}>
-                    <span className="kx-glyph"><Icon name={OUTPUT_ICON[o.key] || "monitor"} /></span>
-                    <div className="kx-row-main"><div className="kx-row-title">{o.label}</div><div className={`kx-row-meta ${o.placement?.missing ? "kx-warn" : ""}`}>{status(o)}{o.open ? " · aberta" : ""}{PREF_OUTPUTS.includes(o.key) && !isDefaultPref(normalizePref(prefRow(o.key))) ? " · com ajustes" : ""}</div></div>
+                    <span className="kx-glyph"><Icon name={lk.icon} /></span>
+                    <div className="kx-row-main"><div className="kx-row-title">{o.label}</div><div className={`kx-row-meta ${o.placement?.missing ? "kx-warn" : ""}`}>{status(o)}{o.open ? " · aberta" : ""}{!isDefaultPref(normalizePref(prefRow(o.key))) ? " · com ajustes" : ""}</div></div>
                     <select className="cfg-select" value={valueOf(o.assignment)} onChange={(e) => choose(o, e.target.value)} aria-label={`Tela de ${o.label}`}>
                         <option value="auto">Automático</option>
                         <option value="window">Sempre numa janela</option>
@@ -92,16 +93,17 @@ export default function TelasSection({ c }) {
                     {o.open
                         ? <><Btn onClick={() => apply(displays.open(o.key))} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn onClick={() => apply(displays.close(o.key))}>Fechar</Btn></>
                         : <Btn onClick={() => apply(displays.open(o.key))}>Abrir</Btn>}
-                    <span className="cfg-tune">{PREF_OUTPUTS.includes(o.key) && (
+                    <span className="cfg-tune">
                         <Btn on={tuning === o.key} onClick={() => setTuning(tuning === o.key ? null : o.key)} aria-expanded={tuning === o.key}
-                            title={`Conteúdo, escala do texto, margens, logo e tema de ${o.label}`}>
+                            title={`Nome, ícone${PREF_OUTPUTS.includes(o.key) ? ", conteúdo, escala do texto, margens, logo e tema" : ""} de ${o.label}`}>
                             <Icon name="sliders" />Ajustes
                         </Btn>
-                    )}</span>
+                    </span>
                 </div>
                 {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} say={c.say} />}
                 </React.Fragment>
-            ))}
+                );
+            })}
             <div className="frm" style={{ borderTop: "1px solid var(--line)", marginTop: "var(--space-1)", paddingTop: "var(--space-2)" }}>
                 <span className="k">Tela ociosa</span>
                 <div className="frm-v">

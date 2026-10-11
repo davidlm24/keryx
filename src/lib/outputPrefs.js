@@ -3,7 +3,7 @@
 // One row per output page ("/Projection", "/LyricProjection", ...): the
 // desktop window and a network screen showing the same page share it. No row,
 // or a row with nothing set, is the output exactly as before.
-import { outputView } from "./network/views.js";
+import { outputView, RAIL_VIEWS } from "./network/views.js";
 
 // Conteúdo: which view of the live state the output draws (views.js).
 export const PREF_CONTENTS = [
@@ -16,6 +16,30 @@ export const PREF_CONTENTS = [
 
 // The outputs drawn by ScreenRenderer, the ones these settings apply to.
 export const PREF_OUTPUTS = ["/Projection", "/LyricProjection", "/VideoProjection", "/CommunicationProjection"];
+
+// Every output's factory name and icon: the rail's list (views.js) plus
+// Transmissão, which only exists on the network. "No row" means these.
+const META = Object.fromEntries(RAIL_VIEWS.map((v) => [v.key, { name: v.name, icon: v.icon }]));
+META["/StreamView"] = { name: "Transmissão", icon: "external" };
+export const outputMeta = (path) => META[path] || { name: path, icon: "monitor" };
+// The icons an output may pick (Configurações › Telas e saídas › Ajustes);
+// every name exists in the design-system set.
+export const ICON_CHOICES = ["projector", "tv", "monitor", "tablet", "film", "megaphone", "book", "image", "text", "star", "layers", "external"];
+const ICON_RE = /^[a-z0-9-]{1,32}$/;
+// The name and icon an output shows everywhere (the rail, Saídas, Telas e
+// saídas, the network pages). Each surface has its own factory label
+// ("Projeção principal" on the window row, "Projeção" on the rail), so
+// `custom` is empty when the operator named nothing and the surface keeps
+// its own label; `name` falls back to the rail's.
+export function outputLook(path, row) {
+    const meta = outputMeta(path);
+    const custom = typeof row?.name === "string" && row.name.trim() ? row.name.trim().slice(0, 40) : "";
+    return {
+        name: custom || meta.name,
+        custom,
+        icon: typeof row?.icon === "string" && ICON_RE.test(row.icon) ? row.icon : meta.icon,
+    };
+}
 
 export const SCALE_RANGE = [80, 140];
 export const MARGIN_RANGE = [0, 10];
@@ -32,10 +56,12 @@ export function normalizePref(row) {
         margin: clamp(num(row?.margin_pct, 0), MARGIN_RANGE),
         showLogo: row?.show_logo !== false,
         themeId: typeof row?.theme_id === "string" ? row.theme_id : "",
+        name: typeof row?.name === "string" ? row.name.trim().slice(0, 40) : "",
+        icon: typeof row?.icon === "string" && ICON_RE.test(row.icon) ? row.icon : "",
     };
 }
 
-export const isDefaultPref = (p) => !p.content && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId;
+export const isDefaultPref = (p) => !p.content && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.name && !p.icon;
 
 // The page view an output draws: its own, unless Conteúdo picks another.
 export function prefViewKey(page, pref) {
