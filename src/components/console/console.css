@@ -97,7 +97,7 @@
 .console .dialog { position: absolute; z-index: 40; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 460px; max-width: calc(100vw - 24px); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); color: var(--fg-1); font-size: 13px; line-height: 18px; }
 .console .dialog .acts { display: flex; justify-content: flex-end; gap: var(--space-2); }
 /* The command palette: left-anchored over the source columns, never over the Programa (its width comes from Console). */
-.console .palette { position: absolute; z-index: 40; left: var(--gutter); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 620px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); display: flex; flex-direction: column; max-height: min(640px, calc(100% - var(--topbar) - 64px)); }
+.console .palette { position: absolute; z-index: 40; left: 50%; transform: translateX(-50%); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 620px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); display: flex; flex-direction: column; max-height: min(640px, calc(100% - var(--topbar) - 64px)); }
 .console .palette .kx-field { height: 40px; margin: var(--space-1); background: var(--bg-3); }
 .console .palette .kx-field input { font-size: 13px; }
 .console .palette .res { overflow: auto; padding: 0 var(--space-1) var(--space-1); }
@@ -143,9 +143,10 @@
 .console .kx-mon.is-warn { --frame: var(--warn); }
 .console .prog .kx-mon-screen > .kx-screen-hatch { position: absolute; }
 .console .prog .kx-mon-screen > .kx-screen-hatch { inset: 0; }
-/* The Prévia docked under the Programa; the side (send, note, teacher notes)
-   never makes the row taller than the Prévia (contain: size), it scrolls. */
-.console .subrow { display: flex; gap: var(--space-3); align-items: stretch; }
+/* The Prévia docked under the Programa, its output picker on the left; the
+   side (send, note, teacher notes) never makes the row taller than the
+   Prévia (contain: size), it scrolls. */
+.console .subrow { display: flex; gap: var(--space-3); align-items: stretch; container: subrow / inline-size; }
 .console .subrow .kx-mon { width: 46%; flex: none; }
 .console .subrow .side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding-top: 28px; contain: size; overflow: auto; }
 /* The player's slot is always there; the player shows only while something plays. */
@@ -702,16 +703,25 @@
 .console .toast .toast-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .console .toast .toast-act { height: 24px; margin-right: calc(-1 * var(--space-2)); padding: 0 var(--space-2); color: var(--fg-1); font-weight: 500; }
 
-/* The Prévia rail: preview the prepared stage as one output will show it
-   (src/lib/network/views.js). Slim, on the monitor's right edge; Projeção
-   is the default and the choice is not kept. */
-.console .prev-rail { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: grid; grid-auto-flow: column; grid-template-rows: repeat(6, 24px); gap: 2px; padding: 2px; border-radius: var(--radius-control); background: #0d0d0ccc; z-index: 320; }
-/* Six outputs are 158 px tall; a monitor under ~285 px wide (16:9, so under
-   160 px tall: the smallest window, or three columns open) gets two columns of three. */
-@container (max-width: 290px) { .console .prev-rail { grid-template-rows: repeat(3, 24px); } }
-.console .prev-rail button { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--fg-2); }
-.console .prev-rail button:hover { background: var(--bg-3); color: var(--fg-1); }
-.console .prev-rail button.is-on { background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }
+/* The Prévia's output picker: the prepared stage as one output will show
+   it (src/lib/network/views.js). A column on the monitor's left, icon +
+   name; Projeção is the default and the choice is not kept. The column is
+   top-aligned with the Prévia caption so its six 24 px rows (154 px) fit
+   beside the monitor down to a ~490 px live block; narrower than that the
+   names go and it folds to a 2-column icon grid. */
+.console .prev-outs { flex: none; align-self: flex-start; display: flex; flex-direction: column; gap: 2px; width: 112px; }
+.console .prev-outs button { height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 6px; border-radius: var(--radius-control); color: var(--fg-2); font-size: 11px; }
+.console .prev-outs button .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .prev-outs button:hover { background: var(--bg-2); color: var(--fg-1); }
+.console .prev-outs button.is-on { background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }
+@container subrow (max-width: 490px) {
+    .console .prev-outs { display: grid; grid-auto-flow: column; grid-template-rows: repeat(3, 24px); width: auto; }
+    /* The icon grid still takes ~62 px from the row: the monitor gives it
+       back, or Enviar ao ar no longer fits beside it. */
+    .console .subrow .kx-mon { width: 40%; }
+    .console .prev-outs button { width: 24px; justify-content: center; padding: 0; }
+    .console .prev-outs button .t { display: none; }
+}
 
 /* Configurações › Aparência: the transition's sample screen and its length. */
 .console .ap-range { width: 180px; accent-color: var(--prev); }
@@ -742,7 +752,5 @@
 /* The Prévia as Palco or Pastor: the pages' own screens inside the monitor;
    the pastor's tablet upright, centred (3:4). */
 .net.net-embed { position: absolute; inset: 0; z-index: 1; }
-/* The rail (28 px) sits over the right edge: the stage chips stay clear of it. */
-.console .kx-mon .net-stage.net-embed { padding-right: 36px; }
 .console .kp-portrait { position: absolute; inset: 0; z-index: 1; display: flex; justify-content: center; background: #000; }
 .console .kp-portrait > .net.net-embed { position: relative; inset: auto; height: 100%; aspect-ratio: 3 / 4; }
