@@ -1519,6 +1519,25 @@ async function checkConsole(webContents, { live, outputs }) {
         await nameField("");
         result.outNameBack = await waitFor(() => js(`Boolean([...document.querySelectorAll("${railBtn}")].find((b) => b.getAttribute("aria-label") === "Prévia como Projeção")) && [...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Projeção principal")`), 5000);
         await click(".console .cfg .cfg-tune button", "Ajustes");
+
+        // Palco's and Pastor's own Ajustes, with the live preview beside the
+        // controls: a switch changes the preview at once, Restaurar padrão
+        // puts it back, and the Pastor's "Não" hides the next-items list.
+        const tuneOf = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .cfg .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); const b = row && [...row.querySelectorAll("button")].find((x) => x.textContent.includes("Ajustes")); if (b) b.click(); return Boolean(b); })()`);
+        await tuneOf("Palco");
+        result.palcoPrev = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .net-stage .ns-chords'))"), 5000);
+        await js("(() => { const b = document.querySelector('.cfg-outprefs button[aria-label=\"Cifra no Palco\"]'); if (b) b.click(); return Boolean(b); })()");
+        result.palcoCifraOff = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .net-stage')) && !document.querySelector('.cfg-outprefs .ns-chords')"), 5000);
+        await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar padrão'); if (b) b.click(); return Boolean(b); })()");
+        result.palcoRestored = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .ns-chords'))"), 5000);
+        await tuneOf("Palco");
+        await tuneOf("Tela do pastor");
+        result.pastorPrev = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .cfg-prev-pastor .np-list'))"), 5000);
+        await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs .kx-seg button')].find((x) => x.textContent === 'Não'); if (b) b.click(); return Boolean(b); })()");
+        result.pastorNext0 = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .cfg-prev-pastor')) && !document.querySelector('.cfg-outprefs .np-side')"), 5000);
+        await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar padrão'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .np-side'))"), 5000);
+        await tuneOf("Tela do pastor");
         await click(".console .cfg .kx-seg button", "Preto");
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
         await click(".console .cfg .kx-seg button", "Logo da igreja");
@@ -1908,7 +1927,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.outName && result.outNameBack && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

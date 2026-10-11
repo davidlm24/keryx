@@ -73,6 +73,8 @@ comentários (Popovers L258-263) e `docs/design-system.md`.
 
 ## 2 · Editor: reflow, overflow, Letras-config (itens 3, 6, 9)
 
+**Built** (release session, 2026-10-11, PR #76).
+
 **Reflow (3).** Novo `reflowLyrics(lyrics, lines)` em `src/lib/songImport.js`:
 para `lines` 2/4, repica cada estrofe em blocos de N linhas separados por linha
 vazia, `[Label]` fica na primeira; para "Estrofe" não mexe (não dá para
@@ -102,6 +104,9 @@ MenuItems-check), ambos gravando o mesmo `keryx.import.lines`. Atualizar
 
 ## 3 · Telas: nome e ícone por saída (item 2A)
 
+**Built** (release session, 2026-10-11, PR #77). `outputLook` ganhou `custom`:
+cada superfície mantém o rótulo de fábrica próprio quando nada foi escolhido.
+
 Plano validado pelo agente (correções: janelas não têm título — não mexer em
 `electron/outputs.cjs`; lan.cjs já recebe `store` e pode ler OutputPref).
 
@@ -128,6 +133,11 @@ Plano validado pelo agente (correções: janelas não têm título — não mexe
   aria-labels padrão).
 
 ## 4 · Telas: ajustes do Palco/Pastor + prévia ao vivo (itens 2B, 8)
+
+**Built** (release session, 2026-10-11): o card de Ajustes virou duas colunas
+com a prévia ao vivo (o renderer de verdade; amostra em `settings/sample.js`
+quando nada está no ar), Palco/Pastor ganharam `options` + Escala, e um
+Conteúdo escolhido torna a página uma view do renderer (OutputScreen).
 
 - **Schema**: OutputPref ganha `options` (object, `{}`) — chaves por página;
   `text_scale` tipado continua servindo para todas.

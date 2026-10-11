@@ -58,10 +58,28 @@ export function normalizePref(row) {
         themeId: typeof row?.theme_id === "string" ? row.theme_id : "",
         name: typeof row?.name === "string" ? row.name.trim().slice(0, 40) : "",
         icon: typeof row?.icon === "string" && ICON_RE.test(row.icon) ? row.icon : "",
+        options: row?.options && typeof row.options === "object" && !Array.isArray(row.options) ? row.options : {},
     };
 }
 
-export const isDefaultPref = (p) => !p.content && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.name && !p.icon;
+export const isDefaultPref = (p) => !p.content && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
+
+// Palco and Pastor draw their own layouts; OutputPref.options says which
+// parts (Configurações › Telas e saídas › Ajustes). Missing keys are the
+// screen as it always was.
+export const STAGE_DEFAULTS = { chords: true, clock: true, notes: true, next: true };
+export const PASTOR_DEFAULTS = { clock: true, next_count: 3 };
+const onOff = (v, d) => (typeof v === "boolean" ? v : d);
+export const stageOptions = (pref) => ({
+    chords: onOff(pref?.options?.chords, true),
+    clock: onOff(pref?.options?.clock, true),
+    notes: onOff(pref?.options?.notes, true),
+    next: onOff(pref?.options?.next, true),
+});
+export const pastorOptions = (pref) => {
+    const n = Number(pref?.options?.next_count);
+    return { clock: onOff(pref?.options?.clock, true), next_count: Number.isFinite(n) ? Math.min(5, Math.max(0, Math.round(n))) : 3 };
+};
 
 // The page view an output draws: its own, unless Conteúdo picks another.
 export function prefViewKey(page, pref) {

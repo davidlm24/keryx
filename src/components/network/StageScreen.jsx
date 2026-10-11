@@ -11,8 +11,12 @@ const isImage = (v) => typeof v === "string" && (v.startsWith("http") || v.start
 // slide, key, BPM, chords and musician notes. The page (StageView) feeds it
 // the live state; the console's Prévia feeds it the prepared stage
 // (`embed`: inside a monitor, no transpose buttons).
-export default function StageScreen({ content, nowMs, embed = false, children }) {
+export default function StageScreen({ content, nowMs, embed = false, opts = {}, scale = 1, children }) {
     const now = new Date(nowMs);
+    // Which parts this screen shows (Configurações › Telas e saídas ›
+    // Ajustes); a missing key means on, the screen as it always was.
+    const show = { chords: opts.chords ?? true, clock: opts.clock ?? true, notes: opts.notes ?? true, next: opts.next ?? true };
+    const style = scale !== 1 ? { "--kp-text": scale } : undefined;
     const [transpose, setTranspose] = useState(0);
 
     // A new song starts untransposed.
@@ -22,7 +26,7 @@ export default function StageScreen({ content, nowMs, embed = false, children })
     const cls = `net net-stage ${embed ? "net-embed" : ""}`;
     if (!content) {
         return (
-            <div className={cls}>
+            <div className={cls} style={style}>
                 <div className="ns-idle">
                     <span className="net-section">Palco</span>
                     <div className="ns-clock">{hhmm(now)}</div>
@@ -42,7 +46,7 @@ export default function StageScreen({ content, nowMs, embed = false, children })
     const elapsed = Math.max(0, Math.floor((nowMs - content.startedAt) / 1000));
 
     return (
-        <div className={cls}>
+        <div className={cls} style={style}>
             {isImage(song.background_image) && <div className="ns-bg" style={{ backgroundImage: `url(${song.background_image})` }} />}
             <header className="ns-h">
                 <div className="ns-title">
@@ -52,14 +56,14 @@ export default function StageScreen({ content, nowMs, embed = false, children })
                 <div className="ns-chips">
                     {song.song_key && <div className="ns-chip"><small>Tom</small><b>{song.song_key}</b></div>}
                     {song.bpm && <div className="ns-chip"><small>BPM</small><b>{song.bpm}</b></div>}
-                    <div className="ns-chip"><small>Na música</small><b>{mmss(elapsed)}</b></div>
-                    <div className="ns-chip is-clock"><small>Hora</small><b>{hhmm(now)}</b></div>
+                    {show.clock && <div className="ns-chip"><small>Na música</small><b>{mmss(elapsed)}</b></div>}
+                    {show.clock && <div className="ns-chip is-clock"><small>Hora</small><b>{hhmm(now)}</b></div>}
                 </div>
             </header>
-            {song.musician_notes && <div className="ns-notes">{song.musician_notes}</div>}
+            {song.musician_notes && show.notes && <div className="ns-notes">{song.musician_notes}</div>}
             <main className="ns-main">
                 <div className="ns-cur">{current.text || ""}</div>
-                {song.chords && (
+                {song.chords && show.chords && (
                     <aside className="ns-chords" aria-label="Cifra">
                         <div className="ns-chords-h">
                             <span className="net-section">Cifra</span>
@@ -73,7 +77,7 @@ export default function StageScreen({ content, nowMs, embed = false, children })
                     </aside>
                 )}
             </main>
-            {next && (
+            {next && show.next && (
                 <div className="ns-next">
                     <span className="net-section">Próximo</span>
                     <p>{next.text || ""}</p>

@@ -15,8 +15,12 @@ const span = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor((s % 
 // running; and the next items (`upcoming`). The page (PastorView) feeds it
 // the live state; the console's Prévia feeds it the prepared stage
 // (`embed`: inside a monitor).
-export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasService = false, embed = false }) {
+export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasService = false, embed = false, opts = {}, scale = 1 }) {
     const now = new Date(nowMs);
+    // Which parts this screen shows (Configurações › Telas e saídas ›
+    // Ajustes); missing keys mean the screen as it always was.
+    const show = { clock: opts.clock ?? true, next: (opts.next_count ?? 3) !== 0 };
+    const rootStyle = scale !== 1 ? { "--kp-text": scale } : undefined;
     const session = live?.session || null;
     const { title, pos } = captionParts(live);
     const onAir = title !== "nada";
@@ -26,17 +30,17 @@ export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasServ
     const running = session?.startedAt ? Math.max(0, Math.floor((nowMs - session.startedAt) / 1000)) : null;
 
     return (
-        <div className={`net ${embed ? "net-embed" : ""}`}>
+        <div className={`net ${embed ? "net-embed" : ""}`} style={rootStyle}>
           <div className="net-pastor">
             <header className="np-h">
                 <div className="np-who">
                     <b>Tela do pastor</b>
                     <span>{upperFirst(now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }))}</span>
                 </div>
-                <div className="np-time">
+                {show.clock && <div className="np-time">
                     <b>{hhmm(now)}</b>
                     <span className={running != null ? "is-run" : ""}>{running == null ? "Nada no ar ainda" : `${hasService ? "Culto" : "No ar"} há ${span(running)}`}</span>
-                </div>
+                </div>}
             </header>
             <section className="np-air" aria-label="No ar agora">
                 <div className="np-cap">
@@ -53,7 +57,7 @@ export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasServ
                     </div>
                 )}
             </section>
-            <aside className="np-side" aria-label="Próximos no culto">
+            {show.next && <aside className="np-side" aria-label="Próximos no culto">
                 <span className="net-section">Próximo</span>
                 {upcoming.length ? (
                     <div className="np-list">
@@ -67,7 +71,7 @@ export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasServ
                 ) : (
                     <p className="np-empty">{hasService ? "Fim da setlist." : "Nenhum culto escolhido no console."}</p>
                 )}
-            </aside>
+            </aside>}
           </div>
         </div>
     );

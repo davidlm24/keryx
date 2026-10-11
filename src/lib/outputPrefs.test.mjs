@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES } from "./outputPrefs.js";
+import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -14,7 +14,7 @@ const live = {
 test("no row, or an empty one, is the default: the output as before", () => {
     for (const row of [null, undefined, {}, { screen_path: "/Projection" }, { text_scale: "", margin_pct: null, show_logo: true, theme_id: "" }]) {
         const p = normalizePref(row);
-        assert.deepEqual(p, { content: "", scale: 1, margin: 0, showLogo: true, themeId: "", name: "", icon: "" });
+        assert.deepEqual(p, { content: "", scale: 1, margin: 0, showLogo: true, themeId: "", name: "", icon: "", options: {} });
         assert.ok(isDefaultPref(p));
         assert.equal(prefVars(p), null);
         assert.deepEqual(prefState("/LyricProjection", live, p), prefState("/LyricProjection", live, null));
@@ -23,8 +23,8 @@ test("no row, or an empty one, is the default: the output as before", () => {
 });
 
 test("normalizePref clamps scale and margins and drops unknown content", () => {
-    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", scale: 1.4, margin: 0, showLogo: true, themeId: "", name: "", icon: "" });
-    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", scale: 0.8, margin: 10, showLogo: false, themeId: "t1", name: "", icon: "" });
+    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", scale: 1.4, margin: 0, showLogo: true, themeId: "", name: "", icon: "", options: {} });
+    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", scale: 0.8, margin: 10, showLogo: false, themeId: "t1", name: "", icon: "", options: {} });
     assert.equal(normalizePref({ text_scale: 112.4 }).scale, 1.12);
 });
 
@@ -69,4 +69,15 @@ test("outputLook: the row's name and icon, else the factory's (today's exactly)"
     assert.deepEqual(outputMeta("/qualquer"), { name: "/qualquer", icon: "monitor" });
     assert.ok(ICON_CHOICES.includes("projector") && ICON_CHOICES.includes("tablet"));
     assert.ok(!isDefaultPref(normalizePref({ name: "Telão" })), "a name alone counts as an adjustment");
+});
+
+test("the Palco's and the Pastor's own switches: missing keys are the screen as before", () => {
+    assert.deepEqual(stageOptions(normalizePref(null)), STAGE_DEFAULTS);
+    assert.deepEqual(pastorOptions(normalizePref(null)), PASTOR_DEFAULTS);
+    const p = normalizePref({ options: { chords: false, clock: "sim", next_count: 99 } });
+    assert.deepEqual(stageOptions(p), { chords: false, clock: true, notes: true, next: true }, "a non-boolean counts as unset");
+    assert.deepEqual(pastorOptions(p), { clock: true, next_count: 5 }, "next_count clamps to 0..5");
+    assert.equal(pastorOptions(normalizePref({ options: { next_count: 0 } })).next_count, 0, "0 is a choice (hide the list)");
+    assert.deepEqual(normalizePref({ options: ["x"] }).options, {}, "an array is not options");
+    assert.ok(!isDefaultPref(normalizePref({ options: { chords: false } })), "an option counts as an adjustment");
 });

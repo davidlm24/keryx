@@ -16,6 +16,11 @@
       "default": "",
       "description": "Ícone da saída (nome do ícone do design system); vazio usa o padrão"
     },
+    "options": {
+      "type": "object",
+      "default": {},
+      "description": "Opções próprias da página (Palco: cifra, relógio, notas, próximo; Pastor: relógio, quantos próximos)"
+    },
     "content": {
       "type": "string",
       "enum": [
