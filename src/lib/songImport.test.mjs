@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, reflowLyrics } from "./songImport.js";
+import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, reflowLyrics, songSlidesFor } from "./songImport.js";
 
 test("ChordPro: directives give title/artist, sections and no inline chords", () => {
     const raw = "{title: Algo Novo}\n{artist: Kemuel}\n{sov 1}\n[G]Vem me visitar [D]hoje aqui\n{eov}\n{soc}\nEspírito, [C]vem\n{eoc}";
@@ -82,4 +82,36 @@ test("reflowLyrics: the text is rewritten as the slides read", () => {
     const s1 = slidesFromLyrics(lyrics, { lines: 2 }).map((s) => [s.text, s.label]);
     const s2 = slidesFromLyrics(done, { lines: 2 }).map((s) => [s.text, s.label]);
     assert.deepEqual(s2, s1, "same slides before and after the rewrite");
+});
+
+test("chorded lyrics: stripped slides, chorded twins aligned, same cuts", () => {
+    const lyrics = "[Verso]\n[G]um\n[D]dois\n[Em]três\n[C]quatro\n\n[Refrão]\n[G] [D]\nrefrão um\nrefrão dois";
+    for (const lines of [0, 2]) {
+        const built = slidesFromLyrics(lyrics, { lines, chorded: true });
+        assert.deepEqual(built.map((s) => s.text.split("\n").length), built.map((s) => s.chorded.split("\n").length), "1:1 rows");
+        assert.ok(built.every((s) => !/\[[A-G]/.test(s.text)), "slides carry no chords");
+        assert.ok(built.some((s) => /\[G\]/.test(s.chorded)), "the chorded twin keeps them");
+    }
+    const two = slidesFromLyrics(lyrics, { lines: 2, chorded: true });
+    assert.equal(two[0].text, "um\ndois");
+    assert.equal(two[0].chorded, "[G]um\n[D]dois");
+    assert.equal(two[2].text, "refrão um\nrefrão dois", "the chords-only line is not a row");
+});
+
+test("songSlidesFor: chordedSlides only when the lyrics carry chords; saved slides stripped at send", () => {
+    const chorded = songSlidesFor({ lyrics: "[Verso]\n[G]Deus é [D]fiel\nSanto é Ele" });
+    assert.equal(chorded.slides[0].text, "Deus é fiel\nSanto é Ele");
+    assert.deepEqual(chorded.chordedSlides, ["[G]Deus é [D]fiel\nSanto é Ele"]);
+    const plain = songSlidesFor({ lyrics: "Deus é fiel\n\nSanto é Ele" });
+    assert.equal(plain.chordedSlides, null);
+    const saved = songSlidesFor({ slides: [{ text: "[G]Deus é fiel", label: "Verso" }], lyrics: "" });
+    assert.equal(saved.slides[0].text, "Deus é fiel", "brackets saved into slides never reach the screen");
+    assert.deepEqual(saved.chordedSlides, ["[G]Deus é fiel"]);
+    const split = songSlidesFor({ lyrics: "[G]a\n[D]b\n[Em]c\n[C]d", lines_per_slide: 2 });
+    assert.deepEqual(split.slides.map((s) => s.text), ["a\nb", "c\nd"]);
+    assert.deepEqual(split.chordedSlides, ["[G]a\n[D]b", "[Em]c\n[C]d"]);
+});
+
+test("reflowLyrics keeps a chords-only line with the row under it", () => {
+    assert.equal(reflowLyrics("[Verso]\n[G] [D]\num\ndois\ntrês", 2), "[Verso]\n[G] [D]\num\ndois\n\ntrês");
 });
