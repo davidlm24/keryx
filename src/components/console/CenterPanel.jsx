@@ -102,9 +102,10 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const { cur, prev, now, locked, stamp } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
     const [dropOn, setDropOn] = useState(null);
-    // The Prévia rail: the prepared stage as one output will show it
-    // (Projeção by default; this session only), with that output's own
-    // settings (Configurações › Telas e saídas). Enviar ao ar is unchanged.
+    // The Prévia's output picker (left of its monitor, icon + name): the
+    // prepared stage as that output will show it (Projeção by default; this
+    // session only), with the output's own settings (Configurações › Telas e
+    // saídas). Enviar ao ar is unchanged.
     const [railOut, setRailOut] = useState(OUTPUT_VIEWS[0].key);
     const { pref: railPref, theme: railTheme } = useOutputPref(railOut);
     // Palco and Pastor have layouts of their own: their screen components
@@ -140,6 +141,12 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                     {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
                 </Monitor>
                 <div className="subrow">
+                    <div className="prev-outs" role="group" aria-label="Ver a prévia como a saída">
+                        {RAIL_VIEWS.map((o) => (
+                            <button type="button" key={o.key} className={`kx-t ${railOut === o.key ? "is-on" : ""}`} title={`Prévia como ${o.name}`} aria-label={`Prévia como ${o.name}`} aria-pressed={railOut === o.key}
+                                onClick={() => setRailOut(o.key)}><Icon name={o.icon} size={14} /><span className="t">{o.name}</span></button>
+                        ))}
+                    </div>
                     <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         {prev && !railPage && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
@@ -151,12 +158,6 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                                 <PastorScreen live={pastorDoc} nowMs={now} logo={logoUrl} upcoming={nextItems(items, pastorDoc.session, 3)} hasService={items.length > 0} embed />
                             </div>
                         )}
-                        <div className="prev-rail" role="group" aria-label="Ver a prévia como a saída" onDoubleClick={(e) => e.stopPropagation()}>
-                            {RAIL_VIEWS.map((o) => (
-                                <button type="button" key={o.key} className={`kx-t ${railOut === o.key ? "is-on" : ""}`} title={`Prévia como ${o.name}`} aria-label={`Prévia como ${o.name}`} aria-pressed={railOut === o.key}
-                                    onClick={(e) => { e.stopPropagation(); setRailOut(o.key); }}><Icon name={o.icon} size={14} /></button>
-                            ))}
-                        </div>
                         {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
                         {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
                     </Monitor>
