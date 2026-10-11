@@ -7,9 +7,9 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { TRANSITIONS, TRANSITION_MS, lookDefaults } from "@/lib/console/look";
 import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
+import { SAMPLE_SLIDES } from "./sample";
 import FundosGallery from "./FundosGallery";
 
-const SAMPLE = [{ text: "Grande é o Senhor\ne mui digno de louvor" }, { text: "Na cidade do nosso Deus\nno seu santo monte" }];
 
 // Aparência: how the screens look by default, for every service. The
 // transition between slides (each item can still choose its own in
@@ -42,7 +42,7 @@ export default function AparenciaSection({ c }) {
     // changes its slide.
     const doc = useMemo(() => {
         try {
-            const shown = applyOp(emptyState(c.now), "content.show", { kind: "lyrics", title: "Exemplo", slides: SAMPLE, style: { transition: kind, transition_ms: ms } }, c.now);
+            const shown = applyOp(emptyState(c.now), "content.show", { kind: "lyrics", title: "Exemplo", slides: SAMPLE_SLIDES, style: { transition: kind, transition_ms: ms } }, c.now);
             return { ...shown, content: { ...shown.content, index: slide } };
         } catch { return null; }
     }, [kind, ms, slide]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -63,7 +63,7 @@ export default function AparenciaSection({ c }) {
                 </FormRow>
                 <FormRow k="">
                     <div className="ap-sample">{doc && <ScreenRenderer state={doc} now={c.now} preview />}</div>
-                    <Btn small onClick={() => setSlide((n) => (n + 1) % SAMPLE.length)} disabled={kind === "cut"} title="Troca o slide do exemplo com a transição escolhida">Ver a transição</Btn>
+                    <Btn small onClick={() => setSlide((n) => (n + 1) % SAMPLE_SLIDES.length)} disabled={kind === "cut"} title="Troca o slide do exemplo com a transição escolhida">Ver a transição</Btn>
                 </FormRow>
                 <FormRow k="Fundo de espera padrão">
                     {wall ? <img className="cfg-wall" src={wall} alt="" /> : <span className="kx-meta">nenhum · as telas mostram o logo</span>}

@@ -3,16 +3,22 @@ import { keryx } from "@/api/keryxClient";
 import { Btn, Seg } from "../kx";
 import Icon from "../Icon";
 import { Switch, FormRow } from "./parts";
-import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES } from "@/lib/outputPrefs";
+import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import StageScreen from "@/components/network/StageScreen";
+import PastorScreen from "@/components/network/PastorScreen";
+import { mainLayer } from "@shared/live-state.mjs";
+import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions } from "@/lib/outputPrefs";
+import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 
 const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], ["125", "125%"], ["140", "140%"]];
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
-const DEFAULTS = { content: "", text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", name: "", icon: "" };
+const DEFAULTS = { content: "", text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", name: "", icon: "", options: {} };
+const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
 
 // One output's own settings (OutputPref, src/lib/outputPrefs.js), under its
 // row in Telas e saídas. Each change is saved at once; the output (and any
 // network screen showing the same page) follows it live.
-export default function OutputPrefCard({ output, row, themes, say }) {
+export default function OutputPrefCard({ output, row, themes, say, c }) {
     const pref = normalizePref(row);
     // The first change creates the row; changes made before it comes back
     // update that one instead of creating another.
@@ -26,14 +32,32 @@ export default function OutputPrefCard({ output, row, themes, say }) {
         done.catch((err) => say(err?.message || "Não foi possível salvar o ajuste da saída."));
     };
     const themeGone = pref.themeId && !themes.some((t) => t.id === pref.themeId);
-    // Palco and Pastor have layouts of their own; only the renderer pages
-    // take content/scale/margins/logo/theme (their own options come in the
-    // next slice). Every output can be named and get an icon.
-    const renderer = PREF_OUTPUTS.includes(output.key);
+    const saveOpt = (k, v) => save({ options: { ...pref.options, [k]: v } });
+    // Palco and Pastor have layouts of their own, with their own switches;
+    // a Conteúdo choice turns them into a renderer view, which then takes
+    // the renderer rows too. Every output can be named and get an icon.
+    const isStage = output.key === "/StageView";
+    const isPastor = output.key === "/PastorView";
+    const renderer = PREF_OUTPUTS.includes(output.key) || Boolean(pref.content);
     const meta = outputMeta(output.key);
+    const now = c?.now || Date.now();
+    // The preview: what is on air when something is, else a sample built
+    // with real ops — the preview is the renderer itself, following every
+    // change the instant it saves.
+    const liveOn = c?.live && mainLayer(c.live) !== "none" ? c.live : null;
+    const base = liveOn || sampleLive(now);
+    const prevLive = prefViewKey(output.key, pref) === "/CommunicationProjection" && !base.communication ? sampleNotice(now) : base;
+    const stage = stageOptions(pref);
+    const pastor = pastorOptions(pref);
+    const preview = isStage && !pref.content
+        ? <div className="cfg-prev"><StageScreen content={prevLive.content} nowMs={now} embed opts={pref.options} scale={pref.scale} /></div>
+        : isPastor && !pref.content
+            ? <div className="cfg-prev cfg-prev-pastor"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} /></div>
+            : <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={prefState(output.key, prevLive, pref, themeGone ? null : themes.find((t) => t.id === pref.themeId) || null)} now={now} preview audio={false} /></div></div>;
 
     return (
-        <div className="frm cfg-outprefs" role="group" aria-label={`Ajustes de ${output.label}`}>
+        <div className="cfg-outprefs" role="group" aria-label={`Ajustes de ${output.label}`}>
+        <div className="frm cfg-outprefs-form">
             <FormRow k="Nome">
                 <input key={pref.name} className="fg-input" defaultValue={pref.name} placeholder={meta.name} maxLength={40}
                     onBlur={(e) => { const v = e.target.value.trim(); if (v !== pref.name) save({ name: v }); }}
@@ -48,15 +72,42 @@ export default function OutputPrefCard({ output, row, themes, say }) {
                     ))}
                 </div>
             </FormRow>
-            {renderer && <>
             <FormRow k="Conteúdo">
                 <select className="cfg-select" value={pref.content} onChange={(e) => save({ content: e.target.value })} aria-label={`Conteúdo de ${output.label}`}>
-                    {PREF_CONTENTS.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {PREF_CONTENTS.map((o) => <option key={o.id} value={o.id}>{o.id === "" && (isStage || isPastor) ? "Padrão da página" : o.name}</option>)}
                 </select>
+                {(isStage || isPastor) && <span className="kx-meta">outro conteúdo troca o layout próprio pela tela escolhida</span>}
             </FormRow>
             <FormRow k="Escala do texto">
                 <Seg small value={String(Math.round(pref.scale * 100))} options={SCALES} onChange={(v) => save({ text_scale: Number(v) })} />
             </FormRow>
+            {isStage && !pref.content && <>
+            <FormRow k="Cifra">
+                <Switch on={stage.chords} onChange={(on) => saveOpt("chords", on)} label="Cifra no Palco" />
+                <span className="kx-meta">o painel de acordes ao lado da letra</span>
+            </FormRow>
+            <FormRow k="Relógio e tempo">
+                <Switch on={stage.clock} onChange={(on) => saveOpt("clock", on)} label="Relógio e tempo no Palco" />
+                <span className="kx-meta">a hora e o "na música"</span>
+            </FormRow>
+            <FormRow k="Notas para músicos">
+                <Switch on={stage.notes} onChange={(on) => saveOpt("notes", on)} label="Notas para músicos no Palco" />
+            </FormRow>
+            <FormRow k="Próximo slide">
+                <Switch on={stage.next} onChange={(on) => saveOpt("next", on)} label="Próximo slide no Palco" />
+            </FormRow>
+            </>}
+            {isPastor && !pref.content && <>
+            <FormRow k="Relógio">
+                <Switch on={pastor.clock} onChange={(on) => saveOpt("clock", on)} label="Relógio na Tela do pastor" />
+                <span className="kx-meta">a hora e o tempo de culto</span>
+            </FormRow>
+            <FormRow k="Próximos itens">
+                <Seg small value={String(pastor.next_count)} options={NEXT_COUNTS} onChange={(v) => saveOpt("next_count", Number(v))} />
+                <span className="kx-meta">quantos itens da Setlist aparecem; Não esconde a lista</span>
+            </FormRow>
+            </>}
+            {renderer && <>
             <FormRow k="Margens">
                 <Seg small value={String(pref.margin)} options={MARGINS} onChange={(v) => save({ margin_pct: Number(v) })} />
                 <span className="kx-meta">afasta o texto das bordas (TV que corta a imagem)</span>
@@ -77,6 +128,11 @@ export default function OutputPrefCard({ output, row, themes, say }) {
                 <Btn small disabled={isDefaultPref(pref)} onClick={() => save(DEFAULTS)}>Restaurar padrão</Btn>
                 <span className="kx-meta">vale também para as telas na rede que mostram esta página</span>
             </FormRow>
+        </div>
+        <div className="cfg-prevcol">
+            {preview}
+            <span className="kx-meta">{liveOn ? "No ar agora" : "Exemplo"} · a prévia segue cada ajuste</span>
+        </div>
         </div>
     );
 }

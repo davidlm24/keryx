@@ -11,7 +11,7 @@ import { captionParts } from "@/lib/console/caption";
 import { OUTPUT_VIEWS, SCREEN_PAGES, nextItems, previewSession } from "@/lib/network/views";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
-import { prefState, prefVars } from "@/lib/outputPrefs";
+import { prefState, prefVars, pastorOptions } from "@/lib/outputPrefs";
 import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
 
@@ -111,7 +111,9 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     // Palco and Pastor have layouts of their own: their screen components
     // draw the prepared stage (the pastor's Próximo follows its Setlist item).
     const railViews = useRailViews();
-    const railPage = SCREEN_PAGES.find((p) => p.key === railOut) || null;
+    // A Palco/Pastor with a Conteúdo choice renders as that view, exactly
+    // like its real page does.
+    const railPage = (!railPref.content && SCREEN_PAGES.find((p) => p.key === railOut)) || null;
     const railDoc = useMemo(() => (railPage ? null : prefState(railOut, pdoc, railPref, railTheme)), [railPage, railOut, pdoc, railPref, railTheme]);
     const pastorDoc = useMemo(() => (railPage?.key === "/PastorView" && pdoc ? { ...pdoc, session: previewSession(cur?.session || null, prev?.args?.ref) } : null), [railPage, pdoc, cur?.session, prev]);
     const railVars = railPage ? null : prefVars(railPref);
@@ -152,11 +154,11 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         {prev && !railPage && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
                         {prev && railPage?.key === "/StageView" && (pdoc?.content
-                            ? <StageScreen content={pdoc.content} nowMs={now} embed />
+                            ? <StageScreen content={pdoc.content} nowMs={now} embed opts={railPref.options} scale={railPref.scale} />
                             : <div className="kx-screen-empty">A saída Palco não mostra este item</div>)}
                         {prev && pastorDoc && (
                             <div className="kp-portrait">
-                                <PastorScreen live={pastorDoc} nowMs={now} logo={logoUrl} upcoming={nextItems(items, pastorDoc.session, 3)} hasService={items.length > 0} embed />
+                                <PastorScreen live={pastorDoc} nowMs={now} logo={logoUrl} upcoming={nextItems(items, pastorDoc.session, pastorOptions(railPref).next_count || 1)} hasService={items.length > 0} embed opts={railPref.options} scale={railPref.scale} />
                             </div>
                         )}
                         {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}

@@ -100,7 +100,7 @@ export default function TelasSection({ c }) {
                         </Btn>
                     </span>
                 </div>
-                {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} say={c.say} />}
+                {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} say={c.say} c={c} />}
                 </React.Fragment>
                 );
             })}

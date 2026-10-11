@@ -60,16 +60,16 @@
 .ns-chip.is-clock b { font-size: 4.2cqmin; }
 .ns-notes { flex: none; padding: 1.4cqmin 2cqmin; border-radius: 1.4cqmin; background: var(--warn-tint); box-shadow: inset 3px 0 0 var(--warn); font-size: 2.4cqmin; line-height: 1.35; color: var(--fg-1); }
 .ns-main { flex: 1; min-height: 0; display: flex; gap: 2.5cqmin; }
-.ns-cur { flex: 1; min-width: 0; display: grid; place-items: center; text-align: center; font-size: 7.4cqmin; line-height: 1.2; font-weight: 700; white-space: pre-line; text-shadow: 0 .4cqmin 2cqmin #000000b3; overflow: hidden; }
+.ns-cur { flex: 1; min-width: 0; display: grid; place-items: center; text-align: center; font-size: calc(7.4cqmin * var(--kp-text, 1)); line-height: 1.2; font-weight: 700; white-space: pre-line; text-shadow: 0 .4cqmin 2cqmin #000000b3; overflow: hidden; }
 .ns-chords { flex: 0 0 34cqmin; min-height: 0; display: flex; flex-direction: column; gap: 1cqmin; padding: 1.6cqmin 2cqmin; border-radius: 1.6cqmin; background: color-mix(in srgb, var(--bg-1) 90%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .ns-chords-h { display: flex; align-items: center; gap: 1cqmin; }
 .ns-chords-h .net-section { flex: 1; }
 .ns-chords-h button { width: 5cqmin; height: 5cqmin; min-width: 32px; min-height: 32px; border: 0; border-radius: 999px; background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 2.8cqmin; line-height: 1; cursor: pointer; }
 .ns-chords-h button:active { background: var(--bg-3); }
 .ns-chords-h output { min-width: 6cqmin; text-align: center; font-size: 2cqmin; color: var(--fg-2); }
-.ns-chords pre { flex: 1; min-height: 0; overflow: auto; margin: 0; font: 500 2.2cqmin/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; color: var(--fg-1); }
+.ns-chords pre { flex: 1; min-height: 0; overflow: auto; margin: 0; font: 500 calc(2.2cqmin * var(--kp-text, 1))/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; color: var(--fg-1); }
 .ns-next { flex: none; display: flex; align-items: baseline; gap: 2cqmin; padding: 1.4cqmin 2cqmin; border-radius: 1.4cqmin; background: color-mix(in srgb, var(--bg-1) 85%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
-.ns-next p { margin: 0; flex: 1; min-width: 0; font-size: 3cqmin; line-height: 1.3; color: var(--fg-2); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ns-next p { margin: 0; flex: 1; min-width: 0; font-size: calc(3cqmin * var(--kp-text, 1)); line-height: 1.3; color: var(--fg-2); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ns-dots { flex: none; display: flex; justify-content: center; gap: .8cqmin; }
 .ns-dots i { height: 1cqmin; min-height: 5px; width: 1cqmin; min-width: 5px; border-radius: 999px; background: var(--line-strong); }
 .ns-dots i.is-on { width: 5cqmin; background: var(--air); }
@@ -91,7 +91,7 @@
 .np-h .np-who b { display: block; font-size: 2.6cqmin; font-weight: 600; }
 .np-h .np-who span { display: block; font-size: 1.9cqmin; color: var(--fg-2); }
 .np-time { display: flex; flex-direction: column; align-items: flex-end; }
-.np-time b { font-size: 6cqmin; line-height: 1; font-weight: 500; }
+.np-time b { font-size: calc(6cqmin * var(--kp-text, 1)); line-height: 1; font-weight: 500; }
 .np-time span { font-size: 1.9cqmin; color: var(--fg-2); margin-top: .5cqmin; }
 .np-time span.is-run { color: var(--air-fg); }
 .np-air { min-height: 0; display: flex; flex-direction: column; gap: 1.2cqmin; }
@@ -104,8 +104,8 @@
 .np-side { min-height: 0; display: flex; flex-direction: column; gap: 1.6cqmin; overflow: hidden; }
 .np-list { display: flex; flex-direction: column; gap: .8cqmin; }
 .np-item { display: flex; align-items: baseline; gap: 1.4cqmin; padding: 1.4cqmin 1.8cqmin; border-radius: 1.2cqmin; background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); }
-.np-item b { flex: 1; min-width: 0; font-size: 2.8cqmin; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.np-item span { flex: none; font-size: 1.9cqmin; color: var(--fg-3); }
+.np-item b { flex: 1; min-width: 0; font-size: calc(2.8cqmin * var(--kp-text, 1)); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-item span { flex: none; font-size: calc(1.9cqmin * var(--kp-text, 1)); color: var(--fg-3); }
 .np-item.is-next { background: var(--prev-tint); box-shadow: inset 3px 0 0 var(--prev); }
 .np-empty { font-size: 2.2cqmin; color: var(--fg-3); }
 .np-prog { display: flex; gap: .6cqmin; }
@@ -115,7 +115,7 @@
 /* A tablet held upright: the screen on top, the rest under it. */
 @container net (orientation: portrait) {
     .net-pastor { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
-    .np-time b { font-size: 7cqmin; }
+    .np-time b { font-size: calc(7cqmin * var(--kp-text, 1)); }
 }
 
 /* ---- Vídeo: the clip's name over the picture ---- */
