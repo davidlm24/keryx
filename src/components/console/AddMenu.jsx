@@ -3,7 +3,8 @@ import { IconBtn, MenuItem } from "./kx";
 
 // The "+" beside a search field: what can be added there. An item either
 // runs (onClick) or picks files (accept + onFiles; several at once).
-// items: [{ label, icon, onClick } | { label, icon, accept, onFiles }]
+// items: [{ label, icon, onClick } | { label, icon, accept, onFiles } |
+//         { label, node }] — node rows just hold a control (a setting).
 export default function AddMenu({ title = "Adicionar", items }) {
     const [open, setOpen] = useState(false);
     const box = useRef(null);
@@ -21,12 +22,14 @@ export default function AddMenu({ title = "Adicionar", items }) {
             <IconBtn name="plus" title={title} on={open} onClick={() => setOpen((o) => !o)} />
             {open && (
                 <div className="kx-pop addmenu-pop" role="menu">
-                    {items.map((it, i) => (
+                    {items.map((it, i) => (it.node ? (
+                        <div key={it.label} className="kx-menu-h addmenu-row">{it.node}</div>
+                    ) : (
                         <MenuItem key={it.label} icon={it.icon} role="menuitem" onClick={() => {
                             if (it.onFiles) inputs.current[i]?.click();
                             else { setOpen(false); it.onClick?.(); }
                         }}>{it.label}</MenuItem>
-                    ))}
+                    )))}
                 </div>
             )}
             {items.map((it, i) => it.onFiles && (

@@ -77,9 +77,9 @@ and its toast's *Desfazer* puts back what was on air, on the same slide;
 opens the quick jump. A splitter focused with Tab keeps ←/→ and ↑/↓ for
 itself, so resizing never moves what is on air.
 
-**The command palette** (`/`) opens left-anchored over the source columns
-and stops short of the Programa monitor, so the operator still sees what is
-on air while searching. Enter puts the result in the Prévia and Shift+Enter
+**The command palette** (`/`) opens centred over the console, on the dimmed
+scrim (owner decision 2026-10-11; it used to stop short of the Programa).
+Enter puts the result in the Prévia and Shift+Enter
 adds it to the Setlist; it never sends. An unexpected Scripture request
 ("Jo 3:16", or the quick jump's "jo 3 16") typed in the KERYX environment
 goes to the Prévia right there, without leaving the console: one verse is

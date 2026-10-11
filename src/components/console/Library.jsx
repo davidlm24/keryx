@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Row, Btn, IconBtn, Field, Empty } from "./kx";
+import { Row, Btn, IconBtn, Field, Empty, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
-import { songsFromFile, importLines } from "@/lib/songImport";
+import { songsFromFile, importLines, IMPORT_LINES_KEY } from "@/lib/songImport";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromPieceList, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { noticeLabel, noticeIcon } from "@/lib/console/notice";
@@ -50,6 +50,10 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
     const alert = c.cur?.alert;
     const alertElapsed = alert ? mmss((c.now - alert.since) / 1000) : "";
 
+    // How an imported lyric is cut into slides (was Configurações › Letras).
+    const [importCut, setImportCut] = useState(() => String(importLines()));
+    const pickImportCut = (v) => { setImportCut(v); try { localStorage.setItem(IMPORT_LINES_KEY, v); } catch { /* not remembered */ } };
+
     // "+ › Do computador": song files (cifra, ChordPro, texto, JSON exportado).
     const importSongFiles = async (files) => {
         let made = 0;
@@ -87,6 +91,11 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
             { label: "Nova música…", icon: "plus", onClick: () => onEditSong?.("new") },
             { label: "Do computador…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", onFiles: importSongFiles },
             { label: "Na internet…", icon: "external", onClick: () => onLyricsWeb?.() },
+            {
+                label: "ao-importar",
+                node: <><span className="kx-meta">Ao importar</span><span style={{ flex: 1 }} />
+                    <Seg small value={importCut} onChange={pickImportCut} options={[["0", "Estrofe"], ["2", "2 linhas"], ["4", "4 linhas"]]} /></>,
+            },
             { label: "Exportar todas…", icon: "save", onClick: exportSongs },
         ]
         : tab === "midia"

@@ -534,12 +534,8 @@ export default function Console() {
     const late = service ? serviceTiming({ items: playable, times: plannedTimes(service, playable), airIdx: playAirIdx, startedAt: playAirIdx >= 0 ? log[airItemId]?.start : null, now: c.now }).late : 0;
     const svc = serviceClock({ service, seconds: setPlan.seconds, late, now: c.now });
 
-    // The palette opens left-anchored and stops short of the Programa monitor
-    // (the live column may have spare width beside it); 620 px at most.
-    const paletteWidth = () => {
-        const prog = centerRef.current?.querySelector(".prog")?.getBoundingClientRect();
-        return prog ? Math.max(300, Math.min(620, prog.left - 16)) : 620;
-    };
+    // The palette opens centred (owner decision 2026-10-11); the dimmed scrim
+    // keeps the console readable behind it.
 
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
@@ -671,8 +667,7 @@ export default function Console() {
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} idleUrl={c.live?.idleUrl || null} media={data.media} onIdle={(m, url) => c.liveOp("idle.set", url ? { mode: m, url } : { mode: m }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."))} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
-            <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor}
-                style={{ width: paletteWidth() }} />
+            <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasRight && !view && env === "culto" && (
                 // Over the source columns, never over the Programa: up to the live column's left edge.
                 <div className="drawer" style={{ width: Math.max(240, Math.min(360, (centerRef.current?.getBoundingClientRect().left ?? 372) - 12)) }}>

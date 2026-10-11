@@ -770,18 +770,22 @@ async function checkConsole(webContents, { live, outputs }) {
             })()`);
             result[`shot${w}`] = await shot(String(w));
         }
-        // The Prévia's six output buttons stay inside its monitor, down to the
-        // smallest window the app allows (960 x 600), where the monitor is small.
+        // The Prévia's six output buttons sit left of its monitor, inside the
+        // row and never over the screen, down to the smallest window the app
+        // allows (960 x 600), where they fold to icons in two columns.
         result.railFits = {};
         for (const [w, h] of [[960, 600], [1248, 820], [1366, 820], [1920, 820]]) {
             if (operatorWin) operatorWin.setContentSize(w, h);
             await sleep(500);
             result.railFits[w] = await js(`(() => {
+                const row = document.querySelector(".subrow");
                 const m = document.querySelector(".subrow .kx-mon .kx-mon-screen");
-                const bs = [...document.querySelectorAll(".subrow .kx-mon .prev-rail button")];
-                if (!m || bs.length !== 6) return false;
-                const a = m.getBoundingClientRect();
-                return bs.every((b) => { const x = b.getBoundingClientRect(); return x.top >= a.top - 0.5 && x.bottom <= a.bottom + 0.5 && x.left >= a.left - 0.5 && x.right <= a.right + 0.5; });
+                const bs = [...document.querySelectorAll(".subrow .prev-outs button")];
+                if (!row || !m || bs.length !== 6) return false;
+                const a = row.getBoundingClientRect(), s = m.getBoundingClientRect();
+                const send = document.querySelector(".subrow .kx-btn-send");
+                if (!send || send.getBoundingClientRect().right > a.right + 0.5) return false;
+                return bs.every((b) => { const x = b.getBoundingClientRect(); return x.top >= a.top - 0.5 && x.bottom <= a.bottom + 0.5 && x.left >= a.left - 0.5 && x.right <= s.left + 0.5; });
             })()`);
         }
         result.railFitsOk = Object.values(result.railFits).every(Boolean);
@@ -1342,6 +1346,32 @@ async function checkConsole(webContents, { live, outputs }) {
         const edAirAfter = JSON.stringify(live.get().content ? [live.get().content.startedAt, live.get().content.index] : null);
         result.edSlideMenu = { labels: edMenuLabels, duplicated: edDuplicated, saved: edDupSaved, airUntouched: edAirAfter === edAirBefore };
         result.edSlideMenuOk = edMenuLabels === "Mostrar na letra|Duplicar estrofe|Dividir em dois" && edDuplicated && edDupSaved && edAirAfter === edAirBefore;
+        // Choosing "2 linhas" rewrites the lyrics to read like the slides: a
+        // 4-row stanza becomes two 2-row blocks in the textarea itself.
+        await js(`(() => {
+            const el = document.querySelector("textarea[aria-label=Letra]");
+            const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
+            set.call(el, "[Verso]\\num\\ndois\\ntrês\\nquatro");
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            return true;
+        })()`);
+        await waitFor(() => js("document.querySelectorAll('.ed-th').length === 1"));
+        await click(".song-ed-l ~ .col .kx-panel-h .kx-seg button, .kx-panel-h .kx-seg button", "2 linhas");
+        result.edReflow = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 2 && document.querySelector('textarea[aria-label=Letra]').value.includes('dois\\n\\ntrês')"), 3000);
+
+        // Nothing in the editor scrolls sideways at the operator widths.
+        result.edNoOverflow = {};
+        for (const w of [1366, 1248]) {
+            if (operatorWin) operatorWin.setContentSize(w, 820);
+            await sleep(400);
+            result.edNoOverflow[w] = await js(`(() => {
+                const sels = [".song-ed-l .kx-panel-b", ".ed-tools", ".ed-acts", ".song-ed-r .kx-panel-b", ".ed-lyrics"];
+                return sels.every((sel) => [...document.querySelectorAll(sel)].every((n) => n.scrollWidth <= n.clientWidth + 1));
+            })()`);
+        }
+        result.edNoOverflowOk = Object.values(result.edNoOverflow).every(Boolean);
+        if (operatorWin) operatorWin.setContentSize(1600, 900);
+        await sleep(300);
         result.shotEditor = await shot("editor");
         await press("Escape");
         await waitFor(() => js("!document.querySelector('.song-ed-l')"));
@@ -1354,30 +1384,30 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-row", "Canto do console");
         await waitCap(PREV, "Canto do console");
         const railShows = () => js(`(() => { const m = document.querySelector(".subrow .kx-mon"); return m ? { text: Boolean(m.querySelector(".ks-text")), empty: (m.querySelector(".kx-screen-empty") || {}).textContent || "" } : null; })()`);
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Avisos"); if (b) b.click(); return Boolean(b); })()`);
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Avisos"); if (b) b.click(); return Boolean(b); })()`);
         await sleep(300);
         const asNotices = await railShows();
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Letras"); if (b) b.click(); return Boolean(b); })()`);
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Letras"); if (b) b.click(); return Boolean(b); })()`);
         await sleep(300);
         const asLyrics = await railShows();
         // Palco: the stage monitor's own layout, the prepared slide and the
         // one after it. Pastor: the tablet upright in the middle, the
         // congregation's view inside it.
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Palco"); if (b) b.click(); return Boolean(b); })()`);
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Palco"); if (b) b.click(); return Boolean(b); })()`);
         await sleep(300);
         const asStage = await js(`(() => { const m = document.querySelector(".subrow .kx-mon .net-stage.net-embed"); return m ? { cur: (m.querySelector(".ns-cur") || {}).textContent || "", next: (m.querySelector(".ns-next p") || {}).textContent || "" } : null; })()`);
         result.shotRailStage = await shot("prevRail-palco");
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Pastor"); if (b) b.click(); return Boolean(b); })()`);
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Pastor"); if (b) b.click(); return Boolean(b); })()`);
         await sleep(300);
         const asPastor = await js(`(() => { const p = document.querySelector(".subrow .kx-mon .kp-portrait > .net-embed"); const s = document.querySelector(".subrow .kx-mon .kx-mon-screen"); if (!p || !s) return null; const r = p.getBoundingClientRect(); const q = s.getBoundingClientRect(); return { upright: r.height > r.width, centred: Math.abs((r.left + r.right) / 2 - (q.left + q.right) / 2) < 2, screen: Boolean(p.querySelector(".np-mon .ks-text")) }; })()`);
         result.shotRailPastor = await shot("prevRail-pastor");
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-rail button")].find((x) => x.getAttribute("aria-label") === "Prévia como Projeção"); if (b) b.click(); return Boolean(b); })()`);
+        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Projeção"); if (b) b.click(); return Boolean(b); })()`);
         await sleep(300);
         result.prevRailDiag = { asNotices, asLyrics, asStage, asPastor };
         result.prevRailScreens = Boolean(asStage && asStage.cur === "Primeiro slide do console" && asStage.next === "Segundo slide do console"
             && asPastor && asPastor.upright && asPastor.centred && asPastor.screen);
         result.prevRail = Boolean(asNotices && !asNotices.text && /não mostra/.test(asNotices.empty) && asLyrics && asLyrics.text)
-            && await js(`(() => { const on = [...document.querySelectorAll(".prev-rail button")].filter((b) => b.getAttribute("aria-pressed") === "true"); return on.length === 1 && on[0].getAttribute("aria-label") === "Prévia como Projeção"; })()`);
+            && await js(`(() => { const on = [...document.querySelectorAll(".prev-outs button")].filter((b) => b.getAttribute("aria-pressed") === "true"); return on.length === 1 && on[0].getAttribute("aria-label") === "Prévia como Projeção"; })()`);
         await js("document.activeElement && document.activeElement.blur(); true");
 
         // Hover actions never reach the middle of a row, in every Biblioteca
@@ -1458,7 +1488,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Over the console, which stays mounted behind it.
         result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .col.center') && document.querySelector('.console .cfg-scrim'))");
         result.cfgSections = {};
-        for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Aparência", "Letras", "Dados e atualizações"]) {
+        for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Aparência", "Dados e atualizações"]) {
             await click(".console .cfg-dialog .kx-row", name);
             result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
         }
@@ -1710,7 +1740,7 @@ async function checkConsole(webContents, { live, outputs }) {
 
         // An unexpected Scripture from the KERYX environment: "/ jo 3 16",
         // Enter puts it in the Prévia without leaving the console (nothing
-        // goes on air) and the palette never covers the Programa; Shift+Enter
+        // goes on air) and the palette opens centred; Shift+Enter
         // adds "jo 3 15-16" to the Setlist as a passage.
         const airBefore = JSON.stringify(live.get().content || null);
         await press("/");
@@ -1719,8 +1749,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => js("[...document.querySelectorAll('.palette .kx-row')].some((n) => n.textContent.includes('Abrir na Bíblia'))"));
         result.paletteClear = await js(`(() => {
             const p = document.querySelector(".palette").getBoundingClientRect();
-            const c = document.querySelector(".console .center .prog");
-            return !c || p.right <= c.getBoundingClientRect().left + 1;
+            return Math.abs((p.left + p.right) / 2 - innerWidth / 2) <= 1 && p.left >= 0 && p.right <= innerWidth;
         })()`);
         await press("Enter");
         result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'KERYX') && [...document.querySelectorAll('.subrow .kx-mon-cap, .subrow .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
@@ -1880,7 +1909,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.outName && result.outNameBack && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
-        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk
+        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced

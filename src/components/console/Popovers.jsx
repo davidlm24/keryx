@@ -260,8 +260,8 @@ const quickReference = (text) => {
 // environment, a reference with verses goes to the Prévia right here (one
 // verse: its chapter from there) and Shift+Enter adds it to the Setlist;
 // "Abrir na Bíblia" is the row below it. A chapter alone, or the palette
-// opened in the Bíblia, opens the reference there. It opens left-anchored,
-// over the source columns, never over the Programa (`style`, from Console).
+// opened in the Bíblia, opens the reference there. It opens centred over the
+// console, on the dimmed scrim (owner decision 2026-10-11).
 export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, openReference, onPrepareReference, onAddReference, onBibleSearch, env, style }) {
     const [q, setQ] = useState("");
     const [idx, setIdx] = useState(0);

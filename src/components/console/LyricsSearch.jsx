@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Btn, Field, Row, Empty } from "./kx";
-import { songFromText, importLines } from "@/lib/songImport";
+import { Btn, Field, Row, Empty, Seg } from "./kx";
+import { songFromText, importLines, IMPORT_LINES_KEY } from "@/lib/songImport";
 
 // "+ › Na internet…" for songs, like the Holyrics search: one field, the
 // results of several sources in one list, the lyrics beside it, Importar.
@@ -61,6 +61,9 @@ export default function LyricsSearch({ c, onClose, onImported }) {
     }, [hit?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const lyrics = hit?.hasLyrics ? preview.lyrics : pasted;
+    // How the imported lyric is cut into slides (was Configurações › Letras).
+    const [cut, setCut] = useState(() => String(importLines()));
+    const pickCut = (v) => { setCut(v); try { localStorage.setItem(IMPORT_LINES_KEY, v); } catch { /* not remembered */ } };
     const importSong = async () => {
         if (!hit || !lyrics.trim()) return;
         try {
@@ -118,6 +121,8 @@ export default function LyricsSearch({ c, onClose, onImported }) {
                 {errors.length > 0 && <span className="kx-warn">{errors.join(" · ")}</span>}
                 <span style={{ flex: 1 }} />
                 <span className="kx-meta lyr-legal">Letras têm direitos autorais. Use conforme a licença da sua igreja (ex.: CCLI).</span>
+                <span className="kx-meta">Dividir em</span>
+                <Seg small value={cut} onChange={pickCut} options={[["0", "Estrofe"], ["2", "2 linhas"], ["4", "4 linhas"]]} />
                 <Btn kind="brand" onClick={importSong} disabled={!hit || !lyrics.trim()}>Importar</Btn>
             </div>
         </div>
