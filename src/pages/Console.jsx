@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mediaFromYouTube } from "@/lib/mediaImport";
 import "@ds/tokens.css";
 import "@ds/components/bundle.css";
 import "@/components/console/console.css";
@@ -274,6 +275,7 @@ export default function Console() {
         let type = null;
         let contentId = "";
         if (stage.kind === "lyrics" && stage.id?.startsWith("song:")) { type = "SONG"; contentId = stage.id.slice(5); }
+        else if (stage.id?.startsWith("yt:")) type = "YT"; // resolved to a Media row below
         else if (stage.id?.startsWith("material:")) { type = "MATERIAL"; contentId = stage.id.slice(9); }
         else if (stage.id?.startsWith("media:")) {
             contentId = stage.id.slice(6);
@@ -284,6 +286,11 @@ export default function Console() {
         const at = Math.max(0, Math.min(items.length, index ?? items.length));
         try {
             const sid = await ensureService();
+            if (type === "YT") {
+                const row = await mediaFromYouTube(stage.args?.url || stage.id.slice(3));
+                type = "VIDEO";
+                contentId = row.id;
+            }
             // Renumber from the end first, so two rows never share an order.
             for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + 1 });
             await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || (type === "SONG" ? 240 : 120) });

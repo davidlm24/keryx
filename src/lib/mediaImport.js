@@ -16,6 +16,16 @@ export function mediaTypeOf(file) {
 // Files from the computer into the media library: each one is copied (on
 // desktop, into the media folder) and becomes a Media row. One failure does
 // not stop the rest. -> { created: [rows], failed: [{ name, message }] }
+// A YouTube link as a Media row, so the Setlist and the planner can hold
+// it; a link already in the library is reused, never duplicated.
+export async function mediaFromYouTube(url, { title = "Vídeo do YouTube", category = "other" } = {}) {
+    const u = String(url || "").trim();
+    if (!/youtu\.?be/.test(u)) throw new Error("Cole um link do YouTube.");
+    const existing = await keryx.entities.Media.filter({ file_url: u });
+    if (existing?.[0]) return existing[0];
+    return keryx.entities.Media.create({ title, type: "video", file_url: u, category, duration: 0 });
+}
+
 export async function importMediaFiles(files, { title = "", description = "", category = "other", onProgress } = {}) {
     const list = Array.from(files || []);
     const created = [];

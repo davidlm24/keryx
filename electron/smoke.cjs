@@ -1137,8 +1137,22 @@ async function checkConsole(webContents, { live, outputs }) {
         // plays on the projector under the song, and the L/R meters move.
         const toneFile = await js(MAKE_TONE);
         tone = toneFile && (await js(`window.keryxDesktop.db.call("Media", "create", [{ title: "Tom de teste", type: "audio", file_url: "keryx-media://${toneFile}" }])`)).data;
-        await click(".kx-tabs button", "Mídia");
+        await click(".kx-tabs button", "Vídeos");
         result.audioListed = await waitText(webContents, "Tom de teste");
+        // The YouTube link is keepable now: Guardar makes a Media row (one,
+        // even saved twice) that lists under Vídeos.
+        await js(`(() => {
+            const el = document.querySelector(".console .yt-field input");
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "https://youtube.com/watch?v=smokeyt");
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            return true;
+        })()`);
+        await js("(() => { const b = [...document.querySelectorAll('.console button')].find((x) => x.textContent.trim() === 'Guardar'); if (b) b.click(); return Boolean(b); })()");
+        result.ytSaved = await waitFor(async () => {
+            const rows = (await js('window.keryxDesktop.db.call("Media", "filter", [{ file_url: "https://youtube.com/watch?v=smokeyt" }])')).data || [];
+            return rows.length === 1 && rows[0].type === "video";
+        }, 6000);
+        result.ytListed = await waitText(webContents, "Vídeo do YouTube");
         await click(".kx-row", "Tom de teste");
         result.audioPrepared = await waitCap(PREV, "Tom de teste");
         await press("Enter");
@@ -1993,7 +2007,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
-        && result.audioListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
+        && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
         && result.tlEmpty && result.tlBlocks && result.tlClosed
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded

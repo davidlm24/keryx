@@ -252,6 +252,11 @@ próprio de item continuam só imagem.
 
 ## 7 · Biblioteca Imagens/Vídeos + YouTube na setlist (item 5)
 
+**Built** (release session, 2026-10-11). Imagens = image/gif/pdf/powerpoint;
+Vídeos = video/youtube/áudio (com a seção Áudios). O campo do YouTube ganhou
+Guardar (`mediaFromYouTube`, reusa a linha) e é arrastável; arrastar o campo
+para a Setlist cria a linha Media e o ServiceItem VIDEO (branch `yt:`).
+
 - **Tabs da Biblioteca** (`Library.jsx` L43): Letras | **Imagens** | **Vídeos**
   | Avisos (+Setlist no compacto). Imagens = Media type image/gif; Vídeos =
   video + YouTube + seção "Áudios · Tocar em sequência" (áudio mora na aba

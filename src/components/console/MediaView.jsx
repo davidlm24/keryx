@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Empty, BackBtn } from "./kx";
-import { importMediaFiles } from "@/lib/mediaImport";
+import { importMediaFiles, mediaFromYouTube } from "@/lib/mediaImport";
 import { stageFromMedia, stageFromMediaList, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
@@ -93,7 +93,7 @@ export default function MediaView({ c, media, onSend, onClose }) {
         const url = yt.trim();
         if (!/youtu\.?be/.test(url)) { c.say("Cole um link do YouTube primeiro."); return; }
         try {
-            const row = await keryx.entities.Media.create({ title: "Vídeo do YouTube", type: "video", file_url: url, category: category || "other", duration: 0 });
+            const row = await mediaFromYouTube(url, { category: category || "other" });
             setYt("");
             setSel([row.id]);
             setRenaming(row.id);
