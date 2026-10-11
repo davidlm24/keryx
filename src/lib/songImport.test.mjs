@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine } from "./songImport.js";
+import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, reflowLyrics } from "./songImport.js";
 
 test("ChordPro: directives give title/artist, sections and no inline chords", () => {
     const raw = "{title: Algo Novo}\n{artist: Kemuel}\n{sov 1}\n[G]Vem me visitar [D]hoje aqui\n{eov}\n{soc}\nEspírito, [C]vem\n{eoc}";
@@ -68,4 +68,18 @@ test("editor: timings from the marked starts; durations", async () => {
     assert.equal(parseDuration("90"), 90);
     assert.equal(parseDuration("x"), null);
     assert.equal(formatDuration(276), "4:36");
+});
+
+test("reflowLyrics: the text is rewritten as the slides read", () => {
+    const lyrics = "[Verso]\num\ndois\ntrês\nquatro\ncinco\n\n[Refrão]\nseis\nsete";
+    assert.equal(reflowLyrics(lyrics, 2), "[Verso]\num\ndois\n\ntrês\nquatro\n\ncinco\n\n[Refrão]\nseis\nsete");
+    assert.equal(reflowLyrics(lyrics, 4), "[Verso]\num\ndois\ntrês\nquatro\n\ncinco\n\n[Refrão]\nseis\nsete");
+    assert.equal(reflowLyrics(lyrics, 0), lyrics, "Estrofe: untouched");
+    assert.equal(reflowLyrics("[Instrumental]\n\nsolo um\nsolo dois\nsolo três", 2), "[Instrumental]\n\nsolo um\nsolo dois\n\nsolo três", "a marker alone stays its own block");
+    assert.equal(reflowLyrics("", 2), "");
+    const done = reflowLyrics(lyrics, 2);
+    assert.equal(reflowLyrics(done, 2), done, "stable: reflowing again changes nothing");
+    const s1 = slidesFromLyrics(lyrics, { lines: 2 }).map((s) => [s.text, s.label]);
+    const s2 = slidesFromLyrics(done, { lines: 2 }).map((s) => [s.text, s.label]);
+    assert.deepEqual(s2, s1, "same slides before and after the rewrite");
 });

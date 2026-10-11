@@ -7,7 +7,7 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
 import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
 import { useBackgrounds } from "./useConsoleData";
-import { parseChords, slidesFromLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
+import { parseChords, slidesFromLyrics, reflowLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { printSong } from "@/lib/printSong";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
 import { useContextMenu } from "./ContextMenu";
@@ -17,7 +17,7 @@ const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["
 const SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const SWATCHES = [["#ffffff", "Branco"], ["#f3e6c9", "Creme"], ["#c9dcff", "Azul claro"], ["#ffe08a", "Amarelo"], ["#1a1a1a", "Preto"]];
-const SPLITS = [["0", "Estrofe", { title: "Uma estrofe por slide" }], ["2", "2 linhas", { title: "No máximo 2 linhas por slide" }], ["4", "4 linhas", { title: "No máximo 4 linhas por slide" }]];
+const SPLITS = [["0", "Estrofe", { title: "Uma estrofe por slide · não refaz blocos já divididos" }], ["2", "2 linhas", { title: "No máximo 2 linhas por slide · reescreve a letra nesses blocos" }], ["4", "4 linhas", { title: "No máximo 4 linhas por slide · reescreve a letra nesses blocos" }]];
 // The slide previews' size, remembered on this computer.
 const THUMBS = [["s", "P", { title: "Prévias pequenas" }], ["m", "M", { title: "Prévias médias" }], ["l", "G", { title: "Prévias grandes" }]];
 const THUMBS_KEY = "keryx.console.editor.thumbs";
@@ -83,6 +83,23 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
         const base = resplit ? slidesFromLyrics(song.lyrics, { lines: Number(split) }) : (song.slides || []);
         return withTimings(base.map(({ start: _start, ...rest }) => rest), starts, mediaRef.current?.duration || song.duration || null);
     }, [song, resplit, split, starts]);
+
+    // Choosing 2/4 linhas also rewrites the lyrics, so the text reads like
+    // the slides (owner request 2026-10-11); timings are by slide index, so
+    // when the count changes they are cleared rather than landing wrong.
+    const pickSplit = (v) => {
+        setSplit(v); setResplit(true); setDirty(true);
+        const n = Number(v);
+        if (!(n > 0)) return;
+        const next = reflowLyrics(song.lyrics || "", n);
+        if (next === (song.lyrics || "")) return;
+        const before = slides.length;
+        setLyrics(next);
+        if (starts.some((x) => Number.isFinite(x)) && slidesFromLyrics(next, { lines: n }).length !== before) {
+            setStarts([]);
+            c.say(`Letra reescrita em blocos de ${n} linhas · marque os tempos de novo.`);
+        } else c.say(`Letra reescrita em blocos de ${n} linhas.`);
+    };
 
     // One rendered state, every thumbnail points at its slide.
     const doc = useMemo(() => {
@@ -314,7 +331,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
             </div>
             <div className="kx-gap" />
             <div className="col" style={{ flex: "0 1 480px", minWidth: 300 }}>
-                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<Seg small value={split} onChange={(v) => { setSplit(v); setResplit(true); setDirty(true); }} options={SPLITS} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<Seg small value={split} onChange={pickSplit} options={SPLITS} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="ed-tools">
                         <Btn small kind="outline" onClick={() => addMarker("Verso")}>[Verso]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Refrão")}>[Refrão]</Btn>
@@ -350,7 +367,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                         })}
                     </div>
                 </Panel>
-                <Panel title="Vídeo e sincronização" style={{ flex: 1 }} actions={<>
+                <Panel className="ed-video" title="Vídeo e sincronização" style={{ flex: 1 }} actions={<>
                     {media && <Btn small kind={marking ? "rh" : "outline"} onClick={toggleMarking} title="Toca do início; Espaço marca a entrada de cada slide">{marking ? `Marcando · Espaço (${Math.min(marked + 1, slides.length)}/${slides.length})` : marked ? "Marcar de novo" : "Marcar tempos"}</Btn>}
                     <Btn small disabled={busy === "audio_url"} onClick={() => fileRef.current?.click()}>{busy === "audio_url" ? "Enviando…" : media ? "Trocar…" : "Vídeo ou playback…"}</Btn>
                     {media && <Btn small onClick={() => { set({ audio_url: "" }); setStarts([]); setMarking(false); }}>Remover</Btn>}

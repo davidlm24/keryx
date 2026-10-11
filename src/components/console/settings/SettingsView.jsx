@@ -6,7 +6,6 @@ import BibliasSection from "./BibliasSection";
 import IgrejaSection from "./IgrejaSection";
 import TemasSection from "./TemasSection";
 import AparenciaSection from "./AparenciaSection";
-import LetrasSection from "./LetrasSection";
 import DadosSection from "./DadosSection";
 
 export const SECTIONS = [
@@ -16,7 +15,6 @@ export const SECTIONS = [
     ["igreja", "logo", "Igreja", IgrejaSection],
     ["temas", "palette", "Temas", TemasSection],
     ["aparencia", "image", "Aparência", AparenciaSection],
-    ["letras", "music", "Letras", LetrasSection],
     ["dados", "save", "Dados e atualizações", DadosSection],
 ];
 export const sectionIds = SECTIONS.map(([id]) => id);

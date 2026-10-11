@@ -1342,6 +1342,32 @@ async function checkConsole(webContents, { live, outputs }) {
         const edAirAfter = JSON.stringify(live.get().content ? [live.get().content.startedAt, live.get().content.index] : null);
         result.edSlideMenu = { labels: edMenuLabels, duplicated: edDuplicated, saved: edDupSaved, airUntouched: edAirAfter === edAirBefore };
         result.edSlideMenuOk = edMenuLabels === "Mostrar na letra|Duplicar estrofe|Dividir em dois" && edDuplicated && edDupSaved && edAirAfter === edAirBefore;
+        // Choosing "2 linhas" rewrites the lyrics to read like the slides: a
+        // 4-row stanza becomes two 2-row blocks in the textarea itself.
+        await js(`(() => {
+            const el = document.querySelector("textarea[aria-label=Letra]");
+            const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
+            set.call(el, "[Verso]\\num\\ndois\\ntrês\\nquatro");
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            return true;
+        })()`);
+        await waitFor(() => js("document.querySelectorAll('.ed-th').length === 1"));
+        await click(".song-ed-l ~ .col .kx-panel-h .kx-seg button, .kx-panel-h .kx-seg button", "2 linhas");
+        result.edReflow = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 2 && document.querySelector('textarea[aria-label=Letra]').value.includes('dois\\n\\ntrês')"), 3000);
+
+        // Nothing in the editor scrolls sideways at the operator widths.
+        result.edNoOverflow = {};
+        for (const w of [1366, 1248]) {
+            if (operatorWin) operatorWin.setContentSize(w, 820);
+            await sleep(400);
+            result.edNoOverflow[w] = await js(`(() => {
+                const sels = [".song-ed-l .kx-panel-b", ".ed-tools", ".ed-acts", ".song-ed-r .kx-panel-b", ".ed-lyrics"];
+                return sels.every((sel) => [...document.querySelectorAll(sel)].every((n) => n.scrollWidth <= n.clientWidth + 1));
+            })()`);
+        }
+        result.edNoOverflowOk = Object.values(result.edNoOverflow).every(Boolean);
+        if (operatorWin) operatorWin.setContentSize(1600, 900);
+        await sleep(300);
         result.shotEditor = await shot("editor");
         await press("Escape");
         await waitFor(() => js("!document.querySelector('.song-ed-l')"));
@@ -1458,7 +1484,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Over the console, which stays mounted behind it.
         result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .col.center') && document.querySelector('.console .cfg-scrim'))");
         result.cfgSections = {};
-        for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Aparência", "Letras", "Dados e atualizações"]) {
+        for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Aparência", "Dados e atualizações"]) {
             await click(".console .cfg-dialog .kx-row", name);
             result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
         }
@@ -1857,7 +1883,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
-        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk
+        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced
