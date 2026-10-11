@@ -8,14 +8,13 @@ import { TRANSITIONS, TRANSITION_MS, lookDefaults } from "@/lib/console/look";
 import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
-import FundosGallery from "./FundosGallery";
 
 
 // Aparência: how the screens look by default, for every service. The
 // transition between slides (each item can still choose its own in
 // Camadas) and the standby wallpaper the screens show when nothing is on
 // air and the service has none of its own. On the local profile (User).
-// Below, Fundos: each background's own settings (FundosGallery).
+// The Fundos library lives in Temas (FundosGallery), beside the presets.
 export default function AparenciaSection({ c }) {
     const { media } = useLibrary();
     const [user, setUser] = useState(null);
@@ -77,8 +76,8 @@ export default function AparenciaSection({ c }) {
                             onPick={(url) => { setPicking(false); save({ standby_background: url }, "Fundo de espera padrão salvo."); }} />
                     </div>
                 )}
+                <div className="listhead"><span className="kx-meta">Nomes, categorias e os ajustes de cada fundo moram em Temas, junto com os presets.</span></div>
             </div>
-            <FundosGallery c={c} media={media} standby={wall} onStandby={(url) => save({ standby_background: url }, "Fundo de espera padrão salvo.")} />
         </>
     );
 }

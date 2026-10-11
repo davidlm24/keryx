@@ -214,6 +214,14 @@ sem `[`, Palco com G sobre "Deus", `+` vira G#.
 
 ## 6 · Temas e Fundos unificados (item 4)
 
+**Built** (release session, 2026-10-11). Temas = presets com editor próprio
+(amostra ao vivo; `src/lib/console/themes.js`, ProjectionTheme ganhou
+`transition`/`transition_ms`) + a biblioteca de Fundos (movida de Aparência),
+com "Enviar do computador…" (vira linha Media) e "Seus vídeos"; Camadas ›
+Fundo ganhou tiles de vídeo (`background.set kind video`), o select de tema
+ficou permanente e `is_default` passou a ser lido. Fundo de espera e fundo
+próprio de item continuam só imagem.
+
 - **Mover a FundosGallery de Aparência para Temas.** Temas passa a ter: em
   cima os **presets** (lista + editor novo: nome, fonte/tamanho/efeito/cores/
   caixa + fundo com fit/dim/blur, amostra ScreenRenderer ao vivo — reusar

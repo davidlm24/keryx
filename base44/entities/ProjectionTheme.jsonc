@@ -68,6 +68,15 @@
       "default": "shadow",
       "description": "Efeito visual do texto"
     },
+    "transition": {
+      "type": "string",
+      "default": "",
+      "description": "Transição entre slides deste tema (fade, slide, cut); vazio herda a de Aparência"
+    },
+    "transition_ms": {
+      "type": "integer",
+      "description": "Duração da transição em ms (120 a 600)"
+    },
     "background_image": {
       "type": "string",
       "description": "URL da imagem de fundo"

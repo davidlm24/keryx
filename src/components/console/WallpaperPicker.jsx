@@ -12,7 +12,7 @@ export const imagesOf = (media) => (media || []).filter((m) => m.type === "image
 export default function WallpaperPicker({ value, onPick, media, onNone, noneLabel = "Sem fundo" }) {
     const all = useBackgrounds(media);
     const images = visibleBackgrounds(all, { only: OWN_IMAGES });
-    const bundled = visibleBackgrounds(all, { except: OWN_IMAGES });
+    const bundled = visibleBackgrounds(all, { except: OWN_IMAGES }).filter((b) => b.kind !== "video");
     const tile = (b) => (
         <button type="button" key={b.source} className={`kx-t ${value === b.url ? "is-on" : ""}`} title={b.name} aria-label={b.name} aria-pressed={value === b.url} onClick={() => onPick(b.url)}>
             <img src={b.url} alt="" loading="lazy" />

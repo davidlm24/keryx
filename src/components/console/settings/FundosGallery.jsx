@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { Btn, Seg } from "../kx";
 import Icon from "../Icon";
@@ -23,6 +24,18 @@ export default function FundosGallery({ c, media, standby, onStandby }) {
     const [sel, setSel] = useState(null);
     const creating = useRef(new Map());
 
+    const fileRef = useRef(null);
+    const [uploading, setUploading] = useState(false);
+    // The files land in Mídia (one row each) and show up here under "Suas
+    // imagens" / "Seus vídeos" — and in every other gallery.
+    const upload = async (files) => {
+        setUploading(true);
+        try {
+            const { created, failed } = await importMediaFiles(files, { category: "other" });
+            c.say(`${created.length} ${created.length === 1 ? "fundo enviado" : "fundos enviados"}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
+        } catch (err) { c.say(err?.message || "Não foi possível enviar."); }
+        setUploading(false);
+    };
     const cats = useMemo(() => categoriesOf(list), [list]);
     const hiddenCount = list.filter((b) => b.hidden).length;
     const shown = filter === HIDDEN ? list.filter((b) => b.hidden) : list.filter((b) => !b.hidden && (filter === ALL || b.category === filter));
@@ -51,6 +64,9 @@ export default function FundosGallery({ c, media, standby, onStandby }) {
             <div className="fg-h">
                 <span className="kx-section">Fundos</span>
                 <span className="kx-meta">toque num fundo para dar nome, categoria, escurecer e desfoque; vale nas galerias de músicas, avisos, Camadas e fundo de espera</span>
+                <span style={{ flex: 1 }} />
+                <Btn small disabled={uploading} onClick={() => fileRef.current?.click()}>{uploading ? "Enviando…" : "Enviar do computador…"}</Btn>
+                <input ref={fileRef} type="file" multiple hidden accept="image/*,.gif,video/mp4,video/webm" onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; if (files.length) upload(files); }} />
             </div>
             <div className="fg-filters" role="radiogroup" aria-label="Categoria">
                 {filters.map(([k, label]) => (
@@ -61,7 +77,7 @@ export default function FundosGallery({ c, media, standby, onStandby }) {
                 <div className="fg-grid">
                     {shown.map((b) => (
                         <button type="button" key={b.source} className={`kx-t fg-tile ${sel === b.source ? "is-on" : ""} ${b.hidden ? "is-hidden" : ""}`} onClick={() => setSel(sel === b.source ? null : b.source)} aria-pressed={sel === b.source} title={b.name}>
-                            <span className="fg-img"><img src={b.url} alt="" loading="lazy" /></span>
+                            <span className="fg-img">{b.kind === "video" ? <video src={b.url} preload="metadata" muted /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}</span>
                             <span className="fg-name">{b.favorite && <Icon name="star" size={12} />}{b.name}</span>
                         </button>
                     ))}
@@ -79,13 +95,18 @@ function FundoDetail({ b, save, now, standby, onStandby }) {
     const [dim, setDim] = useState(b.dim === null ? null : Math.round(b.dim * 100));
     const [blur, setBlur] = useState(b.blur);
 
-    // The sample: the real renderer, as an item with this background shows it.
+    // The sample: the real renderer, as this background shows on air — a
+    // picture as an item's own background, a clip as the Fundo layer.
     const doc = useMemo(() => {
         try {
+            if (b.kind === "video") {
+                const st = applyOp(emptyState(now), "background.set", { kind: "video", value: b.url, title: b.name, ...(dim !== null ? { dim: dim / 100 } : {}), ...(blur ? { blur } : {}) }, now);
+                return applyOp(st, "content.show", { kind: "lyrics", title: b.name, slides: SAMPLE, style: {} }, now);
+            }
             const style = { background_image: b.url, ...(dim !== null ? { background_dim: dim / 100 } : {}), ...(blur ? { background_blur: blur } : {}) };
             return applyOp(emptyState(now), "content.show", { kind: "lyrics", title: b.name, slides: SAMPLE, style }, now);
         } catch { return null; }
-    }, [b.url, b.name, dim, blur]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [b.url, b.kind, b.name, dim, blur]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const keep = (patch) => save(b, patch);
     const commitName = () => { if (name.trim() !== (b.pref?.name || "").trim()) keep({ name: name.trim() }); };
@@ -122,7 +143,8 @@ function FundoDetail({ b, save, now, standby, onStandby }) {
                     onChange={(v) => keep({ favorite: v === "fav", hidden: v === "hidden" })} />
             </FormRow>
             <FormRow k="">
-                <Btn small on={isStandby} disabled={isStandby} onClick={() => onStandby(b.url)}>{isStandby ? "É o fundo de espera padrão" : "Usar como fundo de espera padrão"}</Btn>
+                {b.kind !== "video" && <Btn small on={isStandby} disabled={isStandby} onClick={() => onStandby(b.url)}>{isStandby ? "É o fundo de espera padrão" : "Usar como fundo de espera padrão"}</Btn>}
+                {b.kind === "video" && <span className="kx-meta">um vídeo entra pelo Camadas › Fundo; a tela de espera só aceita imagem</span>}
                 <span className="kx-meta">escurecer e desfoque entram quando um item, um aviso ou o fundo de espera com este fundo vai ao ar, e quando ele é escolhido em Camadas › Fundo</span>
             </FormRow>
         </div>
