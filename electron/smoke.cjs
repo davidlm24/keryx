@@ -892,8 +892,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         result.verifyClosed = await waitFor(() => js("!document.querySelector('.verif-overlay')")) && Boolean(live.get().content);
 
-        // Tela ociosa: Preto leaves the projector clean after Encerrar.
-        await click(".kx-status", "");
+        // Tela ociosa: Preto leaves the projector clean after Encerrar. The
+        // status click toggles, so make sure the popover really opened.
+        for (let i = 0; i < 3 && !(await js("Boolean(document.querySelector('.pop-outs'))")); i += 1) { await click(".kx-status", ""); await sleep(400); }
         await click(".kx-pop .kx-seg button", "Preto");
         result.idleSet = await waitFor(() => live.get().idle === "black");
         // When the click misses, say where it went.
@@ -1033,9 +1034,10 @@ async function checkConsole(webContents, { live, outputs }) {
         // Bíblia: a letter opens the quick jump; "jo 3 16" reads as João 3:16.
         await click(".envtabs button", "Bíblia");
         await waitText(webContents, "SELECIONADO");
-        // The selector is a band on top of the reading: every book and every
-        // chapter of Salmos (150) in view without scrolling, the reading
-        // still roomy below it.
+        // The columns (owner layout 2026-10-11): Livros | Capítulos with the
+        // reading below | Versículos, lines between them, the air column as
+        // before. Salmos' 150th chapter is reachable inside its own box; the
+        // page never scrolls sideways.
         await click(".bgrid .kx-book", "Sl");
         await waitFor(() => js("document.querySelectorAll('.bband .chapters button').length === 150"));
         result.bibleNoScroll = {};
@@ -1043,28 +1045,34 @@ async function checkConsole(webContents, { live, outputs }) {
             if (operatorWin) operatorWin.setContentSize(w, h);
             await sleep(500);
             result.bibleNoScroll[`${w}x${h}`] = await js(`(() => {
-                const band = document.querySelector(".console .bband");
-                const body = band && band.querySelector(".kx-panel-b");
-                const last = [...document.querySelectorAll(".bband .chapters button")].pop();
-                const reading = document.querySelector(".console .col.center > .kx-panel:not(.bband)");
-                if (!band || !body || !last || !reading) return false;
-                const r = last.getBoundingClientRect(); const b = band.getBoundingClientRect(); const rd = reading.getBoundingClientRect();
-                return body.scrollHeight <= body.clientHeight + 1 && r.bottom <= b.bottom && r.bottom <= innerHeight && rd.top >= b.bottom - 1 && rd.height >= 150;
+                const cols = [...document.querySelectorAll(".bb-col")];
+                if (cols.length !== 3) return "colunas: " + cols.length;
+                const xs = cols.map((c2) => c2.getBoundingClientRect().left);
+                if (!(xs[0] < xs[1] && xs[1] < xs[2])) return "fora de ordem";
+                const box = document.querySelector(".bb-mid .chapters");
+                const c150 = [...box.querySelectorAll("button")].find((b) => b.textContent === "150");
+                if (!c150) return "sem 150";
+                c150.scrollIntoView({ block: "nearest" });
+                const cb = c150.getBoundingClientRect(), bb = box.getBoundingClientRect();
+                if (!(cb.bottom <= bb.bottom + 2 && cb.top >= bb.top - 2)) return "150 fora da caixa";
+                const read = document.querySelector(".bb-read");
+                if (!read || read.getBoundingClientRect().top < bb.bottom - 1) return "leitura fora do lugar";
+                return document.documentElement.scrollWidth <= innerWidth + 1 || "rolagem lateral";
             })()`);
         }
-        // The smallest window: the book grid folds (the book's name opens it)
-        // and the air column's Enviar ao ar stays on screen.
+        // The smallest window: the columns shrink, the air column's Enviar ao
+        // ar stays on screen, and the books column scrolls instead of clipping.
         if (operatorWin) operatorWin.setContentSize(960, 600);
         await sleep(500);
         result.bibleShort = await js(`(() => {
-            const grid = document.querySelector(".bgrid");
+            const grid = document.querySelector(".bb-books .bgrid");
             const send = [...document.querySelectorAll(".bible-air-col button")].find((b) => /Enviar ao ar/.test(b.textContent));
             const r = send && send.getBoundingClientRect();
-            return Boolean(grid) && getComputedStyle(grid).display === "none" && Boolean(r) && r.height > 0 && r.bottom <= innerHeight;
+            return Boolean(grid) && grid.scrollWidth <= grid.clientWidth + 1 && Boolean(r) && r.height > 0 && r.bottom <= innerHeight;
         })()`);
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
-        result.bibleBandFits = Object.values(result.bibleNoScroll).every(Boolean);
+        result.bibleBandFits = Object.values(result.bibleNoScroll).every((v) => v === true);
         await press("j");
         result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
         await type("o 3 16");
@@ -1334,8 +1342,13 @@ async function checkConsole(webContents, { live, outputs }) {
         // that editor, or it lands while the first one is going away.
         if (edSong) await waitFor(() => js(`location.search.includes(${JSON.stringify(edSong.id)}) && (document.querySelector('.song-ed-l .kx-field input') || {}).value === 'Música do editor'`), 4000);
         await sleep(300);
-        await press("Escape");
-        result.edClosed = await waitFor(() => js("!document.querySelector('.song-ed-l')"));
+        // Under load the saved song reopens late and a single Esc can land in
+        // that gap: press again until the editor is really gone.
+        result.edClosed = false;
+        for (let i = 0; i < 3 && !result.edClosed; i += 1) {
+            await press("Escape");
+            result.edClosed = await waitFor(() => js("!document.querySelector('.song-ed-l')"), 4000);
+        }
         result.edListed = await waitText(webContents, "Música do editor");
         await js(`(() => { const row = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Música do editor")); const b = row && [...row.querySelectorAll("button")].find((x) => x.textContent === "Editar"); if (b) b.click(); return Boolean(b); })()`);
         result.edReopen = await waitFor(() => js("(document.querySelector('.song-ed-l .kx-field input') || {}).value === 'Música do editor'"));
