@@ -166,6 +166,13 @@ Conteúdo escolhido torna a página uma view do renderer (OutputScreen).
 
 ## 5 · Cifras na letra (item 7)
 
+**Built** (release session, 2026-10-11). O módulo é `src/lib/chords.js`
+(chordTranspose re-exporta dele); `songSlidesFor` em songImport.js monta
+slides stripados + `stage.chordedSlides`; o Palco desenha `.ns-seg/.ns-ch`
+com transposição própria (`.ns-trans`); editor ganhou "Montar com cifra na
+letra" e "Colocar na letra". Corrigidos de graça: [Final]→[Ginal] e
+Deus→Eeus no transpositor antigo.
+
 Módulo novo **`src/lib/chords.js`** (puro, testado): `CHORD_RE` estrito e
 ancorado (aceita G, Am7, G/B, C#m, C7(9), Gsus4; rejeita Verso, Final, Bridge,
 x2, Deus — o `m(?!aj)` + `$` evita o bug real de hoje em que `[Final]` vira

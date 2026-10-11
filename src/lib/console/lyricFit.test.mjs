@@ -49,3 +49,11 @@ test("slideSpan is null when the slide is not in the lyrics", () => {
     assert.equal(slideSpan("x", [], 0), null);
     assert.equal(slideSpan("x", [{ text: "" }], 0), null);
 });
+
+test("slideSpan maps stripped slides back to chorded lyric lines", () => {
+    const text = "[Verso]\n[G]Deus é [D]fiel\n[Em]Santo é Ele\n\n[Refrão]\nrefrão um";
+    const slides = [{ text: "Deus é fiel\nSanto é Ele" }, { text: "refrão um" }];
+    const [a, b] = slideSpan(text, slides, 0);
+    assert.equal(text.slice(a, b), "[G]Deus é [D]fiel\n[Em]Santo é Ele", "the selection covers the chorded lines");
+    assert.equal(text.slice(...slideSpan(text, slides, 1)), "refrão um");
+});

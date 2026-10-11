@@ -6,6 +6,7 @@ import { useContextMenu } from "./ContextMenu";
 import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
 import { songsFromFile, importLines, IMPORT_LINES_KEY } from "@/lib/songImport";
+import { stripChords } from "@/lib/chords";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromPieceList, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { noticeLabel, noticeIcon } from "@/lib/console/notice";
@@ -132,7 +133,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
             )}
 
             {tab === "letras" && (() => {
-                const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, s.lyrics));
+                const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, stripChords(s.lyrics || "")));
                 return (
                     <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
                         {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma música"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}

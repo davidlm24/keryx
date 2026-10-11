@@ -1,3 +1,5 @@
+import { stripLine } from "../chords.js";
+
 // Will a slide's lines fit across the screen? The lyrics sit in 84% of the
 // screen's width (8% margin each side, src/components/screen/screen.css) at
 // a size in % of the width (ScreenRenderer SIZE_CQW). Geist averages about
@@ -49,28 +51,26 @@ export function stanzaAt(text, at) {
 // null when the slide is not in the lyrics (saved slides edited apart).
 export function slideSpan(lyrics, slides, index) {
     const text = String(lyrics || "").replace(/\r/g, "");
-    const lineAt = (line, from) => {
-        for (let p = text.indexOf(line, from); p >= 0; p = text.indexOf(line, p + 1)) {
-            const startsLine = p === 0 || text[p - 1] === "\n";
-            const rest = text.slice(p + line.length, (text.indexOf("\n", p + line.length) + 1 || text.length + 1) - 1);
-            if (startsLine && !rest.trim()) return p;
-        }
-        return -1;
-    };
-    let cursor = 0;
+    // Raw lines with offsets; a lyric line matches a slide row by its
+    // chord-stripped text, so chorded lyrics still map to stripped slides.
+    const lines = [];
+    let off = 0;
+    for (const raw of text.split("\n")) { lines.push({ start: off, end: off + raw.replace(/\s+$/, "").length, bare: stripLine(raw).trim() }); off += raw.length + 1; }
+    let li = 0;
     for (let j = 0; j <= index && j < (slides || []).length; j += 1) {
         const rows = String(slides[j]?.text || "").split("\n").map((l) => l.trim()).filter(Boolean);
         if (!rows.length) { if (j === index) return null; continue; }
-        let at = cursor, start = -1, end = -1;
+        let start = -1, end = -1, k = li;
         for (const row of rows) {
-            const p = lineAt(row, at);
-            if (p < 0) return null;
-            if (start < 0) start = p;
-            end = p + row.length;
-            at = end;
+            let found = -1;
+            for (let i = k; i < lines.length; i += 1) if (lines[i].bare === row) { found = i; break; }
+            if (found < 0) return null;
+            if (start < 0) start = lines[found].start;
+            end = lines[found].end;
+            k = found + 1;
         }
         if (j === index) return [start, end];
-        cursor = end;
+        li = k;
     }
     return null;
 }

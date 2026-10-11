@@ -1,25 +1,21 @@
 // What a song or a Bible passage puts on screen: the arguments of
 // content.show (shared/live-state.mjs), used by stage.js and the song editor.
-import { generateSlides } from "@/utils/songSections";
-import { slidesFromLyrics } from "@/lib/songImport";
+import { songSlidesFor } from "@/lib/songImport";
 import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
 
 // A song's audio_url may be its video clip (sent to the video screen) or a
 // playback track (played by the main projector).
 export const isVideoUrl = (url) => Boolean(url) && (url.includes(".mp4") || url.includes("video") || url.startsWith("data:video"));
 
-// Its saved slides; else the lyrics split as the song asks (lines_per_slide,
-// set in the editor or at import), else one stanza per slide.
-const songSlides = (song) => (song.slides?.length ? song.slides
-    : [2, 4].includes(Number(song.lines_per_slide)) ? slidesFromLyrics(song.lyrics || "", { lines: Number(song.lines_per_slide) })
-        : generateSlides(song.lyrics || ""));
-
-// What a Song row puts on screen (projection.showLyrics arguments).
+// What a Song row puts on screen (projection.showLyrics arguments). The
+// slides are stripped of inline chords (songSlidesFor); when the lyrics
+// carry them, their chorded twins ride in stage.chordedSlides for the Palco.
 export function songContent(song, ref = {}) {
+    const built = songSlidesFor(song);
     return {
         title: song.title || "",
         artist: song.artist || "",
-        slides: songSlides(song),
+        slides: built.slides,
         audio: isVideoUrl(song.audio_url) ? null : song.audio_url || null,
         style: {
             font_size: song.font_size || "large",
@@ -34,6 +30,7 @@ export function songContent(song, ref = {}) {
             bpm: song.bpm || null,
             chords: song.chords || "",
             musician_notes: song.musician_notes || "",
+            ...(built.chordedSlides ? { chordedSlides: built.chordedSlides } : {}),
         },
         ref: { songId: song.id || null, ...ref },
     };

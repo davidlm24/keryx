@@ -1,6 +1,8 @@
 // Songs from text: cifra/ChordPro and plain lyrics files from the computer,
 // lyrics pasted or brought from the web. Pure (no React, no I/O), so node
 // --test checks it; the console's "+ › Letras" and ChordImporter use it.
+import { isChordLine, stripLine, stripChords, hasInlineChords } from "./chords.js";
+import { generateSlides } from "../utils/songSections.js";
 
 // ChordPro uses directives in braces: {title:}, {c:}, {soc}, {eoc}, {sov}, {eov}.
 export const isChordPro = (raw) => /\{(title|t|artist|c|soc|eoc|sov|eov|comment|start_of_chorus|end_of_chorus|start_of_verse|end_of_verse)(:|\})\s*/i.test(raw);
@@ -40,11 +42,7 @@ export function parseChordPro(raw) {
 }
 
 // A line that is only chords ("C   G/B   Am7   F") is dropped from lyrics.
-const CHORD = /^[A-G](?:#|b)?(?:m|maj|min|dim|aug|sus|add)?\d*(?:\/[A-G](?:#|b)?)?\*?$/;
-export const isChordLine = (line) => {
-    const words = line.trim().split(/\s+/).filter(Boolean);
-    return words.length > 0 && words.every((w) => CHORD.test(w.replace(/[()|]/g, "")));
-};
+export { isChordLine };
 
 const SECTION_MARKERS = /^\s*\[?\s*(verso|refr[ãa]o|coro|ponte|intro|introdu[çc][ãa]o|outro|solo|pr[ée]-?refr[ãa]o|pr[ée]-?coro|bridge|chorus|verse|interlude|interl[úu]dio|final)\s*\d*\s*\]?\s*[:\-)]?\s*$/i;
 
@@ -145,21 +143,49 @@ export function songsFromFile(name, raw, { lines = 0 } = {}) {
 // by a blank line; a stanza that starts with "[Label]" names itself and the
 // stanzas after it until the next label (chorus labels mark is_chorus);
 // lines > 0 cuts long stanzas. -> [{ text, label, is_chorus? }]
-export function slidesFromLyrics(lyrics, { lines = 0 } = {}) {
+// With { chorded: true } each slide also carries `chorded`: the same rows
+// with their inline chords, 1:1 with the stripped text (same rows, same
+// cuts), for the Palco. Chords-only rows ("[G] [D]") leave both.
+export function slidesFromLyrics(lyrics, { lines = 0, chorded = false } = {}) {
     const out = [];
     let label = "";
     String(lyrics || "").replace(/\r/g, "").split(/\n\s*\n/).forEach((block) => {
         let rows = block.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
         if (!rows.length) return;
         const m = /^\s*\[(.+?)\]\s*$/.exec(rows[0]);
-        if (m) { label = m[1].trim(); rows = rows.slice(1); }
-        if (!rows.length) return;
+        if (m && !hasInlineChords(rows[0])) { label = m[1].trim(); rows = rows.slice(1); }
+        const pairs = rows.map((raw) => ({ raw, text: stripLine(raw).replace(/\s+$/, "") })).filter((p) => p.text.trim());
+        if (!pairs.length) return;
         const chunks = [];
-        if (lines > 0) for (let i = 0; i < rows.length; i += lines) chunks.push(rows.slice(i, i + lines));
-        else chunks.push(rows);
-        for (const chunk of chunks) out.push({ text: chunk.join("\n"), label, ...(CHORUS_RE.test(label) ? { is_chorus: true } : {}) });
+        if (lines > 0) for (let i = 0; i < pairs.length; i += lines) chunks.push(pairs.slice(i, i + lines));
+        else chunks.push(pairs);
+        for (const chunk of chunks) {
+            out.push({
+                text: chunk.map((p) => p.text).join("\n"), label,
+                ...(CHORUS_RE.test(label) ? { is_chorus: true } : {}),
+                ...(chorded ? { chorded: chunk.map((p) => p.raw).join("\n") } : {}),
+            });
+        }
     });
     return out;
+}
+
+// A song's slides as they go on air, with the Palco's chorded twins when the
+// lyrics carry inline chords: saved slides win; else the lyrics split as the
+// song asks (lines_per_slide); else one stanza per slide. Every slide text
+// is stripped here, whatever wrote it — the projector never shows a chord.
+export function songSlidesFor(song) {
+    let base;
+    if (song.slides?.length) base = song.slides;
+    else if ([2, 4].includes(Number(song.lines_per_slide))) base = slidesFromLyrics(song.lyrics || "", { lines: Number(song.lines_per_slide), chorded: true });
+    else if (hasInlineChords(song.lyrics || "")) base = slidesFromLyrics(song.lyrics || "", { chorded: true });
+    else base = generateSlides(song.lyrics || "");
+    const texts = base.map((s) => String(s.chorded ?? s.text ?? ""));
+    const chordedSlides = texts.some((t) => hasInlineChords(t)) ? texts : null;
+    return {
+        slides: base.map(({ chorded: _c, ...rest }) => ({ ...rest, text: stripChords(String(rest.text || "")) })),
+        chordedSlides,
+    };
 }
 
 // The lyrics rewritten so the text reads like the slides (owner request
@@ -173,10 +199,21 @@ export function reflowLyrics(lyrics, lines = 0) {
         let rows = block.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
         if (!rows.length) return;
         let head = null;
-        if (/^\s*\[(.+?)\]\s*$/.test(rows[0])) { head = rows[0].trim(); rows = rows.slice(1); }
+        if (/^\s*\[(.+?)\]\s*$/.test(rows[0]) && !hasInlineChords(rows[0])) { head = rows[0].trim(); rows = rows.slice(1); }
         if (!rows.length) { out.push(head); return; }
-        for (let i = 0; i < rows.length; i += lines) {
-            const chunk = rows.slice(i, i + lines).join("\n");
+        // Only sung rows count toward the block size; a chords-only row
+        // ("[G] [D]") rides with the row after it, never a slide of its own.
+        const groups = [];
+        let lead = [];
+        for (const raw of rows) {
+            if (!stripLine(raw).trim()) { lead.push(raw); continue; }
+            groups.push([...lead, raw]);
+            lead = [];
+        }
+        if (lead.length) (groups[groups.length - 1] || groups[0] || (groups.push([]) && groups[0])).push(...lead);
+        if (!groups.length) { out.push([head, ...rows].filter(Boolean).join("\n")); return; }
+        for (let i = 0; i < groups.length; i += lines) {
+            const chunk = groups.slice(i, i + lines).flat().join("\n");
             out.push(i === 0 && head ? head + "\n" + chunk : chunk);
         }
     });

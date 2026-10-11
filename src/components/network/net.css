@@ -61,6 +61,17 @@
 .ns-notes { flex: none; padding: 1.4cqmin 2cqmin; border-radius: 1.4cqmin; background: var(--warn-tint); box-shadow: inset 3px 0 0 var(--warn); font-size: 2.4cqmin; line-height: 1.35; color: var(--fg-1); }
 .ns-main { flex: 1; min-height: 0; display: flex; gap: 2.5cqmin; }
 .ns-cur { flex: 1; min-width: 0; display: grid; place-items: center; text-align: center; font-size: calc(7.4cqmin * var(--kp-text, 1)); line-height: 1.2; font-weight: 700; white-space: pre-line; text-shadow: 0 .4cqmin 2cqmin #000000b3; overflow: hidden; }
+/* Inline chords: each syllable with its chord riding above it; wrapping
+   happens between segments. Chord-less lines render plain, saving height. */
+.ns-chorded { display: block; width: 100%; }
+.ns-line { display: block; }
+.ns-seg { display: inline-block; vertical-align: bottom; white-space: pre; text-align: left; }
+.ns-ch { display: block; min-height: 1.1em; font-size: .52em; line-height: 1.1; font-weight: 700; color: var(--warn-fg, #e8b84a); text-shadow: none; }
+.ns-tx { white-space: pre; }
+.ns-trans { flex: none; align-self: flex-start; display: flex; align-items: center; gap: 1cqmin; padding: 1cqmin; border-radius: 1.6cqmin; background: color-mix(in srgb, var(--bg-1) 90%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
+.ns-trans button { width: 5cqmin; height: 5cqmin; min-width: 32px; min-height: 32px; border: 0; border-radius: 999px; background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 2.8cqmin; line-height: 1; cursor: pointer; }
+.ns-trans output { min-width: 6cqmin; text-align: center; font-size: 2cqmin; color: var(--fg-2); }
+
 .ns-chords { flex: 0 0 34cqmin; min-height: 0; display: flex; flex-direction: column; gap: 1cqmin; padding: 1.6cqmin 2cqmin; border-radius: 1.6cqmin; background: color-mix(in srgb, var(--bg-1) 90%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .ns-chords-h { display: flex; align-items: center; gap: 1cqmin; }
 .ns-chords-h .net-section { flex: 1; }

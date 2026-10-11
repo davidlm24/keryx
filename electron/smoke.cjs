@@ -986,6 +986,24 @@ async function checkConsole(webContents, { live, outputs }) {
         if (bgPref && bgPref.id) await js(`window.keryxDesktop.db.call("BackgroundPref", "delete", [${JSON.stringify(bgPref.id)}])`);
         await sleep(800);
 
+        // Cifras na letra: [G]Deus é [D]fiel projeta sem colchetes; o Palco
+        // de verdade mostra o acorde sobre a sílaba e transpõe para G#.
+        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { lyrics: "[Verso]\\n[G]Deus é [D]fiel\\n[Em]Santo é [C]Ele", slides: [] }])`);
+        await sleep(600);
+        await dblclick(".kx-row", "Canto do console");
+        result.chordStripped = await waitFor(() => { const ct = live.get().content; return Boolean(ct && ct.slides[0] && ct.slides[0].text === "Deus é fiel\nSanto é Ele" && ct.stage && Array.isArray(ct.stage.chordedSlides)); }, 5000);
+        result.chordProjector = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("(() => { const t = document.querySelector('.ks-text'); return Boolean(t && t.textContent.includes('Deus é fiel') && !t.textContent.includes('[')); })()").catch(() => false), 3000);
+        await js("window.keryxDesktop.displays.open('/StageView')");
+        const stageWin = await waitWindow("/StageView");
+        result.chordStage = Boolean(stageWin) && await waitFor(() => stageWin.webContents.executeJavaScript("(() => { const seg = [...document.querySelectorAll('.ns-seg')].find((g) => g.querySelector('.ns-tx') && g.querySelector('.ns-tx').textContent.startsWith('Deus')); return Boolean(seg && seg.querySelector('.ns-ch') && seg.querySelector('.ns-ch').textContent === 'G'); })()").catch(() => false), 6000);
+        if (stageWin) await stageWin.webContents.executeJavaScript("(() => { const b = [...document.querySelectorAll('button')].find((x) => x.getAttribute('aria-label') === 'Subir meio tom'); if (b) b.click(); return true; })()").catch(() => {});
+        result.chordTranspose = Boolean(stageWin) && await waitFor(() => stageWin.webContents.executeJavaScript("(() => { const seg = [...document.querySelectorAll('.ns-seg')].find((g) => g.querySelector('.ns-tx') && g.querySelector('.ns-tx').textContent.startsWith('Deus')); return Boolean(seg && seg.querySelector('.ns-ch').textContent === 'G#'); })()").catch(() => false), 4000);
+        await js("window.keryxDesktop.displays.close('/StageView')");
+        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { lyrics: "Primeiro slide do console\\n\\nSegundo slide do console", slides: [{ text: "Primeiro slide do console" }, { text: "Segundo slide do console" }] }])`);
+        live.call("clear", {});
+        await waitFor(() => !live.get().content);
+        await sleep(600);
+
         // The song on air again, then Travar telas (Saídas): nothing new goes
         // on (a double click, Enter and the main process all refuse), anything
         // can come off (Tela preta), and unlocking sends again.
@@ -1914,7 +1932,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended

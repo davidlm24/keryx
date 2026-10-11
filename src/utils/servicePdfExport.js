@@ -1,4 +1,5 @@
 import { keryx } from "@/api/keryxClient";
+import { stripChords } from "../lib/chords.js";
 import { jsPDF } from "jspdf";
 import { plan, clockAt, span, total, typeLabel, isSection } from "@/lib/console/setlist";
 
@@ -76,7 +77,7 @@ export async function exportServiceToPdf(service, items) {
             if (item.type === "SONG" && contentId) {
                 const song = await keryx.entities.Song.get(contentId);
                 if (song.lyrics) {
-                    const lines = doc.splitTextToSize(song.lyrics, pageWidth - 2 * margin);
+                    const lines = doc.splitTextToSize(stripChords(song.lyrics), pageWidth - 2 * margin);
                     lines.forEach(line => {
                         if (y > pageHeight - 15) { doc.addPage(); y = margin; }
                         doc.text(line, margin, y);

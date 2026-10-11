@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { transposeChords, semitoneLabel } from "@/utils/chordTranspose";
+import { parseChordLine, transposeInline } from "@/lib/chords";
 import "@/components/network/net.css";
 
 const two = (n) => String(n).padStart(2, "0");
@@ -8,9 +9,12 @@ const mmss = (s) => `${two(Math.floor(s / 60))}:${two(s % 60)}`;
 const isImage = (v) => typeof v === "string" && (v.startsWith("http") || v.startsWith("data:"));
 
 // What the stage monitor draws from a live state's content: current and next
-// slide, key, BPM, chords and musician notes. The page (StageView) feeds it
-// the live state; the console's Prévia feeds it the prepared stage
-// (`embed`: inside a monitor, no transpose buttons).
+// slide, key, BPM, chords and musician notes. When the lyrics carry inline
+// chords, stage.chordedSlides has the current slide's chorded twin and the
+// chords ride ABOVE the words, transposable; the legacy chords block keeps
+// its side panel. The page (StageView) feeds it the live state; the
+// console's Prévia feeds it the prepared stage (`embed`: inside a monitor,
+// no transpose buttons).
 export default function StageScreen({ content, nowMs, embed = false, opts = {}, scale = 1, children }) {
     const now = new Date(nowMs);
     // Which parts this screen shows (Configurações › Telas e saídas ›
@@ -44,6 +48,9 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
     const next = slides[index + 1];
     // Time since the operator put this song up (the same on every screen).
     const elapsed = Math.max(0, Math.floor((nowMs - content.startedAt) / 1000));
+    // The current slide with its chords, when the lyrics carry them.
+    const chorded = show.chords && Array.isArray(song.chordedSlides) ? song.chordedSlides[index] : null;
+    const chordedLines = chorded != null && chorded !== (current.text || "") ? transposeInline(chorded, transpose).split("\n") : null;
 
     return (
         <div className={cls} style={style}>
@@ -62,8 +69,32 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
             </header>
             {song.musician_notes && show.notes && <div className="ns-notes">{song.musician_notes}</div>}
             <main className="ns-main">
-                <div className="ns-cur">{current.text || ""}</div>
-                {song.chords && show.chords && (
+                <div className="ns-cur">{chordedLines ? (
+                    <span className="ns-chorded">
+                        {chordedLines.map((line, i) => {
+                            const segs = parseChordLine(line);
+                            if (segs.every((g) => !g.chord)) return <span key={i} className="ns-line">{segs.map((g) => g.text).join("")}</span>;
+                            return (
+                                <span key={i} className="ns-line">
+                                    {segs.map((g, k) => (
+                                        <span key={k} className="ns-seg">
+                                            <span className={`ns-ch ${g.chord ? "" : "is-empty"}`} aria-hidden={g.chord ? undefined : "true"}>{g.chord || ""}</span>
+                                            <span className="ns-tx">{g.text}</span>
+                                        </span>
+                                    ))}
+                                </span>
+                            );
+                        })}
+                    </span>
+                ) : (current.text || "")}</div>
+                {chordedLines && !embed && (
+                    <aside className="ns-trans" aria-label="Transposição">
+                        <button type="button" onClick={() => setTranspose((t) => t - 1)} aria-label="Baixar meio tom">−</button>
+                        <output aria-label="Transposição">{semitoneLabel(transpose)}</output>
+                        <button type="button" onClick={() => setTranspose((t) => t + 1)} aria-label="Subir meio tom">+</button>
+                    </aside>
+                )}
+                {song.chords && !chordedLines && show.chords && (
                     <aside className="ns-chords" aria-label="Cifra">
                         <div className="ns-chords-h">
                             <span className="net-section">Cifra</span>
