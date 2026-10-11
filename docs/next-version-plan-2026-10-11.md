@@ -290,6 +290,11 @@ No ar + Selecionado**, separados por `border-left` (`--line`).
 
 ## 9 · Timeline: estudo, não implementação (item 10)
 
+**Estudo entregue** (release session, 2026-10-11):
+`docs/timeline-redesign-2026-10-11.md` + mockup no canvas "Linha do tempo
+KERYX". Termina com 6 perguntas fechadas; a implementação (3 fases) espera
+as respostas do dono.
+
 O dono pediu "vamos estudar bem essa parte". Entregável: documento
 `docs/timeline-redesign-<data>.md` + mockup navegável (HTML estático no
 preview ou artifact) com: timeline estilo editor (track mais alta, blocos por
