@@ -272,6 +272,11 @@ para a Setlist cria a linha Media e o ServiceItem VIDEO (branch `yt:`).
 
 ## 8 · Bíblia em colunas (item 11)
 
+**Built** (release session, 2026-10-11). Um painel só (`.bb-body`): Livros
+(grade 3×, rola; Nomes vira lista), Capítulos + leitura embaixo, Versículos
+em coluna (2×), linhas entre as colunas; a coluna No ar/Selecionado ficou.
+O fold das alturas (680/760) morreu junto com o toggleBooks.
+
 Layout aprovado: **Livros | Capítulos (leitura embaixo) | Versículos |
 No ar + Selecionado**, separados por `border-left` (`--line`).
 - `BibleEnv.jsx`: a `.bband` deixa de ser faixa horizontal; vira grid de
