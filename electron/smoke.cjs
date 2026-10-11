@@ -1342,8 +1342,13 @@ async function checkConsole(webContents, { live, outputs }) {
         // that editor, or it lands while the first one is going away.
         if (edSong) await waitFor(() => js(`location.search.includes(${JSON.stringify(edSong.id)}) && (document.querySelector('.song-ed-l .kx-field input') || {}).value === 'Música do editor'`), 4000);
         await sleep(300);
-        await press("Escape");
-        result.edClosed = await waitFor(() => js("!document.querySelector('.song-ed-l')"));
+        // Under load the saved song reopens late and a single Esc can land in
+        // that gap: press again until the editor is really gone.
+        result.edClosed = false;
+        for (let i = 0; i < 3 && !result.edClosed; i += 1) {
+            await press("Escape");
+            result.edClosed = await waitFor(() => js("!document.querySelector('.song-ed-l')"), 4000);
+        }
         result.edListed = await waitText(webContents, "Música do editor");
         await js(`(() => { const row = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Música do editor")); const b = row && [...row.querySelectorAll("button")].find((x) => x.textContent === "Editar"); if (b) b.click(); return Boolean(b); })()`);
         result.edReopen = await waitFor(() => js("(document.querySelector('.song-ed-l .kx-field input') || {}).value === 'Música do editor'"));
