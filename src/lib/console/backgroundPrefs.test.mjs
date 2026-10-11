@@ -46,3 +46,23 @@ test("an item's background brings its dim and blur, unless the item has its own"
     const plain = { style: { font_size: "large" } };
     assert.equal(withBackgroundDefaults("content.show", plain, prefs), plain, "no background: untouched");
 });
+
+test("an aviso and the idle wallpaper bring their background's dim and blur too", () => {
+    const prefs = [{ source: "bundled:a", dim_pct: 60, blur_px: 4 }];
+    const url = "http://127.0.0.1:7700/media/bundled/backgrounds/a.webp";
+    const piece = (extra) => ({ id: "p", title: "Aviso", background_image: url, ...extra });
+    const one = withBackgroundDefaults("communication.show", { item: piece() }, prefs).item;
+    assert.deepEqual([one.background_dim, one.background_blur], [0.6, 4]);
+    assert.equal(withBackgroundDefaults("communication.show", { item: piece({ background_dim: 0.1 }) }, prefs).item.background_dim, 0.1, "the aviso's own wins");
+    const seq = withBackgroundDefaults("communication.show", { playlist: [piece(), { id: "q", background_color: "#000" }], index: 0 }, prefs);
+    assert.equal(seq.playlist[0].background_dim, 0.6);
+    assert.equal(seq.playlist[1].background_dim, undefined, "a colour: nothing to add");
+    const none = { item: { id: "p", background_color: "#112233" } };
+    assert.equal(withBackgroundDefaults("communication.show", none, prefs), none, "no picture: untouched");
+    assert.deepEqual(withBackgroundDefaults("idle.set", { mode: "background", url }, prefs), { mode: "background", url, dim: 0.6, blur: 4 });
+    assert.deepEqual(withBackgroundDefaults("idle.set", { mode: "background", url: "x.png" }, prefs), { mode: "background", url: "x.png", dim: null, blur: null }, "no pref: clears the old wallpaper's look");
+    const given = { mode: "background", url, dim: 0.2 };
+    assert.equal(withBackgroundDefaults("idle.set", given, prefs), given, "an explicit look is kept");
+    const mode = { mode: "black" };
+    assert.equal(withBackgroundDefaults("idle.set", mode, prefs), mode, "a mode change alone: untouched");
+});

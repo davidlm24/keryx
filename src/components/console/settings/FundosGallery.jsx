@@ -123,7 +123,7 @@ function FundoDetail({ b, save, now, standby, onStandby }) {
             </FormRow>
             <FormRow k="">
                 <Btn small on={isStandby} disabled={isStandby} onClick={() => onStandby(b.url)}>{isStandby ? "É o fundo de espera padrão" : "Usar como fundo de espera padrão"}</Btn>
-                <span className="kx-meta">escurecer e desfoque entram quando um item com este fundo vai ao ar, e quando ele é escolhido em Camadas › Fundo</span>
+                <span className="kx-meta">escurecer e desfoque entram quando um item, um aviso ou o fundo de espera com este fundo vai ao ar, e quando ele é escolhido em Camadas › Fundo</span>
             </FormRow>
         </div>
     );

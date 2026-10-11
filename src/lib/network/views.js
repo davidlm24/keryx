@@ -25,7 +25,7 @@ export function nextItems(items, session, count = 3) {
 
 // Vídeo: the clip on the video channel while there is one (the page plays it
 // full screen, whatever Tela preta says), else the idle look.
-export const videoView = (live) => (live && live.video ? { screen: "show", video: live.video, idle: live.idle, idleUrl: live.idleUrl } : standbyView(live));
+export const videoView = (live) => (live && live.video ? { screen: "show", video: live.video, idle: live.idle, idleUrl: live.idleUrl, idleDim: live.idleDim, idleBlur: live.idleBlur } : standbyView(live));
 
 // Avisos: only the aviso on air; nothing (null) when there is none.
 export const noticeView = (live) => (live && live.communication ? { screen: "show", communication: live.communication } : null);

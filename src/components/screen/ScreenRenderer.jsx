@@ -33,7 +33,7 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
         <div className={cls}>
             <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} /></div>
             <div className="ks-z" style={{ zIndex: z("content") }}>
-                {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} />)}
+                {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
                 {layer === "content" && <Content content={state.content} />}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
                 {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={audio} />}
@@ -71,8 +71,12 @@ function logoLook(logo) {
     return out;
 }
 
-function Idle({ logoUrl, wallpaper }) {
-    if (wallpaper) return <div className="ks-bg-img ks-idle-wall" style={{ backgroundImage: `url("${String(wallpaper).replace(/"/g, "%22")}")` }} />;
+function Idle({ logoUrl, wallpaper, dim, blur }) {
+    if (wallpaper) {
+        // The wallpaper as it is, unless Aparência › Fundos gave it a dim or a blur.
+        const look = bgLook({ kind: "image", dim: dim ?? 0, blur });
+        return <><div className="ks-bg-img ks-idle-wall" style={{ backgroundImage: `url("${String(wallpaper).replace(/"/g, "%22")}")`, ...(blur ? { filter: look.image.filter, transform: look.image.transform } : {}) }} />{look.dim}</>;
+    }
     return <><div className="ks-bg-default" /><div className="ks-idle">{logoUrl && <img src={logoUrl} alt="" />}</div></>;
 }
 
@@ -97,7 +101,7 @@ function Background({ state, layer }) {
         if (isUrl(bg)) {
             // The item's own picture, with the dim and blur its background
             // brought from Fundos (style.background_dim/_blur).
-            const st = layer === "content" ? state.content.style : layer === "tool" ? state.tool.style : null;
+            const st = layer === "content" ? state.content.style : layer === "tool" ? state.tool.style : layer === "communication" ? state.communication.item : null;
             const look = bgLook({ kind: "image", dim: st?.background_dim, blur: st?.background_blur });
             return <><div className="ks-bg-img" style={{ backgroundImage: `url(${bg})`, ...(st?.background_blur ? { filter: look.image.filter, transform: look.image.transform } : {}) }} />{look.dim}</>;
         }

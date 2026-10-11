@@ -85,6 +85,10 @@ export function emptyState(now = Date.now()) {
         // wallpaper the operator chose (idleUrl, a media or bundled image).
         idle: "logo",
         idleUrl: null,
+        // How dark (0-0.9) and blurred (px at 1920 wide) the wallpaper is;
+        // null: as it is, untouched (Aparência › Fundos).
+        idleDim: null,
+        idleBlur: null,
         // The stacking of the look layers, top first (Camadas, drag to
         // reorder). The alert, a video-channel clip and the black/logo
         // screens always stay above all of them.
@@ -485,11 +489,17 @@ const OPS = {
 
     // Fundo needs its image; Logo or Preto keep the last one, so choosing
     // Fundo again brings it back. A url alone (no mode) never changes the mode.
-    "idle.set": (s, { mode, url }) => {
+    // A new wallpaper comes with its own dim and blur (or none); the same one
+    // keeps them unless new ones are given (null clears).
+    "idle.set": (s, { mode, url, dim, blur }) => {
         const m = oneOf(mode, IDLE_MODES, "Tela ociosa");
         const u = url === undefined ? (s.idleUrl ?? null) : url === null || url === "" ? null : text(url, "Fundo de espera", { max: MAX_URL, required: true });
         if (m === "background" && !u) throw new LiveError("Escolha a imagem do fundo de espera.");
-        return s.idle === m && (s.idleUrl ?? null) === u ? null : { idle: m, idleUrl: u };
+        const same = u === (s.idleUrl ?? null);
+        const look = (given, kept, range, label) => (given !== undefined ? (given === null ? null : ranged(given, range, label)) : same ? (kept ?? null) : null);
+        const d = look(dim, s.idleDim, [0, 0.9], "Escurecer");
+        const b = look(blur, s.idleBlur, [0, 20], "Desfoque");
+        return s.idle === m && same && (s.idleDim ?? null) === d && (s.idleBlur ?? null) === b ? null : { idle: m, idleUrl: u, idleDim: d, idleBlur: b };
     },
 
     "alert.show": (_s, a, now) => ({
@@ -555,7 +565,8 @@ export function restoreState(saved, now = Date.now()) {
 function restoreIdle(saved) {
     const url = typeof saved.idleUrl === "string" && saved.idleUrl ? saved.idleUrl : null;
     const mode = IDLE_MODES.includes(saved.idle) ? saved.idle : "logo";
-    return { idle: mode === "background" && !url ? "logo" : mode, idleUrl: url };
+    const num = (v, [lo, hi]) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
+    return { idle: mode === "background" && !url ? "logo" : mode, idleUrl: url, idleDim: num(saved.idleDim, [0, 0.9]), idleBlur: num(saved.idleBlur, [0, 20]) };
 }
 
 // -- Reading the document (outputs and operator previews) ---------------------

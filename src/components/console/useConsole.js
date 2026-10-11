@@ -5,7 +5,7 @@ import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
-import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
+import { withBackgroundDefaults, backgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs } from "./useConsoleData";
 
 // The console's own state around the live state. One console, always live:
@@ -57,13 +57,25 @@ export function useConsole() {
     // (a refused op while locked, a bad argument) become a toast.
     const liveOp = useCallback(async (op, args = {}) => {
         try {
-            return await keryx.live.call(op, args);
+            // A background (an item's, an aviso's, the idle wallpaper) brings
+            // the dim and blur Aparência › Fundos gave it; already there: kept.
+            return await keryx.live.call(op, withBackgroundDefaults(op, args, bgPrefs));
         } catch (err) {
             say(err?.message || "Não foi possível projetar.");
             throw err;
         }
-    }, [say]);
+    }, [say, bgPrefs]);
     const callOp = liveOp;
+
+    // The idle wallpaper follows its settings: editing its dim or blur in
+    // Fundos (or the settings loading after it was applied) updates the
+    // screens that show it.
+    useEffect(() => {
+        if (live?.idle !== "background" || !live.idleUrl) return;
+        const { dim, blur } = backgroundDefaults(bgPrefs, live.idleUrl);
+        if (dim === (live.idleDim ?? null) && blur === (live.idleBlur ?? null)) return;
+        keryx.live.call("idle.set", { mode: "background", url: live.idleUrl, dim, blur }).catch(() => {});
+    }, [live?.idle, live?.idleUrl, live?.idleDim, live?.idleBlur, bgPrefs]);
 
     const setPrev = useCallback((stage) => {
         if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
@@ -142,5 +154,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
+    return { live, now, cur: live, bgPrefs, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
 }
