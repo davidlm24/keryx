@@ -467,13 +467,13 @@
 .console .bgpick button.wallpick-none { aspect-ratio: auto; height: 32px; grid-column: 1 / -1; }
 .console .idle-pick { max-height: 300px; overflow: auto; padding: 0 var(--space-1) var(--space-1); }
 .console .idle-wall img { width: 48px; height: 27px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
-.console .ed-tools { display: flex; gap: var(--space-1); align-items: center; padding: 0 var(--space-2) var(--space-1); }
+.console .ed-tools { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; padding: 0 var(--space-2) var(--space-1); }
 .console .ed-lyrics { flex: 1; min-height: 0; display: flex; padding: 0 var(--space-2) var(--space-2); }
 .console .ed-lyrics .ed-text { flex: 1; font-size: 14px; line-height: 21px; }
 .console .ed-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-2); }
 /* P | M | G in the Slides header (M by default). */
 .console .ed-thumbs.is-s { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); }
-.console .ed-thumbs.is-l { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.console .ed-thumbs.is-l { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
 .console .ed-th { position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; container-type: inline-size; background: #000; padding: 0; }
 .console .ed-th > .ks-box { width: 100%; pointer-events: none; }
 .console .ed-th::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--line); border-radius: inherit; pointer-events: none; z-index: 300; }
@@ -485,11 +485,16 @@
 /* Lines and characters of the slide; amber when a line will wrap on screen. */
 .console .ed-th .fit { position: absolute; right: 0; bottom: 0; padding: 1px 5px; font-size: 10px; line-height: 12px; color: var(--fg-2); background: #0d0d0ccc; border-radius: 4px 0 0 0; z-index: 250; font-variant-numeric: tabular-nums; }
 .console .ed-th .fit.is-warn { color: var(--warn-fg); }
-.console .ed-media { flex: 0 0 260px; display: flex; flex-direction: column; gap: var(--space-1); }
+.console .ed-media { flex: 0 1 260px; min-width: 160px; display: flex; flex-direction: column; gap: var(--space-1); }
 .console .ed-media video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--radius-control); }
 .console .ed-media audio { width: 100%; }
 .console .ed-marks { flex: 1; min-width: 0; overflow: auto; }
-.console .ed-acts { flex: none; display: flex; align-items: center; gap: var(--space-1); padding: 0 2px; }
+.console .ed-acts { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); padding: 0 2px; }
+/* A narrow left column: the PP…GGG seg breaks into two rows instead of
+   scrolling (the !important beats the Seg's inline 24 px height). */
+.console .song-ed-l .frm .kx-seg { height: auto !important; flex-wrap: wrap; row-gap: 2px; }
+/* The video panel's header buttons wrap rather than clip. */
+.console .ed-video > .kx-panel-h { height: auto; min-height: 32px; flex-wrap: wrap; padding-top: 2px; padding-bottom: 2px; }
 
 /* Service planner (Planejador de culto, canvas artboard 17) */
 .console .pl-frm { display: grid; grid-template-columns: 64px 1fr; gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-2); }
