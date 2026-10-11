@@ -770,6 +770,21 @@ async function checkConsole(webContents, { live, outputs }) {
             })()`);
             result[`shot${w}`] = await shot(String(w));
         }
+        // The Prévia's six output buttons stay inside its monitor, down to the
+        // smallest window the app allows (960 x 600), where the monitor is small.
+        result.railFits = {};
+        for (const [w, h] of [[960, 600], [1248, 820], [1366, 820], [1920, 820]]) {
+            if (operatorWin) operatorWin.setContentSize(w, h);
+            await sleep(500);
+            result.railFits[w] = await js(`(() => {
+                const m = document.querySelector(".subrow .kx-mon .kx-mon-screen");
+                const bs = [...document.querySelectorAll(".subrow .kx-mon .prev-rail button")];
+                if (!m || bs.length !== 6) return false;
+                const a = m.getBoundingClientRect();
+                return bs.every((b) => { const x = b.getBoundingClientRect(); return x.top >= a.top - 0.5 && x.bottom <= a.bottom + 0.5 && x.left >= a.left - 0.5 && x.right <= a.right + 0.5; });
+            })()`);
+        }
+        result.railFitsOk = Object.values(result.railFits).every(Boolean);
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.barFits = Object.values(result.bar).every(Boolean);
@@ -1840,7 +1855,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
-        && result.prevRail && result.prevRailScreens && result.rowActsClear
+        && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
