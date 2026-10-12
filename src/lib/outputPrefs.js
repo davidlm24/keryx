@@ -17,6 +17,67 @@ export const PREF_CONTENTS = [
 // The outputs drawn by ScreenRenderer, the ones these settings apply to.
 export const PREF_OUTPUTS = ["/Projection", "/LyricProjection", "/VideoProjection", "/CommunicationProjection"];
 
+// Mostrar (2026-10-12, as in Holyrics): the kinds of content an output can
+// leave out, on top of its page's view. Each is a live-state layer, or a
+// kind of the content layer. A hidden kind on air leaves the output on what
+// is under it (another layer, else the idle look); a song's playback track
+// keeps playing when its words are hidden.
+export const SHOW_KINDS = [
+    { id: "lyrics", name: "Letras", layer: "content", kind: "lyrics" },
+    { id: "bible", name: "Bíblia", layer: "content", kind: "bible" },
+    { id: "text", name: "Texto", layer: "content", kind: "text" },
+    { id: "media", name: "Imagens e vídeos", layer: "media" },
+    { id: "tool", name: "Relógio e timer", layer: "tool" },
+    { id: "communication", name: "Avisos", layer: "communication" },
+    { id: "alert", name: "Aviso rápido", layer: "alert" },
+];
+// The kinds each view can show at all (views.js): only those are offered.
+const VIEW_KINDS = {
+    "/Projection": ["lyrics", "bible", "text", "media", "tool", "communication", "alert"],
+    "/LyricProjection": ["lyrics", "bible", "text", "alert"],
+    "/VideoProjection": [],
+    "/CommunicationProjection": [],
+};
+export const showKindsFor = (page, pref) => {
+    const ids = VIEW_KINDS[prefViewKey(page, pref)] || [];
+    return SHOW_KINDS.filter((k) => ids.includes(k.id));
+};
+
+// The live state without the kinds an output hides. The same object back when
+// nothing is hidden or nothing hidden is on air.
+export function hideKinds(state, hidden) {
+    if (!state || !hidden?.length) return state;
+    let out = state;
+    const drop = (layer) => { if (out[layer]) out = { ...out, [layer]: null }; };
+    for (const k of SHOW_KINDS) {
+        if (!hidden.includes(k.id)) continue;
+        if (k.layer !== "content") drop(k.layer);
+        else if (out.content?.kind === k.kind) {
+            // The words go; a song's playback track stays (ScreenRenderer plays `track`).
+            const { audio, startedAt } = out.content;
+            out = { ...out, content: null, ...(audio ? { track: { src: audio, startedAt } } : {}) };
+        }
+    }
+    return out;
+}
+
+// A prepared stage (src/lib/console/stage.js) on an output that hides its
+// kind: the kind's name, else null. A stage kind with no Mostrar entry
+// (audio, the video channel) is never hidden.
+const STAGE_KIND = { lyrics: "lyrics", bible: "bible", text: "text", media: "media", tool: "tool", piece: "communication" };
+export function stageHidden(stageKind, pref) {
+    const id = STAGE_KIND[stageKind];
+    return id && pref?.hidden?.includes(id) ? SHOW_KINDS.find((k) => k.id === id).name : null;
+}
+
+// What an output would leave out of a state: the name of the hidden kind on
+// air there (the console's Prévia says "A saída X não mostra …"), else null.
+export function hiddenOnAir(state, pref) {
+    if (!state || !pref?.hidden?.length) return null;
+    const k = SHOW_KINDS.find((x) => pref.hidden.includes(x.id) && (x.layer === "content" ? state.content?.kind === x.kind : Boolean(state[x.layer])));
+    return k ? k.name : null;
+}
+
 // Every output's factory name and icon: the rail's list (views.js) plus
 // Transmissão, which only exists on the network. "No row" means these.
 const META = Object.fromEntries(RAIL_VIEWS.map((v) => [v.key, { name: v.name, icon: v.icon }]));
@@ -50,8 +111,11 @@ const num = (v, fallback) => (v === "" || v == null || !Number.isFinite(Number(v
 // A row as settings: anything missing or out of range falls back to the default.
 export function normalizePref(row) {
     const content = PREF_CONTENTS.some((c) => c.id && c.id === row?.content) ? row.content : "";
+    const known = SHOW_KINDS.map((k) => k.id);
+    const hidden = Array.isArray(row?.hidden_kinds) ? known.filter((id) => row.hidden_kinds.includes(id)) : [];
     return {
         content,
+        hidden,
         scale: clamp(Math.round(num(row?.text_scale, 100)), SCALE_RANGE) / 100,
         margin: clamp(num(row?.margin_pct, 0), MARGIN_RANGE),
         showLogo: row?.show_logo !== false,
@@ -62,7 +126,7 @@ export function normalizePref(row) {
     };
 }
 
-export const isDefaultPref = (p) => !p.content && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
+export const isDefaultPref = (p) => !p.content && !p.hidden?.length && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
 
 // Palco and Pastor draw their own layouts; OutputPref.options says which
 // parts (Configurações › Telas e saídas › Ajustes). Missing keys are the
@@ -97,6 +161,7 @@ export const themeLook = (theme) => Object.fromEntries(LOOK_KEYS.filter((k) => t
 export function prefState(page, live, pref, theme = null) {
     let state = outputView(prefViewKey(page, pref), live);
     if (!state || !pref) return state;
+    state = hideKinds(state, pref.hidden);
     if (!pref.showLogo && state.logo?.visible) state = { ...state, logo: { ...state.logo, visible: false } };
     if (pref.themeId && theme) {
         if (state.content) state = { ...state, content: { ...state.content, style: { ...state.content.style, ...themeLook(theme) } } };

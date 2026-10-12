@@ -512,6 +512,30 @@ async function checkLayers(webContents, { live, outputs }) {
         result.outputPref = { created: Boolean(created && created.data), on: prefOn, off: prefOff };
         result.outputPrefOk = Boolean(created && created.data) && prefOn && prefOn.wrapped && prefOn.scale === 1.2 && prefOn.margin === 5 && prefOn.logo === false
             && prefOff && !prefOff.wrapped && prefOff.scale === 1 && prefOff.margin === 0 && prefOff.logo === true;
+        // Mostrar (hidden_kinds): the projector leaves the song's words out
+        // while they stay on air, and still shows the aviso rápido; deleting
+        // the row brings the words back.
+        // The words are read from the text node (textContent): the checks above
+        // set the text to capitals, which innerText would return.
+        const words = async (present, ms = 6000) => {
+            const end = Date.now() + ms;
+            while (Date.now() < end) {
+                const t = main ? await main.webContents.executeJavaScript(`[...document.querySelectorAll(".ks-text")].map((n) => n.textContent).join(" ")`).catch(() => "") : "";
+                if (t.includes("Letra sob a camada") === present) return true;
+                await sleep(250);
+            }
+            return false;
+        };
+        const hideBefore = await words(true);
+        const hide = await prefCall("create", [{ screen_path: "/Projection", hidden_kinds: ["lyrics"] }]).catch((err) => ({ error: String(err.message || err) }));
+        live.call("alert.show", { message: "Alerta com a letra escondida", type: "message" });
+        const hideGone = await words(false) && Boolean(main) && await waitText(main, "Alerta com a letra escondida");
+        const hideOnAir = live.get().content?.slides?.[0]?.text === "Letra sob a camada";
+        live.call("alert.clear");
+        if (hide && hide.data) await prefCall("delete", [hide.data.id]).catch(() => {});
+        const hideBack = await words(true);
+        result.outputHide = { created: Boolean(hide && hide.data), before: hideBefore, gone: hideGone, onAir: hideOnAir, back: hideBack };
+        result.outputHideOk = Boolean(hide && hide.data) && hideBefore && hideGone && hideOnAir && hideBack;
         live.call("logo.set", { visible: false, opacity: null, width: null });
         live.call("background.clear");
 
@@ -532,7 +556,7 @@ async function checkLayers(webContents, { live, outputs }) {
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
+        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
     return result;
 }
 
@@ -1911,6 +1935,30 @@ async function checkConsole(webContents, { live, outputs }) {
         result.nvAdvanced = await waitFor(() => (live.get().communication?.playlistIndex || 0) >= 1, 6000);
         live.call("clear");
 
+        // Mensagens prontas do Aviso rápido (AlertPreset): Guardar keeps the
+        // field's text as a row (and refuses it twice); a click puts it back
+        // in the field without touching the screens; a double click shows it
+        // at once; the cross deletes it.
+        const presetRows = async () => ((await js(`window.keryxDesktop.db.call("AlertPreset", "list", [])`)).data || []);
+        const presetChips = () => js(`[...document.querySelectorAll(".kx-preset-t")].map((b) => b.textContent)`);
+        await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); if (!el) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "Kids: chamar os pais da sala 2"); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
+        await click("button[title*='Guardar esta mensagem']");
+        result.presetKept = await waitFor(async () => (await presetRows()).some((r) => r.message === "Kids: chamar os pais da sala 2"));
+        result.presetListed = await waitFor(async () => (await presetChips()).includes("Kids: chamar os pais da sala 2"));
+        // Saved twice (other case and spacing): refused, still one row.
+        await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "  kids:  CHAMAR os pais da sala 2 "); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
+        result.presetNoDup = await js(`(() => { const b = document.querySelector("button[title*='já está guardada']"); return Boolean(b) && b.classList.contains("is-on"); })()`);
+        // A click puts it in the field; the screens do not change.
+        await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, ""); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
+        await click(".kx-preset-t", "Kids: chamar os pais");
+        result.presetFills = await waitFor(() => js(`document.querySelector('.console input[placeholder="Aviso para as telas"]').value === "Kids: chamar os pais da sala 2"`)) && !live.get().alert;
+        await dblclick(".kx-preset-t", "Kids: chamar os pais");
+        result.presetShown = await waitFor(() => live.get().alert && live.get().alert.message === "Kids: chamar os pais da sala 2" && live.get().alert.type === "message");
+        live.call("alert.clear");
+        await click(".kx-preset-x", "");
+        result.presetDeleted = await waitFor(async () => !(await presetRows()).some((r) => r.message === "Kids: chamar os pais da sala 2"));
+        for (const r of await presetRows()) await js(`window.keryxDesktop.db.call("AlertPreset", "delete", [${JSON.stringify(r.id)}])`).catch(() => {});
+
         // The Bíblia, the rest: word search ignoring accents and case, ↑/↓
         // through the results and Enter projecting from one (its chapter);
         // a quoted phrase; Comparar side by side; a note and a favourite as
@@ -2144,7 +2192,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
-        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced
+        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
         && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch && result.paletteClear && result.paletteRefHere && result.paletteRefAdded
         && result.svOpen && result.svPresence && result.svPrepared && result.svNotes && result.svSent && result.svNotesOffAir && result.svReveal && result.svEdited && result.svSetlist && result.svClosed
