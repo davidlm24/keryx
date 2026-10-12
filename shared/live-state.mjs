@@ -27,6 +27,13 @@ export const HIDEABLE_LAYERS = ["content", "background"];
 const hiddenOf = (value) => (Array.isArray(value) ? HIDEABLE_LAYERS.filter((k) => value.includes(k)) : []);
 const without = (s, layer) => ((s.hiddenLayers || []).includes(layer) ? { hiddenLayers: s.hiddenLayers.filter((k) => k !== layer) } : {});
 export const layerHidden = (state, layer) => Boolean(state?.hiddenLayers?.includes(layer));
+// The layers Camadas' padlock can hold (live.lockedLayers): with the Fundo
+// locked nothing changes it — no send, no pick, no clear, whoever sends —
+// and an item's own picture is not drawn over it.
+export const LOCKABLE_LAYERS = ["background"];
+const lockedOf = (value) => (Array.isArray(value) ? LOCKABLE_LAYERS.filter((k) => value.includes(k)) : []);
+export const layerLocked = (state, layer) => Boolean(state?.lockedLayers?.includes(layer));
+const LAYER_OPS = { background: ["background.set", "background.clear"] };
 const layerOrderOf = (value) => {
     if (!Array.isArray(value) || value.length !== LAYER_ORDER.length || !LAYER_ORDER.every((k) => value.includes(k))) return null;
     return [...value];
@@ -114,6 +121,8 @@ export function emptyState(now = Date.now()) {
         // Layers hidden by Camadas' eye (HIDEABLE_LAYERS). Sending a new item
         // shows its text again; choosing a Fundo shows the Fundo again.
         hiddenLayers: [],
+        // Layers held by Camadas' padlock (LOCKABLE_LAYERS).
+        lockedLayers: [],
         // What was on the main projector before each change, newest first,
         // so the operator can bring it back (through the preview, never
         // straight to air).
@@ -131,7 +140,7 @@ export function emptyState(now = Date.now()) {
 // outputs carrying on with what was already playing (the next video of a
 // list, the next aviso of a "Tocar todos").
 export const WHILE_LOCKED = new Set([
-    "screens.lock", "screen.set", "idle.set", "session.end", "layers.hide",
+    "screens.lock", "screen.set", "idle.set", "session.end", "layers.hide", "layers.lock",
     "clear", "content.clear", "media.clear", "video.clear", "audio.clear", "tool.clear", "communication.clear", "alert.clear", "background.clear",
     "media.advance", "audio.advance", "communication.advance",
 ]);
@@ -536,6 +545,14 @@ const OPS = {
         oneOf(layer, HIDEABLE_LAYERS, "Camada");
         return layerHidden(s, layer) ? null : { hiddenLayers: [...(s.hiddenLayers || []), layer] };
     },
+    // Camadas' padlock: hold a layer as it is, or let it go (works locked:
+    // it never puts anything on air).
+    "layers.lock": (s, { layer, locked }) => {
+        oneOf(layer, LOCKABLE_LAYERS, "Camada");
+        if (typeof locked !== "boolean") throw new LiveError("Travar a camada: diga sim ou não.");
+        if (layerLocked(s, layer) === locked) return null;
+        return { lockedLayers: locked ? [...(s.lockedLayers || []), layer] : s.lockedLayers.filter((k) => k !== layer) };
+    },
     "layers.show": (s, { layer }) => {
         oneOf(layer, HIDEABLE_LAYERS, "Camada");
         return layerHidden(s, layer) ? without(s, layer) : null;
@@ -577,6 +594,9 @@ export function applyOp(state, op, args = {}, now = Date.now()) {
     if (!Object.prototype.hasOwnProperty.call(OPS, op)) throw new LiveError(`Operação desconhecida: ${op}.`);
     // The one place the lock holds, whoever sends: the console, an output, a test.
     if (state.locked && !WHILE_LOCKED.has(op)) throw new LiveError("Telas travadas: destrave em Saídas para enviar.", 423);
+    for (const layer of state.lockedLayers || []) {
+        if (LAYER_OPS[layer]?.includes(op)) throw new LiveError("O Fundo está travado: destrave o cadeado em Camadas.", 423);
+    }
     if (args === null || args === undefined) args = {};
     if (!isPlainObject(args)) throw new LiveError("Argumentos inválidos.");
     const patch = OPS[op](state, args, now);
@@ -611,6 +631,7 @@ export function restoreState(saved, now = Date.now()) {
         ...restoreIdle(saved),
         layerOrder: layerOrderOf(saved.layerOrder) || [...LAYER_ORDER],
         hiddenLayers: hiddenOf(saved.hiddenLayers),
+        lockedLayers: lockedOf(saved.lockedLayers),
         history: Array.isArray(saved.history) ? saved.history.filter((h) => isPlainObject(h) && isPlainObject(h.data)).slice(0, MAX_HISTORY) : [],
     };
 }

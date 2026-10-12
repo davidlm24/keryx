@@ -86,6 +86,9 @@ export function backgroundDefaults(prefs, url) {
 // The arguments of an op that puts a background on the screens, with that
 // background's dim and blur filled in where the item has none of its own:
 //   content.show   style.background_image  -> style.background_dim/_blur
+//                  fundo (the item's background for the Fundo layer, a
+//                  picture or a clip) -> fundo.dim/blur
+//   background.set a picture or a clip     -> dim/blur
 //   communication.show  an aviso's (or each of a sequence's) background_image
 //                  -> its background_dim/_blur
 //   idle.set       the wallpaper (url)     -> dim/blur (idle.set keeps a given look)
@@ -99,10 +102,20 @@ export function withBackgroundDefaults(op, args, prefs) {
         if (next.background_blur == null && blur !== null) next.background_blur = blur;
         return next.background_dim === obj.background_dim && next.background_blur === obj.background_blur ? obj : next;
     };
+    // A picture or a clip for the Fundo layer (background.set, or an item's
+    // args.fundo): its dim and blur where it has none.
+    const fillBg = (bg) => {
+        if (!bg || (bg.kind !== "image" && bg.kind !== "video") || (bg.dim != null && bg.blur != null)) return bg;
+        const { dim, blur } = backgroundDefaults(prefs, bg.value);
+        const next = { ...bg, ...(bg.dim == null && dim !== null ? { dim } : {}), ...(bg.blur == null && blur !== null ? { blur } : {}) };
+        return next.dim === bg.dim && next.blur === bg.blur ? bg : next;
+    };
     if (op === "content.show") {
         const style = fill(args.style, "background_image");
-        return style === args.style ? args : { ...args, style };
+        const fundo = fillBg(args.fundo);
+        return style === args.style && fundo === args.fundo ? args : { ...args, style, ...(fundo ? { fundo } : {}) };
     }
+    if (op === "background.set") return fillBg(args);
     if (op === "communication.show") {
         const item = fill(args.item, "background_image");
         const playlist = Array.isArray(args.playlist) ? args.playlist.map((p) => fill(p, "background_image")) : args.playlist;

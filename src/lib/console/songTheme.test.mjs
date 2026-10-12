@@ -52,7 +52,9 @@ test("part_themes is cleaned: lower-case keys, blank and odd values dropped", ()
 test("a song following a theme takes its whole look; a deleted theme falls back to the song's own", () => {
     const linked = withSongThemes(content, { theme_id: "t-azul" }, THEMES);
     assert.equal(linked.style.font_family, "serif");
-    assert.equal(linked.style.background_image, "keryx-media://azul.webp");
+    // Its background goes to the Fundo layer when sent, not in the style.
+    assert.equal(linked.style.background_image, undefined);
+    assert.equal(linked.fundo.value, "keryx-media://azul.webp");
     assert.deepEqual(songTheme({ theme_id: "t-azul" }, THEMES), { theme: azul, missing: false });
     const gone = songTheme({ theme_id: "t-gone" }, THEMES);
     assert.deepEqual(gone, { theme: null, missing: true });

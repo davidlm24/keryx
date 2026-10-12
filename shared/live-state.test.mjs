@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, LiveError, OP_NAMES, WHILE_LOCKED,
+    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked,
 } from "./live-state.mjs";
 
 const T0 = 1_000_000;
@@ -273,6 +273,27 @@ test("Camadas' eye: a layer hidden stays on air; a new send or Fundo shows it ag
     const hiddenLocked = applyOp(applyOp(run([["content.show", song]]), "layers.hide", { layer: "content" }, T0), "screens.lock", { locked: true }, T0);
     assert.throws(() => applyOp(hiddenLocked, "layers.show", { layer: "content" }, T0), (e) => e.status === 423, "showing it again does not");
     assert.deepEqual(restoreState({ ...JSON.parse(JSON.stringify(s)), hiddenLayers: ["logo", "content", 3] }, T0).hiddenLayers, ["content"], "only known layers come back");
+});
+
+test("Camadas' padlock: a locked Fundo is held against every sender", () => {
+    const pic = { kind: "image", value: "keryx-media://a.webp" };
+    let s = run([["background.set", pic], ["layers.lock", { layer: "background", locked: true }]]);
+    assert.deepEqual(s.lockedLayers, ["background"]);
+    assert.ok(layerLocked(s, "background"));
+    assert.equal(applyOp(s, "layers.lock", { layer: "background", locked: true }, T0), s, "already locked: no change");
+    assert.throws(() => applyOp(s, "background.set", { kind: "color", value: "#000000" }, T0), (e) => e.status === 423, "nothing changes it");
+    assert.throws(() => applyOp(s, "background.clear", {}, T0), (e) => e.status === 423, "nor takes it off");
+    s = applyOp(s, "content.show", song, T0);
+    s = applyOp(s, "clear", {}, T0);
+    assert.equal(s.background.value, pic.value, "sends and Esc leave it alone");
+    assert.deepEqual(restoreState(JSON.parse(JSON.stringify(s)), T0).lockedLayers, ["background"], "survives a restart");
+    const screens = applyOp(s, "screens.lock", { locked: true }, T0);
+    assert.deepEqual(applyOp(screens, "layers.lock", { layer: "background", locked: false }, T0).lockedLayers, [], "works with the screens locked");
+    s = applyOp(s, "layers.lock", { layer: "background", locked: false }, T0);
+    assert.equal(applyOp(s, "background.clear", {}, T0).background, null, "unlocked: free again");
+    assert.throws(() => applyOp(s, "layers.lock", { layer: "content", locked: true }, T0), LiveError);
+    assert.throws(() => applyOp(s, "layers.lock", { layer: "background" }, T0), LiveError);
+    assert.deepEqual(restoreState({ ...JSON.parse(JSON.stringify(s)), lockedLayers: ["logo", "background", 1] }, T0).lockedLayers, ["background"]);
 });
 
 test("layer order: the operator stacks the look layers", () => {

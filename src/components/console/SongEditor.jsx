@@ -3,10 +3,11 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Empty, BackBtn } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
-import { applyOp, emptyState } from "@shared/live-state.mjs";
+import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
 import { songTheme, songParts, cleanPartThemes } from "@/lib/console/songTheme";
 import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
+import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { useBackgrounds, useLibrary } from "./useConsoleData";
 import { parseChords, slidesFromLyrics, reflowLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { chordLinesToInline, hasInlineChords, isChordLine } from "@/lib/chords";
@@ -108,7 +109,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     const doc = useMemo(() => {
         if (!song || !slides.length) return null;
         // Stamped like a send: the default theme dresses it when it follows.
-        try { return applyOp(emptyState(c.now), "content.show", c.stamp("content.show", { ...songContent({ ...song, slides }, {}, themes), kind: "lyrics" }), c.now); } catch { return null; }
+        try { return applyWithFundo(emptyState(c.now), "content.show", c.stamp("content.show", { ...songContent({ ...song, slides }, {}, themes), kind: "lyrics" }), c.now); } catch { return null; }
     }, [song, slides, themes, c.stamp]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Seguir o tema padrão, or this song's own look. While it follows, the

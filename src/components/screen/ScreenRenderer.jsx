@@ -1,7 +1,7 @@
 import React from "react";
 import "./screen.css";
 import GeneratorBackground from "./GeneratorBackground";
-import { mainLayer, currentSlide, toolTime, layerHidden, LAYER_ORDER } from "@shared/live-state.mjs";
+import { mainLayer, currentSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
@@ -112,7 +112,9 @@ function Background({ state, layer, preview, motion }) {
     // Camadas' eye on the Fundo: no picture at all, the item's own included.
     if (layerHidden(state, "background") && layer !== "media") return <div className="ks-black" />;
     const cs = layer === "content" ? slideStyle(state.content) : null;
-    const own = layer === "content" ? (cs.background_image || cssBackground(cs.background_color))
+    // The Fundo held by Camadas' padlock: a song's (or a part's) own
+    // picture is not drawn over it. Avisos and tools keep their own look.
+    const own = layer === "content" ? (layerLocked(state, "background") ? null : cs.background_image || cssBackground(cs.background_color))
         : layer === "tool" ? state.tool.style?.background_image
         : layer === "communication" ? (state.communication.item.background_image || cssBackground(state.communication.item.background_color))
         : null;

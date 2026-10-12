@@ -8,6 +8,7 @@ import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
 import { defaultTheme, withThemeDefaults } from "@/lib/console/themes";
+import { fundoOps } from "@/lib/console/backgroundSpec";
 import { useUser } from "@/hooks/useUser";
 
 // The console's own state around the live state. One console, always live:
@@ -40,8 +41,7 @@ export function useConsole() {
     // or a passage that has no look of its own, at send time: what is on
     // air never changes by itself (themes.js, withThemeDefaults).
     const theme = defaultTheme(useThemes());
-    const fundo = live?.background || null;
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, theme, { fundo }), look), bgPrefs), [theme, fundo, look, bgPrefs]);
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, theme), look), bgPrefs), [theme, look, bgPrefs]);
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 
@@ -97,7 +97,10 @@ export function useConsole() {
         try {
             if (!live?.session) await projection.startSession(ref.serviceId || null);
             if (stage.video) await callOp("video.show", { kind: "video", url: stage.video, title: stage.title });
-            await callOp(op, args);
+            // The item's own background (its own, its theme's, the default
+            // theme's) goes to the Fundo layer first, unless the padlock
+            // holds it (backgroundSpec.js fundoOps).
+            for (const [o, a] of fundoOps(op, args, live)) await callOp(o, a);
             if (ref.serviceItemId) await callOp("session.item", { itemId: ref.serviceItemId, index: ref.serviceItemIndex ?? null }).catch(() => {});
         } catch {
             return false;

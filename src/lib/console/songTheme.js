@@ -5,7 +5,8 @@
 // ([Refrão], [Ponte]…) may follow another theme (part_themes): the slides of
 // that part carry the whole look of their theme in `slide.style`, which the
 // renderer lays over the song's. Pure: no I/O, no React.
-import { themeStyle } from "./themes.js";
+import { themeStyle, themeBackgroundArgs } from "./themes.js";
+import { bgSpec } from "./backgroundSpec.js";
 
 // The part a slide belongs to: its "[Label]", or "Refrão" for a chorus with
 // no label of its own; "" when it has neither.
@@ -30,12 +31,14 @@ export function songParts(slides = []) {
 }
 
 // A theme as the content style the live state takes: its text look and its
-// picture, with the picture's darkening and blur. Empty values are left out
-// (the live state drops them anyway), so a part theme without a picture
-// keeps the song's.
+// picture, with the picture's darkening and blur (what a part's slides carry;
+// only a picture can ride a slide). Empty values are left out (the live
+// state drops them anyway), so a part theme without a picture keeps the song's.
 export function themeLookOf(theme) {
     if (!theme) return {};
-    const look = { ...themeStyle(theme), background_image: theme.background_image || "", background_dim: theme.background_dim, background_blur: theme.background_blur };
+    const spec = bgSpec(theme);
+    const pic = spec?.kind === "image" ? spec : null;
+    const look = { ...themeStyle(theme), background_image: pic?.value || "", background_dim: pic?.dim, background_blur: pic?.blur };
     return Object.fromEntries(Object.entries(look).filter(([, v]) => v !== "" && v != null));
 }
 
@@ -66,8 +69,12 @@ export function withSongThemes(content, song, themes) {
     let out = content;
     if (theme) {
         // The theme sets the whole look; the song's own fields are its
-        // fallback for when the theme is deleted.
-        out = { ...out, style: themeLookOf(theme) };
+        // fallback for when the theme is deleted. Its background (any kind)
+        // goes to the Fundo layer when the song is sent (args.fundo).
+        const { background_image: _i, background_dim: _d, background_blur: _b, ...look } = themeLookOf(theme);
+        const { fundo: _f, ...rest } = out;
+        const fundo = themeBackgroundArgs(theme);
+        out = { ...rest, style: look, ...(fundo ? { fundo } : {}) };
     }
     if (Object.keys(parts).length) {
         let changed = false;
