@@ -136,3 +136,13 @@ test("the Prévia says when the output it previews hides the prepared kind", () 
     assert.equal(hiddenOnAir(songLive, normalizePref({ hidden_kinds: ["alert"] })), "Aviso rápido");
     assert.equal(hiddenOnAir(songLive, normalizePref({ hidden_kinds: ["bible"] })), null);
 });
+
+test("an output with a theme of its own ignores the song parts' themes", () => {
+    const withParts = { ...live, content: { ...live.content, slides: [{ text: "Refrão", style: { font_family: "serif", background_image: "keryx-media://parte.webp" } }] } };
+    const theme = { id: "t1", font_family: "mono", text_color: "#00ff00" };
+    const s = prefState("/Projection", withParts, normalizePref({ theme_id: "t1" }), theme);
+    assert.equal(s.content.slides[0].style, undefined);
+    assert.equal(s.content.style.font_family, "mono");
+    // Without an output theme the part keeps its look.
+    assert.equal(prefState("/Projection", withParts, normalizePref({})).content.slides[0].style.font_family, "serif");
+});

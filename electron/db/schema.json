@@ -1537,6 +1537,14 @@
         "background_image": {
           "type": "text"
         },
+        "theme_id": {
+          "type": "text",
+          "default": ""
+        },
+        "part_themes": {
+          "type": "json",
+          "default": {}
+        },
         "lines_per_slide": {
           "type": "integer"
         },

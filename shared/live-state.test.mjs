@@ -432,3 +432,17 @@ test("the idle wallpaper takes a dim and a blur; a new wallpaper starts without 
     assert.deepEqual([back.idleDim, back.idleBlur], [0.6, 20], "survives a restart");
     assert.deepEqual([restoreState({ idle: "logo" }, T0).idleDim, emptyState(T0).idleBlur], [null, null]);
 });
+
+test("a slide may carry its part's own look (song themes): sanitized like the content's style", () => {
+    const s = applyOp(emptyState(1), "content.show", { title: "M", slides: [
+        { text: "Verso", label: "Verso" },
+        { text: "Refrão", label: "Refrão", style: { font_family: "serif", background_image: "keryx-media://a.webp", background_dim: 0.3, text_box: "", bogus: "x" } },
+        { text: "Vazio", style: {} },
+    ] }, 1);
+    assert.equal(s.content.slides[0].style, undefined);
+    assert.deepEqual(s.content.slides[1].style, { font_family: "serif", background_image: "keryx-media://a.webp", background_dim: 0.3 });
+    assert.equal(s.content.slides[2].style, undefined);
+    assert.throws(() => applyOp(emptyState(1), "content.show", { title: "M", slides: [{ text: "x", style: "azul" }] }, 1), /Estilo inválido/);
+    // Out of range is held to the range, as in the content style.
+    assert.equal(applyOp(emptyState(1), "content.show", { title: "M", slides: [{ text: "x", style: { background_dim: 5 } }] }, 1).content.slides[0].style.background_dim, 0.9);
+});

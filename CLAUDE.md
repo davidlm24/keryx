@@ -45,7 +45,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   with `useNoticeAdvance`. Escola bíblica materials go on air as ordinary
   stages (`stageFromMaterial`; a quiz is question + answer slides; teacher
   notes ride in `content.stage`, never on the projector). What a song or
-  passage puts on screen is `src/lib/console/content.js`.
+  passage puts on screen is `src/lib/console/content.js`. A song can follow
+  a theme (`Song.theme_id`) and each labelled part of its lyrics another
+  (`Song.part_themes`, keyed by the part's name in lower case): resolved when
+  the stage is built (`songTheme.js`, so `stageFromSong`/`songContent` take
+  the themes), the part's look rides in `slide.style` and the renderer lays
+  it over the content's; an output with its own theme drops it.
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built
   on the design system in `docs/design-system/` (tokens and `kx-` classes,

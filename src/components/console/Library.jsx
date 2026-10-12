@@ -166,16 +166,16 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                 title={s.title}
                                 meta={[s.artist, s.song_key, s.duration && mmss(s.duration), s.audio_url && "playback"].filter(Boolean).join(" · ")}
                                 state={state(`song:${s.id}`)}
-                                onClick={() => onPrepare(stageFromSong(s))}
-                                onDoubleClick={onGo && (() => onGo(stageFromSong(s)))}
+                                onClick={() => onPrepare(stageFromSong(s, {}, data.themes))}
+                                onDoubleClick={onGo && (() => onGo(stageFromSong(s, {}, data.themes)))}
                                 onContextMenu={(e) => menu(e, { title: s.title, items: [
-                                    { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromSong(s)) },
+                                    { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromSong(s, {}, data.themes)) },
                                     onAddSong && { label: "Adicionar à setlist", icon: "plus", onSelect: () => onAddSong(s) },
                                     onEditSong && { label: "Editar", icon: "edit", onSelect: () => onEditSong(s.id) },
                                     { label: s.is_favorite ? "Tirar dos favoritos" : "Favoritar", icon: "star", onSelect: () => toggleFav(s) },
-                                    onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromSong(s)) },
+                                    onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) },
                                 ] })}
-                                dragProps={dragProps(stageFromSong(s))}
+                                dragProps={dragProps(stageFromSong(s, {}, data.themes))}
                                 actions={<>
                                     <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
                                     {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música" aria-label="Editar"><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>}

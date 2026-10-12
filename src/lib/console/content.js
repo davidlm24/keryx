@@ -2,6 +2,7 @@
 // content.show (shared/live-state.mjs), used by stage.js and the song editor.
 import { songSlidesFor } from "@/lib/songImport";
 import { getBibleProjectionStyle } from "@/utils/bibleProjectionStyle";
+import { withSongThemes } from "@/lib/console/songTheme";
 
 // A song's audio_url may be its video clip (sent to the video screen) or a
 // playback track (played by the main projector).
@@ -10,9 +11,11 @@ export const isVideoUrl = (url) => Boolean(url) && (url.includes(".mp4") || url.
 // What a Song row puts on screen (projection.showLyrics arguments). The
 // slides are stripped of inline chords (songSlidesFor); when the lyrics
 // carry them, their chorded twins ride in stage.chordedSlides for the Palco.
-export function songContent(song, ref = {}) {
+// `themes` (ProjectionTheme rows): the song's theme and its parts' themes
+// apply (songTheme.js); without them the song shows its own look.
+export function songContent(song, ref = {}, themes = []) {
     const built = songSlidesFor(song);
-    return {
+    return withSongThemes({
         title: song.title || "",
         artist: song.artist || "",
         slides: built.slides,
@@ -33,7 +36,7 @@ export function songContent(song, ref = {}) {
             ...(built.chordedSlides ? { chordedSlides: built.chordedSlides } : {}),
         },
         ref: { songId: song.id || null, ...ref },
-    };
+    }, song, themes);
 }
 
 // What a Bible passage (a BiblePassage row or verses picked in the Bíblia)

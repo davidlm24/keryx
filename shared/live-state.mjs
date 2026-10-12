@@ -197,6 +197,12 @@ function slide(value) {
     if (value.label) out.label = text(value.label, "Rótulo do slide", { max: 200 });
     // A Bible chapter sent whole carries each verse's own reference.
     if (value.ref) out.ref = text(value.ref, "Referência do slide", { max: 200 });
+    // A song part with a theme of its own (src/lib/console/songTheme.js):
+    // its look, laid over the content's style by the renderer.
+    if (value.style !== undefined && value.style !== null) {
+        const own = style(value.style);
+        if (Object.keys(own).length) out.style = own;
+    }
     return out;
 }
 

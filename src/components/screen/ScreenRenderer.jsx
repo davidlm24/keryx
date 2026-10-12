@@ -93,8 +93,16 @@ const isUrl = (v) => typeof v === "string" && (v.startsWith("http") || v.startsW
 // The background under the content: the item's own (a song's image, a tool's
 // or piece's), else the background layer, else the default gradient. Media
 // and communication pieces with their own imagery paint over it.
+// The content's style on the slide on screen: a song part with a theme of its
+// own (slide.style, src/lib/console/songTheme.js) lays its look over the song's.
+const slideStyle = (content) => {
+    const own = currentSlide(content)?.style;
+    return own ? { ...(content.style || {}), ...own } : content.style || {};
+};
+
 function Background({ state, layer }) {
-    const own = layer === "content" ? (state.content.style?.background_image || cssBackground(state.content.style?.background_color))
+    const cs = layer === "content" ? slideStyle(state.content) : null;
+    const own = layer === "content" ? (cs.background_image || cssBackground(cs.background_color))
         : layer === "tool" ? state.tool.style?.background_image
         : layer === "communication" ? (state.communication.item.background_image || cssBackground(state.communication.item.background_color))
         : null;
@@ -105,7 +113,7 @@ function Background({ state, layer }) {
         if (isUrl(bg)) {
             // The item's own picture, with the dim and blur its background
             // brought from Fundos (style.background_dim/_blur).
-            const st = layer === "content" ? state.content.style : layer === "tool" ? state.tool.style : layer === "communication" ? state.communication.item : null;
+            const st = layer === "content" ? cs : layer === "tool" ? state.tool.style : layer === "communication" ? state.communication.item : null;
             const look = bgLook({ kind: "image", dim: st?.background_dim, blur: st?.background_blur });
             return <><div className="ks-bg-img" style={{ backgroundImage: `url(${bg})`, ...(st?.background_blur ? { filter: look.image.filter, transform: look.image.transform } : {}) }} />{look.dim}</>;
         }
@@ -179,7 +187,7 @@ function verseNodes(text) {
 }
 
 function Content({ content }) {
-    const style = content.style || {};
+    const style = slideStyle(content);
     const slide = currentSlide(content) || { text: "" };
     const size = SIZES.includes(style.font_size) ? style.font_size : "large";
     const align = style.text_align || "center";
