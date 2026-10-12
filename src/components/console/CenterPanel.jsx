@@ -11,7 +11,7 @@ import { captionParts } from "@/lib/console/caption";
 import { OUTPUT_VIEWS, SCREEN_PAGES, nextItems, previewSession } from "@/lib/network/views";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
-import { prefState, prefVars, pastorOptions } from "@/lib/outputPrefs";
+import { prefState, prefVars, pastorOptions, stageHidden } from "@/lib/outputPrefs";
 import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
 
@@ -157,6 +157,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                     <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         {prev && !railPage && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
+                        {prev && !railPage && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A saída {railName} não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Ajustes da saída › Mostrar)</div>}
                         {prev && railPage?.key === "/StageView" && (pdoc?.content
                             ? <StageScreen content={pdoc.content} nowMs={now} embed opts={railPref.options} scale={railPref.scale} />
                             : <div className="kx-screen-empty">A saída Palco não mostra este item</div>)}

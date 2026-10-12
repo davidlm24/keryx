@@ -42,6 +42,10 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
             {!preview && layer === "content" && state.content.audio && (
                 <audio key={state.content.startedAt} src={state.content.audio} autoPlay className="hidden" />
             )}
+            {/* An output that hides the song's words (OutputPref Mostrar) still plays its track. */}
+            {!preview && state.track?.src && !(layer === "content" && state.content?.audio) && (
+                <audio key={state.track.startedAt} src={state.track.src} autoPlay className="hidden" />
+            )}
             {state.logo?.visible && logoUrl && layer !== "media" && (
                 <div className="ks-z" style={{ zIndex: z("logo") }}><img className={`ks-logo ks-${state.logo.size} ks-${state.logo.corner}`} style={logoLook(state.logo)} src={logoUrl} alt="" /></div>
             )}
