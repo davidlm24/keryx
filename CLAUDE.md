@@ -47,7 +47,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   notes ride in `content.stage`, never on the projector). What a song or
   passage puts on screen is `src/lib/console/content.js`; the default theme
   dresses one with no look of its own when it is sent (`stamp` in
-  useConsole.js, `withThemeDefaults` in themes.js), never what is on air.
+  useConsole.js, `withThemeDefaults` in themes.js), never what is on air. A song can
+  also follow one theme of its own (`Song.theme_id`: the whole look, no
+  default theme) and each labelled part of its lyrics another
+  (`Song.part_themes`, keyed by the part's name in lower case): resolved when
+  the stage is built (`songTheme.js`, so `stageFromSong`/`songContent` take
+  the themes); the part's look rides in `slide.style`, which the renderer
+  lays over the content's, and an output with its own theme drops it.
+
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built
   on the design system in `docs/design-system/` (tokens and `kx-` classes,

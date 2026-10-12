@@ -5,6 +5,7 @@ import { Panel, Btn, IconBtn, Field, Seg, Empty, BackBtn } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
+import { songTheme, songParts, cleanPartThemes } from "@/lib/console/songTheme";
 import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
 import { useBackgrounds, useLibrary } from "./useConsoleData";
 import { parseChords, slidesFromLyrics, reflowLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
@@ -26,7 +27,7 @@ const THUMBS_KEY = "keryx.console.editor.thumbs";
 const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); return ["s", "m", "l"].includes(v) ? v : "m"; } catch { return "m"; } };
 const splitOf = (n) => (Number(n) === 2 || Number(n) === 4 ? String(Number(n)) : "0");
 
-const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", slides: [], font_size: "large", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false };
+const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "large", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false };
 const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
 // The song editor (canvas artboard 16), inside the console: song data and
@@ -107,8 +108,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     const doc = useMemo(() => {
         if (!song || !slides.length) return null;
         // Stamped like a send: the default theme dresses it when it follows.
-        try { return applyOp(emptyState(c.now), "content.show", c.stamp("content.show", { ...songContent({ ...song, slides }), kind: "lyrics" }), c.now); } catch { return null; }
-    }, [song, slides, c.stamp]); // eslint-disable-line react-hooks/exhaustive-deps
+        try { return applyOp(emptyState(c.now), "content.show", c.stamp("content.show", { ...songContent({ ...song, slides }, {}, themes), kind: "lyrics" }), c.now); } catch { return null; }
+    }, [song, slides, themes, c.stamp]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Seguir o tema padrão, or this song's own look. While it follows, the
     // controls show the theme's look; touching one makes the look its own,
@@ -118,7 +119,6 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     const lookOf = (t) => { const s = themeStyle(t); return { font_family: s.font_family, font_size: s.font_size, text_effect: s.text_effect, text_color: s.text_color, text_color_2: s.text_color_2 }; };
     const shown = following && def ? { ...song, ...lookOf(def) } : song;
     const setLook = (patch) => set({ ...(following && def ? lookOf(def) : {}), ...patch, style_mode: "own" });
-    const setMode = (mode) => (mode === "theme" ? set({ style_mode: "theme" }) : setLook({}));
     const applyTheme = (id) => {
         const t = themes.find((x) => x.id === id);
         if (!t) return;
@@ -309,6 +309,11 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     if (error) return <div className="col center"><Panel title="Editor de música"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div style={{ padding: "var(--space-2)" }}><Btn onClick={onClose}>Voltar ao console</Btn></div></Panel></div>;
     if (!song) return <div className="col center"><Panel title="Editor de música"><Empty title="Abrindo…" /></Panel></div>;
 
+    // The song's theme (songTheme.js): a theme it follows hides the look
+    // controls; each labelled part of the lyrics can follow another.
+    const look = songTheme(song, themes);
+    const parts = songParts(slides);
+    const partThemes = cleanPartThemes(song.part_themes);
     const media = song.audio_url;
     const video = isVideoUrl(media);
     const bg = song.background_image;
@@ -343,10 +348,26 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                     <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Estilo desta música</span></div>
                     <div className="frm">
                         <span className="k">Estilo</span>
-                        <Seg small label="Estilo da música" value={following ? "theme" : "own"} onChange={setMode}
-                            options={[["theme", def ? `Tema padrão · ${def.name}` : "Tema padrão", { title: def ? "Vai ao ar com o tema padrão (Configurações › Aparência › Temas)" : "Sem tema padrão: vai ao ar com o estilo de fábrica" }], ["own", "Próprio"]]} />
-                        <span className="k">Tema</span>
-                        <select className="cfg-select" value="" onChange={(e) => applyTheme(e.target.value)} aria-label="Aplicar um tema" disabled={!themes.length}><option value="">{themes.length ? "Aplicar um tema…" : "Nenhum tema"}</option>{themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+                        <select className="cfg-select" aria-label="Estilo da música"
+                            value={look.theme || look.missing ? `t:${song.theme_id}` : following ? "default" : "own"}
+                            onChange={(e) => { const v = e.target.value; if (v.startsWith("t:")) set({ theme_id: v.slice(2) }); else if (v === "default") set({ theme_id: "", style_mode: "theme" }); else setLook({ theme_id: "" }); }}
+                            title="Tema padrão: vai ao ar com o tema padrão (Configurações › Aparência › Temas). Um tema: a música segue esse tema inteiro. Próprio: o estilo abaixo">
+                            <option value="default">{def ? `Tema padrão · ${def.name}` : "Tema padrão (estilo de fábrica)"}</option>
+                            {themes.filter((t) => !def || t.id !== def.id).map((t) => <option key={t.id} value={`t:${t.id}`}>Tema · {t.name}</option>)}
+                            {def && <option value={`t:${def.id}`}>Tema · {def.name} (sempre este)</option>}
+                            {look.missing && <option value={`t:${song.theme_id}`} disabled>(tema excluído)</option>}
+                            <option value="own">Próprio</option>
+                        </select>
+                    </div>
+                    {look.theme && (
+                        <div className="ed-pad ed-linked">
+                            <span className="kx-meta">Segue o tema <b>{look.theme.name}</b>: mudar o tema muda esta música.</span>
+                            <Btn small onClick={() => { applyTheme(look.theme.id); set({ theme_id: "" }); }} title="Traz a fonte, as cores e o fundo do tema para o visual próprio, para ajustar aqui">Copiar para o visual próprio</Btn>
+                        </div>
+                    )}
+                    {look.missing && <div className="ed-pad"><span className="kx-meta kx-warn">O tema desta música foi excluído: ela usa o visual próprio abaixo.</span></div>}
+                    {!look.theme && <>
+                    <div className="frm">
                         <span className="k">Fonte</span>
                         <select className="cfg-select" value={shown.font_family || "sans"} onChange={(e) => setLook({ font_family: e.target.value })} aria-label="Fonte">{FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                         <span className="k">Tamanho</span><Seg small value={shown.font_size || "large"} onChange={(v) => setLook({ font_size: v })} options={SIZES} />
@@ -364,7 +385,29 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                         {bg && !galleryBgs.some((b) => b.url === bg) && <button type="button" className="kx-t is-on" title="Fundo deste item"><img src={bg} alt="" /></button>}
                         {galleryBgs.map((b) => <button type="button" key={b.source} className={`kx-t ${bg === b.url ? "is-on" : ""}`} onClick={() => set({ background_image: b.url })} aria-label={b.name} title={b.name}><img src={b.url} alt="" loading="lazy" /></button>)}
                     </div></div>
+                    </>}
                     <input ref={bgFileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; upload(f, "background_image"); }} />
+                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Tema por parte <span className="kx-count">· o refrão com outro fundo, por exemplo</span></span></div>
+                    {!parts.length && <div className="ed-pad"><span className="kx-meta">Marque as partes na letra com [Refrão], [Ponte]… (os botões acima da letra) para dar um tema a cada uma.</span></div>}
+                    {parts.length > 0 && (
+                        <div className="frm">
+                            {parts.map((p) => {
+                                const id = partThemes[p.key] || "";
+                                const gone = id && !themes.some((t) => t.id === id);
+                                return (
+                                    <React.Fragment key={p.key}>
+                                        <span className="k" title={`${p.slides} ${p.slides === 1 ? "slide" : "slides"}`}>{p.name}</span>
+                                        <select className="cfg-select" value={id} aria-label={`Tema de ${p.name}`}
+                                            onChange={(e) => { const next = { ...partThemes }; if (e.target.value) next[p.key] = e.target.value; else delete next[p.key]; set({ part_themes: next }); }}>
+                                            <option value="">Como a música</option>
+                                            {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                            {gone && <option value={id} disabled>(tema excluído)</option>}
+                                        </select>
+                                    </React.Fragment>
+                                );
+                            })}
+                        </div>
+                    )}
                 </Panel>
             </div>
             <div className="kx-gap" />

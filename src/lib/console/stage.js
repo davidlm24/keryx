@@ -9,8 +9,8 @@ import { passageOf, chapterOf, chapterOnAir } from "@/lib/console/bibleVerses";
 
 const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
 
-export function stageFromSong(song, ref = {}) {
-    const content = songContent(song, ref);
+export function stageFromSong(song, ref = {}, themes = []) {
+    const content = songContent(song, ref, themes);
     return { kind: "lyrics", id: `song:${song.id}`, title: song.title || "", meta: [song.artist, song.song_key, song.bpm && `${song.bpm} bpm`].filter(Boolean).join(" · "), slides: content.slides, index: 0, op: "content.show", args: { ...content, kind: "lyrics" }, video: isVideoUrl(song.audio_url) ? song.audio_url : null };
 }
 

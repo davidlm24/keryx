@@ -4,6 +4,7 @@
 // (withThemeDefaults, themes.js); it never reaches the live state.
 import { songSlidesFor } from "../songImport.js";
 import { followsTheme, isFactoryLook } from "./themes.js";
+import { withSongThemes, songTheme } from "./songTheme.js";
 
 // A song's audio_url may be its video clip (sent to the video screen) or a
 // playback track (played by the main projector).
@@ -12,9 +13,11 @@ export const isVideoUrl = (url) => Boolean(url) && (url.includes(".mp4") || url.
 // What a Song row puts on screen (projection.showLyrics arguments). The
 // slides are stripped of inline chords (songSlidesFor); when the lyrics
 // carry them, their chorded twins ride in stage.chordedSlides for the Palco.
-export function songContent(song, ref = {}) {
+// `themes` (ProjectionTheme rows): the song's theme and its parts' themes
+// apply (songTheme.js); without them the song shows its own look.
+export function songContent(song, ref = {}, themes = []) {
     const built = songSlidesFor(song);
-    return {
+    return withSongThemes({
         title: song.title || "",
         artist: song.artist || "",
         slides: built.slides,
@@ -35,8 +38,10 @@ export function songContent(song, ref = {}) {
             ...(built.chordedSlides ? { chordedSlides: built.chordedSlides } : {}),
         },
         ref: { songId: song.id || null, ...ref },
-        inherit: { look: followsTheme(song), background: !song.background_image },
-    };
+        // A song following a theme of its own takes that theme whole: the
+        // default theme dresses nothing (the church's transition still fills).
+        inherit: songTheme(song, themes).theme ? { look: false, background: false } : { look: followsTheme(song), background: !song.background_image },
+    }, song, themes);
 }
 
 // What a Bible passage (a BiblePassage row or verses picked in the Bíblia)

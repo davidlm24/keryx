@@ -536,6 +536,24 @@ async function checkLayers(webContents, { live, outputs }) {
         const hideBack = await words(true);
         result.outputHide = { created: Boolean(hide && hide.data), before: hideBefore, gone: hideGone, onAir: hideOnAir, back: hideBack };
         result.outputHideOk = Boolean(hide && hide.data) && hideBefore && hideGone && hideOnAir && hideBack;
+        // Tema por parte (songTheme.js): a slide carrying its part's look is
+        // drawn with it on the projector; the slide before keeps the song's.
+        live.call("content.show", { title: "Partes", style: { text_color: "#ffffff", font_family: "sans" }, slides: [
+            { text: "Verso da parte", label: "Verso" },
+            { text: "Refrão da parte", label: "Refrão", style: { text_color: "#ffe9a8", font_family: "serif" } },
+        ] });
+        const partLook = () => (main ? main.webContents.executeJavaScript(`(() => { const t = document.querySelector(".ks-text"); return t ? { text: t.textContent, color: getComputedStyle(t).color, serif: /serif/.test(getComputedStyle(t).fontFamily) && !/sans/i.test(getComputedStyle(t).fontFamily.split(",")[0]) } : null; })()`).catch(() => null) : null);
+        await waitText(main, "Verso da parte");
+        const partVerse = await partLook();
+        live.call("content.goTo", { index: 1 });
+        let partChorus = null;
+        for (const end = Date.now() + 4000; Date.now() < end; await sleep(250)) {
+            partChorus = await partLook();
+            if (partChorus && partChorus.text === "Refrão da parte") break;
+        }
+        result.partTheme = { verse: partVerse, chorus: partChorus };
+        result.partThemeOk = Boolean(partVerse && partVerse.color === "rgb(255, 255, 255)" && partChorus && partChorus.text === "Refrão da parte" && partChorus.color === "rgb(255, 233, 168)" && partChorus.serif);
+        live.call("content.clear");
         live.call("logo.set", { visible: false, opacity: null, width: null });
         live.call("background.clear");
 
@@ -556,7 +574,7 @@ async function checkLayers(webContents, { live, outputs }) {
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
+        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.partThemeOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
     return result;
 }
 

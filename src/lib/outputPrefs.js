@@ -187,7 +187,8 @@ export function prefState(page, live, pref, theme = null) {
     state = hideKinds(state, pref.hidden);
     if (!pref.showLogo && state.logo?.visible) state = { ...state, logo: { ...state.logo, visible: false } };
     if (pref.themeId && theme) {
-        if (state.content) state = { ...state, content: { ...state.content, style: { ...state.content.style, ...themeLook(theme) } } };
+        // The output's theme wins over the song's parts too: their own looks go.
+        if (state.content) state = { ...state, content: { ...state.content, style: { ...state.content.style, ...themeLook(theme) }, slides: (state.content.slides || []).map(({ style: _own, ...s }) => s) } };
         if (theme.background_image) {
             const look = Object.fromEntries([["fit", theme.background_fit], ["dim", theme.background_dim], ["blur", theme.background_blur]].filter(([, v]) => v != null && v !== ""));
             state = { ...state, background: { kind: "image", value: theme.background_image, title: theme.name || "", ...look } };
