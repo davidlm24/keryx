@@ -1216,11 +1216,16 @@ async function checkConsole(webContents, { live, outputs }) {
             : await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.player .kx-meter b')]; return b.length === 2 && b.every((x) => parseFloat(x.style.height) > 40); })()"), 10000);
         result.duration = await waitFor(() => js("(document.querySelector('.player .pl-left small') || {}).textContent === '0:20'"), 6000);
         result.shotPlayer = await shot("player");
+        // The test tone lasts 20 s and the meter checks above can take most
+        // of that on a busy computer: back to the start first, so it is
+        // still on air for Pausar and the volume.
+        await click(".player button", "Voltar ao início");
+        await waitFor(() => (live.get().audio?.playback?.position ?? 99) < 5, 3000);
         await click(".player button", "Pausar");
-        result.audioPaused = await waitFor(() => live.get().audio.playback.paused);
+        result.audioPaused = await waitFor(() => live.get().audio?.playback?.paused === true);
         await click(".player button", "Tocar");
         await click(".player .pl-vol button", "");
-        result.audioMuted = await waitFor(() => live.get().audio.playback.volume === 0);
+        result.audioMuted = await waitFor(() => live.get().audio?.playback?.volume === 0);
         // The meters read the system output, so muting the element empties them.
         result.metersFollowVolume = result.meterState !== "on"
             ? "sem loopback nesta máquina"
