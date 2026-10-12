@@ -33,6 +33,23 @@
       "default": "",
       "description": "O que a saída mostra: vazio é o padrão da página"
     },
+    "hidden_kinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "lyrics",
+          "bible",
+          "text",
+          "media",
+          "tool",
+          "communication",
+          "alert"
+        ]
+      },
+      "default": [],
+      "description": "Tipos que esta saída não mostra (letras, Bíblia, texto, imagens e vídeos, relógio e timer, avisos, aviso rápido); vazio mostra tudo o que a página mostra"
+    },
     "text_scale": {
       "type": "number",
       "default": 100,
