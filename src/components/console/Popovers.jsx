@@ -16,7 +16,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 
 // The KERYX menu: pages that stay outside the console, the service picker,
 // Ver (modules) and the layout reset.
-export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow }) {
+export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow }) {
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     if (open === "ver") {
         return (
@@ -32,6 +32,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                     <MenuItem key={key} checked={densityOf(layout) === key} onClick={() => setLayout({ ...layout, density: key })} title={key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item"}>{name}</MenuItem>
                 ))}
                 <div className="kx-menu-sep" />
+                <MenuItem icon="grip" checked={editing} onClick={onEditLayout} title="Mudar as colunas e os cards de lugar (arrastar ou setas) · Esc conclui">{editing ? "Concluir a edição" : "Editar layout"}</MenuItem>
                 <MenuItem onClick={() => { restoreLayout(); setOpen(null); }}>Restaurar layout</MenuItem>
                 <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos do teclado</MenuItem>
             </div>

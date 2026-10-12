@@ -7,6 +7,7 @@ import "@ds/components/bundle.js";
 const EXTRA = {
     bell: '<path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 2h-14z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
     download: '<path d="M12 4.5v10M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19.5h14"/>',
+    "chevron-up": '<path d="m6.5 14.5 5.5-5.5 5.5 5.5"/>',
 };
 
 export default function Icon({ name, size = 16, className = "" }) {

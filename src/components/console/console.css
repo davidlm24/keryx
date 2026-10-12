@@ -204,32 +204,54 @@
 /* Camadas: a drawer over the source columns, so the Programa stays in view while editing what is on air. */
 .console .drawer { position: absolute; z-index: 32; top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); left: var(--gutter); bottom: 40px; width: 360px; display: flex; flex-direction: column; gap: var(--gutter); }
 .console .drawer > .kx-panel { flex: 1; box-shadow: var(--popover); }
-/* The Bible picker: a band on top of the reading, every book and every
-   chapter of the book at once, so nothing needs scrolling to be found. */
-.console .col.center > .bband.bible-cols { flex: 1; min-height: 0; margin-bottom: 0; }
+/* The Programa first or in the middle: the drawer opens on its right when there is more room there. */
+.console .drawer.is-right { left: auto; right: var(--gutter); }
+
+/* Ver › Editar layout (src/lib/console/arrange.js, Arrange.jsx): a bar on
+   top of each column (grip, name, ◀ ▶), a grip and ▲ ▼ in stacked cards'
+   headers, the panels' content veiled so a click never prepares or sends
+   while things move, and a line where a dragged column or card would land. */
+.console .arr-banner { background: var(--brand-tint); color: var(--fg-1); box-shadow: inset 0 var(--bar) 0 var(--brand); }
+.console .arr-bar { flex: none; height: 32px; display: flex; align-items: center; gap: 2px; margin-bottom: var(--gutter); padding: 0 var(--space-1) 0 var(--space-2); border-radius: var(--radius-panel, var(--radius-control)); background: var(--brand-tint); box-shadow: inset 0 0 0 1px var(--brand); color: var(--fg-1); font-size: 12px; font-weight: 500; }
+.console .arr-bar .arr-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .arr-grip { flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--fg-2); cursor: grab; touch-action: none; }
+.console .arr-grip:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .arr-grip:active { cursor: grabbing; }
+.console .arr-lead { display: inline-flex; align-items: center; gap: 0; margin-right: var(--space-1); }
+.console .col.is-moving { opacity: .55; }
+.console.is-editing .main .kx-panel-b { pointer-events: none; opacity: .5; transition: opacity var(--duration-fast) var(--ease-out); }
+.console.is-editing .main .kx-split { pointer-events: auto; }
+.console .arr-line { position: fixed; z-index: 40; border-radius: 1px; background: var(--brand); pointer-events: none; }
+/* The Bíblia in three columns (owner layout 2026-10-12): Livro, Capítulo
+   and Versículo stacked, the chosen text, what is on air. Their order and the
+   side widths are the operator's (Ver › Editar layout). Each picker card
+   scrolls on its own; Versículos takes what is left. */
+.console .main > .col.center.bible-center { min-width: 360px; }
 .console .col.bible-center { container: bible / inline-size; }
-/* Livros | Capítulos (leitura embaixo) | Versículos, uma linha entre as
-   colunas (dono, 2026-10-11). The books and verses columns scroll on their
-   own; the chapters grid scrolls only for a Salmos-sized book. */
-.console .bb-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 176px minmax(0, 1fr) 84px; border-top: 1px solid var(--line); }
-.console .bb-col { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
-.console .bb-mid, .console .bb-verses { border-left: 1px solid var(--line); }
-.console .bb-books .bgrid { flex: 1; min-height: 0; overflow: auto; align-content: start; grid-template-columns: repeat(3, 1fr); padding: var(--space-1) var(--space-2); }
-.console .bible-center.names-full .bb-body { grid-template-columns: 208px minmax(0, 1fr) 84px; }
-.console .bible-center.names-full .bb-books .bgrid { grid-template-columns: 1fr; }
-@container bible (max-width: 820px) { .console .bb-body { grid-template-columns: 128px minmax(0, 1fr) 68px; } .console .bb-books .bgrid { grid-template-columns: repeat(2, 1fr); } }
-.console .bb-read { flex: 1; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
-.console .bb-read-h { flex-wrap: wrap; height: auto; min-height: 32px; row-gap: 2px; padding-top: 2px; padding-bottom: 2px; }
-.console .bb-read-b { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
-.console .bb-read-b > .reading { overflow: visible; }
-.console .bb-verses { padding-top: var(--space-1); }
-.console .bb-verses .bverses { flex: 1; min-height: 0; overflow: auto; padding: 0 var(--space-1) var(--space-1); }
-.console .bb-verses .verse-cells { grid-template-columns: repeat(2, 1fr); align-content: start; }
+.console .bible-pick { gap: var(--gutter); }
+.console .bible-pick > .kx-panel { flex: none; min-height: 0; }
+.console .bible-pick > .arr-card { flex: 0 1 auto; }
+.console .bible-pick > .arr-card > .kx-panel-b { overflow: auto; min-height: 0; }
+.console .bible-pick > .arr-card-books { max-height: 42%; }
+.console .bible-pick > .arr-card-chapters { max-height: 30%; }
+.console .bible-pick > .arr-card-verses { flex: 1 1 0; min-height: 96px; }
+.console .bpick-head .kx-panel-b { overflow: visible; }
+.console .bpick-head .bsrc { display: flex; height: 20px; padding: 0 var(--space-2); }
+.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .bible-pick.names-full .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.console .bpick-chapters .bchap { border-top: 0; padding-bottom: var(--space-2); }
+.console .bpick-chapters .chapters { max-height: none; overflow: visible; }
+.console .bpick-verses .bverses { padding: var(--space-1) var(--space-2) var(--space-2); }
+/* The text column: recent chapters, favourites and notes on top, the
+   reading (or Buscar, Comparar) below, scrolling. */
+.console .bread > .kx-panel-h { flex-wrap: wrap; height: auto; min-height: 32px; row-gap: 2px; padding-top: 2px; padding-bottom: 2px; }
+.console .bread > .kx-panel-b { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.console .bread-b { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.console .bread-b > .reading { overflow: visible; }
 /* The edition: installed here, from the internet (amber) or missing (amber). */
 .console .bsrc { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .console .bsrc.kx-warn { color: var(--warn-fg); }
 .console .bunavail-acts { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1); margin-top: var(--space-2); }
-.console .bband.bible-cols .kx-panel-b { overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .console .bgrid { display: grid; gap: 3px; }
 .console .bgrid .kx-book { height: 26px; font-size: 12px; }
 .console .bchap { flex: none; display: flex; flex-direction: column; align-items: stretch; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); }
@@ -251,12 +273,8 @@
 .console .verse-cells button:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .verse-cells button.is-prev { background: var(--prev-tint); color: var(--prev-fg); box-shadow: inset 0 0 0 1px var(--prev); }
 .console .verse-cells button.is-air { background: var(--air-tint); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
-@container bible (max-height: 760px) { .console .bible-center .bverses { display: none; } }
-/* Nomes: the books with their whole names (about 8 rows instead of 3); it
-   folds at the same height as the short codes, so choosing Nomes never
-   hides the books. */
-
-.console .bible-center.names-full .bgrid .kx-book { align-items: flex-start; padding: 0 6px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 26px; text-align: left; }
+/* Nomes: the books with their whole names, left-aligned. */
+.console .bible-pick.names-full .bgrid .kx-book { align-items: flex-start; padding: 0 6px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 26px; text-align: left; }
 .console .bband-lists { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); }
 .console .bband-lists > .kx-section { margin-right: var(--space-1); }
 .console .bchip { height: 24px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }
