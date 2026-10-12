@@ -1,6 +1,6 @@
 import React from "react";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
-import { captionParts } from "@/lib/console/caption";
+import { captionParts, airFor } from "@/lib/console/caption";
 import { typeLabel } from "@/lib/console/setlist";
 import "@/components/network/net.css";
 
@@ -27,6 +27,7 @@ export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasServ
     const content = live?.content || null;
     const slides = content?.slides || [];
     const index = content?.index || 0;
+    const itemFor = airFor(live, nowMs);
     const running = session?.startedAt ? Math.max(0, Math.floor((nowMs - session.startedAt) / 1000)) : null;
 
     return (
@@ -47,6 +48,7 @@ export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasServ
                     <span className={`net-section ${onAir ? "is-air" : ""}`}>No ar</span>
                     <b>{title}</b>
                     {pos && <span>{pos}</span>}
+                    {itemFor && <span className="np-since">há {itemFor}</span>}
                 </div>
                 <div className="np-mon">
                     <ScreenRenderer state={live} now={nowMs} logoUrl={logo} preview audio={false} />

@@ -132,3 +132,4 @@
 
 /* ---- Vídeo: the clip's name over the picture ---- */
 .net-vtitle { position: absolute; top: max(14px, 3vmin); left: 50%; transform: translateX(-50%); z-index: 10; pointer-events: none; padding: 1.2vmin 2.4vmin; border-radius: 999px; background: #000000a6; color: #fff; font-family: var(--font-sans); font-size: max(15px, 2.6vmin); font-weight: 600; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+.np-cap .np-since { font-variant-numeric: tabular-nums; color: var(--fg-3); }
