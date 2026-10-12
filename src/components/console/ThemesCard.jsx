@@ -3,7 +3,9 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn } from "./kx";
 import { ThemeThumb } from "./library/BackgroundLibrary";
-import { themeStyle, themeBackgroundArgs, defaultTheme } from "@/lib/console/themes";
+import { themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
+import { useContextMenu } from "./ContextMenu";
+import { updateUser } from "@/hooks/useUser";
 import { STYLE_KEYS, layerLocked } from "@shared/live-state.mjs";
 
 // A theme on what is on air, at once (the Temas card, Camadas' Restaurar):
@@ -42,11 +44,24 @@ export default function ThemesCard({ c, themes, songs, onEdit, onNew }) {
     // The one ringed: the last applied, else the song's own, else the default.
     const current = themes.find((t) => t.id === c.themeId) || songTheme || def;
     const saveForSong = async (themeId) => {
+        const t = themes.find((x) => x.id === themeId);
         try {
             await keryx.entities.Song.update(song.id, { theme_id: themeId });
-            c.say(themeId ? `"${song.title}" vai ao ar sempre com o tema ${current?.name}.` : `"${song.title}" volta ao tema padrão.`);
+            c.say(themeId ? `"${song.title}" vai ao ar sempre com o tema ${t?.name || current?.name}.` : `"${song.title}" volta ao tema padrão.`);
         } catch (err) { c.say(err?.message || "Não foi possível salvar o tema da música."); }
     };
+    // Right click on a theme: everything that can be done with it from here.
+    const menu = useContextMenu();
+    const run = (p, message) => p.then(() => c.say(message)).catch((err) => c.say(err?.message || "Não foi possível."));
+    const themeMenu = (e, t) => menu(e, { title: t.name, items: [
+        { label: "Aplicar no ar", icon: "play", onSelect: () => applyThemeOnAir(c, t) },
+        { label: "Editar tema…", icon: "edit", onSelect: () => onEdit(t.id) },
+        ...(song ? [song.theme_id === t.id
+            ? { label: "Tirar tema da música", onSelect: () => saveForSong("") }
+            : { label: `Salvar para "${song.title}"`, onSelect: () => saveForSong(t.id) }] : []),
+        { label: t.id === def?.id ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: t.id === def?.id, onSelect: () => run(keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, t.id)), `${t.name} é o tema padrão.`) },
+        { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), `As passagens vão ao ar com o tema ${t.name}.`) },
+    ] });
     if (!themes.length) {
         return (
             <div className="tm-empty">
@@ -60,8 +75,8 @@ export default function ThemesCard({ c, themes, songs, onEdit, onNew }) {
             <div className="tm-grid" role="list" aria-label="Temas">
                 {themes.map((t) => (
                     <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={t.name}
-                        title={`${t.name}${t.id === def?.id ? " · tema padrão" : ""} · clique: aplica no que está no ar · duplo clique: editar`}
-                        onClick={() => applyThemeOnAir(c, t)} onDoubleClick={() => onEdit(t.id)}>
+                        title={`${t.name}${t.id === def?.id ? " · tema padrão" : ""} · clique: aplica no que está no ar · duplo clique ou botão direito: editar`}
+                        onClick={() => applyThemeOnAir(c, t)} onDoubleClick={() => onEdit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                         <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
                         <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{t.name}</span>
                     </button>

@@ -21,7 +21,11 @@
     },
     "standby_background": {
       "type": "string",
-      "description": "Fundo de espera do culto: a imagem das telas quando nada esta no ar (URL de midia ou fundo incluido)"
+      "description": "Fundo de espera do culto: a imagem das telas quando nada esta no ar (URL de midia ou fundo incluido). Antigo: lido quando background esta vazio"
+    },
+    "background": {
+      "type": "object",
+      "description": "Fundo do culto, de qualquer tipo ({ kind: image|video|generator|color, value, gen, dim, blur, fit }; src/lib/console/defaultFundo.js): vai para a camada Fundo ao escolher o culto e a cada Esc"
     },
     "location": {
       "type": "string",

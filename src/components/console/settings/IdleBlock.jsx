@@ -1,30 +1,24 @@
 import React from "react";
-import { Btn, Seg } from "../kx";
+import { Seg } from "../kx";
 import { FormRow } from "./parts";
-import { useLibraryPicker } from "../library/libraryContext";
 import { updateUser } from "@/hooks/useUser";
 
-// Tela ociosa: what the screens show when nothing is on air (the live
-// state's idle look: logo, black or a background). It only changes an idle
-// screen, never what is on air. Saídas has the same choice.
+// Tela ociosa: what the screens show when nothing is on air and there is no
+// Fundo (the live state's idle look: the church logo or black). A picture
+// for those moments is the Fundo padrão now (Aparência, Planejar o culto),
+// which goes on the Fundo itself. Saídas has the same choice.
 export default function IdleBlock({ c }) {
-    const pick = useLibraryPicker();
-    const idle = c.live?.idle || "logo";
-    const idleUrl = c.live?.idleUrl || null;
-    const setIdle = (mode, url) => {
+    // A wallpaper chosen here before (mode "background") still shows; it
+    // reads as Logo until another choice is made.
+    const idle = c.live?.idle === "black" ? "black" : "logo";
+    const setIdle = (mode) => {
         updateUser({ idle_mode: mode }).catch(() => {});
-        return c.liveOp("idle.set", url ? { mode, url } : { mode }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."));
-    };
-    // The wallpaper comes from the background library (pictures only).
-    const chooseWall = async () => {
-        const r = await pick({ accept: ["image"], value: idleUrl ? { kind: "image", value: idleUrl } : null, title: "Fundo da tela ociosa" });
-        if (r?.spec) setIdle("background", r.spec.value);
+        return c.liveOp("idle.set", { mode }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."));
     };
     return (
         <FormRow k="Tela ociosa">
-            <Seg small value={idle} onChange={(m) => { if (m === "background" && !idleUrl) chooseWall(); else setIdle(m); }} options={[["logo", "Logo da igreja"], ["black", "Preto"], ["background", "Fundo"]]} />
-            {idle === "background" && idleUrl && <><img className="cfg-wall" src={idleUrl} alt="" /><Btn small onClick={chooseWall}>Trocar…</Btn></>}
-            <span className="kx-meta">o que as telas mostram quando nada está no ar · o culto pode ter o seu fundo (Planejar o culto)</span>
+            <Seg small value={idle} onChange={setIdle} options={[["logo", "Logo da igreja"], ["black", "Preto"]]} />
+            <span className="kx-meta">quando nada está no ar e não há fundo · para uma imagem, use o Fundo padrão</span>
         </FormRow>
     );
 }

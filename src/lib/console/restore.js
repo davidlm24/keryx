@@ -29,5 +29,11 @@ export function undoEndOps(before) {
     const v = before.video;
     if (v) ops.push(["video.show", { kind: v.kind, url: v.url, title: v.title, duration: v.duration, id: v.id }]);
     if (ops.length && (before.screen === "black" || before.screen === "logo")) ops.push(["screen.set", { mode: before.screen }]);
+    // Esc may have put the Fundo padrão on the Fundo: the one the item was
+    // shown over comes back first (not while the padlock holds the Fundo).
+    const held = (before.lockedLayers || []).includes("background");
+    if (ops.length && !held && before.defaultBackground && JSON.stringify(before.background) !== JSON.stringify(before.defaultBackground)) {
+        ops.unshift(before.background ? ["background.set", { ...before.background }] : ["background.clear", {}]);
+    }
     return ops;
 }

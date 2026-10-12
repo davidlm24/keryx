@@ -1428,6 +1428,9 @@
         "standby_background": {
           "type": "text"
         },
+        "background": {
+          "type": "json"
+        },
         "location": {
           "type": "text"
         },
@@ -1826,6 +1829,12 @@
         },
         "standby_background": {
           "type": "text"
+        },
+        "default_background": {
+          "type": "json"
+        },
+        "weekday_backgrounds": {
+          "type": "json"
         },
         "church_name": {
           "type": "text"

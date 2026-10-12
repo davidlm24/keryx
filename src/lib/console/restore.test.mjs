@@ -51,3 +51,16 @@ test("a history entry still restores as before (Voltar ao anterior)", () => {
     assert.equal(args.title, "Canto");
     assert.throws(() => restoreArgs({ layer: "nada", data: {} }));
 });
+
+test("Desfazer after Esc also puts back the Fundo the item was over (Esc put the Fundo padrão)", () => {
+    let before = applyOp(emptyState(T), "background.default", { background: { kind: "color", value: "#101010" } }, T);
+    before = applyOp(before, "background.set", { kind: "generator", value: "aurora", title: "Aurora" }, T);
+    before = applyOp(before, "content.show", { kind: "lyrics", title: "Canto", slides: [{ text: "a" }] }, T + 1);
+    const ended = applyOp(before, "clear", {}, T + 2);
+    assert.equal(ended.background.value, "#101010");
+    const ops = undoEndOps(before);
+    assert.equal(ops[0][0], "background.set");
+    const back = ops.reduce((s, [op, args]) => applyOp(s, op, args, T + 3), ended);
+    assert.equal(back.background.value, "aurora");
+    assert.equal(back.content.title, "Canto");
+});

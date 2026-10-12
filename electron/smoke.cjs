@@ -1660,7 +1660,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("/");
         result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .cfg-dialog-h .cfg-search input')"), 3000);
         await type("fundo de espera");
-        result.cfgSearchHits = await waitFor(() => js("[...document.querySelectorAll('.console .cfg-results .kx-row-title')].some((n) => n.textContent === 'Fundo de espera padrão')"), 3000);
+        result.cfgSearchHits = await waitFor(() => js("[...document.querySelectorAll('.console .cfg-results .kx-row-title')].some((n) => n.textContent === 'Fundo padrão')"), 3000);
         await press("Escape");
         result.cfgSearchClear = await waitFor(() => js("Boolean(document.querySelector('.console .cfg-dialog')) && document.querySelector('.console .cfg-search input').value === '' && !document.querySelector('.console .cfg-results')"), 3000);
         await type("pin");
@@ -1827,6 +1827,41 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("layers.lock", { layer: "background", locked: false });
         await waitFor(() => !(live.get().lockedLayers || []).length);
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "" }])`);
+        live.call("background.clear", {});
+
+        // Editar fundo… (Camadas, a generated Fundo on air): the library opens
+        // with the background big and Ao vivo on; another generator goes to
+        // the screens before Usar, and Esc puts back the one there was.
+        live.call("background.set", { kind: "generator", value: "clouds", title: "Nuvens" });
+        await waitFor(() => (live.get().background || {}).value === "clouds");
+        await click(".kx-layer", "Fundo");
+        await click(".layerprops button", "Editar fundo…");
+        result.libBig = await waitFor(() => js("Boolean(document.querySelector('.lib-dialog .lib-big-screen .ks'))"), 4000);
+        await js("(() => { const b = [...document.querySelectorAll('.lib-dialog .lyr-gen')].find((n) => n.textContent.includes('Aurora')); if (b) b.click(); return Boolean(b); })()");
+        result.libLive = await waitFor(() => (live.get().background || {}).value === "aurora", 4000);
+        await press("Escape");
+        result.libLiveBack = await waitFor(() => (live.get().background || {}).value === "clouds", 4000)
+            && await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 2000);
+        live.call("background.clear", {});
+
+        // Fundo padrão (Aparência; the service's wins): the console keeps it
+        // in the live state, and Esc puts it on the Fundo after a song with a
+        // background of its own.
+        await js('window.keryxDesktop.db.call("User", "update", ["local", { default_background: { kind: "color", value: "#203040" } }])');
+        result.padraoKept = await waitFor(() => (live.get().defaultBackground || {}).value === "#203040", 5000);
+        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background: { kind: "generator", value: "aurora" } }])`);
+        await sleep(600);
+        await dblclick(".kx-row", "Canto do console");
+        await waitFor(() => (live.get().background || {}).value === "aurora", 4000);
+        await press("Escape");
+        result.padraoAfterEsc = await waitFor(() => !live.get().content && (live.get().background || {}).value === "#203040", 4000);
+        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { background: { kind: "color", value: "#405060" } }])`);
+        result.padraoService = await waitFor(() => { const d = live.get().defaultBackground || {}; return d.value === "#405060" && d.title === "Fundo do culto"; }, 5000)
+            && await waitFor(() => (live.get().background || {}).value === "#405060", 4000);
+        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { background: null }])`);
+        await js('window.keryxDesktop.db.call("User", "update", ["local", { default_background: null }])');
+        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background: null }])`);
+        await waitFor(() => !live.get().defaultBackground, 5000);
         live.call("background.clear", {});
         await js(`window.keryxDesktop.db.call("Media", "delete", [${JSON.stringify(vidRow.id)}])`);
         await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "delete", [r.id]); return true; })()');
@@ -2238,6 +2273,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
+        && result.libBig && result.libLive && result.libLiveBack && result.padraoKept && result.padraoAfterEsc && result.padraoService
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended

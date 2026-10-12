@@ -12,6 +12,7 @@ import { bibleVersionWanted } from "./BibleEnv";
 import { parseDuration, formatDuration } from "@/lib/songImport";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
 import BgChip from "./library/BgChip";
+import { serviceFundo } from "@/lib/console/defaultFundo";
 import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
 
 const ADD = [
@@ -224,11 +225,11 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         {form.service_type === "evento" && <><span className="k">Evento</span><Field icon={null} {...f("event_description")} placeholder="Descrição do evento" /></>}
                         <span className="k">Status</span><Seg small value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
                         <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
-                        <span className="k">Fundo de espera</span>
+                        <span className="k">Fundo do culto</span>
                         <div className="pl-wall">
-                            <BgChip accept={["image"]} title="Fundo de espera do culto" empty="nenhum · usa o da igreja" value={svc.standby_background ? { kind: "image", value: svc.standby_background } : null}
-                                noneLabel={svc.standby_background ? "Sem fundo próprio (usa o da igreja)" : undefined}
-                                onPick={(spec) => saveSvc({ standby_background: spec ? spec.value : "" }, spec ? "Fundo de espera do culto salvo." : "Fundo de espera removido.")} />
+                            <BgChip title="Fundo do culto" empty="nenhum · usa o do dia ou o da igreja" value={serviceFundo(svc)}
+                                noneLabel={serviceFundo(svc) ? "Sem fundo próprio (usa o do dia ou o da igreja)" : undefined}
+                                onPick={(spec) => saveSvc({ background: spec || null, standby_background: spec?.kind === "image" ? spec.value : "" }, spec ? "Fundo do culto salvo." : "Fundo do culto removido.")} />
                         </div>
                     </div>
                     <div className="pl-danger"><Btn small kind={confirm === "svc" ? "air" : ""} onClick={deleteService}>{confirm === "svc" ? "Excluir mesmo" : "Excluir culto"}</Btn></div>

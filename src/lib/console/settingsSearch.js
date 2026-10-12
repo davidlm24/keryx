@@ -39,9 +39,10 @@ export const SETTINGS_INDEX = [
 
     e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte, para todo item", ["esmaecer", "deslizar", "corte", "fade", "animação"], { tab: "geral" }),
     e("aparencia", "Duração", "quanto dura a transição", ["ms", "velocidade", "tempo", "transição"], { tab: "geral" }),
-    e("aparencia", "Fundo de espera padrão", "a imagem das telas quando nada está no ar", ["espera", "wallpaper", "imagem"], { tab: "geral" }),
+    e("aparencia", "Fundo padrão", "o fundo das telas quando nada está no ar (e depois do Esc), se o culto não tiver o seu", ["fundo de espera", "espera", "wallpaper", "imagem", "esc"], { tab: "geral" }),
+    e("aparencia", "Fundo por dia da semana", "um fundo para cada dia (domingo, quarta…), antes do fundo padrão", ["domingo", "quarta", "dia", "semana", "fundo de espera"], { tab: "geral" }),
     e("aparencia", "Títulos nas telas", "o título do item no slide e a faixa de título do YouTube", ["título", "nome da música", "youtube", "canal", "esconder"], { tab: "geral" }),
-    e("aparencia", "Tela ociosa", "logo, preto ou fundo quando nada está no ar", ["ociosa", "logo", "preto", "nada no ar"], { tab: "geral" }),
+    e("aparencia", "Tela ociosa", "logo ou preto quando nada está no ar e não há fundo", ["ociosa", "logo", "preto", "nada no ar"], { tab: "geral" }),
     e("aparencia", "Estilo padrão do texto", "o tema com que músicas e passagens vão ao ar", ["tema padrão", "estilo de fábrica", "padrão"], { tab: "temas" }),
     e("aparencia", "Temas", "estilos prontos de texto e fundo, aplicados em Camadas",
         ["tema padrão", "presets", "estilo", "Nome", "Fonte", "Efeito e cor", "Caixa do texto", "Transição", "Fundo", "Ajuste do fundo", "Escurecer · desfoque", "Tornar padrão", "Novo tema"], { tab: "temas" }),
