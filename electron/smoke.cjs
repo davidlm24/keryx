@@ -1011,7 +1011,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await dblclick(".kx-row", "Canto do console");
         result.lookDefault = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.transition === "slide" && st.transition_ms === 200); }, 5000);
         // "no ar há m:ss" in the Programa's caption while the item is on air.
-        result.airSince = await waitFor(() => js("/^no ar há \d+:\d\d$/.test((document.querySelector('.kx-prog-cap .kx-since') || {}).textContent || '')"), 5000);
+        result.airSince = await waitFor(() => js("/^no ar há \\d+:\\d\\d$/.test((document.querySelector('.kx-prog-cap .kx-since') || {}).textContent || '')"), 5000);
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { transition_type: null, transition_ms: null }])`);
         live.call("clear", {});
         await waitFor(() => !live.get().content);
