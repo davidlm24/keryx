@@ -7,22 +7,30 @@ import { FormRow, CfgKey } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import WallpaperPicker from "../WallpaperPicker";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { THEME_FONTS, themeStyle, themeBackgroundArgs } from "@/lib/console/themes";
+import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs } from "@/lib/console/themes";
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
 
-const SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const BOXES = [["", "Sem"], ["band", "Faixa"], ["block", "Bloco"]];
-const SIZE = { xsmall: "PP", small: "P", medium: "M", large: "G", xlarge: "GG", xxlarge: "GGG" };
+const SIZES = TEXT_SIZES;
+const SIZE = Object.fromEntries(TEXT_SIZES);
 const FONT = Object.fromEntries(THEME_FONTS);
 const BLANK = { name: "", font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff", text_color_2: "", text_box: "", text_box_color: "", text_box_opacity: "", transition: "", transition_ms: "", background_image: "", background_fit: "", background_dim: "", background_blur: "" };
+
+// Unsaved edits, by theme ("new" for one being created): switching tabs or
+// sections (the editor unmounts) keeps them until Salvar or Cancelar.
+const drafts = new Map();
 
 // One theme being created or edited: every field, a live sample beside them
 // (the real renderer on real ops), saved as a ProjectionTheme row.
 function ThemeEditor({ row, c, media, onDone }) {
-    const [draft, setDraft] = useState({ ...BLANK, ...(row || {}) });
+    const key = row?.id || "new";
+    const [restored] = useState(() => drafts.has(key));
+    const [draft, setDraft] = useState(() => drafts.get(key) || { ...BLANK, ...(row || {}) });
+    useEffect(() => { drafts.set(key, draft); }, [key, draft]);
+    const done = (saved) => { drafts.delete(key); onDone(saved); };
     const [picking, setPicking] = useState(false);
     const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
     const doc = useMemo(() => {
@@ -36,12 +44,13 @@ function ThemeEditor({ row, c, media, onDone }) {
     const save = async () => {
         const name = draft.name.trim() || `Tema ${new Date().toLocaleDateString("pt-BR")}`;
         const data = { ...draft, name };
-        for (const k of ["id", "created_date", "updated_date", "created_by_id", "elements"]) delete data[k];
+        // is_default belongs to Tornar padrão (the editor's copy may be stale).
+        for (const k of ["id", "created_date", "updated_date", "created_by_id", "elements", "is_default"]) delete data[k];
         try {
             if (row?.id) await keryx.entities.ProjectionTheme.update(row.id, data);
             else await keryx.entities.ProjectionTheme.create(data);
             c.say(row?.id ? "Tema salvo." : `Tema "${name}" criado.`);
-            onDone(true);
+            done(true);
         } catch (err) { c.say(err?.message || "Não foi possível salvar o tema."); }
     };
     const num = (v) => (v == null || v === "" ? "" : String(v));
@@ -93,7 +102,8 @@ function ThemeEditor({ row, c, media, onDone }) {
                 </>}
                 <FormRow k="">
                     <Btn small kind="brand" onClick={save}>Salvar tema</Btn>
-                    <Btn small onClick={() => onDone(false)}>Cancelar</Btn>
+                    <Btn small onClick={() => done(false)}>Cancelar</Btn>
+                    {restored && <span className="kx-meta">rascunho que não tinha sido salvo</span>}
                 </FormRow>
             </div>
             <div className="cfg-prevcol">

@@ -22,9 +22,25 @@ function dirSize(dir) {
     return total;
 }
 
+// The data folder's size, for Configurações (which asks every few seconds):
+// walking the folder blocks the main process, so it is measured at most
+// once a minute.
+const SIZE_TTL_MS = 60000;
+function cachedSize(measure = dirSize, ttl = SIZE_TTL_MS) {
+    const memo = new Map();
+    return (dir, now = Date.now()) => {
+        const hit = memo.get(dir);
+        if (hit && now - hit.at < ttl) return hit.bytes;
+        const bytes = measure(dir);
+        memo.set(dir, { at: now, bytes });
+        return bytes;
+    };
+}
+
 const UPDATES_KEY = "updates";
 
 function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications = null }) {
+    const dataSize = cachedSize();
     const autoUpdates = () => Boolean((settings.get(UPDATES_KEY, {}) || {}).auto);
     const updateState = () => ({ ...updater.state(), auto: autoUpdates() });
     const notify = (n) => { try { notifications?.add(n); } catch (err) { logger.warn(`[keryx-notifications] ${err.message}`); } };
@@ -102,7 +118,7 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             version: app.getVersion(),
             packaged: app.isPackaged,
             dataDir,
-            dataBytes: dirSize(dataDir),
+            dataBytes: dataSize(dataDir),
             backup: {
                 dir,
                 custom: Boolean(configuredDir()),
@@ -207,7 +223,8 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             title: "Pasta para os backups automáticos",
             properties: ["openDirectory", "createDirectory"],
         });
-        if (canceled || !filePaths[0]) return info();
+        // Closing the picker changes nothing (and says nothing).
+        if (canceled || !filePaths[0]) return { ...info(), canceled: true };
         settings.set(SETTINGS_KEY, { dir: filePaths[0] });
         backupNow("pasta alterada");
         return info();
@@ -287,4 +304,4 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
     };
 }
 
-module.exports = { createSystem };
+module.exports = { createSystem, cachedSize };

@@ -12,10 +12,11 @@ import { chordLinesToInline, hasInlineChords, isChordLine } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
 import { useContextMenu } from "./ContextMenu";
+import { TEXT_SIZES } from "@/lib/console/themes";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["cursive", "Cursiva"], ["arial", "Arial"], ["georgia", "Georgia"], ["times", "Times"], ["verdana", "Verdana"]];
-const SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
+const SIZES = TEXT_SIZES;
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const SWATCHES = [["#ffffff", "Branco"], ["#f3e6c9", "Creme"], ["#c9dcff", "Azul claro"], ["#ffe08a", "Amarelo"], ["#1a1a1a", "Preto"]];
 const SPLITS = [["0", "Estrofe", { title: "Uma estrofe por slide · não refaz blocos já divididos" }], ["2", "2 linhas", { title: "No máximo 2 linhas por slide · reescreve a letra nesses blocos" }], ["4", "4 linhas", { title: "No máximo 4 linhas por slide · reescreve a letra nesses blocos" }]];
