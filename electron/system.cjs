@@ -45,7 +45,14 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
     const updateState = () => ({ ...updater.state(), auto: autoUpdates() });
     const notify = (n) => { try { notifications?.add(n); } catch (err) { logger.warn(`[keryx-notifications] ${err.message}`); } };
     const defaultBackupDir = path.join(dataDir, "backups");
-    const configuredDir = () => (settings.get(SETTINGS_KEY, {}) || {}).dir || "";
+    const prefs = () => backup.backupPrefs(settings.get(SETTINGS_KEY, {}) || {});
+    // Every write keeps the other backup settings (the folder, on/off, keep).
+    const setPrefs = (patch) => {
+        const next = { ...(settings.get(SETTINGS_KEY, {}) || {}), ...patch };
+        for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
+        settings.set(SETTINGS_KEY, next);
+    };
+    const configuredDir = () => prefs().dir;
     const parentWindow = (event) => (event ? BrowserWindow.fromWebContents(event.sender) : BrowserWindow.getFocusedWindow()) || undefined;
     const message = (event, options) => dialog.showMessageBox(parentWindow(event), { noLink: true, ...options });
 
@@ -97,11 +104,18 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         return { enabled: true, running: media.running, last: media.last, error: media.error, files: statsCache.files, bytes: statsCache.bytes };
     }
 
+    // Automatic backups (opening and closing the KERYX) can be turned off;
+    // the manual one and a new folder's first always run.
+    const AUTOMATIC = ["ao abrir", "ao fechar"];
     function backupNow(reason) {
+        if (AUTOMATIC.includes(reason) && !prefs().enabled) {
+            logger.info(`[keryx-backup] ${reason}: backup automático desligado`);
+            return null;
+        }
         const { dir, fallback } = backupDir();
         if (fallback) notify({ key: "backup-fallback", kind: "warn", title: "Backup salvo na pasta padrão", body: `A pasta escolhida (${configuredDir()}) não estava disponível, então o backup foi para ${dir}. Conecte o pen drive ou escolha outra pasta.`, action: "settings:backup" });
         try {
-            const result = backup.runBackup({ store, dir });
+            const result = backup.runBackup({ store, dir, keep: prefs().keep });
             logger.info(`[keryx-backup] ${reason}: ${result.file}${result.removed.length ? ` (removidos ${result.removed.length} antigos)` : ""}`);
             if (reason !== "ao fechar") backupMedia(reason);
             return result;
@@ -123,7 +137,8 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
                 dir,
                 custom: Boolean(configuredDir()),
                 fallback,
-                keep: backup.KEEP,
+                keep: prefs().keep,
+                enabled: prefs().enabled,
                 count: list.length,
                 last: list[0] ? { name: list[0].name, modified: list[0].modified, size: list[0].size } : null,
                 media: mediaInfo(dir, fallback),
@@ -225,13 +240,13 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         });
         // Closing the picker changes nothing (and says nothing).
         if (canceled || !filePaths[0]) return { ...info(), canceled: true };
-        settings.set(SETTINGS_KEY, { dir: filePaths[0] });
+        setPrefs({ dir: filePaths[0] });
         backupNow("pasta alterada");
         return info();
     }
 
     function resetBackupDir() {
-        settings.set(SETTINGS_KEY, {});
+        setPrefs({ dir: undefined });
         return info();
     }
 
@@ -277,6 +292,13 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         ops: {
             info: async () => info(),
             backupNow: async () => { backupNow("manual"); return info(); },
+            backupSet: async (_event, { enabled, keep } = {}) => {
+                const patch = {};
+                if (enabled !== undefined) patch.enabled = Boolean(enabled);
+                if (keep !== undefined) patch.keep = backup.normalizeKeep(keep);
+                setPrefs(patch);
+                return info();
+            },
             chooseBackupDir: async (event) => chooseBackupDir(event),
             resetBackupDir: async () => resetBackupDir(),
             openBackupDir: async () => { await shell.openPath(backupDir().dir); return null; },

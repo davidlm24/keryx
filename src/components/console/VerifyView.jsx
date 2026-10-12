@@ -117,6 +117,13 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
         }
         out.push({ name: "Bíblia", lines: bible });
 
+        // Backup: with the automatic one off, the last copy may be old.
+        if (keryx.isDesktop && window.keryxDesktop?.system) {
+            const sys = await window.keryxDesktop.system.call("info").catch(() => null);
+            const b = sys?.data?.backup;
+            if (b && b.enabled === false) out.push({ name: "Backup", lines: [line("Backup automático desligado", b.last ? `Último backup: ${new Date(b.last.modified).toLocaleDateString("pt-BR")}` : "Nenhum backup ainda", "warn", { label: "Backup", run: () => onSettings?.("backup") }, "save")] });
+        }
+
         // Internet: what depends on it, and whether it is there now.
         const online = navigator.onLine;
         out.push({ name: "Internet", lines: [line(online ? "Conectado" : "Sem internet", net.length ? `${net.length} ${net.length === 1 ? "item precisa" : "itens precisam"} de internet` : "Nenhum item da setlist depende da internet", online || !net.length ? "ok" : "miss", null, online ? "wifi" : "wifi-off"), ...net] });

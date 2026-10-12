@@ -25,7 +25,7 @@ export const SETTINGS_INDEX = [
         ["Nome", "Ícone", "Conteúdo", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra", "Mostrar", "filtro", "só letras", "só Bíblia"]),
 
     e("rede", "Telas na rede", "celulares, tablets e TVs pela rede da igreja", ["wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),
-    e("rede", "PIN", "o código que os aparelhos pedem para entrar", ["senha", "código", "proteger"]),
+    e("rede", "PIN", "o código que os aparelhos pedem para entrar; Mostrar PIN", ["senha", "código", "proteger", "mostrar pin", "esqueci"]),
     e("rede", "Telas conectadas pela rede", "os aparelhos conectados agora", ["aparelhos", "conectados"]),
 
     e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte, para todo item", ["esmaecer", "deslizar", "corte", "fade", "animação"], { tab: "geral" }),
@@ -59,7 +59,8 @@ export const SETTINGS_INDEX = [
     e("console", "Layout", "restaurar os módulos, a densidade e as colunas", ["restaurar layout", "colunas", "tamanhos", "padrão"]),
 
     e("backup", "Backup", "o último backup e Fazer backup agora", ["cópia", "segurança", "backup agora"]),
-    e("backup", "Backup automático", "um backup ao abrir e ao fechar, por dia", ["automático", "dias"]),
+    e("backup", "Backup automático", "um backup ao abrir e ao fechar, por dia; pode desligar", ["automático", "desligar", "ligar"]),
+    e("backup", "Manter os últimos", "quantos backups ficam (7, 14, 30, 60)", ["quantos", "dias", "antigos", "apagar"]),
     e("backup", "Mídias no backup", "as imagens e vídeos também vão para a pasta de backup", ["mídias", "imagens", "vídeos"]),
     e("backup", "Pasta de backup", "onde os backups ficam (um pen drive, outro disco)", ["pasta", "pen drive", "disco"]),
     e("backup", "Restaurar", "voltar os dados de um dia", ["restaurar um backup", "voltar", "recuperar"]),

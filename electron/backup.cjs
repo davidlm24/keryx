@@ -6,6 +6,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const KEEP = 14;
+// How many daily backups the church keeps (Configurações › Backup): 3 to 90.
+const KEEP_RANGE = [3, 90];
+function normalizeKeep(value) {
+    const n = Math.round(Number(value));
+    if (!Number.isFinite(n) || value === null || value === "") return KEEP;
+    return Math.min(KEEP_RANGE[1], Math.max(KEEP_RANGE[0], n));
+}
+// The backup settings (settings.json "backup"): the folder, automatic on or
+// off (on unless turned off), how many to keep.
+const backupPrefs = (raw) => ({ dir: raw?.dir || "", enabled: raw?.enabled !== false, keep: normalizeKeep(raw?.keep) });
 const NAME = /^keryx-(\d{4}-\d{2}-\d{2})\.db$/;
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -105,4 +115,4 @@ function mirrorStats(dir) {
     return { files: names.length, bytes };
 }
 
-module.exports = { KEEP, listBackups, runBackup, dayStamp, mirrorMedia, mirrorStats };
+module.exports = { KEEP, KEEP_RANGE, normalizeKeep, backupPrefs, listBackups, runBackup, dayStamp, mirrorMedia, mirrorStats };

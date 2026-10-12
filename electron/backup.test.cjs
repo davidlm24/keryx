@@ -7,7 +7,7 @@ const yazl = require("yazl");
 const { DatabaseSync } = require("node:sqlite");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
-const { runBackup, listBackups, dayStamp, mirrorMedia, mirrorStats } = require("./backup.cjs");
+const { runBackup, listBackups, dayStamp, mirrorMedia, mirrorStats, normalizeKeep, backupPrefs } = require("./backup.cjs");
 const { exportAll, stageImport, stageRestore, applyPendingImport, hasPendingImport, discardPendingImport } = require("./archive.cjs");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "keryx-bk-"));
@@ -322,4 +322,24 @@ test("the profile's preferences ride backups and Exportar/Importar", async () =>
     const imported = other.call("User", "get", ["local"]);
     for (const [k, v] of Object.entries(prefs)) assert.deepEqual(imported[k], v, `import: ${k}`);
     other.close();
+});
+
+test("backup settings: on unless turned off, keep 3 to 90", () => {
+    assert.deepEqual(backupPrefs({}), { dir: "", enabled: true, keep: 14 });
+    assert.deepEqual(backupPrefs({ dir: "E:/kx", enabled: false, keep: 30 }), { dir: "E:/kx", enabled: false, keep: 30 });
+    assert.equal(normalizeKeep(1), 3);
+    assert.equal(normalizeKeep(500), 90);
+    assert.equal(normalizeKeep("x"), 14);
+    assert.equal(normalizeKeep(null), 14);
+});
+
+test("fewer kept: the oldest go at the next backup", () => {
+    const data = tmp();
+    const store = openAt(data);
+    const dir = path.join(data, "backups");
+    for (let d = 1; d <= 6; d++) runBackup({ store, dir, now: new Date(2026, 9, d, 10, 0) });
+    assert.equal(listBackups(dir).length, 6);
+    runBackup({ store, dir, now: new Date(2026, 9, 7, 10, 0), keep: 3 });
+    assert.deepEqual(listBackups(dir).map((b) => b.name), ["keryx-2026-10-07.db", "keryx-2026-10-06.db", "keryx-2026-10-05.db"]);
+    store.close();
 });

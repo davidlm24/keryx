@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { Btn, Empty } from "../kx";
+import { Btn, Empty, Seg } from "../kx";
 import { useBridge, usePoll, FormRow, Switch, formatBytes, formatWhen, desktopOnly, Reading } from "./parts";
 import { onAir } from "@/lib/console/updates";
+
+const KEEPS = [["7", "7"], ["14", "14"], ["30", "30"], ["60", "60"]];
 
 // What restarts the KERYX (and so blanks every screen) asks twice while
 // something is on air.
@@ -66,7 +68,20 @@ export default function DadosSection({ c }) {
                     <span className="kx-meta">{backup.last ? `último: ${formatWhen(backup.last.modified)} · ${formatBytes(backup.last.size)} · ${backup.count} ${backup.count === 1 ? "salvo" : "salvos"}` : "ainda não há backups nesta pasta"}</span>
                 </FormRow>
                 <FormRow k="Backup automático">
-                    <span className="kx-meta">ao abrir e ao fechar o KERYX, um por dia · ficam os últimos {backup.keep}{backup.media.enabled ? " · as mídias novas são copiadas ao abrir" : ""}</span>
+                    <Switch on={backup.enabled !== false} disabled={any} label="Backup automático" onChange={(on) => run("backupSet", "Backup", () => (on ? "Backup automático ligado." : "Backup automático desligado: faça backups à mão."), { enabled: on })} />
+                    {backup.enabled !== false
+                        ? <span className="kx-meta">ao abrir e ao fechar o KERYX, um por dia{backup.media.enabled ? " · as mídias novas são copiadas ao abrir" : ""}</span>
+                        : <span className="kx-warn">desligado · só os backups feitos em Fazer backup agora</span>}
+                </FormRow>
+                <FormRow k="Manter os últimos">
+                    <Seg small label="Quantos backups manter" value={String(backup.keep)} options={KEEPS.some(([v]) => v === String(backup.keep)) ? KEEPS : [...KEEPS, [String(backup.keep), String(backup.keep)]]}
+                        onChange={(v) => {
+                            const n = Number(v);
+                            if (n < backup.keep && backup.count > n && confirm !== `keep:${n}`) { setConfirm(`keep:${n}`); c.say(`Com ${n}, os backups mais antigos que ${n} dias são apagados no próximo backup. Escolha ${n} de novo para confirmar.`); return; }
+                            setConfirm(null);
+                            run("backupSet", "Backup", () => `Ficam os últimos ${n} backups.`, { keep: n });
+                        }} />
+                    <span className="kx-meta">dias com backup · o mais antigo sai quando chega um novo</span>
                 </FormRow>
                 <FormRow k="Mídias no backup">
                     {backup.media.enabled
