@@ -2431,7 +2431,7 @@ const step = (name) => { if (VERBOSE) console.log(`smoke: ${name}`); };
 // the popup shows the progress, a downloaded update with something on air
 // waits for a click, with nothing on air it counts down (cancelled here; the
 // updater is off in an unpackaged app anyway). The bell's dot goes when read.
-async function checkUpdates(webContents, { system, live }) {
+async function checkUpdates(webContents, { system, live, settings }) {
     const result = { ok: false };
     const js = (code) => webContents.executeJavaScript(code);
     const waitFor = async (test, ms = 5000) => {
@@ -2485,8 +2485,23 @@ async function checkUpdates(webContents, { system, live }) {
         push({ status: "none" });
         try { system.notifications.clear(); } catch { /* not there */ }
     }
+    // Novidades: from the menu (every version's notes), and once by itself
+    // after an update (whatsNew in settings.json), cleared when closed.
+    try {
+        await js("document.querySelector('.scrim') && document.querySelector('.scrim').click(); true");
+        await js("document.querySelector('.markbtn').click(); true");
+        await waitFor(() => clickText(".kx-pop *", "Novidades"), 3000);
+        result.whatsNewMenu = await waitFor(() => has(".dialog.wn .wn-h", "O que mudou"), 4000);
+        await clickText(".dialog.wn button", "Entendi");
+        const { version } = await system.ops.whatsNew();
+        settings.set("whatsNew", { from: "0.2.12", to: version });
+        webContents.reload();
+        result.whatsNewAuto = await waitFor(() => has(".dialog.wn .kx-section", `atualizado para a versão ${version}`), 15000);
+        await clickText(".dialog.wn button", "Entendi");
+        result.whatsNewSeen = await waitFor(() => settings.get("whatsNew", null) === null, 4000);
+    } catch (err) { result.whatsNewError = err.message; }
     result.ok = Boolean(result.bellDot && result.bellList && result.bellAnchored && result.bellRead && result.menuItem && result.popup && result.notes && result.bar === "scaleX(0.4)"
-        && result.waitsOnAir && result.countdown && result.cancelled && result.closed);
+        && result.waitsOnAir && result.countdown && result.cancelled && result.closed && result.whatsNewMenu && result.whatsNewAuto && result.whatsNewSeen);
     return result;
 }
 
@@ -2600,7 +2615,7 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
             const videoResult = await checkVideo(webContents, { live });
             const layersResult = await checkLayers(webContents, { live, outputs });
             const consoleResult = await checkConsole(webContents, { live, outputs });
-            const updatesResult = await checkUpdates(webContents, { system, live });
+            const updatesResult = await checkUpdates(webContents, { system, live, settings });
             // The LAN server serves the built app (dist/), so this runs in built mode only.
             const networkResult = dev ? "skipped (built mode only)" : await checkNetwork({ network, live, videoFile: videoResult.fileName, webContents });
             finish(bridgeOk && adapterOk && outputsResult.ok && systemResult.ok && liveResult.ok && videoResult.ok && layersResult.ok && consoleResult.ok && updatesResult.ok && !importOutcome && (dev || networkResult.ok),

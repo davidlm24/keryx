@@ -49,6 +49,8 @@ function installedNote({ lastVersion, version, pending }) {
         kind: "info",
         title: `KERYX atualizado para a versão ${version}`,
         body: notes ? `O que mudou:\n${notes}` : `Antes: ${lastVersion}.`,
+        // Ver novidades opens the console's popup (every version since).
+        action: "whatsnew",
     };
 }
 

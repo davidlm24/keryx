@@ -357,6 +357,9 @@ app.whenReady().then(async () => {
     if (updated) {
         notifications.remove((n) => n.key.startsWith("update:") || n.key === "update-error");
         notifications.add(updated);
+        // The console opens "Novidades" once, with every version since this
+        // one (cleared when the operator closes it: whatsNewSeen).
+        settings.set("whatsNew", { from: lastVersion, to: version });
     }
     if (lastVersion !== version) {
         settings.set("lastVersion", version);
