@@ -110,6 +110,16 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
     return (
         <div className="cfg-outprefs" role="group" aria-label={`Ajustes de ${output.label}`}>
         <div className="frm cfg-outprefs-form">
+            {/* The Layout first: the drawing of the screen, edited on the canvas. */}
+            {!isStream && <FormRow k="Layout">
+                <select className="cfg-select" value={layoutGone ? "" : pref.layoutId} onChange={(e) => save({ layout_id: e.target.value })} aria-label={`Layout de ${output.label}`}>
+                    {layoutChoices(layoutRows).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+                {layout && !layout.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id)} title="Abre o layout no canvas para mover e redimensionar cada elemento"><Icon name="edit" />Editar no canvas</Btn>}
+                {layout?.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id)} title="Um modelo não se edita: abre uma cópia sua no canvas"><Icon name="copy" />Duplicar e editar no canvas</Btn>}
+                {!pref.layoutId && <Btn small onClick={() => onOpenLayout?.("new")} title="Desenhar uma tela do zero no canvas"><Icon name="plus" />Novo layout no canvas</Btn>}
+                <span className="kx-meta">{layoutGone ? "o layout escolhido foi excluído: a tela está no padrão" : renderer ? "o desenho da tela: a projeção inteira ou numa parte, o timer num canto…" : "o desenho da tela: onde ficam o relógio, o timer, a letra, a próxima…"}</span>
+            </FormRow>}
             <FormRow k="Nome">
                 <input key={pref.name} className="fg-input" defaultValue={pref.name} placeholder={meta.name} maxLength={40}
                     onBlur={(e) => { const v = e.target.value.trim(); if (v !== pref.name) save({ name: v }); }}
@@ -147,15 +157,6 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                     <span className="kx-meta">o que fica de fora deixa esta saída no que está por baixo (ou no fundo de espera); a música continua tocando</span>
                 </FormRow>
             )}
-            {!isStream && <FormRow k="Layout">
-                <select className="cfg-select" value={layoutGone ? "" : pref.layoutId} onChange={(e) => save({ layout_id: e.target.value })} aria-label={`Layout de ${output.label}`}>
-                    {layoutChoices(layoutRows).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                </select>
-                {layout && !layout.factory && <Btn small onClick={() => onOpenLayout?.(layout.id)}><Icon name="edit" />Editar layout…</Btn>}
-                {layout?.factory && <Btn small onClick={() => onOpenLayout?.(layout.id)} title="Um modelo não se edita: abre uma cópia sua"><Icon name="copy" />Duplicar e editar…</Btn>}
-                {!pref.layoutId && <Btn small onClick={() => onOpenLayout?.("new")}><Icon name="plus" />Novo layout…</Btn>}
-                <span className="kx-meta">{layoutGone ? "o layout escolhido foi excluído: a tela está no padrão" : renderer ? "o desenho da tela: a projeção inteira ou numa parte, o timer num canto…" : "o desenho da tela: onde ficam o relógio, o timer, a letra, a próxima…"}</span>
-            </FormRow>}
             <FormRow k="Escala do texto">
                 <Seg small value={String(Math.round(pref.scale * 100))} options={SCALES} onChange={(v) => save({ text_scale: Number(v) })} />
             </FormRow>

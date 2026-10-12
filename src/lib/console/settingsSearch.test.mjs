@@ -17,8 +17,7 @@ const FILES = {
     "RemoteBlock.jsx": "rede",
     "AparenciaSection.jsx": "aparencia",
     "IdleBlock.jsx": "aparencia",
-    "TemasSection.jsx": "aparencia",
-    "FundosGallery.jsx": "aparencia",
+    "TemasSection.jsx": "temas",
     "BibliaSection.jsx": "biblia",
     "CultoSection.jsx": "culto",
     "ConsoleSection.jsx": "console",
@@ -70,8 +69,10 @@ test("search: keywords and a card's rows find their place", () => {
     assert.equal(first("exportar tudo").label, "Outro computador");
     assert.equal(first("NVI").section, "biblia");
     const tema = searchSettings("tema padrão").find((h) => h.label === "Temas");
-    assert.equal(tema.tab, "temas");
-    assert.equal(placeOf(tema), "Aparência › Temas");
+    assert.equal(tema.section, "temas", "Temas is a section of its own");
+    assert.equal(placeOf(tema), "Temas");
+    const layouts = searchSettings("canvas").find((h) => h.label === "Layouts das telas");
+    assert.equal(placeOf(layouts), "Telas e saídas › Layouts das telas", "Telas e saídas opens on the tab");
 });
 
 test("search: results come in the order of the sections, label hits first", () => {
@@ -88,7 +89,7 @@ test("search: results come in the order of the sections, label hits first", () =
 });
 
 test("search: entries built at run time (a theme's name) are searched too", () => {
-    const extra = [{ section: "aparencia", tab: "temas", label: "Culto jovem", hint: "Tema", keywords: [], target: "Temas" }];
+    const extra = [{ section: "temas", tab: null, label: "Culto jovem", hint: "Tema", keywords: [], target: "Temas" }];
     const hits = searchSettings("jovem", extra);
     assert.equal(hits.length, 1);
     assert.equal(hits[0].target, "Temas");

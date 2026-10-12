@@ -12,6 +12,10 @@ import { keryx } from "@/api/keryxClient";
 import { buildOutputsFile, readOutputsFile, prefWrites, fileName } from "@/lib/outputsFile";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { normalizeLayout, LAYOUT_CATEGORIES, duplicateLayout, layoutFields } from "@/lib/layouts";
+import { outputTab } from "@/lib/console/settings";
+
+// Telas e saídas' tabs after the outputs (settings.js TELAS_TABS, with icons).
+const TABS = [["layouts", "Layouts das telas", "layers"], ["geral", "Som e arquivo", "volume"]];
 
 const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
 
@@ -73,15 +77,18 @@ function LayoutsBlock({ c, rows, prefRows, onOpenLayout }) {
     );
 }
 
-// Telas e saídas: the monitors as a diagram, each output's screen, "Abrir
-// ao iniciar", open/close, Identificar, each output's own settings (Ajustes,
-// OutputPrefCard), the layouts. The idle look of the screens is in
-// Aparência › Geral. The placement rules live in electron/outputs.cjs.
-export default function TelasSection({ c, onOpenLayout }) {
+// Telas e saídas (owner's request 2026-10-12: shorter, one tab per output):
+// the monitors as a diagram on top; then a vertical tab per output (its
+// icon, name and whether it is open) and, beside it, that output's screen,
+// "Abrir ao iniciar", open/close and its own settings (OutputPrefCard, with
+// its Layout first: "Editar no canvas"); two more tabs hold the layouts and
+// the chime with the settings file. The tab is Configurações' (?config=
+// telas/<tab>, settings.js) so the search lands on it. The idle look of the
+// screens is in Aparência. The placement rules live in electron/outputs.cjs.
+export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenLayout }) {
     const displays = useBridge("displays");
     const [state, , setState, readError] = usePoll(() => displays?.list(), 3000);
     const { themes } = useLibrary();
-    const [tuning, setTuning] = useState(null);
     const prefRows = useOutputPrefRows();
     const layoutRows = useLayoutRows();
     const prefRow = (key) => prefRows.find((r) => r.screen_path === key) || null;
@@ -160,6 +167,14 @@ export default function TelasSection({ c, onOpenLayout }) {
         if (p.mode === "fullscreen") return number(p.displayId) ? `Tela cheia na Tela ${number(p.displayId)}` : "Tela cheia";
         return "Abre numa janela";
     };
+    // The tabs: one per output, then Layouts and Som e arquivo.
+    const outs = outputs.map((raw) => {
+        const look = outputLook(raw.key, prefRow(raw.key));
+        return { ...raw, look, label: look.custom || raw.label };
+    });
+    const fixed = TABS.some(([k]) => k === tab) ? tab : null;
+    const output = fixed ? null : outs.find((o) => outputTab(o.key) === tab) || outs[0] || null;
+    const selKey = fixed || output?.key || null;
 
     return (
         <>
@@ -180,50 +195,67 @@ export default function TelasSection({ c, onOpenLayout }) {
                 <span style={{ flex: 1 }} />
                 <Btn onClick={identify} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
             </CfgKey>
-            <CfgKey k="Saídas" className="listhead"><span className="kx-section">Saídas <span className="kx-count">· cada saída mostra um conteúdo numa tela</span></span>
-                <span style={{ flex: 1 }} />
-                <CfgKey as="span" k="Exportar ajustes das saídas"><Btn small onClick={exportPrefs} title="Salva num arquivo a tela e os ajustes de cada saída, para restaurar depois ou levar para outro computador">Exportar ajustes…</Btn></CfgKey>
-                <CfgKey as="span" k="Importar ajustes das saídas"><Btn small onClick={importPrefs} title="Abre um arquivo exportado e mostra o que muda antes de aplicar">Importar ajustes…</Btn></CfgKey>
-            </CfgKey>
-            {pending && (
-                <div className="cfg-import" role="group" aria-label="Importar ajustes das saídas">
-                    <span className="kx-section">Importar {pending.name}</span>
-                    <span className="kx-meta">{pending.read.exportedAt ? `Exportado em ${new Date(pending.read.exportedAt).toLocaleDateString("pt-BR")} · ` : ""}a tela de {pending.read.outputs} {pending.read.outputs === 1 ? "saída" : "saídas"} e os ajustes de {pending.read.pages} {pending.read.pages === 1 ? "saída" : "saídas"}. Substitui o que está configurado agora nessas saídas.</span>
-                    {pending.read.notes.map((n) => <span key={n} className="kx-meta kx-warn">{n}</span>)}
-                    <span className="cfg-import-acts"><Btn kind="brand" onClick={applyImport}>Importar</Btn><Btn onClick={() => setPending(null)}>Cancelar</Btn></span>
+            <div className="cfg-outs">
+                <CfgKey as="nav" k="Saídas" className="cfg-outs-nav" role="tablist" aria-label="Saídas" aria-orientation="vertical">
+                    {outs.map((o) => {
+                        const on = selKey === o.key;
+                        return (
+                            <button type="button" key={o.key} role="tab" aria-selected={on} className={`kx-t cfg-outtab ${on ? "is-on" : ""} ${o.placement?.missing ? "is-warn" : ""}`} onClick={() => setTab(outputTab(o.key))} title={status(o)}>
+                                <Icon name={o.look.icon} />
+                                <span className="cfg-outtab-t">{o.label}</span>
+                                <span className={`cfg-outtab-dot ${o.open ? "is-open" : ""}`} aria-label={o.open ? "aberta" : "fechada"} />
+                            </button>
+                        );
+                    })}
+                    <span className="cfg-outs-sep" />
+                    {TABS.map(([k, name, icon]) => (
+                        <button type="button" key={k} role="tab" aria-selected={selKey === k} className={`kx-t cfg-outtab ${selKey === k ? "is-on" : ""}`} onClick={() => setTab(k)}>
+                            <Icon name={icon} /><span className="cfg-outtab-t">{name}</span>
+                        </button>
+                    ))}
+                </CfgKey>
+                <div className="cfg-outs-detail" role="tabpanel">
+                    {output && (
+                        <>
+                            <div className={`kx-row cfg-out ${output.placement?.missing ? "is-warn" : ""}`}>
+                                <span className="kx-glyph"><Icon name={output.look.icon} /></span>
+                                <div className="kx-row-main"><div className="kx-row-title">{output.label}</div><div className={`kx-row-meta ${output.placement?.missing ? "kx-warn" : ""}`}>{status(output)}{output.open ? " · aberta" : ""}{!isDefaultPref(normalizePref(prefRow(output.key))) ? " · com ajustes" : ""}</div></div>
+                                <select className="cfg-select" value={valueOf(output.assignment)} onChange={(e) => choose(output, e.target.value)} aria-label={`Tela de ${output.label}`}>
+                                    <option value="auto">Automático</option>
+                                    <option value="window">Sempre numa janela</option>
+                                    {list.map((d, i) => <option key={d.id} value={`d:${d.id}`}>Tela {i + 1} · {d.bounds?.width || d.width}×{d.bounds?.height || d.height}</option>)}
+                                    {typeof output.assignment.target === "object" && !list.some((d) => d.id === output.assignment.target.id) && <option value={`gone:${output.assignment.target.id}`} disabled>{output.assignment.target.width}×{output.assignment.target.height} (desligada)</option>}
+                                </select>
+                                <span className="cfg-launch"><Switch on={output.assignment.openAtLaunch === true} onChange={(on) => apply(displays.set(output.key, { openAtLaunch: on }))} label={`Abrir ${output.label} ao iniciar`} /><span className="kx-meta">Abrir ao iniciar</span></span>
+                                {output.open
+                                    ? <><Btn onClick={() => apply(displays.open(output.key))} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn onClick={() => apply(displays.close(output.key))}>Fechar</Btn></>
+                                    : <Btn onClick={() => apply(displays.open(output.key))}>Abrir</Btn>}
+                            </div>
+                            <CfgKey k="Ajustes" className="listhead"><span className="kx-section">Ajustes de {output.label} <span className="kx-count">· {PREF_OUTPUTS.includes(output.key) ? "layout, conteúdo, texto, margens, logo e tema" : "layout e texto"}; vale também para as telas na rede que mostram esta página</span></span></CfgKey>
+                            <OutputPrefCard key={output.key} output={output} row={prefRow(output.key)} themes={themes} c={c} onOpenLayout={onOpenLayout} />
+                        </>
+                    )}
+                    {selKey === "layouts" && <LayoutsBlock c={c} rows={layoutRows} prefRows={prefRows} onOpenLayout={onOpenLayout} />}
+                    {selKey === "geral" && (
+                        <>
+                            <div className="listhead"><span className="kx-section">Arquivo de ajustes <span className="kx-count">· a tela e os ajustes de cada saída</span></span>
+                                <span style={{ flex: 1 }} />
+                                <CfgKey as="span" k="Exportar ajustes das saídas"><Btn small onClick={exportPrefs} title="Salva num arquivo a tela e os ajustes de cada saída, para restaurar depois ou levar para outro computador">Exportar ajustes…</Btn></CfgKey>
+                                <CfgKey as="span" k="Importar ajustes das saídas"><Btn small onClick={importPrefs} title="Abre um arquivo exportado e mostra o que muda antes de aplicar">Importar ajustes…</Btn></CfgKey>
+                            </div>
+                            {pending && (
+                                <div className="cfg-import" role="group" aria-label="Importar ajustes das saídas">
+                                    <span className="kx-section">Importar {pending.name}</span>
+                                    <span className="kx-meta">{pending.read.exportedAt ? `Exportado em ${new Date(pending.read.exportedAt).toLocaleDateString("pt-BR")} · ` : ""}a tela de {pending.read.outputs} {pending.read.outputs === 1 ? "saída" : "saídas"} e os ajustes de {pending.read.pages} {pending.read.pages === 1 ? "saída" : "saídas"}. Substitui o que está configurado agora nessas saídas.</span>
+                                    {pending.read.notes.map((n) => <span key={n} className="kx-meta kx-warn">{n}</span>)}
+                                    <span className="cfg-import-acts"><Btn kind="brand" onClick={applyImport}>Importar</Btn><Btn onClick={() => setPending(null)}>Cancelar</Btn></span>
+                                </div>
+                            )}
+                            <SomBlock c={c} />
+                        </>
+                    )}
                 </div>
-            )}
-            {outputs.map((raw) => {
-                const lk = outputLook(raw.key, prefRow(raw.key));
-                const o = { ...raw, label: lk.custom || raw.label };
-                return (
-                <React.Fragment key={o.key}>
-                <div className={`kx-row cfg-out ${o.placement?.missing ? "is-warn" : ""}`}>
-                    <span className="kx-glyph"><Icon name={lk.icon} /></span>
-                    <div className="kx-row-main"><div className="kx-row-title">{o.label}</div><div className={`kx-row-meta ${o.placement?.missing ? "kx-warn" : ""}`}>{status(o)}{o.open ? " · aberta" : ""}{!isDefaultPref(normalizePref(prefRow(o.key))) ? " · com ajustes" : ""}</div></div>
-                    <select className="cfg-select" value={valueOf(o.assignment)} onChange={(e) => choose(o, e.target.value)} aria-label={`Tela de ${o.label}`}>
-                        <option value="auto">Automático</option>
-                        <option value="window">Sempre numa janela</option>
-                        {list.map((d, i) => <option key={d.id} value={`d:${d.id}`}>Tela {i + 1} · {d.bounds?.width || d.width}×{d.bounds?.height || d.height}</option>)}
-                        {typeof o.assignment.target === "object" && !list.some((d) => d.id === o.assignment.target.id) && <option value={`gone:${o.assignment.target.id}`} disabled>{o.assignment.target.width}×{o.assignment.target.height} (desligada)</option>}
-                    </select>
-                    <span className="cfg-launch"><Switch on={o.assignment.openAtLaunch === true} onChange={(on) => apply(displays.set(o.key, { openAtLaunch: on }))} label={`Abrir ${o.label} ao iniciar`} /><span className="kx-meta">Abrir ao iniciar</span></span>
-                    {o.open
-                        ? <><Btn onClick={() => apply(displays.open(o.key))} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn onClick={() => apply(displays.close(o.key))}>Fechar</Btn></>
-                        : <Btn onClick={() => apply(displays.open(o.key))}>Abrir</Btn>}
-                    <CfgKey as="span" k="Ajustes" className="cfg-tune">
-                        <Btn on={tuning === o.key} onClick={() => setTuning(tuning === o.key ? null : o.key)} aria-expanded={tuning === o.key}
-                            title={`Nome, ícone${PREF_OUTPUTS.includes(o.key) ? ", conteúdo, layout, escala do texto, margens, logo e tema" : ", layout e escala do texto"} de ${o.label}`}>
-                            <Icon name="sliders" />Ajustes
-                        </Btn>
-                    </CfgKey>
-                </div>
-                {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} c={c} onOpenLayout={onOpenLayout} />}
-                </React.Fragment>
-                );
-            })}
-            <LayoutsBlock c={c} rows={layoutRows} prefRows={prefRows} onOpenLayout={onOpenLayout} />
-            <SomBlock c={c} />
+            </div>
             <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas: use Trazer para a frente para ver uma de novo. Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou Fechar aqui. Fechar o KERYX fecha todas. Ligar um monitor aparece aqui em poucos segundos.</span></div>
         </>
     );

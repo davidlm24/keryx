@@ -1,24 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { importMediaFiles } from "@/lib/mediaImport";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { Btn, Seg } from "../kx";
-import Icon from "../Icon";
-import { FormRow, CfgKey } from "./parts";
+import { FormRow } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { CATEGORY_SUGGESTIONS, DIM_PCT, BLUR_PX, categoriesOf } from "@/lib/console/backgroundPrefs";
-import { useBackgrounds } from "../useConsoleData";
+import { CATEGORY_SUGGESTIONS, DIM_PCT, BLUR_PX } from "@/lib/console/backgroundPrefs";
 import { SAMPLE_SLIDES } from "./sample";
 
 const SAMPLE = SAMPLE_SLIDES.slice(0, 1);
-const ALL = "__all";
-const HIDDEN = "__hidden";
 
-// Aparência › Fundos: every background the galleries offer (the ones that
-// ship with KERYX and the church's images), each with its own name, category,
-// dim and blur (a starting point for the items that use it), a favourite
-// mark (first in the galleries) and Ocultar (out of the galleries, still
-// here). One BackgroundPref row per background, made on its first change.
+// A background's own settings (BackgroundPref): its name, category, dim and
+// blur (a starting point for the items that use it), a favourite mark (first
+// in the galleries) and Ocultar (out of the galleries, still in the library).
+// Drawn by the background library (library/BackgroundLibrary.jsx), which
+// manages the backgrounds since Aparência lost its Fundos tab (2026-10-12).
+
 // One change to a background's settings (BackgroundPref): the row is
 // created the first time (once, even when two changes race), updated after.
 // Shared with the background library (library/BackgroundLibrary.jsx).
@@ -39,61 +35,6 @@ export function useSaveBackgroundPref(say) {
             if (message) say(message);
         } catch (err) { say(err?.message || "Não foi possível salvar o fundo."); }
     }, [say]);
-}
-
-export default function FundosGallery({ c, media, standby, onStandby }) {
-    const list = useBackgrounds(media);
-    const [filter, setFilter] = useState(ALL);
-    const [sel, setSel] = useState(null);
-    const save = useSaveBackgroundPref(c.say);
-
-    const fileRef = useRef(null);
-    const [uploading, setUploading] = useState(false);
-    // The files land in Mídia (one row each) and show up here under "Suas
-    // imagens" / "Seus vídeos" — and in every other gallery.
-    const upload = async (files) => {
-        setUploading(true);
-        try {
-            const { created, failed } = await importMediaFiles(files, { category: "other" });
-            c.say(`${created.length} ${created.length === 1 ? "fundo enviado" : "fundos enviados"}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
-        } catch (err) { c.say(err?.message || "Não foi possível enviar."); }
-        setUploading(false);
-    };
-    const cats = useMemo(() => categoriesOf(list), [list]);
-    const hiddenCount = list.filter((b) => b.hidden).length;
-    const shown = filter === HIDDEN ? list.filter((b) => b.hidden) : list.filter((b) => !b.hidden && (filter === ALL || b.category === filter));
-    const entry = list.find((b) => b.source === sel) || null;
-    useEffect(() => { if (filter === HIDDEN && !hiddenCount) setFilter(ALL); }, [filter, hiddenCount]);
-
-    const filters = [[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Ocultos · ${hiddenCount}`]] : [])];
-    return (
-        <div className="fg">
-            <CfgKey k="Fundos" className="fg-h">
-                <span className="kx-section">Fundos</span>
-                <span className="kx-meta">toque num fundo para dar nome, categoria, escurecer e desfoque; vale nas galerias de músicas, avisos, Camadas e fundo de espera</span>
-                <span style={{ flex: 1 }} />
-                <Btn small disabled={uploading} onClick={() => fileRef.current?.click()}>{uploading ? "Enviando…" : "Enviar do computador…"}</Btn>
-                <input ref={fileRef} type="file" multiple hidden accept="image/*,.gif,video/mp4,video/webm" onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; if (files.length) upload(files); }} />
-            </CfgKey>
-            <div className="fg-filters" role="radiogroup" aria-label="Categoria">
-                {filters.map(([k, label]) => (
-                    <button type="button" key={k} role="radio" aria-checked={filter === k} className={`kx-t fg-chip ${filter === k ? "is-on" : ""}`} onClick={() => setFilter(k)}>{label}</button>
-                ))}
-            </div>
-            <div className="fg-body">
-                <div className="fg-grid">
-                    {shown.map((b) => (
-                        <button type="button" key={b.source} className={`kx-t fg-tile ${sel === b.source ? "is-on" : ""} ${b.hidden ? "is-hidden" : ""}`} onClick={() => setSel(sel === b.source ? null : b.source)} aria-pressed={sel === b.source} title={b.name}>
-                            <span className="fg-img">{b.kind === "video" ? <video src={b.url} preload="metadata" muted /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}</span>
-                            <span className="fg-name">{b.favorite && <Icon name="star" size={12} />}{b.name}</span>
-                        </button>
-                    ))}
-                    {!shown.length && <span className="kx-meta">Nenhum fundo nesta categoria.</span>}
-                </div>
-                {entry && <FundoDetail key={entry.source} b={entry} save={save} now={c.now} standby={standby} onStandby={onStandby} />}
-            </div>
-        </div>
-    );
 }
 
 // One background's settings and a sample. Without onStandby (the library
