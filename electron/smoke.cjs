@@ -2398,12 +2398,36 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             await cmd("black");
             const st = await (await cmd("state")).json().catch(() => ({}));
             result.remote.state = Boolean(st.data && st.data.result && Array.isArray(st.data.result.items));
-            // A Setlist item sent from the phone goes on air through the console.
-            const pick = ((st.data && st.data.result && st.data.result.items) || []).find((i) => !i.section && i.type === "TEXT");
-            if (pick) {
-                const sent = await cmd("sendItem", { itemId: pick.id });
-                result.remote.sendItem = sent.status === 200 && ((live.get().content || {}).title || "") === pick.title;
-            } else result.remote.sendItem = "sem item de texto na setlist";
+            // A Setlist item sent from the phone goes on air through the console:
+            // a text item added to the service the phone sees, then sent.
+            let sid = st.data && st.data.result && st.data.result.serviceId;
+            let reopened = false;
+            if (!sid) {
+                // No service chosen (a check before reloaded the console):
+                // open the console on one, as ?planner= does.
+                const day = new Date();
+                const svc = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("Service", "create", [{ title: "Culto do celular", date: "${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}", status: "DRAFT" }])`)).data;
+                const back = webContents.getURL();
+                const u = new URL(back);
+                u.search = `?planner=${svc.id}`;
+                await webContents.loadURL(u.toString());
+                reopened = back;
+                const until = Date.now() + 10000;
+                while (Date.now() < until && !sid) {
+                    await sleep(500);
+                    const again = await (await cmd("state")).json().catch(() => ({}));
+                    sid = again.data && again.data.result && again.data.result.serviceId;
+                }
+            }
+            if (sid) {
+                const row = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: ${JSON.stringify(sid)}, type: "TEXT", title: "Item do celular", notes: "Item do celular", order: 99, duration: 60 }])`)).data;
+                let sent = { status: 0 };
+                const until = Date.now() + 6000;
+                while (Date.now() < until) { sent = await cmd("sendItem", { itemId: row.id }); if (sent.status === 200) break; await sleep(400); }
+                result.remote.sendItem = sent.status === 200 && ((live.get().content || {}).title || "") === "Item do celular";
+                await webContents.executeJavaScript(`window.keryxDesktop.db.call("ServiceItem", "delete", [${JSON.stringify(row.id)}])`).catch(() => {});
+            } else result.remote.sendItem = false;
+            if (reopened) { const u = new URL(reopened); u.search = ""; await webContents.loadURL(u.toString()); await sleep(2000); }
             live.call("clear", {});
             live.call("screens.lock", { locked: true });
             result.remote.locked = (await cmd("next")).status;
@@ -2447,7 +2471,7 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
         && (!webContents || (result.dropBanner && result.dropStatus))
-        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem !== false && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
+        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem === true && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
     return result;
 }
 

@@ -21,6 +21,7 @@ export function remoteState({ service = null, items = [], airItemId = null, next
     const { title, pos } = captionParts(live);
     return {
         service: service?.title || "",
+        serviceId: service?.id || null,
         locked: Boolean(live?.locked),
         screen: live?.screen === "black" ? "black" : live?.screen === "logo" ? "logo" : "show",
         onAir: title && title !== "nada" ? { title, pos } : null,
