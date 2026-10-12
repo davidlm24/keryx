@@ -512,6 +512,18 @@ async function checkLayers(webContents, { live, outputs }) {
         result.outputPref = { created: Boolean(created && created.data), on: prefOn, off: prefOff };
         result.outputPrefOk = Boolean(created && created.data) && prefOn && prefOn.wrapped && prefOn.scale === 1.2 && prefOn.margin === 5 && prefOn.logo === false
             && prefOff && !prefOff.wrapped && prefOff.scale === 1 && prefOff.margin === 0 && prefOff.logo === true;
+        // Mostrar (hidden_kinds): the projector leaves the song's words out
+        // while they stay on air, and still shows the aviso rápido; deleting
+        // the row brings the words back.
+        const hide = await prefCall("create", [{ screen_path: "/Projection", hidden_kinds: ["lyrics"] }]).catch((err) => ({ error: String(err.message || err) }));
+        live.call("alert.show", { message: "Alerta com a letra escondida", type: "message" });
+        const hideGone = Boolean(main) && await waitText(main, "Letra sob a camada", false) && await waitText(main, "Alerta com a letra escondida");
+        const hideOnAir = live.get().content?.slides?.[0]?.text === "Letra sob a camada";
+        live.call("alert.clear");
+        if (hide && hide.data) await prefCall("delete", [hide.data.id]).catch(() => {});
+        const hideBack = Boolean(main) && await waitText(main, "Letra sob a camada");
+        result.outputHide = { created: Boolean(hide && hide.data), gone: hideGone, onAir: hideOnAir, back: hideBack };
+        result.outputHideOk = Boolean(hide && hide.data) && hideGone && hideOnAir && hideBack;
         live.call("logo.set", { visible: false, opacity: null, width: null });
         live.call("background.clear");
 
@@ -532,7 +544,7 @@ async function checkLayers(webContents, { live, outputs }) {
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
+        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
     return result;
 }
 
