@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Btn, IconBtn } from "./kx";
+import { Switch } from "./settings/parts";
 import { GENERATORS, PARAM_LABELS, generatorOf, presetsOf, presetArgs, startArgs, matchingPreset, generatorArgs, normalizeGenerator } from "@/lib/generators";
 import { GENERATOR_PARAMS, MAX_COLORS } from "@shared/generators.mjs";
 
@@ -73,7 +74,10 @@ export default function GeneratorPanel({ background, disabled, op }) {
                 {draft.colors.length < MAX_COLORS && <Btn small disabled={disabled} onClick={() => send(normalizeGenerator({ ...draft, colors: [...draft.colors, "#ffffff"] }))}><Icon name="plus" />Cor</Btn>}
             </span>
             <span className="k">Áudio-reativo</span>
-            <span className="kx-meta">Desligado · em breve: seguir o som do programa</span>
+            <span className="lyr-slider">
+                <Switch on={draft.audio} disabled={disabled} onChange={(on) => send(normalizeGenerator({ ...draft, audio: on }))} label="Seguir o som que sai do computador" />
+                <span className="kx-meta">{draft.audio ? "segue o som que sai do computador (o dos medidores); só nas saídas deste computador, não nas telas na rede" : "desligado"}</span>
+            </span>
         </>
     );
 }

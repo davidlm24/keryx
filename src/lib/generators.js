@@ -79,7 +79,7 @@ export const generatorOf = (id) => GENERATORS.find((g) => g.id === id) || GENERA
 const PRELUDE = `
 precision highp float;
 uniform vec2 u_res;
-uniform float u_time, u_speed, u_scale, u_intensity, u_spacing, u_persistence, u_contrast;
+uniform float u_time, u_speed, u_scale, u_intensity, u_spacing, u_persistence, u_contrast, u_audio;
 uniform int u_detail, u_ncol;
 uniform vec3 u_c0, u_c1, u_c2;
 float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
@@ -109,7 +109,9 @@ void main() {
     float t = u_time * u_speed;
 `;
 const CODA = `
-    float s = (mix(0.5, v, u_intensity) - 0.5) * (1.0 + u_contrast * 3.0) + 0.5;
+    // Áudio-reativo: the sound's level (0..1, smoothed on the screen) pushes
+    // the pattern out and brightens it.
+    float s = (mix(0.5, v, min(1.0, u_intensity * (1.0 + u_audio * 0.7))) - 0.5) * (1.0 + u_contrast * 3.0) + 0.5 + u_audio * 0.18;
     gl_FragColor = vec4(palette(s), 1.0);
 }
 `;

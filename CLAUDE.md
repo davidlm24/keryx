@@ -141,8 +141,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (its GLSL body leaves `v`), its id in `GENERATOR_IDS`, and a preset. The
   console edits it in Camadas › Fundo › Gerado (`GeneratorPanel.jsx`); a
   theme keeps one in `background_generator` (`themeBackgroundArgs`).
-  Áudio-reativo is reserved (`gen.audio` is always false): the level would
-  need its own channel to the outputs, never the live state.
+  **Áudio-reativo** (`gen.audio`): the console measures the PC's output
+  with its meters (`useAudioFeed`) and sends the level ~20×/s over its own
+  IPC channel (`keryx:audio-level`, relayed to the other windows; never
+  the live state, never the network) into `src/lib/audioLevel.js`, which
+  the canvas reads each frame (`u_audio`). Screens on the network draw the
+  generator still-level.
 - **Files shipped with the app** (backgrounds, default logo) are in
   `resources/` and served as `/media/bundled/…`; reference them through
   `src/lib/backgrounds.js`, not by hard-coded URL.

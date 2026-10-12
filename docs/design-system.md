@@ -124,7 +124,10 @@ it on a WebGL canvas (`GeneratorBackground`), 30 fps, at most 960 px wide
 and scaled up; the Programa monitor moves, the Prévia and the galleries are
 still; a PC without WebGL shows a still gradient of the colours. Ajuste,
 Posição and Desfoque do not apply to a generated background; Escurecer does
-(0 by default). *Salvar como novo* keeps a generated Fundo in the theme
+(0 by default). **Áudio-reativo** is a switch: on, the pattern pushes out
+and brightens with the sound leaving the computer (what the meters show;
+only the outputs on this computer follow, a screen on the network draws it
+still-level). *Salvar como novo* keeps a generated Fundo in the theme
 (`background_generator`), and applying the theme brings it back; the Temas
 editor shows it and can take it out, not edit it.
 

@@ -42,7 +42,8 @@ export function normalizeGenerator(raw = {}) {
     }
     const colors = (Array.isArray(r.colors) ? r.colors : []).filter((c) => typeof c === "string" && HEX6.test(c)).map((c) => c.toLowerCase()).slice(0, MAX_COLORS);
     out.colors = colors.length ? colors : DEFAULT_COLORS.slice();
-    // Áudio-reativo: reserved (always off until the outputs get a level channel).
-    out.audio = false;
+    // Áudio-reativo: the pattern follows the PC's sound output (the console
+    // measures it and sends the level to the outputs on this computer).
+    out.audio = r.audio === true;
     return out;
 }

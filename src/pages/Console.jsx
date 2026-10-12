@@ -8,6 +8,7 @@ import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
+import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
 import { Panel, Split, IconBtn } from "@/components/console/kx";
 import Icon from "@/components/console/Icon";
@@ -63,6 +64,8 @@ const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LO
 // docs/design-system.md is the look; docs/desktop-architecture.md the plumbing.
 export default function Console() {
     const c = useConsole();
+    // A generated background following the sound: the console feeds the level.
+    useAudioFeed(c.live);
     const logoUrl = useChurchLogo();
     const data = useLibrary();
     const [profile, setProfile] = useState("");
