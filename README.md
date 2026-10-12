@@ -142,7 +142,11 @@ electron-builder uploads the installer and its blockmap in parallel; as a
 public release this once failed with `422 Published releases must have a
 valid tag` (0.2.11, 0.2.14) and left a "Latest" with only the blockmap, so
 the updater errored. As a draft there is no tag to create and nobody sees a
-partial release, but a publish can still die half-way. If the check lists
+partial release, but a publish can still die half-way. The parallel uploads can also make **two drafts** of the
+same version (0.2.15): one with only the blockmap, one with the installer
+and `latest.yml`. Then upload the blockmap of that same build to the
+installer's draft, delete the blockmap-only draft (never public), and run the
+check. If the check lists
 missing files, do not re-run the publish: upload what is missing to the draft
 with `gh release upload v$V <file> --repo $R` in this order: the installer,
 the blockmap (`--clobber` if it came from another build), and `latest.yml`
