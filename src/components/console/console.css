@@ -306,6 +306,12 @@
 .console .svcpick { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); height: var(--row); }
 .console .svcpick select { flex: 1; min-width: 0; height: 24px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; }
 .console .kx-alert .kx-btn { color: var(--fg-1); }
+/* Timers prontos: chips of minutes; the timer on air with its time buttons. */
+.console .kx-timer-presets { display: flex; flex-wrap: wrap; gap: 4px; padding: var(--space-1) var(--space-2) 0; }
+.console .kx-timer-chip .kx-preset-t { padding: 0 8px; font-variant-numeric: tabular-nums; }
+.console .kx-timer-chip:not(:has(.kx-preset-x)) .kx-preset-t { padding: 0 10px; }
+.console .kx-timer-air { flex-wrap: wrap; }
+.console .kx-timer-left { min-width: 52px; color: var(--fg-1); font-size: 13px; font-variant-numeric: tabular-nums; }
 /* Mensagens prontas do Aviso rápido: chips under the field. */
 .console .kx-presets { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 var(--space-2) var(--space-2); }
 .console .kx-presets-empty { padding: 0 var(--space-1); }

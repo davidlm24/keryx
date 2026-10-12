@@ -1646,6 +1646,29 @@
         }
       }
     },
+    "TimerPreset": {
+      "table": "timer_preset",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "minutes": {
+          "type": "integer"
+        }
+      }
+    },
     "User": {
       "table": "profile",
       "columns": {

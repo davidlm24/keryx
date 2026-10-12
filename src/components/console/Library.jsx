@@ -11,9 +11,11 @@ import { mediaFromYouTube } from "@/lib/mediaImport";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromPieceList, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
-import { noticeLabel, noticeIcon } from "@/lib/console/notice";
+import { noticeLabel, noticeIcon, clockOf } from "@/lib/console/notice";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 import { cleanPreset, canKeep, presetOf, orderPresets } from "@/lib/console/alertPresets";
+import { timerChoices, canKeepTimer, cleanMinutes, minutesLabel, ADJUST_STEPS } from "@/lib/console/timerPresets";
+import { toolTime } from "@shared/live-state.mjs";
 
 // A library row can be dragged onto the Prévia (prepares), the Programa
 // (sends) or the Setlist (adds the item there).
@@ -65,6 +67,19 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
         keryx.entities.AlertPreset.create({ message: cleanPreset(alertText) }).then(() => c.say("Mensagem guardada.")).catch((err) => c.say(err?.message || "Não foi possível guardar a mensagem."));
     };
     const dropPreset = (p) => keryx.entities.AlertPreset.delete(p.id).catch((err) => c.say(err?.message || "Não foi possível excluir a mensagem."));
+    // Timers prontos (TimerPreset, src/lib/console/timerPresets.js): the five
+    // that always come and the church's own. A click prepares the timer, a
+    // double click sends it; the star keeps the minutes in the field.
+    const timers = timerChoices(data.timerPresets);
+    const keepTimer = canKeepTimer(minutes, data.timerPresets);
+    const keepTimerNow = () => {
+        if (!keepTimer.ok) { c.say(keepTimer.why); return; }
+        keryx.entities.TimerPreset.create({ minutes: cleanMinutes(minutes) }).then(() => c.say(`${minutesLabel(cleanMinutes(minutes))} guardado.`)).catch((err) => c.say(err?.message || "Não foi possível guardar o tempo."));
+    };
+    const dropTimer = (t) => keryx.entities.TimerPreset.delete(t.id).catch((err) => c.say(err?.message || "Não foi possível excluir o tempo."));
+    const timerStage = (m) => stageFromTool("timer", { minutes: m });
+    // A timer on air: give or take time (tool.adjust).
+    const onAirTimer = c.cur?.tool?.mode === "timer" ? c.cur.tool : null;
     const sendPreset = (p) => c.callOp("alert.show", { message: p.message, type: "message" }).catch(() => {});
     const alert = c.cur?.alert;
     const alertElapsed = alert ? mmss((c.now - alert.since) / 1000) : "";
@@ -279,13 +294,33 @@ Clique coloca no campo · dois cliques mostram nas telas`} onClick={() => setAle
                                 </button>
                             ))}
                         </div>
+                        {onAirTimer && (
+                            <div className="kx-tool-pick kx-timer-air" role="group" aria-label="Timer no ar">
+                                <span className="kx-meta">No ar</span>
+                                <span className="kx-timer-left">{clockOf(toolTime(onAirTimer, c.now))}</span>
+                                {ADJUST_STEPS.map(([ms, label]) => <Btn key={ms} small onClick={() => c.callOp("tool.adjust", { deltaMs: ms }).catch((err) => c.say(err?.message || "Não foi possível mudar o tempo."))} title={ms < 0 ? "Tira um minuto do timer no ar" : `Dá ${label.slice(1)} ao timer no ar`}>{label}</Btn>)}
+                                <Btn small onClick={() => c.callOp("tool.clear").catch(() => {})}>Tirar</Btn>
+                            </div>
+                        )}
                         {tool === "timer" && (
+                            <>
+                            <div className="kx-timer-presets" role="group" aria-label="Timers prontos">
+                                {timers.map((t) => (
+                                    <span key={t.minutes} className={`kx-preset kx-timer-chip ${minutes === t.minutes ? "is-on" : ""}`}>
+                                        <button type="button" className="kx-t kx-preset-t" title={`${minutesLabel(t.minutes)} · clique põe na prévia · dois cliques mostram nas telas`}
+                                            onClick={() => { setMinutes(t.minutes); onPrepare(timerStage(t.minutes)); }}
+                                            onDoubleClick={() => { setMinutes(t.minutes); onGo ? onGo(timerStage(t.minutes)) : onPrepare(timerStage(t.minutes)); }}>{minutesLabel(t.minutes)}</button>
+                                        {t.id && <button type="button" className="kx-t kx-preset-x" aria-label={`Excluir o tempo ${minutesLabel(t.minutes)}`} title="Excluir este tempo guardado" onClick={() => dropTimer(t)}><Icon name="x" size={12} /></button>}
+                                    </span>
+                                ))}
+                            </div>
                             <div className="kx-tool-pick">
                                 <span className="kx-meta">Minutos</span>
-                                {[5, 10, 15].map((n) => <Btn key={n} on={minutes === n} onClick={() => setMinutes(n)}>{n}</Btn>)}
-                                <input type="number" min="1" max="180" value={minutes} onChange={(e) => setMinutes(Math.max(1, Number(e.target.value) || 1))} aria-label="Minutos" style={{ width: 52, height: 24, background: "var(--bg-2)", border: 0, borderRadius: 4, color: "var(--fg-1)", padding: "0 6px", font: "inherit" }} />
-                                <Btn onClick={() => { onPrepare(stageFromTool("timer", { minutes })); setTool(null); }}>Pôr na prévia</Btn>
+                                <input type="number" min="1" max="180" value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.min(180, Number(e.target.value) || 1)))} aria-label="Minutos" style={{ width: 52, height: 24, background: "var(--bg-2)", border: 0, borderRadius: 4, color: "var(--fg-1)", padding: "0 6px", font: "inherit" }} />
+                                <IconBtn name="star" small disabled={!keepTimer.ok} title={keepTimer.ok ? "Guardar este tempo na lista" : keepTimer.why} onClick={keepTimerNow} />
+                                <Btn onClick={() => { onPrepare(timerStage(minutes)); setTool(null); }}>Pôr na prévia</Btn>
                             </div>
+                            </>
                         )}
                         {tool === "freetext" && (
                             <div className="kx-tool-pick">
