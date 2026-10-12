@@ -22,6 +22,7 @@ export const SETTINGS_INDEX = [
     e("telas", "Identificar telas", "os monitores ligados e o número de cada um", ["monitores", "monitor", "projetor", "tv", "número"]),
     e("telas", "Saídas", "em que tela abre cada saída, tela cheia ou janela", ["projeção", "letras", "vídeo", "comunicação", "palco", "pastor", "tela cheia", "janela", "trazer para a frente", "fechar", "abrir"]),
     e("telas", "Abrir ao iniciar", "a saída abre sozinha quando o KERYX abre", ["iniciar", "automático"], { target: "Saídas" }),
+    e("telas", "Som do aviso", "o sino dos avisos: ligar, desligar, volume, testar", ["som", "sino", "alerta", "volume", "testar som", "áudio"]),
     e("telas", "Ajustes", "nome, ícone, conteúdo, texto, margens, logo e tema de cada saída",
         ["Nome", "Ícone", "Conteúdo", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra",
             "Faixa", "Tamanho do texto", "Posição", "Referência na legenda"]),

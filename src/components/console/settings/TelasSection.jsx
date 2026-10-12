@@ -1,11 +1,33 @@
 import React, { useState } from "react";
 import Icon from "../Icon";
-import { Btn, Empty } from "../kx";
-import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading } from "./parts";
+import { Btn, Empty, Seg } from "../kx";
+import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading, FormRow } from "./parts";
 import { useLibrary } from "../useConsoleData";
 import OutputPrefCard from "./OutputPrefCard";
 import { PREF_OUTPUTS, normalizePref, isDefaultPref, outputLook } from "@/lib/outputPrefs";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
+import { usePrefs, updateUser } from "@/hooks/useUser";
+import { ringBell } from "@/lib/bell";
+
+const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
+
+// Som do aviso: the chime of avisos with "Som de alerta", on or off and its
+// volume, for every output and network screen (on the profile).
+function SomBlock({ c }) {
+    const prefs = usePrefs();
+    const save = (patch, message) => updateUser(patch).then(() => message && c.say(message)).catch(() => c.say("Não foi possível salvar."));
+    const vol = String(prefs.chime_volume);
+    return (
+        <div className="frm" style={{ borderTop: "1px solid var(--line)", marginTop: "var(--space-1)" }}>
+            <FormRow k="Som do aviso">
+                <Switch on={prefs.chime_on} onChange={(on) => save({ chime_on: on }, on ? "O sino dos avisos toca." : "Sino dos avisos desligado em todas as telas.")} label="Tocar o sino dos avisos" />
+                <Seg small label="Volume do sino" value={VOLUMES.some(([v]) => v === vol) ? vol : "35"} options={VOLUMES} onChange={(v) => save({ chime_volume: Number(v) })} />
+                <Btn small disabled={!prefs.chime_on} onClick={() => ringBell({ on: true, volume: prefs.chime_volume })} title="Toca o sino aqui, neste computador">Testar som</Btn>
+                <span className="kx-meta">o sino curto dos avisos com Som de alerta, nas saídas e nas telas na rede</span>
+            </FormRow>
+        </div>
+    );
+}
 
 // Telas e saídas: the monitors as a diagram, each output's screen, "Abrir
 // ao iniciar", open/close, Identificar, each output's own settings (Ajustes,
@@ -101,6 +123,7 @@ export default function TelasSection({ c }) {
                 </React.Fragment>
                 );
             })}
+            <SomBlock c={c} />
             <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas: use Trazer para a frente para ver uma de novo. Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou Fechar aqui. Fechar o KERYX fecha todas. Ligar um monitor aparece aqui em poucos segundos.</span></div>
         </>
     );

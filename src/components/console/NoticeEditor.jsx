@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { usePrefs } from "@/hooks/useUser";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, BackBtn } from "./kx";
@@ -24,6 +25,7 @@ const pickFields = (row) => Object.fromEntries(FIELDS.filter((k) => row[k] !== u
 // and a live 16:9 preview drawn by ScreenRenderer, so it is the screen.
 // Saving changes the library only; "Pôr na prévia do console" prepares it.
 export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved }) {
+    const chimeOn = usePrefs().chime_on;
     const backgrounds = useBackgrounds(media);
     const galleryBgs = (() => { const imgs = visibleBackgrounds(backgrounds).filter((b) => b.kind !== "video"); const own = imgs.filter((b) => b.category === "Comunicação"); return (own.length ? own : imgs).slice(0, 12); })();
     const isNew = noticeId === "new";
@@ -164,7 +166,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                             <span className="k">Som de alerta</span>
                             <span className="nv-inline">
                                 <button type="button" role="switch" aria-checked={Boolean(draft.sound_alert)} aria-label="Som de alerta" className={`sw2 kx-t ${draft.sound_alert ? "is-on" : ""}`} onClick={() => set({ sound_alert: !draft.sound_alert })} />
-                                <span className="kx-meta">{draft.sound_alert ? "Toca um sino curto quando o aviso entra" : "Sem som"}</span>
+                                <span className={draft.sound_alert && !chimeOn ? "kx-warn" : "kx-meta"}>{draft.sound_alert ? (chimeOn ? "Toca um sino curto quando o aviso entra" : "O sino está desligado em Configurações › Telas e saídas") : "Sem som"}</span>
                             </span>
                         </div>
 
