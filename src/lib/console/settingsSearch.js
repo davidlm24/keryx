@@ -49,6 +49,7 @@ export const SETTINGS_INDEX = [
         ["imagens", "vídeos", "enviar do computador", "Nome", "Categoria", "Escurecer", "Desfoque", "Nas galerias", "favorito", "oculto"], { tab: "fundos" }),
 
     e("biblia", "Livros da Bíblia", "abreviados (Gn) ou com o nome inteiro (Gênesis)", ["abreviados", "nome inteiro", "abrev", "livros"]),
+    e("biblia", "Tema da Bíblia", "o tema das passagens, separado do das músicas", ["tema", "bíblia", "passagens", "fundo", "estilo"]),
     e("biblia", "Versículos por slide", "quantos versículos de um trecho vão em cada slide", ["versículos", "slide", "automático", "trecho"]),
     e("biblia", "Referência", "mostrar João 3:16 embaixo do texto", ["referência", "capítulo"]),
     e("biblia", "Versão na referência", "João 3:16 · NVI, ou sem a versão", ["versão", "NVI"]),
@@ -64,7 +65,7 @@ export const SETTINGS_INDEX = [
     e("culto", "Equipe de louvor", "os músicos e cantores para escalar no culto", ["equipe", "músicos", "louvor", "vocal", "banda", "membro"]),
     e("culto", "Previsão do culto", "termina ~ e passou N min na barra do topo", ["previsão", "atraso", "termina", "passou", "fim", "duração"]),
 
-    e("console", "Módulos", "Biblioteca, Slides, Camadas e Setlist", ["biblioteca", "slides", "camadas", "setlist", "mostrar", "esconder", "ocultar"]),
+    e("console", "Módulos", "Biblioteca, Slides, Camadas, Temas e Setlist", ["biblioteca", "slides", "camadas", "temas", "setlist", "mostrar", "esconder", "ocultar"]),
     e("console", "Densidade", "confortável ou compacta", ["compacta", "confortável", "linhas", "altura"]),
     e("console", "Layout", "restaurar os módulos, a densidade e as colunas", ["restaurar layout", "colunas", "tamanhos", "padrão"]),
     e("console", "Ao fechar", "perguntar antes de fechar com algo no ar", ["fechar", "sair", "confirmar", "perguntar"]),

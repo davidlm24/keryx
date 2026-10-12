@@ -1818,6 +1818,9 @@
         "show_item_title": {
           "type": "boolean"
         },
+        "bible_theme_id": {
+          "type": "text"
+        },
         "youtube_hide_title": {
           "type": "boolean"
         },

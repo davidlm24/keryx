@@ -70,6 +70,18 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`library/BackgroundLibrary.jsx`: Temas · Imagens · Vídeos · Gerados ·
   Cor; awaited with `useLibraryPicker()`, the chip `library/BgChip.jsx`);
   don't add a gallery of thumbnails to a form.
+  **Temas** is a console card (module `temas`, between Camadas and the
+  Setlist; in the Camadas drawer on narrower screens; `ThemesCard.jsx`):
+  the themes as small screens, a click dresses what is on air
+  (`applyThemeOnAir`: text look + Fundo, padlock respected; `c.themeId` is
+  what Camadas calls "Tema: …"), a double click edits it in Configurações,
+  and "Salvar tema para a música" writes `Song.theme_id` for the song on air
+  or in the Prévia. A Bible passage takes **the Bíblia's own theme**
+  (`User.bible_theme_id`: "" = the songs' default, "none" = factory;
+  `themeForKind` in themes.js, used by `stamp`), chosen in the Bíblia's Tema
+  button or Configurações › Bíblia e músicas. The item's title over the
+  slide is `style.title` (show/hide, Camadas › Texto principal › Título);
+  unset, Aparência's `show_item_title` decides.
 
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built

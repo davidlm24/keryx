@@ -58,7 +58,9 @@ export function isOnAir(live) {
 
 // verse_numbers and ref_line: how a Bible passage shows its verse numbers
 // and its reference (Configurações › Bíblia e músicas, src/lib/bibleDisplay.js).
-export const STYLE_CHOICES = { line_height: ["tight", "normal", "loose"], text_case: ["none", "upper"], text_box: ["none", "band", "block"], verse_numbers: ["sup", "hide"], ref_line: ["full", "plain", "none"] };
+// title: the item's name over the slide, for this item (Camadas › Texto
+// principal); unset, the church's choice (Aparência › Títulos nas telas).
+export const STYLE_CHOICES = { line_height: ["tight", "normal", "loose"], text_case: ["none", "upper"], text_box: ["none", "band", "block"], verse_numbers: ["sup", "hide"], ref_line: ["full", "plain", "none"], title: ["show", "hide"] };
 export const STYLE_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "background_image", "background_color", "text_align", "text_position", "transition",
     ...Object.keys(STYLE_RANGES), ...Object.keys(STYLE_CHOICES), "text_box_color"];
 export const BACKGROUND_FITS = ["cover", "contain"];

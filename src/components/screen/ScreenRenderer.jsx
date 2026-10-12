@@ -204,6 +204,8 @@ function verseNodes(text, numbers = "sup") {
 
 function Content({ content, showTitle = true }) {
     const style = slideStyle(content);
+    // The item's own choice (Camadas) wins over the church's (showTitle).
+    const titled = style.title === "hide" ? false : style.title === "show" ? true : showTitle;
     const slide = currentSlide(content) || { text: "" };
     const size = SIZES.includes(style.font_size) ? style.font_size : "large";
     const align = style.text_align || "center";
@@ -214,7 +216,7 @@ function Content({ content, showTitle = true }) {
     const key = `${content.startedAt}:${content.index}`;
     return (
         <>
-            {!bible && showTitle && content.title && <div className="ks-title" style={{ fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }}>{content.title}</div>}
+            {!bible && titled && content.title && <div className="ks-title" style={{ fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }}>{content.title}</div>}
             <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": SIZE_CQW[size], ...(style.text_nudge ? { translate: `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` } : {}) }}>
                 <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
                     {slide.is_chorus && !bible && <div className="ks-chorus">Refrão</div>}

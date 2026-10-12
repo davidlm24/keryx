@@ -32,6 +32,9 @@ export const PREF_FIELDS = {
     chime_volume: { default: 35, normalize: (v) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) ? Math.min(100, Math.max(5, Math.round(n))) : 35; } },
     show_item_title: { default: true, normalize: (v) => v !== false },
     youtube_hide_title: { default: true, normalize: (v) => v !== false },
+    // The Bíblia's own theme: "" = the default theme (the songs'), "none"
+    // = the factory look, else a ProjectionTheme id (themes.js themeForKind).
+    bible_theme_id: { default: "", normalize: (v) => (typeof v === "string" && v.length <= 200 ? v.trim() : "") },
     import_lines: {
         default: 0,
         normalize: (v) => { const n = Number(v); return v !== null && v !== "" && Number.isInteger(n) && n >= 0 && n <= 12 ? n : 0; },

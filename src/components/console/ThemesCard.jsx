@@ -1,0 +1,80 @@
+import React from "react";
+import { keryx } from "@/api/keryxClient";
+import Icon from "./Icon";
+import { Btn } from "./kx";
+import { ThemeThumb } from "./library/BackgroundLibrary";
+import { themeStyle, themeBackgroundArgs, defaultTheme } from "@/lib/console/themes";
+import { STYLE_KEYS, layerLocked } from "@shared/live-state.mjs";
+
+// A theme on what is on air, at once (the Temas card, Camadas' Restaurar):
+// its text look on the text on air (the item's title choice kept), its
+// background on the Fundo — unless Camadas' padlock holds the Fundo. With
+// nothing on air the theme still sets the Fundo, as in Holyrics.
+export async function applyThemeOnAir(c, theme) {
+    if (!theme) return;
+    c.setThemeId(theme.id);
+    const content = c.cur?.content;
+    try {
+        if (content) {
+            const style = { ...(content.style || {}), ...themeStyle(theme) };
+            await c.callOp("content.update", { style: Object.fromEntries(Object.entries(style).filter(([k]) => STYLE_KEYS.includes(k))) });
+        }
+        const bg = themeBackgroundArgs(theme);
+        if (bg && !layerLocked(c.cur, "background")) await c.callOp("background.set", bg);
+    } catch { /* callOp said why (the screens locked, say) */ }
+}
+
+// The song a theme can be saved for: the one on air, else the one in the
+// Prévia; null when neither is a song.
+export function songInHand(c, songs) {
+    const id = c.cur?.content?.ref?.songId || c.prev?.args?.ref?.songId || null;
+    return id ? (songs || []).find((s) => s.id === id) || null : null;
+}
+
+// Temas (owner's request 2026-10-12, as in Holyrics): the church's themes as
+// small screens beside the console. A click dresses what is on air, a double
+// click opens the theme in Configurações; "Salvar tema para a música" makes
+// the song in hand always go on air with it (Song.theme_id).
+export default function ThemesCard({ c, themes, songs, onEdit, onNew }) {
+    const def = defaultTheme(themes);
+    const song = songInHand(c, songs);
+    const songTheme = song?.theme_id ? themes.find((t) => t.id === song.theme_id) || null : null;
+    // The one ringed: the last applied, else the song's own, else the default.
+    const current = themes.find((t) => t.id === c.themeId) || songTheme || def;
+    const saveForSong = async (themeId) => {
+        try {
+            await keryx.entities.Song.update(song.id, { theme_id: themeId });
+            c.say(themeId ? `"${song.title}" vai ao ar sempre com o tema ${current?.name}.` : `"${song.title}" volta ao tema padrão.`);
+        } catch (err) { c.say(err?.message || "Não foi possível salvar o tema da música."); }
+    };
+    if (!themes.length) {
+        return (
+            <div className="tm-empty">
+                <span className="kx-meta">Nenhum tema ainda. Ajuste o texto e o fundo em Camadas e use "Salvar como novo", ou crie um tema.</span>
+                <Btn small onClick={onNew}><Icon name="plus" />Novo tema…</Btn>
+            </div>
+        );
+    }
+    return (
+        <div className="tm">
+            <div className="tm-grid" role="list" aria-label="Temas">
+                {themes.map((t) => (
+                    <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={t.name}
+                        title={`${t.name}${t.id === def?.id ? " · tema padrão" : ""} · clique: aplica no que está no ar · duplo clique: editar`}
+                        onClick={() => applyThemeOnAir(c, t)} onDoubleClick={() => onEdit(t.id)}>
+                        <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
+                        <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{t.name}</span>
+                    </button>
+                ))}
+            </div>
+            {song && (
+                <div className="tm-song">
+                    <span className="kx-meta" title={song.title}>{songTheme ? <>“{song.title}” segue o tema <b>{songTheme.name}</b></> : <>“{song.title}”</>}</span>
+                    {songTheme && (!current || current.id === songTheme.id)
+                        ? <Btn small onClick={() => saveForSong("")} title="A música volta a ir ao ar com o tema padrão">Tirar tema da música</Btn>
+                        : <Btn small disabled={!current} onClick={() => saveForSong(current.id)} title="A música vai ao ar sempre com este tema">Salvar tema para a música</Btn>}
+                </div>
+            )}
+        </div>
+    );
+}

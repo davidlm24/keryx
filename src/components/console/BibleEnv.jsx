@@ -18,6 +18,9 @@ import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { rangeLabel, groupVerses, passageOf, chapterOnAir } from "@/lib/console/bibleVerses";
 import { verseNumbers } from "@/lib/verseMarks";
 import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
+import { useLibraryPicker } from "./library/libraryContext";
+import { useThemes } from "./useConsoleData";
+import { themeForKind } from "@/lib/console/themes";
 
 // Book groups, by position in the canon, for the colour bar of each book.
 const GROUPS = [[0, 4, "#b08a5a"], [5, 16, "#9a7a4a"], [17, 21, "#8d8a6a"], [22, 38, "#8a6a9a"], [39, 43, "#5a8ab0"], [44, 64, "#6a9a7a"], [65, 65, "#7a9a5a"]];
@@ -107,6 +110,17 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const prefs = usePrefs();
     const wanted = prefs.bible_version;
     const setWanted = (v) => { updateUser({ bible_version: v }).catch(() => c.say("Não foi possível salvar a versão escolhida.")); };
+    // The Bíblia's own theme (User.bible_theme_id; themes.js themeForKind):
+    // chosen in the background library, in theme mode.
+    const themes = useThemes();
+    const bibleTheme = themeForKind(themes, "bible", prefs.bible_theme_id);
+    const pickTheme = useLibraryPicker();
+    const chooseTheme = async () => {
+        const r = await pickTheme({ accept: "theme", value: prefs.bible_theme_id || bibleTheme?.id || null, title: "Tema da Bíblia", allowNone: true, noneLabel: "O mesmo das músicas", useLabel: "Usar na Bíblia" });
+        const id = r?.theme ? r.theme.id : r?.none ? "" : null;
+        if (id === null) return;
+        updateUser({ bible_theme_id: id }).then(() => c.say(id ? `As passagens vão ao ar com o tema ${r.theme.name}.` : "A Bíblia segue o tema das músicas.")).catch(() => c.say("Não foi possível salvar o tema da Bíblia."));
+    };
     // Bumped after an install, so the installed list and the version are read again.
     const [installRev, setInstallRev] = useState(0);
     const [installed, setInstalled] = useState([]);
@@ -399,9 +413,10 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             return (
                 <div key="picker" data-col="picker" className={`col bible-pick ${fullNames ? "names-full" : ""} ${moving}`} style={sideCol("bibleSelW", widthOf("bibleSelW"))}>
                     {bar}
-                    <Panel className="bpick-head" title="Bíblia" count={version || wanted} actions={
+                    <Panel className="bpick-head" title="Bíblia" count={version || wanted} actions={<>
+                        <Btn small onClick={chooseTheme} title={`Tema da Bíblia: ${bibleTheme ? bibleTheme.name : "estilo de fábrica"}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"} · as passagens vão ao ar com ele`}>Tema</Btn>
                         <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
-                    }>
+                    </>}>
                         {badge && <div className={`bsrc ${badge.warn ? "kx-warn" : ""}`} title={badge.title || badge.text}><Icon name={badge.warn ? "warn" : "check"} size={12} /><span>{badge.text}</span></div>}
                         {ver && ver !== wanted && (
                             <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>

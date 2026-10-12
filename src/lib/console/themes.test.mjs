@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeGenerator } from "../../../shared/generators.mjs";
-import { themeStyle, sameLook, themeBackgroundArgs, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
+import { themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
 
 test("themeStyle: classics defaulted, extras empty unless saved", () => {
     const t = { font_family: "serif", text_box: "band", transition: "slide", transition_ms: 300 };
@@ -87,4 +87,14 @@ test("a theme with a generated background sets the Fundo as a generator", () => 
     assert.deepEqual(themeBackgroundArgs({ name: "Céu", background_generator: gen, background_dim: 0.2 }), { kind: "generator", value: "clouds", gen: normalizeGenerator(gen), title: "Céu", dim: 0.2 });
     assert.deepEqual(themeBackgroundArgs({ name: "Céu", background_generator: gen, background_image: "u.png" }).kind, "image", "a picture wins");
     assert.equal(themeBackgroundArgs({ name: "X", background_generator: {} }), null);
+});
+
+test("the Bíblia has its own theme; songs keep the default one", () => {
+    const themes = [{ id: "letras", is_default: true }, { id: "biblia" }];
+    assert.equal(themeForKind(themes, "lyrics", "biblia").id, "letras", "songs: the default theme");
+    assert.equal(themeForKind(themes, "bible", "biblia").id, "biblia");
+    assert.equal(themeForKind(themes, "bible", "").id, "letras", "none chosen: the same as the songs");
+    assert.equal(themeForKind(themes, "bible", "none"), null, "the factory look");
+    assert.equal(themeForKind(themes, "bible", "apagado").id, "letras", "a deleted theme falls back");
+    assert.equal(themeForKind([], "bible", "biblia"), null);
 });

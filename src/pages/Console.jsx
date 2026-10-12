@@ -19,6 +19,8 @@ import CenterPanel, { captionOf, ProgramaCaption } from "@/components/console/Ce
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
+import ThemesCard from "@/components/console/ThemesCard";
+import { requestThemeEdit } from "@/components/console/settings/TemasSection";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
@@ -723,7 +725,16 @@ export default function Console() {
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
     );
-    const cardPanel = { lib: libraryPanel, slides: slidesPanel, camadas: camadasPanel, roteiro: setlistPanel };
+    // Temas: a double click opens the theme in Configurações › Temas.
+    const editTheme = (id) => { requestThemeEdit(id); openSettings("temas"); };
+    const themesCard = <ThemesCard c={c} themes={data.themes} songs={data.songs} onEdit={editTheme} onNew={() => editTheme("new")} />;
+    const temasPanel = (
+        <Panel title="Temas" lead={leadOf("side", "temas")} count="clique aplica no ar" collapsed={layout.collapsed.temas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, temas: !layout.collapsed.temas } })}
+            actions={<IconBtn name="plus" title="Novo tema" small onClick={() => editTheme("new")} />}>
+            {themesCard}
+        </Panel>
+    );
+    const cardPanel = { lib: libraryPanel, slides: slidesPanel, camadas: camadasPanel, temas: temasPanel, roteiro: setlistPanel };
     const splitFor = (key, sign = 1, horizontal = false, id = key) => (
         <Split key={`split-${id}`} horizontal={horizontal} size={layout[key]} sign={sign} onSize={(v) => setLayout({ ...layout, [key]: v })} onReset={() => setLayout({ ...layout, [key]: DEFAULT_LAYOUT[key] })} clamp={(v) => clampSize(key, v)} />
     );
@@ -780,7 +791,8 @@ export default function Console() {
         if (col.id === "side" || col.id === "source") {
             const style = { ...sideCol(col.widthKey, layout[col.widthKey]), gap: col.id === "side" && sideSplit ? 0 : "var(--gutter)" };
             const cards = col.cards.map((id) => React.cloneElement(cardPanel[id], { key: id, className: `arr-card arr-card-${id}` }));
-            if (col.id === "side" && sideSplit) cards.splice(1, 0, splitFor("camadasH", sideSplit.sign, true));
+            // The splitter beside Camadas: below it when it is on top, else above it.
+            if (col.id === "side" && sideSplit) { const at = col.cards.indexOf("camadas"); cards.splice(sideSplit.sign === 1 ? at + 1 : at, 0, splitFor("camadasH", sideSplit.sign, true)); }
             return <div key={col.id} data-col={col.id} className={`col ${col.id === "source" ? "source" : ""} ${moving}`} style={style}>{bar}{cards}</div>;
         }
         return <div key={col.id} data-col={col.id} className={`col ${moving}`} style={sideCol(col.widthKey, layout[col.widthKey])}>{bar}{cardPanel[col.id]}</div>;
@@ -879,6 +891,7 @@ export default function Console() {
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
                     <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
                         <Layers c={c} themes={data.themes} media={data.media} />
+                        {!layout.hidden.temas && <><div className="listhead"><span className="kx-section">Temas</span></div>{themesCard}</>}
                     </Panel>
                 </div>
                 );

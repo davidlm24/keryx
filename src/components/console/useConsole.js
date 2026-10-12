@@ -7,9 +7,9 @@ import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
-import { defaultTheme, withThemeDefaults } from "@/lib/console/themes";
+import { themeForKind, withThemeDefaults } from "@/lib/console/themes";
 import { fundoOps } from "@/lib/console/backgroundSpec";
-import { useUser } from "@/hooks/useUser";
+import { useUser, usePrefs } from "@/hooks/useUser";
 
 // The console's own state around the live state. One console, always live:
 // every operation goes to the live state (shared/live-state.mjs).
@@ -40,8 +40,14 @@ export function useConsole() {
     // The default theme (Configurações › Aparência › Temas) dresses a song
     // or a passage that has no look of its own, at send time: what is on
     // air never changes by itself (themes.js, withThemeDefaults).
-    const theme = defaultTheme(useThemes());
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, theme), look), bgPrefs), [theme, look, bgPrefs]);
+    // A Bible passage takes the Bíblia's own theme (Configurações › Bíblia
+    // e músicas, or the Bíblia's Tema button); everything else the default.
+    const themes = useThemes();
+    const bibleThemeId = usePrefs().bible_theme_id;
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, args?.kind, bibleThemeId)), look), bgPrefs), [themes, bibleThemeId, look, bgPrefs]);
+    // The theme the operator last applied to what is on air (the Temas
+    // card), shown in Camadas as "Tema: …"; null = the default theme.
+    const [themeId, setThemeId] = useState(null);
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 
@@ -160,5 +166,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, bgPrefs, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
+    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
 }
