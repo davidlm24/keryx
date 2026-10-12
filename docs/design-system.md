@@ -156,15 +156,36 @@ drawer from the Programa's header otherwise; **Ver** (beside the bell) and the
 screen actions (Tela preta, Logo, Limpar, Encerrar: one chip of glyphs since
 2026-10-10) in the top bar, which fits on one line at every width.
 
+**Editar layout (2026-10-12):** Ver › *Editar layout* lets the operator move
+the columns and the cards stacked in a column, in the console and in the
+Bíblia. Columns: Biblioteca, Slides, Programa and Camadas+Setlist (narrow:
+Biblioteca and Slides as one column); in the Bíblia, Livro · Capítulo ·
+Versículo, Texto and No ar. Stacks: Camadas/Setlist, Biblioteca/Slides
+(narrow) and Livros/Capítulos/Versículos. While editing, a neutral banner
+under the top bar (*Restaurar posições*, *Concluir*; Esc concludes, before
+it would end the projection), a 32 px bar on top of each column (grip, name,
+◀ ▶) and a grip with ▲ ▼ in a stacked card's header; drags are pointer
+moves on the grip (never HTML5 drag and drop) with a 2 px brand line where
+it lands; the panels' content is veiled so a click never prepares or sends.
+The order is saved with the layout per operator (`layout.order` and
+`layout.stacks`, normalized by `src/lib/console/arrange.js`). **Splitters
+follow the columns:** each column with a saved width has one splitter, on
+the side facing the flexible column (the Programa, or the Bíblia's text);
+Camadas' height splitter flips when the Setlist is above it. The Camadas
+drawer opens on the side of the Programa with more room.
+
 The live column's fixed height is the sum of its rows (the Programa's caption
 26 px and the Prévia's 24 px, each with 4 px under it, three 8 px gaps, the
 36 px player slot, the 28 px Próximo line: 146 px in all); the Programa is as
-wide as the column and that height allow, with the Prévia (46 % of the block) and *Enviar ao ar* docked directly
-under it. Spare height goes below, into the "Depois" list. The player slot is
-always reserved so starting a video never moves the monitors.
+wide as the column and that height allow, with the player slot under it and
+the Prévia (46 % of the block) and *Enviar ao ar* under the slot. Spare height
+goes below, into the "Depois" list. The player slot is always reserved so
+starting a video never moves the monitors.
 
-**Player (2026-10-07; position changed 2026-10-09):** one 36 px row in the
-slot under the Prévia (it was on top of the Programa), `bg-2`, built from the
+**Player (2026-10-07; position changed 2026-10-09 and 2026-10-12):** one 36 px
+row in the slot between the Programa and the Prévia (owner's decision
+2026-10-12: it drives what is on air, so it sits under the Programa; it was on
+top of the Programa, then under the Prévia), `bg-2`, built from the
 transport pieces (`kx-seek`, `kx-time`, `kx-meter`, bare icon buttons): title
 and kind, Anterior, −10, Tocar/Pausar (32 px, `bg-3`), +10, Próximo, Parar,
 time, seek, mute, a 2 px volume slider with a 10 px thumb, the L/R meters
@@ -172,18 +193,23 @@ time, seek, mute, a 2 px volume slider with a 10 px thumb, the L/R meters
 em". It narrows with container queries (drops "Toca em", the kind, the ±10 and
 the percentage, then the time). It shows only while something plays.
 
-**Bíblia (2026-10-11):** the picker is three columns inside one panel,
-separated by `--line` rules — **Livros** (all 66, coloured by group, a
-3-across grid of short codes that scrolls; **Abrev | Nomes** switches to a
-one-across list of whole names, remembered), **Capítulos** (the chosen
-book's name and every chapter; only a Salmos-sized book scrolls inside its
-own box) **with the reading right below them** (Ler/Buscar/Comparar and the
-verse list, scrolling on its own), and **Versículo** (the chapter's verses
-as 26 px cells, two across: a click selects as clicking the text does —
-Ctrl adds, Shift ranges, a double click projects — green selected, red on
-air). Recentes chips and the Favoritos/Anotações dropdowns sit on top of
-the middle column. The right column keeps **No ar agora** (at most 35 % of
-the column's height) and **Selecionado**; the Bible column has no Prévia.
+**Bíblia (2026-10-12, replacing the 2026-10-11 single panel):** three
+columns, each its own module, with real splitters (the side two resizable,
+`bibleSelW` and `bibleAirW`):
+- **Livro · Capítulo · Versículo** (300 px): a header with the version, the
+  edition, the reference/word field and "+"; then three cards, each
+  scrolling on its own — **Livros** (all 66, coloured by group; **Abrev |
+  Nomes** in its header, remembered), **Capítulos** (every chapter of the
+  book) and **Versículos** (the chapter's verses as 26 px cells: a click
+  selects as clicking the text does — Ctrl adds, Shift ranges, a double
+  click projects — green selected, red on air; it takes the height left).
+- **Texto** (flexible, min 360 px): Recentes chips and the
+  Favoritos/Anotações dropdowns on top, then Ler/Buscar/Comparar and the
+  verse list, scrolling on its own.
+- **No ar** (400 px): **No ar agora** (at most 35 % of the column's height)
+  and **Selecionado**; the Bible has no Prévia.
+The order of the columns and of the three cards is the operator's (Editar
+layout).
 Without internet every *Instalar* says "sem internet" and does nothing. The
 edition is named beside the version: *instalada neste computador*, *pela
 internet* (amber) or *não disponível* (amber), and a missing edition offers

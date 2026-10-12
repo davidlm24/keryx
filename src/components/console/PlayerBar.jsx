@@ -86,7 +86,7 @@ function Volume({ volume, onVolume, disabled }) {
     );
 }
 
-// The player on top of the Programa: whatever plays with sound on the screens
+// The player between the Programa and the Prévia: whatever plays with sound on the screens
 // or the KERYX computer (a video, a YouTube link, an audio file or list), with
 // Anterior, −10 s, Tocar/Pausar, +10 s, Próximo, Parar, the position, the
 // volume and the output's level meters. Always there, so the monitors never

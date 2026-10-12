@@ -105,6 +105,9 @@ test("Esc closes the topmost thing open, one per press; with nothing open it end
     assert.equal(escapeTarget({ popover: "verificar", settings: true, drawer: true }), "popover");
     assert.equal(escapeTarget({ menu: true, popover: "outs", settings: true }), "menu");
     assert.equal(escapeTarget({ popover: null, settings: false, drawer: false }), "end");
-    // The order is the visual stacking: a context menu over a popover over Configurações over Camadas.
-    assert.deepEqual(ESC_ORDER, ["menu", "popover", "settings", "drawer"]);
+    // The edit mode: left before the projection ends, after everything over it.
+    assert.equal(escapeTarget({ edit: true }), "edit");
+    assert.equal(escapeTarget({ drawer: true, edit: true }), "drawer");
+    // The order is the visual stacking: a context menu over a popover over Configurações over Camadas over the edit mode.
+    assert.deepEqual(ESC_ORDER, ["menu", "popover", "settings", "drawer", "edit"]);
 });

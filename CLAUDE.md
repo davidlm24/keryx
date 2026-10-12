@@ -61,7 +61,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   it projects through the console's Prévia/Programa and every live key
   works there) and Relatórios (`ReportsView.jsx`). The Bíblia is the
   console's second environment (`BibleEnv.jsx`: Ler, Buscar, Comparar,
-  notes). Setlist sections are ServiceItems of type `SECTION`: headers that
+  notes; three columns). Where columns and stacked cards go is the
+  operator's (Ver › Editar layout): `layout.order`/`layout.stacks`, turned
+  into columns and splitters by `src/lib/console/arrange.js` (tested) —
+  render from `cultoColumns`/`bibleColumns` + `withSplits`, never place a
+  column by hand in `Console.jsx`. Setlist sections are ServiceItems of type `SECTION`: headers that
   take no time and never go on air — use `playableItems`/`plan` from
   `src/lib/console/setlist.js`. A click prepares a *stage* in the Prévia;
   Enter, a **double click** or "Enviar ao ar" sends it (user decision

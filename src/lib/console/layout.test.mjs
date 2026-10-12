@@ -1,6 +1,43 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf } from "./layout.js";
+import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf, loadLayout, restoreArrangement } from "./layout.js";
+import { DEFAULT_ORDER, DEFAULT_STACKS } from "./arrange.js";
+
+// localStorage stand-in for loadLayout.
+const withStore = (saved, fn) => {
+    const prev = globalThis.localStorage;
+    globalThis.localStorage = { getItem: () => (saved == null ? null : JSON.stringify(saved)), setItem() {} };
+    try { return fn(); } finally { globalThis.localStorage = prev; }
+};
+
+test("the column order is part of the layout; an old save gets the default order", () => {
+    assert.deepEqual(DEFAULT_LAYOUT.order, DEFAULT_ORDER);
+    assert.deepEqual(DEFAULT_LAYOUT.stacks, DEFAULT_STACKS);
+    const old = withStore({ libW: 300, hidden: { tl: true } }, () => loadLayout("x"));
+    assert.equal(old.libW, 300);
+    assert.deepEqual(old.order, DEFAULT_ORDER);
+    assert.deepEqual(old.stacks, DEFAULT_STACKS);
+    const odd = withStore({ order: { culto: ["side", "side", "live", "zz"] } }, () => loadLayout("x"));
+    assert.deepEqual(odd.order.culto, ["side", "live", "lib", "slides"]);
+    assert.deepEqual(odd.order.biblia, DEFAULT_ORDER.biblia);
+});
+
+test("the Bíblia's two side columns are resizable, with limits", () => {
+    assert.deepEqual(LIMITS.bibleSelW, [240, 520]);
+    assert.deepEqual(LIMITS.bibleAirW, [300, 560]);
+    assert.equal(DEFAULT_LAYOUT.bibleSelW, 300);
+    assert.equal(DEFAULT_LAYOUT.bibleAirW, 400);
+});
+
+test("Restaurar posições: order, stacks and sizes back; shown modules and density kept", () => {
+    const mine = { ...DEFAULT_LAYOUT, hidden: { tl: true }, density: "compact", libW: 400, bibleAirW: 500, order: { ...DEFAULT_ORDER, culto: ["live", "lib", "slides", "side"] } };
+    const back = restoreArrangement(mine);
+    assert.deepEqual(back.order, DEFAULT_ORDER);
+    assert.equal(back.libW, DEFAULT_LAYOUT.libW);
+    assert.equal(back.bibleAirW, DEFAULT_LAYOUT.bibleAirW);
+    assert.deepEqual(back.hidden, { tl: true });
+    assert.equal(back.density, "compact");
+});
 
 test("density: Confortável or Compacta, anything else falls back to the default", () => {
     assert.deepEqual(DENSITIES.map(([k]) => k), ["comfortable", "compact"]);

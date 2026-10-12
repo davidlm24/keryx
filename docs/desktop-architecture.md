@@ -455,8 +455,8 @@ command palette (`/`) and Saídas (with *Travar telas*).
   (`NoticeEditor.jsx`) edits all of it with a live 16:9 preview; saving
   touches the library only, "Pôr na prévia do console" prepares it.
 - **The player** (`PlayerBar`, logic in `src/lib/console/player.js`) sits
-  on top of the Programa, always (idle when nothing plays, so the monitors
-  never move): what plays with sound (video screens, a video or YouTube on
+  between the Programa and the Prévia, in a slot that is always reserved
+  (hidden when nothing plays, so the monitors never move): what plays with sound (video screens, a video or YouTube on
   the projector, the audio channel; a switch when several play), Anterior
   (previous in a list, else back to the start), −10 s, Tocar/Pausar (Space),
   +10 s, Próximo, Parar, position and seek, mute and a volume slider, the

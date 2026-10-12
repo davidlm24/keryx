@@ -92,12 +92,13 @@ export function ProgramaCaption({ c, projectorDown }) {
 // The live column, one block the same at every width
 // (docs/presenter-layout-proposal-2026-10-09.md, P0): the Programa (what is
 // on air, or the local copy with the real screen in a PiP; an output failure
-// is the banner under the top bar, never here), the Prévia docked right
-// under it with its one send button, a reserved slot where the player shows
-// while something plays (reserved, so the monitors never move), the next
-// item and, when the Setlist has no column of its own, the items after it.
-// The block is as wide as the column allows and as tall as fits (console.css,
-// .liveblock); spare height goes below it, never between the monitors.
+// is the banner under the top bar, never here), right under it a reserved
+// slot where the player shows while something plays (it drives what is on
+// air; reserved, so the monitors never move; user decision 2026-10-12), the
+// Prévia with its one send button, the next item and, when the Setlist has no
+// column of its own, the items after it. The block is as wide as the column
+// allows and as tall as fits (console.css, .liveblock); spare height goes
+// below it, never between the monitors.
 export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu, items = [] }) {
     const { cur, prev, now, locked, stamp } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
@@ -143,6 +144,9 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                 <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={now} logoUrl={logoUrl} motion dropProps={{ ...dropProps("air"), onContextMenu: onProgMenu }}>
                     {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
                 </Monitor>
+                <div className="pslot">
+                    <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
+                </div>
                 <div className="subrow">
                     <div className="prev-outs" role="group" aria-label="Ver a prévia como a saída">
                         {railViews.map((o) => (
@@ -173,9 +177,6 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                         {note && <div className="kx-meta sendnote">{note}</div>}
                         <TeacherNotes prev={prev} cur={cur} />
                     </div>
-                </div>
-                <div className="pslot">
-                    <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
                 </div>
                 <div className="nextline">
                     <span className="kx-section">Próximo</span>

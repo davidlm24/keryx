@@ -77,7 +77,9 @@ export function liveAction(e) {
 // while anything above them is open.
 // layers: { menu, popover, settings, drawer } (truthy = open)
 // -> the layer to close, or "end".
-export const ESC_ORDER = ["menu", "popover", "settings", "drawer"];
+// "edit" (Ver › Editar layout) is the outermost: Esc leaves the edit mode
+// before it would end the projection.
+export const ESC_ORDER = ["menu", "popover", "settings", "drawer", "edit"];
 export function escapeTarget(layers = {}) {
     return ESC_ORDER.find((k) => Boolean(layers[k])) || "end";
 }

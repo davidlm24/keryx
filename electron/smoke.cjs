@@ -836,6 +836,31 @@ async function checkConsole(webContents, { live, outputs }) {
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.colsFit = Object.values(result.cols).every(Boolean);
+        // Ver › Editar layout (arrange.js): a banner, a bar per column; ▶ on
+        // the Biblioteca swaps it with Slides, saved with the layout; the
+        // columns still fit; Esc leaves the edit mode without ending the
+        // projection; Restaurar posições puts the default order back.
+        {
+            const colOrder = () => js(`[...document.querySelectorAll(".console .main > [data-col]")].map((n) => n.dataset.col).join(",")`);
+            const orderBefore = await colOrder();
+            await click(".topbar .tb-ver");
+            await click(".pop .kx-menu-item", "Editar layout");
+            result.editBanner = await waitFor(() => js("Boolean(document.querySelector('.arr-banner')) && document.querySelectorAll('.console .main > [data-col] > .arr-bar').length === document.querySelectorAll('.console .main > [data-col]').length"));
+            await js(`(() => { const b = document.querySelector('[data-col="lib"] .arr-bar button[title^="Mover Biblioteca para a direita"]'); if (b) b.click(); return Boolean(b); })()`);
+            const orderMoved = await colOrder();
+            const savedOrder = await js(`(() => { const k = Object.keys(localStorage).find((x) => x.startsWith("keryx.console.layout")); try { return JSON.parse(localStorage.getItem(k)).order.culto.join(","); } catch { return null; } })()`);
+            const fits = await js(`(() => { const cols = [...document.querySelectorAll(".console .main > .col")].map((n) => n.getBoundingClientRect()); return cols.every((r, i) => r.left >= -1 && r.right <= innerWidth + 1 && (i === 0 || r.left >= cols[i - 1].right - 1)); })()`);
+            result.editMove = orderMoved.startsWith("slides,lib") && Boolean(savedOrder && savedOrder.startsWith("slides,lib")) && fits ? true : { orderBefore, orderMoved, savedOrder, fits };
+            const airBefore = JSON.stringify(live.get().content || null);
+            await js("document.activeElement && document.activeElement.blur(); true");
+            await press("Escape");
+            result.editEsc = await waitFor(() => js("!document.querySelector('.arr-banner')")) && JSON.stringify(live.get().content || null) === airBefore;
+            await click(".topbar .tb-ver");
+            await click(".pop .kx-menu-item", "Editar layout");
+            await click(".arr-banner button", "Restaurar posições");
+            await click(".arr-banner button", "Concluir");
+            result.editRestore = (await colOrder()) === orderBefore;
+        }
         result.noGoldRing = await js(`(() => {
             const input = document.querySelector(".console .searchrow .kx-field input");
             if (!input) return "sem campo";
@@ -1034,38 +1059,40 @@ async function checkConsole(webContents, { live, outputs }) {
         // Bíblia: a letter opens the quick jump; "jo 3 16" reads as João 3:16.
         await click(".envtabs button", "Bíblia");
         await waitText(webContents, "SELECIONADO");
-        // The columns (owner layout 2026-10-11): Livros | Capítulos with the
-        // reading below | Versículos, lines between them, the air column as
-        // before. Salmos' 150th chapter is reachable inside its own box; the
-        // page never scrolls sideways.
+        // Three columns (owner layout 2026-10-12): Livro · Capítulo ·
+        // Versículo stacked, the text, No ar. Salmos' 150th chapter is
+        // reachable inside the Capítulos card; the text keeps a usable height;
+        // the page never scrolls sideways.
         await click(".bgrid .kx-book", "Sl");
-        await waitFor(() => js("document.querySelectorAll('.bband .chapters button').length === 150"));
+        await waitFor(() => js("document.querySelectorAll('.bpick-chapters .chapters button').length === 150"));
         result.bibleNoScroll = {};
         for (const [w, h] of [[1366, 768], [1920, 1080]]) {
             if (operatorWin) operatorWin.setContentSize(w, h);
             await sleep(500);
             result.bibleNoScroll[`${w}x${h}`] = await js(`(() => {
-                const cols = [...document.querySelectorAll(".bb-col")];
-                if (cols.length !== 3) return "colunas: " + cols.length;
+                const cols = [...document.querySelectorAll(".console .main > [data-col]")];
+                if (cols.map((n) => n.dataset.col).join(",") !== "picker,reading,air") return "colunas: " + cols.map((n) => n.dataset.col).join(",");
                 const xs = cols.map((c2) => c2.getBoundingClientRect().left);
                 if (!(xs[0] < xs[1] && xs[1] < xs[2])) return "fora de ordem";
-                const box = document.querySelector(".bb-mid .chapters");
-                const c150 = [...box.querySelectorAll("button")].find((b) => b.textContent === "150");
+                const stack = [...document.querySelectorAll(".bible-pick > .arr-card")].map((n) => n.className.match(/arr-card-(\\w+)/)[1]).join(",");
+                if (stack !== "books,chapters,verses") return "pilha: " + stack;
+                const box = document.querySelector(".arr-card-chapters > .kx-panel-b");
+                const c150 = [...box.querySelectorAll(".chapters button")].find((b) => b.textContent === "150");
                 if (!c150) return "sem 150";
                 c150.scrollIntoView({ block: "nearest" });
                 const cb = c150.getBoundingClientRect(), bb = box.getBoundingClientRect();
                 if (!(cb.bottom <= bb.bottom + 2 && cb.top >= bb.top - 2)) return "150 fora da caixa";
-                const read = document.querySelector(".bb-read");
-                if (!read || read.getBoundingClientRect().top < bb.bottom - 1) return "leitura fora do lugar";
+                const read = document.querySelector(".bread");
+                if (!read || read.getBoundingClientRect().height < 150) return "leitura baixa";
                 return document.documentElement.scrollWidth <= innerWidth + 1 || "rolagem lateral";
             })()`);
         }
         // The smallest window: the columns shrink, the air column's Enviar ao
-        // ar stays on screen, and the books column scrolls instead of clipping.
+        // ar stays on screen, and the books card scrolls instead of clipping.
         if (operatorWin) operatorWin.setContentSize(960, 600);
         await sleep(500);
         result.bibleShort = await js(`(() => {
-            const grid = document.querySelector(".bb-books .bgrid");
+            const grid = document.querySelector(".bpick-books .bgrid");
             const send = [...document.querySelectorAll(".bible-air-col button")].find((b) => /Enviar ao ar/.test(b.textContent));
             const r = send && send.getBoundingClientRect();
             return Boolean(grid) && grid.scrollWidth <= grid.clientWidth + 1 && Boolean(r) && r.height > 0 && r.bottom <= innerHeight;
@@ -1073,6 +1100,20 @@ async function checkConsole(webContents, { live, outputs }) {
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.bibleBandFits = Object.values(result.bibleNoScroll).every((v) => v === true);
+        // The Bíblia's splitters are real (they were a fixed gap): → grows the
+        // Livro · Capítulo · Versículo column, Enter restores it.
+        {
+            const BSPLIT = `document.querySelector(".console .main > .kx-split[role='separator']")`;
+            const bWidth = () => js(`(() => { const s = ${BSPLIT}; return s && s.previousElementSibling ? Math.round(s.previousElementSibling.getBoundingClientRect().width) : null; })()`);
+            const focused = await js(`(() => { const s = ${BSPLIT}; if (s) s.focus(); return Boolean(s) && document.activeElement === s; })()`);
+            const w0 = await bWidth();
+            if (focused) { await press("ArrowRight"); await sleep(300); }
+            const w1 = await bWidth();
+            if (focused) { await press("Enter"); await sleep(300); }
+            const w2 = await bWidth();
+            await js("document.activeElement && document.activeElement.blur(); true");
+            result.bibleSplit = focused && w1 > w0 && w2 === w0 ? true : focused && w1 === w0 && !BrowserWindow.getFocusedWindow() ? verdict("bibleSplit", "outro programa na frente") : { focused, w0, w1, w2 };
+        }
         await press("j");
         result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
         await type("o 3 16");
@@ -1087,20 +1128,20 @@ async function checkConsole(webContents, { live, outputs }) {
         result.quickPicked = await waitFor(() => js("!document.querySelector('.qj') && [...document.querySelectorAll('.kx-panel-h')].some((n) => n.textContent.startsWith('João 3'))"));
         // The Bible shows "No ar" only (no Prévia monitor).
         result.bibleOneMonitor = await js("document.querySelectorAll('.console .main .kx-mon').length === 1");
-        // The verse row in the band (when the column is tall enough to show
-        // it): the chapter's verses, the quick jump's verse selected (green).
-        // Abrev | Nomes switches the books to their whole names and back.
+        // The Versículos card: the chapter's verses, the quick jump's verse
+        // selected (green). Abrev | Nomes (the Livros card) switches the
+        // books to their whole names and back.
         result.bibleVerseRow = await js(`(() => {
-            const row = document.querySelector(".bband .bverses");
+            const row = document.querySelector(".bpick-verses .bverses");
             if (!row || getComputedStyle(row).display === "none") return "dobrada";
             const cells = [...row.querySelectorAll(".verse-cells button")];
             const sel = cells.filter((b) => b.classList.contains("is-prev")).map((b) => b.textContent);
             return cells.length === 5 && sel.join(",") === "16" ? true : { cells: cells.length, sel };
         })()`);
-        await click(".bband .kx-seg button", "Nomes");
-        result.bibleNames = await waitFor(() => js(`(() => { const g = document.querySelector(".bband .bgrid"); if (!g || getComputedStyle(g).display === "none") return true; const b = g.querySelector(".kx-book"); return b && b.textContent === "Gênesis"; })()`), 3000);
-        await click(".bband .kx-seg button", "Abrev");
-        result.bibleNamesBack = await waitFor(() => js(`(() => { const b = document.querySelector(".bband .bgrid .kx-book"); return !b || b.textContent === "Gn"; })()`), 3000);
+        await click(".bpick-books .kx-seg button", "Nomes");
+        result.bibleNames = await waitFor(() => js(`(() => { const b = document.querySelector(".bpick-books .bgrid .kx-book"); return Boolean(b) && b.textContent === "Gênesis"; })()`), 3000);
+        await click(".bpick-books .kx-seg button", "Abrev");
+        result.bibleNamesBack = await waitFor(() => js(`(() => { const b = document.querySelector(".bpick-books .bgrid .kx-book"); return Boolean(b) && b.textContent === "Gn"; })()`), 3000);
         // One verse (Enter) goes out as the whole chapter, at that verse.
         await waitFor(() => js("document.querySelectorAll('.kx-verse').length === 5"), 8000);
         await js("document.activeElement && document.activeElement.blur(); true");
@@ -2033,7 +2074,9 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
         && result.tlEmpty && result.tlBlocks && result.forecastOff && result.forecastOn && result.tlClosed
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
-        && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
+        && result.colsFit && result.editBanner && result.editMove === true && result.editEsc && result.editRestore
+        && (result.bibleSplit === true || typeof result.bibleSplit === "string")
+        && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk

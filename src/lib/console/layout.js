@@ -1,6 +1,8 @@
-// The console's layout: which modules are shown, which are collapsed, and
-// the splitter sizes. Saved per operator profile in localStorage; "Restaurar
+// The console's layout: which modules are shown, which are collapsed, the
+// splitter sizes and where the columns go (order/stacks, arrange.js; Ver ›
+// Editar layout). Saved per operator profile in localStorage; "Restaurar
 // layout" returns to DEFAULT_LAYOUT.
+import { DEFAULT_ORDER, DEFAULT_STACKS, normalizeArrangement } from "./arrange.js";
 
 // Camadas is a section above the Setlist in the wide tier's right column
 // (owner's request, 2026-10-10); narrower, it is a drawer opened from the
@@ -33,13 +35,22 @@ export const DEFAULT_LAYOUT = {
     slidesW: 300,
     rightW: 320,
     camadasH: 300,
+    bibleSelW: 300,
+    bibleAirW: 400,
     tlOpen: false,
     density: "comfortable",
+    order: DEFAULT_ORDER,
+    stacks: DEFAULT_STACKS,
 };
+
+// What "Restaurar posições" (the edit mode's banner) puts back: the order,
+// the stacks and the sizes; which modules are shown and the density stay.
+export const ARRANGEMENT_KEYS = ["order", "stacks", "libW", "slidesW", "rightW", "camadasH", "bibleSelW", "bibleAirW"];
+export const restoreArrangement = (layout) => ({ ...layout, ...Object.fromEntries(ARRANGEMENT_KEYS.map((k) => [k, DEFAULT_LAYOUT[k]])) });
 
 export const densityOf = (layout) => (DENSITIES.some(([k]) => k === layout?.density) ? layout.density : DEFAULT_LAYOUT.density);
 
-export const LIMITS = { libW: [200, 480], slidesW: [200, 520], rightW: [280, 520], camadasH: [120, 600] };
+export const LIMITS = { libW: [200, 480], slidesW: [200, 520], rightW: [280, 520], camadasH: [120, 600], bibleSelW: [240, 520], bibleAirW: [300, 560] };
 
 // A side column: its saved width is the flex basis, and it may shrink down
 // to its minimum when the window narrows, so it never spills over the center
@@ -53,7 +64,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const saved = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) } };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }
