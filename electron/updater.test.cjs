@@ -93,6 +93,7 @@ test("after an update the bell says what changed, once", () => {
     const withNotes = installedNote({ lastVersion: "0.2.10", version: "0.2.11", pending: { version: "0.2.11", notes: "• Travar telas" } });
     assert.equal(withNotes.title, "KERYX atualizado para a versão 0.2.11");
     assert.equal(withNotes.body, "O que mudou:\n• Travar telas");
+    assert.equal(withNotes.action, "whatsnew", "the bell offers the Novidades popup");
     const stale = installedNote({ lastVersion: "0.2.10", version: "0.2.11", pending: { version: "0.2.9", notes: "velho" } });
     assert.equal(stale.body, "Antes: 0.2.10.", "notes of another version are not shown");
 });

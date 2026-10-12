@@ -33,7 +33,7 @@ import SettingsView from "@/components/console/settings/SettingsView";
 import { resolveSection } from "@/lib/console/settings";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
-import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications } from "@/components/console/Popovers";
+import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor, densityOf, restoreArrangement } from "@/lib/console/layout";
@@ -389,8 +389,30 @@ export default function Console() {
         const id = setTimeout(() => updCall("notificationsRead").catch(() => {}), 800);
         return () => clearTimeout(id);
     }, [open, updUnread, updCall]);
+    // Novidades: once after an update (every version since), and from the
+    // menu or the bell (every version up to this one).
+    const [whatsNew, setWhatsNew] = useState(null);
+    const sysRef = useRef(window.keryxDesktop?.system || null);
+    useEffect(() => {
+        sysRef.current?.call("whatsNew").then((res) => {
+            const d = res?.data;
+            if (!d) return;
+            if (d.pending?.to) { setWhatsNew({ ...d.pending, seen: false }); setOpen((o) => o || "novidades"); }
+            else setWhatsNew({ from: null, to: d.version, all: true, seen: true });
+        }).catch(() => {});
+    }, []);
+    const openWhatsNew = useCallback(() => {
+        setView(null);
+        setWhatsNew((w) => (w?.from && !w.seen ? w : { from: null, to: w?.to || null, all: true, seen: true }));
+        setOpen("novidades");
+    }, []);
+    const whatsNewSeen = () => {
+        if (whatsNew && !whatsNew.seen) sysRef.current?.call("whatsNewSeen").catch(() => {});
+        setWhatsNew((w) => (w ? { from: null, to: w.to, all: true, seen: true } : w));
+    };
     const noteAction = (action) => {
         if (action === "update") updateNow();
+        else if (action === "whatsnew") openWhatsNew();
         else if (action.startsWith("settings:")) openSettings(action.slice("settings:".length));
     };
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
@@ -708,7 +730,7 @@ export default function Console() {
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />}
-            {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
@@ -717,7 +739,8 @@ export default function Console() {
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} onOpenMedia={openMedia} />
                 </div>
             )}
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} />
+            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} onWhatsNew={openWhatsNew} />
+            <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />

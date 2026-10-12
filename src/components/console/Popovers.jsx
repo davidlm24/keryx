@@ -1,4 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { versionsBetween, parseNotes } from "@/lib/console/releaseNotes";
+import { RELEASE_NOTES } from "@/lib/console/releaseNotesData";
 import ShortcutList from "./ShortcutList";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
@@ -17,7 +19,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 
 // The KERYX menu: pages that stay outside the console, the service picker,
 // Ver (modules) and the layout reset.
-export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow }) {
+export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow, onWhatsNew }) {
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     if (open === "ver") {
         return (
@@ -69,6 +71,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Telas e saídas</MenuItem>
             <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>
             <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>
+            <MenuItem icon="star" onClick={() => onWhatsNew?.()}>Novidades</MenuItem>
             <MenuItem icon="sliders" onClick={() => { setOpen(null); onSettings?.("telas"); }}>Configurações</MenuItem>
             {hasUpdate(update) && (
                 <MenuItem icon="download" onClick={() => onUpdateNow?.()}>
@@ -309,6 +312,37 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
 // after a short countdown the operator can cancel; with something on air it
 // only installs on an explicit click. "Agora não" closes it and the download
 // goes on in the background (the bell and the menu say when it is ready).
+// Novidades: after an update, every version's notes since the one this
+// computer had (or, from the menu, every version up to this one), newest
+// first. Closing it says it was seen (no popup at the next launch).
+export function WhatsNew({ open, setOpen, range, onSeen }) {
+    if (open !== "novidades") return null;
+    // Without the app's version (the browser preview): every note shipped.
+    if (!range?.to) range = { from: null, all: true, to: versionsBetween(RELEASE_NOTES, { to: "9999", all: true })[0]?.version || "0" };
+    const list = versionsBetween(RELEASE_NOTES, range);
+    const close = () => { setOpen(null); onSeen?.(); };
+    return (
+        <div className="dialog wn" role="dialog" aria-label="Novidades do KERYX">
+            <div className="kx-section" style={{ color: "var(--fg-1)" }}>{range.from ? `O KERYX foi atualizado para a versão ${range.to}` : `Novidades do KERYX`}</div>
+            <div className="wn-body">
+                {!list.length && <span className="kx-meta">Esta versão ({range.to}) não tem notas.</span>}
+                {list.map(({ version, md }) => (
+                    <section key={version} className="wn-ver">
+                        {list.length > 1 && <div className="wn-v">Versão {version}</div>}
+                        {parseNotes(md).map((b, i) => {
+                            const text = b.parts.map((p, k) => (p.bold ? <b key={k}>{p.text}</b> : <React.Fragment key={k}>{p.text}</React.Fragment>));
+                            if (b.type === "h") return <div key={i} className="wn-h">{text}</div>;
+                            if (b.type === "li") return <div key={i} className="wn-li">{text}</div>;
+                            return <p key={i} className="wn-p">{text}</p>;
+                        })}
+                    </section>
+                ))}
+            </div>
+            <div className="acts"><Btn kind="brand" onClick={close}>Entendi</Btn></div>
+        </div>
+    );
+}
+
 export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
     const [count, setCount] = useState(null);
     const [stopped, setStopped] = useState(false);
@@ -365,7 +399,7 @@ export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
 
 const NOTE_ICON = { update: "download", warn: "warn", info: "check" };
 // "settings:dados" is what older versions saved (the section is Backup now).
-const ACTION_LABEL = { update: "Atualizar agora", "settings:backup": "Abrir Backup", "settings:dados": "Abrir Backup" };
+const ACTION_LABEL = { update: "Atualizar agora", whatsnew: "Ver novidades", "settings:backup": "Abrir Backup", "settings:dados": "Abrir Backup" };
 
 // The bell's list: newest first, each with what can be done about it.
 export function Notifications({ open, setOpen, notes, update, onAction, onDismiss, onClear }) {

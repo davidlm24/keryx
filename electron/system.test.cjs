@@ -59,3 +59,12 @@ test("Console: confirm on close is on unless turned off; login only when install
     assert.deepEqual(loginItemArgs(true, "C:/KERYX.exe"), { openAtLogin: true, path: "C:/KERYX.exe" });
     store.close();
 });
+
+test("Novidades: pending after an update until seen", async () => {
+    const { system, saved, store } = sys({ whatsNew: { from: "0.2.13", to: "0.2.14" } });
+    assert.deepEqual(await system.ops.whatsNew(), { pending: { from: "0.2.13", to: "0.2.14" }, version: "0.0.0" });
+    await system.ops.whatsNewSeen();
+    assert.equal(saved.whatsNew, null);
+    assert.deepEqual((await system.ops.whatsNew()).pending, null);
+    store.close();
+});

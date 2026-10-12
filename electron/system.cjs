@@ -315,6 +315,9 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
                 app.setLoginItemSettings(loginItemArgs(Boolean(on), process.execPath));
                 return machineInfo();
             },
+            // Novidades after an update: { from, to } until seen, and the version.
+            whatsNew: async () => ({ pending: settings.get("whatsNew", null) || null, version: app.getVersion() }),
+            whatsNewSeen: async () => { settings.set("whatsNew", null); return null; },
             backupSet: async (_event, { enabled, keep } = {}) => {
                 const patch = {};
                 if (enabled !== undefined) patch.enabled = Boolean(enabled);
