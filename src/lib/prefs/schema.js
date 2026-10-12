@@ -50,6 +50,6 @@ export function prefsOf(user) {
     return out;
 }
 
-// The layout's `hidden` map ({ tl: true }) and the stored list (["tl"]).
+// The layout's `hidden` map ({ camadas: true }) and the stored list (["camadas"]).
 export const hiddenList = (hidden) => MODULE_KEYS.filter((k) => hidden?.[k]);
 export const hiddenMap = (list) => Object.fromEntries((list || []).map((k) => [k, true]));

@@ -19,7 +19,6 @@ import CenterPanel, { captionOf, ProgramaCaption } from "@/components/console/Ce
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
-import Timeline from "@/components/console/Timeline";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
@@ -775,7 +774,7 @@ export default function Console() {
         return <div key={col.id} data-col={col.id} className={`col ${moving}`} style={sideCol(col.widthKey, layout[col.widthKey])}>{bar}{cardPanel[col.id]}</div>;
     };
 
-    // The service clock in the top bar, late as the Linha do tempo counts it.
+    // The service clock in the top bar, and how late the item on air runs.
     const playAirIdx = playable.findIndex((i) => i.id === airItemId);
     const late = service ? serviceTiming({ items: playable, times: plannedTimes(service, playable), airIdx: playAirIdx, startedAt: playAirIdx >= 0 ? log[airItemId]?.start : null, now: c.now }).late : 0;
     const showForecast = useShowForecast();
@@ -832,11 +831,6 @@ export default function Console() {
             {editing && <DropLine drag={colDrag.drag} axis="x" />}
             {editing && <DropLine drag={sideDrag.drag} axis="y" />}
             {editing && <DropLine drag={sourceDrag.drag} axis="y" />}
-            {!view && env === "culto" && !layout.hidden.tl && (
-                <div className={`kx-panel tl-panel ${layout.tlOpen ? "is-open" : ""}`}>
-                    <Timeline service={service} items={playable} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} forecast={showForecast} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
-                </div>
-            )}
 
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}

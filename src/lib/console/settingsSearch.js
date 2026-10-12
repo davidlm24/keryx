@@ -64,7 +64,7 @@ export const SETTINGS_INDEX = [
     e("culto", "Equipe de louvor", "os músicos e cantores para escalar no culto", ["equipe", "músicos", "louvor", "vocal", "banda", "membro"]),
     e("culto", "Previsão do culto", "termina ~ e passou N min na barra do topo", ["previsão", "atraso", "termina", "passou", "fim", "duração"]),
 
-    e("console", "Módulos", "Biblioteca, Slides, Camadas, Setlist e Linha do tempo", ["biblioteca", "slides", "camadas", "setlist", "linha do tempo", "mostrar", "esconder", "ocultar"]),
+    e("console", "Módulos", "Biblioteca, Slides, Camadas e Setlist", ["biblioteca", "slides", "camadas", "setlist", "mostrar", "esconder", "ocultar"]),
     e("console", "Densidade", "confortável ou compacta", ["compacta", "confortável", "linhas", "altura"]),
     e("console", "Layout", "restaurar os módulos, a densidade e as colunas", ["restaurar layout", "colunas", "tamanhos", "padrão"]),
     e("console", "Ao fechar", "perguntar antes de fechar com algo no ar", ["fechar", "sair", "confirmar", "perguntar"]),

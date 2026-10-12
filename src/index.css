@@ -250,7 +250,7 @@ button:focus-visible {
 
 /* The toast viewport (src/components/ui/toast.jsx, generated) is a fixed box
    in the bottom-right corner, there even with no toast: it swallowed clicks
-   on whatever sits under it (the console's Linha do tempo arrow). Clicks go
+   on whatever sits under it (a console control near the bottom edge). Clicks go
    through it; the toasts themselves are pointer-events-auto. */
 .fixed.z-\[100\].max-h-screen.flex-col-reverse { pointer-events: none; }
 

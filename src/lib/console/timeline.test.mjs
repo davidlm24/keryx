@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { serviceTiming, lateWords, serviceClock } from "./timeline.js";
+import { serviceTiming, serviceClock } from "./timeline.js";
 
 const day = new Date(2026, 9, 9);
 const at = (h, m) => new Date(2026, 9, 9, h, m).getTime();
@@ -26,16 +26,12 @@ test("running late moves the end by the same minutes", () => {
     assert.equal(t.done, 1);
     assert.equal(t.late, 4);
     assert.equal(t.forecastEnd, at(19, 39));
-    assert.equal(lateWords(t.late, true), "+4 min atrasado");
 });
 
 test("ahead of the plan", () => {
     const t = serviceTiming({ items, times, airIdx: 1, startedAt: at(19, 3), now: at(19, 4) });
     assert.equal(t.late, -2);
     assert.equal(t.forecastEnd, at(19, 33));
-    assert.equal(lateWords(t.late, true), "−2 min adiantado");
-    assert.equal(lateWords(0, true), "no horário");
-    assert.equal(lateWords(5, false), "");
 });
 
 test("planned times unknown: no end is invented", () => {

@@ -1320,20 +1320,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".player button", "Parar e tirar do ar");
         result.audioStopped = await waitFor(() => !live.get().audio);
 
-        // Linha do tempo: the arrow opens it with no service (and says so),
-        // then shows the blocks once a service with items exists.
-        await click(".tl-panel .kx-tl button", "");
-        result.tlEmpty = await waitText(webContents, "Nenhum culto escolhido");
-        if (!result.tlEmpty) {
-            result.tlDebug = await js(`(() => {
-                const p = document.querySelector(".tl-panel");
-                const b = p && p.querySelector(".kx-tl button");
-                if (!b) return "sem botão";
-                const r = b.getBoundingClientRect();
-                const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-                return [p.innerText.slice(0, 200), b.getAttribute("aria-label"), at && (at.className.baseVal ?? at.className), innerHeight, Math.round(r.top)].join(" | ");
-            })()`);
-        }
+        // The Linha do tempo strip is gone (owner decision 2026-10-12); the
+        // top bar's service clock is what says how the service goes.
+        result.tlGone = await js("!document.querySelector('.tl-panel') && !document.querySelector('.kx-tl')");
         // No service yet: dropping a song on the Setlist starts today's setlist.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(400);
@@ -1371,16 +1360,21 @@ async function checkConsole(webContents, { live, outputs }) {
         for (const [i, title] of ["Abertura", "Louvor"].entries()) {
             await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i + 1}, duration: 300 }])`);
         }
-        result.tlBlocks = await waitFor(() => js("document.querySelectorAll('.tl-track .kx-tl-blk').length >= 2"), 8000);
-        // The forecast ("termina", "passou N min") is off by default: the
-        // Linha do tempo's header keeps its count but invents no end; the
+        // The forecast ("termina", "passou N min") is off by default: the top
+        // bar's service clock counts the service but invents no end; the
         // switch in Configurações › Culto (User.show_forecast) brings it back.
-        const tlHead = () => js("(document.querySelector('.tl-panel .kx-tl') || {}).textContent || ''");
-        result.forecastOff = /de \d+ iten/.test(await tlHead()) && !/termina|passou/.test(await tlHead());
+        // The setlist starts 10 minutes ago for this (then has no time again).
+        const ago = new Date(Date.now() - 10 * 60000);
+        const startedAt = ago.getDate() === new Date().getDate() ? `${String(ago.getHours()).padStart(2, "0")}:${String(ago.getMinutes()).padStart(2, "0")}` : "00:00";
+        await js(`window.keryxDesktop.db.call("Service", "update", ["${svc.id}", { startTime: "${startedAt}" }])`);
+        const svcClock = () => js("(document.querySelector('.tb-svc') || {}).textContent || ''");
+        result.forecastOff = await waitFor(async () => /Culto \d+:\d\d:\d\d/.test(await svcClock()), 6000) && !/termina|passou/.test(await svcClock());
         await js('window.keryxDesktop.db.call("User", "update", ["local", { show_forecast: true }])');
-        result.forecastOn = await waitFor(async () => /termina/.test(await tlHead()), 6000);
+        result.forecastOn = await waitFor(async () => /termina|passou/.test(await svcClock()), 6000);
+        if (!result.forecastOff || !result.forecastOn) result.forecastDebug = await svcClock();
         await js('window.keryxDesktop.db.call("User", "update", ["local", { show_forecast: false }])');
-        await waitFor(async () => !/termina/.test(await tlHead()), 6000);
+        await waitFor(async () => !/termina|passou/.test(await svcClock()), 6000);
+        await js(`window.keryxDesktop.db.call("Service", "update", ["${svc.id}", { startTime: null }])`);
 
         // Drag from the Biblioteca (synthetic DragEvents drive the handlers).
         // Wide enough that the Setlist column is on screen.
@@ -2126,9 +2120,6 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         result.rpClosed = await waitFor(() => js("!document.querySelector('.console .rp-grid')"));
 
-        await click(".tl-panel .kx-tl button", "");
-        result.tlClosed = await waitFor(() => js("!document.querySelector('.tl-track') && !document.querySelector('.tl-empty')"));
-
         // The operator clicks the projector (a tool window, out of Alt+Tab):
         // it takes the keyboard and its keys work there. → moves the slide,
         // B and L toggle Tela preta and the logo, Esc ends, Ctrl+W closes it.
@@ -2204,7 +2195,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
-        && result.tlEmpty && result.tlBlocks && result.forecastOff && result.forecastOn && result.tlClosed
+        && result.tlGone && result.forecastOff && result.forecastOn
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
         && result.colsFit && result.editBanner && result.editMove === true && result.editEsc && result.editRestore
         && (result.bibleSplit === true || typeof result.bibleSplit === "string")

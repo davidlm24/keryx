@@ -299,7 +299,7 @@ test("a broken backup file is refused and nothing stays staged", async () => {
 // The church's preferences live on the profile (src/lib/prefs): a backup and
 // Exportar → Importar carry them to the restored or other computer.
 test("the profile's preferences ride backups and Exportar/Importar", async () => {
-    const prefs = { bible_version: "ARA", bible_book_names: "full", import_lines: 4, console_density: "compact", console_hidden_modules: ["tl"], prefs_version: 1 };
+    const prefs = { bible_version: "ARA", bible_book_names: "full", import_lines: 4, console_density: "compact", console_hidden_modules: ["camadas"], prefs_version: 1 };
     const source = tmp();
     const store = openAt(source);
     store.call("User", "update", ["local", prefs]);

@@ -390,4 +390,3 @@ atualizações, among others).
 Still to design on this system before they are built:
 
 - Lyrics editor refinements (lines per slide, auto break) and online import.
-- Timeline: resizing planned durations; Planejado/Real lanes exist.

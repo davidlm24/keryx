@@ -199,9 +199,6 @@
 .console .nextline .kx-section { flex: none; }
 .console .nextline .kx-btn { margin-left: auto; flex: none; }
 .console .nextline .t { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; }
-.console .tl-panel { flex: none; }
-.console .tl-track { position: relative; height: 72px; margin: 4px var(--space-2) 0; overflow: hidden; }
-.console .tl-empty { height: 72px; display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--fg-3); font-size: 12px; }
 .console .layerprops { padding: var(--space-1) var(--space-2) var(--space-2); display: grid; grid-template-columns: 80px 1fr; gap: var(--space-1) var(--space-2); align-items: center; border-top: 1px solid var(--line); }
 .console .layerprops .k { font-size: 11px; color: var(--fg-3); }
 /* Camadas is on screen in the wide tier: its choices are 24 px targets like every control (the Seg "small" inline sizes are overridden). */

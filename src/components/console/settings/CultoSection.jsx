@@ -83,7 +83,7 @@ export default function CultoSection({ c }) {
                 </FormRow>
                 <FormRow k="Previsão do culto">
                     <Switch on={forecast} onChange={(on) => save({ show_forecast: on }, on ? "Previsão do fim e atraso ligados." : "Previsão desligada.")} label="Mostrar a previsão do fim do culto e o atraso" />
-                    <span className="kx-meta">mostra "termina ~" e "passou N min" na barra do topo e na linha do tempo; só faz sentido se o culto é planejado com durações</span>
+                    <span className="kx-meta">mostra "termina ~" e "passou N min" na barra do topo; só faz sentido se o culto é planejado com durações</span>
                 </FormRow>
             </div>
 
