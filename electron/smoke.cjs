@@ -1317,7 +1317,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.tlBlocks = await waitFor(() => js("document.querySelectorAll('.tl-track .kx-tl-blk').length >= 2"), 8000);
         // The forecast ("termina", "passou N min") is off by default: the
         // Linha do tempo's header keeps its count but invents no end; the
-        // switch in Configurações › Igreja (User.show_forecast) brings it back.
+        // switch in Configurações › Culto (User.show_forecast) brings it back.
         const tlHead = () => js("(document.querySelector('.tl-panel .kx-tl') || {}).textContent || ''");
         result.forecastOff = /de \d+ iten/.test(await tlHead()) && !/termina|passou/.test(await tlHead());
         await js('window.keryxDesktop.db.call("User", "update", ["local", { show_forecast: true }])');
@@ -1607,7 +1607,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Over the console, which stays mounted behind it.
         result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .col.center') && document.querySelector('.console .cfg-scrim'))");
         result.cfgSections = {};
-        for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Aparência", "Dados e atualizações"]) {
+        for (const name of ["Igreja", "Telas e saídas", "Telas na rede", "Aparência", "Bíblia e músicas", "Culto", "Console", "Backup e atualizações"]) {
             await click(".console .cfg-dialog .kx-row", name);
             result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
         }
@@ -1658,13 +1658,15 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .np-side'))"), 5000);
         await tuneOf("Tela do pastor");
 
-        // Temas: the editor creates a theme with a live sample; the Fundos
-        // library lives there now, and Aparência no longer has it. Element
+        // Aparência › Temas: the editor creates a theme with a live sample;
+        // the Fundos library is the next tab (not inside Temas). Element
         // clicks (not coordinates): the dialog relayouts while it opens.
         const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .cfg-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
         const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
-        await section("Temas");
-        await press2("Novo tema…");
+        const tab = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg .cfg-tabs button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
+        await section("Aparência");
+        await waitFor(() => tab("Temas"), 4000);
+        await waitFor(() => press2("Novo tema…"), 4000);
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs input.fg-input'))"));
         await js(`(() => {
             const name = document.querySelector(".cfg-outprefs input.fg-input");
@@ -1681,11 +1683,12 @@ async function checkConsole(webContents, { live, outputs }) {
             return rows.length === 1 && rows[0].font_family === "serif";
         }, 6000);
         if (!result.themeSaved) result.themeDiag = await js("(document.querySelector('.toast') || {}).textContent || document.querySelector('.console .cfg').innerText.slice(0, 300)");
+        result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .fg')"), 4000);
+        await tab("Fundos");
         result.fundosInTemas = await waitFor(() => js("Boolean(document.querySelector('.console .cfg .fg'))"), 4000);
-        await section("Aparência");
-        result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .fg') && [...document.querySelectorAll('.console .cfg .kx-meta')].some((n) => n.textContent.includes('moram em Temas'))"), 4000);
-        await section("Telas e saídas");
-        await waitText(webContents, "Projeção principal");
+        // Tela ociosa is in Aparência › Geral (no longer in Telas e saídas).
+        await tab("Geral");
+        await waitText(webContents, "Tela ociosa");
         await click(".console .cfg .kx-seg button", "Preto");
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
         await click(".console .cfg .kx-seg button", "Logo da igreja");

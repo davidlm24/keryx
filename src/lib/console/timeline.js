@@ -51,7 +51,7 @@ const dayOf = (date, now) => {
 // "time"; never a default hour), and when it should end: the start plus the
 // Setlist's durations (`seconds`), moved by how late the item on air is
 // (`late`, minutes, from serviceTiming). The forecast ("termina ~", "passou
-// N min") is OFF unless `forecast` is true (Configurações › Igreja): the
+// N min") is OFF unless `forecast` is true (Configurações › Culto): the
 // Setlist's durations are filled in by default (4 min a song, 2 any other),
 // so a church that plans only the order would be shown invented figures
 // (owner decision 2026-10-12).

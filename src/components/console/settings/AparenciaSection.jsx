@@ -8,13 +8,14 @@ import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
 import { useUser, updateUser } from "@/hooks/useUser";
+import IdleBlock from "./IdleBlock";
 
 
-// Aparência: how the screens look by default, for every service. The
-// transition between slides (each item can still choose its own in
-// Camadas) and the standby wallpaper the screens show when nothing is on
-// air and the service has none of its own. On the local profile (User).
-// The Fundos library lives in Temas (FundosGallery), beside the presets.
+// Aparência › Geral: how the screens look by default, for every service.
+// The transition between slides (each item can still choose its own in
+// Camadas), the idle look of the screens and the standby wallpaper they
+// show when nothing is on air and the service has none of its own. On the
+// local profile (User), but the idle look (the live state).
 export default function AparenciaSection({ c }) {
     const { media } = useLibrary();
     const user = useUser();
@@ -72,7 +73,7 @@ export default function AparenciaSection({ c }) {
                             onPick={(url) => { setPicking(false); save({ standby_background: url }, "Fundo de espera padrão salvo."); }} />
                     </div>
                 )}
-                <div className="listhead"><span className="kx-meta">Nomes, categorias e os ajustes de cada fundo moram em Temas, junto com os presets.</span></div>
+                <IdleBlock c={c} media={media} />
             </div>
         </>
     );

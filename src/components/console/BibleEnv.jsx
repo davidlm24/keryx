@@ -34,7 +34,7 @@ const save = (v) => {
     } catch { /* not remembered */ }
 };
 const MODES = [["ler", "Ler"], ["buscar", "Buscar"], ["comparar", "Comparar"]];
-// The version the operator chose (here or in Configurações › Bíblias, one
+// The version the operator chose (here or in Configurações › Bíblia e músicas, one
 // preference in the database); the palette prepares references in it.
 export const bibleVersionWanted = () => getPrefs().bible_version;
 

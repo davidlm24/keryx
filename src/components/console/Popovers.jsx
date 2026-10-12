@@ -379,7 +379,8 @@ export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
 }
 
 const NOTE_ICON = { update: "download", warn: "warn", info: "check" };
-const ACTION_LABEL = { update: "Atualizar agora", "settings:dados": "Abrir Dados" };
+// "settings:dados" is what older versions saved (the section is Backup now).
+const ACTION_LABEL = { update: "Atualizar agora", "settings:backup": "Abrir Backup", "settings:dados": "Abrir Backup" };
 
 // The bell's list: newest first, each with what can be done about it.
 export function Notifications({ open, setOpen, notes, update, onAction, onDismiss, onClear }) {

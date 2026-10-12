@@ -3,7 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useUser, updateUser } from "@/hooks/useUser";
 import { Btn, Field } from "../kx";
-import { FormRow, Switch } from "./parts";
+import { FormRow } from "./parts";
 
 // Igreja: the name, the city and the logo (the corner of the screens, the
 // idle screen and Mostrar logo). On the local profile (User).
@@ -13,7 +13,6 @@ export default function IgrejaSection({ c }) {
     const [city, setCity] = useState("");
     const user = useUser();
     const hasOwnLogo = Boolean(user?.logo_url);
-    const forecast = user?.show_forecast === true;
     const [busy, setBusy] = useState(false);
     const fileRef = useRef(null);
     // What the database has: the fields follow it (another window, a
@@ -58,10 +57,6 @@ export default function IgrejaSection({ c }) {
             </FormRow>
             <FormRow k="Cidade">
                 <Field icon={null} value={city} onChange={setCity} placeholder="Cidade" onBlur={() => commit("church_city", city)} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} style={{ maxWidth: 420 }} />
-            </FormRow>
-            <FormRow k="Previsão do culto">
-                <Switch on={forecast} onChange={(on) => { save({ show_forecast: on }, on ? "Previsão do fim e atraso ligados." : "Previsão desligada."); }} label="Mostrar a previsão do fim do culto e o atraso" />
-                <span className="kx-meta">mostra "termina ~" e "passou N min" na barra do topo e na linha do tempo; só faz sentido se o culto é planejado com durações</span>
             </FormRow>
             <FormRow k="Logo">
                 <img src={logo} alt="" className="cfg-logo" />

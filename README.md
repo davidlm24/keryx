@@ -51,7 +51,7 @@ desktop app.
 
 ### Backups, moving data, updates
 
-Configurações › "Dados e atualizações":
+Configurações › "Backup e atualizações":
 
 - **Backup automático:** a copy of the database on launch and on close, one per
   day, the last 14 kept, in `%APPDATA%\KERYX\backups` or a folder you choose
@@ -82,7 +82,7 @@ Installed copies update themselves from
 [comunidadegerar/keryx-releases](https://github.com/comunidadegerar/keryx-releases),
 a public repository that holds only the installers and `latest.yml` (the
 code stays in the private repository). `build.publish` in `package.json`
-points there. Configurações › Dados e atualizações finds the new version,
+points there. Configurações › Backup e atualizações finds the new version,
 downloads it when asked and installs it on the next restart, never on its own
 and never mid-service.
 
@@ -169,7 +169,7 @@ lists the screens connected right now in the Saídas popover.
 ### Bible text
 
 Nothing ships with the app: NVI, ACF and AA are copyrighted editions. The
-Bíblia environment (or Configurações › Bíblias instaladas) installs one
+Bíblia environment (or Configurações › Bíblia e músicas) installs one
 (≈4 MB each); after that, reading, word search and comparing run from the
 local database with no internet. Other versions (ARA, ARC, NAA, NTLH, BKJ
 1611) work online only. All Bible text goes through `src/lib/bibleText.js`.

@@ -475,6 +475,7 @@
 .console .cfg .cfg-inline { height: 22px; width: 100%; max-width: 320px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; box-shadow: inset 0 0 0 1px var(--line-strong); outline: none; }
 .console .cfg .kx-row .kx-row-meta { white-space: normal; }
 .console .cfg .listhead { height: auto; min-height: var(--row); padding: var(--space-1) var(--space-3); }
+.console .cfg .cfg-tabs { display: flex; padding: var(--space-2) var(--space-3) 0; }
 
 /* ---------- Editor de música (canvas artboard 16) ---------- */
 .console .song-ed-l .frm, .console .song-ed-r .frm { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2); }

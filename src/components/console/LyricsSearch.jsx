@@ -62,7 +62,7 @@ export default function LyricsSearch({ c, onClose, onImported }) {
     }, [hit?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const lyrics = hit?.hasLyrics ? preview.lyrics : pasted;
-    // How the imported lyric is cut into slides (was Configurações › Letras).
+    // How the imported lyric is cut into slides (the preference also in Configurações › Bíblia e músicas).
     const cut = String(usePrefs().import_lines);
     const pickCut = (v) => { updateUser({ import_lines: Number(v) }).catch(() => c.say("Não foi possível salvar.")); };
     const importSong = async () => {

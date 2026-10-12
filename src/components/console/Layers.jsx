@@ -25,7 +25,7 @@ const BY_KEY = Object.fromEntries(LAYERS.map((l) => [l.key, l]));
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"]];
 const TEXT_SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"]];
 // Theme helpers live in src/lib/console/themes.js, shared with the editor
-// in Configurações › Temas.
+// in Configurações › Aparência › Temas.
 const FONTS = THEME_FONTS;
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));

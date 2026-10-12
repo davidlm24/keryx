@@ -83,7 +83,7 @@ const directive = (raw, ...keys) => {
     return "";
 };
 
-// Long stanzas cut into slides of at most n lines (Configurações › Letras,
+// Long stanzas cut into slides of at most n lines (the "Ao importar" preference, Configurações › Bíblia e músicas,
 // "Ao importar"); 0 keeps each stanza whole.
 export function splitLines(sections, n) {
     if (!n) return sections;
