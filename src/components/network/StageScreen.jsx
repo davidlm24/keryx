@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { transposeChords, semitoneLabel } from "@/utils/chordTranspose";
-import { parseChordLine, transposeInline } from "@/lib/chords";
+import { transposeChords } from "@/utils/chordTranspose";
+import ChordedLines, { chordedOf, Transpose } from "./ChordedLines";
 import "@/components/network/net.css";
 
 const two = (n) => String(n).padStart(2, "0");
@@ -14,7 +14,8 @@ const isImage = (v) => typeof v === "string" && (v.startsWith("http") || v.start
 // chords ride ABOVE the words, transposable; the legacy chords block keeps
 // its side panel. The page (StageView) feeds it the live state; the
 // console's Prévia feeds it the prepared stage (`embed`: inside a monitor,
-// no transpose buttons).
+// no transpose buttons). This is the page's own screen ("Padrão da página");
+// a layout the operator drew is LayoutRenderer instead.
 export default function StageScreen({ content, nowMs, embed = false, opts = {}, scale = 1, children }) {
     const now = new Date(nowMs);
     // Which parts this screen shows (Configurações › Telas e saídas ›
@@ -49,8 +50,7 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
     // Time since the operator put this song up (the same on every screen).
     const elapsed = Math.max(0, Math.floor((nowMs - content.startedAt) / 1000));
     // The current slide with its chords, when the lyrics carry them.
-    const chorded = show.chords && Array.isArray(song.chordedSlides) ? song.chordedSlides[index] : null;
-    const chordedLines = chorded != null && chorded !== (current.text || "") ? transposeInline(chorded, transpose).split("\n") : null;
+    const chorded = show.chords ? chordedOf(song, index, current.text) : null;
 
     return (
         <div className={cls} style={style}>
@@ -69,40 +69,17 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
             </header>
             {song.musician_notes && show.notes && <div className="ns-notes">{song.musician_notes}</div>}
             <main className="ns-main">
-                <div className="ns-cur">{chordedLines ? (
-                    <span className="ns-chorded">
-                        {chordedLines.map((line, i) => {
-                            const segs = parseChordLine(line);
-                            if (segs.every((g) => !g.chord)) return <span key={i} className="ns-line">{segs.map((g) => g.text).join("")}</span>;
-                            return (
-                                <span key={i} className="ns-line">
-                                    {segs.map((g, k) => (
-                                        <span key={k} className="ns-seg">
-                                            <span className={`ns-ch ${g.chord ? "" : "is-empty"}`} aria-hidden={g.chord ? undefined : "true"}>{g.chord || ""}</span>
-                                            <span className="ns-tx">{g.text}</span>
-                                        </span>
-                                    ))}
-                                </span>
-                            );
-                        })}
-                    </span>
-                ) : (current.text || "")}</div>
-                {chordedLines && !embed && (
+                <div className="ns-cur">{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (current.text || "")}</div>
+                {chorded && !embed && (
                     <aside className="ns-trans" aria-label="Transposição">
-                        <button type="button" onClick={() => setTranspose((t) => t - 1)} aria-label="Baixar meio tom">−</button>
-                        <output aria-label="Transposição">{semitoneLabel(transpose)}</output>
-                        <button type="button" onClick={() => setTranspose((t) => t + 1)} aria-label="Subir meio tom">+</button>
+                        <Transpose value={transpose} onChange={setTranspose} />
                     </aside>
                 )}
-                {song.chords && !chordedLines && show.chords && (
+                {song.chords && !chorded && show.chords && (
                     <aside className="ns-chords" aria-label="Cifra">
                         <div className="ns-chords-h">
                             <span className="net-section">Cifra</span>
-                            {!embed && <>
-                                <button type="button" onClick={() => setTranspose((t) => t - 1)} aria-label="Baixar meio tom">−</button>
-                                <output aria-label="Transposição">{semitoneLabel(transpose)}</output>
-                                <button type="button" onClick={() => setTranspose((t) => t + 1)} aria-label="Subir meio tom">+</button>
-                            </>}
+                            {!embed && <Transpose value={transpose} onChange={setTranspose} />}
                         </div>
                         <pre>{transposeChords(song.chords, transpose)}</pre>
                     </aside>

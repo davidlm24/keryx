@@ -812,25 +812,6 @@ async function checkConsole(webContents, { live, outputs }) {
             })()`);
             result[`shot${w}`] = await shot(String(w));
         }
-        // The Prévia's six output buttons sit left of its monitor, inside the
-        // row and never over the screen, down to the smallest window the app
-        // allows (960 x 600), where they fold to icons in two columns.
-        result.railFits = {};
-        for (const [w, h] of [[960, 600], [1248, 820], [1366, 820], [1920, 820]]) {
-            if (operatorWin) operatorWin.setContentSize(w, h);
-            await sleep(500);
-            result.railFits[w] = await js(`(() => {
-                const row = document.querySelector(".subrow");
-                const m = document.querySelector(".subrow .kx-mon .kx-mon-screen");
-                const bs = [...document.querySelectorAll(".subrow .prev-outs button")];
-                if (!row || !m || bs.length !== 6) return false;
-                const a = row.getBoundingClientRect(), s = m.getBoundingClientRect();
-                const send = document.querySelector(".subrow .kx-btn-send");
-                if (!send || send.getBoundingClientRect().right > a.right + 0.5) return false;
-                return bs.every((b) => { const x = b.getBoundingClientRect(); return x.top >= a.top - 0.5 && x.bottom <= a.bottom + 0.5 && x.left >= a.left - 0.5 && x.right <= s.left + 0.5; });
-            })()`);
-        }
-        result.railFitsOk = Object.values(result.railFits).every(Boolean);
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.barFits = Object.values(result.bar).every(Boolean);
@@ -957,7 +938,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".mx-tile[data-page='/LyricProjection'] .mx-pick");
         await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
         await click(".console .ctx-menu button", "Pastor");
-        result.mvPicked = await waitFor(() => js(`(() => { const t = document.querySelectorAll(".mx-tile")[1]; return Boolean(t) && t.dataset.page === "/PastorView" && Boolean(t.querySelector(".kp-portrait .net")); })()`));
+        result.mvPicked = await waitFor(() => js(`(() => { const t = document.querySelectorAll(".mx-tile")[1]; return Boolean(t) && t.dataset.page === "/PastorView" && Boolean(t.querySelector(".net-pastor")); })()`));
         await click(".mx-toggle");
         result.mvOff = await waitFor(() => js("!document.querySelector('.mx-grid') && Boolean(document.querySelector('.kx-mon.prog .ks'))"));
 
@@ -1571,38 +1552,13 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         await waitFor(() => js("!document.querySelector('.song-ed-l')"));
 
-        // The Prévia rail: the prepared song as each output will show it.
-        // Letras shows its text, Avisos says it shows nothing of a song, and
-        // Projeção (the default) comes back.
+        // The Prévia: the prepared song as Projeção shows it (the picker of
+        // other outputs went with the Multiview, 2026-10-12).
         await click(".envtabs button", "KERYX");
         await click(".kx-tabs button", "Letras");
         await click(".kx-row", "Canto do console");
         await waitCap(PREV, "Canto do console");
-        const railShows = () => js(`(() => { const m = document.querySelector(".subrow .kx-mon"); return m ? { text: Boolean(m.querySelector(".ks-text")), empty: (m.querySelector(".kx-screen-empty") || {}).textContent || "" } : null; })()`);
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Avisos"); if (b) b.click(); return Boolean(b); })()`);
-        await sleep(300);
-        const asNotices = await railShows();
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Letras"); if (b) b.click(); return Boolean(b); })()`);
-        await sleep(300);
-        const asLyrics = await railShows();
-        // Palco: the stage monitor's own layout, the prepared slide and the
-        // one after it. Pastor: the tablet upright in the middle, the
-        // congregation's view inside it.
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Palco"); if (b) b.click(); return Boolean(b); })()`);
-        await sleep(300);
-        const asStage = await js(`(() => { const m = document.querySelector(".subrow .kx-mon .net-stage.net-embed"); return m ? { cur: (m.querySelector(".ns-cur") || {}).textContent || "", next: (m.querySelector(".ns-next p") || {}).textContent || "" } : null; })()`);
-        result.shotRailStage = await shot("prevRail-palco");
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Pastor"); if (b) b.click(); return Boolean(b); })()`);
-        await sleep(300);
-        const asPastor = await js(`(() => { const p = document.querySelector(".subrow .kx-mon .kp-portrait > .net-embed"); const s = document.querySelector(".subrow .kx-mon .kx-mon-screen"); if (!p || !s) return null; const r = p.getBoundingClientRect(); const q = s.getBoundingClientRect(); return { upright: r.height > r.width, centred: Math.abs((r.left + r.right) / 2 - (q.left + q.right) / 2) < 2, screen: Boolean(p.querySelector(".np-mon .ks-text")) }; })()`);
-        result.shotRailPastor = await shot("prevRail-pastor");
-        await js(`(() => { const b = [...document.querySelectorAll(".prev-outs button")].find((x) => x.getAttribute("aria-label") === "Prévia como Projeção"); if (b) b.click(); return Boolean(b); })()`);
-        await sleep(300);
-        result.prevRailDiag = { asNotices, asLyrics, asStage, asPastor };
-        result.prevRailScreens = Boolean(asStage && asStage.cur === "Primeiro slide do console" && asStage.next === "Segundo slide do console"
-            && asPastor && asPastor.upright && asPastor.centred && asPastor.screen);
-        result.prevRail = Boolean(asNotices && !asNotices.text && /não mostra/.test(asNotices.empty) && asLyrics && asLyrics.text)
-            && await js(`(() => { const on = [...document.querySelectorAll(".prev-outs button")].filter((b) => b.getAttribute("aria-pressed") === "true"); return on.length === 1 && on[0].getAttribute("aria-label") === "Prévia como Projeção"; })()`);
+        result.prevShows = await waitFor(() => js("(() => { const m = document.querySelector('.subrow .kx-mon'); return Boolean(m && m.querySelector('.ks-text')) && !document.querySelector('.subrow .prev-outs'); })()"), 3000);
         await js("document.activeElement && document.activeElement.blur(); true");
 
         // Hover actions never reach the middle of a row, in every Biblioteca
@@ -1713,11 +1669,8 @@ async function checkConsole(webContents, { live, outputs }) {
         if (!(result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump)) result.cfgSearchDiag = await js("document.querySelector('.console .cfg-dialog').innerText.slice(0, 300)");
         await click(".console .cfg-dialog .kx-row", "Telas e saídas");
         result.cfgOutputs = await waitText(webContents, "Projeção principal");
-        // Nome por saída: renaming Projeção reaches its row and the Prévia's
-        // output buttons; clearing the field restores the defaults. (The
-        // button selector covers the rail before and after the left-column
-        // redesign, so merge order between the two PRs does not matter.)
-        const railBtn = ".prev-outs button, .prev-rail button";
+        // Nome por saída: renaming Projeção reaches its row; clearing the
+        // field restores the default.
         const nameField = async (v) => js(`(() => {
             const el = document.querySelector(".cfg-outprefs input.fg-input");
             if (!el) return false;
@@ -1732,9 +1685,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".console .cfg .cfg-tune button", "Ajustes");
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs input.fg-input'))"));
         await nameField("Telão");
-        result.outName = await waitFor(() => js(`Boolean([...document.querySelectorAll("${railBtn}")].find((b) => b.getAttribute("aria-label") === "Prévia como Telão")) && [...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Telão")`), 5000);
+        result.outName = await waitFor(() => js(`[...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Telão")`), 5000);
         await nameField("");
-        result.outNameBack = await waitFor(() => js(`Boolean([...document.querySelectorAll("${railBtn}")].find((b) => b.getAttribute("aria-label") === "Prévia como Projeção")) && [...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Projeção principal")`), 5000);
+        result.outNameBack = await waitFor(() => js(`[...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Projeção principal")`), 5000);
         await click(".console .cfg .cfg-tune button", "Ajustes");
 
         // Palco's and Pastor's own Ajustes, with the live preview beside the
@@ -2259,7 +2212,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
-        && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
+        && result.prevShows && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection

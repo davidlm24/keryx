@@ -14,7 +14,7 @@ const live = {
 test("no row, or an empty one, is the default: the output as before", () => {
     for (const row of [null, undefined, {}, { screen_path: "/Projection" }, { text_scale: "", margin_pct: null, show_logo: true, theme_id: "" }]) {
         const p = normalizePref(row);
-        assert.deepEqual(p, { content: "", hidden: [], scale: 1, margin: 0, showLogo: true, themeId: "", name: "", icon: "", options: {} });
+        assert.deepEqual(p, { content: "", hidden: [], scale: 1, margin: 0, showLogo: true, themeId: "", layoutId: "", name: "", icon: "", options: {} });
         assert.ok(isDefaultPref(p));
         assert.equal(prefVars(p), null);
         assert.deepEqual(prefState("/LyricProjection", live, p), prefState("/LyricProjection", live, null));
@@ -23,8 +23,8 @@ test("no row, or an empty one, is the default: the output as before", () => {
 });
 
 test("normalizePref clamps scale and margins and drops unknown content", () => {
-    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", hidden: [], scale: 1.4, margin: 0, showLogo: true, themeId: "", name: "", icon: "", options: {} });
-    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", hidden: [], scale: 0.8, margin: 10, showLogo: false, themeId: "t1", name: "", icon: "", options: {} });
+    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", hidden: [], scale: 1.4, margin: 0, showLogo: true, themeId: "", layoutId: "", name: "", icon: "", options: {} });
+    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", hidden: [], scale: 0.8, margin: 10, showLogo: false, themeId: "t1", layoutId: "", name: "", icon: "", options: {} });
     assert.equal(normalizePref({ text_scale: 112.4 }).scale, 1.12);
 });
 

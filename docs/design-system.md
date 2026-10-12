@@ -250,6 +250,32 @@ never connected (*Conectando ao KERYX…*), then an amber chip over the last
 image while it reconnects (*Reconectando… tentativa N*); the PIN and "not
 available" pages the server writes use the same colours.
 
+**Layouts das telas (2026-10-12).** The owner asked for the Palco and the
+Tela do pastor to be designed on a canvas, as Holyrics' panel themes and
+ProPresenter's stage layouts, instead of a form of switches; and settled
+that outputs stay the fixed physical roles (one Palco, one Pastor, any
+number of network screens) while what is created, categorized and assigned
+is the *layout* (`src/lib/layouts.js`, `LayoutRenderer`, `LayoutEditor`).
+The editor is a view inside the console, built like the aviso editor: the
+elements and the selected one's look in the left panel (400 px), the canvas
+in the centre drawn by the renderer itself (what is on air, or a sample),
+with the brand colour for the selection, its eight handles and the magnet's
+guide lines; every screen is landscape (owner decision: the pastor's tablet
+too). Elements hidden
+right now (by their rule, or with nothing to say) are drawn at 35 % with a
+dashed outline so they can still be picked. Each element keeps the network
+screens' look (`net.css` chips, `kx` tokens, Geist, cqmin sizes), so a
+layout and the factory Palco read as one family. *Usar em…* under the canvas
+saves and assigns in one go. Layouts live in Telas e saídas (a list with
+Editar, Duplicar, Excluir) and in each output's Ajustes › Layout; the factory
+layouts are models that open as a copy. The public outputs (Projeção,
+Letras, Vídeo, Comunicação) take layouts too: the **Projeção** element is
+the output's own view (ScreenRenderer, with Mostrar, theme, scale), full
+screen or in a part, and a layout with a *Relógio ou timer no ar* element
+takes the tool out of the Projeção element, so the timer sits in a corner
+over the words instead of filling the screen (the Holyrics panel the owner
+showed); the model "Projeção com timer no canto" does exactly that.
+
 ## Histórico: Preparar · Verificar · Apresentar (canvas artboards 8–15, 2026-10-07)
 
 > **Historical.** Kept as a record of the canvas, not as a specification. The

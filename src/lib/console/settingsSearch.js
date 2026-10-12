@@ -25,9 +25,11 @@ export const SETTINGS_INDEX = [
     e("telas", "Exportar ajustes das saídas", "salva num arquivo a tela e os ajustes de cada saída", ["exportar", "salvar", "arquivo", "backup das saídas", "outro computador", "reinstalar", "spo"]),
     e("telas", "Importar ajustes das saídas", "abre um arquivo de saídas e mostra o que muda antes de aplicar", ["importar", "restaurar", "arquivo", "outro computador", "reinstalar", "carregar"]),
     e("telas", "Som do aviso", "o sino dos avisos: ligar, desligar, volume, testar", ["som", "sino", "alerta", "volume", "testar som", "áudio"]),
-    e("telas", "Ajustes", "nome, ícone, conteúdo, texto, margens, logo e tema de cada saída",
-        ["Nome", "Ícone", "Conteúdo", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra", "Mostrar", "filtro", "só letras", "só Bíblia",
+    e("telas", "Ajustes", "nome, ícone, conteúdo, layout, texto, margens, logo e tema de cada saída",
+        ["Nome", "Ícone", "Conteúdo", "Layout", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra", "Mostrar", "filtro", "só letras", "só Bíblia",
             "Faixa", "Tamanho do texto", "Posição", "Referência na legenda"]),
+    e("telas", "Layouts das telas", "os desenhos do Palco e da Tela do pastor: onde ficam relógio, timer, letra e próxima",
+        ["layout", "layouts", "desenho", "canvas", "elementos", "palco", "pastor", "retorno", "relógio", "timer", "próxima letra", "próximo slide", "cifra", "monitor", "Novo layout", "Editar", "Duplicar", "Excluir"]),
 
     e("rede", "Telas na rede", "celulares, tablets e TVs pela rede da igreja", ["wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),
     e("rede", "Transmissão", "a legenda para a live no OBS: cor, tamanho e posição da faixa", ["obs", "live", "legenda", "faixa", "transmissão", "youtube"], { target: "Telas na rede" }),
