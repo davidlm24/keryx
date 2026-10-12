@@ -1,5 +1,6 @@
 import React from "react";
 import "./screen.css";
+import GeneratorBackground from "./GeneratorBackground";
 import { mainLayer, currentSlide, toolTime, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
@@ -33,7 +34,7 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
     const z = (k) => 10 * (order.length - order.indexOf(k));
     return (
         <div className={cls}>
-            <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} /></div>
+            <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>
             <div className="ks-z" style={{ zIndex: z("content") }}>
                 {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
                 {layer === "content" && <Content content={state.content} />}
@@ -102,7 +103,7 @@ const slideStyle = (content) => {
     return own ? { ...(content.style || {}), ...own } : content.style || {};
 };
 
-function Background({ state, layer }) {
+function Background({ state, layer, preview, motion }) {
     const cs = layer === "content" ? slideStyle(state.content) : null;
     const own = layer === "content" ? (cs.background_image || cssBackground(cs.background_color))
         : layer === "tool" ? state.tool.style?.background_image
@@ -124,6 +125,9 @@ function Background({ state, layer }) {
     if (liveBg) {
         if (liveBg.kind === "color") return <div className="ks-layer" style={{ background: liveBg.value }} />;
         const look = bgLook(liveBg);
+        // A generated background: computed on the screen (GeneratorBackground),
+        // moving on an output and on the Programa monitor, still elsewhere.
+        if (liveBg.kind === "generator" && liveBg.gen) return <><GeneratorBackground gen={liveBg.gen} animate={!preview || motion} />{look.dim}</>;
         if (liveBg.kind === "video") return <><video className="ks-bg-video" style={look.media} src={liveBg.value} autoPlay loop muted playsInline />{look.dim}</>;
         return <><div className="ks-bg-img" style={{ backgroundImage: `url(${liveBg.value})`, ...look.image }} />{look.dim}</>;
     }
@@ -137,7 +141,7 @@ const PX = 100 / 1920; // 1px of a 1920-wide screen, in cqw
 function bgLook(bg) {
     const blur = bg.blur ? { filter: `blur(${(bg.blur * PX).toFixed(3)}cqw)`, transform: "scale(1.06)" } : {};
     const pos = bg.position || "center";
-    const dim = bg.dim ?? (bg.kind === "video" ? 0 : 0.45);
+    const dim = bg.dim ?? (bg.kind === "video" || bg.kind === "generator" ? 0 : 0.45);
     return {
         image: { backgroundSize: bg.fit || "cover", backgroundPosition: pos, backgroundRepeat: "no-repeat", ...blur },
         media: { objectFit: bg.fit || "cover", objectPosition: pos, ...blur },

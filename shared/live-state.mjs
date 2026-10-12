@@ -14,6 +14,7 @@
 // main process on desktop). Snapshots carry serverNow so a screen with a
 // different clock can correct for it.
 
+import { GENERATOR_IDS, normalizeGenerator } from "./generators.mjs";
 export const LIVE_VERSION = 1;
 // The look layers the operator can stack (live.layerOrder), top first.
 export const LAYER_ORDER = ["logo", "overlays", "content", "background"];
@@ -27,7 +28,7 @@ const layerOrderOf = (value) => {
 export const SCREEN_MODES = ["show", "black", "logo"];
 export const CONTENT_KINDS = ["lyrics", "bible", "text"];
 export const MEDIA_KINDS = ["video", "image", "gif", "pdf", "powerpoint", "youtube", "audio"];
-export const BACKGROUND_KINDS = ["image", "video", "color"];
+export const BACKGROUND_KINDS = ["image", "video", "color", "generator"];
 export const TOOL_MODES = ["clock", "stopwatch", "timer", "freetext"];
 export const ALERT_TYPES = ["alert", "message"];
 // The text's look. The first ten are free text (as saved in songs and themes);
@@ -327,6 +328,12 @@ const OPS = {
             value: text(a.value, "Fundo", { max: MAX_URL * 1024, required: true }),
             title: text(a.title, "Título", { max: 500 }),
         };
+        // A generated background (generators.mjs): the generator is the
+        // value, its numbers and colours ride in `gen`, always complete.
+        if (background.kind === "generator") {
+            oneOf(background.value, GENERATOR_IDS, "Gerador");
+            background.gen = normalizeGenerator({ ...(isPlainObject(a.gen) ? a.gen : {}), id: background.value });
+        }
         // Camadas: how the picture fills the screen, how dark, how blurred
         // (px at 1920 wide) and which part shows; only when set.
         if (a.fit !== undefined && a.fit !== null) background.fit = oneOf(a.fit, BACKGROUND_FITS, "Ajuste do fundo");

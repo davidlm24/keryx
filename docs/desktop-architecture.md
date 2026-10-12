@@ -544,6 +544,14 @@ those keys.
   blanks all outputs; outputs survive the operator window being closed and
   reopened.
 
+- **Generated backgrounds (2026-10-12).** The live `background` layer can be
+  `{ kind: "generator", value: <id>, gen: { speed, scale, intensity, detail,
+  spacing, persistence, contrast, colors } }`: `shared/generators.mjs` says
+  what the numbers are (the main process checks them in `background.set`),
+  `src/lib/generators.js` holds the WebGL 1 shaders and the presets, and
+  `GeneratorBackground.jsx` draws one on a canvas inside the renderer. A
+  theme keeps one in `ProjectionTheme.background_generator`.
+
 ## 4. Media on disk
 
 - Files live in `%APPDATA%/KERYX/media/<uuid>.<ext>`, the database stores

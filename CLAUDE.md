@@ -130,6 +130,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/lib/verseMarks.js` (numbers in sequence only). Favourites and notes
   are `BibleNote` rows (`useBibleNotes`). Never bundle Bible text: the
   editions are copyrighted; churches install them (`electron/bible.cjs`).
+- **Fundos gerados** (2026-10-12): a background the screens compute, never
+  a file — `background: { kind: "generator", value: <id>, gen: {...} }` in
+  the live state. What the numbers are is `shared/generators.mjs`
+  (`normalizeGenerator`, checked by `background.set` in the main process);
+  the shaders (WebGL 1) and the presets are `src/lib/generators.js`, drawn
+  by `src/components/screen/GeneratorBackground.jsx` inside the
+  renderer's background (moving on an output and on the Programa monitor,
+  one still frame elsewhere). A new generator is an entry in `GENERATORS`
+  (its GLSL body leaves `v`), its id in `GENERATOR_IDS`, and a preset. The
+  console edits it in Camadas › Fundo › Gerado (`GeneratorPanel.jsx`); a
+  theme keeps one in `background_generator` (`themeBackgroundArgs`).
+  Áudio-reativo is reserved (`gen.audio` is always false): the level would
+  need its own channel to the outputs, never the live state.
 - **Files shipped with the app** (backgrounds, default logo) are in
   `resources/` and served as `/media/bundled/…`; reference them through
   `src/lib/backgrounds.js`, not by hard-coded URL.

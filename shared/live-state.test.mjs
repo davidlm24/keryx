@@ -477,3 +477,16 @@ test("tool.adjust gives or takes time on a timer on air", () => {
     const locked = applyOp(on, "screens.lock", { locked: true }, T);
     assert.throws(() => applyOp(locked, "tool.adjust", { deltaMs: 60000 }, T), /travadas/);
 });
+
+test("a generated background: the generator is checked, its numbers clamped and completed", () => {
+    const s = applyOp(emptyState(T0), "background.set", { kind: "generator", value: "fluid", title: "Lava", gen: { speed: 9, colors: ["#3f0000", "#ff7600"] }, dim: 0.3 }, T0);
+    assert.equal(s.background.kind, "generator");
+    assert.equal(s.background.gen.id, "fluid");
+    assert.equal(s.background.gen.speed, 2);
+    assert.equal(s.background.gen.detail, 5, "an unsent number is the default");
+    assert.deepEqual(s.background.gen.colors, ["#3f0000", "#ff7600"]);
+    assert.equal(s.background.dim, 0.3);
+    assert.throws(() => applyOp(emptyState(T0), "background.set", { kind: "generator", value: "lava" }, T0), /Gerador inválido/);
+    const plain = applyOp(emptyState(T0), "background.set", { kind: "generator", value: "clouds" }, T0);
+    assert.equal(plain.background.gen.id, "clouds", "no gen at all is the defaults");
+});
