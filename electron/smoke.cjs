@@ -515,15 +515,27 @@ async function checkLayers(webContents, { live, outputs }) {
         // Mostrar (hidden_kinds): the projector leaves the song's words out
         // while they stay on air, and still shows the aviso rápido; deleting
         // the row brings the words back.
+        // The words are read from the text node (textContent): the checks above
+        // set the text to capitals, which innerText would return.
+        const words = async (present, ms = 6000) => {
+            const end = Date.now() + ms;
+            while (Date.now() < end) {
+                const t = main ? await main.webContents.executeJavaScript(`[...document.querySelectorAll(".ks-text")].map((n) => n.textContent).join(" ")`).catch(() => "") : "";
+                if (t.includes("Letra sob a camada") === present) return true;
+                await sleep(250);
+            }
+            return false;
+        };
+        const hideBefore = await words(true);
         const hide = await prefCall("create", [{ screen_path: "/Projection", hidden_kinds: ["lyrics"] }]).catch((err) => ({ error: String(err.message || err) }));
         live.call("alert.show", { message: "Alerta com a letra escondida", type: "message" });
-        const hideGone = Boolean(main) && await waitText(main, "Letra sob a camada", false) && await waitText(main, "Alerta com a letra escondida");
+        const hideGone = await words(false) && Boolean(main) && await waitText(main, "Alerta com a letra escondida");
         const hideOnAir = live.get().content?.slides?.[0]?.text === "Letra sob a camada";
         live.call("alert.clear");
         if (hide && hide.data) await prefCall("delete", [hide.data.id]).catch(() => {});
-        const hideBack = Boolean(main) && await waitText(main, "Letra sob a camada");
-        result.outputHide = { created: Boolean(hide && hide.data), gone: hideGone, onAir: hideOnAir, back: hideBack };
-        result.outputHideOk = Boolean(hide && hide.data) && hideGone && hideOnAir && hideBack;
+        const hideBack = await words(true);
+        result.outputHide = { created: Boolean(hide && hide.data), before: hideBefore, gone: hideGone, onAir: hideOnAir, back: hideBack };
+        result.outputHideOk = Boolean(hide && hide.data) && hideBefore && hideGone && hideOnAir && hideBack;
         live.call("logo.set", { visible: false, opacity: null, width: null });
         live.call("background.clear");
 
