@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Btn, Field, Row, Empty, Seg } from "./kx";
-import { songFromText, importLines, IMPORT_LINES_KEY } from "@/lib/songImport";
+import { songFromText } from "@/lib/songImport";
+import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 
 // "+ › Na internet…" for songs, like the Holyrics search: one field, the
 // results of several sources in one list, the lyrics beside it, Importar.
@@ -62,12 +63,12 @@ export default function LyricsSearch({ c, onClose, onImported }) {
 
     const lyrics = hit?.hasLyrics ? preview.lyrics : pasted;
     // How the imported lyric is cut into slides (was Configurações › Letras).
-    const [cut, setCut] = useState(() => String(importLines()));
-    const pickCut = (v) => { setCut(v); try { localStorage.setItem(IMPORT_LINES_KEY, v); } catch { /* not remembered */ } };
+    const cut = String(usePrefs().import_lines);
+    const pickCut = (v) => { updateUser({ import_lines: Number(v) }).catch(() => c.say("Não foi possível salvar.")); };
     const importSong = async () => {
         if (!hit || !lyrics.trim()) return;
         try {
-            const song = songFromText(lyrics, { title: hit.title, artist: hit.artist, lines: importLines() });
+            const song = songFromText(lyrics, { title: hit.title, artist: hit.artist, lines: getPrefs().import_lines });
             const row = await keryx.entities.Song.create(song);
             c.say(`${song.title} importada para as Letras.`);
             onImported?.(row);

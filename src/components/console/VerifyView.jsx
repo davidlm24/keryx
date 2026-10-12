@@ -4,6 +4,7 @@ import Icon from "./Icon";
 import { Btn } from "./kx";
 import { installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
 import { BIBLE_VERSIONS, editionPlan } from "@/lib/bibleBooks";
+import { getPrefs } from "@/hooks/useUser";
 import { FONT_MAP } from "@/lib/deviceStyles";
 
 // Verificar: the readiness check before the service. Every line is a real
@@ -94,9 +95,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
             forgetInstalledVersions();
             const installed = await installedVersions({ refresh: true }).catch(() => ({}));
             const used = new Set();
-            let chosen = "NVI";
-            try { chosen = JSON.parse(localStorage.getItem("keryx.console.bible") || "{}").version || "NVI"; } catch { /* default */ }
-            used.add(chosen);
+            used.add(getPrefs().bible_version);
             // The version each reading was saved with (BiblePassage.version).
             const passages = await Promise.all(items.filter((it) => String(it.type).toUpperCase() === "BIBLE" && it.contentId)
                 .map((it) => keryx.entities.BiblePassage.get(it.contentId).catch(() => null)));

@@ -5,7 +5,8 @@ import { Row, Btn, IconBtn, Field, Empty, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
-import { songsFromFile, importLines, IMPORT_LINES_KEY } from "@/lib/songImport";
+import { songsFromFile } from "@/lib/songImport";
+import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 import { mediaFromYouTube } from "@/lib/mediaImport";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles } from "@/lib/mediaImport";
@@ -55,9 +56,10 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
     const alert = c.cur?.alert;
     const alertElapsed = alert ? mmss((c.now - alert.since) / 1000) : "";
 
-    // How an imported lyric is cut into slides (was Configurações › Letras).
-    const [importCut, setImportCut] = useState(() => String(importLines()));
-    const pickImportCut = (v) => { setImportCut(v); try { localStorage.setItem(IMPORT_LINES_KEY, v); } catch { /* not remembered */ } };
+    // How an imported lyric is cut into slides (a preference in the
+    // database, the same one as Na internet's).
+    const importCut = String(usePrefs().import_lines);
+    const pickImportCut = (v) => { updateUser({ import_lines: Number(v) }).catch(() => c.say("Não foi possível salvar.")); };
 
     // "+ › Do computador": song files (cifra, ChordPro, texto, JSON exportado).
     const importSongFiles = async (files) => {
@@ -65,7 +67,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
         const bad = [];
         for (const file of files) {
             try {
-                const rows = songsFromFile(file.name, await file.text(), { lines: importLines() });
+                const rows = songsFromFile(file.name, await file.text(), { lines: getPrefs().import_lines });
                 for (const row of rows) { await keryx.entities.Song.create(row); made += 1; }
                 if (!rows.length) bad.push(file.name);
             } catch (err) { bad.push(`${file.name} (${err?.message || "falhou"})`); }

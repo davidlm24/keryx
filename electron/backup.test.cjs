@@ -295,3 +295,31 @@ test("a broken backup file is refused and nothing stays staged", async () => {
     assert.equal(hasPendingImport(data), false);
     assert.equal(fs.existsSync(path.join(data, "pending-import")), false);
 });
+
+// The church's preferences live on the profile (src/lib/prefs): a backup and
+// Exportar → Importar carry them to the restored or other computer.
+test("the profile's preferences ride backups and Exportar/Importar", async () => {
+    const prefs = { bible_version: "ARA", bible_book_names: "full", import_lines: 4, console_density: "compact", console_hidden_modules: ["tl"], prefs_version: 1 };
+    const source = tmp();
+    const store = openAt(source);
+    store.call("User", "update", ["local", prefs]);
+    const dir = path.join(source, "backups");
+    const { file } = runBackup({ store, dir, now: new Date(2026, 9, 12, 9, 0) });
+    const fromBackup = createStore({ file, schema, log: () => {} });
+    const backed = fromBackup.call("User", "get", ["local"]);
+    for (const [k, v] of Object.entries(prefs)) assert.deepEqual(backed[k], v, `backup: ${k}`);
+    fromBackup.close();
+
+    const mediaDir = path.join(source, "media");
+    fs.mkdirSync(mediaDir);
+    const zipFile = path.join(tmp(), "export.zip");
+    await exportAll({ store, mediaDir, target: zipFile });
+    store.close();
+    const dest = tmp();
+    await stageImport({ zipFile, dataDir: dest });
+    applyPendingImport(dest);
+    const other = openAt(dest);
+    const imported = other.call("User", "get", ["local"]);
+    for (const [k, v] of Object.entries(prefs)) assert.deepEqual(imported[k], v, `import: ${k}`);
+    other.close();
+});

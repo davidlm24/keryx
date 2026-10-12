@@ -5,6 +5,8 @@ import "@ds/components/bundle.css";
 import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
+import { useUser, usePrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
+import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole } from "@/components/console/useConsole";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
 import { Panel, Split, IconBtn } from "@/components/console/kx";
@@ -128,7 +130,15 @@ export default function Console() {
     // Ver › Editar layout: moving the columns and stacked cards (arrange.js).
     // A view (editor, planner, ...) takes the whole grid: editing ends.
     const [editing, setEditing] = useState(false);
-    const [layout, setLayoutState] = useState(() => loadLayout(""));
+    // The layout: sizes, collapsed cards and the arrangement are this
+    // computer's (localStorage, per profile); which modules show and the
+    // density are the church's preferences, in the database (usePrefs), so
+    // they ride backups and another computer.
+    const [localLayout, setLayoutState] = useState(() => loadLayout(""));
+    const prefs = usePrefs();
+    useMigratePrefs();
+    const layout = useMemo(() => ({ ...localLayout, density: prefs.console_density, hidden: hiddenMap(prefs.console_hidden_modules) }),
+        [localLayout, prefs.console_density, prefs.console_hidden_modules]);
     // ?planner=<id> (the old /Services/:id) opens on that culto.
     const [serviceId, setServiceId] = useState(() => {
         try { const v = new URLSearchParams(window.location.search).get("planner"); return v && v !== "1" && v !== "new" ? v : null; } catch { return null; }
@@ -154,7 +164,16 @@ export default function Console() {
         ro.observe(el);
         return () => ro.disconnect();
     }, []);
-    const setLayout = useCallback((next) => { setLayoutState(next); saveLayout(profile, next); }, [profile]);
+    const say = c.say;
+    const setLayout = useCallback((next) => {
+        setLayoutState(next);
+        saveLayout(profile, next);
+        const patch = {};
+        if (next.density !== prefs.console_density) patch.console_density = next.density;
+        const hidden = hiddenList(next.hidden);
+        if (hidden.join() !== hiddenList(hiddenMap(prefs.console_hidden_modules)).join()) patch.console_hidden_modules = hidden;
+        if (Object.keys(patch).length) updateUser(patch).catch(() => say("Não foi possível salvar o layout."));
+    }, [profile, prefs.console_density, prefs.console_hidden_modules, say]);
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT }); c.say("Layout padrão restaurado."); };
 
     const { services, items } = useRundown(serviceId);
@@ -165,12 +184,7 @@ export default function Console() {
     // church's default (User.standby_background); with neither the idle look
     // stays as the operator left it. A choice in Saídas wins until the next
     // service is picked (docs/next-version-plan-2026-10-10.md, C6).
-    const [globalWall, setGlobalWall] = useState(null);
-    useEffect(() => {
-        const take = (u) => setGlobalWall(u?.standby_background || null);
-        keryx.auth.me().then(take).catch(() => {});
-        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
-    }, []);
+    const globalWall = useUser((u) => u?.standby_background || null);
     const wantWall = service?.standby_background || globalWall || null;
     const appliedWall = useRef(null);
     useEffect(() => {

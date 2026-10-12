@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { keryx } from "@/api/keryxClient";
 import { Btn, Seg } from "../kx";
 import { FormRow } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
@@ -8,6 +7,7 @@ import { TRANSITIONS, TRANSITION_MS, lookDefaults } from "@/lib/console/look";
 import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
+import { useUser, updateUser } from "@/hooks/useUser";
 
 
 // Aparência: how the screens look by default, for every service. The
@@ -17,20 +17,16 @@ import { SAMPLE_SLIDES } from "./sample";
 // The Fundos library lives in Temas (FundosGallery), beside the presets.
 export default function AparenciaSection({ c }) {
     const { media } = useLibrary();
-    const [user, setUser] = useState(null);
+    const user = useUser();
     const [ms, setMs] = useState(400);
     const [slide, setSlide] = useState(0);
     const [picking, setPicking] = useState(false);
 
-    useEffect(() => {
-        const take = (u) => { setUser(u || {}); setMs(lookDefaults(u).transition_ms || 400); };
-        keryx.auth.me().then(take).catch(() => setUser({}));
-        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
-    }, []);
+    useEffect(() => { setMs(lookDefaults(user).transition_ms || 400); }, [user]);
 
     const save = async (patch, message) => {
         try {
-            await keryx.entities.User.update("me", patch);
+            await updateUser(patch);
             if (message) c.say(message);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };

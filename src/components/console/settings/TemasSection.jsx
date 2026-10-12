@@ -11,6 +11,7 @@ import { THEME_FONTS, themeStyle, themeBackgroundArgs } from "@/lib/console/them
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
+import { useUser, updateUser } from "@/hooks/useUser";
 import FundosGallery from "./FundosGallery";
 
 const SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
@@ -115,12 +116,7 @@ export default function TemasSection({ c }) {
     const { media } = useLibrary();
     const [editing, setEditing] = useState(null); // "new" | theme id | null
     const [confirmDel, setConfirmDel] = useState(null);
-    const [user, setUser] = useState(null);
-    useEffect(() => {
-        const take = (u) => setUser(u || {});
-        keryx.auth.me().then(take).catch(() => setUser({}));
-        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
-    }, []);
+    const user = useUser();
     const reload = () => client.invalidateQueries({ queryKey: ["settings", "themes"] });
     const run = async (p, message) => {
         try { await p; if (message) c.say(message); } catch (err) { c.say(err?.message || "Não foi possível."); }
@@ -134,7 +130,7 @@ export default function TemasSection({ c }) {
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
     const saveStandby = async (url, message) => {
-        try { await keryx.entities.User.update("me", { standby_background: url }); c.say(message); } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
+        try { await updateUser({ standby_background: url }); c.say(message); } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };
 
     return (
