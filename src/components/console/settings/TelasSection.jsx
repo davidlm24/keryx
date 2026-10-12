@@ -2,22 +2,20 @@ import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
-import { Btn, Seg, Empty } from "../kx";
+import { Btn, Empty } from "../kx";
 import { useBridge, usePoll, Switch, desktopOnly } from "./parts";
-import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
 import OutputPrefCard from "./OutputPrefCard";
 import { PREF_OUTPUTS, normalizePref, isDefaultPref, outputLook } from "@/lib/outputPrefs";
 
 // Telas e saídas: the monitors as a diagram, each output's screen, "Abrir
 // ao iniciar", open/close, Identificar, each output's own settings (Ajustes,
-// OutputPrefCard) and the idle look of the screens. The placement rules live
-// in electron/outputs.cjs.
+// OutputPrefCard). The idle look of the screens is in Aparência › Geral.
+// The placement rules live in electron/outputs.cjs.
 export default function TelasSection({ c }) {
     const displays = useBridge("displays");
     const [state, , setState] = usePoll(() => displays?.list(), 3000);
-    const { media, themes } = useLibrary();
-    const [picking, setPicking] = useState(false);
+    const { themes } = useLibrary();
     const [tuning, setTuning] = useState(null);
     const client = useQueryClient();
     useEffect(() => keryx.entities.OutputPref.subscribe(() => client.invalidateQueries({ queryKey: ["console", "OutputPref"] })), [client]);
@@ -51,9 +49,6 @@ export default function TelasSection({ c }) {
         if (p.mode === "fullscreen") return `Tela cheia na Tela ${number(p.displayId)}`;
         return "Abre numa janela";
     };
-    const idle = c.live?.idle || "logo";
-    const idleUrl = c.live?.idleUrl || null;
-    const setIdle = (mode, url) => c.liveOp("idle.set", url ? { mode, url } : { mode }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."));
 
     return (
         <>
@@ -104,19 +99,6 @@ export default function TelasSection({ c }) {
                 </React.Fragment>
                 );
             })}
-            <div className="frm" style={{ borderTop: "1px solid var(--line)", marginTop: "var(--space-1)", paddingTop: "var(--space-2)" }}>
-                <span className="k">Tela ociosa</span>
-                <div className="frm-v">
-                    <Seg small value={idle} onChange={(m) => { if (m === "background" && !idleUrl) setPicking(true); else { setPicking(false); setIdle(m); } }} options={[["logo", "Logo da igreja"], ["black", "Preto"], ["background", "Fundo"]]} />
-                    {idle === "background" && idleUrl && <><img className="cfg-wall" src={idleUrl} alt="" /><Btn small onClick={() => setPicking(!picking)}>Trocar…</Btn></>}
-                    <span className="kx-meta">o que as telas mostram quando nada está no ar · o culto pode ter o seu fundo (Planejar o culto)</span>
-                </div>
-                {picking && (
-                    <div className="pl-wallpick">
-                        <WallpaperPicker value={idleUrl} media={media} onPick={(url) => { setPicking(false); setIdle("background", url); }} />
-                    </div>
-                )}
-            </div>
             <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas: use Trazer para a frente para ver uma de novo. Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou Fechar aqui. Fechar o KERYX fecha todas. Ligar um monitor aparece aqui em poucos segundos.</span></div>
         </>
     );

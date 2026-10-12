@@ -29,7 +29,8 @@ import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
-import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
+import SettingsView from "@/components/console/settings/SettingsView";
+import { resolveSection } from "@/lib/console/settings";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
@@ -101,19 +102,22 @@ export default function Console() {
     const closeView = useCallback(() => setView(null), []);
     const setEnv = useCallback((v) => { setView(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
     // Configurações: a window over whatever is on screen (the console or a
-    // view), with its section; ?config=<section> opens it at launch.
-    const [cfg, setCfg] = useState(() => {
+    // view), with its section (and Aparência's tab); ?config=<section> opens
+    // it at launch. Old ids still work (resolveSection).
+    const [cfgAt, setCfgAt] = useState(() => {
         try {
             const s = new URLSearchParams(window.location.search).get("config");
-            return s ? (sectionIds.includes(s) ? s : "telas") : null;
+            return s ? resolveSection(s) : null;
         } catch { return null; }
     });
-    const closeSettings = useCallback(() => setCfg(null), []);
+    const cfg = cfgAt?.id || null;
+    const setCfg = useCallback((id, tab) => setCfgAt(id ? resolveSection(tab ? `${id}/${tab}` : id) : null), []);
+    const closeSettings = useCallback(() => setCfgAt(null), []);
     // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
     const closeMenu = useCallback(() => setCtxMenu(null), []);
-    const openSettings = useCallback((section = "telas") => { setOpen(null); setCfg(section); }, []);
+    const openSettings = useCallback((section = "telas") => { setOpen(null); setCfg(section); }, [setCfg]);
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
@@ -468,7 +472,7 @@ export default function Console() {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
                     else if (top === "popover") setOpen(null);
-                    else if (top === "settings") setCfg(null);
+                    else if (top === "settings") setCfgAt(null);
                     else if (top === "drawer") setDrawer(false);
                     else if (top === "edit") setEditing(false);
                     return;
@@ -692,7 +696,7 @@ export default function Console() {
 
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
-            {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} />}
+            {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song)); openSong(song.id); }} />}
             {open === "verificar" && (

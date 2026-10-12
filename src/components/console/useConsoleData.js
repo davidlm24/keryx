@@ -50,7 +50,7 @@ export function useLibrary() {
 const BUNDLED = [...new Set(Object.values(BACKGROUNDS).flat())]
     .map((id) => ({ id, url: backgroundUrl(id), category: Object.keys(BACKGROUNDS).find((k) => BACKGROUNDS[k].includes(id)) }));
 // Whether the church wants the forecast of the service's end and the delay
-// ("termina ~", "passou N min"): Configurações › Igreja, off by default.
+// ("termina ~", "passou N min"): Configurações › Culto, off by default.
 export function useShowForecast() {
     return useUser((u) => u?.show_forecast === true);
 }

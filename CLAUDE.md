@@ -52,7 +52,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   imported as `@ds/…`; read `docs/design-system.md` before touching its
   look). One screen, always live (no steps; Verificar is an overlay from the
   Saídas popover; Configurações, `settings/SettingsView`, is a window over
-  whatever is on screen, its own `cfg` state, `?config=`). Everything else
+  whatever is on screen, its own `cfg` state, `?config=`; its sections are
+  `src/lib/console/settings.js`, old ids resolve through `resolveSection`).
+  Everything else
   is a view inside it, one at a time (the `view` state in Console.jsx,
   `?song=`, `?planner=`, `?media=`, `?notice=`, `?school=`, `?reports=`):
   the song editor (`SongEditor.jsx`), the
@@ -100,7 +102,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **No login.** `auth.me()` is one local operator profile (`entities.User`
   maps to it whatever id is passed). Don't add features that assume
   accounts; if cloud sync comes, its sign-in lives in Configurações and is
-  only for that.
+  only for that. The profile and the church's preferences are read through
+  `src/hooks/useUser.js` (`useUser`, `usePrefs`, `getPrefs`, `updateUser`;
+  null = default, `src/lib/prefs/schema.js`): a preference that should ride
+  a backup is a User field, never localStorage (that is for this computer:
+  window sizes, the arrangement).
 - **Bible text goes through `src/lib/bibleText.js`** (`getChapter`,
   `getPassage`, `searchVerses`, `searchBible` — the console's word search,
   query rules in `src/lib/bibleSearch.js`): local database, then

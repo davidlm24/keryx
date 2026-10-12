@@ -11,8 +11,6 @@ import { THEME_FONTS, themeStyle, themeBackgroundArgs } from "@/lib/console/them
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
-import { useUser, updateUser } from "@/hooks/useUser";
-import FundosGallery from "./FundosGallery";
 
 const SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
@@ -106,9 +104,9 @@ function ThemeEditor({ row, c, media, onDone }) {
     );
 }
 
-// Temas: the projection presets — each one text + background, created and
-// edited here with a live sample (Camadas' "Salvar como novo" still works) —
-// and, below, the Fundos library every gallery reads (FundosGallery).
+// Aparência › Temas: the projection presets — each one text + background,
+// created and edited here with a live sample (Camadas' "Salvar como novo"
+// still works). The Fundos library is the next tab (FundosGallery).
 export default function TemasSection({ c }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
@@ -116,7 +114,6 @@ export default function TemasSection({ c }) {
     const { media } = useLibrary();
     const [editing, setEditing] = useState(null); // "new" | theme id | null
     const [confirmDel, setConfirmDel] = useState(null);
-    const user = useUser();
     const reload = () => client.invalidateQueries({ queryKey: ["settings", "themes"] });
     const run = async (p, message) => {
         try { await p; if (message) c.say(message); } catch (err) { c.say(err?.message || "Não foi possível."); }
@@ -128,9 +125,6 @@ export default function TemasSection({ c }) {
         setConfirmDel(null);
         if (editing === t.id) setEditing(null);
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
-    };
-    const saveStandby = async (url, message) => {
-        try { await updateUser({ standby_background: url }); c.say(message); } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };
 
     return (
@@ -155,7 +149,6 @@ export default function TemasSection({ c }) {
                 {editing === t.id && <ThemeEditor row={t} c={c} media={media} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
                 </React.Fragment>
             ))}
-            {user && <FundosGallery c={c} media={media} standby={user.standby_background || null} onStandby={(url) => saveStandby(url, "Fundo de espera padrão salvo.")} />}
         </>
     );
 }

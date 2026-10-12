@@ -1,6 +1,6 @@
 // A projection theme (ProjectionTheme row) as the live state understands it:
 // the text style it applies, the Fundo layer it sets, which theme starts
-// selected. Shared by Camadas (apply/save) and Configurações › Temas (the
+// selected. Shared by Camadas (apply/save) and Configurações › Aparência › Temas (the
 // editor). Pure, so node --test checks it.
 
 // Every family the renderer ships (src/fonts.css FONT_MAP); Camadas used to

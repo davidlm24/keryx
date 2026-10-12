@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Btn, Empty } from "../kx";
 import { useBridge, usePoll, FormRow, Switch, formatBytes, formatWhen, desktopOnly } from "./parts";
 
-// Dados e atualizações: backups, moving everything to another computer, the
+// Backup e atualizações: backups, moving everything to another computer, the
 // data folder, a diagnostics file for support, and updates
 // (electron/system.cjs).
 export default function DadosSection({ c }) {
@@ -17,7 +17,7 @@ export default function DadosSection({ c }) {
         if (res?.error) c.say(`Restaurar: ${res.error.message}`);
         else setRestoreList(res.data);
     };
-    if (!system) return <Empty icon="save" title="Dados e atualizações">{desktopOnly}</Empty>;
+    if (!system) return <Empty icon="save" title="Backup e atualizações">{desktopOnly}</Empty>;
     if (!info) return <Empty title="Lendo os dados…" />;
 
     const run = async (op, label, onDone, args) => {

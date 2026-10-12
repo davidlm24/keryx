@@ -67,10 +67,10 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             media = { running: false, last: { at: new Date().toISOString(), copied: r.copied, bytes: r.bytes }, error: r.failed.length ? `${r.failed.length} arquivo(s) não copiado(s)` : "" };
             logger.info(`[keryx-backup] mídia (${reason}): ${r.copied} de ${r.files} copiados, ${r.bytes} bytes, em ${dir}`);
             for (const fail of r.failed.slice(0, 5)) logger.warn(`[keryx-backup] mídia: ${fail.name}: ${fail.error}`);
-            if (r.failed.length) notify({ key: "backup-media", kind: "warn", title: "Algumas mídias não foram para o backup", body: `${r.failed.length} arquivo(s) não copiado(s) para ${dir}. Veja se o pen drive ou o disco tem espaço.`, action: "settings:dados" });
+            if (r.failed.length) notify({ key: "backup-media", kind: "warn", title: "Algumas mídias não foram para o backup", body: `${r.failed.length} arquivo(s) não copiado(s) para ${dir}. Veja se o pen drive ou o disco tem espaço.`, action: "settings:backup" });
         }, (err) => {
             media = { running: false, last: media.last, error: err.message };
-            notify({ key: "backup-media", kind: "warn", title: "As mídias não foram para o backup", body: err.message, action: "settings:dados" });
+            notify({ key: "backup-media", kind: "warn", title: "As mídias não foram para o backup", body: err.message, action: "settings:backup" });
             logger.error(`[keryx-backup] mídia (${reason}) falhou: ${err.stack || err.message}`);
         }).finally(() => { mediaJob = null; statsCache = null; });
         return mediaJob;
@@ -83,7 +83,7 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
 
     function backupNow(reason) {
         const { dir, fallback } = backupDir();
-        if (fallback) notify({ key: "backup-fallback", kind: "warn", title: "Backup salvo na pasta padrão", body: `A pasta escolhida (${configuredDir()}) não estava disponível, então o backup foi para ${dir}. Conecte o pen drive ou escolha outra pasta.`, action: "settings:dados" });
+        if (fallback) notify({ key: "backup-fallback", kind: "warn", title: "Backup salvo na pasta padrão", body: `A pasta escolhida (${configuredDir()}) não estava disponível, então o backup foi para ${dir}. Conecte o pen drive ou escolha outra pasta.`, action: "settings:backup" });
         try {
             const result = backup.runBackup({ store, dir });
             logger.info(`[keryx-backup] ${reason}: ${result.file}${result.removed.length ? ` (removidos ${result.removed.length} antigos)` : ""}`);
