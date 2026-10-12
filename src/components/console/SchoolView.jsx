@@ -7,6 +7,7 @@ import { previewDoc, captionOf, TeacherNotes } from "./CenterPanel";
 import { stageFromMaterial, stageFromTool, liveStageId } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { AGE_GROUPS, ageLabel, MATERIAL_TYPES, materialIcon, materialMeta, quizQuestions, slidesFromText, textFromSlides, dayOf, isPresent, toggleAttendance, attendanceNote, presentCount } from "@/lib/console/school";
+import BgChip from "./library/BgChip";
 
 const EMPTY = [];
 const CLASSES = ["console", "bibleClasses"];
@@ -292,8 +293,13 @@ function MaterialEditor({ c, draft, setDraft, classes, media, confirm, onSave, o
                             <span className="k">Cores</span>
                             <span className="nv-inline">
                                 <label className="nv-color">Texto<input type="color" className="ed-color" value={draft.text_color || "#ffffff"} onChange={(e) => set({ text_color: e.target.value })} /></label>
-                                <label className="nv-color">Fundo<input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.background_color || "") ? draft.background_color : "#0f172a"} onChange={(e) => set({ background_color: e.target.value })} /></label>
-                                {draft.background_color && <Btn small onClick={() => set({ background_color: "" })}>Fundo do tema</Btn>}
+                            </span>
+                            <span className="k">Fundo</span>
+                            <span className="nv-inline">
+                                <BgChip accept={["image", "color"]} title="Fundo do material" empty="o do tema"
+                                    value={draft.background_image ? { kind: "image", value: draft.background_image } : /^#[0-9a-f]{6}$/i.test(draft.background_color || "") ? { kind: "color", value: draft.background_color } : null}
+                                    noneLabel={draft.background_image || draft.background_color ? "Fundo do tema" : undefined}
+                                    onPick={(spec) => set(spec?.kind === "image" ? { background_image: spec.value, background_color: "" } : spec?.kind === "color" ? { background_color: spec.value, background_image: "" } : { background_image: "", background_color: "" })} />
                             </span>
                         </>
                     )}

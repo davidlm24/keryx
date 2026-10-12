@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { Btn, Seg } from "../kx";
@@ -19,11 +19,33 @@ const HIDDEN = "__hidden";
 // dim and blur (a starting point for the items that use it), a favourite
 // mark (first in the galleries) and Ocultar (out of the galleries, still
 // here). One BackgroundPref row per background, made on its first change.
+// One change to a background's settings (BackgroundPref): the row is
+// created the first time (once, even when two changes race), updated after.
+// Shared with the background library (library/BackgroundLibrary.jsx).
+export function useSaveBackgroundPref(say) {
+    const creating = useRef(new Map());
+    return useCallback(async (b, patch, message) => {
+        try {
+            const pending = creating.current.get(b.source);
+            if (b.pref?.id) await keryx.entities.BackgroundPref.update(b.pref.id, patch);
+            else if (pending) await keryx.entities.BackgroundPref.update((await pending).id, patch);
+            else {
+                const made = keryx.entities.BackgroundPref.create({ source: b.source, ...patch });
+                creating.current.set(b.source, made);
+                // A failed create is forgotten: the next change tries again.
+                made.catch(() => { if (creating.current.get(b.source) === made) creating.current.delete(b.source); });
+                await made;
+            }
+            if (message) say(message);
+        } catch (err) { say(err?.message || "Não foi possível salvar o fundo."); }
+    }, [say]);
+}
+
 export default function FundosGallery({ c, media, standby, onStandby }) {
     const list = useBackgrounds(media);
     const [filter, setFilter] = useState(ALL);
     const [sel, setSel] = useState(null);
-    const creating = useRef(new Map());
+    const save = useSaveBackgroundPref(c.say);
 
     const fileRef = useRef(null);
     const [uploading, setUploading] = useState(false);
@@ -42,24 +64,6 @@ export default function FundosGallery({ c, media, standby, onStandby }) {
     const shown = filter === HIDDEN ? list.filter((b) => b.hidden) : list.filter((b) => !b.hidden && (filter === ALL || b.category === filter));
     const entry = list.find((b) => b.source === sel) || null;
     useEffect(() => { if (filter === HIDDEN && !hiddenCount) setFilter(ALL); }, [filter, hiddenCount]);
-
-    // One change to a background's settings: the row is created the first
-    // time (once, even when two changes race), updated after.
-    const save = async (b, patch, message) => {
-        try {
-            const pending = creating.current.get(b.source);
-            if (b.pref?.id) await keryx.entities.BackgroundPref.update(b.pref.id, patch);
-            else if (pending) await keryx.entities.BackgroundPref.update((await pending).id, patch);
-            else {
-                const made = keryx.entities.BackgroundPref.create({ source: b.source, ...patch });
-                creating.current.set(b.source, made);
-                // A failed create is forgotten: the next change tries again.
-                made.catch(() => { if (creating.current.get(b.source) === made) creating.current.delete(b.source); });
-                await made;
-            }
-            if (message) c.say(message);
-        } catch (err) { c.say(err?.message || "Não foi possível salvar o fundo."); }
-    };
 
     const filters = [[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Ocultos · ${hiddenCount}`]] : [])];
     return (
@@ -92,7 +96,9 @@ export default function FundosGallery({ c, media, standby, onStandby }) {
     );
 }
 
-function FundoDetail({ b, save, now, standby, onStandby }) {
+// One background's settings and a sample. Without onStandby (the library
+// window) the standby wallpaper button is left out.
+export function FundoDetail({ b, save, now, standby, onStandby, sample = true }) {
     const [name, setName] = useState(b.pref?.name || "");
     const [category, setCategory] = useState(b.pref?.category || "");
     const [dim, setDim] = useState(b.dim === null ? null : Math.round(b.dim * 100));
@@ -123,9 +129,9 @@ function FundoDetail({ b, save, now, standby, onStandby }) {
 
     return (
         <div className="fg-detail frm">
-            <FormRow k="">
+            {sample && <FormRow k="">
                 <div className="ap-sample fg-sample">{doc && <ScreenRenderer state={doc} now={now} preview />}</div>
-            </FormRow>
+            </FormRow>}
             <FormRow k="Nome">
                 <input className="fg-input" value={name} placeholder={b.name} maxLength={80} onChange={(e) => setName(e.target.value)} onBlur={commitName} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} aria-label="Nome do fundo" />
             </FormRow>
@@ -148,11 +154,11 @@ function FundoDetail({ b, save, now, standby, onStandby }) {
                 <Seg small value={b.hidden ? "hidden" : b.favorite ? "fav" : "shown"} options={[["fav", "Favorito"], ["shown", "Aparece"], ["hidden", "Oculto"]]}
                     onChange={(v) => keep({ favorite: v === "fav", hidden: v === "hidden" })} />
             </FormRow>
-            <FormRow k="">
+            {onStandby && <FormRow k="">
                 {b.kind !== "video" && <Btn small on={isStandby} disabled={isStandby} onClick={() => onStandby(b.url)}>{isStandby ? "É o fundo de espera padrão" : "Usar como fundo de espera padrão"}</Btn>}
                 {b.kind === "video" && <span className="kx-meta">um vídeo entra pelo Camadas › Fundo; a tela de espera só aceita imagem</span>}
                 <span className="kx-meta">escurecer e desfoque entram quando um item, um aviso ou o fundo de espera com este fundo vai ao ar, e quando ele é escolhido em Camadas › Fundo</span>
-            </FormRow>
+            </FormRow>}
         </div>
     );
 }

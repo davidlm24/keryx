@@ -6,9 +6,8 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
 import { songTheme, songParts, cleanPartThemes } from "@/lib/console/songTheme";
-import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
-import { applyWithFundo } from "@/lib/console/backgroundSpec";
-import { useBackgrounds, useLibrary } from "./useConsoleData";
+import { applyWithFundo, bgSpec } from "@/lib/console/backgroundSpec";
+import BgChip from "./library/BgChip";
 import { parseChords, slidesFromLyrics, reflowLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { chordLinesToInline, hasInlineChords, isChordLine } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
@@ -28,6 +27,10 @@ const THUMBS_KEY = "keryx.console.editor.thumbs";
 const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); return ["s", "m", "l"].includes(v) ? v : "m"; } catch { return "m"; } };
 const splitOf = (n) => (Number(n) === 2 || Number(n) === 4 ? String(Number(n)) : "0");
 
+// A song's background fields for a spec (null: none of its own); the
+// picture stays in background_image too for whoever still reads only it.
+const songBg = (spec) => ({ background: spec || null, background_image: spec?.kind === "image" ? spec.value : "" });
+
 const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "large", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false };
 const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
@@ -37,7 +40,6 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 // changes what is on air. Opening a song keeps its saved slides; editing the
 // lyrics (or the split) redoes them, keeping timings by position.
 export default function SongEditor({ c, songId, themes = [], onClose, onSaved }) {
-    const backgrounds = useBackgrounds(useLibrary().media);
     const [song, setSong] = useState(null);
     const [error, setError] = useState("");
     const [split, setSplit] = useState("0");
@@ -55,7 +57,6 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     const [confirm, setConfirm] = useState(null); // "close" | "delete"
     const mediaRef = useRef(null);
     const fileRef = useRef(null);
-    const bgFileRef = useRef(null);
     const lyricsRef = useRef(null);
 
     useEffect(() => {
@@ -123,7 +124,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     const applyTheme = (id) => {
         const t = themes.find((x) => x.id === id);
         if (!t) return;
-        setLook({ ...lookOf(t), ...(t.background_image ? { background_image: t.background_image } : {}) });
+        const spec = bgSpec(t);
+        setLook({ ...lookOf(t), ...(spec ? songBg(spec) : {}) });
     };
     const addMarker = (label) => {
         const el = lyricsRef.current;
@@ -317,8 +319,6 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     const partThemes = cleanPartThemes(song.part_themes);
     const media = song.audio_url;
     const video = isVideoUrl(media);
-    const bg = song.background_image;
-    const galleryBgs = visibleBackgrounds(backgrounds, { except: "Comunicação" }).filter((b) => b.kind !== "video");
     const marked = starts.filter((x) => Number.isFinite(x)).length;
 
     return (
@@ -380,14 +380,13 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                         <span className="k">Efeito</span>
                         <select className="cfg-select" value={shown.text_effect || "shadow"} onChange={(e) => setLook({ text_effect: e.target.value })} aria-label="Efeito">{EFFECTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                     </div>
-                    <div className="listhead"><span className="kx-meta">Fundo</span><span style={{ flex: 1 }} /><Btn small disabled={busy === "background_image"} onClick={() => bgFileRef.current?.click()}>{busy === "background_image" ? "Enviando…" : "Arquivo…"}</Btn></div>
-                    <div className="ed-pad"><div className="bgpick">
-                        <button type="button" className={`kx-t bg-none ${!bg ? "is-on" : ""}`} onClick={() => set({ background_image: "" })} aria-label="Sem fundo próprio" title="Sem fundo próprio (usa o do tema)">Tema</button>
-                        {bg && !galleryBgs.some((b) => b.url === bg) && <button type="button" className="kx-t is-on" title="Fundo deste item"><img src={bg} alt="" /></button>}
-                        {galleryBgs.map((b) => <button type="button" key={b.source} className={`kx-t ${bg === b.url ? "is-on" : ""}`} onClick={() => set({ background_image: b.url })} aria-label={b.name} title={b.name}><img src={b.url} alt="" loading="lazy" /></button>)}
-                    </div></div>
+                    {/* The song's own background, any kind, from the library;
+                        it goes to the Fundo layer when the song goes on air. */}
+                    <div className="frm">
+                        <span className="k">Fundo</span>
+                        <BgChip value={bgSpec(song)} title="Fundo da música" empty="o do tema" noneLabel="Sem fundo próprio (usa o do tema)" onPick={(spec) => set(songBg(spec))} />
+                    </div>
                     </>}
-                    <input ref={bgFileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; upload(f, "background_image"); }} />
                     <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Tema por parte <span className="kx-count">· o refrão com outro fundo, por exemplo</span></span></div>
                     {!parts.length && <div className="ed-pad"><span className="kx-meta">Marque as partes na letra com [Refrão], [Ponte]… (os botões acima da letra) para dar um tema a cada uma.</span></div>}
                     {parts.length > 0 && (

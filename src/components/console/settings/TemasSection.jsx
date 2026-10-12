@@ -5,12 +5,11 @@ import Icon from "../Icon";
 import { Btn, Seg, Empty } from "../kx";
 import { FormRow, CfgKey } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
-import WallpaperPicker from "../WallpaperPicker";
+import BgChip from "../library/BgChip";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
-import { generatorOf } from "@/lib/generators";
-import { useLibrary } from "../useConsoleData";
+import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 import { SAMPLE_SLIDES } from "./sample";
 
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
@@ -26,14 +25,17 @@ const drafts = new Map();
 
 // One theme being created or edited: every field, a live sample beside them
 // (the real renderer on real ops), saved as a ProjectionTheme row.
-function ThemeEditor({ row, c, media, onDone }) {
+function ThemeEditor({ row, c, onDone }) {
     const key = row?.id || "new";
     const [restored] = useState(() => drafts.has(key));
-    const [draft, setDraft] = useState(() => drafts.get(key) || { ...BLANK, ...(row || {}) });
+    // The background is one spec (backgroundSpec.js) in `background`; the old
+    // fields are written beside it on every change.
+    const [draft, setDraft] = useState(() => drafts.get(key) || { ...BLANK, ...(row || {}), ...bgFields(bgSpec(row)) });
     useEffect(() => { drafts.set(key, draft); }, [key, draft]);
     const done = (saved) => { drafts.delete(key); onDone(saved); };
-    const [picking, setPicking] = useState(false);
     const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
+    const bg = bgSpec(draft);
+    const setBg = (patch) => set(bgFields(patch && bg ? { ...bg, ...patch } : patch));
     const doc = useMemo(() => {
         try {
             let st = emptyState(c.now);
@@ -82,25 +84,16 @@ function ThemeEditor({ row, c, media, onDone }) {
                     {draft.transition && <><input type="range" className="ap-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-content ap-ms">{Number(draft.transition_ms) || 400} ms</span></>}
                 </FormRow>
                 <FormRow k="Fundo">
-                    {draft.background_image ? <img className="cfg-wall" src={draft.background_image} alt="" /> : draft.background_generator?.id ? <span className="kx-meta">gerado · {generatorOf(draft.background_generator.id).name}</span> : <span className="kx-meta">nenhum</span>}
-                    <Btn small on={picking} onClick={() => setPicking(!picking)}>{draft.background_image ? "Trocar…" : "Escolher…"}</Btn>
-                    {draft.background_generator?.id && <Btn small onClick={() => set({ background_generator: null })}>Tirar o gerado</Btn>}
-                    {!draft.background_image && !draft.background_generator?.id && <span className="kx-meta">um fundo gerado entra pelas Camadas › Fundo › Gerado e Salvar como novo</span>}
+                    <BgChip value={bg} title="Fundo do tema" empty="nenhum" noneLabel="Sem fundo no tema" onPick={(spec) => set(bgFields(spec))} />
+                    <span className="kx-meta">imagem, vídeo, fundo gerado ou cor · vai para a camada Fundo quando um item com este tema vai ao ar</span>
                 </FormRow>
-                {picking && (
-                    <div className="pl-wallpick">
-                        <WallpaperPicker value={draft.background_image || null} media={media} noneLabel="Sem fundo no tema"
-                            onNone={() => { setPicking(false); set({ background_image: "" }); }}
-                            onPick={(url) => { setPicking(false); set({ background_image: url, background_generator: null }); }} />
-                    </div>
-                )}
-                {draft.background_image && <>
-                    <FormRow k="Ajuste do fundo">
-                        <Seg small value={draft.background_fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => set({ background_fit: v === "cover" ? "" : v })} />
-                    </FormRow>
-                    <FormRow k="Escurecer · desfoque">
-                        <Seg small value={num(draft.background_dim ?? "")} options={[["", "45%"], ["0", "0"], ["0.3", "30%"], ["0.7", "70%"]]} onChange={(v) => set({ background_dim: v === "" ? "" : Number(v) })} />
-                        <Seg small value={num(draft.background_blur ?? "")} options={[["", "Sem"], ["4", "Leve"], ["10", "Forte"]]} onChange={(v) => set({ background_blur: v === "" ? "" : Number(v) })} />
+                {bg && bg.kind !== "color" && <>
+                    {bg.kind !== "generator" && <FormRow k="Ajuste do fundo">
+                        <Seg small value={bg.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => setBg({ fit: v === "cover" ? undefined : v })} />
+                    </FormRow>}
+                    <FormRow k={bg.kind === "generator" ? "Escurecer" : "Escurecer · desfoque"}>
+                        <Seg small value={num(bg.dim ?? "")} options={bg.kind === "image" ? [["", "45%"], ["0", "0"], ["0.3", "30%"], ["0.7", "70%"]] : [["", "0"], ["0.3", "30%"], ["0.7", "70%"]]} onChange={(v) => setBg({ dim: v === "" ? undefined : Number(v) })} />
+                        {bg.kind !== "generator" && <Seg small value={num(bg.blur ?? "")} options={[["", "Sem"], ["4", "Leve"], ["10", "Forte"]]} onChange={(v) => setBg({ blur: v === "" ? undefined : Number(v) })} />}
                     </FormRow>
                 </>}
                 <FormRow k="">
@@ -124,7 +117,6 @@ export default function TemasSection({ c }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["settings", "themes"] })), [client]);
-    const { media } = useLibrary();
     const [editing, setEditing] = useState(null); // "new" | theme id | null
     const [confirmDel, setConfirmDel] = useState(null);
     const reload = () => client.invalidateQueries({ queryKey: ["settings", "themes"] });
@@ -160,7 +152,7 @@ export default function TemasSection({ c }) {
                 </FormRow>
             </div>
             <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· texto e fundo prontos, aplicados na hora em Camadas</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => setEditing("new")}>Novo tema…</Btn></CfgKey>
-            {editing === "new" && <ThemeEditor row={null} c={c} media={media} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
+            {editing === "new" && <ThemeEditor row={null} c={c} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
             {!themes.length && editing !== "new" && <Empty icon="palette" title="Nenhum tema ainda">Crie um em "Novo tema…", ou ajuste o texto em Camadas e use "Salvar como novo".</Empty>}
             {themes.map((t) => (
                 <React.Fragment key={t.id}>
@@ -176,7 +168,7 @@ export default function TemasSection({ c }) {
                         <Btn kind={confirmDel === t.id ? "air" : ""} onClick={() => remove(t)}>{confirmDel === t.id ? "Excluir mesmo" : "Excluir"}</Btn>
                     </span>
                 </div>
-                {editing === t.id && <ThemeEditor row={t} c={c} media={media} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
+                {editing === t.id && <ThemeEditor row={t} c={c} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
                 </React.Fragment>
             ))}
         </>

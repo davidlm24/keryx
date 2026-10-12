@@ -1030,16 +1030,22 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => !live.get().content);
 
         // Aparência › Fundos: a song whose background has its own dim and
-        // blur goes on air with them, and the projector draws them.
+        // blur goes on air with them, and the projector draws them. The
+        // song's background goes to the Fundo layer (backgroundSpec.js
+        // fundoOps), so it is the Fundo that carries them, and Esc keeps it.
         const BG = "1557672172-298e090bd0f1";
         const bgPref = (await js(`window.keryxDesktop.db.call("BackgroundPref", "create", [{ source: "bundled:${BG}", dim_pct: 70, blur_px: 6 }])`)).data;
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "keryx-media://bundled/backgrounds/${BG}.webp" }])`);
         await sleep(800);
         await dblclick(".kx-row", "Canto do console");
-        result.bgPrefStamped = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.background_dim === 0.7 && st.background_blur === 6); }, 5000);
+        result.bgPrefStamped = await waitFor(() => { const b = live.get().background; const st = live.get().content && live.get().content.style; return Boolean(b && String(b.value).includes(BG) && b.dim === 0.7 && b.blur === 6 && st && !st.background_image); }, 5000);
         result.bgPrefDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("(() => { const d = document.querySelector('.ks-bg-dim'); const i = document.querySelector('.ks-bg-img'); return Boolean(d && i && getComputedStyle(d).backgroundColor === 'rgba(0, 0, 0, 0.7)' && getComputedStyle(i).filter.startsWith('blur(')); })()").catch(() => false), 3000);
         live.call("clear", {});
         await waitFor(() => !live.get().content);
+        result.bgSongStays = Boolean(live.get().background && String(live.get().background.value).includes(BG));
+        // The idle checks below need no Fundo (the idle look shows only without one).
+        live.call("background.clear", {});
+        await waitFor(() => !live.get().background);
 
         // The idle wallpaper follows the same settings: set with no look at
         // all (as the main process does), the console puts the settings' on it,
@@ -1767,9 +1773,16 @@ async function checkConsole(webContents, { live, outputs }) {
         await dblclick(".kx-row", "Canto do console");
         await waitFor(() => Boolean(live.get().content));
         const styleBefore = JSON.stringify(live.get().content.style || {});
+        // The clip comes from the background library (Camadas › Fundo ›
+        // Biblioteca…, Vídeos), a double click takes it; Esc closes the
+        // window before anything else.
         await click(".kx-layer", "Fundo");
-        await waitFor(() => js("Boolean(document.querySelector('[aria-label=\"Clipe de fundo\"]'))"), 8000);
-        await click(".lyr-vtile", "Clipe de fundo");
+        await click(".layerprops button", "Biblioteca…");
+        result.libOpen = await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog'))"), 4000);
+        await click(".lib-tabs button", "Vídeos");
+        await waitFor(() => js("Boolean(document.querySelector('.lib-dialog [aria-label=\"Clipe de fundo\"]'))"), 8000);
+        await dblclick(".lib-dialog .fg-tile", "Clipe de fundo");
+        result.libClosed = await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 4000);
         result.bgVideoSet = await waitFor(() => { const b = live.get().background; return Boolean(b && b.kind === "video" && String(b.value).endsWith("smoke-fundo.mp4")); }, 5000);
         result.bgVideoDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("Boolean(document.querySelector('video.ks-bg-video'))").catch(() => false), 4000);
         result.themeApplied = await js(`(() => {
@@ -1781,6 +1794,20 @@ async function checkConsole(webContents, { live, outputs }) {
             return true;
         })()`) && await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000);
         live.call("content.update", { style: JSON.parse(styleBefore) });
+        // Camadas' padlock on the Fundo: a song sent with its own picture
+        // leaves the Fundo as it is (and the projector does not paint the
+        // song's picture); Destravar frees it again.
+        await click(".kx-layer", "Fundo");
+        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "keryx-media://bundled/backgrounds/1557672172-298e090bd0f1.webp" }])`);
+        await sleep(600);
+        await js("(() => { const row = [...document.querySelectorAll('.kx-layer')].find((n) => n.textContent.includes('Fundo')); const b = row && row.querySelector('button[aria-label=\"Bloquear\"]'); if (b) b.click(); return Boolean(b); })()");
+        result.fundoLocked = await waitFor(() => (live.get().lockedLayers || []).includes("background"), 4000);
+        await dblclick(".kx-row", "Canto do console");
+        await sleep(800);
+        result.fundoHeld = result.fundoLocked && String((live.get().background || {}).value || "").endsWith("smoke-fundo.mp4");
+        live.call("layers.lock", { layer: "background", locked: false });
+        await waitFor(() => !(live.get().lockedLayers || []).length);
+        await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "" }])`);
         live.call("background.clear", {});
         await js(`window.keryxDesktop.db.call("Media", "delete", [${JSON.stringify(vidRow.id)}])`);
         await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "delete", [r.id]); return true; })()');
@@ -2190,6 +2217,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
+        && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
