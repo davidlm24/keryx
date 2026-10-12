@@ -12,6 +12,7 @@ export const MODULES = [
     ["lib", "Biblioteca"],
     ["slides", "Slides"],
     ["camadas", "Camadas"],
+    ["temas", "Temas"],
     ["roteiro", "Setlist"],
 ];
 

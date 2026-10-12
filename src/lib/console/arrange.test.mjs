@@ -17,7 +17,7 @@ test("an arrangement saved before the order existed gets the defaults", () => {
     const a = normalizeArrangement({ order: { biblia: ["air", "reading"] }, stacks: { side: ["roteiro"] } });
     assert.deepEqual(a.order.biblia, ["air", "reading", "picker"]);
     assert.deepEqual(a.order.culto, DEFAULT_ORDER.culto);
-    assert.deepEqual(a.stacks.side, ["roteiro", "camadas"]);
+    assert.deepEqual(a.stacks.side, ["roteiro", "camadas", "temas"]);
 });
 
 test("moving: to a position, by one step, clamped at the ends", () => {
@@ -31,18 +31,18 @@ test("moving: to a position, by one step, clamped at the ends", () => {
     assert.equal(moveBy(list, "a", -1), list);
 });
 
-test("wide: four columns in the saved order; Camadas over the Setlist", () => {
+test("wide: four columns in the saved order; Camadas, Temas and the Setlist stacked", () => {
     assert.deepEqual(ids(cultoColumns({ tier: "wide" })), ["lib", "slides", "live", "side"]);
-    assert.deepEqual(cultoColumns({ tier: "wide" })[3].cards, ["camadas", "roteiro"]);
+    assert.deepEqual(cultoColumns({ tier: "wide" })[3].cards, ["camadas", "temas", "roteiro"]);
     const swapped = cultoColumns({ tier: "wide", order: ["side", "live", "slides", "lib"], stacks: { side: ["roteiro", "camadas"] } });
     assert.deepEqual(ids(swapped), ["side", "live", "slides", "lib"]);
-    assert.deepEqual(swapped[0].cards, ["roteiro", "camadas"]);
+    assert.deepEqual(swapped[0].cards, ["roteiro", "camadas", "temas"], "a save from before Temas gets it at the end");
 });
 
 test("hidden modules drop their column; the side column goes when both its cards are hidden", () => {
     assert.deepEqual(ids(cultoColumns({ tier: "wide", hidden: { lib: true } })), ["slides", "live", "side"]);
-    assert.deepEqual(cultoColumns({ tier: "wide", hidden: { camadas: true } })[3].cards, ["roteiro"]);
-    assert.deepEqual(ids(cultoColumns({ tier: "wide", hidden: { camadas: true, roteiro: true } })), ["lib", "slides", "live"]);
+    assert.deepEqual(cultoColumns({ tier: "wide", hidden: { camadas: true } })[3].cards, ["temas", "roteiro"]);
+    assert.deepEqual(ids(cultoColumns({ tier: "wide", hidden: { camadas: true, temas: true, roteiro: true } })), ["lib", "slides", "live"]);
 });
 
 test("medium: no Camadas/Setlist column, the rest keeps the order", () => {

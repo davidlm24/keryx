@@ -12,7 +12,7 @@ export const COLUMNS = {
         lib: { name: "Biblioteca", widthKey: "libW" },
         slides: { name: "Slides", widthKey: "slidesW" },
         live: { name: "Programa", flex: true },
-        side: { name: "Camadas e Setlist", widthKey: "rightW" },
+        side: { name: "Camadas, Temas e Setlist", widthKey: "rightW" },
         // Narrow tier only: Biblioteca over Slides in one column.
         source: { name: "Biblioteca e Slides", widthKey: "libW" },
     },
@@ -30,12 +30,13 @@ export const DEFAULT_ORDER = {
 
 // Cards stacked in one column, top to bottom.
 export const DEFAULT_STACKS = {
-    side: ["camadas", "roteiro"],
+    // Temas (the console's theme thumbnails, 2026-10-12) between them.
+    side: ["camadas", "temas", "roteiro"],
     source: ["lib", "slides"],
     picker: ["books", "chapters", "verses"],
 };
 
-export const CARD_NAMES = { camadas: "Camadas", roteiro: "Setlist", lib: "Biblioteca", slides: "Slides", books: "Livros", chapters: "Capítulos", verses: "Versículos" };
+export const CARD_NAMES = { camadas: "Camadas", temas: "Temas", roteiro: "Setlist", lib: "Biblioteca", slides: "Slides", books: "Livros", chapters: "Capítulos", verses: "Versículos" };
 
 // A saved list made safe: known ids in the saved order, no repeats, and any
 // id it lacks (a new module, an old save) appended in the default order.

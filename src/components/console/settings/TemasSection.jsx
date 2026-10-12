@@ -23,6 +23,11 @@ const BLANK = { name: "", font_family: "sans", font_size: "large", text_effect: 
 // sections (the editor unmounts) keeps them until Salvar or Cancelar.
 const drafts = new Map();
 
+// A theme to open in the editor when this section mounts (a double click
+// on the console's Temas card opens Configurações here).
+let pendingEdit = null;
+export const requestThemeEdit = (id) => { pendingEdit = id; };
+
 // One theme being created or edited: every field, a live sample beside them
 // (the real renderer on real ops), saved as a ProjectionTheme row.
 function ThemeEditor({ row, c, onDone }) {
@@ -117,7 +122,7 @@ export default function TemasSection({ c }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["settings", "themes"] })), [client]);
-    const [editing, setEditing] = useState(null); // "new" | theme id | null
+    const [editing, setEditing] = useState(() => { const id = pendingEdit; pendingEdit = null; return id; }); // "new" | theme id | null
     const [confirmDel, setConfirmDel] = useState(null);
     const reload = () => client.invalidateQueries({ queryKey: ["settings", "themes"] });
     const run = async (p, message) => {

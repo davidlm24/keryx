@@ -7,6 +7,8 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { groupVerses } from "@/lib/console/bibleVerses";
 import BibliasSection from "./BibliasSection";
+import { useThemes } from "../useConsoleData";
+import { defaultTheme } from "@/lib/console/themes";
 
 // The sample passage the preview shows (two verses, so the grouping shows).
 const SAMPLE_VERSES = [
@@ -24,6 +26,8 @@ const PER_SLIDE = [["auto", "Automático"], ["1", "1"], ["2", "2"], ["3", "3"]];
 export default function BibliaSection({ c }) {
     const prefs = usePrefs();
     const user = useUser();
+    const themes = useThemes();
+    const def = defaultTheme(themes);
     const save = (patch, message) => updateUser(patch).then(() => message && c.say(message)).catch(() => c.say("Não foi possível salvar."));
     const doc = useMemo(() => {
         try {
@@ -36,6 +40,16 @@ export default function BibliaSection({ c }) {
         <>
             <div className="cfg-outprefs cfg-bible">
                 <div className="frm cfg-outprefs-form">
+                    <FormRow k="Tema da Bíblia">
+                        <select className="cfg-select" aria-label="Tema da Bíblia" value={prefs.bible_theme_id}
+                            onChange={(e) => { const v = e.target.value; const t = themes.find((x) => x.id === v); save({ bible_theme_id: v }, v === "none" ? "As passagens vão ao ar com o estilo de fábrica." : t ? `As passagens vão ao ar com o tema ${t.name}.` : "A Bíblia segue o tema das músicas."); }}>
+                            <option value="">O mesmo das músicas{def ? ` (${def.name})` : " (estilo de fábrica)"}</option>
+                            <option value="none">Estilo de fábrica</option>
+                            {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            {prefs.bible_theme_id && prefs.bible_theme_id !== "none" && !themes.some((t) => t.id === prefs.bible_theme_id) && <option value={prefs.bible_theme_id} disabled>(tema excluído · segue o das músicas)</option>}
+                        </select>
+                        <span className="kx-meta">veste as passagens sem estilo próprio quando vão ao ar; o botão Tema da Bíblia faz o mesmo</span>
+                    </FormRow>
                     <FormRow k="Versículos por slide">
                         <Seg small label="Versículos por slide" value={prefs.bible_verses_per_slide} options={PER_SLIDE}
                             onChange={(v) => save({ bible_verses_per_slide: v }, v === "auto" ? "Versículos por slide: pelo tamanho do texto." : `${v} ${v === "1" ? "versículo" : "versículos"} por slide.`)} />

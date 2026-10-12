@@ -1205,12 +1205,21 @@ async function checkConsole(webContents, { live, outputs }) {
         result.bibleNames = await waitFor(() => js(`(() => { const b = document.querySelector(".bpick-books .bgrid .kx-book"); return Boolean(b) && b.textContent === "Gênesis"; })()`), 3000);
         await click(".bpick-books .kx-seg button", "Abrev");
         result.bibleNamesBack = await waitFor(() => js(`(() => { const b = document.querySelector(".bpick-books .bgrid .kx-book"); return Boolean(b) && b.textContent === "Gn"; })()`), 3000);
-        // One verse (Enter) goes out as the whole chapter, at that verse.
+        // One verse (Enter) goes out as the whole chapter, at that verse. The
+        // Bíblia has its own theme (User.bible_theme_id): the passage goes on
+        // air with its look and its background in the Fundo.
+        const bibleTheme = (await js('window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Tema Bíblia Smoke", font_family: "georgia", background: { kind: "color", value: "#123456" } }])')).data;
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { bible_theme_id: ${JSON.stringify(bibleTheme.id)} }])`);
+        await sleep(800);
         await waitFor(() => js("document.querySelectorAll('.kx-verse').length === 5"), 8000);
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("Enter");
         result.chapterSent = await waitFor(() => { const c = live.get().content; return c && c.kind === "bible" && c.slides.length === 5 && c.index === 2; });
         result.chapterRef = live.get().content?.slides?.[2]?.ref;
+        result.bibleThemeSent = await waitFor(() => { const b = live.get().background; const st = live.get().content && live.get().content.style; return Boolean(b && b.kind === "color" && b.value === "#123456" && st && st.font_family === "georgia"); }, 4000);
+        await js('window.keryxDesktop.db.call("User", "update", ["local", { bible_theme_id: "" }])');
+        await js(`window.keryxDesktop.db.call("ProjectionTheme", "delete", [${JSON.stringify(bibleTheme.id)}])`);
+        live.call("background.clear", {});
         // → walks the chapter on air.
         await press("ArrowRight");
         result.arrowNextVerse = await waitFor(() => live.get().content?.index === 3);
@@ -1785,14 +1794,24 @@ async function checkConsole(webContents, { live, outputs }) {
         result.libClosed = await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 4000);
         result.bgVideoSet = await waitFor(() => { const b = live.get().background; return Boolean(b && b.kind === "video" && String(b.value).endsWith("smoke-fundo.mp4")); }, 5000);
         result.bgVideoDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("Boolean(document.querySelector('video.ks-bg-video'))").catch(() => false), 4000);
-        result.themeApplied = await js(`(() => {
-            const sel = document.querySelector(".themerow select");
-            if (!sel) return false;
-            const opt = [...sel.options].find((o) => o.textContent === "Tema Smoke");
-            if (!opt) return false;
-            sel.value = opt.value; sel.dispatchEvent(new Event("change", { bubbles: true }));
-            return true;
-        })()`) && await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000);
+        // Temas (the console's card): a click on a thumbnail dresses what is
+        // on air; "Salvar tema para a música" ties the song on air to it and
+        // "Tirar tema da música" lets it go.
+        await waitFor(() => js("Boolean(document.querySelector('.tm-tile[aria-label=\"Tema Smoke\"]'))"), 5000);
+        await click(".tm-tile", "Tema Smoke");
+        result.themeApplied = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000);
+        const songThemeId = async () => ((await js(`window.keryxDesktop.db.call("Song", "get", [${JSON.stringify(song.id)}])`)).data || {}).theme_id || "";
+        await click(".tm-song button", "Salvar tema para a música");
+        result.songThemeSaved = await waitFor(async () => Boolean(await songThemeId()), 4000);
+        await waitFor(() => js("[...document.querySelectorAll('.tm-song button')].some((b) => b.textContent === 'Tirar tema da música')"), 4000);
+        await click(".tm-song button", "Tirar tema da música");
+        result.songThemeCleared = await waitFor(async () => !(await songThemeId()), 4000);
+        // Camadas › Texto principal › Título: Sem hides the song's name on
+        // this item (the Programa, and every output), whatever Aparência says.
+        await click(".kx-layer", "Texto principal");
+        await js("(() => { const k = [...document.querySelectorAll('.layerprops .k')].find((n) => n.textContent === 'Título'); const b = k && [...k.nextElementSibling.querySelectorAll('button')].find((x) => x.textContent === 'Sem'); if (b) b.click(); return Boolean(b); })()");
+        result.itemTitleHidden = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.title === "hide"); }, 4000)
+            && await waitFor(() => js("Boolean(document.querySelector('.kx-mon .ks-text')) && !document.querySelector('.kx-mon .ks-title')"), 4000);
         live.call("content.update", { style: JSON.parse(styleBefore) });
         // Camadas' padlock on the Fundo: a song sent with its own picture
         // leaves the Fundo as it is (and the projector does not paint the
@@ -2218,6 +2237,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
+        && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended

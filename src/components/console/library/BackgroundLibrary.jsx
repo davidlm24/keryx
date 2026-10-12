@@ -183,8 +183,9 @@ export default function BackgroundLibrary({ c, request, onDone }) {
     );
 }
 
-// A theme as a small screen: its text look over its background.
-function ThemeThumb({ theme, now }) {
+// A theme as a small screen: its text look over its background (the
+// library's Temas tab and the console's Temas card).
+export function ThemeThumb({ theme, now }) {
     const doc = useMemo(() => sampleDoc(now, themeBackgroundArgs(theme), themeStyle(theme)), [theme]); // eslint-disable-line react-hooks/exhaustive-deps
     return doc ? <span className="lib-thumb"><ScreenRenderer state={doc} now={now} preview /></span> : null;
 }

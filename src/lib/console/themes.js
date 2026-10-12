@@ -34,6 +34,16 @@ export function defaultTheme(themes) {
 }
 export const isDefaultTheme = (themes, t) => Boolean(t) && defaultTheme(themes)?.id === t.id;
 
+// The theme that dresses an item of this kind when it is sent: a Bible
+// passage follows the Bíblia's own theme (User.bible_theme_id; "none" the
+// factory look; a deleted one falls back), everything else the default theme.
+export function themeForKind(themes, kind, bibleThemeId = "") {
+    const def = defaultTheme(themes);
+    if (kind !== "bible" || !bibleThemeId) return def;
+    if (bibleThemeId === "none") return null;
+    return (themes || []).find((t) => t?.id === bibleThemeId) || def;
+}
+
 // The bulkUpdate rows that make `id` the only default (null: none is).
 // One transaction (store bulkUpdate): never two defaults, never a moment
 // with none in between.

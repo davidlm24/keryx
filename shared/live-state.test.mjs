@@ -296,6 +296,14 @@ test("Camadas' padlock: a locked Fundo is held against every sender", () => {
     assert.deepEqual(restoreState({ ...JSON.parse(JSON.stringify(s)), lockedLayers: ["logo", "background", 1] }, T0).lockedLayers, ["background"]);
 });
 
+test("the item title: shown or hidden for this item, else the church's choice", () => {
+    let s = run([["content.show", song]]);
+    assert.equal(s.content.style.title, undefined, "unset: the church decides (Aparência)");
+    s = applyOp(s, "content.update", { style: { ...s.content.style, title: "hide" } }, T0);
+    assert.equal(s.content.style.title, "hide");
+    assert.throws(() => applyOp(s, "content.update", { style: { title: "maybe" } }, T0), LiveError);
+});
+
 test("layer order: the operator stacks the look layers", () => {
     let s = emptyState(T0);
     assert.deepEqual(s.layerOrder, ["logo", "overlays", "content", "background"]);
