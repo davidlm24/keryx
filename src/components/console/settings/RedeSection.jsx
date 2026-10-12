@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import Icon from "../Icon";
 import { Btn, Field, Empty } from "../kx";
 import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading } from "./parts";
 import { byGroup } from "@/lib/console/outputs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
+
+// How long Mostrar PIN keeps it on screen.
+const SHOW_PIN_MS = 30000;
 
 // Four digits from the system's random source (not Math.random).
 const newPin = () => {
@@ -26,6 +29,12 @@ export default function RedeSection({ c }) {
     // Gerar novo (with a PIN set) and Remover disconnect every device: a
     // second click confirms.
     const [confirm, setConfirm] = useState(null);
+    // Mostrar PIN: read on demand, shown for a while, gone when the section closes.
+    useEffect(() => {
+        if (!shownPin) return undefined;
+        const t = setTimeout(() => setShownPin(""), SHOW_PIN_MS);
+        return () => clearTimeout(t);
+    }, [shownPin]);
     if (!network) return <Empty icon="wifi" title="Telas na rede">{desktopOnly}</Empty>;
     if (!info) return <Reading what="a rede" error={readError} />;
 
@@ -56,6 +65,14 @@ export default function RedeSection({ c }) {
         setConfirm(what);
         c.say(what === "remove" ? "Clique de novo em Remover: qualquer aparelho na rede vai poder ver as telas." : "Clique de novo em Gerar novo: os aparelhos conectados vão pedir o PIN novo.");
     };
+    const revealPin = async () => {
+        if (shownPin) { setShownPin(""); return; }
+        try {
+            const res = await network.call("revealPin");
+            if (res?.error) c.say(res.error.message);
+            else if (res?.data?.pin) setShownPin(res.data.pin);
+        } catch { c.say("Não foi possível ler o PIN."); }
+    };
     const copy = (url) => {
         const fail = () => c.say(`Não foi possível copiar. O endereço é ${url}`);
         try { navigator.clipboard.writeText(url).then(() => c.say("Endereço copiado."), fail); } catch { fail(); }
@@ -77,6 +94,7 @@ export default function RedeSection({ c }) {
                 <CfgKey as="span" k="PIN" className="k">PIN</CfgKey>
                 <div className="frm-v">
                     {shownPin ? <span className="kx-countdown cfg-pin">{shownPin.split("").join(" ")}</span> : <span className="kx-meta">{info.hasPin ? "Ativo · cada aparelho pede uma vez" : "Sem PIN · qualquer aparelho na rede pode ver as telas"}</span>}
+                    {info.hasPin && <Btn disabled={busy} on={Boolean(shownPin)} onClick={revealPin}>{shownPin ? "Ocultar" : "Mostrar PIN"}</Btn>}
                     <Btn kind={confirm === "new" ? "air" : ""} disabled={busy} onClick={() => confirmFirst("new", () => savePin(newPin()))}>{confirm === "new" ? "Gerar mesmo" : "Gerar novo"}</Btn>
                     {info.hasPin && <Btn kind={confirm === "remove" ? "air" : ""} disabled={busy} onClick={() => confirmFirst("remove", () => savePin(""))}>{confirm === "remove" ? "Remover mesmo" : "Remover"}</Btn>}
                 </div>

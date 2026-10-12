@@ -73,6 +73,9 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
                 }
                 return info();
             },
+            // The PIN itself, on demand (Mostrar PIN): only the console asks
+            // (keryx:network is a trusted channel); info() never carries it.
+            revealPin: async () => ({ pin: config().pin || "" }),
             // An empty PIN removes it. Changing it signs every screen out.
             setPin: async (_event, pin) => {
                 const value = String(pin || "").trim();

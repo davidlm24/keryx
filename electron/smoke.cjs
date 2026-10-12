@@ -1632,6 +1632,14 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg-results .kx-row'))"), 3000);
         await press("Enter");
         result.cfgSearchJump = await waitFor(() => js("(document.querySelector('.console .cfg .kx-panel-h .kx-section') || {}).textContent === 'Telas na rede' && Boolean(document.querySelector('.console .cfg [data-cfg-k=\"PIN\"].is-flash'))"), 5000);
+        // Backup automático turns off and back on (settings.json, merged).
+        await click(".console .cfg-dialog .kx-row", "Backup e atualizações");
+        const autoBackup = async () => ((await js('window.keryxDesktop.system.call("info")')).data || {}).backup?.enabled;
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg button[aria-label=\"Backup automático\"]'))"), 6000);
+        await js("document.querySelector('.console .cfg button[aria-label=\"Backup automático\"]').click(); true");
+        result.backupOff = await waitFor(async () => (await autoBackup()) === false, 5000);
+        await js("document.querySelector('.console .cfg button[aria-label=\"Backup automático\"]').click(); true");
+        result.backupOn = await waitFor(async () => (await autoBackup()) === true, 5000);
         if (!(result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump)) result.cfgSearchDiag = await js("document.querySelector('.console .cfg-dialog').innerText.slice(0, 300)");
         await click(".console .cfg-dialog .kx-row", "Telas e saídas");
         result.cfgOutputs = await waitText(webContents, "Projeção principal");
@@ -2132,7 +2140,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
