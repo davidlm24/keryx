@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Menu, dialog, screen, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
@@ -387,9 +387,30 @@ app.whenReady().then(async () => {
         return;
     }
 
+    // Controle remoto: a phone's command (electron/lan.cjs, checked there)
+    // goes to the console, which runs it as its own keys would and answers.
+    const remotePending = new Map();
+    let remoteSeq = 0;
+    ipcMain.on("keryx:remote:result", (event, answer = {}) => {
+        if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return;
+        const done = remotePending.get(answer.id);
+        if (!done) return;
+        remotePending.delete(answer.id);
+        done({ ok: Boolean(answer.ok), message: typeof answer.message === "string" ? answer.message.slice(0, 200) : "", status: Number(answer.status) || undefined, data: answer.data });
+    });
+    const onRemote = (action, args, meta = {}) => new Promise((resolve) => {
+        if (!mainWindow || mainWindow.isDestroyed()) return resolve({ ok: false, message: "O console não está aberto.", status: 503 });
+        const id = ++remoteSeq;
+        remotePending.set(id, resolve);
+        setTimeout(() => remotePending.delete(id), 5000).unref();
+        logger.info(`[keryx-remote] ${action} de ${String(meta.ip || "").replace(/^::ffff:/, "")}`);
+        mainWindow.webContents.send("keryx:remote", { id, action, args });
+    });
+
     // Tablets and TVs on the church network (off until enabled in Settings).
     // KERYX_LAN_PORT=0 lets a smoke run use a free port.
     network = createNetwork({
+        onRemote,
         store,
         live,
         settings,

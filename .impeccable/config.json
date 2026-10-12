@@ -14,6 +14,15 @@
         "value": "geist",
         "createdAt": "2026-10-07T09:18:18.108Z",
         "reason": "KERYX design system (docs/design-system/tokens.json, made by the user in Claude Design) sets Geist as the one family for the console and the projected screens"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/components/console/console.css"
+        ],
+        "createdAt": "2026-10-12T13:16:50.864Z",
+        "reason": "the 2px var(--line) left edge of the Configurações cards (.cfg-outprefs) is a neutral indent marker under its row, not a colored accent tab (reviewed 2026-10-12)"
       }
     ]
   }

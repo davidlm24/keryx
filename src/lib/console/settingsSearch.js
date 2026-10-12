@@ -33,12 +33,14 @@ export const SETTINGS_INDEX = [
 
     e("rede", "Telas na rede", "celulares, tablets e TVs pela rede da igreja", ["wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),
     e("rede", "Transmissão", "a legenda para a live no OBS: cor, tamanho e posição da faixa", ["obs", "live", "legenda", "faixa", "transmissão", "youtube"], { target: "Telas na rede" }),
+    e("rede", "Controle remoto", "um celular conduz o culto: slides, Tela preta, setlist, Bíblia", ["celular", "remoto", "controle", "telefone", "palco", "pregador", "Celular", "Código", "Conectados", "desconectar"]),
     e("rede", "PIN", "o código que os aparelhos pedem para entrar; Mostrar PIN", ["senha", "código", "proteger", "mostrar pin", "esqueci"]),
     e("rede", "Telas conectadas pela rede", "os aparelhos conectados agora", ["aparelhos", "conectados"]),
 
     e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte, para todo item", ["esmaecer", "deslizar", "corte", "fade", "animação"], { tab: "geral" }),
     e("aparencia", "Duração", "quanto dura a transição", ["ms", "velocidade", "tempo", "transição"], { tab: "geral" }),
     e("aparencia", "Fundo de espera padrão", "a imagem das telas quando nada está no ar", ["espera", "wallpaper", "imagem"], { tab: "geral" }),
+    e("aparencia", "Títulos nas telas", "o título do item no slide e a faixa de título do YouTube", ["título", "nome da música", "youtube", "canal", "esconder"], { tab: "geral" }),
     e("aparencia", "Tela ociosa", "logo, preto ou fundo quando nada está no ar", ["ociosa", "logo", "preto", "nada no ar"], { tab: "geral" }),
     e("aparencia", "Estilo padrão do texto", "o tema com que músicas e passagens vão ao ar", ["tema padrão", "estilo de fábrica", "padrão"], { tab: "temas" }),
     e("aparencia", "Temas", "estilos prontos de texto e fundo, aplicados em Camadas",

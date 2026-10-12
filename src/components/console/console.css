@@ -143,6 +143,20 @@
 .console .kx-mon.is-warn { --frame: var(--warn); }
 .console .prog .kx-mon-screen > .kx-screen-hatch { position: absolute; }
 .console .prog .kx-mon-screen > .kx-screen-hatch { inset: 0; }
+/* Multiview (MultiView.jsx, Programa › Multiview): the Programa's 16:9 as four
+   outputs, 2 × 2, each its own 16:9 screen. A label on each (which output,
+   where it is on screen now) sits on the image, as on a broadcast multiviewer;
+   a click on it picks the output. */
+.console .mx-grid { display: grid; grid-template: 1fr 1fr / 1fr 1fr; gap: 2px; background: var(--line); }
+.console .mx-tile { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--screen-bg); container-type: inline-size; }
+.console .mx-lbl { position: absolute; left: var(--space-1); bottom: var(--space-1); z-index: 201; display: flex; align-items: center; gap: var(--space-1); max-width: calc(100% - 2 * var(--space-1)); padding-right: var(--space-2); border-radius: var(--radius-control); background: color-mix(in srgb, var(--bg-0) 82%, transparent); color: var(--fg-1); font: 500 11px/1 var(--font-sans); }
+.console .mx-pick { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; height: 20px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.console .mx-pick:hover { background: var(--bg-3); }
+.console .mx-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .mx-st { flex: none; color: var(--fg-2); white-space: nowrap; }
+.console .mx-lbl.is-idle .mx-st { color: var(--fg-3); }
+.console .mx-lbl.is-warn .mx-st { color: var(--warn-fg); }
+@container (max-width: 200px) { .console .mx-st { display: none; } }
 /* The Prévia docked under the Programa, its output picker on the left; the
    side (send, note, teacher notes) never makes the row taller than the
    Prévia (contain: size), it scrolls. */

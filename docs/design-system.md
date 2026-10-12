@@ -182,6 +182,17 @@ the Prévia (46 % of the block) and *Enviar ao ar* under the slot. Spare height
 goes below, into the "Depois" list. The player slot is always reserved so
 starting a video never moves the monitors.
 
+**Multiview (2026-10-12):** the Programa header's *Multiview* toggle (grid
+glyph; also in the Programa's right-click menu) splits the Programa's 16:9
+into four 16:9 quadrants, 2 px `line` between them, in the same place and
+size, so nothing else moves. Each quadrant is one output showing what is on
+air its own way; its label sits on the image, bottom left, as on a broadcast
+multiviewer: a `bg-0` chip at 82 %, the output's glyph and name (a click picks
+the output, from a menu) and where it is on screen (`fg-2`; `fg-3` with no
+screen open; `warn-fg` for a problem). Under 200 px a quadrant keeps only
+the name. The Programa's frame (locked, failed output) and its drop target
+stay on the whole grid.
+
 **Player (2026-10-07; position changed 2026-10-09 and 2026-10-12):** one 36 px
 row in the slot between the Programa and the Prévia (owner's decision
 2026-10-12: it drives what is on air, so it sits under the Programa; it was on

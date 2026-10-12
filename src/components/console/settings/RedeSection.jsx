@@ -6,6 +6,7 @@ import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading } from "./part
 import { byGroup } from "@/lib/console/outputs";
 import { useOutputLooks, useOutputPrefRows } from "@/hooks/useOutputPref";
 import OutputPrefCard from "./OutputPrefCard";
+import RemoteBlock from "./RemoteBlock";
 
 // How long Mostrar PIN keeps it on screen.
 const SHOW_PIN_MS = 30000;
@@ -142,6 +143,7 @@ export default function RedeSection({ c }) {
                     ))}
                 </React.Fragment>
             ))}
+            <RemoteBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} />
             <CfgKey k="Telas conectadas pela rede" className="listhead"><span className="kx-section">Telas conectadas pela rede</span></CfgKey>
             {!clients.length && <div className="listhead"><span className="kx-meta">{info.running ? "Nenhuma agora." : "Ligue as telas na rede para os aparelhos se conectarem."}</span></div>}
             {clients.map((cl) => (

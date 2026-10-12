@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Btn, Seg } from "../kx";
-import { FormRow } from "./parts";
+import { FormRow, Switch } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { TRANSITIONS, TRANSITION_MS, NATURAL_MS, lookDefaults } from "@/lib/console/look";
 import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
-import { useUser, updateUser } from "@/hooks/useUser";
+import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import IdleBlock from "./IdleBlock";
 
 
@@ -19,6 +19,7 @@ import IdleBlock from "./IdleBlock";
 export default function AparenciaSection({ c }) {
     const { media } = useLibrary();
     const user = useUser();
+    const prefs = usePrefs();
     const [slide, setSlide] = useState(0);
     const [picking, setPicking] = useState(false);
     const kind = lookDefaults(user).transition || "fade";
@@ -77,6 +78,11 @@ export default function AparenciaSection({ c }) {
                     </div>
                 )}
                 <IdleBlock c={c} media={media} />
+                <FormRow k="Títulos nas telas">
+                    <span className="cfg-launch"><Switch on={prefs.show_item_title} onChange={(on) => save({ show_item_title: on }, on ? "O título do item aparece nas telas." : "Sem o título do item nas telas.")} label="Mostrar o título do item nas telas" /><span className="kx-meta">Título do item nas telas</span></span>
+                    <span className="cfg-launch"><Switch on={prefs.youtube_hide_title} onChange={(on) => save({ youtube_hide_title: on }, on ? "A faixa de título do YouTube fica escondida." : "O YouTube volta a mostrar o título sobre o vídeo.")} label="Esconder o título e o canal que o YouTube põe sobre o vídeo" /><span className="kx-meta">Esconder o título do YouTube</span></span>
+                    <span className="kx-meta">o nome da música, do texto ou da imagem por cima do que vai ao ar (a referência da Bíblia continua); e o nome do vídeo e do canal que o YouTube mostra no começo e na pausa (o vídeo não é cortado)</span>
+                </FormRow>
             </div>
         </>
     );

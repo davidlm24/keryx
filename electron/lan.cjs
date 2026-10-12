@@ -10,6 +10,11 @@
 //     whole live state as "live" events, which is what keeps screens in step;
 //     EventSource reconnects by itself
 //   - /api/live is the live state (electron/live.cjs), read-only from here
+//   - the one exception is the controle remoto (/Remote, a phone): off until
+//     the operator turns it on, behind its own code (never optional), it
+//     posts commands from a closed list to /api/remote; the console runs
+//     them as its own keys would (onRemote), so Travar telas and every other
+//     rule hold. Nothing here writes the database or the live state.
 //
 // Pure Node (no Electron), so it is unit tested.
 
@@ -45,6 +50,33 @@ function screenLabels(store) {
 
 // A screen may only read.
 const READ_OPS = new Set(["list", "filter", "get"]);
+
+// The controle remoto: its page, and what a phone may ask the console.
+const REMOTE_PATH = "/Remote";
+const REMOTE_COOKIE = "keryx_remote";
+const REMOTE_TIMEOUT_MS = 3000;
+const REMOTE_ACTIONS = new Set(["state", "next", "prev", "black", "logo", "clear", "play", "end", "sendNext", "sendItem", "bibleFind", "bibleSend"]);
+const remoteToken = ({ code, secret }) => crypto.createHmac("sha256", secret).update(`keryx-remote:${code}`).digest("hex");
+
+// A phone's command, checked: { action, args } with only what that action
+// takes, or an Error with a status. Pure (tested).
+function remoteCommand(body) {
+    const fail = (message) => Object.assign(new Error(message), { status: 400 });
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw fail("Comando inválido.");
+    const { action } = body;
+    if (typeof action !== "string" || !REMOTE_ACTIONS.has(action)) throw fail("Comando desconhecido.");
+    if (action === "sendItem") {
+        const id = body.args?.itemId;
+        if (typeof id !== "string" || !/^[\w-]{1,64}$/.test(id)) throw fail("Item inválido.");
+        return { action, args: { itemId: id } };
+    }
+    if (action === "bibleFind" || action === "bibleSend") {
+        const ref = body.args?.ref;
+        if (typeof ref !== "string" || !ref.trim() || ref.length > 40) throw fail("Referência inválida.");
+        return { action, args: { ref: ref.trim() } };
+    }
+    return { action, args: {} };
+}
 
 const COOKIE = "keryx_lan";
 const MAX_BODY = 1024 * 1024;
@@ -101,6 +133,10 @@ const pinPage = (next, error) => page("KERYX", `<h1>KERYX</h1><p>Digite o PIN de
 <form method="post" action="/lan/pin"><input type="hidden" name="next" value="${next.replace(/[&"<>]/g, "")}">
 <input name="pin" inputmode="numeric" autocomplete="off" autofocus aria-label="PIN"><button type="submit">Entrar</button></form>${error ? `<p class="err">${error}</p>` : ""}`);
 
+const codePage = (error) => page("KERYX", `<h1>Controle remoto</h1><p>Digite o código do controle remoto (Configurações › Telas na rede, no computador do KERYX)</p>
+<form method="post" action="/lan/remote-code">
+<input name="code" inputmode="numeric" autocomplete="off" autofocus aria-label="Código"><button type="submit">Entrar</button></form>${error ? `<p class="err">${error}</p>` : ""}`);
+
 const notFoundPage = page("KERYX", `<h1>Página não disponível</h1><p>Esta tela só mostra as saídas do KERYX. Os painéis de controle ficam no computador do operador.</p><button onclick="location.href='/'">Voltar ao início</button>`);
 
 function readBody(req, limit = MAX_BODY) {
@@ -119,7 +155,7 @@ function readBody(req, limit = MAX_BODY) {
     });
 }
 
-function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, log = () => {} }) {
+function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, onRemote = null, log = () => {} }) {
     // NETWORK_SCREENS with the operator's names on them (NetworkHome, Rede).
     const screensOf = () => { const names = screenLabels(store); return NETWORK_SCREENS.map((sc) => ({ ...sc, label: names[sc.path] || sc.label })); };
     const dist = path.resolve(distDir);
@@ -148,6 +184,61 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         if (!config.pin) return true;
         return safeEqual(parseCookies(req.headers.cookie)[COOKIE] || "", authToken(config));
     };
+    // The controle remoto's own sign-in: on, with a code, and the cookie
+    // that code made (a new code or Desconectar todos signs every phone out).
+    const remoteOn = () => { const r = getConfig().remote; return Boolean(r && r.enabled && r.code && r.secret); };
+    const isRemote = (req) => remoteOn() && safeEqual(parseCookies(req.headers.cookie)[REMOTE_COOKIE] || "", remoteToken(getConfig().remote));
+
+    // Wrong codes (the PIN's and the remote's): five, then a minute out.
+    const tooMany = (key) => (attempts.get(key)?.until || 0) > Date.now();
+    const missed = (key) => {
+        const state = attempts.get(key) || { count: 0, until: 0 };
+        state.count += 1;
+        if (state.count >= MAX_ATTEMPTS) { state.count = 0; state.until = Date.now() + LOCKOUT_MS; }
+        attempts.set(key, state);
+    };
+
+    async function handleRemoteCode(req, res) {
+        if (!remoteOn()) return html(res, 404, notFoundPage);
+        if (req.method === "GET") return html(res, 200, codePage(""));
+        if (req.method !== "POST") return res.writeHead(405).end();
+        const key = `remote:${req.socket.remoteAddress}`;
+        if (tooMany(key)) return html(res, 429, codePage("Muitas tentativas. Aguarde um minuto."));
+        const form = new URLSearchParams(await readBody(req, 2048));
+        const remote = getConfig().remote;
+        if (safeEqual(form.get("code") || "", remote.code)) {
+            attempts.delete(key);
+            return res.writeHead(303, { Location: REMOTE_PATH, "Set-Cookie": `${REMOTE_COOKIE}=${remoteToken(remote)}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict` }).end();
+        }
+        missed(key);
+        return html(res, 401, codePage("Código incorreto."));
+    }
+
+    // A command from the phone: the custom header and the same origin (no
+    // other site can post it with the cookie), a checked command, and the
+    // console's answer — or "não respondeu" after a few seconds.
+    async function handleRemote(req, res) {
+        if (!remoteOn()) return json(res, 404, { error: { message: "Controle remoto desligado.", status: 404 } });
+        if (req.method !== "POST") return res.writeHead(405).end();
+        if (!isRemote(req)) return json(res, 401, { error: { message: "Código do controle remoto necessário.", status: 401 } });
+        const origin = req.headers.origin;
+        if (req.headers["x-keryx"] !== "1" || (origin && origin !== `http://${req.headers.host}`)) return json(res, 403, { error: { message: "Pedido não autorizado.", status: 403 } });
+        let command;
+        try {
+            command = remoteCommand(JSON.parse(await readBody(req, 4096)));
+        } catch (err) {
+            return json(res, err.status || 400, { error: { message: err.status ? err.message : "Pedido inválido.", status: err.status || 400 } });
+        }
+        if (!onRemote) return json(res, 503, { error: { message: "O console não está aberto.", status: 503 } });
+        let timer;
+        const answer = await Promise.race([
+            Promise.resolve().then(() => onRemote(command.action, command.args, { ip: req.socket.remoteAddress })),
+            new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, message: "O console não respondeu.", status: 504 }), REMOTE_TIMEOUT_MS); }),
+        ]).catch((err) => ({ ok: false, message: err?.message || "O console não conseguiu.", status: 500 }));
+        clearTimeout(timer);
+        if (!answer || !answer.ok) return json(res, answer?.status || 409, { error: { message: answer?.message || "Não foi possível.", status: answer?.status || 409 } });
+        return json(res, 200, { data: { message: answer.message || "", ...(answer.data !== undefined ? { result: answer.data } : {}) } });
+    }
 
     async function handlePin(req, res, url) {
         const ip = req.socket.remoteAddress;
@@ -181,7 +272,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
         res.write("retry: 3000\n\n");
         const asked = url ? String(url.searchParams.get("screen") || "").replace(/\/+$/, "") : "";
-        const screen = SCREEN_PATHS.has(asked) ? asked : "";
+        const screen = SCREEN_PATHS.has(asked) || (asked === REMOTE_PATH && isRemote(req)) ? asked : "";
         const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen };
         clients.add(client);
         req.on("close", () => clients.delete(client));
@@ -244,8 +335,19 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         }
 
         if (pathname === "/lan/pin") return handlePin(req, res, url);
+        if (pathname === "/lan/remote-code") return handleRemoteCode(req, res);
+        if (pathname === "/api/remote") return handleRemote(req, res);
+        // The remote's page: only while it is on, only with its code.
+        const routeNow = pathname.replace(/\/+$/, "");
+        if (routeNow === REMOTE_PATH && req.method === "GET") {
+            if (!remoteOn()) return html(res, 404, notFoundPage);
+            if (!isRemote(req)) return res.writeHead(303, { Location: "/lan/remote-code" }).end();
+            return serveIndex(req, res);
+        }
 
-        if (!isAuthed(req)) {
+        // A signed-in phone also reads what the screens read (the live
+        // state, the Setlist's rows), PIN or not.
+        if (!isAuthed(req) && !isRemote(req)) {
             const wantsPage = req.method === "GET" && String(req.headers.accept || "").includes("text/html");
             if (wantsPage) return res.writeHead(303, { Location: `/lan/pin?next=${encodeURIComponent(req.url)}` }).end();
             return json(res, 401, { error: { message: "PIN necessário.", status: 401 } });
@@ -334,8 +436,11 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         },
         running: () => Boolean(server && server.listening),
         port: () => (server && server.listening ? server.address().port : null),
-        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, label: names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
+        clients: () => { const names = screenLabels(store); return [...clients].map(({ ip, agent, since, screen }) => ({ ip: ip.replace(/^::ffff:/, ""), agent, since, screen, label: screen === REMOTE_PATH ? "Controle remoto" : names[screen] || NETWORK_SCREENS.find((s) => s.path === screen)?.label || "" })); },
+        // Desconectar todos: the phones' event streams close now (their
+        // cookie stops working with the new key the caller saves).
+        dropRemotes() { for (const client of [...clients]) if (client.screen === REMOTE_PATH) { client.res.end(); clients.delete(client); } },
     };
 }
 
-module.exports = { createLanServer, lanAddresses, NETWORK_SCREENS, authToken, safeNext };
+module.exports = { createLanServer, lanAddresses, NETWORK_SCREENS, authToken, safeNext, remoteCommand, remoteToken, REMOTE_PATH, REMOTE_ACTIONS };

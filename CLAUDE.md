@@ -150,7 +150,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   BibleProjectionSync, BannerTemplate, ChatMessage) are kept: user data.
 - **Network screens** (`electron/lan.cjs`) see only the pages in
   `NETWORK_SCREENS` and only read the database. A page added there must
-  work from the database and the live state alone. Each screen says which
+  work from the database and the live state alone. The one thing on the
+  network that changes what is on air is the **controle remoto**
+  (`/Remote`, a phone): off by default, behind its own code (never
+  optional, separate from the screens' PIN), it posts commands from a
+  closed list (`REMOTE_ACTIONS`, `remoteCommand`) that main relays to the
+  console (`keryx:remote`), which runs them as its own keys would — never
+  a direct write to the store or the live state from the network. Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists
   the screens connected right now from that (`useOutputs`). Links and QR
   codes meant for other devices come from the network info's `urls`
@@ -188,8 +194,8 @@ Setlist, tom, BPM, cifra, notas, monitor da projeção, logo, texto, imagem…)
 placed in % of the screen, each with a rule for when it shows (`when`) and a
 text look; the pure module is `src/lib/layouts.js` (types, factory layouts
 `factory:palco` / `factory:pastor`, visibility, text, snapping; tested) and
-`LayoutRenderer` draws one on the output, the network screen, the Prévia rail
-and the editor alike. Every output but Transmissão picks one with
+`LayoutRenderer` draws one on the output, the network screen, the Multiview
+quadrant and the editor alike. Every output but Transmissão picks one with
 `OutputPref.layout_id` (`""` = the page exactly as before: StageScreen /
 PastorScreen, or the bare renderer; a deleted layout falls back to it); a
 network screen may override it with `?layout=<id>`. On a renderer output
@@ -201,7 +207,7 @@ is a console view (`LayoutEditor.jsx`, `?layout=`), opened from Telas e
 saídas › Layouts das telas or an output's Ajustes › Layout; every screen is
 landscape. A new kind of element is an entry in `ELEMENT_TYPES` plus its case
 in `elementText` or the renderer's `Body`. Generated backgrounds are the next
-step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked).
+step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa header, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.

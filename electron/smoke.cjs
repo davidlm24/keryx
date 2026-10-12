@@ -947,6 +947,20 @@ async function checkConsole(webContents, { live, outputs }) {
         result.closedCleared = await waitText(webContents, "Projeção principal fechada", false, 8000);
         result.onScreens = await waitFor(() => js("/^em \\d+ telas?$/.test((document.querySelector('.prog-where') || {}).textContent || '')"), 8000);
 
+        // Multiview (Programa › Multiview): the Programa as four outputs; the
+        // Projeção quadrant shows what is on air and says it is on screen; a
+        // quadrant's label picks another output (Pastor, in its own layout);
+        // off again, the Programa is back.
+        await click(".mx-toggle");
+        result.mvOn = await waitFor(() => js(`[...document.querySelectorAll(".mx-tile")].map((t) => t.dataset.page).join(",") === "/Projection,/LyricProjection,/StageView,/CommunicationProjection"`));
+        result.mvShows = await waitFor(() => js(`(() => { const t = document.querySelector('.mx-tile[data-page="/Projection"]'); return Boolean(t) && ((t.querySelector(".ks-text") || {}).textContent || "").includes("Primeiro slide do console") && /^em \\d+ telas?$/.test(t.querySelector(".mx-st").textContent); })()`), 8000);
+        await click(".mx-tile[data-page='/LyricProjection'] .mx-pick");
+        await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
+        await click(".console .ctx-menu button", "Pastor");
+        result.mvPicked = await waitFor(() => js(`(() => { const t = document.querySelectorAll(".mx-tile")[1]; return Boolean(t) && t.dataset.page === "/PastorView" && Boolean(t.querySelector(".kp-portrait .net")); })()`));
+        await click(".mx-toggle");
+        result.mvOff = await waitFor(() => js("!document.querySelector('.mx-grid') && Boolean(document.querySelector('.kx-mon.prog .ks'))"));
+
         // Verificar is a panel on demand now: Saídas -> "Verificar tudo…".
         // Esc closes the overlay and leaves the projection alone.
         await click(".kx-status", "");
@@ -1012,6 +1026,10 @@ async function checkConsole(webContents, { live, outputs }) {
         result.lookDefault = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.transition === "slide" && st.transition_ms === 200); }, 5000);
         // "no ar há m:ss" in the Programa's caption while the item is on air.
         result.airSince = await waitFor(() => js("/^no ar há \\d+:\\d\\d$/.test((document.querySelector('.kx-prog-cap .kx-since') || {}).textContent || '')"), 5000);
+        // Títulos nas telas off: the song's name leaves the Programa (and every output).
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { show_item_title: false }])`);
+        result.titleHidden = await waitFor(() => js("Boolean(document.querySelector('.kx-mon .ks-text')) && !document.querySelector('.kx-mon .ks-title')"), 5000);
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { show_item_title: null }])`);
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { transition_type: null, transition_ms: null }])`);
         live.call("clear", {});
         await waitFor(() => !live.get().content);
@@ -2227,7 +2245,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
@@ -2246,7 +2264,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
-        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted && result.timerChips && result.timerKept && result.timerListed && result.timerPrepared && result.timerOn && result.timerAdjusted && result.timerDeleted
+        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted && result.timerChips && result.timerKept && result.timerListed && result.timerPrepared && result.timerOn && result.timerAdjusted && result.timerDeleted && result.mvOn && result.mvShows && result.mvPicked && result.mvOff
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
         && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch && result.paletteClear && result.paletteRefHere && result.paletteRefAdded
         && result.svOpen && result.svPresence && result.svPrepared && result.svNotes && result.svSent && result.svNotesOffAir && result.svReveal && result.svEdited && result.svSetlist && result.svClosed
@@ -2368,6 +2386,67 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         locked.close();
         await network.ops.setPin(null, "");
 
+        // Controle remoto, end to end: off it is not there; on, its code signs
+        // a phone in; a command runs on the console (Tela preta reaches the
+        // live state); locked screens refuse a new slide; off again, gone.
+        if (webContents) {
+            const remoteOff = (await fetch(`${base}/Remote`, { redirect: "manual" })).status;
+            await network.ops.setRemote(null, true);
+            const { code } = await network.ops.revealRemoteCode();
+            const signIn = await fetch(`${base}/lan/remote-code`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded" }, body: `code=${code}` });
+            const cookie = (signIn.headers.get("set-cookie") || "").split(";")[0];
+            const cmd = (action, args) => fetch(`${base}/api/remote`, { method: "POST", headers: { "content-type": "application/json", "x-keryx": "1", cookie }, body: JSON.stringify({ action, args }) });
+            live.call("screen.set", { mode: "show" });
+            const black = await cmd("black");
+            result.remote = { off: remoteOff, signedIn: signIn.status, black: black.status, screen: live.get().screen };
+            await cmd("black");
+            const st = await (await cmd("state")).json().catch(() => ({}));
+            result.remote.state = Boolean(st.data && st.data.result && Array.isArray(st.data.result.items));
+            // A Setlist item sent from the phone goes on air through the console:
+            // a text item added to the service the phone sees, then sent.
+            let sid = st.data && st.data.result && st.data.result.serviceId;
+            let reopened = false;
+            if (!sid) {
+                // No service chosen (a check before reloaded the console):
+                // open the console on one, as ?planner= does.
+                const day = new Date();
+                const svc = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("Service", "create", [{ title: "Culto do celular", date: "${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}", status: "DRAFT" }])`)).data;
+                const back = webContents.getURL();
+                const u = new URL(back);
+                u.search = `?planner=${svc.id}`;
+                await webContents.loadURL(u.toString());
+                reopened = back;
+                const until = Date.now() + 10000;
+                while (Date.now() < until && !sid) {
+                    await sleep(500);
+                    const again = await (await cmd("state")).json().catch(() => ({}));
+                    sid = again.data && again.data.result && again.data.result.serviceId;
+                }
+            }
+            if (sid) {
+                const row = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: ${JSON.stringify(sid)}, type: "TEXT", title: "Item do celular", notes: "Item do celular", order: 99, duration: 60 }])`)).data;
+                let sent = { status: 0 };
+                const until = Date.now() + 6000;
+                while (Date.now() < until) { sent = await cmd("sendItem", { itemId: row.id }); if (sent.status === 200) break; await sleep(400); }
+                result.remote.sendItem = sent.status === 200 && ((live.get().content || {}).title || "") === "Item do celular";
+                await webContents.executeJavaScript(`window.keryxDesktop.db.call("ServiceItem", "delete", [${JSON.stringify(row.id)}])`).catch(() => {});
+            } else result.remote.sendItem = false;
+            if (reopened) { const u = new URL(reopened); u.search = ""; await webContents.loadURL(u.toString()); await sleep(2000); }
+            live.call("clear", {});
+            live.call("screens.lock", { locked: true });
+            result.remote.locked = (await cmd("next")).status;
+            live.call("screens.lock", { locked: false });
+            // The phone's page itself, signed in with that cookie.
+            const phone = tablet();
+            const [name, value] = cookie.split("=");
+            await phone.webContents.session.cookies.set({ url: base, name, value });
+            await phone.loadURL(`${base}/Remote`);
+            result.remote.page = await waitFor(phone, "Segure para encerrar tudo", 8000);
+            phone.close();
+            await network.ops.setRemote(null, false);
+            result.remote.offAgain = (await cmd("black")).status;
+        }
+
         // The stage tablet drops mid-service: the console says which one and when,
         // instead of the screen silently leaving the list (outputs.js).
         if (webContents) {
@@ -2395,7 +2474,8 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         && result.projectorScreen && result.pastorScreen && result.streamScreen && result.streamBlack
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
-        && (!webContents || (result.dropBanner && result.dropStatus));
+        && (!webContents || (result.dropBanner && result.dropStatus))
+        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem === true && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
     return result;
 }
 
