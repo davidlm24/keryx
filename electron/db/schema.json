@@ -1673,6 +1673,24 @@
           "type": "boolean",
           "default": false
         },
+        "prefs_version": {
+          "type": "integer"
+        },
+        "bible_version": {
+          "type": "text"
+        },
+        "bible_book_names": {
+          "type": "text"
+        },
+        "import_lines": {
+          "type": "integer"
+        },
+        "console_density": {
+          "type": "text"
+        },
+        "console_hidden_modules": {
+          "type": "json"
+        },
         "standby_background": {
           "type": "text"
         },

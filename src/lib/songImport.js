@@ -96,12 +96,6 @@ export function splitLines(sections, n) {
     });
 }
 
-// The "Ao importar" preference, read by every import (local to this computer).
-export const IMPORT_LINES_KEY = "keryx.import.lines";
-export const importLines = () => {
-    try { return Number(localStorage.getItem(IMPORT_LINES_KEY)) || 0; } catch { return 0; }
-};
-
 // A Song row (Song entity: title and lyrics required) from one text.
 // name: the file name, the fallback title; lines: see splitLines.
 // -> { title, artist, lyrics, slides }

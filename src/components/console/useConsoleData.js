@@ -5,6 +5,7 @@ import { remember, forget } from "@/lib/console/outputs";
 import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { backgroundList } from "@/lib/console/backgroundPrefs";
+import { useUser } from "@/hooks/useUser";
 
 // What the console reads: the library (songs, media, communication pieces),
 // the services and the chosen service's items, the themes. Each list follows
@@ -52,13 +53,7 @@ const BUNDLED = [...new Set(Object.values(BACKGROUNDS).flat())]
 // Whether the church wants the forecast of the service's end and the delay
 // ("termina ~", "passou N min"): Configurações › Igreja, off by default.
 export function useShowForecast() {
-    const [on, setOn] = useState(false);
-    useEffect(() => {
-        const take = (u) => setOn(u?.show_forecast === true);
-        keryx.auth.me().then(take).catch(() => {});
-        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
-    }, []);
-    return on;
+    return useUser((u) => u?.show_forecast === true);
 }
 
 export function useBackgroundPrefs() {

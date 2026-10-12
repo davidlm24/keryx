@@ -17,6 +17,7 @@ import { stageFromVerses } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { rangeLabel, groupVerses, passageOf, chapterOnAir } from "@/lib/console/bibleVerses";
 import { verseNumbers } from "@/lib/verseMarks";
+import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 
 // Book groups, by position in the canon, for the colour bar of each book.
 const GROUPS = [[0, 4, "#b08a5a"], [5, 16, "#9a7a4a"], [17, 21, "#8d8a6a"], [22, 38, "#8a6a9a"], [39, 43, "#5a8ab0"], [44, 64, "#6a9a7a"], [65, 65, "#7a9a5a"]];
@@ -33,8 +34,9 @@ const save = (v) => {
     } catch { /* not remembered */ }
 };
 const MODES = [["ler", "Ler"], ["buscar", "Buscar"], ["comparar", "Comparar"]];
-// The version the operator chose here; the palette prepares references in it.
-export const bibleVersionWanted = () => load().version || "NVI";
+// The version the operator chose (here or in Configurações › Bíblias, one
+// preference in the database); the palette prepares references in it.
+export const bibleVersionWanted = () => getPrefs().bible_version;
 
 // The Bíblia environment, Holyrics-style, in three columns (their order is
 // the operator's, Ver › Editar layout): Livro, Capítulo and Versículo stacked;
@@ -99,7 +101,9 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // when a chapter cannot be fetched, or the edition exists only as an
     // install (AA), an installed one is shown instead — and said so, never
     // swapped silently.
-    const [wanted, setWanted] = useState(mem.version || "NVI");
+    const prefs = usePrefs();
+    const wanted = prefs.bible_version;
+    const setWanted = (v) => { updateUser({ bible_version: v }).catch(() => c.say("Não foi possível salvar a versão escolhida.")); };
     // Bumped after an install, so the installed list and the version are read again.
     const [installRev, setInstallRev] = useState(0);
     const [installed, setInstalled] = useState([]);
@@ -146,7 +150,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         }).catch((err) => { if (alive) setError(err?.message || "Não foi possível carregar o capítulo."); });
         // Walking search results does not fill "Recentes".
         const recent = modeRef.current === "buscar" ? (mem.recent || []) : [[book, chapter], ...(mem.recent || []).filter(([b, ch]) => !(b === book && ch === chapter))].slice(0, 6);
-        const next = { ...mem, version: wanted, book, chapter, recent };
+        const { version: _v, bookNames: _n, ...kept } = mem;
+        const next = { ...kept, book, chapter, recent };
         setMem(next); save(next);
         return () => { alive = false; };
     }, [version, book, chapter, installRev]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -300,8 +305,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // The 66 books: the Livros card of the left column.
     const gridRef = useRef(null);
     // Abrev | Nomes: the books as short codes (default) or full names, remembered.
-    const fullNames = mem.bookNames === "full";
-    const setBookNames = (v) => { const next = { ...mem, bookNames: v }; setMem(next); save(next); };
+    const fullNames = prefs.bible_book_names === "full";
+    const setBookNames = (v) => { updateUser({ bible_book_names: v }).catch(() => c.say("Não foi possível salvar.")); };
     // The verse row in the band: the same selection as clicking the text
     // (Ctrl adds, Shift makes a range, a double click projects), and it
     // brings the verse into view in the reading.

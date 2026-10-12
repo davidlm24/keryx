@@ -35,6 +35,33 @@
       "default": false,
       "description": "Mostrar a previsao do fim do culto e o atraso (termina ~, passou N min): so para igrejas que planejam o culto com duracoes"
     },
+    "prefs_version": {
+      "type": "integer",
+      "description": "Marca de migracao das preferencias: 1 = as preferencias do console (que viviam no localStorage deste computador) ja estao no banco; nulo = migrar na proxima abertura do console"
+    },
+    "bible_version": {
+      "type": "string",
+      "description": "Versao padrao da Biblia (Configuracoes › Biblias; o ambiente Biblia troca tambem): a versao que a paleta e o planner usam. Nulo = NVI"
+    },
+    "bible_book_names": {
+      "type": "string",
+      "enum": ["short", "full"],
+      "description": "Livros da Biblia no seletor: abreviados (short) ou nomes inteiros (full). Nulo = abreviados"
+    },
+    "import_lines": {
+      "type": "integer",
+      "description": "Ao importar letras: linhas por slide (0 = uma estrofe por slide, 2 ou 4). Nulo = 0"
+    },
+    "console_density": {
+      "type": "string",
+      "enum": ["comfortable", "compact"],
+      "description": "Densidade das listas do console (Ver › Densidade). Nulo = confortavel"
+    },
+    "console_hidden_modules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Modulos do console ocultos em Ver (lib, slides, camadas, roteiro, tl). Nulo = todos visiveis"
+    },
     "standby_background": {
       "type": "string",
       "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido)"
