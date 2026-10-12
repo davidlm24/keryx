@@ -476,6 +476,10 @@
 .console .cfg .kx-row .kx-row-meta { white-space: normal; }
 .console .cfg .listhead { height: auto; min-height: var(--row); padding: var(--space-1) var(--space-3); }
 .console .cfg .cfg-tabs { display: flex; padding: var(--space-2) var(--space-3) 0; }
+/* Culto: a template or a team member edited in place. */
+.console .cfg .cfg-edit-row { gap: var(--space-2); height: auto; min-height: var(--row); flex-wrap: wrap; padding-block: 3px; }
+.console .cfg .cfg-edit-row .cfg-select { width: auto; }
+.console .cfg .kx-row.is-dim > :not(.kx-btn):not(.cfg-launch) { opacity: .5; }
 
 /* ---------- Editor de música (canvas artboard 16) ---------- */
 .console .song-ed-l .frm, .console .song-ed-r .frm { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2); }

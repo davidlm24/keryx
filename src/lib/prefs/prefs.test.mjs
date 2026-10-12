@@ -13,9 +13,12 @@ test("prefs: an empty or old row reads as the defaults", () => {
 
 test("prefs: bad values fall back, good ones pass", () => {
     const p = prefsOf({ bible_version: " ARA ", bible_book_names: "full", import_lines: 4, console_density: "compact", console_hidden_modules: ["tl", "nope", "tl"] });
-    assert.deepEqual(p, { bible_version: "ARA", bible_book_names: "full", bible_verses_per_slide: "auto", bible_show_reference: true, bible_show_version: true, bible_verse_numbers: "sup", import_lines: 4, console_density: "compact", console_hidden_modules: ["tl"] });
+    assert.deepEqual(p, { bible_version: "ARA", bible_book_names: "full", bible_verses_per_slide: "auto", bible_show_reference: true, bible_show_version: true, bible_verse_numbers: "sup", service_start_time: "", service_weekday: null, duration_song: 240, duration_other: 120, import_lines: 4, console_density: "compact", console_hidden_modules: ["tl"] });
     const bad = prefsOf({ bible_version: "<x>", bible_book_names: "long", import_lines: 2.5, console_density: "tiny", console_hidden_modules: "tl" });
-    assert.deepEqual(bad, { bible_version: "NVI", bible_book_names: "short", bible_verses_per_slide: "auto", bible_show_reference: true, bible_show_version: true, bible_verse_numbers: "sup", import_lines: 0, console_density: "comfortable", console_hidden_modules: [] });
+    assert.deepEqual(bad, { bible_version: "NVI", bible_book_names: "short", bible_verses_per_slide: "auto", bible_show_reference: true, bible_show_version: true, bible_verse_numbers: "sup", service_start_time: "", service_weekday: null, duration_song: 240, duration_other: 120, import_lines: 0, console_density: "comfortable", console_hidden_modules: [] });
+    const culto = prefsOf({ service_start_time: "18:30", service_weekday: 0, duration_song: 300, duration_other: 5 });
+    assert.deepEqual([culto.service_start_time, culto.service_weekday, culto.duration_song, culto.duration_other], ["18:30", 0, 300, 120]);
+    assert.equal(prefsOf({ service_start_time: "25:00" }).service_start_time, "");
     const bible = prefsOf({ bible_verses_per_slide: "2", bible_show_reference: false, bible_show_version: false, bible_verse_numbers: "hide" });
     assert.deepEqual([bible.bible_verses_per_slide, bible.bible_show_reference, bible.bible_show_version, bible.bible_verse_numbers], ["2", false, false, "hide"]);
 });

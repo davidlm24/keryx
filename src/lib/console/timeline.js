@@ -60,7 +60,7 @@ const dayOf = (date, now) => {
 export function serviceClock({ service, seconds = 0, late = 0, now, forecast = false }) {
     if (!service) return { text: "Sem culto", more: "", muted: true, warn: false, title: "Nenhum culto escolhido · escolha ou crie um na Setlist" };
     const mins = minutesOf(service.startTime) ?? minutesOf(service.time);
-    if (mins == null) return { text: "Culto sem horário", more: "", muted: true, warn: false, title: "Defina o horário em Planejar o culto" };
+    if (mins == null) return { text: "Culto sem horário", more: "", muted: true, warn: false, title: "Defina o horário em Planejar o culto (ou um horário de sempre em Configurações › Culto)" };
     const day = dayOf(service.date, now);
     const start = day + mins * 60000;
     const plan = "Planejar o culto · clique";

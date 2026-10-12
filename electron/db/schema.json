@@ -1670,6 +1670,18 @@
         "bible_verse_numbers": {
           "type": "text"
         },
+        "service_start_time": {
+          "type": "text"
+        },
+        "service_weekday": {
+          "type": "integer"
+        },
+        "duration_song": {
+          "type": "integer"
+        },
+        "duration_other": {
+          "type": "integer"
+        },
         "import_lines": {
           "type": "integer"
         },

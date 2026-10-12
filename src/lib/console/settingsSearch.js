@@ -47,6 +47,11 @@ export const SETTINGS_INDEX = [
     e("biblia", "Bíblias instaladas", "baixar versões para usar sem internet; a versão padrão",
         ["versão padrão", "baixar", "instalar", "sem internet", "offline", "do arquivo", "NVI", "ARA", "ACF", "ARC", "NAA", "NTLH", "AA", "BKJ1611"]),
 
+    e("culto", "Dia do culto", "o dia da semana do Novo culto", ["domingo", "dia", "semana"]),
+    e("culto", "Horário padrão", "o horário de sempre do culto", ["horário", "hora", "início", "19:00"]),
+    e("culto", "Duração padrão", "quanto dura uma música, e qualquer outro item, na setlist", ["duração", "minutos", "música", "tempo"]),
+    e("culto", "Modelos de culto", "renomear e excluir os modelos salvos da setlist", ["modelo", "template", "setlist"]),
+    e("culto", "Equipe de louvor", "os músicos e cantores para escalar no culto", ["equipe", "músicos", "louvor", "vocal", "banda", "membro"]),
     e("culto", "Previsão do culto", "termina ~ e passou N min na barra do topo", ["previsão", "atraso", "termina", "passou", "fim", "duração"]),
 
     e("console", "Módulos", "Biblioteca, Slides, Camadas, Setlist e Linha do tempo", ["biblioteca", "slides", "camadas", "setlist", "linha do tempo", "mostrar", "esconder", "ocultar"]),
