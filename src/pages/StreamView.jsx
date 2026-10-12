@@ -1,17 +1,20 @@
 import React, { useEffect } from "react";
 import { useLiveState } from "@/hooks/useLiveState";
-import { streamCaption, captionSize } from "@/lib/streamCaption";
+import { useOutputPref } from "@/hooks/useOutputPref";
+import { streamCaption } from "@/lib/streamCaption";
+import { streamOptions } from "@/lib/outputPrefs";
 import { FONT_MAP } from "@/lib/deviceStyles";
+import StreamBand from "@/components/network/StreamBand";
 
 // Transmissão: the lower third for a live stream, an OBS Browser Source
 // (1920 × 1080) laid over the camera. A transparent page with the slide's
-// text in a band at the bottom, and the reference for Bible passages; text
+// text in a band (StreamBand), and the reference for Bible passages; text
 // only (streamCaption decides). A network screen like the others, so OBS
-// can run on this computer or another one on the church network.
-const SIZE = { l: "3.4vw", m: "2.7vw", s: "2.1vw" };
-
+// can run on this computer or another one on the church network. Its band
+// follows Configurações › Telas na rede › Transmissão › Ajustes (OutputPref).
 export default function StreamView() {
     const caption = useLiveState(streamCaption);
+    const { pref } = useOutputPref("/StreamView");
 
     // OBS composes the page over the camera: nothing behind the band. The
     // app's dark color-scheme would make Chromium paint a dark canvas under
@@ -27,18 +30,8 @@ export default function StreamView() {
     }, []);
 
     return (
-        <div style={{ position: "fixed", inset: 0, pointerEvents: "none", fontFamily: FONT_MAP.sans }} data-stream="">
-            {caption && (
-                <div key={caption.key} className="kx-stream-band" style={{
-                    position: "absolute", left: "6vw", right: "6vw", bottom: "6vh",
-                    padding: "1.4vw 2.2vw", borderRadius: "0.6vw",
-                    background: "rgba(10, 10, 12, 0.78)", color: "#fff",
-                    textAlign: "center", animation: "kx-stream-in 240ms ease-out",
-                }}>
-                    <div style={{ fontSize: SIZE[captionSize(caption.text)], lineHeight: 1.22, fontWeight: 500, whiteSpace: "pre-line", textWrap: "balance" }}>{caption.text}</div>
-                    {caption.ref && <div style={{ marginTop: "0.6vw", fontSize: "1.5vw", letterSpacing: "0.04em", color: "rgba(255,255,255,0.72)" }}>{caption.ref}</div>}
-                </div>
-            )}
+        <div style={{ position: "fixed", inset: 0, pointerEvents: "none", fontFamily: FONT_MAP.sans, containerType: "size" }} data-stream="">
+            <StreamBand caption={caption} opts={streamOptions(pref)} scale={pref.scale} />
             <style>{"@keyframes kx-stream-in { from { opacity: 0 } to { opacity: 1 } }"}</style>
         </div>
     );

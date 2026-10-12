@@ -80,7 +80,7 @@ export async function getChapter(version, book, chapter) {
     const installable = versionInfo(version)?.install;
     throw new ClientError(
         installable
-            ? `A ${version} não está instalada neste computador. Instale-a em Configurações › Bíblias instaladas (ou pelo + da Bíblia).`
+            ? `A ${version} não está instalada neste computador. Instale-a em Configurações › Bíblia e músicas (ou pelo + da Bíblia).`
             : `A ${version} só está disponível com internet. Use uma versão instalada (NVI, ACF ou AA) para projetar sem internet.`,
         404,
     );
@@ -106,7 +106,7 @@ export async function searchVerses(query, version, limit = 20) {
     if (q.length < 3) return [];
     const installed = Object.keys(await installedVersions());
     if (!installed.length) {
-        throw new ClientError("Nenhuma Bíblia instalada. Instale uma em Configurações › Bíblias instaladas.", 404);
+        throw new ClientError("Nenhuma Bíblia instalada. Instale uma em Configurações › Bíblia e músicas.", 404);
     }
     const target = installed.includes(version) ? version : installed[0];
     const rows = await keryx.entities.BibleVerse.filter({ version: target, text: { $regex: q } }, "id", limit);
@@ -126,7 +126,7 @@ export async function searchBible(query, version, { books = null, limit = 300 } 
     if (anchorTerm(terms).length < 3) return { version, terms, total: 0, verses: [], short: true };
     const installed = Object.keys(await installedVersions());
     if (!installed.length) {
-        throw new ClientError("Nenhuma Bíblia instalada. Baixe uma em Configurações › Bíblias instaladas para buscar por palavra.", 404);
+        throw new ClientError("Nenhuma Bíblia instalada. Baixe uma em Configurações › Bíblia e músicas para buscar por palavra.", 404);
     }
     const target = installed.includes(version) ? version : installed[0];
     const filter = { version: target, text: { $regex: anchorTerm(terms) } };

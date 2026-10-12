@@ -51,21 +51,38 @@ export function liveAction(e) {
     // Arrows belong to the control when it uses them itself: radio groups,
     // tab lists, menus, and a splitter focused with Tab (it resizes).
     const ownsArrows = kind === "control" && e.target.closest(ARROW_CONTROLS);
-    switch (e.key) {
-        case "ArrowRight": return ownsArrows ? null : "next";
-        case "ArrowLeft": return ownsArrows ? null : "prev";
-        case "ArrowUp": return ownsArrows || (kind === "control" && e.target.closest("select")) ? null : "selUp";
-        case "ArrowDown": return ownsArrows || (kind === "control" && e.target.closest("select")) ? null : "selDown";
-        case " ": return kind === "control" ? null : "play";
-        case "b": case "B": return "black";
-        case "l": case "L": return "logo";
-        case "c": case "C": return "clear";
-        case "Escape": return "end";
-        case "/": return "search";
-        case "?": return "help";
-        default: return null;
+    if (ARROWS[e.key]) {
+        const vertical = e.key === "ArrowUp" || e.key === "ArrowDown";
+        return ownsArrows || (vertical && kind === "control" && e.target.closest("select")) ? null : ARROWS[e.key];
     }
+    if (e.key === " ") return kind === "control" ? null : "play";
+    return PLAIN[e.key] || null;
 }
+
+// The keys without a modifier (besides Enter, the arrows and Space above).
+const ARROWS = { ArrowRight: "next", ArrowLeft: "prev", ArrowUp: "selUp", ArrowDown: "selDown" };
+const PLAIN = { b: "black", B: "black", l: "logo", L: "logo", c: "clear", C: "clear", Escape: "end", "/": "search", "?": "help" };
+
+// Every shortcut, as the operator reads it: the ? list and Configurações ›
+// Console draw this table, and keys.test.mjs checks it against liveAction
+// both ways (a key the console handles is listed; a listed key does what
+// it says). probe: a key press that triggers it (null: not a key — a
+// double click, typing a reference).
+export const SHORTCUTS = [
+    { keys: "Ctrl+Enter", label: "Enviar a Prévia ao ar (de qualquer lugar)", action: "send", probe: { key: "Enter", ctrlKey: true } },
+    { keys: "Enter", label: "Enviar ao ar (depois de clicar numa música ou versículo)", action: "send", probe: { key: "Enter" } },
+    { keys: "2 cliques", label: "Enviar o item ao ar na hora (biblioteca, setlist, slides, versículos)", action: null, probe: null },
+    { keys: "← →", label: "Slide ou versículo anterior / próximo no ar", action: "prev", probe: { key: "ArrowLeft" }, also: [["next", { key: "ArrowRight" }]] },
+    { keys: "↑ ↓", label: "Mover a seleção (verde) sem mudar o que está no ar", action: "selUp", probe: { key: "ArrowUp" }, also: [["selDown", { key: "ArrowDown" }]] },
+    { keys: "Espaço", label: "Tocar / pausar", action: "play", probe: { key: " " } },
+    { keys: "B", label: "Tela preta (na hora)", action: "black", probe: { key: "b" } },
+    { keys: "L", label: "Mostrar logo", action: "logo", probe: { key: "l" } },
+    { keys: "C", label: "Limpar texto", action: "clear", probe: { key: "c" } },
+    { keys: "Esc", label: "Tirar tudo do ar na hora (o aviso traz Desfazer) ou fechar o que está aberto", action: "end", probe: { key: "Escape" } },
+    { keys: "Letra", label: "Na Bíblia: digitar a referência (ex.: jo 3 16)", action: null, probe: null },
+    { keys: "/", label: "Buscar em tudo (em Configurações: buscar nas configurações)", action: "search", probe: { key: "/" } },
+    { keys: "?", label: "Esta lista", action: "help", probe: { key: "?" } },
+];
 
 // Esc closes the topmost thing open over the console, one per press, and
 // only with nothing open ends the projection (live safety: closing a menu

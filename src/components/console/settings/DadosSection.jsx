@@ -1,14 +1,26 @@
 import React, { useState } from "react";
-import { Btn, Empty } from "../kx";
-import { useBridge, usePoll, FormRow, Switch, formatBytes, formatWhen, desktopOnly } from "./parts";
+import { Btn, Empty, Seg } from "../kx";
+import { useBridge, usePoll, FormRow, Switch, formatBytes, formatWhen, desktopOnly, Reading } from "./parts";
+import { onAir } from "@/lib/console/updates";
 
-// Dados e atualizações: backups, moving everything to another computer, the
+const KEEPS = [["7", "7"], ["14", "14"], ["30", "30"], ["60", "60"]];
+
+// What restarts the KERYX (and so blanks every screen) asks twice while
+// something is on air.
+const RESTARTS = {
+    updateInstall: "Reiniciar e instalar fecha o KERYX e apaga as telas",
+    restoreBackup: "Restaurar reinicia o KERYX e apaga as telas",
+    importAll: "Importar reinicia o KERYX e apaga as telas",
+};
+
+// Backup e atualizações: backups, moving everything to another computer, the
 // data folder, a diagnostics file for support, and updates
 // (electron/system.cjs).
 export default function DadosSection({ c }) {
     const system = useBridge("system");
-    const [info, refresh, setInfo] = usePoll(() => system?.call("info"), 4000);
+    const [info, refresh, setInfo, readError] = usePoll(() => system?.call("info"), 4000);
     const [busy, setBusy] = useState("");
+    const [confirm, setConfirm] = useState(null);
     // The backups to restore from, listed on demand (Restaurar um backup…).
     const [restoreList, setRestoreList] = useState(null);
     const toggleRestore = async () => {
@@ -17,19 +29,29 @@ export default function DadosSection({ c }) {
         if (res?.error) c.say(`Restaurar: ${res.error.message}`);
         else setRestoreList(res.data);
     };
-    if (!system) return <Empty icon="save" title="Dados e atualizações">{desktopOnly}</Empty>;
-    if (!info) return <Empty title="Lendo os dados…" />;
+    if (!system) return <Empty icon="save" title="Backup e atualizações">{desktopOnly}</Empty>;
+    if (!info) return <Reading what="os dados" error={readError} />;
 
-    const run = async (op, label, onDone, args) => {
-        setBusy(op);
+    // busyKey: which button says "…ando" (one restore row, not all of them).
+    const run = async (op, label, onDone, args, busyKey = op) => {
+        if (RESTARTS[op] && onAir(c.live) && confirm !== busyKey) {
+            setConfirm(busyKey);
+            c.say(`Há algo no ar: ${RESTARTS[op]}. Clique de novo para continuar.`);
+            return;
+        }
+        setConfirm(null);
+        setBusy(busyKey);
         try {
             const res = await system.call(op, args);
             if (res?.error) c.say(`${label}: ${res.error.message}`);
+            else if (res?.data?.canceled) { /* the operator closed the folder picker */ }
             else {
                 if (res?.data?.dataDir) setInfo(res.data);
                 const message = onDone ? onDone(res?.data) : "";
                 if (message) c.say(message);
             }
+        } catch (err) {
+            c.say(`${label}: ${err?.message || "não foi possível."}`);
         } finally {
             setBusy("");
             refresh();
@@ -46,12 +68,25 @@ export default function DadosSection({ c }) {
                     <span className="kx-meta">{backup.last ? `último: ${formatWhen(backup.last.modified)} · ${formatBytes(backup.last.size)} · ${backup.count} ${backup.count === 1 ? "salvo" : "salvos"}` : "ainda não há backups nesta pasta"}</span>
                 </FormRow>
                 <FormRow k="Backup automático">
-                    <span className="kx-meta">ao abrir e ao fechar o KERYX, um por dia · ficam os últimos {backup.keep}{backup.media.enabled ? " · as mídias novas são copiadas ao abrir" : ""}</span>
+                    <Switch on={backup.enabled !== false} disabled={any} label="Backup automático" onChange={(on) => run("backupSet", "Backup", () => (on ? "Backup automático ligado." : "Backup automático desligado: faça backups à mão."), { enabled: on })} />
+                    {backup.enabled !== false
+                        ? <span className="kx-meta">ao abrir e ao fechar o KERYX, um por dia{backup.media.enabled ? " · as mídias novas são copiadas ao abrir" : ""}</span>
+                        : <span className="kx-warn">desligado · só os backups feitos em Fazer backup agora</span>}
+                </FormRow>
+                <FormRow k="Manter os últimos">
+                    <Seg small label="Quantos backups manter" value={String(backup.keep)} options={KEEPS.some(([v]) => v === String(backup.keep)) ? KEEPS : [...KEEPS, [String(backup.keep), String(backup.keep)]]}
+                        onChange={(v) => {
+                            const n = Number(v);
+                            if (n < backup.keep && backup.count > n && confirm !== `keep:${n}`) { setConfirm(`keep:${n}`); c.say(`Com ${n}, os backups mais antigos que ${n} dias são apagados no próximo backup. Escolha ${n} de novo para confirmar.`); return; }
+                            setConfirm(null);
+                            run("backupSet", "Backup", () => `Ficam os últimos ${n} backups.`, { keep: n });
+                        }} />
+                    <span className="kx-meta">dias com backup · o mais antigo sai quando chega um novo</span>
                 </FormRow>
                 <FormRow k="Mídias no backup">
                     {backup.media.enabled
                         ? <span className="kx-meta">{backup.media.running ? "copiando as mídias novas…" : `${backup.media.files} ${backup.media.files === 1 ? "arquivo" : "arquivos"} · ${formatBytes(backup.media.bytes)}${backup.media.last ? ` · última cópia ${formatWhen(backup.media.last.at)}${backup.media.last.copied ? ` (${backup.media.last.copied} ${backup.media.last.copied === 1 ? "nova" : "novas"})` : ""}` : ""}`}</span>
-                        : <span className="kx-meta">escolha uma pasta de backup fora deste disco (pen drive, outro disco ou uma pasta do Google Drive) para guardar também vídeos, imagens e o logo</span>}
+                        : <span className="kx-meta">escolha uma pasta de backup fora deste disco (pen drive, outro disco ou uma pasta do Google Drive) para salvar também vídeos, imagens e o logo</span>}
                 </FormRow>
                 {backup.media.error && <FormRow k=""><span className="kx-warn">Mídias: {backup.media.error} · veja o registro em Salvar diagnóstico</span></FormRow>}
                 <FormRow k="Pasta de backup">
@@ -63,7 +98,7 @@ export default function DadosSection({ c }) {
                 {backup.fallback && <FormRow k=""><span className="kx-warn">A pasta escolhida não está disponível · usando a pasta padrão</span></FormRow>}
                 <FormRow k="Restaurar">
                     <Btn disabled={any} on={Boolean(restoreList)} onClick={toggleRestore}>{restoreList ? "Fechar a lista" : "Restaurar um backup…"}</Btn>
-                    <span className="kx-meta">volta músicas, setlists, avisos e anotações a como estavam num dia · os dados de hoje ficam guardados à parte</span>
+                    <span className="kx-meta">volta músicas, setlists, avisos e anotações a como estavam num dia · os dados de hoje ficam salvos à parte</span>
                 </FormRow>
                 {restoreList && (
                     <FormRow k="">
@@ -73,21 +108,21 @@ export default function DadosSection({ c }) {
                                 <div key={b.name} className="cfg-restore-row">
                                     <span className="kx-content">{b.day.split("-").reverse().join("/")}</span>
                                     <span className="kx-meta">salvo {formatWhen(b.modified)} · {formatBytes(b.size)}</span>
-                                    <Btn small kind="outline" disabled={any} onClick={() => run("restoreBackup", "Restaurar", () => "", { name: b.name })}>{busy === "restoreBackup" ? "Preparando…" : "Restaurar"}</Btn>
+                                    <Btn small kind={confirm === `restore:${b.name}` ? "air" : "outline"} disabled={any} onClick={() => run("restoreBackup", "Restaurar", () => "", { name: b.name }, `restore:${b.name}`)}>{busy === `restore:${b.name}` ? "Preparando…" : confirm === `restore:${b.name}` ? "Restaurar mesmo" : "Restaurar"}</Btn>
                                 </div>
                             ))}
                             {restoreList.backups.length > 0 && (
                                 <span className="kx-meta">{restoreList.mirror.files
                                     ? `As mídias vêm de hoje; as apagadas desde então voltam da cópia no backup (${restoreList.mirror.files} ${restoreList.mirror.files === 1 ? "arquivo" : "arquivos"}).`
-                                    : "As mídias vêm de hoje: esta pasta não guarda cópia das mídias."}</span>
+                                    : "As mídias vêm de hoje: esta pasta não tem cópia das mídias."}</span>
                             )}
                         </div>
                     </FormRow>
                 )}
                 <FormRow k="Outro computador">
                     <Btn disabled={any} onClick={() => run("exportAll", "Exportar", (r) => (r ? `Exportado: ${r.media} ${r.media === 1 ? "arquivo" : "arquivos"} de mídia, ${formatBytes(r.bytes)}.` : ""))}>{busy === "exportAll" ? "Exportando…" : "Exportar tudo…"}</Btn>
-                    <Btn disabled={any} onClick={() => run("importAll", "Importar")}>{busy === "importAll" ? "Importando…" : "Importar…"}</Btn>
-                    <span className="kx-meta">um zip com o banco e as mídias · ao importar, os dados atuais ficam guardados à parte</span>
+                    <Btn kind={confirm === "importAll" ? "air" : ""} disabled={any} onClick={() => run("importAll", "Importar")}>{busy === "importAll" ? "Importando…" : confirm === "importAll" ? "Importar mesmo" : "Importar…"}</Btn>
+                    <span className="kx-meta">um zip com o banco e as mídias · ao importar, os dados atuais ficam salvos à parte</span>
                 </FormRow>
                 <FormRow k="Pasta de dados">
                     <span className="kx-content cfg-path" title={info.dataDir}>{info.dataDir}</span>
@@ -102,7 +137,7 @@ export default function DadosSection({ c }) {
                     <span className="kx-content">KERYX {info.version}</span>
                     {update.status !== "disabled" && <Btn disabled={any || update.status === "checking" || update.status === "downloading"} onClick={() => run("updateCheck", "Atualizações")}>Verificar atualização</Btn>}
                     {update.status === "available" && <Btn kind="outline" disabled={any} onClick={() => run("updateDownload", "Atualizações")}>Baixar a versão {update.version}</Btn>}
-                    {update.status === "downloaded" && <Btn kind="outline" disabled={any} onClick={() => run("updateInstall", "Atualizações")}>Reiniciar e instalar</Btn>}
+                    {update.status === "downloaded" && <Btn kind={confirm === "updateInstall" ? "air" : "outline"} disabled={any} onClick={() => run("updateInstall", "Atualizações")}>{confirm === "updateInstall" ? "Reiniciar mesmo" : "Reiniciar e instalar"}</Btn>}
                     <span className="kx-meta">{update.message || "instale fora do horário do culto: o KERYX fecha para atualizar"}</span>
                 </FormRow>
                 <FormRow k="Atualizar automaticamente">

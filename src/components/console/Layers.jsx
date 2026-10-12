@@ -25,7 +25,7 @@ const BY_KEY = Object.fromEntries(LAYERS.map((l) => [l.key, l]));
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"]];
 const TEXT_SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"]];
 // Theme helpers live in src/lib/console/themes.js, shared with the editor
-// in Configurações › Temas.
+// in Configurações › Aparência › Temas.
 const FONTS = THEME_FONTS;
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));
@@ -104,6 +104,7 @@ export default function Layers({ c, themes, media = null }) {
                 <span className="t">Tema: {theme ? theme.name : "nenhum"}{modified && <span> · Modificado</span>}</span>
                 {themes.length > 0 && (
                     <select value={theme?.id || ""} onChange={(e) => { const t = themes.find((x) => x.id === e.target.value); if (t) applyTheme(t); }} aria-label="Tema" title="Aplica o tema no que está no ar, na hora" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: 4, font: "inherit", maxWidth: 150 }}>
+                        {!theme && <option value="">Escolher…</option>}
                         {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                 )}

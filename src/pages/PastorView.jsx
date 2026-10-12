@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import PastorScreen from "@/components/network/PastorScreen";
+import { useChurch } from "@/hooks/useChurch";
 import OutputScreen from "@/components/screen/OutputScreen";
 import { useOutputPref } from "@/hooks/useOutputPref";
 import { pastorOptions } from "@/lib/outputPrefs";
@@ -47,11 +48,12 @@ export default function PastorView() {
     const live = useLiveState();
     const nowMs = useLiveNow(1000);
     const logo = useChurchLogo();
+    const church = useChurch();
     const session = live?.session || null;
     const serviceId = useServiceId(session);
     const items = playableItems(useServiceItems(serviceId));
     const { pref, theme } = useOutputPref("/PastorView");
     if (pref.content) return <OutputScreen page="/PastorView" live={live} prefs={{ pref, theme }} now={nowMs} logoUrl={logo} audio={false} />;
     const count = pastorOptions(pref).next_count;
-    return <PastorScreen live={live} nowMs={nowMs} logo={logo} upcoming={nextItems(items, session, count || 1)} hasService={Boolean(serviceId)} opts={pref.options} scale={pref.scale} />;
+    return <PastorScreen live={live} nowMs={nowMs} logo={logo} upcoming={nextItems(items, session, count || 1)} hasService={Boolean(serviceId)} opts={pref.options} scale={pref.scale} church={church} />;
 }

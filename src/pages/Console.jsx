@@ -5,6 +5,8 @@ import "@ds/components/bundle.css";
 import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
+import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
+import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole } from "@/components/console/useConsole";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
 import { Panel, Split, IconBtn } from "@/components/console/kx";
@@ -27,7 +29,9 @@ import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
-import SettingsView, { sectionIds } from "@/components/console/settings/SettingsView";
+import SettingsView from "@/components/console/settings/SettingsView";
+import { resolveSection } from "@/lib/console/settings";
+import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
@@ -99,19 +103,22 @@ export default function Console() {
     const closeView = useCallback(() => setView(null), []);
     const setEnv = useCallback((v) => { setView(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
     // Configurações: a window over whatever is on screen (the console or a
-    // view), with its section; ?config=<section> opens it at launch.
-    const [cfg, setCfg] = useState(() => {
+    // view), with its section (and Aparência's tab); ?config=<section> opens
+    // it at launch. Old ids still work (resolveSection).
+    const [cfgAt, setCfgAt] = useState(() => {
         try {
             const s = new URLSearchParams(window.location.search).get("config");
-            return s ? (sectionIds.includes(s) ? s : "telas") : null;
+            return s ? resolveSection(s) : null;
         } catch { return null; }
     });
-    const closeSettings = useCallback(() => setCfg(null), []);
+    const cfg = cfgAt?.id || null;
+    const setCfg = useCallback((id, tab) => setCfgAt(id ? resolveSection(tab ? `${id}/${tab}` : id) : null), []);
+    const closeSettings = useCallback(() => setCfgAt(null), []);
     // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
     const closeMenu = useCallback(() => setCtxMenu(null), []);
-    const openSettings = useCallback((section = "telas") => { setOpen(null); setCfg(section); }, []);
+    const openSettings = useCallback((section = "telas") => { setOpen(null); setCfg(section); }, [setCfg]);
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
@@ -128,7 +135,15 @@ export default function Console() {
     // Ver › Editar layout: moving the columns and stacked cards (arrange.js).
     // A view (editor, planner, ...) takes the whole grid: editing ends.
     const [editing, setEditing] = useState(false);
-    const [layout, setLayoutState] = useState(() => loadLayout(""));
+    // The layout: sizes, collapsed cards and the arrangement are this
+    // computer's (localStorage, per profile); which modules show and the
+    // density are the church's preferences, in the database (usePrefs), so
+    // they ride backups and another computer.
+    const [localLayout, setLayoutState] = useState(() => loadLayout(""));
+    const prefs = usePrefs();
+    useMigratePrefs();
+    const layout = useMemo(() => ({ ...localLayout, density: prefs.console_density, hidden: hiddenMap(prefs.console_hidden_modules) }),
+        [localLayout, prefs.console_density, prefs.console_hidden_modules]);
     // ?planner=<id> (the old /Services/:id) opens on that culto.
     const [serviceId, setServiceId] = useState(() => {
         try { const v = new URLSearchParams(window.location.search).get("planner"); return v && v !== "1" && v !== "new" ? v : null; } catch { return null; }
@@ -154,7 +169,16 @@ export default function Console() {
         ro.observe(el);
         return () => ro.disconnect();
     }, []);
-    const setLayout = useCallback((next) => { setLayoutState(next); saveLayout(profile, next); }, [profile]);
+    const say = c.say;
+    const setLayout = useCallback((next) => {
+        setLayoutState(next);
+        saveLayout(profile, next);
+        const patch = {};
+        if (next.density !== prefs.console_density) patch.console_density = next.density;
+        const hidden = hiddenList(next.hidden);
+        if (hidden.join() !== hiddenList(hiddenMap(prefs.console_hidden_modules)).join()) patch.console_hidden_modules = hidden;
+        if (Object.keys(patch).length) updateUser(patch).catch(() => say("Não foi possível salvar o layout."));
+    }, [profile, prefs.console_density, prefs.console_hidden_modules, say]);
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT }); c.say("Layout padrão restaurado."); };
 
     const { services, items } = useRundown(serviceId);
@@ -165,19 +189,23 @@ export default function Console() {
     // church's default (User.standby_background); with neither the idle look
     // stays as the operator left it. A choice in Saídas wins until the next
     // service is picked (docs/next-version-plan-2026-10-10.md, C6).
-    const [globalWall, setGlobalWall] = useState(null);
-    useEffect(() => {
-        const take = (u) => setGlobalWall(u?.standby_background || null);
-        keryx.auth.me().then(take).catch(() => {});
-        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
-    }, []);
+    const globalWall = useUser((u) => u?.standby_background || null);
     const wantWall = service?.standby_background || globalWall || null;
     const appliedWall = useRef(null);
     useEffect(() => {
-        if (!serviceId || !wantWall) return;
+        if (!serviceId) return;
+        if (!wantWall) {
+            // The default was cleared (or the service has none now): a
+            // wallpaper put up here goes back to the logo; one the operator
+            // chose in Saídas stays.
+            const was = appliedWall.current;
+            appliedWall.current = null;
+            if (was && c.live?.idle === "background" && c.live?.idleUrl === was.url) c.liveOp("idle.set", { mode: "logo" }).catch(() => {});
+            return;
+        }
         const key = `${serviceId}|${wantWall}`;
-        if (appliedWall.current === key) return;
-        appliedWall.current = key;
+        if (appliedWall.current?.key === key) return;
+        appliedWall.current = { key, url: wantWall };
         if (c.live?.idle === "background" && c.live?.idleUrl === wantWall) return;
         c.liveOp("idle.set", { mode: "background", url: wantWall }).catch(() => {});
     }, [serviceId, wantWall]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -269,7 +297,10 @@ export default function Console() {
         if (serviceId) return serviceId;
         const d = new Date();
         const two = (n) => String(n).padStart(2, "0");
-        const row = await keryx.entities.Service.create({ title: `Setlist de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, status: "DRAFT" });
+        // Today, at the church's usual time when it has one (Configurações › Culto).
+        const start = getPrefs().service_start_time;
+        const at = start ? { startTime: start } : {};
+        const row = await keryx.entities.Service.create({ title: `Setlist de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, status: "DRAFT", ...at });
         setServiceId(row.id);
         c.say("Criada a setlist de hoje · renomeie em Planejar o culto.");
         return row.id;
@@ -298,7 +329,7 @@ export default function Console() {
             }
             // Renumber from the end first, so two rows never share an order.
             for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + 1 });
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || (type === "SONG" ? 240 : 120) });
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || defaultDuration(type, getPrefs()) });
             c.say(`${stage.title} na setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     }, [c, items, ensureService]);
@@ -315,7 +346,7 @@ export default function Console() {
     const addSong = async (song) => {
         try {
             const sid = await ensureService();
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || 240 });
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || defaultDuration("SONG", getPrefs()) });
             c.say(`${song.title} adicionada ao fim da setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
@@ -382,10 +413,8 @@ export default function Console() {
     const openPlanner = useCallback(async (id, itemId = null) => {
         setOpen(null);
         if (id === "new") {
-            const d = new Date();
-            const two = (n) => String(n).padStart(2, "0");
             try {
-                const row = await keryx.entities.Service.create({ title: `Culto de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, startTime: "19:00", status: "DRAFT", service_type: "culto" });
+                const row = await keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto" });
                 setServiceId(row.id);
                 c.say("Novo culto criado.");
             } catch (err) { c.say(err?.message || "Não foi possível criar o culto."); return; }
@@ -410,7 +439,7 @@ export default function Console() {
         try {
             const { version, verses } = await referenceVerses(ref);
             const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
-            const st = stageFromVerses({ verses, nums: referenceNums(ref), version, book: ref.book, chapter: ref.chapter, onAir });
+            const st = stageFromVerses({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, onAir });
             if (!st) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
             c.setPrev(st);
         } catch (err) { c.say(err?.message || "Não foi possível abrir a passagem."); }
@@ -419,12 +448,12 @@ export default function Console() {
     const addReference = async (ref) => {
         try {
             const { version, verses } = await referenceVerses(ref);
-            const passage = passageOf({ verses, nums: referenceNums(ref), version, book: ref.book, chapter: ref.chapter });
+            const passage = passageOf({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter });
             if (!passage) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
             const sid = await ensureService();
             const row = await keryx.entities.BiblePassage.create(passage);
             const title = `${ref.book} ${ref.chapter}:${passage.verses}`;
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "BIBLE", title, contentId: row.id, order: items.length, duration: 120 });
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "BIBLE", title, contentId: row.id, order: items.length, duration: defaultDuration("BIBLE", getPrefs()) });
             c.say(`${title} adicionado ao fim da setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
@@ -454,7 +483,7 @@ export default function Console() {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
                     else if (top === "popover") setOpen(null);
-                    else if (top === "settings") setCfg(null);
+                    else if (top === "settings") setCfgAt(null);
                     else if (top === "drawer") setDrawer(false);
                     else if (top === "edit") setEditing(false);
                     return;
@@ -678,7 +707,7 @@ export default function Console() {
 
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
-            {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} />}
+            {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (

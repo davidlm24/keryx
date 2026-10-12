@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
+import { useChurch } from "@/hooks/useChurch";
 import { byGroup } from "@/lib/console/outputs";
 import "./net.css";
 
@@ -19,6 +20,7 @@ export default function NetworkHome({ screens: given = null }) {
     const [screens, setScreens] = useState(given);
     const [error, setError] = useState("");
     const logo = useChurchLogo();
+    const church = useChurch();
     const last = (() => { try { return localStorage.getItem(LAST); } catch { return null; } })();
     const lastScreen = screens?.find((s) => s.path === last) || null;
 
@@ -35,7 +37,8 @@ export default function NetworkHome({ screens: given = null }) {
             <div className="net-home-in">
                 <header className="net-home-h">
                     {logo && <img src={logo} alt="" />}
-                    <h1>KERYX</h1>
+                    <h1>{church.name || "KERYX"}</h1>
+                    {church.name && <span className="net-home-brand">{church.city ? `${church.city} · ` : ""}KERYX</span>}
                     <p>Escolha o que esta tela vai mostrar.</p>
                 </header>
                 {error && <p className="net-home-err" role="alert">{error}</p>}

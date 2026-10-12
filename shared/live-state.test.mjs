@@ -446,3 +446,10 @@ test("a slide may carry its part's own look (song themes): sanitized like the co
     // Out of range is held to the range, as in the content style.
     assert.equal(applyOp(emptyState(1), "content.show", { title: "M", slides: [{ text: "x", style: { background_dim: 5 } }] }, 1).content.slides[0].style.background_dim, 0.9);
 });
+
+test("a passage's display choices are part of its style (verse numbers, reference line)", () => {
+    const s = applyOp(emptyState(T0), "content.show", { kind: "bible", title: "João 3:16 · NVI", slides: [{ text: "16 Porque" }], style: { verse_numbers: "hide", ref_line: "plain" } }, T0);
+    assert.equal(s.content.style.verse_numbers, "hide");
+    assert.equal(s.content.style.ref_line, "plain");
+    assert.throws(() => applyOp(emptyState(T0), "content.show", { kind: "bible", slides: [{ text: "x" }], style: { ref_line: "big" } }, T0));
+});

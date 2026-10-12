@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
@@ -6,7 +6,9 @@ import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults } from "@/lib/console/backgroundPrefs";
-import { useBackgroundPrefs } from "./useConsoleData";
+import { useBackgroundPrefs, useThemes } from "./useConsoleData";
+import { defaultTheme, withThemeDefaults } from "@/lib/console/themes";
+import { useUser } from "@/hooks/useUser";
 
 // The console's own state around the live state. One console, always live:
 // every operation goes to the live state (shared/live-state.mjs).
@@ -28,17 +30,18 @@ export function useConsole() {
     const [prev, setPrevState] = useState(null);
     // The church's default transition (Configurações › Aparência, on User),
     // stamped into each item that goes on air (src/lib/console/look.js).
-    const lookRef = useRef(lookDefaults(null));
-    useEffect(() => {
-        const take = (u) => { lookRef.current = lookDefaults(u); };
-        keryx.auth.me().then(take).catch(() => {});
-        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
-    }, []);
+    const user = useUser();
+    const look = useMemo(() => lookDefaults(user), [user]);
     // Each background's dim and blur (Aparência › Fundos), a starting point
     // for the items that use it. stamp() gives an op the church's defaults;
     // the Prévia renders through it too, so it shows what will go out.
     const bgPrefs = useBackgroundPrefs();
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, args, lookRef.current), bgPrefs), [bgPrefs]);
+    // The default theme (Configurações › Aparência › Temas) dresses a song
+    // or a passage that has no look of its own, at send time: what is on
+    // air never changes by itself (themes.js, withThemeDefaults).
+    const theme = defaultTheme(useThemes());
+    const fundo = live?.background || null;
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, theme, { fundo }), look), bgPrefs), [theme, fundo, look, bgPrefs]);
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 

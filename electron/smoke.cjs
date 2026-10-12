@@ -1014,6 +1014,20 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear", {});
         await waitFor(() => !live.get().content);
 
+        // The default theme (Aparência › Temas) dresses a song with no look
+        // of its own when it is sent; changing the theme afterwards does not
+        // reskin what is on air.
+        const defTheme = (await js(`window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Padrão Smoke", font_family: "serif", font_size: "xlarge", is_default: true }])`)).data;
+        await sleep(800);
+        await dblclick(".kx-row", "Canto do console");
+        result.themeDefaultApplied = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif" && st.font_size === "xlarge"); }, 5000);
+        await js(`window.keryxDesktop.db.call("ProjectionTheme", "update", [${JSON.stringify(defTheme.id)}, { font_family: "mono" }])`);
+        await sleep(800);
+        result.themeDefaultNoReskin = ((live.get().content || {}).style || {}).font_family === "serif";
+        await js(`window.keryxDesktop.db.call("ProjectionTheme", "delete", [${JSON.stringify(defTheme.id)}])`);
+        live.call("clear", {});
+        await waitFor(() => !live.get().content);
+
         // Aparência › Fundos: a song whose background has its own dim and
         // blur goes on air with them, and the projector draws them.
         const BG = "1557672172-298e090bd0f1";
@@ -1258,11 +1272,16 @@ async function checkConsole(webContents, { live, outputs }) {
             : await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.player .kx-meter b')]; return b.length === 2 && b.every((x) => parseFloat(x.style.height) > 40); })()"), 10000);
         result.duration = await waitFor(() => js("(document.querySelector('.player .pl-left small') || {}).textContent === '0:20'"), 6000);
         result.shotPlayer = await shot("player");
+        // The test tone lasts 20 s and the meter checks above can take most
+        // of that on a busy computer: back to the start first, so it is
+        // still on air for Pausar and the volume.
+        await click(".player button", "Voltar ao início");
+        await waitFor(() => (live.get().audio?.playback?.position ?? 99) < 5, 3000);
         await click(".player button", "Pausar");
-        result.audioPaused = await waitFor(() => live.get().audio.playback.paused);
+        result.audioPaused = await waitFor(() => live.get().audio?.playback?.paused === true);
         await click(".player button", "Tocar");
         await click(".player .pl-vol button", "");
-        result.audioMuted = await waitFor(() => live.get().audio.playback.volume === 0);
+        result.audioMuted = await waitFor(() => live.get().audio?.playback?.volume === 0);
         // The meters read the system output, so muting the element empties them.
         result.metersFollowVolume = result.meterState !== "on"
             ? "sem loopback nesta máquina"
@@ -1311,6 +1330,10 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(400);
         await click(".kx-tabs button", "Letras");
         await waitText(webContents, "Canto do console");
+        // Configurações › Culto: the day's setlist comes with the usual time,
+        // and the song with the church's song length.
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { service_start_time: "18:30", duration_song: 300 }])`);
+        await sleep(600);
         await js(`(() => {
             const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
             const to = document.querySelector(".rund-tail");
@@ -1329,13 +1352,20 @@ async function checkConsole(webContents, { live, outputs }) {
         }, 8000);
         result.autoSetlistShown = await waitText(webContents, "Setlist de");
         if (!svc) throw new Error("a setlist do dia não foi criada");
+        result.cultoDefaults = svc.startTime === "18:30" && await waitFor(async () => {
+            const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
+            return its.some((it) => it.type === "SONG" && it.duration === 300);
+        }, 4000);
+        // Back to no usual time (the checks below expect the setlist as before).
+        await js(`window.keryxDesktop.db.call("Service", "update", ["${svc.id}", { startTime: null }])`);
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { service_start_time: null, duration_song: null }])`);
         for (const [i, title] of ["Abertura", "Louvor"].entries()) {
             await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i + 1}, duration: 300 }])`);
         }
         result.tlBlocks = await waitFor(() => js("document.querySelectorAll('.tl-track .kx-tl-blk').length >= 2"), 8000);
         // The forecast ("termina", "passou N min") is off by default: the
         // Linha do tempo's header keeps its count but invents no end; the
-        // switch in Configurações › Igreja (User.show_forecast) brings it back.
+        // switch in Configurações › Culto (User.show_forecast) brings it back.
         const tlHead = () => js("(document.querySelector('.tl-panel .kx-tl') || {}).textContent || ''");
         result.forecastOff = /de \d+ iten/.test(await tlHead()) && !/termina|passou/.test(await tlHead());
         await js('window.keryxDesktop.db.call("User", "update", ["local", { show_forecast: true }])');
@@ -1625,12 +1655,34 @@ async function checkConsole(webContents, { live, outputs }) {
         // Over the console, which stays mounted behind it.
         result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .col.center') && document.querySelector('.console .cfg-scrim'))");
         result.cfgSections = {};
-        for (const name of ["Telas e saídas", "Telas na rede", "Bíblias instaladas", "Igreja", "Temas", "Aparência", "Dados e atualizações"]) {
+        for (const name of ["Igreja", "Telas e saídas", "Telas na rede", "Aparência", "Bíblia e músicas", "Culto", "Console", "Backup e atualizações"]) {
             await click(".console .cfg-dialog .kx-row", name);
             result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
         }
         result.cfgAll = Object.values(result.cfgSections).every(Boolean);
         result.shotCfg = await shot("configuracoes");
+        // The search beside the title: "/" goes there, words without accents
+        // find a setting, Enter opens its section with the row lit, Esc clears.
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("/");
+        result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .cfg-dialog-h .cfg-search input')"), 3000);
+        await type("fundo de espera");
+        result.cfgSearchHits = await waitFor(() => js("[...document.querySelectorAll('.console .cfg-results .kx-row-title')].some((n) => n.textContent === 'Fundo de espera padrão')"), 3000);
+        await press("Escape");
+        result.cfgSearchClear = await waitFor(() => js("Boolean(document.querySelector('.console .cfg-dialog')) && document.querySelector('.console .cfg-search input').value === '' && !document.querySelector('.console .cfg-results')"), 3000);
+        await type("pin");
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg-results .kx-row'))"), 3000);
+        await press("Enter");
+        result.cfgSearchJump = await waitFor(() => js("(document.querySelector('.console .cfg .kx-panel-h .kx-section') || {}).textContent === 'Telas na rede' && Boolean(document.querySelector('.console .cfg [data-cfg-k=\"PIN\"].is-flash'))"), 5000);
+        // Backup automático turns off and back on (settings.json, merged).
+        await click(".console .cfg-dialog .kx-row", "Backup e atualizações");
+        const autoBackup = async () => ((await js('window.keryxDesktop.system.call("info")')).data || {}).backup?.enabled;
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg button[aria-label=\"Backup automático\"]'))"), 6000);
+        await js("document.querySelector('.console .cfg button[aria-label=\"Backup automático\"]').click(); true");
+        result.backupOff = await waitFor(async () => (await autoBackup()) === false, 5000);
+        await js("document.querySelector('.console .cfg button[aria-label=\"Backup automático\"]').click(); true");
+        result.backupOn = await waitFor(async () => (await autoBackup()) === true, 5000);
+        if (!(result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump)) result.cfgSearchDiag = await js("document.querySelector('.console .cfg-dialog').innerText.slice(0, 300)");
         await click(".console .cfg-dialog .kx-row", "Telas e saídas");
         result.cfgOutputs = await waitText(webContents, "Projeção principal");
         // Nome por saída: renaming Projeção reaches its row and the Prévia's
@@ -1666,6 +1718,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("(() => { const b = document.querySelector('.cfg-outprefs button[aria-label=\"Cifra no Palco\"]'); if (b) b.click(); return Boolean(b); })()");
         result.palcoCifraOff = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .net-stage')) && !document.querySelector('.cfg-outprefs .ns-chords')"), 5000);
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar padrão'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar mesmo'); if (b) b.click(); return Boolean(b); })()"), 3000);
         result.palcoRestored = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .ns-chords'))"), 5000);
         await tuneOf("Palco");
         await tuneOf("Tela do pastor");
@@ -1673,16 +1726,19 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs .kx-seg button')].find((x) => x.textContent === 'Não'); if (b) b.click(); return Boolean(b); })()");
         result.pastorNext0 = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .cfg-prev-pastor')) && !document.querySelector('.cfg-outprefs .np-side')"), 5000);
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar padrão'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar mesmo'); if (b) b.click(); return Boolean(b); })()"), 3000);
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .np-side'))"), 5000);
         await tuneOf("Tela do pastor");
 
-        // Temas: the editor creates a theme with a live sample; the Fundos
-        // library lives there now, and Aparência no longer has it. Element
+        // Aparência › Temas: the editor creates a theme with a live sample;
+        // the Fundos library is the next tab (not inside Temas). Element
         // clicks (not coordinates): the dialog relayouts while it opens.
         const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .cfg-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
         const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
-        await section("Temas");
-        await press2("Novo tema…");
+        const tab = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg .cfg-tabs button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
+        await section("Aparência");
+        await waitFor(() => tab("Temas"), 4000);
+        await waitFor(() => press2("Novo tema…"), 4000);
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs input.fg-input'))"));
         await js(`(() => {
             const name = document.querySelector(".cfg-outprefs input.fg-input");
@@ -1699,11 +1755,12 @@ async function checkConsole(webContents, { live, outputs }) {
             return rows.length === 1 && rows[0].font_family === "serif";
         }, 6000);
         if (!result.themeSaved) result.themeDiag = await js("(document.querySelector('.toast') || {}).textContent || document.querySelector('.console .cfg').innerText.slice(0, 300)");
+        result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .fg')"), 4000);
+        await tab("Fundos");
         result.fundosInTemas = await waitFor(() => js("Boolean(document.querySelector('.console .cfg .fg'))"), 4000);
-        await section("Aparência");
-        result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .fg') && [...document.querySelectorAll('.console .cfg .kx-meta')].some((n) => n.textContent.includes('moram em Temas'))"), 4000);
-        await section("Telas e saídas");
-        await waitText(webContents, "Projeção principal");
+        // Tela ociosa is in Aparência › Geral (no longer in Telas e saídas).
+        await tab("Geral");
+        await waitText(webContents, "Tela ociosa");
         await click(".console .cfg .kx-seg button", "Preto");
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
         await click(".console .cfg .kx-seg button", "Logo da igreja");
@@ -1714,6 +1771,8 @@ async function checkConsole(webContents, { live, outputs }) {
         await type("Igreja do Teste");
         await press("Tab");
         result.cfgChurch = await waitFor(async () => ((await js(`window.keryxDesktop.db.call("User", "get", ["local"])`)).data || {}).church_name === "Igreja do Teste", 6000);
+        // The church's name shows beyond Configurações: the console's title.
+        result.churchTitle = await waitFor(() => js("document.title === 'Igreja do Teste · KERYX'"), 4000);
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { church_name: "" }])`);
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("Escape");
@@ -2144,10 +2203,10 @@ async function checkConsole(webContents, { live, outputs }) {
         && (result.bibleSplit === true || typeof result.bibleSplit === "string")
         && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
-        && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
+        && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
@@ -2461,20 +2520,36 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
         const report = (quit) => {
             if (reported) return;
             reported = true;
-            const passed = ok && quit.quits && quit.outputOpen;
+            const passed = ok && quit.quits && quit.outputOpen && quit.guardAsked && quit.guardKept;
             console.log(`SMOKE ${passed ? "OK" : "FAIL"} ${JSON.stringify({ ...details, quit, errors })}`);
             app.exit(passed ? 0 : 1);
         };
         try {
             outputs.open("/Projection");
         } catch { /* reported as outputOpen: false */ }
-        setTimeout(() => {
+        setTimeout(async () => {
             const outputOpen = outputs.trackedWindows().some((w) => !w.destroyed);
+            // With something on air the X asks first (closeGuard.cjs):
+            // "Continuar projetando" keeps the KERYX open; then it closes.
+            const guard = require("./closeGuard.cjs");
+            let guardAsked = false;
+            let guardKept = false;
+            try {
+                live.call("screens.lock", { locked: false });
+            } catch { /* not locked */ }
+            try {
+                live.call("content.show", { kind: "text", title: "Guarda", slides: [{ text: "Guarda" }] });
+                guard.setAsk(async () => { guardAsked = true; return false; });
+                if (!win.isDestroyed()) win.close();
+                await new Promise((r) => setTimeout(r, 800));
+                guardKept = !win.isDestroyed();
+            } catch { /* reported as guardKept: false */ }
+            guard.setAsk(async () => true);
             app.once("will-quit", (event) => {
                 event.preventDefault();
-                report({ quits: true, outputOpen });
+                report({ quits: true, outputOpen, guardAsked, guardKept });
             });
-            setTimeout(() => report({ quits: false, outputOpen, note: "o KERYX continuou aberto depois de fechar o console" }), 10000);
+            setTimeout(() => report({ quits: false, outputOpen, guardAsked, guardKept, note: "o KERYX continuou aberto depois de fechar o console" }), 10000);
             if (!win.isDestroyed()) win.close();
         }, 1500);
     };

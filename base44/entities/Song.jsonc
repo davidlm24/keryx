@@ -87,6 +87,11 @@
       "default": "large",
       "description": "Tamanho da letra na proje\u00e7\u00e3o"
     },
+    "style_mode": {
+      "type": "string",
+      "enum": ["theme", "own"],
+      "description": "Estilo da musica: theme = segue o tema padrao (Configuracoes › Aparencia › Temas); own = o estilo proprio desta musica. Nulo = segue o tema enquanto o estilo for o de fabrica"
+    },
     "font_family": {
       "type": "string",
       "enum": [

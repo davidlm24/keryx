@@ -1,40 +1,40 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { keryx } from "@/api/keryxClient";
 import { Btn, Seg } from "../kx";
 import { FormRow } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { TRANSITIONS, TRANSITION_MS, lookDefaults } from "@/lib/console/look";
+import { TRANSITIONS, TRANSITION_MS, NATURAL_MS, lookDefaults } from "@/lib/console/look";
 import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
+import { useUser, updateUser } from "@/hooks/useUser";
+import IdleBlock from "./IdleBlock";
 
 
-// Aparência: how the screens look by default, for every service. The
-// transition between slides (each item can still choose its own in
-// Camadas) and the standby wallpaper the screens show when nothing is on
-// air and the service has none of its own. On the local profile (User).
-// The Fundos library lives in Temas (FundosGallery), beside the presets.
+// Aparência › Geral: how the screens look by default, for every service.
+// The transition between slides (each item can still choose its own in
+// Camadas), the idle look of the screens and the standby wallpaper they
+// show when nothing is on air and the service has none of its own. On the
+// local profile (User), but the idle look (the live state).
 export default function AparenciaSection({ c }) {
     const { media } = useLibrary();
-    const [user, setUser] = useState(null);
-    const [ms, setMs] = useState(400);
+    const user = useUser();
     const [slide, setSlide] = useState(0);
     const [picking, setPicking] = useState(false);
-
-    useEffect(() => {
-        const take = (u) => { setUser(u || {}); setMs(lookDefaults(u).transition_ms || 400); };
-        keryx.auth.me().then(take).catch(() => setUser({}));
-        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
-    }, []);
+    const kind = lookDefaults(user).transition || "fade";
+    // The length saved, else what this transition lasts by itself; the
+    // slider moves a draft, saved once when it is let go.
+    const savedMs = lookDefaults(user).transition_ms;
+    const [ms, setMs] = useState(savedMs || NATURAL_MS[kind] || 400);
+    useEffect(() => { setMs(savedMs || NATURAL_MS[kind] || 400); }, [savedMs, kind]);
+    const commitMs = () => { if (ms !== (savedMs || NATURAL_MS[kind])) save({ transition_ms: ms }); };
 
     const save = async (patch, message) => {
         try {
-            await keryx.entities.User.update("me", patch);
+            await updateUser(patch);
             if (message) c.say(message);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };
-    const kind = lookDefaults(user).transition || "fade";
     const wall = user?.standby_background || null;
 
     // A sample of the screens with the chosen transition: Ver a transição
@@ -56,9 +56,9 @@ export default function AparenciaSection({ c }) {
                 </FormRow>
                 <FormRow k="Duração">
                     <input type="range" className="ap-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={ms} disabled={kind === "cut"}
-                        onChange={(e) => setMs(Number(e.target.value))} onPointerUp={() => save({ transition_ms: ms })} onKeyUp={() => save({ transition_ms: ms })} onBlur={() => save({ transition_ms: ms })}
+                        onChange={(e) => setMs(Number(e.target.value))} onPointerUp={commitMs} onKeyUp={(e) => { if (e.key !== "Tab") commitMs(); }} onBlur={commitMs}
                         aria-label="Duração da transição" />
-                    <span className="kx-content ap-ms">{kind === "cut" ? "imediato" : `${ms} ms`}</span>
+                    <span className="kx-content ap-ms">{kind === "cut" ? "imediato" : `${ms} ms${savedMs ? "" : " · padrão"}`}</span>
                 </FormRow>
                 <FormRow k="">
                     <div className="ap-sample">{doc && <ScreenRenderer state={doc} now={c.now} preview />}</div>
@@ -76,7 +76,7 @@ export default function AparenciaSection({ c }) {
                             onPick={(url) => { setPicking(false); save({ standby_background: url }, "Fundo de espera padrão salvo."); }} />
                     </div>
                 )}
-                <div className="listhead"><span className="kx-meta">Nomes, categorias e os ajustes de cada fundo moram em Temas, junto com os presets.</span></div>
+                <IdleBlock c={c} media={media} />
             </div>
         </>
     );

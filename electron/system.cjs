@@ -8,6 +8,7 @@ const { pipeline } = require("node:stream/promises");
 const yazl = require("yazl");
 const backup = require("./backup.cjs");
 const archive = require("./archive.cjs");
+const closeGuard = require("./closeGuard.cjs");
 
 const SETTINGS_KEY = "backup";
 
@@ -22,14 +23,37 @@ function dirSize(dir) {
     return total;
 }
 
+// The data folder's size, for Configurações (which asks every few seconds):
+// walking the folder blocks the main process, so it is measured at most
+// once a minute.
+const SIZE_TTL_MS = 60000;
+function cachedSize(measure = dirSize, ttl = SIZE_TTL_MS) {
+    const memo = new Map();
+    return (dir, now = Date.now()) => {
+        const hit = memo.get(dir);
+        if (hit && now - hit.at < ttl) return hit.bytes;
+        const bytes = measure(dir);
+        memo.set(dir, { at: now, bytes });
+        return bytes;
+    };
+}
+
 const UPDATES_KEY = "updates";
 
 function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications = null }) {
+    const dataSize = cachedSize();
     const autoUpdates = () => Boolean((settings.get(UPDATES_KEY, {}) || {}).auto);
     const updateState = () => ({ ...updater.state(), auto: autoUpdates() });
     const notify = (n) => { try { notifications?.add(n); } catch (err) { logger.warn(`[keryx-notifications] ${err.message}`); } };
     const defaultBackupDir = path.join(dataDir, "backups");
-    const configuredDir = () => (settings.get(SETTINGS_KEY, {}) || {}).dir || "";
+    const prefs = () => backup.backupPrefs(settings.get(SETTINGS_KEY, {}) || {});
+    // Every write keeps the other backup settings (the folder, on/off, keep).
+    const setPrefs = (patch) => {
+        const next = { ...(settings.get(SETTINGS_KEY, {}) || {}), ...patch };
+        for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
+        settings.set(SETTINGS_KEY, next);
+    };
+    const configuredDir = () => prefs().dir;
     const parentWindow = (event) => (event ? BrowserWindow.fromWebContents(event.sender) : BrowserWindow.getFocusedWindow()) || undefined;
     const message = (event, options) => dialog.showMessageBox(parentWindow(event), { noLink: true, ...options });
 
@@ -67,10 +91,10 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             media = { running: false, last: { at: new Date().toISOString(), copied: r.copied, bytes: r.bytes }, error: r.failed.length ? `${r.failed.length} arquivo(s) não copiado(s)` : "" };
             logger.info(`[keryx-backup] mídia (${reason}): ${r.copied} de ${r.files} copiados, ${r.bytes} bytes, em ${dir}`);
             for (const fail of r.failed.slice(0, 5)) logger.warn(`[keryx-backup] mídia: ${fail.name}: ${fail.error}`);
-            if (r.failed.length) notify({ key: "backup-media", kind: "warn", title: "Algumas mídias não foram para o backup", body: `${r.failed.length} arquivo(s) não copiado(s) para ${dir}. Veja se o pen drive ou o disco tem espaço.`, action: "settings:dados" });
+            if (r.failed.length) notify({ key: "backup-media", kind: "warn", title: "Algumas mídias não foram para o backup", body: `${r.failed.length} arquivo(s) não copiado(s) para ${dir}. Veja se o pen drive ou o disco tem espaço.`, action: "settings:backup" });
         }, (err) => {
             media = { running: false, last: media.last, error: err.message };
-            notify({ key: "backup-media", kind: "warn", title: "As mídias não foram para o backup", body: err.message, action: "settings:dados" });
+            notify({ key: "backup-media", kind: "warn", title: "As mídias não foram para o backup", body: err.message, action: "settings:backup" });
             logger.error(`[keryx-backup] mídia (${reason}) falhou: ${err.stack || err.message}`);
         }).finally(() => { mediaJob = null; statsCache = null; });
         return mediaJob;
@@ -81,11 +105,18 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         return { enabled: true, running: media.running, last: media.last, error: media.error, files: statsCache.files, bytes: statsCache.bytes };
     }
 
+    // Automatic backups (opening and closing the KERYX) can be turned off;
+    // the manual one and a new folder's first always run.
+    const AUTOMATIC = ["ao abrir", "ao fechar"];
     function backupNow(reason) {
+        if (AUTOMATIC.includes(reason) && !prefs().enabled) {
+            logger.info(`[keryx-backup] ${reason}: backup automático desligado`);
+            return null;
+        }
         const { dir, fallback } = backupDir();
-        if (fallback) notify({ key: "backup-fallback", kind: "warn", title: "Backup salvo na pasta padrão", body: `A pasta escolhida (${configuredDir()}) não estava disponível, então o backup foi para ${dir}. Conecte o pen drive ou escolha outra pasta.`, action: "settings:dados" });
+        if (fallback) notify({ key: "backup-fallback", kind: "warn", title: "Backup salvo na pasta padrão", body: `A pasta escolhida (${configuredDir()}) não estava disponível, então o backup foi para ${dir}. Conecte o pen drive ou escolha outra pasta.`, action: "settings:backup" });
         try {
-            const result = backup.runBackup({ store, dir });
+            const result = backup.runBackup({ store, dir, keep: prefs().keep });
             logger.info(`[keryx-backup] ${reason}: ${result.file}${result.removed.length ? ` (removidos ${result.removed.length} antigos)` : ""}`);
             if (reason !== "ao fechar") backupMedia(reason);
             return result;
@@ -95,6 +126,16 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         }
     }
 
+    // Iniciar com o Windows: the system's own setting (Task Manager can turn
+    // it off), only for the installed app (a dev run would register electron.exe).
+    function machineInfo() {
+        const login = app.isPackaged && app.getLoginItemSettings ? app.getLoginItemSettings({ path: process.execPath }) : null;
+        return {
+            ...closeGuard.machinePrefs(settings.get(closeGuard.MACHINE_KEY, {})),
+            login: { available: Boolean(login), on: Boolean(login?.openAtLogin), blocked: Boolean(login?.openAtLogin && login.executableWillLaunchAtLogin === false) },
+        };
+    }
+
     function info() {
         const { dir, fallback } = backupDir();
         const list = backup.listBackups(dir);
@@ -102,12 +143,13 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             version: app.getVersion(),
             packaged: app.isPackaged,
             dataDir,
-            dataBytes: dirSize(dataDir),
+            dataBytes: dataSize(dataDir),
             backup: {
                 dir,
                 custom: Boolean(configuredDir()),
                 fallback,
-                keep: backup.KEEP,
+                keep: prefs().keep,
+                enabled: prefs().enabled,
                 count: list.length,
                 last: list[0] ? { name: list[0].name, modified: list[0].modified, size: list[0].size } : null,
                 media: mediaInfo(dir, fallback),
@@ -207,14 +249,15 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             title: "Pasta para os backups automáticos",
             properties: ["openDirectory", "createDirectory"],
         });
-        if (canceled || !filePaths[0]) return info();
-        settings.set(SETTINGS_KEY, { dir: filePaths[0] });
+        // Closing the picker changes nothing (and says nothing).
+        if (canceled || !filePaths[0]) return { ...info(), canceled: true };
+        setPrefs({ dir: filePaths[0] });
         backupNow("pasta alterada");
         return info();
     }
 
     function resetBackupDir() {
-        settings.set(SETTINGS_KEY, {});
+        setPrefs({ dir: undefined });
         return info();
     }
 
@@ -260,6 +303,25 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         ops: {
             info: async () => info(),
             backupNow: async () => { backupNow("manual"); return info(); },
+            // Configurações › Console: this computer's choices.
+            machineGet: async () => machineInfo(),
+            machineSet: async (_event, { confirmClose } = {}) => {
+                const cur = settings.get(closeGuard.MACHINE_KEY, {}) || {};
+                if (confirmClose !== undefined) settings.set(closeGuard.MACHINE_KEY, { ...cur, confirmClose: Boolean(confirmClose) });
+                return machineInfo();
+            },
+            loginSet: async (_event, { on } = {}) => {
+                if (!app.isPackaged) throw Object.assign(new Error("Só no KERYX instalado."), { status: 400 });
+                app.setLoginItemSettings(loginItemArgs(Boolean(on), process.execPath));
+                return machineInfo();
+            },
+            backupSet: async (_event, { enabled, keep } = {}) => {
+                const patch = {};
+                if (enabled !== undefined) patch.enabled = Boolean(enabled);
+                if (keep !== undefined) patch.keep = backup.normalizeKeep(keep);
+                setPrefs(patch);
+                return info();
+            },
             chooseBackupDir: async (event) => chooseBackupDir(event),
             resetBackupDir: async () => resetBackupDir(),
             openBackupDir: async () => { await shell.openPath(backupDir().dir); return null; },
@@ -287,4 +349,7 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
     };
 }
 
-module.exports = { createSystem };
+// The arguments for app.setLoginItemSettings.
+const loginItemArgs = (on, exe) => ({ openAtLogin: Boolean(on), path: exe });
+
+module.exports = { createSystem, cachedSize, loginItemArgs };

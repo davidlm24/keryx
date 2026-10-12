@@ -145,6 +145,29 @@ export const pastorOptions = (pref) => {
     return { clock: onOff(pref?.options?.clock, true), next_count: Number.isFinite(n) ? Math.min(5, Math.max(0, Math.round(n))) : 3 };
 };
 
+// Transmissão (/StreamView): the band of the lower third. Missing keys are
+// the band as it always was.
+export const STREAM_DEFAULTS = { band: "#0a0a0c", band_opacity: 0.78, size: "auto", position: "bottom", show_ref: true };
+const HEX6 = /^#[0-9a-f]{6}$/i;
+export function streamOptions(pref) {
+    const o = pref?.options || {};
+    const op = Number(o.band_opacity);
+    return {
+        band: typeof o.band === "string" && HEX6.test(o.band) ? o.band.toLowerCase() : STREAM_DEFAULTS.band,
+        band_opacity: o.band_opacity != null && o.band_opacity !== "" && Number.isFinite(op) ? Math.min(1, Math.max(0, op)) : STREAM_DEFAULTS.band_opacity,
+        size: ["auto", "s", "m", "l"].includes(o.size) ? o.size : "auto",
+        position: ["bottom", "middle", "top"].includes(o.position) ? o.position : "bottom",
+        show_ref: onOff(o.show_ref, true),
+    };
+}
+// The band's background, rgba from the colour and the opacity (the page
+// itself stays transparent for OBS).
+export function bandBackground(opts) {
+    const hex = opts.band.slice(1);
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    return `rgba(${r}, ${g}, ${b}, ${opts.band_opacity})`;
+}
+
 // The page view an output draws: its own, unless Conteúdo picks another.
 export function prefViewKey(page, pref) {
     return PREF_CONTENTS.find((c) => c.id && c.id === pref?.content)?.view || page;

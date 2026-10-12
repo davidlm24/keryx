@@ -35,6 +35,94 @@
       "default": false,
       "description": "Mostrar a previsao do fim do culto e o atraso (termina ~, passou N min): so para igrejas que planejam o culto com duracoes"
     },
+    "prefs_version": {
+      "type": "integer",
+      "description": "Marca de migracao das preferencias: 1 = as preferencias do console (que viviam no localStorage deste computador) ja estao no banco; nulo = migrar na proxima abertura do console"
+    },
+    "bible_version": {
+      "type": "string",
+      "description": "Versao padrao da Biblia (Configuracoes › Biblias; o ambiente Biblia troca tambem): a versao que a paleta e o planner usam. Nulo = NVI"
+    },
+    "bible_book_names": {
+      "type": "string",
+      "enum": ["short", "full"],
+      "description": "Livros da Biblia no seletor: abreviados (short) ou nomes inteiros (full). Nulo = abreviados"
+    },
+    "bible_verses_per_slide": {
+      "type": "string",
+      "enum": ["auto", "1", "2", "3"],
+      "description": "Biblia: versiculos por slide de um trecho (auto = pelo tamanho do texto). Nulo = auto"
+    },
+    "bible_show_reference": {
+      "type": "boolean",
+      "description": "Biblia: mostrar a referencia (Joao 3:16) embaixo do texto nas telas. Nulo = sim"
+    },
+    "bible_show_version": {
+      "type": "boolean",
+      "description": "Biblia: mostrar a versao (NVI) junto da referencia. Nulo = sim"
+    },
+    "bible_verse_numbers": {
+      "type": "string",
+      "enum": ["sup", "hide"],
+      "description": "Biblia: numeros dos versiculos pequenos no texto (sup) ou ocultos (hide). Nulo = sup"
+    },
+    "service_start_time": {
+      "type": "string",
+      "description": "Culto: horario de sempre (HH:MM), para Novo culto e a setlist do dia. Nulo = sem horario (nunca um horario inventado)"
+    },
+    "service_weekday": {
+      "type": "integer",
+      "description": "Culto: dia da semana de sempre (0 = domingo ... 6 = sabado), para Novo culto. Nulo = hoje"
+    },
+    "duration_song": {
+      "type": "integer",
+      "description": "Culto: duracao de uma musica na setlist quando ela nao tem a sua, em segundos. Nulo = 240"
+    },
+    "duration_other": {
+      "type": "integer",
+      "description": "Culto: duracao de qualquer outro item na setlist quando ele nao tem a sua, em segundos. Nulo = 120"
+    },
+    "import_lines": {
+      "type": "integer",
+      "description": "Ao importar letras: linhas por slide (0 = uma estrofe por slide, 2 ou 4). Nulo = 0"
+    },
+    "console_density": {
+      "type": "string",
+      "enum": ["comfortable", "compact"],
+      "description": "Densidade das listas do console (Ver › Densidade). Nulo = confortavel"
+    },
+    "console_hidden_modules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Modulos do console ocultos em Ver (lib, slides, camadas, roteiro, tl). Nulo = todos visiveis"
+    },
+    "logo_corner": {
+      "type": "string",
+      "enum": ["top-left", "top-right", "bottom-left", "bottom-right"],
+      "description": "Logo nas telas: o canto (Configuracoes › Igreja). Nulo = embaixo a direita"
+    },
+    "logo_size": {
+      "type": "string",
+      "enum": ["small", "medium", "large"],
+      "description": "Logo nas telas: o tamanho. Nulo = medio"
+    },
+    "logo_opacity": {
+      "type": "number",
+      "description": "Logo nas telas: opacidade, 0.2 a 1. Nulo = 1"
+    },
+    "idle_mode": {
+      "type": "string",
+      "enum": ["logo", "black", "background"],
+      "description": "Tela ociosa da igreja (o que as telas mostram sem nada no ar), para um estado ao vivo novo. Nulo = logo"
+    },
+    "chime_on": {
+      "type": "boolean",
+      "description": "Som do aviso: tocar o sino dos avisos com Som de alerta (Configuracoes › Telas e saidas). Nulo = sim"
+    },
+    "chime_volume": {
+      "type": "integer",
+      "description": "Som do aviso: volume do sino, em porcentagem (5 a 100). Nulo = 35"
+    },
     "standby_background": {
       "type": "string",
       "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido)"

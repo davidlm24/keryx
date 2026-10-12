@@ -1559,6 +1559,9 @@
           "type": "text",
           "default": "large"
         },
+        "style_mode": {
+          "type": "text"
+        },
         "font_family": {
           "type": "text",
           "default": "sans"
@@ -1680,6 +1683,66 @@
         "show_forecast": {
           "type": "boolean",
           "default": false
+        },
+        "prefs_version": {
+          "type": "integer"
+        },
+        "bible_version": {
+          "type": "text"
+        },
+        "bible_book_names": {
+          "type": "text"
+        },
+        "bible_verses_per_slide": {
+          "type": "text"
+        },
+        "bible_show_reference": {
+          "type": "boolean"
+        },
+        "bible_show_version": {
+          "type": "boolean"
+        },
+        "bible_verse_numbers": {
+          "type": "text"
+        },
+        "service_start_time": {
+          "type": "text"
+        },
+        "service_weekday": {
+          "type": "integer"
+        },
+        "duration_song": {
+          "type": "integer"
+        },
+        "duration_other": {
+          "type": "integer"
+        },
+        "import_lines": {
+          "type": "integer"
+        },
+        "console_density": {
+          "type": "text"
+        },
+        "console_hidden_modules": {
+          "type": "json"
+        },
+        "logo_corner": {
+          "type": "text"
+        },
+        "logo_size": {
+          "type": "text"
+        },
+        "logo_opacity": {
+          "type": "real"
+        },
+        "idle_mode": {
+          "type": "text"
+        },
+        "chime_on": {
+          "type": "boolean"
+        },
+        "chime_volume": {
+          "type": "integer"
         },
         "standby_background": {
           "type": "text"

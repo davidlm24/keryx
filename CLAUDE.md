@@ -45,19 +45,27 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   with `useNoticeAdvance`. Escola bíblica materials go on air as ordinary
   stages (`stageFromMaterial`; a quiz is question + answer slides; teacher
   notes ride in `content.stage`, never on the projector). What a song or
-  passage puts on screen is `src/lib/console/content.js`. A song can follow
-  a theme (`Song.theme_id`) and each labelled part of its lyrics another
+  passage puts on screen is `src/lib/console/content.js`; the default theme
+  dresses one with no look of its own when it is sent (`stamp` in
+  useConsole.js, `withThemeDefaults` in themes.js), never what is on air. A song can
+  also follow one theme of its own (`Song.theme_id`: the whole look, no
+  default theme) and each labelled part of its lyrics another
   (`Song.part_themes`, keyed by the part's name in lower case): resolved when
   the stage is built (`songTheme.js`, so `stageFromSong`/`songContent` take
-  the themes), the part's look rides in `slide.style` and the renderer lays
-  it over the content's; an output with its own theme drops it.
+  the themes); the part's look rides in `slide.style`, which the renderer
+  lays over the content's, and an output with its own theme drops it.
+
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built
   on the design system in `docs/design-system/` (tokens and `kx-` classes,
   imported as `@ds/…`; read `docs/design-system.md` before touching its
   look). One screen, always live (no steps; Verificar is an overlay from the
   Saídas popover; Configurações, `settings/SettingsView`, is a window over
-  whatever is on screen, its own `cfg` state, `?config=`). Everything else
+  whatever is on screen, its own `cfg` state, `?config=`; its sections are
+  `src/lib/console/settings.js`, old ids resolve through `resolveSection`;
+  its search indexes every row in `settingsSearch.js` — a new `FormRow k`
+  goes in the index, or `npm test` fails).
+  Everything else
   is a view inside it, one at a time (the `view` state in Console.jsx,
   `?song=`, `?planner=`, `?media=`, `?notice=`, `?school=`, `?reports=`):
   the song editor (`SongEditor.jsx`), the
@@ -105,7 +113,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **No login.** `auth.me()` is one local operator profile (`entities.User`
   maps to it whatever id is passed). Don't add features that assume
   accounts; if cloud sync comes, its sign-in lives in Configurações and is
-  only for that.
+  only for that. The profile and the church's preferences are read through
+  `src/hooks/useUser.js` (`useUser`, `usePrefs`, `getPrefs`, `updateUser`;
+  null = default, `src/lib/prefs/schema.js`): a preference that should ride
+  a backup is a User field, never localStorage (that is for this computer:
+  window sizes, the arrangement).
 - **Bible text goes through `src/lib/bibleText.js`** (`getChapter`,
   `getPassage`, `searchVerses`, `searchBible` — the console's word search,
   query rules in `src/lib/bibleSearch.js`): local database, then

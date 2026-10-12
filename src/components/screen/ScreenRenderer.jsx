@@ -6,7 +6,9 @@ import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
 import { noticeTime, fileAt, clockOf } from "@/lib/console/notice";
 import { ringBell } from "@/lib/bell";
-import { verseSegments } from "@/lib/verseMarks";
+import { usePrefs } from "@/hooks/useUser";
+import { verseSegments, withoutVerseMarks } from "@/lib/verseMarks";
+import { refLine } from "@/lib/bibleDisplay";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
@@ -180,7 +182,8 @@ function textExtra(style) {
 
 // Bible slides carry "16 Porque Deus… 17 Porque…": the numbers become marks.
 // Only numbers in sequence are marks (src/lib/verseMarks.js): "930 anos" stays text.
-function verseNodes(text) {
+function verseNodes(text, numbers = "sup") {
+    if (numbers === "hide") return withoutVerseMarks(text);
     const segs = verseSegments(text);
     if (segs.length === 1 && segs[0].n === null) return text;
     return segs.flatMap((x, i) => (x.n === null ? [x.text] : [<sup key={i}>{x.n}</sup>, x.text]));
@@ -203,8 +206,8 @@ function Content({ content }) {
                 <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
                     {slide.is_chorus && !bible && <div className="ks-chorus">Refrão</div>}
                     {isUrl(slide.image_url) && <img className={`ks-slide-img ${slide.text ? "" : "is-alone"}`} src={slide.image_url} alt="" />}
-                    {(slide.text || !slide.image_url) && <div className={`ks-text ks-${size}`} style={{ ...textStyle(style), ...textExtra(style) }}>{bible ? verseNodes(slide.text) : slide.text}</div>}
-                    {bible && reference && <div className="ks-ref" style={{ color: style.text_color || "#ffffff" }}>{reference}</div>}
+                    {(slide.text || !slide.image_url) && <div className={`ks-text ks-${size}`} style={{ ...textStyle(style), ...textExtra(style) }}>{bible ? verseNodes(slide.text, style.verse_numbers) : slide.text}</div>}
+                    {bible && refLine(reference, style.ref_line) && <div className="ks-ref" style={{ color: style.text_color || "#ffffff" }}>{refLine(reference, style.ref_line)}</div>}
                 </div>
             </div>
         </>
@@ -272,8 +275,10 @@ function Communication({ comm, now, logoUrl, preview, motion, audio }) {
     );
 }
 
+// The church's chime (on or off, its volume: Configurações, on the profile).
 function Chime() {
-    React.useEffect(() => { ringBell(); }, []);
+    const prefs = usePrefs();
+    React.useEffect(() => { ringBell({ on: prefs.chime_on, volume: prefs.chime_volume }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     return null;
 }
 

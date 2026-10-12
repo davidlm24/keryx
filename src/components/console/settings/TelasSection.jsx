@@ -1,34 +1,56 @@
-import React, { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { keryx } from "@/api/keryxClient";
+import React, { useState } from "react";
 import Icon from "../Icon";
-import { Btn, Seg, Empty } from "../kx";
-import { useBridge, usePoll, Switch, desktopOnly } from "./parts";
-import WallpaperPicker from "../WallpaperPicker";
+import { Btn, Empty, Seg } from "../kx";
+import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading, FormRow } from "./parts";
 import { useLibrary } from "../useConsoleData";
 import OutputPrefCard from "./OutputPrefCard";
 import { PREF_OUTPUTS, normalizePref, isDefaultPref, outputLook } from "@/lib/outputPrefs";
+import { useOutputPrefRows } from "@/hooks/useOutputPref";
+import { usePrefs, updateUser } from "@/hooks/useUser";
+import { ringBell } from "@/lib/bell";
+
+const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
+
+// Som do aviso: the chime of avisos with "Som de alerta", on or off and its
+// volume, for every output and network screen (on the profile).
+function SomBlock({ c }) {
+    const prefs = usePrefs();
+    const save = (patch, message) => updateUser(patch).then(() => message && c.say(message)).catch(() => c.say("Não foi possível salvar."));
+    const vol = String(prefs.chime_volume);
+    return (
+        <div className="frm" style={{ borderTop: "1px solid var(--line)", marginTop: "var(--space-1)" }}>
+            <FormRow k="Som do aviso">
+                <Switch on={prefs.chime_on} onChange={(on) => save({ chime_on: on }, on ? "O sino dos avisos toca." : "Sino dos avisos desligado em todas as telas.")} label="Tocar o sino dos avisos" />
+                <Seg small label="Volume do sino" value={VOLUMES.some(([v]) => v === vol) ? vol : "35"} options={VOLUMES} onChange={(v) => save({ chime_volume: Number(v) })} />
+                <Btn small disabled={!prefs.chime_on} onClick={() => ringBell({ on: true, volume: prefs.chime_volume })} title="Toca o sino aqui, neste computador">Testar som</Btn>
+                <span className="kx-meta">o sino curto dos avisos com Som de alerta, nas saídas e nas telas na rede</span>
+            </FormRow>
+        </div>
+    );
+}
 
 // Telas e saídas: the monitors as a diagram, each output's screen, "Abrir
 // ao iniciar", open/close, Identificar, each output's own settings (Ajustes,
-// OutputPrefCard) and the idle look of the screens. The placement rules live
-// in electron/outputs.cjs.
+// OutputPrefCard). The idle look of the screens is in Aparência › Geral.
+// The placement rules live in electron/outputs.cjs.
 export default function TelasSection({ c }) {
     const displays = useBridge("displays");
-    const [state, , setState] = usePoll(() => displays?.list(), 3000);
-    const { media, themes } = useLibrary();
-    const [picking, setPicking] = useState(false);
+    const [state, , setState, readError] = usePoll(() => displays?.list(), 3000);
+    const { themes } = useLibrary();
     const [tuning, setTuning] = useState(null);
-    const client = useQueryClient();
-    useEffect(() => keryx.entities.OutputPref.subscribe(() => client.invalidateQueries({ queryKey: ["console", "OutputPref"] })), [client]);
-    const prefRows = useQuery({ queryKey: ["console", "OutputPref"], queryFn: () => keryx.entities.OutputPref.list() }).data || [];
+    const prefRows = useOutputPrefRows();
     const prefRow = (key) => prefRows.find((r) => r.screen_path === key) || null;
     if (!displays) return <Empty icon="monitor" title="Telas e saídas">{desktopOnly}</Empty>;
-    if (!state) return <Empty title="Lendo as telas…" />;
+    if (!state) return <Reading what="as telas" error={readError} />;
 
-    const apply = (p) => p.then((res) => { if (res?.error) c.say(res.error.message); else if (res?.data) setState(res.data); }).catch(() => {});
+    // Every change answers with the new state, or says why it failed.
+    const apply = (p) => p.then((res) => { if (res?.error) c.say(res.error.message); else if (res?.data) setState(res.data); })
+        .catch((err) => c.say(err?.message || "Não foi possível mudar a saída."));
+    const identify = () => Promise.resolve(displays.identify()).then((res) => { if (res?.error) c.say(res.error.message); })
+        .catch(() => c.say("Não foi possível mostrar os números nas telas."));
     const list = state.displays || [];
     const outputs = state.outputs || [];
+    // A display's number as Windows counts it here (0: not among the ones on).
     const number = (id) => list.findIndex((d) => d.id === id) + 1;
     const widest = Math.max(1, ...list.map((d) => d.bounds?.width || d.width || 1));
     const onDisplay = (d) => outputs.filter((o) => o.open && o.placement?.mode === "fullscreen" && o.placement.displayId === d.id).map((o) => o.label);
@@ -48,16 +70,13 @@ export default function TelasSection({ c }) {
     const status = (o) => {
         const p = o.placement || {};
         if (p.missing) return "A tela escolhida não está ligada · abre numa janela até ligar";
-        if (p.mode === "fullscreen") return `Tela cheia na Tela ${number(p.displayId)}`;
+        if (p.mode === "fullscreen") return number(p.displayId) ? `Tela cheia na Tela ${number(p.displayId)}` : "Tela cheia";
         return "Abre numa janela";
     };
-    const idle = c.live?.idle || "logo";
-    const idleUrl = c.live?.idleUrl || null;
-    const setIdle = (mode, url) => c.liveOp("idle.set", url ? { mode, url } : { mode }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."));
 
     return (
         <>
-            <div className="diagram">
+            <CfgKey k="Identificar telas" className="diagram">
                 {list.map((d, i) => {
                     const w = Math.round(80 + 160 * ((d.bounds?.width || 1920) / widest));
                     const shows = onDisplay(d);
@@ -72,9 +91,9 @@ export default function TelasSection({ c }) {
                     );
                 })}
                 <span style={{ flex: 1 }} />
-                <Btn onClick={() => displays.identify()} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
-            </div>
-            <div className="listhead"><span className="kx-section">Saídas <span className="kx-count">· cada saída mostra um conteúdo numa tela</span></span></div>
+                <Btn onClick={identify} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
+            </CfgKey>
+            <CfgKey k="Saídas" className="listhead"><span className="kx-section">Saídas <span className="kx-count">· cada saída mostra um conteúdo numa tela</span></span></CfgKey>
             {outputs.map((raw) => {
                 const lk = outputLook(raw.key, prefRow(raw.key));
                 const o = { ...raw, label: lk.custom || raw.label };
@@ -93,30 +112,18 @@ export default function TelasSection({ c }) {
                     {o.open
                         ? <><Btn onClick={() => apply(displays.open(o.key))} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn onClick={() => apply(displays.close(o.key))}>Fechar</Btn></>
                         : <Btn onClick={() => apply(displays.open(o.key))}>Abrir</Btn>}
-                    <span className="cfg-tune">
+                    <CfgKey as="span" k="Ajustes" className="cfg-tune">
                         <Btn on={tuning === o.key} onClick={() => setTuning(tuning === o.key ? null : o.key)} aria-expanded={tuning === o.key}
                             title={`Nome, ícone${PREF_OUTPUTS.includes(o.key) ? ", conteúdo, escala do texto, margens, logo e tema" : ""} de ${o.label}`}>
                             <Icon name="sliders" />Ajustes
                         </Btn>
-                    </span>
+                    </CfgKey>
                 </div>
-                {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} say={c.say} c={c} />}
+                {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} c={c} />}
                 </React.Fragment>
                 );
             })}
-            <div className="frm" style={{ borderTop: "1px solid var(--line)", marginTop: "var(--space-1)", paddingTop: "var(--space-2)" }}>
-                <span className="k">Tela ociosa</span>
-                <div className="frm-v">
-                    <Seg small value={idle} onChange={(m) => { if (m === "background" && !idleUrl) setPicking(true); else { setPicking(false); setIdle(m); } }} options={[["logo", "Logo da igreja"], ["black", "Preto"], ["background", "Fundo"]]} />
-                    {idle === "background" && idleUrl && <><img className="cfg-wall" src={idleUrl} alt="" /><Btn small onClick={() => setPicking(!picking)}>Trocar…</Btn></>}
-                    <span className="kx-meta">o que as telas mostram quando nada está no ar · o culto pode ter o seu fundo (Planejar o culto)</span>
-                </div>
-                {picking && (
-                    <div className="pl-wallpick">
-                        <WallpaperPicker value={idleUrl} media={media} onPick={(url) => { setPicking(false); setIdle("background", url); }} />
-                    </div>
-                )}
-            </div>
+            <SomBlock c={c} />
             <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas: use Trazer para a frente para ver uma de novo. Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou Fechar aqui. Fechar o KERYX fecha todas. Ligar um monitor aparece aqui em poucos segundos.</span></div>
         </>
     );

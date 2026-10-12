@@ -3,13 +3,14 @@ import { importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { Btn, Seg } from "../kx";
 import Icon from "../Icon";
-import { FormRow } from "./parts";
+import { FormRow, CfgKey } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { CATEGORY_SUGGESTIONS, DIM_PCT, BLUR_PX, categoriesOf } from "@/lib/console/backgroundPrefs";
 import { useBackgrounds } from "../useConsoleData";
+import { SAMPLE_SLIDES } from "./sample";
 
-const SAMPLE = [{ text: "Grande é o Senhor\ne mui digno de louvor" }];
+const SAMPLE = SAMPLE_SLIDES.slice(0, 1);
 const ALL = "__all";
 const HIDDEN = "__hidden";
 
@@ -52,6 +53,8 @@ export default function FundosGallery({ c, media, standby, onStandby }) {
             else {
                 const made = keryx.entities.BackgroundPref.create({ source: b.source, ...patch });
                 creating.current.set(b.source, made);
+                // A failed create is forgotten: the next change tries again.
+                made.catch(() => { if (creating.current.get(b.source) === made) creating.current.delete(b.source); });
                 await made;
             }
             if (message) c.say(message);
@@ -61,13 +64,13 @@ export default function FundosGallery({ c, media, standby, onStandby }) {
     const filters = [[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Ocultos · ${hiddenCount}`]] : [])];
     return (
         <div className="fg">
-            <div className="fg-h">
+            <CfgKey k="Fundos" className="fg-h">
                 <span className="kx-section">Fundos</span>
                 <span className="kx-meta">toque num fundo para dar nome, categoria, escurecer e desfoque; vale nas galerias de músicas, avisos, Camadas e fundo de espera</span>
                 <span style={{ flex: 1 }} />
                 <Btn small disabled={uploading} onClick={() => fileRef.current?.click()}>{uploading ? "Enviando…" : "Enviar do computador…"}</Btn>
                 <input ref={fileRef} type="file" multiple hidden accept="image/*,.gif,video/mp4,video/webm" onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; if (files.length) upload(files); }} />
-            </div>
+            </CfgKey>
             <div className="fg-filters" role="radiogroup" aria-label="Categoria">
                 {filters.map(([k, label]) => (
                     <button type="button" key={k} role="radio" aria-checked={filter === k} className={`kx-t fg-chip ${filter === k ? "is-on" : ""}`} onClick={() => setFilter(k)}>{label}</button>
@@ -111,8 +114,11 @@ function FundoDetail({ b, save, now, standby, onStandby }) {
     const keep = (patch) => save(b, patch);
     const commitName = () => { if (name.trim() !== (b.pref?.name || "").trim()) keep({ name: name.trim() }); };
     const commitCategory = () => { if (category.trim() !== (b.pref?.category || "").trim()) keep({ category: category.trim() }); };
-    const commitDim = () => keep({ dim_pct: dim });
-    const commitBlur = () => keep({ blur_px: blur });
+    // Only a real change is saved (moving through with Tab is not one, and
+    // would make a row for a background nobody touched).
+    const savedDim = b.dim === null ? null : Math.round(b.dim * 100);
+    const commitDim = () => { if (dim !== savedDim) keep({ dim_pct: dim }); };
+    const commitBlur = () => { if ((blur ?? null) !== (b.blur ?? null)) keep({ blur_px: blur }); };
     const isStandby = standby && standby === b.url;
 
     return (

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useChurch } from "@/hooks/useChurch";
 import { useQuery } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
@@ -34,6 +35,7 @@ function Bars({ rows, empty }) {
 // send), by period — the songs most projected, by category, cultos per
 // month, the recent plays, and the CCLI report to copy or save.
 export default function ReportsView({ c, onClose }) {
+    const church = useChurch();
     const [period, setPeriod] = useState("90");
     const [q, setQ] = useState("");
     const songs = useQuery({ queryKey: ["console", "reports", "songs"], queryFn: () => keryx.entities.Song.list("title") }).data ?? EMPTY;
@@ -78,7 +80,7 @@ export default function ReportsView({ c, onClose }) {
 
     return (
         <div className="col center rp">
-            <Panel lead={<BackBtn onClick={onClose} />} title={<>Relatórios <span className="kx-count">· {periodLabel} · {plays.length} {plays.length === 1 ? "projeção" : "projeções"} de músicas</span></>} actions={<>
+            <Panel lead={<BackBtn onClick={onClose} />} title={<>Relatórios <span className="kx-count">· {church.line ? `${church.line} · ` : ""}{periodLabel} · {plays.length} {plays.length === 1 ? "projeção" : "projeções"} de músicas</span></>} actions={<>
                 <Seg small value={period} onChange={setPeriod} options={PERIODS} />
                             </>} bodyStyle={{ overflow: "auto" }}>
                 <div className="rp-grid">

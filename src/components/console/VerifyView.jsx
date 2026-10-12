@@ -4,6 +4,7 @@ import Icon from "./Icon";
 import { Btn } from "./kx";
 import { installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
 import { BIBLE_VERSIONS, editionPlan } from "@/lib/bibleBooks";
+import { getPrefs } from "@/hooks/useUser";
 import { FONT_MAP } from "@/lib/deviceStyles";
 
 // Verificar: the readiness check before the service. Every line is a real
@@ -94,9 +95,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
             forgetInstalledVersions();
             const installed = await installedVersions({ refresh: true }).catch(() => ({}));
             const used = new Set();
-            let chosen = "NVI";
-            try { chosen = JSON.parse(localStorage.getItem("keryx.console.bible") || "{}").version || "NVI"; } catch { /* default */ }
-            used.add(chosen);
+            used.add(getPrefs().bible_version);
             // The version each reading was saved with (BiblePassage.version).
             const passages = await Promise.all(items.filter((it) => String(it.type).toUpperCase() === "BIBLE" && it.contentId)
                 .map((it) => keryx.entities.BiblePassage.get(it.contentId).catch(() => null)));
@@ -117,6 +116,13 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
             bible.push(line("Bíblia", "No navegador, os textos vêm da internet", "info", null, "book"));
         }
         out.push({ name: "Bíblia", lines: bible });
+
+        // Backup: with the automatic one off, the last copy may be old.
+        if (keryx.isDesktop && window.keryxDesktop?.system) {
+            const sys = await window.keryxDesktop.system.call("info").catch(() => null);
+            const b = sys?.data?.backup;
+            if (b && b.enabled === false) out.push({ name: "Backup", lines: [line("Backup automático desligado", b.last ? `Último backup: ${new Date(b.last.modified).toLocaleDateString("pt-BR")}` : "Nenhum backup ainda", "warn", { label: "Backup", run: () => onSettings?.("backup") }, "save")] });
+        }
 
         // Internet: what depends on it, and whether it is there now.
         const online = navigator.onLine;

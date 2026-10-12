@@ -435,7 +435,16 @@
 .console .scrim.over-cfg { z-index: 34; }
 .console .cfg-dialog { position: absolute; z-index: 33; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
 .console .cfg-dialog-h { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
-.console .cfg-dialog-h .kx-section { flex: 1; color: var(--fg-1); font-size: 12px; }
+.console .cfg-dialog-h .kx-section { flex: none; color: var(--fg-1); font-size: 12px; }
+/* The search beside the title: results replace the section; the left column
+   counts them; a jump lights the row it lands on (.is-flash). */
+.console .cfg-dialog-h .cfg-search { flex: 0 1 340px; min-width: 160px; margin-left: var(--space-3); }
+.console .cfg-dialog-h .cfg-search .kx-field { width: 100%; }
+.console .cfg-dialog-h .cfg-h-gap { flex: 1; }
+.console .cfg-nav .kx-row.is-dim { opacity: .45; }
+.console .cfg-nav .cfg-hitcount { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--fg-1); background: var(--bg-3); }
+.console .cfg-results mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(--fg-1); border-radius: 2px; padding: 0 1px; }
+.console .cfg .is-flash { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 16%, transparent); border-radius: var(--radius-control); transition: background .4s, box-shadow .4s; }
 .console .cfg-dialog-b { flex: 1; min-height: 0; display: flex; }
 .console .cfg-nav { flex: 0 0 240px; min-width: 0; padding: var(--space-1) 0; border-right: 1px solid var(--line); overflow: auto; }
 .console .cfg-dialog .cfg { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -475,6 +484,11 @@
 .console .cfg .cfg-inline { height: 22px; width: 100%; max-width: 320px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; box-shadow: inset 0 0 0 1px var(--line-strong); outline: none; }
 .console .cfg .kx-row .kx-row-meta { white-space: normal; }
 .console .cfg .listhead { height: auto; min-height: var(--row); padding: var(--space-1) var(--space-3); }
+.console .cfg .cfg-tabs { display: flex; padding: var(--space-2) var(--space-3) 0; }
+/* Culto: a template or a team member edited in place. */
+.console .cfg .cfg-edit-row { gap: var(--space-2); height: auto; min-height: var(--row); flex-wrap: wrap; padding-block: 3px; }
+.console .cfg .cfg-edit-row .cfg-select { width: auto; }
+.console .cfg .kx-row.is-dim > :not(.kx-btn):not(.cfg-launch) { opacity: .5; }
 
 /* ---------- Editor de música (canvas artboard 16) ---------- */
 .console .song-ed-l .frm, .console .song-ed-r .frm { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2); }
@@ -777,7 +791,9 @@
    in a container, so cqmin/cqw sizes apply as on the output itself. */
 .console .cfg .cfg-outprefs .cfg-outprefs-form { flex: 1 1 auto; min-width: 0; }
 .console .cfg .cfg-prevcol { flex: none; width: 340px; display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-2) var(--space-2) 0; }
-.console .cfg .cfg-prev { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: inset 0 0 0 1px var(--line); container-type: size; isolation: isolate; }
+.console .cfg .cfg-prev { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: inset 0 0 0 1px var(--line); container-type: size; isolation: isolate; contain: layout paint; }
+/* contain: layout makes this box the containing block of the renderer's fixed
+   root (.ks-fill): without it the sample escaped to the dialog (its transform). */
 .console .cfg .cfg-prev .cfg-prev-fill { position: absolute; inset: 0; }
 .console .cfg .cfg-prev-pastor { aspect-ratio: 3 / 4; width: 210px; margin-inline: auto; }
 @media (max-width: 1280px) { .console .cfg .cfg-outprefs { flex-wrap: wrap; } }
@@ -827,3 +843,11 @@
 .net.net-embed { position: absolute; inset: 0; z-index: 1; }
 .console .kp-portrait { position: absolute; inset: 0; z-index: 1; display: flex; justify-content: center; background: #000; }
 .console .kp-portrait > .net.net-embed { position: relative; inset: auto; height: 100%; aspect-ratio: 3 / 4; }
+
+/* The shortcut list (? and Configurações › Console): key, what it does. */
+.console .shortcuts { display: grid; grid-template-columns: 96px 1fr; gap: 4px 12px; align-items: baseline; }
+.console .shortcuts .kx-kbd { color: var(--fg-1); }
+.console .shortcuts .shortcuts-d { color: var(--fg-2); }
+.console .cfg .cfg-shortcuts { padding: var(--space-2) var(--space-3) var(--space-3); }
+/* Transmissão's preview: the band over a stand-in camera. */
+.console .cfg .cfg-prev-stream { background: linear-gradient(160deg, #3a4a5c, #1b2430 60%, #2c2418); }

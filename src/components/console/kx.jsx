@@ -25,7 +25,8 @@ export function Panel({ title, count, lead, caption, actions, collapsed, onToggl
 export function Btn({ kind = "", small, on, className = "", children, ...rest }) {
     const cls = `kx-btn kx-t ${kind ? `kx-btn-${kind}` : ""} ${on ? "is-on" : ""} ${className}`;
     // Small buttons are still 24 px tall: the minimum pointer target (WCAG 2.2).
-    return <button type="button" className={cls} style={small ? { height: 24, padding: "0 6px" } : undefined} {...rest}>{children}</button>;
+    // A button with on/off (on given) says so to screen readers.
+    return <button type="button" className={cls} style={small ? { height: 24, padding: "0 6px" } : undefined} aria-pressed={typeof on === "boolean" ? on : undefined} {...rest}>{children}</button>;
 }
 
 // The way back from a full-screen view (song editor, planner, media, ...):
@@ -48,11 +49,26 @@ export function IconBtn({ name, title, small, on, className = "", ...rest }) {
     );
 }
 
-export function Seg({ value, options, onChange, mode, className = "", small }) {
+// A radio group: the arrows move the choice when it has the keyboard focus
+// (the console leaves arrows to radio groups, keys.js); label names it.
+export function Seg({ value, options, onChange, mode, className = "", small, label }) {
+    const onKeyDown = (e) => {
+        const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+        if (!step) return;
+        const enabled = options.filter(([, , extra]) => !extra?.disabled);
+        const at = enabled.findIndex(([v]) => v === value);
+        const next = enabled[(at + step + enabled.length) % enabled.length];
+        if (!next) return;
+        e.preventDefault();
+        onChange(next[0]);
+        const box = e.currentTarget;
+        setTimeout(() => box.querySelector('[aria-checked="true"]')?.focus(), 50);
+    };
+    const hasValue = options.some(([v]) => v === value);
     return (
-        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${className}`} style={small ? { height: 24, padding: 2 } : undefined} role="radiogroup">
-            {options.map(([v, label, extra]) => (
-                <button type="button" key={v} className={`kx-t ${value === v ? "is-on" : ""}`} data-mode={v} role="radio" aria-checked={value === v} onClick={() => onChange(v)} style={small ? { height: 20, padding: "0 8px", fontSize: 11 } : undefined} {...(extra || {})}>
+        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${className}`} style={small ? { height: 24, padding: 2 } : undefined} role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
+            {options.map(([v, label, extra], i) => (
+                <button type="button" key={v} className={`kx-t ${value === v ? "is-on" : ""}`} data-mode={v} role="radio" aria-checked={value === v} tabIndex={value === v || (!hasValue && i === 0) ? 0 : -1} onClick={() => onChange(v)} style={small ? { height: 20, padding: "0 8px", fontSize: 11 } : undefined} {...(extra || {})}>
                     {label}
                 </button>
             ))}
@@ -73,9 +89,9 @@ export function Field({ icon = "search", value, onChange, placeholder, onKeyDown
 // A list row: a glyph, a title and one grey line, time on the right, actions
 // on hover. Click, Enter and Space on the row all prepare (onClick); a
 // double click sends to air (onDoubleClick), as in Holyrics.
-export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, onContextMenu, dragProps, single, className = "", children }) {
+export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, onContextMenu, dragProps, single, className = "", current, children }) {
     return (
-        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} role="button" tabIndex={0} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
+        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} role="button" tabIndex={0} aria-current={current || undefined} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
             {icon && <span className="kx-glyph"><Icon name={icon} /></span>}
             <div className="kx-row-main">
                 <div className="kx-row-title">{title}</div>

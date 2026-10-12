@@ -3,27 +3,34 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
 import { Btn, Seg, Empty } from "../kx";
-import { FormRow } from "./parts";
+import { FormRow, CfgKey } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import WallpaperPicker from "../WallpaperPicker";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { THEME_FONTS, themeStyle, themeBackgroundArgs } from "@/lib/console/themes";
+import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
-import FundosGallery from "./FundosGallery";
 
-const SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const BOXES = [["", "Sem"], ["band", "Faixa"], ["block", "Bloco"]];
-const SIZE = { xsmall: "PP", small: "P", medium: "M", large: "G", xlarge: "GG", xxlarge: "GGG" };
+const SIZES = TEXT_SIZES;
+const SIZE = Object.fromEntries(TEXT_SIZES);
 const FONT = Object.fromEntries(THEME_FONTS);
 const BLANK = { name: "", font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff", text_color_2: "", text_box: "", text_box_color: "", text_box_opacity: "", transition: "", transition_ms: "", background_image: "", background_fit: "", background_dim: "", background_blur: "" };
+
+// Unsaved edits, by theme ("new" for one being created): switching tabs or
+// sections (the editor unmounts) keeps them until Salvar or Cancelar.
+const drafts = new Map();
 
 // One theme being created or edited: every field, a live sample beside them
 // (the real renderer on real ops), saved as a ProjectionTheme row.
 function ThemeEditor({ row, c, media, onDone }) {
-    const [draft, setDraft] = useState({ ...BLANK, ...(row || {}) });
+    const key = row?.id || "new";
+    const [restored] = useState(() => drafts.has(key));
+    const [draft, setDraft] = useState(() => drafts.get(key) || { ...BLANK, ...(row || {}) });
+    useEffect(() => { drafts.set(key, draft); }, [key, draft]);
+    const done = (saved) => { drafts.delete(key); onDone(saved); };
     const [picking, setPicking] = useState(false);
     const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
     const doc = useMemo(() => {
@@ -37,12 +44,13 @@ function ThemeEditor({ row, c, media, onDone }) {
     const save = async () => {
         const name = draft.name.trim() || `Tema ${new Date().toLocaleDateString("pt-BR")}`;
         const data = { ...draft, name };
-        for (const k of ["id", "created_date", "updated_date", "created_by_id", "elements"]) delete data[k];
+        // is_default belongs to Tornar padrão (the editor's copy may be stale).
+        for (const k of ["id", "created_date", "updated_date", "created_by_id", "elements", "is_default"]) delete data[k];
         try {
             if (row?.id) await keryx.entities.ProjectionTheme.update(row.id, data);
             else await keryx.entities.ProjectionTheme.create(data);
             c.say(row?.id ? "Tema salvo." : `Tema "${name}" criado.`);
-            onDone(true);
+            done(true);
         } catch (err) { c.say(err?.message || "Não foi possível salvar o tema."); }
     };
     const num = (v) => (v == null || v === "" ? "" : String(v));
@@ -94,7 +102,8 @@ function ThemeEditor({ row, c, media, onDone }) {
                 </>}
                 <FormRow k="">
                     <Btn small kind="brand" onClick={save}>Salvar tema</Btn>
-                    <Btn small onClick={() => onDone(false)}>Cancelar</Btn>
+                    <Btn small onClick={() => done(false)}>Cancelar</Btn>
+                    {restored && <span className="kx-meta">rascunho que não tinha sido salvo</span>}
                 </FormRow>
             </div>
             <div className="cfg-prevcol">
@@ -105,9 +114,9 @@ function ThemeEditor({ row, c, media, onDone }) {
     );
 }
 
-// Temas: the projection presets — each one text + background, created and
-// edited here with a live sample (Camadas' "Salvar como novo" still works) —
-// and, below, the Fundos library every gallery reads (FundosGallery).
+// Aparência › Temas: the projection presets — each one text + background,
+// created and edited here with a live sample (Camadas' "Salvar como novo"
+// still works). The Fundos library is the next tab (FundosGallery).
 export default function TemasSection({ c }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
@@ -115,31 +124,39 @@ export default function TemasSection({ c }) {
     const { media } = useLibrary();
     const [editing, setEditing] = useState(null); // "new" | theme id | null
     const [confirmDel, setConfirmDel] = useState(null);
-    const [user, setUser] = useState(null);
-    useEffect(() => {
-        const take = (u) => setUser(u || {});
-        keryx.auth.me().then(take).catch(() => setUser({}));
-        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
-    }, []);
     const reload = () => client.invalidateQueries({ queryKey: ["settings", "themes"] });
     const run = async (p, message) => {
         try { await p; if (message) c.say(message); } catch (err) { c.say(err?.message || "Não foi possível."); }
         reload();
     };
-    const makeDefault = (t) => run(Promise.all(themes.map((x) => (x.id === t.id ? keryx.entities.ProjectionTheme.update(x.id, { is_default: true }) : x.is_default ? keryx.entities.ProjectionTheme.update(x.id, { is_default: false }) : null))), `${t.name} é o tema padrão.`);
+    // One transaction: never two defaults, never none in between.
+    const def = defaultTheme(themes);
+    const setDefault = (id) => {
+        const rows = defaultChanges(themes, id);
+        if (!rows.length) return;
+        const t = themes.find((x) => x.id === id);
+        run(keryx.entities.ProjectionTheme.bulkUpdate(rows), t ? `${t.name} é o tema padrão: músicas e passagens sem estilo próprio vão ao ar com ele.` : "Sem tema padrão: vale o estilo de fábrica.");
+    };
+    const makeDefault = (t) => setDefault(t.id);
     const remove = (t) => {
         if (confirmDel !== t.id) { setConfirmDel(t.id); c.say(`Clique de novo em Excluir para apagar "${t.name}".`); return; }
         setConfirmDel(null);
         if (editing === t.id) setEditing(null);
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
-    const saveStandby = async (url, message) => {
-        try { await keryx.entities.User.update("me", { standby_background: url }); c.say(message); } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
-    };
 
     return (
         <>
-            <div className="listhead"><span className="kx-section">Temas <span className="kx-count">· texto e fundo prontos, aplicados na hora em Camadas</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => setEditing("new")}>Novo tema…</Btn></div>
+            <div className="frm">
+                <FormRow k="Estilo padrão do texto">
+                    <select className="cfg-select" value={def?.id || ""} onChange={(e) => setDefault(e.target.value || null)} aria-label="Tema padrão">
+                        <option value="">Estilo de fábrica (sem tema)</option>
+                        {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                    <span className="kx-meta">músicas e passagens sem estilo próprio vão ao ar com ele · o que já está no ar não muda</span>
+                </FormRow>
+            </div>
+            <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· texto e fundo prontos, aplicados na hora em Camadas</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => setEditing("new")}>Novo tema…</Btn></CfgKey>
             {editing === "new" && <ThemeEditor row={null} c={c} media={media} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
             {!themes.length && editing !== "new" && <Empty icon="palette" title="Nenhum tema ainda">Crie um em "Novo tema…", ou ajuste o texto em Camadas e use "Salvar como novo".</Empty>}
             {themes.map((t) => (
@@ -159,7 +176,6 @@ export default function TemasSection({ c }) {
                 {editing === t.id && <ThemeEditor row={t} c={c} media={media} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
                 </React.Fragment>
             ))}
-            {user && <FundosGallery c={c} media={media} standby={user.standby_background || null} onStandby={(url) => saveStandby(url, "Fundo de espera padrão salvo.")} />}
         </>
     );
 }

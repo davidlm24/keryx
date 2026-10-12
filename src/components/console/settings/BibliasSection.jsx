@@ -3,21 +3,19 @@ import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
 import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
 import { forgetInstalledVersions } from "@/lib/bibleText";
-import { useBridge, usePoll, desktopOnly } from "./parts";
-
-const BIBLE_KEY = "keryx.console.bible";
-const readPref = () => { try { return JSON.parse(localStorage.getItem(BIBLE_KEY) || "{}"); } catch { return {}; } };
+import { useBridge, usePoll, desktopOnly, Reading } from "./parts";
+import { usePrefs, updateUser } from "@/hooks/useUser";
 
 // Bíblias instaladas: each version downloaded once (or from a file) works
 // without internet; the default is what the Bible environment opens with.
 // The texts are never shipped with KERYX (electron/bible.cjs).
 export default function BibliasSection({ c }) {
     const bible = useBridge("bible");
-    const [installed, refresh] = usePoll(() => bible?.status(), 0);
+    const [installed, refresh, , readError] = usePoll(() => bible?.status(), 0);
     const [busy, setBusy] = useState("");
-    const [pref, setPref] = useState(readPref);
+    const def = usePrefs().bible_version;
     if (!bible) return <Empty icon="book" title="Bíblias instaladas">{desktopOnly}</Empty>;
-    if (!installed) return <Empty title="Lendo as Bíblias…" />;
+    if (!installed) return <Reading what="as Bíblias" error={readError} />;
 
     const run = async (version, fromFile) => {
         setBusy(version);
@@ -27,15 +25,15 @@ export default function BibliasSection({ c }) {
             else if (res?.data) c.say(`${version} instalada: ${res.data.verses.toLocaleString("pt-BR")} versículos.`);
             forgetInstalledVersions();
             await refresh();
+        } catch (err) {
+            c.say(err?.message || `Não foi possível instalar a ${version}.`);
         } finally { setBusy(""); }
     };
     const setDefault = (v) => {
-        const next = { ...readPref(), version: v };
-        try { localStorage.setItem(BIBLE_KEY, JSON.stringify(next)); } catch { /* not remembered */ }
-        setPref(next);
-        c.say(`${v} é a versão padrão da Bíblia.`);
+        updateUser({ bible_version: v })
+            .then(() => c.say(`${v} é a versão padrão da Bíblia.`))
+            .catch(() => c.say("Não foi possível salvar a versão padrão."));
     };
-    const def = pref.version || "NVI";
 
     return (
         <>
@@ -47,7 +45,7 @@ export default function BibliasSection({ c }) {
                         <span className="kx-glyph"><Icon name="book" /></span>
                         <div className="kx-row-main">
                             <div className="kx-row-title">{v.id} · {v.name}</div>
-                            <div className={`kx-row-meta ${!count ? "kx-warn" : ""}`}>
+                            <div className={`kx-row-meta ${!count && def === v.id ? "kx-warn" : ""}`}>
                                 {count ? `Instalada para uso sem internet · ${count.toLocaleString("pt-BR")} versículos` : online ? "Só com internet" : "Só com internet · baixe para usar sem rede"}
                                 {def === v.id ? " · padrão" : ""}
                             </div>
