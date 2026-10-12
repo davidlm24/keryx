@@ -2,9 +2,9 @@
 // lower third shows, from the live state. Text only (owner's decision
 // 2026-10-10): lyrics, Bible passages with their reference and text slides.
 // Media, videos, avisos and tools stay off the stream (OBS has the camera),
-// and Tela preta, Logo, Limpar and Encerrar clear it. Pure: tested in
-// streamCaption.test.mjs.
-import { mainLayer, currentSlide } from "../../shared/live-state.mjs";
+// and Tela preta, Logo, Limpar, Encerrar and the text hidden in Camadas
+// clear it. Pure: tested in streamCaption.test.mjs.
+import { mainLayer, currentSlide, layerHidden } from "../../shared/live-state.mjs";
 import { withoutVerseMarks as withoutMarks } from "./verseMarks.js";
 import { refLine } from "./bibleDisplay.js";
 
@@ -13,7 +13,7 @@ import { refLine } from "./bibleDisplay.js";
 //   text the slide's text (lyrics keep their line breaks);
 //   ref  the passage's reference for Bible slides, else "".
 export function streamCaption(state) {
-    if (!state || mainLayer(state) !== "content" || state.video) return null;
+    if (!state || mainLayer(state) !== "content" || state.video || layerHidden(state, "content")) return null;
     const content = state.content;
     const slide = currentSlide(content);
     const raw = String(slide?.text || "").trim();

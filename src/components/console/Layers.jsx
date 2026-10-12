@@ -6,7 +6,7 @@ import { useContextMenu } from "./ContextMenu";
 import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
 import { THEME_FONTS, FAMILY_SET, themeStyle, sameLook, themeBackgroundArgs, defaultTheme } from "@/lib/console/themes";
 import { useBackgrounds } from "./useConsoleData";
-import { STYLE_KEYS, LAYER_ORDER } from "@shared/live-state.mjs";
+import { STYLE_KEYS, LAYER_ORDER, layerHidden } from "@shared/live-state.mjs";
 import GeneratorPanel, { GeneratorTiles } from "./GeneratorPanel";
 
 // Camadas: the look of what is on air, as four layers of the live state —
@@ -38,7 +38,6 @@ export default function Layers({ c, themes, media = null }) {
     const [locked, setLocked] = useState({ bg: false });
     const menu = useContextMenu();
     const [themeId, setThemeId] = useState(null);
-    const [lastBg, setLastBg] = useState(null);
     // Drag to reorder: the list follows live.layerOrder (top first).
     const [drag, setDrag] = useState(null);
     const [over, setOver] = useState(null);
@@ -59,7 +58,7 @@ export default function Layers({ c, themes, media = null }) {
     const modified = Boolean(theme && content && !sameLook(style, theme));
     const fontMissing = style.font_family && !FAMILY_SET.has(style.font_family) ? style.font_family : null;
 
-    const visible = { logo: logo.visible, ov: Boolean(textOverlay) && textOverlay.enabled !== false, text: Boolean(content), bg: Boolean(cur?.background) };
+    const visible = { logo: logo.visible, ov: Boolean(textOverlay) && textOverlay.enabled !== false, text: Boolean(content) && !layerHidden(cur, "content"), bg: Boolean(cur?.background) && !layerHidden(cur, "background") };
     const op = (name, args) => c.callOp(name, args).catch(() => {});
     const setStyle = (patch) => { if (content) op("content.update", { style: Object.fromEntries(Object.entries({ ...style, ...patch }).filter(([k]) => STYLE_KEYS.includes(k))) }); };
     const setOverlays = (list) => op("overlays.set", { overlays: list });
@@ -68,11 +67,15 @@ export default function Layers({ c, themes, media = null }) {
         if (id === "logo") op("logo.set", { visible: !logo.visible });
         if (id === "ov" && textOverlay) setOverlays(overlays.map((o) => (o === textOverlay ? { ...o, enabled: o.enabled === false } : o)));
         if (id === "ov" && !textOverlay) setOverlays([...overlays, { id: `ov-${Date.now()}`, type: "text", content: "Sobreposição", x: 4, y: 86, width: 40, enabled: true }]);
-        if (id === "text") { if (content) c.say("O texto principal é o item no ar: use Limpar texto (C) para tirá-lo."); }
+        // Texto principal and Fundo: hidden on every screen, still on air
+        // (the arrows walk the text; a new item shows its text again).
+        if (id === "text") {
+            if (!content) c.say("Nenhum texto no ar.");
+            else op(layerHidden(cur, "content") ? "layers.show" : "layers.hide", { layer: "content" });
+        }
         if (id === "bg") {
-            if (cur?.background) { setLastBg(cur.background); op("background.clear"); }
-            else if (lastBg) op("background.set", lastBg);
-            else c.say("Escolha um fundo na camada Fundo.");
+            if (!cur?.background) c.say("Escolha um fundo na camada Fundo.");
+            else op(layerHidden(cur, "background") ? "layers.show" : "layers.hide", { layer: "background" });
         }
     };
 

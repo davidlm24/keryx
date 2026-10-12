@@ -1,7 +1,7 @@
 import React from "react";
 import "./screen.css";
 import GeneratorBackground from "./GeneratorBackground";
-import { mainLayer, currentSlide, toolTime, LAYER_ORDER } from "@shared/live-state.mjs";
+import { mainLayer, currentSlide, toolTime, layerHidden, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
@@ -34,12 +34,15 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
     // The look layers stack as the operator ordered them (Camadas): top first.
     const order = Array.isArray(state.layerOrder) && state.layerOrder.length === LAYER_ORDER.length ? state.layerOrder : LAYER_ORDER;
     const z = (k) => 10 * (order.length - order.indexOf(k));
+    // Nothing on air: the Fundo layer stays on screen (Esc takes the text
+    // and the media, not the Fundo); the idle look only when there is none.
+    const fundo = Boolean(state.background) && !layerHidden(state, "background");
     return (
         <div className={cls}>
             <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>
             <div className="ks-z" style={{ zIndex: z("content") }}>
-                {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
-                {layer === "content" && <Content content={state.content} showTitle={showTitle} />}
+                {layer === "none" && !fundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
+                {layer === "content" && !layerHidden(state, "content") && <Content content={state.content} showTitle={showTitle} />}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
                 {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={audio} />}
                 {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} />)}
@@ -106,6 +109,8 @@ const slideStyle = (content) => {
 };
 
 function Background({ state, layer, preview, motion }) {
+    // Camadas' eye on the Fundo: no picture at all, the item's own included.
+    if (layerHidden(state, "background") && layer !== "media") return <div className="ks-black" />;
     const cs = layer === "content" ? slideStyle(state.content) : null;
     const own = layer === "content" ? (cs.background_image || cssBackground(cs.background_color))
         : layer === "tool" ? state.tool.style?.background_image

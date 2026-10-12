@@ -101,9 +101,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   topmost thing open (`escapeTarget`: a right-click menu, a popover, then
   Configurações, then the Camadas drawer; views defer while a `.scrim` is
   up) and with nothing
-  open ends at once (music on the audio channel keeps playing); its toast offers
+  open ends at once (music on the audio channel keeps playing; the Fundo
+  stays on screen, and the idle look shows only with no Fundo); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
-  `src/lib/console/restore.js`). The rundown is called
+  `src/lib/console/restore.js`). Camadas' eyes on Texto principal and Fundo
+  hide the layer and keep it on air (`layers.hide`/`layers.show`,
+  `hiddenLayers`, `layerHidden`; hiding works locked): the next send shows
+  the text again, choosing a Fundo shows the Fundo again. The rundown is called
   **"Setlist"** in the UI. Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
   taps — the level meters read the system loopback in the console.

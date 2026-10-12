@@ -39,6 +39,7 @@ test("Tela preta, Logo and Limpar clear the stream; the text comes back after", 
     assert.equal(streamCaption(applyOp(s, "screen.set", { mode: "black" }, T + 1)), null);
     assert.equal(streamCaption(applyOp(s, "screen.set", { mode: "logo" }, T + 1)), null);
     assert.equal(streamCaption(applyOp(s, "content.clear", {}, T + 1)), null);
+    assert.equal(streamCaption(applyOp(s, "layers.hide", { layer: "content" }, T + 1)), null, "hidden in Camadas");
     const back = applyOp(applyOp(s, "screen.set", { mode: "black" }, T + 1), "screen.set", { mode: "show" }, T + 2);
     assert.equal(streamCaption(back).text, "Sejam bem-vindos");
 });
