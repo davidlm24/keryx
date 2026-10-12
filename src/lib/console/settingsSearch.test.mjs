@@ -62,7 +62,11 @@ test("search: keywords and a card's rows find their place", () => {
     assert.equal(first("margens").label, "Ajustes");
     assert.equal(first("margens").section, "telas");
     assert.equal(first("pen drive").label, "Pasta de backup");
-    assert.equal(first("exportar").label, "Outro computador");
+    // "exportar" finds the whole export (Backup) and the outputs' file (Telas,
+    // first: results follow the sections' order).
+    assert.ok(searchSettings("exportar").some((h) => h.label === "Outro computador"));
+    assert.equal(first("exportar saídas").label, "Exportar ajustes das saídas");
+    assert.equal(first("exportar tudo").label, "Outro computador");
     assert.equal(first("NVI").section, "biblia");
     const tema = searchSettings("tema padrão").find((h) => h.label === "Temas");
     assert.equal(tema.tab, "temas");
