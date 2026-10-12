@@ -947,6 +947,20 @@ async function checkConsole(webContents, { live, outputs }) {
         result.closedCleared = await waitText(webContents, "Projeção principal fechada", false, 8000);
         result.onScreens = await waitFor(() => js("/^em \\d+ telas?$/.test((document.querySelector('.prog-where') || {}).textContent || '')"), 8000);
 
+        // Multiview (Programa › Multiview): the Programa as four outputs; the
+        // Projeção quadrant shows what is on air and says it is on screen; a
+        // quadrant's label picks another output (Pastor, in its own layout);
+        // off again, the Programa is back.
+        await click(".mx-toggle");
+        result.mvOn = await waitFor(() => js(`[...document.querySelectorAll(".mx-tile")].map((t) => t.dataset.page).join(",") === "/Projection,/LyricProjection,/StageView,/CommunicationProjection"`));
+        result.mvShows = await waitFor(() => js(`(() => { const t = document.querySelector('.mx-tile[data-page="/Projection"]'); return Boolean(t) && ((t.querySelector(".ks-text") || {}).textContent || "").includes("Primeiro slide do console") && /^em \\d+ telas?$/.test(t.querySelector(".mx-st").textContent); })()`), 8000);
+        await click(".mx-tile[data-page='/LyricProjection'] .mx-pick");
+        await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
+        await click(".console .ctx-menu button", "Pastor");
+        result.mvPicked = await waitFor(() => js(`(() => { const t = document.querySelectorAll(".mx-tile")[1]; return Boolean(t) && t.dataset.page === "/PastorView" && Boolean(t.querySelector(".kp-portrait .net")); })()`));
+        await click(".mx-toggle");
+        result.mvOff = await waitFor(() => js("!document.querySelector('.mx-grid') && Boolean(document.querySelector('.kx-mon.prog .ks'))"));
+
         // Verificar is a panel on demand now: Saídas -> "Verificar tudo…".
         // Esc closes the overlay and leaves the projection alone.
         await click(".kx-status", "");
@@ -2246,7 +2260,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
-        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted && result.timerChips && result.timerKept && result.timerListed && result.timerPrepared && result.timerOn && result.timerAdjusted && result.timerDeleted
+        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted && result.timerChips && result.timerKept && result.timerListed && result.timerPrepared && result.timerOn && result.timerAdjusted && result.timerDeleted && result.mvOn && result.mvShows && result.mvPicked && result.mvOff
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
         && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch && result.paletteClear && result.paletteRefHere && result.paletteRefAdded
         && result.svOpen && result.svPresence && result.svPrepared && result.svNotes && result.svSent && result.svNotesOffAir && result.svReveal && result.svEdited && result.svSetlist && result.svClosed

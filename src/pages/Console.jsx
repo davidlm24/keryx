@@ -38,6 +38,8 @@ import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor, densityOf, restoreArrangement } from "@/lib/console/layout";
 import { cultoColumns, withSplits, stackSplit, moveColumn, moveTo, CARD_NAMES } from "@/lib/console/arrange";
+import { pickTile } from "@/lib/console/multiview";
+import { useRailViews } from "@/hooks/useOutputPref";
 import { ColumnBar, StackLead, EditBanner, DropLine, usePointerReorder } from "@/components/console/Arrange";
 import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
@@ -620,25 +622,38 @@ export default function Console() {
         <Split key={`split-${id}`} horizontal={horizontal} size={layout[key]} sign={sign} onSize={(v) => setLayout({ ...layout, [key]: v })} onReset={() => setLayout({ ...layout, [key]: DEFAULT_LAYOUT[key] })} clamp={(v) => clampSize(key, v)} />
     );
 
+    // Multiview (Programa › Multiview; src/lib/console/multiview.js): the
+    // Programa as four outputs at once; a quadrant's label picks its output.
+    const railViews = useRailViews();
+    const toggleMultiview = () => setLayout({ ...layout, multiview: !layout.multiview });
+    const pickQuadrant = (e, index) => openMenu(e, { title: `Quadro ${index + 1} · mostrar a saída`, items: [
+        ...railViews.map((v) => ({ label: v.name, icon: layout.mvTiles[index] === v.key ? "check" : v.icon, onSelect: () => setLayout({ ...layout, mvTiles: pickTile(layout.mvTiles, index, v.key) }) })),
+        "sep",
+        { label: "Ajustes das saídas…", icon: "sliders", onSelect: () => openSettings("telas") },
+    ] });
+    const multiview = layout.multiview ? { tiles: layout.mvTiles, rows: health.rows, onPick: pickQuadrant } : null;
+
     // The Programa column: its caption, Camadas (when it is a drawer), Voltar
-    // ao anterior, and the live column (CenterPanel).
+    // ao anterior, Multiview, and the live column (CenterPanel).
     const livePanel = (
         <Panel className="prog-panel" caption={<ProgramaCaption c={c} projectorDown={projectorDown} />} actions={
             <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 2 }}>
                 {health.onAir && <span className={`kx-meta prog-where ${health.onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{health.onAir.text}</span>}
                 {!camadasRight && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
                 <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco" aria-label="Voltar ao anterior"><Icon name="undo" /><span className="hist-lbl">Voltar ao anterior</span></button>
+                <button type="button" className={`kx-btn kx-t mx-toggle ${layout.multiview ? "is-on" : ""}`} style={{ height: 24 }} onClick={toggleMultiview} aria-pressed={layout.multiview} title={layout.multiview ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar"} aria-label="Multiview"><Icon name="grid" /><span className="hist-lbl">Multiview</span></button>
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
                 nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))}
-                later={setlistRight ? [] : laterItems} items={playable} onPrepareItem={prepareItem} onGoItem={goItem}
+                later={setlistRight ? [] : laterItems} items={playable} multiview={multiview} onPrepareItem={prepareItem} onGoItem={goItem}
                 onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
                 onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
                     { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
                     { label: c.cur?.screen === "logo" ? "Tirar o logo" : "Mostrar logo", icon: "logo", kbd: "L", onSelect: () => c.toggleScreen("logo") },
                     { label: "Limpar texto", icon: "eraser", kbd: "C", onSelect: c.clearText },
                     { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
+                    { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
                     { label: "Encerrar…", icon: "stop", air: true, onSelect: () => setOpen("encerrar") },
                 ] })}
                 onPrevMenu={(e) => openMenu(e, { title: "Prévia", items: [

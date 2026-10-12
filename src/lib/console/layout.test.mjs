@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf, loadLayout, restoreArrangement } from "./layout.js";
 import { DEFAULT_ORDER, DEFAULT_STACKS } from "./arrange.js";
+import { DEFAULT_TILES } from "./multiview.js";
 
 // localStorage stand-in for loadLayout.
 const withStore = (saved, fn) => {
@@ -66,4 +67,16 @@ test("Camadas is a module in Ver again, above the Setlist", () => {
     assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "camadas", "roteiro", "tl"]);
     assert.deepEqual(LIMITS.camadasH, [120, 600]);
     assert.equal(DEFAULT_LAYOUT.camadasH, 300);
+});
+
+test("the multiview is off by default; a saved one keeps its outputs, cleaned", () => {
+    assert.equal(DEFAULT_LAYOUT.multiview, false);
+    assert.deepEqual(DEFAULT_LAYOUT.mvTiles, DEFAULT_TILES);
+    const old = withStore({ libW: 300 }, () => loadLayout("x"));
+    assert.equal(old.multiview, false);
+    assert.deepEqual(old.mvTiles, DEFAULT_TILES);
+    const mine = withStore({ multiview: true, mvTiles: ["/PastorView", "/PastorView", "/Nope"] }, () => loadLayout("x"));
+    assert.equal(mine.multiview, true);
+    assert.deepEqual(mine.mvTiles, ["/PastorView", "/Projection", "/LyricProjection", "/StageView"]);
+    assert.equal(withStore({ multiview: "yes" }, () => loadLayout("x")).multiview, false);
 });

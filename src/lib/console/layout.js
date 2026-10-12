@@ -3,6 +3,7 @@
 // Editar layout). Saved per operator profile in localStorage; "Restaurar
 // layout" returns to DEFAULT_LAYOUT.
 import { DEFAULT_ORDER, DEFAULT_STACKS, normalizeArrangement } from "./arrange.js";
+import { DEFAULT_TILES, normalizeTiles } from "./multiview.js";
 
 // Camadas is a section above the Setlist in the wide tier's right column
 // (owner's request, 2026-10-10); narrower, it is a drawer opened from the
@@ -41,6 +42,9 @@ export const DEFAULT_LAYOUT = {
     density: "comfortable",
     order: DEFAULT_ORDER,
     stacks: DEFAULT_STACKS,
+    // The Programa as four outputs at once (multiview.js), and which.
+    multiview: false,
+    mvTiles: DEFAULT_TILES,
 };
 
 // What "Restaurar posições" (the edit mode's banner) puts back: the order,
@@ -64,7 +68,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const saved = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved) };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved), multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }

@@ -3,6 +3,7 @@ import Icon from "./Icon";
 import { Monitor, Btn, Row } from "./kx";
 import { typeIcon } from "@/lib/console/setlist";
 import PlayerBar from "./PlayerBar";
+import MultiView from "./MultiView";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
@@ -101,8 +102,10 @@ export function ProgramaCaption({ c, projectorDown }) {
 // Prévia with its one send button, the next item and, when the Setlist has no
 // column of its own, the items after it. The block is as wide as the column
 // allows and as tall as fits (console.css, .liveblock); spare height goes
-// below it, never between the monitors.
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu, items = [] }) {
+// below it, never between the monitors. With `multiview` ({ tiles, rows,
+// onPick }; Programa › Multiview) the Programa is four outputs at once, in
+// the same place and size (MultiView.jsx).
+export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu, items = [], multiview = null }) {
     const { cur, prev, now, locked, stamp } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
     const [dropOn, setDropOn] = useState(null);
@@ -144,9 +147,16 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     return (
         <div className="mons" data-live-keys="" tabIndex={-1}>
             <div className="liveblock">
-                <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={now} logoUrl={logoUrl} motion dropProps={{ ...dropProps("air"), onContextMenu: onProgMenu }}>
-                    {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
-                </Monitor>
+                {multiview ? (
+                    <MultiView live={cur} now={now} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick}
+                        state={progState} className={dropOn === "air" ? "is-dropover" : ""} dropProps={{ ...dropProps("air"), onContextMenu: onProgMenu }}>
+                        {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
+                    </MultiView>
+                ) : (
+                    <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={now} logoUrl={logoUrl} motion dropProps={{ ...dropProps("air"), onContextMenu: onProgMenu }}>
+                        {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
+                    </Monitor>
+                )}
                 <div className="pslot">
                     <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
                 </div>
