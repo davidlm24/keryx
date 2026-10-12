@@ -191,11 +191,8 @@
   background: radial-gradient(circle, var(--fg-3) 1px, transparent 1.5px) 0 0 / 2px 6px; opacity: 0; transition: opacity var(--duration-fast) var(--ease-out); pointer-events: none; }
 .kx-split.kx-split-h::before { width: 24px; height: 2px; margin: -1px 0 0 -12px; background-size: 6px 2px; }
 .kx-split:hover::before, .kx-split:focus-visible::before, .kx-split.is-dragging::before { opacity: 1; }
-.kx-split:focus-visible::after { background: var(--brand); }
-.kx-split::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; margin-left: -.5px; background: transparent; transition: background-color var(--duration-fast) var(--ease-out); }
-.kx-split.kx-split-h::after { left: 0; right: 0; top: 50%; bottom: auto; height: 1px; width: auto; margin: -.5px 0 0; }
-.kx-split:hover::after, .kx-split.is-dragging::after { background: var(--line-strong); }
-.kx-split.is-dragging::after { background: var(--fg-3); }
+/* Only the grip, no line: the dots are brand-coloured on keyboard focus. */
+.kx-split:focus-visible::before { background-image: radial-gradient(circle, var(--brand) 1px, transparent 1.5px); }
 
 /* ---- Slide (slides column) ---- */
 .kx-slide { position: relative; display: grid; grid-template-columns: 20px 1fr; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: 13px; line-height: 18px; white-space: pre-line; }
