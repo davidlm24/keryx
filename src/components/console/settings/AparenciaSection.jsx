@@ -3,7 +3,7 @@ import { Btn, Seg } from "../kx";
 import { FormRow } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { TRANSITIONS, TRANSITION_MS, lookDefaults } from "@/lib/console/look";
+import { TRANSITIONS, TRANSITION_MS, NATURAL_MS, lookDefaults } from "@/lib/console/look";
 import WallpaperPicker from "../WallpaperPicker";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
@@ -19,11 +19,15 @@ import IdleBlock from "./IdleBlock";
 export default function AparenciaSection({ c }) {
     const { media } = useLibrary();
     const user = useUser();
-    const [ms, setMs] = useState(400);
     const [slide, setSlide] = useState(0);
     const [picking, setPicking] = useState(false);
-
-    useEffect(() => { setMs(lookDefaults(user).transition_ms || 400); }, [user]);
+    const kind = lookDefaults(user).transition || "fade";
+    // The length saved, else what this transition lasts by itself; the
+    // slider moves a draft, saved once when it is let go.
+    const savedMs = lookDefaults(user).transition_ms;
+    const [ms, setMs] = useState(savedMs || NATURAL_MS[kind] || 400);
+    useEffect(() => { setMs(savedMs || NATURAL_MS[kind] || 400); }, [savedMs, kind]);
+    const commitMs = () => { if (ms !== (savedMs || NATURAL_MS[kind])) save({ transition_ms: ms }); };
 
     const save = async (patch, message) => {
         try {
@@ -31,7 +35,6 @@ export default function AparenciaSection({ c }) {
             if (message) c.say(message);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };
-    const kind = lookDefaults(user).transition || "fade";
     const wall = user?.standby_background || null;
 
     // A sample of the screens with the chosen transition: Ver a transição
@@ -53,9 +56,9 @@ export default function AparenciaSection({ c }) {
                 </FormRow>
                 <FormRow k="Duração">
                     <input type="range" className="ap-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={ms} disabled={kind === "cut"}
-                        onChange={(e) => setMs(Number(e.target.value))} onPointerUp={() => save({ transition_ms: ms })} onKeyUp={() => save({ transition_ms: ms })} onBlur={() => save({ transition_ms: ms })}
+                        onChange={(e) => setMs(Number(e.target.value))} onPointerUp={commitMs} onKeyUp={(e) => { if (e.key !== "Tab") commitMs(); }} onBlur={commitMs}
                         aria-label="Duração da transição" />
-                    <span className="kx-content ap-ms">{kind === "cut" ? "imediato" : `${ms} ms`}</span>
+                    <span className="kx-content ap-ms">{kind === "cut" ? "imediato" : `${ms} ms${savedMs ? "" : " · padrão"}`}</span>
                 </FormRow>
                 <FormRow k="">
                     <div className="ap-sample">{doc && <ScreenRenderer state={doc} now={c.now} preview />}</div>

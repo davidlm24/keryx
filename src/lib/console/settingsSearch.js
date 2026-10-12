@@ -54,7 +54,7 @@ export const SETTINGS_INDEX = [
     e("backup", "Pasta de backup", "onde os backups ficam (um pen drive, outro disco)", ["pasta", "pen drive", "disco"]),
     e("backup", "Restaurar", "voltar os dados de um dia", ["restaurar um backup", "voltar", "recuperar"]),
     e("backup", "Outro computador", "exportar tudo num arquivo e importar em outro computador", ["exportar", "importar", "levar", "zip", "migrar"]),
-    e("backup", "Pasta de dados", "onde o KERYX guarda tudo neste computador", ["dados", "abrir pasta"]),
+    e("backup", "Pasta de dados", "onde o KERYX salva tudo neste computador", ["dados", "abrir pasta"]),
     e("backup", "Suporte", "um arquivo de diagnóstico para o suporte", ["diagnóstico", "log", "ajuda", "problema"]),
     e("backup", "Versão", "a versão instalada e as atualizações", ["atualizar", "atualização", "novidades", "versão"]),
     e("backup", "Atualizar automaticamente", "baixar e instalar as atualizações sozinho", ["automático", "atualizações"]),

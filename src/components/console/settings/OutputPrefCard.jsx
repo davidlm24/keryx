@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { Btn, Seg } from "../kx";
 import Icon from "../Icon";
@@ -14,25 +14,51 @@ const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], 
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
 const DEFAULTS = { content: "", text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", name: "", icon: "", options: {} };
 const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
+// The icons' names, for screen readers and the tooltip.
+const ICON_NAMES = { projector: "Projetor", tv: "TV", monitor: "Monitor", tablet: "Tablet", film: "Filme", megaphone: "Megafone", book: "Livro", image: "Imagem", text: "Texto", star: "Estrela", layers: "Camadas", external: "Janela" };
+const sameJson = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
 
 // One output's own settings (OutputPref, src/lib/outputPrefs.js), under its
 // row in Telas e saídas. Each change is saved at once; the output (and any
 // network screen showing the same page) follows it live.
-export default function OutputPrefCard({ output, row, themes, say, c }) {
+export default function OutputPrefCard({ output, row, themes, c }) {
+    const say = c.say;
     const pref = normalizePref(row);
     // The first change creates the row; changes made before it comes back
-    // update that one instead of creating another.
+    // update that one instead of creating another. A failed create is
+    // forgotten, so the next change tries again.
     const creating = useRef(null);
     if (row?.id) creating.current = null;
     const save = (patch) => {
         let done;
         if (row?.id) done = keryx.entities.OutputPref.update(row.id, patch);
         else if (creating.current) done = creating.current.then((r) => keryx.entities.OutputPref.update(r.id, patch));
-        else done = creating.current = keryx.entities.OutputPref.create({ screen_path: output.key, ...patch });
+        else {
+            const made = keryx.entities.OutputPref.create({ screen_path: output.key, ...patch });
+            creating.current = made;
+            made.catch(() => { if (creating.current === made) creating.current = null; });
+            done = made;
+        }
         done.catch((err) => say(err?.message || "Não foi possível salvar o ajuste da saída."));
     };
     const themeGone = pref.themeId && !themes.some((t) => t.id === pref.themeId);
-    const saveOpt = (k, v) => save({ options: { ...pref.options, [k]: v } });
+    // Page options are one object: two quick switches must not undo each
+    // other, so each change builds on the last one sent until the row
+    // catches up.
+    const sentOpts = useRef(null);
+    if (sentOpts.current && sameJson(sentOpts.current, row?.options)) sentOpts.current = null;
+    const saveOpt = (k, v) => {
+        const next = { ...(sentOpts.current || pref.options), [k]: v };
+        sentOpts.current = next;
+        save({ options: next });
+    };
+    const [confirmReset, setConfirmReset] = useState(false);
+    const reset = () => {
+        if (!confirmReset) { setConfirmReset(true); say(`Clique de novo para voltar ${output.label} ao padrão.`); return; }
+        setConfirmReset(false);
+        sentOpts.current = null;
+        save(DEFAULTS);
+    };
     // Palco and Pastor have layouts of their own, with their own switches;
     // a Conteúdo choice turns them into a renderer view, which then takes
     // the renderer rows too. Every output can be named and get an icon.
@@ -43,10 +69,14 @@ export default function OutputPrefCard({ output, row, themes, say, c }) {
     const now = c?.now || Date.now();
     // The preview: what is on air when something is, else a sample built
     // with real ops — the preview is the renderer itself, following every
-    // change the instant it saves.
+    // change the instant it saves. The sample is made once: rebuilt every
+    // second it would replay its fade.
     const liveOn = c?.live && mainLayer(c.live) !== "none" ? c.live : null;
-    const base = liveOn || sampleLive(now);
-    const prevLive = prefViewKey(output.key, pref) === "/CommunicationProjection" && !base.communication ? sampleNotice(now) : base;
+    const madeAt = useRef(now);
+    const sample = useMemo(() => sampleLive(madeAt.current), []);
+    const notice = useMemo(() => sampleNotice(madeAt.current), []);
+    const base = liveOn || sample;
+    const prevLive = prefViewKey(output.key, pref) === "/CommunicationProjection" && !base.communication ? notice : base;
     const stage = stageOptions(pref);
     const pastor = pastorOptions(pref);
     const preview = isStage && !pref.content
@@ -68,7 +98,7 @@ export default function OutputPrefCard({ output, row, themes, say, c }) {
                 <div className="cfg-icons" role="radiogroup" aria-label={`Ícone de ${output.label}`}>
                     <button type="button" className={`kx-t ${!pref.icon ? "is-on" : ""}`} role="radio" aria-checked={!pref.icon} title="Padrão" onClick={() => save({ icon: "" })}><Icon name={meta.icon} /><span className="kx-meta">Padrão</span></button>
                     {ICON_CHOICES.map((ic) => (
-                        <button type="button" key={ic} role="radio" aria-checked={pref.icon === ic} className={`kx-t ${pref.icon === ic ? "is-on" : ""}`} aria-label={`Ícone ${ic}`} title={ic} onClick={() => save({ icon: ic })}><Icon name={ic} /></button>
+                        <button type="button" key={ic} role="radio" aria-checked={pref.icon === ic} className={`kx-t ${pref.icon === ic ? "is-on" : ""}`} aria-label={`Ícone: ${ICON_NAMES[ic] || ic}`} title={ICON_NAMES[ic] || ic} onClick={() => save({ icon: ic })}><Icon name={ic} /></button>
                     ))}
                 </div>
             </FormRow>
@@ -125,7 +155,7 @@ export default function OutputPrefCard({ output, row, themes, say, c }) {
             </FormRow>
             </>}
             <FormRow k="">
-                <Btn small disabled={isDefaultPref(pref)} onClick={() => save(DEFAULTS)}>Restaurar padrão</Btn>
+                <Btn small kind={confirmReset ? "air" : ""} disabled={isDefaultPref(pref)} onClick={reset}>{confirmReset ? "Restaurar mesmo" : "Restaurar padrão"}</Btn>
                 <span className="kx-meta">vale também para as telas na rede que mostram esta página</span>
             </FormRow>
         </div>

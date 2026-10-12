@@ -179,7 +179,7 @@ export default function SettingsView({ c, section, tab, setSection, onClose, lay
                 <div className="cfg-dialog-b">
                     <nav className="cfg-nav" aria-label="Seções">
                         {SECTIONS.map(({ id, icon, name }) => (
-                            <Row key={id} single icon={icon} title={name} state={`${!searching && id === current.id ? "is-selected" : ""} ${searching && !counts[id] ? "is-dim" : ""}`}
+                            <Row key={id} single icon={icon} title={name} current={!searching && id === current.id ? "page" : undefined} state={`${!searching && id === current.id ? "is-selected" : ""} ${searching && !counts[id] ? "is-dim" : ""}`}
                                 onClick={() => { setQ(""); setSection(id); }}>
                                 {searching && counts[id] ? <span className="cfg-hitcount">{counts[id]}</span> : null}
                             </Row>

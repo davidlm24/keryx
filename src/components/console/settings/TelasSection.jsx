@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { keryx } from "@/api/keryxClient";
+import React, { useState } from "react";
 import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
-import { useBridge, usePoll, Switch, desktopOnly, CfgKey } from "./parts";
+import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading } from "./parts";
 import { useLibrary } from "../useConsoleData";
 import OutputPrefCard from "./OutputPrefCard";
 import { PREF_OUTPUTS, normalizePref, isDefaultPref, outputLook } from "@/lib/outputPrefs";
+import { useOutputPrefRows } from "@/hooks/useOutputPref";
 
 // Telas e saídas: the monitors as a diagram, each output's screen, "Abrir
 // ao iniciar", open/close, Identificar, each output's own settings (Ajustes,
@@ -14,19 +13,22 @@ import { PREF_OUTPUTS, normalizePref, isDefaultPref, outputLook } from "@/lib/ou
 // The placement rules live in electron/outputs.cjs.
 export default function TelasSection({ c }) {
     const displays = useBridge("displays");
-    const [state, , setState] = usePoll(() => displays?.list(), 3000);
+    const [state, , setState, readError] = usePoll(() => displays?.list(), 3000);
     const { themes } = useLibrary();
     const [tuning, setTuning] = useState(null);
-    const client = useQueryClient();
-    useEffect(() => keryx.entities.OutputPref.subscribe(() => client.invalidateQueries({ queryKey: ["console", "OutputPref"] })), [client]);
-    const prefRows = useQuery({ queryKey: ["console", "OutputPref"], queryFn: () => keryx.entities.OutputPref.list() }).data || [];
+    const prefRows = useOutputPrefRows();
     const prefRow = (key) => prefRows.find((r) => r.screen_path === key) || null;
     if (!displays) return <Empty icon="monitor" title="Telas e saídas">{desktopOnly}</Empty>;
-    if (!state) return <Empty title="Lendo as telas…" />;
+    if (!state) return <Reading what="as telas" error={readError} />;
 
-    const apply = (p) => p.then((res) => { if (res?.error) c.say(res.error.message); else if (res?.data) setState(res.data); }).catch(() => {});
+    // Every change answers with the new state, or says why it failed.
+    const apply = (p) => p.then((res) => { if (res?.error) c.say(res.error.message); else if (res?.data) setState(res.data); })
+        .catch((err) => c.say(err?.message || "Não foi possível mudar a saída."));
+    const identify = () => Promise.resolve(displays.identify()).then((res) => { if (res?.error) c.say(res.error.message); })
+        .catch(() => c.say("Não foi possível mostrar os números nas telas."));
     const list = state.displays || [];
     const outputs = state.outputs || [];
+    // A display's number as Windows counts it here (0: not among the ones on).
     const number = (id) => list.findIndex((d) => d.id === id) + 1;
     const widest = Math.max(1, ...list.map((d) => d.bounds?.width || d.width || 1));
     const onDisplay = (d) => outputs.filter((o) => o.open && o.placement?.mode === "fullscreen" && o.placement.displayId === d.id).map((o) => o.label);
@@ -46,7 +48,7 @@ export default function TelasSection({ c }) {
     const status = (o) => {
         const p = o.placement || {};
         if (p.missing) return "A tela escolhida não está ligada · abre numa janela até ligar";
-        if (p.mode === "fullscreen") return `Tela cheia na Tela ${number(p.displayId)}`;
+        if (p.mode === "fullscreen") return number(p.displayId) ? `Tela cheia na Tela ${number(p.displayId)}` : "Tela cheia";
         return "Abre numa janela";
     };
 
@@ -67,7 +69,7 @@ export default function TelasSection({ c }) {
                     );
                 })}
                 <span style={{ flex: 1 }} />
-                <Btn onClick={() => displays.identify()} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
+                <Btn onClick={identify} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
             </CfgKey>
             <CfgKey k="Saídas" className="listhead"><span className="kx-section">Saídas <span className="kx-count">· cada saída mostra um conteúdo numa tela</span></span></CfgKey>
             {outputs.map((raw) => {
@@ -95,7 +97,7 @@ export default function TelasSection({ c }) {
                         </Btn>
                     </CfgKey>
                 </div>
-                {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} say={c.say} c={c} />}
+                {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} c={c} />}
                 </React.Fragment>
                 );
             })}

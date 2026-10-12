@@ -192,10 +192,19 @@ export default function Console() {
     const wantWall = service?.standby_background || globalWall || null;
     const appliedWall = useRef(null);
     useEffect(() => {
-        if (!serviceId || !wantWall) return;
+        if (!serviceId) return;
+        if (!wantWall) {
+            // The default was cleared (or the service has none now): a
+            // wallpaper put up here goes back to the logo; one the operator
+            // chose in Saídas stays.
+            const was = appliedWall.current;
+            appliedWall.current = null;
+            if (was && c.live?.idle === "background" && c.live?.idleUrl === was.url) c.liveOp("idle.set", { mode: "logo" }).catch(() => {});
+            return;
+        }
         const key = `${serviceId}|${wantWall}`;
-        if (appliedWall.current === key) return;
-        appliedWall.current = key;
+        if (appliedWall.current?.key === key) return;
+        appliedWall.current = { key, url: wantWall };
         if (c.live?.idle === "background" && c.live?.idleUrl === wantWall) return;
         c.liveOp("idle.set", { mode: "background", url: wantWall }).catch(() => {});
     }, [serviceId, wantWall]); // eslint-disable-line react-hooks/exhaustive-deps

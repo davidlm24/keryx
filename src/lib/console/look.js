@@ -6,6 +6,8 @@
 
 export const TRANSITIONS = [["fade", "Esmaecer"], ["slide", "Deslizar"], ["cut", "Corte"]];
 export const TRANSITION_MS = [120, 600];
+// What each transition lasts when nobody chose a length (screen.css).
+export const NATURAL_MS = { fade: 400, slide: 350, cut: 0 };
 const KINDS = TRANSITIONS.map(([v]) => v);
 
 // The defaults a User row asks for; null where it asks for nothing.

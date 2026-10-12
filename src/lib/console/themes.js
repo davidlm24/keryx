@@ -5,6 +5,8 @@
 
 // Every family the renderer ships (src/fonts.css FONT_MAP); Camadas used to
 // list only five and wrongly warned "Fonte não instalada" for the others.
+// The text sizes a theme or a song can choose, smallest first.
+export const TEXT_SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
 export const THEME_FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["cursive", "Cursiva"], ["arial", "Arial"], ["georgia", "Georgia"], ["times", "Times"], ["verdana", "Verdana"]];
 export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 

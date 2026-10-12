@@ -1643,6 +1643,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("(() => { const b = document.querySelector('.cfg-outprefs button[aria-label=\"Cifra no Palco\"]'); if (b) b.click(); return Boolean(b); })()");
         result.palcoCifraOff = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .net-stage')) && !document.querySelector('.cfg-outprefs .ns-chords')"), 5000);
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar padrão'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar mesmo'); if (b) b.click(); return Boolean(b); })()"), 3000);
         result.palcoRestored = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .ns-chords'))"), 5000);
         await tuneOf("Palco");
         await tuneOf("Tela do pastor");
@@ -1650,6 +1651,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs .kx-seg button')].find((x) => x.textContent === 'Não'); if (b) b.click(); return Boolean(b); })()");
         result.pastorNext0 = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .cfg-prev-pastor')) && !document.querySelector('.cfg-outprefs .np-side')"), 5000);
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar padrão'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar mesmo'); if (b) b.click(); return Boolean(b); })()"), 3000);
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .np-side'))"), 5000);
         await tuneOf("Tela do pastor");
 
