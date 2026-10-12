@@ -100,7 +100,10 @@ export default function GeneratorBackground({ gen, animate = true }) {
     const genRef = useRef(gen);
     genRef.current = gen;
     const [lost, setLost] = useState(0);
-    const [noGl, setNoGl] = useState(false);
+    // Without WebGL for THIS generator (a new one tries again).
+    const [noGlFor, setNoGlFor] = useState(null);
+    const noGl = noGlFor === gen.id;
+    const setNoGl = () => setNoGlFor(genRef.current.id);
 
     // Still: one frame from the shared renderer, redrawn when the box or
     // the generator changes.
@@ -172,5 +175,9 @@ export default function GeneratorBackground({ gen, animate = true }) {
     }, [gen.id, gen.audio, animate, lost]);
 
     if (noGl) return <div className="ks-layer" style={{ background: cssFallback(gen) }} />;
-    return <canvas ref={ref} className="ks-bg-gen" key={`${animate ? "live" : "still"}:${lost}`} aria-hidden="true" />;
+    // A fresh canvas per generator (and per audio on/off, which re-runs the
+    // loop too): leaving one disposes its WebGL context (loseContext), and a
+    // canvas never gives a lost context back — the next generator drawn on
+    // the same canvas fell to the still gradient for good.
+    return <canvas ref={ref} className="ks-bg-gen" key={`${animate ? `live:${gen.id}:${gen.audio ? 1 : 0}` : "still"}:${lost}`} aria-hidden="true" />;
 }

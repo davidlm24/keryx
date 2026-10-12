@@ -20,6 +20,13 @@ export const LIVE_VERSION = 1;
 export const LAYER_ORDER = ["logo", "overlays", "content", "background"];
 // Tela ociosa: the church logo, plain black, or a wallpaper the operator chose.
 export const IDLE_MODES = ["logo", "black", "background"];
+// The layers Camadas' eye can hide while they stay on air (live.hiddenLayers):
+// the text keeps its place (the arrows still walk it) and the Fundo stays
+// chosen; the logo and the overlays have their own switches.
+export const HIDEABLE_LAYERS = ["content", "background"];
+const hiddenOf = (value) => (Array.isArray(value) ? HIDEABLE_LAYERS.filter((k) => value.includes(k)) : []);
+const without = (s, layer) => ((s.hiddenLayers || []).includes(layer) ? { hiddenLayers: s.hiddenLayers.filter((k) => k !== layer) } : {});
+export const layerHidden = (state, layer) => Boolean(state?.hiddenLayers?.includes(layer));
 const layerOrderOf = (value) => {
     if (!Array.isArray(value) || value.length !== LAYER_ORDER.length || !LAYER_ORDER.every((k) => value.includes(k))) return null;
     return [...value];
@@ -104,6 +111,9 @@ export function emptyState(now = Date.now()) {
         // reorder). The alert, a video-channel clip and the black/logo
         // screens always stay above all of them.
         layerOrder: [...LAYER_ORDER],
+        // Layers hidden by Camadas' eye (HIDEABLE_LAYERS). Sending a new item
+        // shows its text again; choosing a Fundo shows the Fundo again.
+        hiddenLayers: [],
         // What was on the main projector before each change, newest first,
         // so the operator can bring it back (through the preview, never
         // straight to air).
@@ -121,7 +131,7 @@ export function emptyState(now = Date.now()) {
 // outputs carrying on with what was already playing (the next video of a
 // list, the next aviso of a "Tocar todos").
 export const WHILE_LOCKED = new Set([
-    "screens.lock", "screen.set", "idle.set", "session.end",
+    "screens.lock", "screen.set", "idle.set", "session.end", "layers.hide",
     "clear", "content.clear", "media.clear", "video.clear", "audio.clear", "tool.clear", "communication.clear", "alert.clear", "background.clear",
     "media.advance", "audio.advance", "communication.advance",
 ]);
@@ -340,7 +350,7 @@ const OPS = {
         if (a.dim !== undefined && a.dim !== null) background.dim = ranged(a.dim, [0, 0.9], "Escurecer");
         if (a.blur !== undefined && a.blur !== null) background.blur = ranged(a.blur, [0, 20], "Desfoque");
         if (a.position !== undefined && a.position !== null) background.position = oneOf(a.position, BACKGROUND_POSITIONS, "Posição do fundo");
-        return { background };
+        return { background, ...without(_s, "background") };
     },
     "background.clear": (s) => (s.background ? { background: null } : null),
 
@@ -349,6 +359,7 @@ const OPS = {
         return {
             ...remember(s, now),
             ...reveal(["tool", "communication", "media"]),
+            ...without(s, "content"),
             content: {
                 kind: oneOf(a.kind ?? "lyrics", CONTENT_KINDS, "Tipo de conteúdo"),
                 ref: loose(a.ref, "Referência") || {},
@@ -519,6 +530,16 @@ const OPS = {
         if (!next) throw new LiveError("Ordem de camadas inválida.");
         return next.join() === (s.layerOrder || LAYER_ORDER).join() ? null : { layerOrder: next };
     },
+    // Camadas' eye: hide a layer and keep it (hiding works locked, like
+    // anything that comes off the air; showing it again does not).
+    "layers.hide": (s, { layer }) => {
+        oneOf(layer, HIDEABLE_LAYERS, "Camada");
+        return layerHidden(s, layer) ? null : { hiddenLayers: [...(s.hiddenLayers || []), layer] };
+    },
+    "layers.show": (s, { layer }) => {
+        oneOf(layer, HIDEABLE_LAYERS, "Camada");
+        return layerHidden(s, layer) ? without(s, layer) : null;
+    },
 
     // Fundo needs its image; Logo or Preto keep the last one, so choosing
     // Fundo again brings it back. A url alone (no mode) never changes the mode.
@@ -546,7 +567,7 @@ const OPS = {
 
     // Stop: what Esc / "Encerrar" means. Background, logo, Escola bíblica,
     // overlays and alerts stay; they have their own controls.
-    "clear": (s, _a, now) => ({ ...remember(s, now), screen: "show", content: null, media: null, video: null, tool: null, communication: null }),
+    "clear": (s, _a, now) => ({ ...remember(s, now), ...without(s, "content"), screen: "show", content: null, media: null, video: null, tool: null, communication: null }),
 };
 
 export const OP_NAMES = Object.keys(OPS);
@@ -589,6 +610,7 @@ export function restoreState(saved, now = Date.now()) {
         logo: { ...base.logo, ...(layer(saved.logo) || {}) },
         ...restoreIdle(saved),
         layerOrder: layerOrderOf(saved.layerOrder) || [...LAYER_ORDER],
+        hiddenLayers: hiddenOf(saved.hiddenLayers),
         history: Array.isArray(saved.history) ? saved.history.filter((h) => isPlainObject(h) && isPlainObject(h.data)).slice(0, MAX_HISTORY) : [],
     };
 }

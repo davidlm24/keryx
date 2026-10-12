@@ -252,6 +252,29 @@ test("a Bible chapter sent whole: each slide keeps its own reference", () => {
     assert.equal(applyOp(s, "content.next", {}, T0).content.index, 1, "the arrows walk the chapter");
 });
 
+test("Camadas' eye: a layer hidden stays on air; a new send or Fundo shows it again", () => {
+    const pic = { kind: "image", value: "keryx-media://a.webp" };
+    let s = run([["content.show", song], ["background.set", pic]]);
+    assert.deepEqual(s.hiddenLayers, []);
+    s = applyOp(s, "layers.hide", { layer: "content" }, T0);
+    s = applyOp(s, "layers.hide", { layer: "background" }, T0);
+    assert.deepEqual(s.hiddenLayers, ["content", "background"]);
+    assert.ok(s.content && s.background, "hidden, not taken off");
+    assert.equal(applyOp(s, "layers.hide", { layer: "content" }, T0), s, "already hidden: no change");
+    assert.equal(applyOp(s, "content.next", {}, T0).content.index, 1, "the arrows still walk the hidden text");
+    assert.deepEqual(restoreState(JSON.parse(JSON.stringify(s)), T0).hiddenLayers, ["content", "background"], "survives a restart");
+    assert.deepEqual(applyOp(s, "layers.show", { layer: "content" }, T0).hiddenLayers, ["background"]);
+    assert.deepEqual(applyOp(s, "content.show", song, T0).hiddenLayers, ["background"], "a new item shows its text");
+    assert.deepEqual(applyOp(s, "background.set", pic, T0).hiddenLayers, ["content"], "a Fundo chosen shows the Fundo");
+    assert.deepEqual(applyOp(s, "clear", {}, T0).hiddenLayers, ["background"], "Esc: the text goes, the Fundo stays hidden");
+    assert.throws(() => applyOp(s, "layers.hide", { layer: "logo" }, T0), LiveError);
+    const locked = applyOp(run([["content.show", song]]), "screens.lock", { locked: true }, T0);
+    assert.deepEqual(applyOp(locked, "layers.hide", { layer: "content" }, T0).hiddenLayers, ["content"], "hiding works locked");
+    const hiddenLocked = applyOp(applyOp(run([["content.show", song]]), "layers.hide", { layer: "content" }, T0), "screens.lock", { locked: true }, T0);
+    assert.throws(() => applyOp(hiddenLocked, "layers.show", { layer: "content" }, T0), (e) => e.status === 423, "showing it again does not");
+    assert.deepEqual(restoreState({ ...JSON.parse(JSON.stringify(s)), hiddenLayers: ["logo", "content", 3] }, T0).hiddenLayers, ["content"], "only known layers come back");
+});
+
 test("layer order: the operator stacks the look layers", () => {
     let s = emptyState(T0);
     assert.deepEqual(s.layerOrder, ["logo", "overlays", "content", "background"]);
