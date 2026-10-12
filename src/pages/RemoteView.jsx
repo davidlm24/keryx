@@ -19,6 +19,8 @@ export default function RemoteView() {
     const [busy, setBusy] = useState("");
     const [note, setNote] = useState({ text: "", bad: false });
     const [state, setState] = useState(null);
+    // Controles (default), Setlist, Bíblia.
+    const [tab, setTab] = useState("controles");
     const noteTimer = useRef(null);
 
     const say = useCallback((text, bad = false) => {
@@ -31,7 +33,8 @@ export default function RemoteView() {
         const r = await remoteCall(action, args);
         setBusy("");
         if (r.signedOut) { window.location.href = "/lan/remote-code"; return r; }
-        if (action !== "state") say(r.ok ? upperFirst(r.message.replace(/^Celular: /, "")) || "Feito." : r.message, !r.ok);
+        // A read (the Setlist, a passage to check) says nothing unless it failed.
+        if ((action !== "state" && action !== "bibleFind") || !r.ok) say(r.ok ? upperFirst(r.message.replace(/^Celular: /, "")) || "Feito." : r.message, !r.ok);
         if (navigator.vibrate) try { navigator.vibrate(r.ok ? 15 : [30, 40, 30]); } catch { /* no vibration */ }
         return r;
     }, [say]);
@@ -65,7 +68,15 @@ export default function RemoteView() {
                 {locked && <div className="rm-locked"><Icon name="lock" />Telas travadas no computador: nada novo vai ao ar</div>}
             </header>
 
-            <main className="rm-b">
+            <nav className="rm-tabs" role="tablist" aria-label="Seções do controle remoto">
+                {[["controles", "Controles"], ["setlist", "Setlist"], ["biblia", "Bíblia"]].map(([k, l]) => (
+                    <button type="button" key={k} role="tab" aria-selected={tab === k} className={`rm-tab ${tab === k ? "is-on" : ""}`} onClick={() => setTab(k)}>{l}</button>
+                ))}
+            </nav>
+
+            {tab === "setlist" && <SetlistTab state={state} busy={busy} locked={locked} send={send} />}
+            {tab === "biblia" && <BibleTab busy={busy} locked={locked} send={send} />}
+            {tab === "controles" && <main className="rm-b">
                 <div className="rm-nav">
                     <button type="button" className="rm-btn rm-big" disabled={Boolean(busy)} onClick={() => send("prev")} aria-label="Slide anterior"><Icon name="chevron-left" size={28} /><span>Anterior</span></button>
                     <button type="button" className="rm-btn rm-big" disabled={Boolean(busy)} onClick={() => send("next")} aria-label="Próximo slide"><span>Próximo</span><Icon name="chevron-right" size={28} /></button>
@@ -81,10 +92,75 @@ export default function RemoteView() {
                     <button type="button" className="rm-btn" disabled={Boolean(busy)} onClick={() => send("play")}><Icon name="play" size={20} />Tocar / pausar</button>
                 </div>
                 <HoldButton disabled={Boolean(busy)} onDone={() => send("end")} />
-            </main>
+            </main>}
 
             <footer className={`rm-note ${note.bad ? "is-bad" : ""}`} role="status" aria-live="polite">{note.text}</footer>
         </div>
+    );
+}
+
+// The Setlist: tap an item to pick it (green), then Enviar ao ar — never
+// a send by a stray tap. The item on air is red; sections are headers.
+function SetlistTab({ state, busy, locked, send }) {
+    const [pick, setPick] = useState(null);
+    const items = state?.items || [];
+    const picked = items.find((i) => i.id === pick) || null;
+    if (!state) return <main className="rm-b"><p className="rm-empty">Lendo a setlist…</p></main>;
+    if (!items.length) return <main className="rm-b"><p className="rm-empty">{state.service ? `${state.service}: nenhum item na setlist.` : "Nenhum culto escolhido no console."}</p></main>;
+    return (
+        <main className="rm-b rm-list">
+            {state.service && <span className="net-section">{state.service}</span>}
+            <ul className="rm-items">
+                {items.map((it) => (it.section
+                    ? <li key={it.id} className="rm-sec">{it.title}</li>
+                    : (
+                        <li key={it.id}>
+                            <button type="button" className={`rm-item ${it.id === state.airItemId ? "is-air" : ""} ${it.id === pick ? "is-pick" : ""}`} aria-pressed={it.id === pick} onClick={() => setPick(it.id === pick ? null : it.id)}>
+                                <span className="rm-item-t">{it.title || "Sem título"}</span>
+                                <span className="rm-item-k">{it.id === state.airItemId ? "no ar" : it.id === state.nextItemId ? "próximo" : TYPE[it.type] || ""}</span>
+                            </button>
+                        </li>
+                    )))}
+            </ul>
+            <div className="rm-dock">
+                <button type="button" className="rm-btn rm-send" disabled={Boolean(busy) || !picked || locked} onClick={async () => { const r = await send("sendItem", { itemId: picked.id }); if (r.ok) setPick(null); }}>
+                    <Icon name="arrow-right" size={20} />
+                    <span className="rm-send-t"><small>Enviar ao ar</small><b>{picked ? picked.title : "Toque num item da setlist"}</b></span>
+                </button>
+            </div>
+        </main>
+    );
+}
+const TYPE = { SONG: "música", BIBLE: "Bíblia", ANNOUNCEMENT: "aviso", VIDEO: "vídeo", IMAGE: "imagem", AUDIO: "áudio", TEXT: "texto", TIMER: "timer", MATERIAL: "escola", PDF: "apresentação", POWERPOINT: "apresentação" };
+
+// A Bíblia reference: type it (jo 3 16), Conferir shows the text the
+// console found (the version chosen on the computer), then Enviar ao ar.
+function BibleTab({ busy, locked, send }) {
+    const [ref, setRef] = useState("");
+    const [found, setFound] = useState(null);
+    const find = async () => {
+        if (!ref.trim()) return;
+        const r = await send("bibleFind", { ref });
+        setFound(r.ok ? { ...r.result, ref } : null);
+    };
+    return (
+        <main className="rm-b">
+            <form className="rm-ref" onSubmit={(e) => { e.preventDefault(); find(); }}>
+                <input value={ref} onChange={(e) => { setRef(e.target.value); setFound(null); }} placeholder="Referência (jo 3 16)" aria-label="Referência" autoCapitalize="none" autoCorrect="off" enterKeyHint="search" maxLength={40} />
+                <button type="submit" className="rm-btn" disabled={Boolean(busy) || !ref.trim()}>Conferir</button>
+            </form>
+            {found && (
+                <div className="rm-found">
+                    <b>{found.reference}</b>
+                    <p>{found.text}</p>
+                </div>
+            )}
+            <button type="button" className="rm-btn rm-send" disabled={Boolean(busy) || !found || locked} onClick={async () => { const r = await send("bibleSend", { ref: found.ref }); if (r.ok) { setFound(null); setRef(""); } }}>
+                <Icon name="book" size={20} />
+                <span className="rm-send-t"><small>Enviar ao ar</small><b>{found ? found.reference : "Confira a referência antes"}</b></span>
+            </button>
+            <p className="rm-empty">Um versículo vai com o capítulo inteiro (as setas seguem nele); um trecho (jo 3 16-18) vai como trecho.</p>
+        </main>
     );
 }
 

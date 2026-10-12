@@ -2398,6 +2398,13 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             await cmd("black");
             const st = await (await cmd("state")).json().catch(() => ({}));
             result.remote.state = Boolean(st.data && st.data.result && Array.isArray(st.data.result.items));
+            // A Setlist item sent from the phone goes on air through the console.
+            const pick = ((st.data && st.data.result && st.data.result.items) || []).find((i) => !i.section && i.type === "TEXT");
+            if (pick) {
+                const sent = await cmd("sendItem", { itemId: pick.id });
+                result.remote.sendItem = sent.status === 200 && ((live.get().content || {}).title || "") === pick.title;
+            } else result.remote.sendItem = "sem item de texto na setlist";
+            live.call("clear", {});
             live.call("screens.lock", { locked: true });
             result.remote.locked = (await cmd("next")).status;
             live.call("screens.lock", { locked: false });
@@ -2440,7 +2447,7 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
         && (!webContents || (result.dropBanner && result.dropStatus))
-        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
+        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem !== false && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
     return result;
 }
 
