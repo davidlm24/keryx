@@ -32,6 +32,25 @@ test("the list: settings over the factory names and categories", () => {
     assert.deepEqual(categoriesOf([...list, { category: "Páscoa" }, { category: "Batismo" }]), ["Natureza", "Cruz e igreja", "Batismo", "Páscoa", "Suas imagens"]);
 });
 
+test("a background is listed once, however many times Mídia holds it", () => {
+    const file = "http://127.0.0.1:7700/media/bundled/backgrounds/a.webp";
+    const list = backgroundList({
+        bundled,
+        images: [
+            { id: "m1", url: file, title: "Fundo · luz" },
+            { id: "m2", url: "https://images.unsplash.com/photo-b?w=1920", title: "Ondas" },
+            { id: "m3", url: "http://h/media/x.png", title: "Cruz" },
+            { id: "m4", url: "http://h/media/x.png", title: "Cruz (cópia)" },
+        ],
+        videos: [{ id: "v1", url: "http://h/media/v.mp4" }, { id: "v2", url: "http://h/media/v.mp4" }],
+    });
+    const sources = list.map((b) => b.source);
+    assert.equal(new Set(sources).size, sources.length, "no source twice");
+    assert.deepEqual(sources, ["bundled:a", "bundled:b", "bundled:c", "http://h/media/x.png", "http://h/media/v.mp4"]);
+    assert.equal(list[0].category, "Natureza", "the factory entry wins");
+    assert.equal(list[3].name, "Cruz");
+});
+
 test("an item's background brings its dim and blur, unless the item has its own", () => {
     const prefs = [{ source: "bundled:a", dim_pct: 60, blur_px: 4 }, { source: "bundled:b", blur_px: 8 }];
     const url = "http://127.0.0.1:7700/media/bundled/backgrounds/a.webp";
