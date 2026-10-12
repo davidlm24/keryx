@@ -48,6 +48,24 @@
       "enum": ["short", "full"],
       "description": "Livros da Biblia no seletor: abreviados (short) ou nomes inteiros (full). Nulo = abreviados"
     },
+    "bible_verses_per_slide": {
+      "type": "string",
+      "enum": ["auto", "1", "2", "3"],
+      "description": "Biblia: versiculos por slide de um trecho (auto = pelo tamanho do texto). Nulo = auto"
+    },
+    "bible_show_reference": {
+      "type": "boolean",
+      "description": "Biblia: mostrar a referencia (Joao 3:16) embaixo do texto nas telas. Nulo = sim"
+    },
+    "bible_show_version": {
+      "type": "boolean",
+      "description": "Biblia: mostrar a versao (NVI) junto da referencia. Nulo = sim"
+    },
+    "bible_verse_numbers": {
+      "type": "string",
+      "enum": ["sup", "hide"],
+      "description": "Biblia: numeros dos versiculos pequenos no texto (sup) ou ocultos (hide). Nulo = sup"
+    },
     "import_lines": {
       "type": "integer",
       "description": "Ao importar letras: linhas por slide (0 = uma estrofe por slide, 2 ou 4). Nulo = 0"

@@ -23,3 +23,7 @@ export function verseSegments(text) {
 }
 
 export const verseNumbers = (text) => verseSegments(text).filter((x) => x.n !== null).map((x) => x.n);
+
+// A Bible slide's text without its verse numbers ("16 Porque Deus… 17 Porque…"
+// -> "Porque Deus… Porque…"); "930 anos" keeps its number.
+export const withoutVerseMarks = (text) => verseSegments(text).map((s) => s.text.trim()).filter(Boolean).join(" ");

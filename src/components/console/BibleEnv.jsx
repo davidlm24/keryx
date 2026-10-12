@@ -83,7 +83,10 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const [book, setBook] = useState(mem.book || "João");
     const [chapter, setChapter] = useState(mem.chapter || 3);
     const [sel, setSel] = useState([]);
-    const [how, setHow] = useState("auto");
+    // Versículos por slide: the church's choice (Configurações › Bíblia e
+    // músicas), changed here too.
+    const how = usePrefs().bible_verses_per_slide;
+    const setHow = (v) => { updateUser({ bible_verses_per_slide: v }).catch(() => c.say("Não foi possível salvar.")); };
     const [verses, setVerses] = useState([]);
     const [error, setError] = useState("");
     const [q, setQ] = useState("");

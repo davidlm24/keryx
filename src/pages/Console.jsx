@@ -437,7 +437,7 @@ export default function Console() {
         try {
             const { version, verses } = await referenceVerses(ref);
             const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
-            const st = stageFromVerses({ verses, nums: referenceNums(ref), version, book: ref.book, chapter: ref.chapter, onAir });
+            const st = stageFromVerses({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter, onAir });
             if (!st) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
             c.setPrev(st);
         } catch (err) { c.say(err?.message || "Não foi possível abrir a passagem."); }
@@ -446,7 +446,7 @@ export default function Console() {
     const addReference = async (ref) => {
         try {
             const { version, verses } = await referenceVerses(ref);
-            const passage = passageOf({ verses, nums: referenceNums(ref), version, book: ref.book, chapter: ref.chapter });
+            const passage = passageOf({ verses, nums: referenceNums(ref), how: prefs.bible_verses_per_slide, version, book: ref.book, chapter: ref.chapter });
             if (!passage) { c.say(`${formatReference(ref)} não existe na ${version}.`); return; }
             const sid = await ensureService();
             const row = await keryx.entities.BiblePassage.create(passage);
