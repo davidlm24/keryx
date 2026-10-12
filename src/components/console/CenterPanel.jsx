@@ -9,14 +9,9 @@ import { stageOp } from "@/lib/console/stage";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { captionParts, airFor } from "@/lib/console/caption";
-import { OUTPUT_VIEWS, SCREEN_PAGES, nextItems, previewSession } from "@/lib/network/views";
-import StageScreen from "@/components/network/StageScreen";
-import PastorScreen from "@/components/network/PastorScreen";
-import LayoutRenderer from "@/components/screen/LayoutRenderer";
-import { prefState, prefVars, pastorOptions, stageHidden } from "@/lib/outputPrefs";
-import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
-import { useLayout } from "@/hooks/useLayout";
-import { useChurch } from "@/hooks/useChurch";
+import { OUTPUT_VIEWS } from "@/lib/network/views";
+import { prefState, prefVars, stageHidden } from "@/lib/outputPrefs";
+import { useOutputPref } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
 
 // What the Prévia would look like on air: the stage applied with the live
@@ -112,29 +107,14 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const { cur, prev, now, locked, stamp } = c;
     const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
     const [dropOn, setDropOn] = useState(null);
-    // The Prévia's output picker (left of its monitor, icon + name): the
-    // prepared stage as that output will show it (Projeção by default; this
-    // session only), with the output's own settings (Configurações › Telas e
-    // saídas). Enviar ao ar is unchanged.
-    const [railOut, setRailOut] = useState(OUTPUT_VIEWS[0].key);
+    // The Prévia: the prepared stage as Projeção will show it, with that
+    // output's own settings (Configurações › Telas e saídas: Mostrar, theme,
+    // scale). The other outputs are the Multiview's (the picker that used to
+    // sit beside the Prévia went with it, 2026-10-12).
+    const railOut = OUTPUT_VIEWS[0].key;
     const { pref: railPref, theme: railTheme } = useOutputPref(railOut);
-    // Palco and Pastor have layouts of their own: their screen components
-    // draw the prepared stage (the pastor's Próximo follows its Setlist item).
-    const railViews = useRailViews();
-    // A Palco/Pastor with a Conteúdo choice renders as that view, exactly
-    // like its real page does.
-    const railPage = (!railPref.content && SCREEN_PAGES.find((p) => p.key === railOut)) || null;
-    const railDoc = useMemo(() => (railPage ? null : prefState(railOut, pdoc, railPref, railTheme)), [railPage, railOut, pdoc, railPref, railTheme]);
-    const pastorDoc = useMemo(() => (railPage?.key === "/PastorView" && pdoc ? { ...pdoc, session: previewSession(cur?.session || null, prev?.args?.ref) } : null), [railPage, pdoc, cur?.session, prev]);
-    // An output drawing a layout (Ajustes › Layout): the layout itself draws
-    // the prepared stage, as the output will (a renderer output's view is
-    // the layout's Projeção element).
-    const railLayout = useLayout(railPref.layoutId);
-    const church = useChurch();
-    const layoutDoc = pastorDoc || pdoc;
-    const layoutNext = useMemo(() => (railLayout ? nextItems(items, layoutDoc?.session, 10) : []), [railLayout, items, layoutDoc?.session]);
-    const railVars = railPage ? null : prefVars(railPref);
-    const railName = railViews.find((o) => o.key === railOut)?.name || "";
+    const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
+    const railVars = prefVars(railPref);
     // Locked: the screens keep this image, blue (they are not following). On
     // air there is no frame: the red lives in the header's state word and on
     // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
@@ -171,27 +151,10 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                     <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
                 </div>
                 <div className="subrow">
-                    <div className="prev-outs" role="group" aria-label="Ver a prévia como a saída">
-                        {railViews.map((o) => (
-                            <button type="button" key={o.key} className={`kx-t ${railOut === o.key ? "is-on" : ""}`} title={`Prévia como ${o.name}`} aria-label={`Prévia como ${o.name}`} aria-pressed={railOut === o.key}
-                                onClick={() => setRailOut(o.key)}><Icon name={o.icon} size={14} /><span className="t">{o.name}</span></button>
-                        ))}
-                    </div>
-                    <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railLayout ? null : railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
+                    <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
-                        {prev && !railPage && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
-                        {prev && !railPage && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A saída {railName} não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Ajustes da saída › Mostrar)</div>}
-                        {prev && railLayout && (railPage || railDoc) && (
-                            <LayoutRenderer layout={railLayout} live={layoutDoc} screenState={railPage ? undefined : railDoc} nowMs={now} logoUrl={logoUrl} upcoming={layoutNext} hasService={items.length > 0} church={church} scale={railPage ? railPref.scale : 1} embed />
-                        )}
-                        {prev && railPage?.key === "/StageView" && !railLayout && (pdoc?.content
-                            ? <StageScreen content={pdoc.content} nowMs={now} embed opts={railPref.options} scale={railPref.scale} />
-                            : <div className="kx-screen-empty">A saída Palco não mostra este item</div>)}
-                        {prev && pastorDoc && !railLayout && (
-                            <div className="kp-portrait">
-                                <PastorScreen live={pastorDoc} nowMs={now} logo={logoUrl} upcoming={nextItems(items, pastorDoc.session, pastorOptions(railPref).next_count || 1)} hasService={items.length > 0} embed opts={railPref.options} scale={railPref.scale} />
-                            </div>
-                        )}
+                        {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
+                        {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Ajustes da saída › Mostrar)</div>}
                         {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
                         {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
                     </Monitor>
