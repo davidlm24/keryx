@@ -40,7 +40,8 @@ export function useLibrary() {
     const pieces = useList("CommunicationVideo", ["title"]).data;
     const themes = useList("ProjectionTheme", ["name"]).data;
     const materials = useList("BibleMaterial", ["-created_date"]).data;
-    return { songs, media, pieces, themes, materials };
+    const alertPresets = useList("AlertPreset", ["created_date"]).data;
+    return { songs, media, pieces, themes, materials, alertPresets };
 }
 
 // Every background the galleries can offer, with the church's settings

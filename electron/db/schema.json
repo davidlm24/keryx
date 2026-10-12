@@ -34,6 +34,29 @@
         }
       }
     },
+    "AlertPreset": {
+      "table": "alert_preset",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "message": {
+          "type": "text"
+        }
+      }
+    },
     "BackgroundPref": {
       "table": "background_pref",
       "columns": {

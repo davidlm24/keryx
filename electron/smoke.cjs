@@ -1876,6 +1876,30 @@ async function checkConsole(webContents, { live, outputs }) {
         result.nvAdvanced = await waitFor(() => (live.get().communication?.playlistIndex || 0) >= 1, 6000);
         live.call("clear");
 
+        // Mensagens prontas do Aviso rápido (AlertPreset): Guardar keeps the
+        // field's text as a row (and refuses it twice); a click puts it back
+        // in the field without touching the screens; a double click shows it
+        // at once; the cross deletes it.
+        const presetRows = async () => ((await js(`window.keryxDesktop.db.call("AlertPreset", "list", [])`)).data || []);
+        const presetChips = () => js(`[...document.querySelectorAll(".kx-preset-t")].map((b) => b.textContent)`);
+        await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); if (!el) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "Kids: chamar os pais da sala 2"); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
+        await click("button[title*='Guardar esta mensagem']");
+        result.presetKept = await waitFor(async () => (await presetRows()).some((r) => r.message === "Kids: chamar os pais da sala 2"));
+        result.presetListed = await waitFor(async () => (await presetChips()).includes("Kids: chamar os pais da sala 2"));
+        // Saved twice (other case and spacing): refused, still one row.
+        await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "  kids:  CHAMAR os pais da sala 2 "); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
+        result.presetNoDup = await js(`(() => { const b = document.querySelector("button[title*='já está guardada']"); return Boolean(b) && b.classList.contains("is-on"); })()`);
+        // A click puts it in the field; the screens do not change.
+        await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, ""); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
+        await click(".kx-preset-t", "Kids: chamar os pais");
+        result.presetFills = await waitFor(() => js(`document.querySelector('.console input[placeholder="Aviso para as telas"]').value === "Kids: chamar os pais da sala 2"`)) && !live.get().alert;
+        await dblclick(".kx-preset-t", "Kids: chamar os pais");
+        result.presetShown = await waitFor(() => live.get().alert && live.get().alert.message === "Kids: chamar os pais da sala 2" && live.get().alert.type === "message");
+        live.call("alert.clear");
+        await click(".kx-preset-x", "");
+        result.presetDeleted = await waitFor(async () => !(await presetRows()).some((r) => r.message === "Kids: chamar os pais da sala 2"));
+        for (const r of await presetRows()) await js(`window.keryxDesktop.db.call("AlertPreset", "delete", [${JSON.stringify(r.id)}])`).catch(() => {});
+
         // The Bíblia, the rest: word search ignoring accents and case, ↑/↓
         // through the results and Enter projecting from one (its chapter);
         // a quoted phrase; Comparar side by side; a note and a favourite as
@@ -2109,7 +2133,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
-        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced
+        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
         && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch && result.paletteClear && result.paletteRefHere && result.paletteRefAdded
         && result.svOpen && result.svPresence && result.svPrepared && result.svNotes && result.svSent && result.svNotesOffAir && result.svReveal && result.svEdited && result.svSetlist && result.svClosed
