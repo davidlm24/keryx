@@ -159,12 +159,15 @@ screen actions (Tela preta, Logo, Limpar, Encerrar: one chip of glyphs since
 The live column's fixed height is the sum of its rows (the Programa's caption
 26 px and the Prévia's 24 px, each with 4 px under it, three 8 px gaps, the
 36 px player slot, the 28 px Próximo line: 146 px in all); the Programa is as
-wide as the column and that height allow, with the Prévia (46 % of the block) and *Enviar ao ar* docked directly
-under it. Spare height goes below, into the "Depois" list. The player slot is
-always reserved so starting a video never moves the monitors.
+wide as the column and that height allow, with the player slot under it and
+the Prévia (46 % of the block) and *Enviar ao ar* under the slot. Spare height
+goes below, into the "Depois" list. The player slot is always reserved so
+starting a video never moves the monitors.
 
-**Player (2026-10-07; position changed 2026-10-09):** one 36 px row in the
-slot under the Prévia (it was on top of the Programa), `bg-2`, built from the
+**Player (2026-10-07; position changed 2026-10-09 and 2026-10-12):** one 36 px
+row in the slot between the Programa and the Prévia (owner's decision
+2026-10-12: it drives what is on air, so it sits under the Programa; it was on
+top of the Programa, then under the Prévia), `bg-2`, built from the
 transport pieces (`kx-seek`, `kx-time`, `kx-meter`, bare icon buttons): title
 and kind, Anterior, −10, Tocar/Pausar (32 px, `bg-3`), +10, Próximo, Parar,
 time, seek, mute, a 2 px volume slider with a 10 px thumb, the L/R meters
