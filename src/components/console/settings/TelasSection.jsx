@@ -34,7 +34,7 @@ function SomBlock({ c }) {
 }
 
 const CATEGORY = Object.fromEntries(LAYOUT_CATEGORIES);
-const CAT_ICON = { palco: "monitor", pastor: "tablet", outro: "layers" };
+const CAT_ICON = { palco: "monitor", pastor: "tablet", publico: "projector", outro: "layers" };
 
 // Layouts das telas: the operator's layouts (src/lib/layouts.js), each
 // with the outputs using it; Novo, Editar (the LayoutEditor view, through
@@ -52,11 +52,11 @@ function LayoutsBlock({ c, rows, prefRows, onOpenLayout }) {
     };
     return (
         <>
-            <CfgKey k="Layouts das telas" className="listhead"><span className="kx-section">Layouts das telas <span className="kx-count">· o desenho do Palco e da Tela do pastor</span></span>
+            <CfgKey k="Layouts das telas" className="listhead"><span className="kx-section">Layouts das telas <span className="kx-count">· o desenho de cada saída</span></span>
                 <span style={{ flex: 1 }} />
                 <Btn small onClick={() => onOpenLayout?.("new")} title="Desenhar uma tela: onde ficam o relógio, o timer, a letra, a próxima…"><Icon name="plus" />Novo layout</Btn>
             </CfgKey>
-            {!layouts.length && <div className="listhead"><span className="kx-meta">Nenhum layout seu ainda. Cada saída tem a tela padrão e os modelos Palco e Pastor; Novo layout desenha uma tela do zero, e Ajustes › Layout, numa saída, duplica um modelo para editar.</span></div>}
+            {!layouts.length && <div className="listhead"><span className="kx-meta">Nenhum layout seu ainda. Cada saída tem a tela padrão e os modelos (Palco, Pastor, Projeção com timer no canto); Novo layout desenha uma tela do zero, e Ajustes › Layout, numa saída, duplica um modelo para editar.</span></div>}
             {layouts.map((l) => {
                 const uses = usedBy(l.id);
                 return (
@@ -213,7 +213,7 @@ export default function TelasSection({ c, onOpenLayout }) {
                         : <Btn onClick={() => apply(displays.open(o.key))}>Abrir</Btn>}
                     <CfgKey as="span" k="Ajustes" className="cfg-tune">
                         <Btn on={tuning === o.key} onClick={() => setTuning(tuning === o.key ? null : o.key)} aria-expanded={tuning === o.key}
-                            title={`Nome, ícone${PREF_OUTPUTS.includes(o.key) ? ", conteúdo, escala do texto, margens, logo e tema" : o.key === "/StageView" || o.key === "/PastorView" ? ", layout e escala do texto" : ""} de ${o.label}`}>
+                            title={`Nome, ícone${PREF_OUTPUTS.includes(o.key) ? ", conteúdo, layout, escala do texto, margens, logo e tema" : ", layout e escala do texto"} de ${o.label}`}>
                             <Icon name="sliders" />Ajustes
                         </Btn>
                     </CfgKey>

@@ -876,7 +876,7 @@
 /* ---- Layout editor (LayoutEditor.jsx): the canvas and its handles ---- */
 .console .le-stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: var(--space-3); container-type: size; }
 .console .le-screen { position: relative; width: min(100%, 1100px, calc((100cqh - 2 * var(--space-3)) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); isolation: isolate; background: var(--bg-0); }
-.console .le-screen.is-portrait { width: auto; height: min(100%, calc(100cqh - 2 * var(--space-3))); aspect-ratio: 3 / 4; }
+.console .le-use { width: auto; flex: none; }
 .console .le-screen > .kl { pointer-events: none; }
 .console .le-over { position: absolute; inset: 0; z-index: 5; }
 .console .le-hit { position: absolute; cursor: move; touch-action: none; user-select: none; }

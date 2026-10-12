@@ -13,7 +13,7 @@
 import { toolTime } from "../../shared/live-state.mjs";
 import { captionParts, airFor } from "./console/caption.js";
 
-export const LAYOUT_CATEGORIES = [["palco", "Palco"], ["pastor", "Pastor"], ["outro", "Outros"]];
+export const LAYOUT_CATEGORIES = [["palco", "Palco"], ["pastor", "Pastor"], ["publico", "Público"], ["outro", "Outros"]];
 // When an element shows: always, only with content on air (a song, a
 // passage, a text), only with a clock or timer on air, or only when nothing
 // is on air (an idle clock, "Aguardando projeção").
@@ -29,6 +29,7 @@ export const MAX_ELEMENTS = 40;
 // are one string drawn by the renderer (elementText); the others draw
 // themselves (a list, chords, the projection's monitor, dots, pictures).
 export const ELEMENT_TYPES = [
+    { id: "screen", name: "Projeção", icon: "projector", hint: "o que esta saída projeta (letras, Bíblia, mídia, avisos), em tela cheia ou numa parte; com um elemento Relógio ou timer no layout, o timer sai daqui e fica nele", w: 100, h: 100, size: 2, when: "always", props: {} },
     { id: "clock", name: "Hora", icon: "clock", hint: "a hora de agora", w: 20, h: 10, size: 6, when: "always", props: { seconds: false } },
     { id: "date", name: "Data", icon: "clock", hint: "sábado, 10 de outubro", w: 30, h: 6, size: 2.2, when: "always", props: {} },
     { id: "timer", name: "Relógio ou timer no ar", icon: "clock", hint: "o que a ferramenta no ar mostra: o tempo restante, o cronômetro, a hora, o texto livre", w: 30, h: 14, size: 8, when: "tool", props: {} },
@@ -166,7 +167,21 @@ export const FACTORY_LAYOUTS = [
             el("next_items", 65, 17, 32, 80, { size: 2.8, label: "Próximo", props: { count: 3 } }),
         ],
     }),
+    // The projector as it is, with a clock or timer on air in the corner
+    // instead of taking the whole screen (as Holyrics' panel).
+    normalizeLayout({
+        id: "factory:projecao", factory: true, name: "Projeção com timer no canto (modelo)", category: "publico",
+        background: { song_image: false },
+        elements: [
+            el("screen", 0, 0, 100, 100),
+            el("clock", 56, 70, 41, 7, { size: 2.6, align: "right", when: "tool", label: "Hora" }),
+            el("timer", 56, 78, 41, 17, { size: 8, weight: "bold", align: "right", valign: "middle", when: "tool", box: true }),
+        ],
+    }),
 ];
+// A layout with a timer element shows the tool (clock, timer, texto livre)
+// there, so its Projeção element leaves the full-screen tool layer out.
+export const layoutHasTimer = (layout) => (layout?.elements || []).some((e) => e.type === "timer");
 export const isFactoryId = (id) => typeof id === "string" && id.startsWith("factory:");
 
 // The layout an id names: a factory one, or a row (normalized); null when
@@ -271,7 +286,7 @@ export function elementHasContent(el, ctx, { logoUrl = "" } = {}) {
         case "progress": return ctx.slides.length > 1;
         case "logo": return Boolean(logoUrl);
         case "image": return Boolean(el.props.url);
-        default: return true; // next_items says "Fim da setlist."; monitor draws the idle look
+        default: return true; // next_items says "Fim da setlist."; monitor and screen draw the idle look
     }
 }
 

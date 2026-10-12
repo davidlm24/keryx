@@ -123,9 +123,10 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const railPage = (!railPref.content && SCREEN_PAGES.find((p) => p.key === railOut)) || null;
     const railDoc = useMemo(() => (railPage ? null : prefState(railOut, pdoc, railPref, railTheme)), [railPage, railOut, pdoc, railPref, railTheme]);
     const pastorDoc = useMemo(() => (railPage?.key === "/PastorView" && pdoc ? { ...pdoc, session: previewSession(cur?.session || null, prev?.args?.ref) } : null), [railPage, pdoc, cur?.session, prev]);
-    // A Palco/Pastor drawing a layout (Ajustes › Layout): the layout itself
-    // draws the prepared stage, as the output will.
-    const railLayout = useLayout(railPage ? railPref.layoutId : "");
+    // An output drawing a layout (Ajustes › Layout): the layout itself draws
+    // the prepared stage, as the output will (a renderer output's view is
+    // the layout's Projeção element).
+    const railLayout = useLayout(railPref.layoutId);
     const church = useChurch();
     const layoutDoc = pastorDoc || pdoc;
     const layoutNext = useMemo(() => (railLayout ? nextItems(items, layoutDoc?.session, 10) : []), [railLayout, items, layoutDoc?.session]);
@@ -166,12 +167,12 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                                 onClick={() => setRailOut(o.key)}><Icon name={o.icon} size={14} /><span className="t">{o.name}</span></button>
                         ))}
                     </div>
-                    <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
+                    <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railLayout ? null : railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         {prev && !railPage && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
                         {prev && !railPage && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A saída {railName} não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Ajustes da saída › Mostrar)</div>}
-                        {prev && railPage && railLayout && (
-                            <LayoutRenderer layout={railLayout} live={layoutDoc} nowMs={now} logoUrl={logoUrl} upcoming={layoutNext} hasService={items.length > 0} church={church} scale={railPref.scale} embed />
+                        {prev && railLayout && (railPage || railDoc) && (
+                            <LayoutRenderer layout={railLayout} live={layoutDoc} screenState={railPage ? undefined : railDoc} nowMs={now} logoUrl={logoUrl} upcoming={layoutNext} hasService={items.length > 0} church={church} scale={railPage ? railPref.scale : 1} embed />
                         )}
                         {prev && railPage?.key === "/StageView" && !railLayout && (pdoc?.content
                             ? <StageScreen content={pdoc.content} nowMs={now} embed opts={railPref.options} scale={railPref.scale} />

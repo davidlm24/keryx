@@ -33,6 +33,9 @@
 .kl-item span { flex: none; font-size: .7em; color: var(--fg-3); }
 .kl-item.is-next { background: var(--prev-tint); box-shadow: inset 3px 0 0 var(--prev); }
 .kl-empty { margin: 0; font-size: .8em; color: var(--fg-3); }
+/* The Projeção element: the output's own renderer filling the element. */
+.kl-screen { display: block; }
+.kl-screen > .ks.ks-fill { position: absolute; }
 .kl-monitor { container-type: size; }
 .kl-mon { position: relative; width: min(100cqw, calc(100cqh * 16 / 9)); aspect-ratio: 16 / 9; margin: auto; border-radius: 1.4cqmin; overflow: hidden; background: var(--screen-bg, #000); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; isolation: isolate; }
 .kl-al-left .kl-mon { margin-left: 0; } .kl-al-right .kl-mon { margin-right: 0; }

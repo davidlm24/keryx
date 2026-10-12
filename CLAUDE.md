@@ -189,14 +189,19 @@ placed in % of the screen, each with a rule for when it shows (`when`) and a
 text look; the pure module is `src/lib/layouts.js` (types, factory layouts
 `factory:palco` / `factory:pastor`, visibility, text, snapping; tested) and
 `LayoutRenderer` draws one on the output, the network screen, the Prévia rail
-and the editor alike. Palco and Pastor pick one with `OutputPref.layout_id`
-(`""` = the page's own StageScreen/PastorScreen, exactly as before; a deleted
-layout falls back to it); a network screen may override it with `?layout=<id>`.
-The editor is a console view (`LayoutEditor.jsx`, `?layout=`), opened from
-Telas e saídas › Layouts das telas or an output's Ajustes › Layout. A new kind
-of element is an entry in `ELEMENT_TYPES` plus its case in `elementText` or
-the renderer's `Body`. Public outputs (projector) keep themes; layouts for
-them, and generated backgrounds, are later steps. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked).
+and the editor alike. Every output but Transmissão picks one with
+`OutputPref.layout_id` (`""` = the page exactly as before: StageScreen /
+PastorScreen, or the bare renderer; a deleted layout falls back to it); a
+network screen may override it with `?layout=<id>`. On a renderer output
+(`OutputScreen`) the **Projeção** element draws the output's view
+(`prefState`: Mostrar, theme, scale still apply) and a layout with a *timer*
+element takes the `tool` layer out of it (`layoutHasTimer`), so a clock or
+timer on air sits in its element instead of filling the screen. The editor
+is a console view (`LayoutEditor.jsx`, `?layout=`), opened from Telas e
+saídas › Layouts das telas or an output's Ajustes › Layout; every screen is
+landscape. A new kind of element is an entry in `ELEMENT_TYPES` plus its case
+in `elementText` or the renderer's `Body`. Generated backgrounds are the next
+step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked).
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.

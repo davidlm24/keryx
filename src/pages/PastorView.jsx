@@ -9,7 +9,7 @@ import { useUpcoming } from "@/hooks/useUpcoming";
 import { pastorOptions } from "@/lib/outputPrefs";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 
-// The pastor's screen (a tablet on the pulpit, often upright): PastorScreen
+// The pastor's screen (a tablet on the pulpit, landscape like the others): PastorScreen
 // on the live state, with what comes next in the service's Setlist
 // (useUpcoming). A layout the operator drew (Ajustes › Layout, or ?layout=
 // on a network screen) is drawn by LayoutRenderer instead.

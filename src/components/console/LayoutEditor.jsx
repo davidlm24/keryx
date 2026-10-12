@@ -11,6 +11,7 @@ import {
 } from "@/lib/layouts";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
+import { PREF_OUTPUTS, outputLook } from "@/lib/outputPrefs";
 import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, SAMPLE_ITEMS } from "./settings/sample";
 
@@ -18,8 +19,9 @@ const DIMS = [["0.5", "Pouco"], ["0.72", "Médio"], ["0.9", "Muito"]];
 const COUNTS = [["1", "1"], ["2", "2"], ["3", "3"], ["5", "5"], ["8", "8"]];
 const HANDLES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-// The outputs a layout can be put on, from here.
-const USE_ON = [["/StageView", "Palco"], ["/PastorView", "Tela do pastor"]];
+// The outputs a layout can be put on, from here (every page with settings
+// but Transmissão), with their names (the operator's, else the factory's).
+const USE_ON = [...PREF_OUTPUTS, "/StageView", "/PastorView"];
 
 // The layout editor (Configurações › Telas e saídas › Layouts das telas),
 // a view inside the console: a 16:9 canvas where the operator places the
@@ -42,7 +44,6 @@ export default function LayoutEditor({ c, layoutId, media = [], onClose, onSaved
     const [adding, setAdding] = useState(false);
     const [confirm, setConfirm] = useState(null); // "delete" | "discard"
     const [busy, setBusy] = useState(false);
-    const [portrait, setPortrait] = useState(false);
     const [source, setSource] = useState("auto"); // "auto" | "sample"
     const [guides, setGuides] = useState([]);
     const [pickImage, setPickImage] = useState(false);
@@ -112,8 +113,9 @@ export default function LayoutEditor({ c, layoutId, media = [], onClose, onSaved
         if (dirty && confirm !== "discard") { setConfirm("discard"); c.say("Há mudanças não salvas · clique de novo (ou Esc) para descartar."); return; }
         onClose();
     };
-    // Usar no Palco / na Tela do pastor: this layout on that output (the row
-    // updated or created), saving first when needed.
+    // Usar em…: this layout on that output (the row updated or created),
+    // saving first when needed.
+    const nameOfOutput = (path) => outputLook(path, prefRows.find((r) => r.screen_path === path) || null).name;
     const putOn = async (path) => {
         if (!saved || dirty) { await save(); }
         const id = saved?.id || draft.id;
@@ -122,10 +124,10 @@ export default function LayoutEditor({ c, layoutId, media = [], onClose, onSaved
             const row = prefRows.find((r) => r.screen_path === path);
             if (row) await keryx.entities.OutputPref.update(row.id, { layout_id: id });
             else await keryx.entities.OutputPref.create({ screen_path: path, layout_id: id });
-            c.say(`${USE_ON.find(([p]) => p === path)[1]} agora desenha "${draft.name}".`);
+            c.say(`${nameOfOutput(path)} agora desenha "${draft.name}".`);
         } catch (err) { c.say(err?.message || "Não foi possível mudar a saída."); }
     };
-    const usedOn = USE_ON.filter(([p]) => saved && prefRows.some((r) => r.screen_path === p && r.layout_id === saved.id)).map(([, n]) => n);
+    const usedOn = USE_ON.filter((p) => saved && prefRows.some((r) => r.screen_path === p && r.layout_id === saved.id));
 
     // ---- The canvas: pointer moves in % of the screen box ----
     const pct = (e) => {
@@ -322,12 +324,11 @@ export default function LayoutEditor({ c, layoutId, media = [], onClose, onSaved
             </div>
             <div className="kx-gap" />
             <div className="col center">
-                <Panel title={<>Tela <span className="kx-count">· {liveOn && source !== "sample" ? "no ar agora" : "exemplo"} · {portrait ? "em pé" : "16:9"}</span></>} actions={<>
-                    <Seg small label="Orientação" value={portrait ? "p" : "l"} options={[["l", "Deitado"], ["p", "Em pé"]]} onChange={(v) => setPortrait(v === "p")} />
+                <Panel title={<>Tela <span className="kx-count">· {liveOn && source !== "sample" ? "no ar agora" : "exemplo"} · 16:9</span></>} actions={<>
                     <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="le-stage">
-                        <div ref={screenRef} className={`le-screen ${portrait ? "is-portrait" : ""}`} onPointerDown={() => setSel(null)}>
+                        <div ref={screenRef} className="le-screen" onPointerDown={() => setSel(null)}>
                             <LayoutRenderer layout={draft} live={live} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed ghost />
                             <div className="le-over" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
                                 {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}
@@ -343,7 +344,11 @@ export default function LayoutEditor({ c, layoutId, media = [], onClose, onSaved
                     <div className="listhead nv-note">
                         <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã. Elementos escondidos agora aparecem esmaecidos.</span>
                         <span style={{ flex: 1 }} />
-                        {USE_ON.map(([path, name]) => <Btn key={path} kind="outline" disabled={busy || usedOn.includes(name)} onClick={() => putOn(path)} title={usedOn.includes(name) ? `${name} já usa este layout` : `Salva e põe este layout em ${name}`}>{usedOn.includes(name) ? `Em uso: ${name}` : `Usar: ${name}`}</Btn>)}
+                        {usedOn.length > 0 && <span className="kx-meta">Em uso: {usedOn.map(nameOfOutput).join(", ")}</span>}
+                        <select className="pl-input le-use" value="" disabled={busy} onChange={(e) => { if (e.target.value) putOn(e.target.value); }} aria-label="Usar este layout numa saída" title="Salva e põe este layout na saída escolhida">
+                            <option value="">Usar em…</option>
+                            {USE_ON.filter((p) => !usedOn.includes(p)).map((p) => <option key={p} value={p}>{nameOfOutput(p)}</option>)}
+                        </select>
                     </div>
                 </Panel>
             </div>

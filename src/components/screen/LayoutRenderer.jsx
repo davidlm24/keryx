@@ -4,7 +4,7 @@ import ChordedLines, { chordedOf, Transpose } from "@/components/network/Chorded
 import { transposeChords } from "@/utils/chordTranspose";
 import { typeLabel } from "@/lib/console/setlist";
 import { FONT_MAP } from "@/lib/deviceStyles";
-import { layoutContext, elementVisible, elementText, elementItems, elementHasContent, TEXT_TYPES, typeOf } from "@/lib/layouts";
+import { layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, TEXT_TYPES, typeOf } from "@/lib/layouts";
 import "@/components/network/net.css";
 import "./layout.css";
 
@@ -16,9 +16,16 @@ const FONT = { sans: FONT_MAP.sans, serif: FONT_MAP.serif, mono: 'ui-monospace, 
 // editor's canvas (`ghost`: elements hidden by their rule are drawn faint,
 // so they can be picked). Sized in container units from its own box, so
 // every surface shows the same picture in proportion; `scale` is the
-// output's Escala do texto. `children` go on top (the alert banner).
-export default function LayoutRenderer({ layout, live, nowMs, logoUrl = "", upcoming = [], hasService = false, church = null, scale = 1, embed = false, ghost = false, children }) {
+// output's Escala do texto. `children` go on top (the alert banner). A
+// Projeção element draws `screenState` (the output's view of the live state,
+// src/lib/outputPrefs.js prefState; the live state itself by default) with
+// ScreenRenderer, playing sound when `audio`; with a timer element in the
+// layout it leaves the full-screen tool layer out (the timer is in the
+// element instead).
+export default function LayoutRenderer({ layout, live, screenState, nowMs, logoUrl = "", upcoming = [], hasService = false, church = null, scale = 1, embed = false, ghost = false, audio = false, children }) {
     const ctx = useMemo(() => layoutContext({ live, now: nowMs, upcoming, hasService, church }), [live, nowMs, upcoming, hasService, church]);
+    const base = screenState === undefined ? live : screenState;
+    const screen = useMemo(() => (base?.tool && layoutHasTimer(layout) ? { ...base, tool: null } : base), [base, layout]);
     // A new song starts untransposed (the Cifra and the chorded words).
     const [transpose, setTranspose] = useState(0);
     const songKey = ctx.content?.startedAt ?? null;
@@ -34,19 +41,19 @@ export default function LayoutRenderer({ layout, live, nowMs, logoUrl = "", upco
             {layout.elements.map((el) => {
                 const shown = elementVisible(el, ctx);
                 if (!shown && !ghost) return null;
-                return <Element key={el.id} el={el} ctx={ctx} shown={shown} ghost={ghost} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} />;
+                return <Element key={el.id} el={el} ctx={ctx} shown={shown} ghost={ghost} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
             })}
             {children}
         </div>
     );
 }
 
-function Element({ el, ctx, shown, ghost, logoUrl, embed, transpose, setTranspose }) {
+function Element({ el, ctx, shown, ghost, logoUrl, embed, transpose, setTranspose, screen, audio }) {
     // Nothing to say: nothing drawn (no empty box), unless the editor wants
     // to see where the element is.
     const has = elementHasContent(el, ctx, { logoUrl });
     if (!has && !ghost) return null;
-    const body = !has ? null : TEXT_TYPES.has(el.type) ? <div className="kl-v">{elementText(el, ctx)}</div> : <Body el={el} ctx={ctx} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} />;
+    const body = !has ? null : TEXT_TYPES.has(el.type) ? <div className="kl-v">{elementText(el, ctx)}</div> : <Body el={el} ctx={ctx} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
     const style = {
         left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%`,
         "--s": el.size, fontFamily: FONT[el.font] || FONT.sans, fontWeight: el.weight === "bold" ? 700 : 400,
@@ -60,9 +67,11 @@ function Element({ el, ctx, shown, ghost, logoUrl, embed, transpose, setTranspos
     );
 }
 
-function Body({ el, ctx, logoUrl, embed, transpose, setTranspose }) {
+function Body({ el, ctx, logoUrl, embed, transpose, setTranspose, screen, audio }) {
     const song = ctx.song || {};
     switch (el.type) {
+        case "screen":
+            return <ScreenRenderer fill state={screen} now={ctx.now} logoUrl={logoUrl} preview={embed} motion={embed} audio={audio && !embed} />;
         case "current": {
             const chorded = el.props.chords ? chordedOf(song, ctx.index, ctx.current.text) : null;
             return (

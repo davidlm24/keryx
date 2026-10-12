@@ -249,14 +249,21 @@ The editor is a view inside the console, built like the aviso editor: the
 elements and the selected one's look in the left panel (400 px), the canvas
 in the centre drawn by the renderer itself (what is on air, or a sample),
 with the brand colour for the selection, its eight handles and the magnet's
-guide lines; *Deitado / Em pé* previews an upright tablet. Elements hidden
+guide lines; every screen is landscape (owner decision: the pastor's tablet
+too). Elements hidden
 right now (by their rule, or with nothing to say) are drawn at 35 % with a
 dashed outline so they can still be picked. Each element keeps the network
 screens' look (`net.css` chips, `kx` tokens, Geist, cqmin sizes), so a
-layout and the factory Palco read as one family. *Usar: Palco / Tela do
-pastor* under the canvas saves and assigns in one go. Layouts live in
-Telas e saídas (a list with Editar, Duplicar, Excluir) and in each output's
-Ajustes › Layout; the factory layouts are models that open as a copy.
+layout and the factory Palco read as one family. *Usar em…* under the canvas
+saves and assigns in one go. Layouts live in Telas e saídas (a list with
+Editar, Duplicar, Excluir) and in each output's Ajustes › Layout; the factory
+layouts are models that open as a copy. The public outputs (Projeção,
+Letras, Vídeo, Comunicação) take layouts too: the **Projeção** element is
+the output's own view (ScreenRenderer, with Mostrar, theme, scale), full
+screen or in a part, and a layout with a *Relógio ou timer no ar* element
+takes the tool out of the Projeção element, so the timer sits in a corner
+over the words instead of filling the screen (the Holyrics panel the owner
+showed); the model "Projeção com timer no canto" does exactly that.
 
 ## Histórico: Preparar · Verificar · Apresentar (canvas artboards 8–15, 2026-10-07)
 

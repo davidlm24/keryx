@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../shared/live-state.mjs";
 import {
     ELEMENT_TYPES, TEXT_TYPES, FACTORY_LAYOUTS, normalizeElement, normalizeLayout, newElement, newLayout, duplicateLayout,
-    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, snapRect, resizeRect, moveRect, reorderElement, formatSpan,
+    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, snapRect, resizeRect, moveRect, reorderElement, formatSpan,
 } from "./layouts.js";
 
 const T0 = Date.UTC(2026, 9, 12, 19, 30, 0);
@@ -14,10 +14,10 @@ const song = (now = T0) => applyOp(emptyState(now), "content.show", {
 
 test("element types: every text type exists and the factory layouts are valid", () => {
     for (const id of TEXT_TYPES) assert.ok(ELEMENT_TYPES.some((t) => t.id === id), id);
-    assert.equal(FACTORY_LAYOUTS.length, 2);
+    assert.equal(FACTORY_LAYOUTS.length, 3);
     for (const l of FACTORY_LAYOUTS) {
         assert.ok(l.factory && l.id.startsWith("factory:"));
-        assert.ok(l.elements.length > 3);
+        assert.ok(l.elements.length >= 3);
         for (const e of l.elements) assert.ok(e.x + e.w <= 100 && e.y + e.h <= 100, `${l.id} ${e.type} fits`);
     }
 });
@@ -56,7 +56,7 @@ test("findLayout and layoutChoices", () => {
     assert.equal(findLayout("factory:palco", rows).factory, true);
     assert.equal(findLayout("r2", rows).name, "Zeta");
     assert.equal(findLayout("gone", rows), null);
-    assert.deepEqual(layoutChoices(rows).map((c) => c.id), ["", "factory:palco", "factory:pastor", "r1", "r2"]);
+    assert.deepEqual(layoutChoices(rows).map((c) => c.id), ["", "factory:palco", "factory:pastor", "factory:projecao", "r1", "r2"]);
 });
 
 test("layoutContext reads the live state", () => {
@@ -160,4 +160,10 @@ test("elementHasContent: empty elements draw nothing", () => {
     assert.ok(has("logo", off, {}, { logoUrl: "x" }) && !has("logo", off));
     assert.ok(has("image", off, { url: "http://x" }) && !has("image", off));
     assert.ok(has("next_items", off) && has("monitor", off));
+});
+
+test("layoutHasTimer and the screen element", () => {
+    assert.ok(layoutHasTimer(findLayout("factory:projecao")));
+    assert.ok(!layoutHasTimer(findLayout("factory:pastor")));
+    assert.ok(elementHasContent(normalizeElement({ type: "screen" }), layoutContext({ live: null, now: T0 })));
 });
