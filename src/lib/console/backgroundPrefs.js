@@ -42,7 +42,7 @@ export function backgroundList({ bundled = [], images = [], videos = [], prefs =
             favorite: Boolean(pref?.favorite),
         };
     };
-    return [
+    const all = [
         ...bundled.map((b, i) => entry(`bundled:${b.id}`, b.url, `Fundo ${i + 1}`, b.category || "Outros", "image")),
         ...images.map((m) => entry(sourceOf(m.url), m.url, m.title || "Imagem", OWN_IMAGES, "image")),
         // The church's own clips (Mídia, local files): the Fundo layer plays
@@ -50,6 +50,12 @@ export function backgroundList({ bundled = [], images = [], videos = [], prefs =
         // background, which only take pictures.
         ...videos.map((m) => entry(sourceOf(m.url), m.url, m.title || "Vídeo", OWN_VIDEOS, "video")),
     ];
+    // One entry per source: a Mídia image that is a bundled file (added from
+    // the factory list, or by its Unsplash URL) or listed twice is the same
+    // background, and its settings are keyed by that source. The first wins,
+    // so the factory one keeps its category.
+    const seen = new Set();
+    return all.filter((b) => !seen.has(b.source) && seen.add(b.source));
 }
 
 // What a gallery offers: not hidden, favourites first (otherwise in order).
