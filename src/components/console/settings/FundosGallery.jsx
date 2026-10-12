@@ -3,7 +3,7 @@ import { importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { Btn, Seg } from "../kx";
 import Icon from "../Icon";
-import { FormRow } from "./parts";
+import { FormRow, CfgKey } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { CATEGORY_SUGGESTIONS, DIM_PCT, BLUR_PX, categoriesOf } from "@/lib/console/backgroundPrefs";
@@ -61,13 +61,13 @@ export default function FundosGallery({ c, media, standby, onStandby }) {
     const filters = [[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Ocultos · ${hiddenCount}`]] : [])];
     return (
         <div className="fg">
-            <div className="fg-h">
+            <CfgKey k="Fundos" className="fg-h">
                 <span className="kx-section">Fundos</span>
                 <span className="kx-meta">toque num fundo para dar nome, categoria, escurecer e desfoque; vale nas galerias de músicas, avisos, Camadas e fundo de espera</span>
                 <span style={{ flex: 1 }} />
                 <Btn small disabled={uploading} onClick={() => fileRef.current?.click()}>{uploading ? "Enviando…" : "Enviar do computador…"}</Btn>
                 <input ref={fileRef} type="file" multiple hidden accept="image/*,.gif,video/mp4,video/webm" onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; if (files.length) upload(files); }} />
-            </div>
+            </CfgKey>
             <div className="fg-filters" role="radiogroup" aria-label="Categoria">
                 {filters.map(([k, label]) => (
                     <button type="button" key={k} role="radio" aria-checked={filter === k} className={`kx-t fg-chip ${filter === k ? "is-on" : ""}`} onClick={() => setFilter(k)}>{label}</button>

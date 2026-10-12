@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
-import { useBridge, usePoll, Switch, desktopOnly } from "./parts";
+import { useBridge, usePoll, Switch, desktopOnly, CfgKey } from "./parts";
 import { useLibrary } from "../useConsoleData";
 import OutputPrefCard from "./OutputPrefCard";
 import { PREF_OUTPUTS, normalizePref, isDefaultPref, outputLook } from "@/lib/outputPrefs";
@@ -52,7 +52,7 @@ export default function TelasSection({ c }) {
 
     return (
         <>
-            <div className="diagram">
+            <CfgKey k="Identificar telas" className="diagram">
                 {list.map((d, i) => {
                     const w = Math.round(80 + 160 * ((d.bounds?.width || 1920) / widest));
                     const shows = onDisplay(d);
@@ -68,8 +68,8 @@ export default function TelasSection({ c }) {
                 })}
                 <span style={{ flex: 1 }} />
                 <Btn onClick={() => displays.identify()} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
-            </div>
-            <div className="listhead"><span className="kx-section">Saídas <span className="kx-count">· cada saída mostra um conteúdo numa tela</span></span></div>
+            </CfgKey>
+            <CfgKey k="Saídas" className="listhead"><span className="kx-section">Saídas <span className="kx-count">· cada saída mostra um conteúdo numa tela</span></span></CfgKey>
             {outputs.map((raw) => {
                 const lk = outputLook(raw.key, prefRow(raw.key));
                 const o = { ...raw, label: lk.custom || raw.label };
@@ -88,12 +88,12 @@ export default function TelasSection({ c }) {
                     {o.open
                         ? <><Btn onClick={() => apply(displays.open(o.key))} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn onClick={() => apply(displays.close(o.key))}>Fechar</Btn></>
                         : <Btn onClick={() => apply(displays.open(o.key))}>Abrir</Btn>}
-                    <span className="cfg-tune">
+                    <CfgKey as="span" k="Ajustes" className="cfg-tune">
                         <Btn on={tuning === o.key} onClick={() => setTuning(tuning === o.key ? null : o.key)} aria-expanded={tuning === o.key}
                             title={`Nome, ícone${PREF_OUTPUTS.includes(o.key) ? ", conteúdo, escala do texto, margens, logo e tema" : ""} de ${o.label}`}>
                             <Icon name="sliders" />Ajustes
                         </Btn>
-                    </span>
+                    </CfgKey>
                 </div>
                 {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} say={c.say} c={c} />}
                 </React.Fragment>

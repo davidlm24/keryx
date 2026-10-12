@@ -1589,6 +1589,20 @@ async function checkConsole(webContents, { live, outputs }) {
         }
         result.cfgAll = Object.values(result.cfgSections).every(Boolean);
         result.shotCfg = await shot("configuracoes");
+        // The search beside the title: "/" goes there, words without accents
+        // find a setting, Enter opens its section with the row lit, Esc clears.
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("/");
+        result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .cfg-dialog-h .cfg-search input')"), 3000);
+        await type("fundo de espera");
+        result.cfgSearchHits = await waitFor(() => js("[...document.querySelectorAll('.console .cfg-results .kx-row-title')].some((n) => n.textContent === 'Fundo de espera padrão')"), 3000);
+        await press("Escape");
+        result.cfgSearchClear = await waitFor(() => js("Boolean(document.querySelector('.console .cfg-dialog')) && document.querySelector('.console .cfg-search input').value === '' && !document.querySelector('.console .cfg-results')"), 3000);
+        await type("pin");
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg-results .kx-row'))"), 3000);
+        await press("Enter");
+        result.cfgSearchJump = await waitFor(() => js("(document.querySelector('.console .cfg .kx-panel-h .kx-section') || {}).textContent === 'Telas na rede' && Boolean(document.querySelector('.console .cfg [data-cfg-k=\"PIN\"].is-flash'))"), 5000);
+        if (!(result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump)) result.cfgSearchDiag = await js("document.querySelector('.console .cfg-dialog').innerText.slice(0, 300)");
         await click(".console .cfg-dialog .kx-row", "Telas e saídas");
         result.cfgOutputs = await waitText(webContents, "Projeção principal");
         // Nome por saída: renaming Projeção reaches its row and the Prévia's
@@ -2084,7 +2098,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

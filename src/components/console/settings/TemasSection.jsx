@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
 import { Btn, Seg, Empty } from "../kx";
-import { FormRow } from "./parts";
+import { FormRow, CfgKey } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import WallpaperPicker from "../WallpaperPicker";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
@@ -129,7 +129,7 @@ export default function TemasSection({ c }) {
 
     return (
         <>
-            <div className="listhead"><span className="kx-section">Temas <span className="kx-count">· texto e fundo prontos, aplicados na hora em Camadas</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => setEditing("new")}>Novo tema…</Btn></div>
+            <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· texto e fundo prontos, aplicados na hora em Camadas</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => setEditing("new")}>Novo tema…</Btn></CfgKey>
             {editing === "new" && <ThemeEditor row={null} c={c} media={media} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
             {!themes.length && editing !== "new" && <Empty icon="palette" title="Nenhum tema ainda">Crie um em "Novo tema…", ou ajuste o texto em Camadas e use "Salvar como novo".</Empty>}
             {themes.map((t) => (
