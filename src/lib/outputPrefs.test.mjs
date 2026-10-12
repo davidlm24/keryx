@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir } from "./outputPrefs.js";
+import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -80,6 +80,15 @@ test("the Palco's and the Pastor's own switches: missing keys are the screen as 
     assert.equal(pastorOptions(normalizePref({ options: { next_count: 0 } })).next_count, 0, "0 is a choice (hide the list)");
     assert.deepEqual(normalizePref({ options: ["x"] }).options, {}, "an array is not options");
     assert.ok(!isDefaultPref(normalizePref({ options: { chords: false } })), "an option counts as an adjustment");
+});
+
+test("Transmissão: the band's options, clamped; none = the band as always", () => {
+    assert.deepEqual(streamOptions(null), STREAM_DEFAULTS);
+    assert.deepEqual(streamOptions({ options: { band: "#FF0000", band_opacity: 2, size: "l", position: "top", show_ref: false } }),
+        { band: "#ff0000", band_opacity: 1, size: "l", position: "top", show_ref: false });
+    assert.deepEqual(streamOptions({ options: { band: "red", band_opacity: "x", size: "huge", position: "left" } }), STREAM_DEFAULTS);
+    assert.equal(bandBackground(STREAM_DEFAULTS), "rgba(10, 10, 12, 0.78)");
+    assert.equal(bandBackground({ band: "#ffffff", band_opacity: 0 }), "rgba(255, 255, 255, 0)");
 });
 
 // Mostrar (2026-10-12): kinds an output leaves out.

@@ -22,11 +22,15 @@ function createLive({ file, rules, log = console.warn, now = Date.now, saveDelay
     let dirty = false;
 
     let state;
+    // fresh: nothing usable was saved (a new install, a lost file); main
+    // seeds it with the church's look (liveSeed.cjs).
+    let fresh = false;
     try {
         state = rules.restoreState(JSON.parse(fs.readFileSync(file, "utf8")), now());
     } catch (err) {
         if (err.code !== "ENOENT") log(`[keryx-live] ${file} ilegível, começando vazio: ${err.message}`);
         state = rules.emptyState(now());
+        fresh = true;
     }
 
     function save() {
@@ -65,6 +69,7 @@ function createLive({ file, rules, log = console.warn, now = Date.now, saveDelay
     }
 
     return {
+        fresh,
         get: snapshot,
         call,
         onChange(listener) {

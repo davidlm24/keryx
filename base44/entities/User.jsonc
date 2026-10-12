@@ -96,6 +96,25 @@
       "items": { "type": "string" },
       "description": "Modulos do console ocultos em Ver (lib, slides, camadas, roteiro, tl). Nulo = todos visiveis"
     },
+    "logo_corner": {
+      "type": "string",
+      "enum": ["top-left", "top-right", "bottom-left", "bottom-right"],
+      "description": "Logo nas telas: o canto (Configuracoes › Igreja). Nulo = embaixo a direita"
+    },
+    "logo_size": {
+      "type": "string",
+      "enum": ["small", "medium", "large"],
+      "description": "Logo nas telas: o tamanho. Nulo = medio"
+    },
+    "logo_opacity": {
+      "type": "number",
+      "description": "Logo nas telas: opacidade, 0.2 a 1. Nulo = 1"
+    },
+    "idle_mode": {
+      "type": "string",
+      "enum": ["logo", "black", "background"],
+      "description": "Tela ociosa da igreja (o que as telas mostram sem nada no ar), para um estado ao vivo novo. Nulo = logo"
+    },
     "standby_background": {
       "type": "string",
       "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido)"

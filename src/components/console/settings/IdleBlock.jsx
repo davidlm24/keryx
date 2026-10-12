@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Btn, Seg } from "../kx";
 import { FormRow } from "./parts";
 import WallpaperPicker from "../WallpaperPicker";
+import { updateUser } from "@/hooks/useUser";
 
 // Tela ociosa: what the screens show when nothing is on air (the live
 // state's idle look: logo, black or a background). It only changes an idle
@@ -10,7 +11,10 @@ export default function IdleBlock({ c, media }) {
     const [picking, setPicking] = useState(false);
     const idle = c.live?.idle || "logo";
     const idleUrl = c.live?.idleUrl || null;
-    const setIdle = (mode, url) => c.liveOp("idle.set", url ? { mode, url } : { mode }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."));
+    const setIdle = (mode, url) => {
+        updateUser({ idle_mode: mode }).catch(() => {});
+        return c.liveOp("idle.set", url ? { mode, url } : { mode }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."));
+    };
     return (
         <>
             <FormRow k="Tela ociosa">
