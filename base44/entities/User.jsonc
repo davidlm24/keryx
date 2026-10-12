@@ -30,6 +30,11 @@
       "type": "integer",
       "description": "Duracao padrao da transicao entre slides, em milissegundos (120 a 600)"
     },
+    "show_forecast": {
+      "type": "boolean",
+      "default": false,
+      "description": "Mostrar a previsao do fim do culto e o atraso (termina ~, passou N min): so para igrejas que planejam o culto com duracoes"
+    },
     "standby_background": {
       "type": "string",
       "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido)"

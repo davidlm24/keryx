@@ -14,7 +14,7 @@ const minutesOf = (hhmm) => { const [h, m] = String(hhmm).split(":").map(Number)
 // job, not repeated here. A click on a block prepares the item; going to it
 // is explicit ("Ir" in the Setlist, or Enter). Opened with no service, or a
 // service with no items, it says so instead of opening onto nothing.
-export default function Timeline({ service, items, airItemId, prevItemId, log, now, open, onToggle, onPrepare }) {
+export default function Timeline({ service, items, airItemId, prevItemId, log, now, open, onToggle, onPrepare, forecast = false }) {
     const times = plannedTimes(service, items);
     const airIdx = items.findIndex((i) => i.id === airItemId);
     const airItem = airIdx >= 0 ? items[airIdx] : null;
@@ -38,13 +38,13 @@ export default function Timeline({ service, items, airItemId, prevItemId, log, n
                 {!service && <span className="kx-meta">nenhum culto escolhido</span>}
                 {service && !timing.count && <span className="kx-meta">sem itens</span>}
                 {timing.count > 0 && <span className="kx-tl-v">{timing.done} de {timing.count} {timing.count === 1 ? "item" : "itens"}</span>}
-                {timing.forecastEnd != null && (
+                {forecast && timing.forecastEnd != null && (
                     <span className="kx-meta" title={late ? `Previsto ${clock(timing.plannedEnd)}; no ritmo de agora, ${clock(timing.forecastEnd)}` : "Pelo planejado"}>
                         termina {late ? `~${clock(timing.forecastEnd)}` : clock(timing.forecastEnd)}{late ? ` · previsto ${clock(timing.plannedEnd)}` : ""}
                     </span>
                 )}
                 <span style={{ flex: 1 }} />
-                <span className={late > 0 ? "kx-warn" : "kx-meta"}>{lateText}</span>
+                {forecast && <span className={late > 0 ? "kx-warn" : "kx-meta"}>{lateText}</span>}
                 <IconBtn name={open ? "chevron-down" : "collapse"} title={open ? "Recolher a linha do tempo" : "Expandir a linha do tempo"} onClick={onToggle} />
             </div>
             {open && !service && (
