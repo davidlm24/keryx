@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useChurch } from "@/hooks/useChurch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
@@ -27,6 +28,7 @@ const today = () => { const d = new Date(); const two = (n) => String(n).padStar
 // content), duplicating the last culto, PDF. Everything saves as it changes;
 // nothing here touches the screens.
 export default function ServicePlanner({ c, services, serviceId, setServiceId, data, focusId = null, onClose }) {
+    const church = useChurch();
     const client = useQueryClient();
     const svc = services.find((s) => s.id === serviceId) || null;
     const itemsKey = ["console", "serviceItems", serviceId];
@@ -256,7 +258,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         {pop === "saveTpl" && <div className="kx-pop pl-pop"><div className="pl-pad"><Field icon={null} value={tplName} onChange={setTplName} placeholder="Nome do modelo" onKeyDown={(e) => { if (e.key === "Enter") saveTemplate(); }} /><Btn small kind="outline" onClick={saveTemplate}>Salvar modelo</Btn></div></div>}
                     </span>
                     <Btn small disabled={!previous} onClick={duplicatePrevious} title={previous ? `Copiar a setlist de ${previous.title}` : "Não há culto anterior"}>Duplicar o culto anterior</Btn>
-                    <Btn small kind="outline" disabled={!items.length} onClick={() => run(exportServiceToPdf({ ...svc, ...form }, items), "PDF gerado.")}>Exportar PDF</Btn>
+                    <Btn small kind="outline" disabled={!items.length} onClick={() => run(exportServiceToPdf({ ...svc, ...form }, items, church), "PDF gerado.")}>Exportar PDF</Btn>
                 </span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="pl-list">
                         {!items.length && <Empty icon="list" title="Setlist vazia">Use os botões abaixo, um modelo, ou duplique o culto anterior.</Empty>}

@@ -15,7 +15,7 @@ const span = (s) => (s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor((s % 
 // running; and the next items (`upcoming`). The page (PastorView) feeds it
 // the live state; the console's Prévia feeds it the prepared stage
 // (`embed`: inside a monitor).
-export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasService = false, embed = false, opts = {}, scale = 1 }) {
+export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasService = false, embed = false, opts = {}, scale = 1, church = null }) {
     const now = new Date(nowMs);
     // Which parts this screen shows (Configurações › Telas e saídas ›
     // Ajustes); missing keys mean the screen as it always was.
@@ -34,8 +34,8 @@ export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasServ
           <div className="net-pastor">
             <header className="np-h">
                 <div className="np-who">
-                    <b>Tela do pastor</b>
-                    <span>{upperFirst(now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }))}</span>
+                    <b>{church?.name || "Tela do pastor"}</b>
+                    <span>{upperFirst(now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }))}{church?.city ? ` · ${church.city}` : ""}</span>
                 </div>
                 {show.clock && <div className="np-time">
                     <b>{hhmm(now)}</b>

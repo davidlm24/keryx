@@ -9,6 +9,7 @@ import PastorScreen from "@/components/network/PastorScreen";
 import { mainLayer } from "@shared/live-state.mjs";
 import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, showKindsFor } from "@/lib/outputPrefs";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
+import { useChurch } from "@/hooks/useChurch";
 
 const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], ["125", "125%"], ["140", "140%"]];
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
@@ -23,6 +24,7 @@ const sameJson = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
 // network screen showing the same page) follows it live.
 export default function OutputPrefCard({ output, row, themes, c }) {
     const say = c.say;
+    const church = useChurch();
     const pref = normalizePref(row);
     // The first change creates the row; changes made before it comes back
     // update that one instead of creating another. A failed create is
@@ -84,7 +86,7 @@ export default function OutputPrefCard({ output, row, themes, c }) {
     const preview = isStage && !pref.content
         ? <div className="cfg-prev"><StageScreen content={prevLive.content} nowMs={now} embed opts={pref.options} scale={pref.scale} /></div>
         : isPastor && !pref.content
-            ? <div className="cfg-prev cfg-prev-pastor"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} /></div>
+            ? <div className="cfg-prev cfg-prev-pastor"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} church={church} /></div>
             : <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={prefState(output.key, prevLive, pref, themeGone ? null : themes.find((t) => t.id === pref.themeId) || null)} now={now} preview audio={false} /></div></div>;
 
     return (
