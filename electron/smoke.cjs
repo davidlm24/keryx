@@ -1260,6 +1260,14 @@ async function checkConsole(webContents, { live, outputs }) {
             return rows.length === 1 && rows[0].type === "video";
         }, 6000);
         result.ytListed = await waitText(webContents, "Vídeo do YouTube");
+        // The new row lands at the top and the list re-reads the files on
+        // disk: click after the rows stop moving (a click mid-shift hit the
+        // YouTube row and put it on air instead of the tone).
+        {
+            const rowsAt = () => js(`[...document.querySelectorAll(".kx-row")].map((n) => n.textContent.slice(0, 24) + Math.round(n.getBoundingClientRect().top)).join("|")`);
+            let prev = await rowsAt();
+            for (let i = 0; i < 20; i++) { await sleep(250); const now = await rowsAt(); if (now === prev) break; prev = now; }
+        }
         await click(".kx-row", "Tom de teste");
         result.audioPrepared = await waitCap(PREV, "Tom de teste");
         await press("Enter");
@@ -1979,6 +1987,32 @@ async function checkConsole(webContents, { live, outputs }) {
         result.presetDeleted = await waitFor(async () => !(await presetRows()).some((r) => r.message === "Kids: chamar os pais da sala 2"));
         for (const r of await presetRows()) await js(`window.keryxDesktop.db.call("AlertPreset", "delete", [${JSON.stringify(r.id)}])`).catch(() => {});
 
+        // Timers prontos (TimerPreset): the star keeps the minutes (the five
+        // built-in ones are not rows); a click prepares the timer, a double
+        // click sends it, +5 min moves its end, the cross deletes the time.
+        const timerRows = async () => ((await js(`window.keryxDesktop.db.call("TimerPreset", "list", [])`)).data || []);
+        if (!(await js(`Boolean(document.querySelector(".kx-timer-chip"))`))) await click(".kx-tool", "Timer");
+        result.timerChips = await waitFor(() => js(`[...document.querySelectorAll(".kx-timer-chip .kx-preset-t")].map((b) => b.textContent).join(",") === "5 min,10 min,15 min,30 min,1 h"`));
+        await js(`(() => { const el = document.querySelector('input[aria-label="Minutos"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "7"); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
+        await click(".kx-tool-pick button.kx-btn-icon");
+        result.timerKept = await waitFor(async () => (await timerRows()).some((r) => r.minutes === 7));
+        result.timerListed = await waitFor(() => js(`[...document.querySelectorAll(".kx-timer-chip .kx-preset-t")].map((b) => b.textContent).join(",") === "5 min,7 min,10 min,15 min,30 min,1 h"`));
+        await click(".kx-timer-chip .kx-preset-t", "7 min");
+        result.timerPrepared = await waitCap(PREV, "Timer 7 min") && !live.get().tool;
+        await dblclick(".kx-timer-chip .kx-preset-t", "7 min");
+        result.timerOn = await waitFor(() => live.get().tool && live.get().tool.mode === "timer" && Math.abs(live.get().tool.endsAt - live.get().tool.startedAt - 7 * 60000) < 1500);
+        const endBefore = live.get().tool && live.get().tool.endsAt;
+        await click(".kx-timer-air button", "+5 min");
+        result.timerAdjusted = await waitFor(() => live.get().tool && live.get().tool.endsAt - endBefore === 300000);
+        live.call("tool.clear");
+        await waitFor(() => !live.get().tool);
+        // The "No ar" row leaves and the chips move up: click after they settle.
+        await waitFor(() => js(`!document.querySelector(".kx-timer-air")`));
+        await sleep(400);
+        await click(".kx-timer-chip:has(.kx-preset-x) .kx-preset-x");
+        result.timerDeleted = await waitFor(async () => !(await timerRows()).some((r) => r.minutes === 7));
+        for (const r of await timerRows()) await js(`window.keryxDesktop.db.call("TimerPreset", "delete", [${JSON.stringify(r.id)}])`).catch(() => {});
+
         // The Bíblia, the rest: word search ignoring accents and case, ↑/↓
         // through the results and Enter projecting from one (its chapter);
         // a quoted phrase; Comparar side by side; a note and a favourite as
@@ -2212,7 +2246,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
-        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted
+        && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted && result.timerChips && result.timerKept && result.timerListed && result.timerPrepared && result.timerOn && result.timerAdjusted && result.timerDeleted
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
         && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch && result.paletteClear && result.paletteRefHere && result.paletteRefAdded
         && result.svOpen && result.svPresence && result.svPrepared && result.svNotes && result.svSent && result.svNotesOffAir && result.svReveal && result.svEdited && result.svSetlist && result.svClosed

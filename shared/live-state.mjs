@@ -471,6 +471,16 @@ const OPS = {
             },
         };
     },
+    // Time given or taken on a timer already on air (−1 min, +1 min, +5 min).
+    // A timer that ran out starts again from now; taking more than is left
+    // leaves it at zero. Refused while the screens are locked (it changes them).
+    "tool.adjust": (s, a, now) => {
+        const tool = need(s.tool, "projetado");
+        if (tool.mode !== "timer") throw new LiveError("Só o timer aceita mais ou menos tempo.");
+        const d = Number(a.deltaMs);
+        if (a.deltaMs === "" || a.deltaMs == null || !Number.isFinite(d) || d === 0 || Math.abs(d) > 3 * 3600000) throw new LiveError("Tempo inválido para o timer.");
+        return { tool: { ...tool, endsAt: Math.max(now, Math.max(tool.endsAt, now) + d) } };
+    },
     "tool.clear": (s, _a, now) => (s.tool ? { ...remember(s, now, "tool"), tool: null } : null),
 
     // Communication pieces (countdowns, announcements, image + text) are

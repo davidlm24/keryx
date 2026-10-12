@@ -453,3 +453,27 @@ test("a passage's display choices are part of its style (verse numbers, referenc
     assert.equal(s.content.style.ref_line, "plain");
     assert.throws(() => applyOp(emptyState(T0), "content.show", { kind: "bible", slides: [{ text: "x" }], style: { ref_line: "big" } }, T0));
 });
+
+test("tool.adjust gives or takes time on a timer on air", () => {
+    const T = 1_000_000;
+    const on = applyOp(emptyState(T), "tool.show", { mode: "timer", durationMs: 600000 }, T); // ends at T + 10 min
+    const more = applyOp(on, "tool.adjust", { deltaMs: 300000 }, T + 1000);
+    assert.equal(more.tool.endsAt, T + 900000);
+    assert.equal(more.tool.mode, "timer");
+    assert.equal(applyOp(more, "tool.adjust", { deltaMs: -60000 }, T + 2000).tool.endsAt, T + 840000);
+    // Taking more than is left leaves it at zero, never in the past.
+    const low = applyOp(emptyState(T), "tool.show", { mode: "timer", durationMs: 30000 }, T);
+    assert.equal(applyOp(low, "tool.adjust", { deltaMs: -60000 }, T + 5000).tool.endsAt, T + 5000);
+    assert.equal(toolTime(applyOp(low, "tool.adjust", { deltaMs: -60000 }, T + 5000).tool, T + 5000), 0);
+    // A timer that ran out starts again from now.
+    const done = applyOp(low, "tool.adjust", { deltaMs: 60000 }, T + 90000);
+    assert.equal(done.tool.endsAt, T + 150000);
+    assert.equal(toolTime(done.tool, T + 90000), 60000);
+    // Only a timer on air, and a sane amount.
+    assert.throws(() => applyOp(emptyState(T), "tool.adjust", { deltaMs: 60000 }, T), /projetado/);
+    assert.throws(() => applyOp(applyOp(emptyState(T), "tool.show", { mode: "stopwatch" }, T), "tool.adjust", { deltaMs: 60000 }, T), /Só o timer/);
+    for (const bad of [0, "", null, "abc", 4 * 3600000, NaN]) assert.throws(() => applyOp(on, "tool.adjust", { deltaMs: bad }, T), /Tempo inválido/);
+    // Locked screens refuse it, like a new timer.
+    const locked = applyOp(on, "screens.lock", { locked: true }, T);
+    assert.throws(() => applyOp(locked, "tool.adjust", { deltaMs: 60000 }, T), /travadas/);
+});

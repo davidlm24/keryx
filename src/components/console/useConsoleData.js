@@ -45,7 +45,8 @@ export function useLibrary() {
     const themes = useList("ProjectionTheme", ["name"]).data;
     const materials = useList("BibleMaterial", ["-created_date"]).data;
     const alertPresets = useList("AlertPreset", ["created_date"]).data;
-    return { songs, media, pieces, themes, materials, alertPresets };
+    const timerPresets = useList("TimerPreset", ["minutes"]).data;
+    return { songs, media, pieces, themes, materials, alertPresets, timerPresets };
 }
 
 // Every background the galleries can offer, with the church's settings
