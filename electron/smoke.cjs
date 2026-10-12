@@ -972,6 +972,20 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear", {});
         await waitFor(() => !live.get().content);
 
+        // The default theme (Aparência › Temas) dresses a song with no look
+        // of its own when it is sent; changing the theme afterwards does not
+        // reskin what is on air.
+        const defTheme = (await js(`window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Padrão Smoke", font_family: "serif", font_size: "xlarge", is_default: true }])`)).data;
+        await sleep(800);
+        await dblclick(".kx-row", "Canto do console");
+        result.themeDefaultApplied = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif" && st.font_size === "xlarge"); }, 5000);
+        await js(`window.keryxDesktop.db.call("ProjectionTheme", "update", [${JSON.stringify(defTheme.id)}, { font_family: "mono" }])`);
+        await sleep(800);
+        result.themeDefaultNoReskin = ((live.get().content || {}).style || {}).font_family === "serif";
+        await js(`window.keryxDesktop.db.call("ProjectionTheme", "delete", [${JSON.stringify(defTheme.id)}])`);
+        live.call("clear", {});
+        await waitFor(() => !live.get().content);
+
         // Aparência › Fundos: a song whose background has its own dim and
         // blur goes on air with them, and the projector draws them.
         const BG = "1557672172-298e090bd0f1";
@@ -2105,7 +2119,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

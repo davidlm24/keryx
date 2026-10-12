@@ -32,6 +32,7 @@ export const SETTINGS_INDEX = [
     e("aparencia", "Duração", "quanto dura a transição", ["ms", "velocidade", "tempo", "transição"], { tab: "geral" }),
     e("aparencia", "Fundo de espera padrão", "a imagem das telas quando nada está no ar", ["espera", "wallpaper", "imagem"], { tab: "geral" }),
     e("aparencia", "Tela ociosa", "logo, preto ou fundo quando nada está no ar", ["ociosa", "logo", "preto", "nada no ar"], { tab: "geral" }),
+    e("aparencia", "Estilo padrão do texto", "o tema com que músicas e passagens vão ao ar", ["tema padrão", "estilo de fábrica", "padrão"], { tab: "temas" }),
     e("aparencia", "Temas", "estilos prontos de texto e fundo, aplicados em Camadas",
         ["tema padrão", "presets", "estilo", "Nome", "Fonte", "Efeito e cor", "Caixa do texto", "Transição", "Fundo", "Ajuste do fundo", "Escurecer · desfoque", "Tornar padrão", "Novo tema"], { tab: "temas" }),
     e("aparencia", "Fundos", "a biblioteca de fundos de todas as galerias",

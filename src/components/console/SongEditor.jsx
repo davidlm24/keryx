@@ -12,7 +12,7 @@ import { chordLinesToInline, hasInlineChords, isChordLine } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
 import { useContextMenu } from "./ContextMenu";
-import { TEXT_SIZES } from "@/lib/console/themes";
+import { TEXT_SIZES, defaultTheme, followsTheme, themeStyle } from "@/lib/console/themes";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["cursive", "Cursiva"], ["arial", "Arial"], ["georgia", "Georgia"], ["times", "Times"], ["verdana", "Verdana"]];
@@ -106,13 +106,23 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     // One rendered state, every thumbnail points at its slide.
     const doc = useMemo(() => {
         if (!song || !slides.length) return null;
-        try { return applyOp(emptyState(c.now), "content.show", { ...songContent({ ...song, slides }), kind: "lyrics" }, c.now); } catch { return null; }
-    }, [song, slides]); // eslint-disable-line react-hooks/exhaustive-deps
+        // Stamped like a send: the default theme dresses it when it follows.
+        try { return applyOp(emptyState(c.now), "content.show", c.stamp("content.show", { ...songContent({ ...song, slides }), kind: "lyrics" }), c.now); } catch { return null; }
+    }, [song, slides, c.stamp]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Seguir o tema padrão, or this song's own look. While it follows, the
+    // controls show the theme's look; touching one makes the look its own,
+    // starting from what it showed.
+    const def = defaultTheme(themes);
+    const following = followsTheme(song);
+    const lookOf = (t) => { const s = themeStyle(t); return { font_family: s.font_family, font_size: s.font_size, text_effect: s.text_effect, text_color: s.text_color, text_color_2: s.text_color_2 }; };
+    const shown = following && def ? { ...song, ...lookOf(def) } : song;
+    const setLook = (patch) => set({ ...(following && def ? lookOf(def) : {}), ...patch, style_mode: "own" });
+    const setMode = (mode) => (mode === "theme" ? set({ style_mode: "theme" }) : setLook({}));
     const applyTheme = (id) => {
         const t = themes.find((x) => x.id === id);
         if (!t) return;
-        set({ font_family: t.font_family || "sans", font_size: t.font_size || "large", text_effect: t.text_effect || "shadow", text_color: t.text_color || "#ffffff", ...(t.background_image ? { background_image: t.background_image } : {}) });
+        setLook({ ...lookOf(t), ...(t.background_image ? { background_image: t.background_image } : {}) });
     };
     const addMarker = (label) => {
         const el = lyricsRef.current;
@@ -330,20 +340,23 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                         </div>
                     )}
                     <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => set({ chords: e.target.value })} aria-label="Cifra" placeholder="Acordes para o Palco (opcional)" /></div>
-                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Estilo desta música <span className="kx-count">· sobrepõe o tema</span></span></div>
+                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Estilo desta música</span></div>
                     <div className="frm">
+                        <span className="k">Estilo</span>
+                        <Seg small label="Estilo da música" value={following ? "theme" : "own"} onChange={setMode}
+                            options={[["theme", def ? `Tema padrão · ${def.name}` : "Tema padrão", { title: def ? "Vai ao ar com o tema padrão (Configurações › Aparência › Temas)" : "Sem tema padrão: vai ao ar com o estilo de fábrica" }], ["own", "Próprio"]]} />
                         <span className="k">Tema</span>
                         <select className="cfg-select" value="" onChange={(e) => applyTheme(e.target.value)} aria-label="Aplicar um tema" disabled={!themes.length}><option value="">{themes.length ? "Aplicar um tema…" : "Nenhum tema"}</option>{themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
                         <span className="k">Fonte</span>
-                        <select className="cfg-select" value={song.font_family || "sans"} onChange={(e) => set({ font_family: e.target.value })} aria-label="Fonte">{FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-                        <span className="k">Tamanho</span><Seg small value={song.font_size || "large"} onChange={(v) => set({ font_size: v })} options={SIZES} />
+                        <select className="cfg-select" value={shown.font_family || "sans"} onChange={(e) => setLook({ font_family: e.target.value })} aria-label="Fonte">{FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+                        <span className="k">Tamanho</span><Seg small value={shown.font_size || "large"} onChange={(v) => setLook({ font_size: v })} options={SIZES} />
                         <span className="k">Cor do texto</span>
                         <div className="swatches">
-                            {SWATCHES.map(([hex, name]) => <button type="button" key={hex} className={`kx-t ${(song.text_color || "#ffffff").toLowerCase() === hex ? "is-on" : ""}`} style={{ background: hex }} aria-label={name} title={name} onClick={() => set({ text_color: hex })} />)}
-                            <input type="color" className="ed-color" value={song.text_color || "#ffffff"} onChange={(e) => set({ text_color: e.target.value })} aria-label="Outra cor" title="Outra cor" />
+                            {SWATCHES.map(([hex, name]) => <button type="button" key={hex} className={`kx-t ${(shown.text_color || "#ffffff").toLowerCase() === hex ? "is-on" : ""}`} style={{ background: hex }} aria-label={name} title={name} onClick={() => setLook({ text_color: hex })} />)}
+                            <input type="color" className="ed-color" value={shown.text_color || "#ffffff"} onChange={(e) => setLook({ text_color: e.target.value })} aria-label="Outra cor" title="Outra cor" />
                         </div>
                         <span className="k">Efeito</span>
-                        <select className="cfg-select" value={song.text_effect || "shadow"} onChange={(e) => set({ text_effect: e.target.value })} aria-label="Efeito">{EFFECTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+                        <select className="cfg-select" value={shown.text_effect || "shadow"} onChange={(e) => setLook({ text_effect: e.target.value })} aria-label="Efeito">{EFFECTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                     </div>
                     <div className="listhead"><span className="kx-meta">Fundo</span><span style={{ flex: 1 }} /><Btn small disabled={busy === "background_image"} onClick={() => bgFileRef.current?.click()}>{busy === "background_image" ? "Enviando…" : "Arquivo…"}</Btn></div>
                     <div className="ed-pad"><div className="bgpick">

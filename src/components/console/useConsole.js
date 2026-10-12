@@ -6,7 +6,8 @@ import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults } from "@/lib/console/backgroundPrefs";
-import { useBackgroundPrefs } from "./useConsoleData";
+import { useBackgroundPrefs, useThemes } from "./useConsoleData";
+import { defaultTheme, withThemeDefaults } from "@/lib/console/themes";
 import { useUser } from "@/hooks/useUser";
 
 // The console's own state around the live state. One console, always live:
@@ -35,7 +36,12 @@ export function useConsole() {
     // for the items that use it. stamp() gives an op the church's defaults;
     // the Prévia renders through it too, so it shows what will go out.
     const bgPrefs = useBackgroundPrefs();
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, args, look), bgPrefs), [look, bgPrefs]);
+    // The default theme (Configurações › Aparência › Temas) dresses a song
+    // or a passage that has no look of its own, at send time: what is on
+    // air never changes by itself (themes.js, withThemeDefaults).
+    const theme = defaultTheme(useThemes());
+    const fundo = live?.background || null;
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, theme, { fundo }), look), bgPrefs), [theme, fundo, look, bgPrefs]);
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 

@@ -104,6 +104,7 @@ export default function Layers({ c, themes, media = null }) {
                 <span className="t">Tema: {theme ? theme.name : "nenhum"}{modified && <span> · Modificado</span>}</span>
                 {themes.length > 0 && (
                     <select value={theme?.id || ""} onChange={(e) => { const t = themes.find((x) => x.id === e.target.value); if (t) applyTheme(t); }} aria-label="Tema" title="Aplica o tema no que está no ar, na hora" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: 4, font: "inherit", maxWidth: 150 }}>
+                        {!theme && <option value="">Escolher…</option>}
                         {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                 )}
