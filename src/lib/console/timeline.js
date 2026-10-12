@@ -50,10 +50,14 @@ const dayOf = (date, now) => {
 // counted from its scheduled time (its date and startTime, or the legacy
 // "time"; never a default hour), and when it should end: the start plus the
 // Setlist's durations (`seconds`), moved by how late the item on air is
-// (`late`, minutes, from serviceTiming).
+// (`late`, minutes, from serviceTiming). The forecast ("termina ~", "passou
+// N min") is OFF unless `forecast` is true (Configurações › Igreja): the
+// Setlist's durations are filled in by default (4 min a song, 2 any other),
+// so a church that plans only the order would be shown invented figures
+// (owner decision 2026-10-12).
 // -> { text, more, muted, warn, title }: `more` is the part a narrow bar
 // drops first; `warn` makes it amber.
-export function serviceClock({ service, seconds = 0, late = 0, now }) {
+export function serviceClock({ service, seconds = 0, late = 0, now, forecast = false }) {
     if (!service) return { text: "Sem culto", more: "", muted: true, warn: false, title: "Nenhum culto escolhido · escolha ou crie um na Setlist" };
     const mins = minutesOf(service.startTime) ?? minutesOf(service.time);
     if (mins == null) return { text: "Culto sem horário", more: "", muted: true, warn: false, title: "Defina o horário em Planejar o culto" };
@@ -68,7 +72,7 @@ export function serviceClock({ service, seconds = 0, late = 0, now }) {
     // Long over (a service from another day): just say which one it was.
     if (now - start > 12 * 3600000) return { text: `Culto de ${dm(start)} às ${hm(start)}`, more: "", muted: true, warn: false, title: plan };
     const text = `Culto ${hms(now - start)}`;
-    if (!seconds) return { text, more: "", muted: false, warn: false, title: `Começou às ${hm(start)} · ${plan}` };
+    if (!seconds || !forecast) return { text, more: "", muted: false, warn: false, title: `Começou às ${hm(start)} · ${plan}` };
     const ends = start + seconds * 1000 + late * 60000;
     const title = `Começou às ${hm(start)} · previsto até ${hm(start + seconds * 1000)} · ${plan}`;
     if (now > ends) return { text, more: `passou ${Math.max(1, Math.round((now - ends) / 60000))} min`, muted: false, warn: true, title };

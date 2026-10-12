@@ -1250,6 +1250,15 @@ async function checkConsole(webContents, { live, outputs }) {
             await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i + 1}, duration: 300 }])`);
         }
         result.tlBlocks = await waitFor(() => js("document.querySelectorAll('.tl-track .kx-tl-blk').length >= 2"), 8000);
+        // The forecast ("termina", "passou N min") is off by default: the
+        // Linha do tempo's header keeps its count but invents no end; the
+        // switch in Configurações › Igreja (User.show_forecast) brings it back.
+        const tlHead = () => js("(document.querySelector('.tl-panel .kx-tl') || {}).textContent || ''");
+        result.forecastOff = /de \d+ iten/.test(await tlHead()) && !/termina|passou/.test(await tlHead());
+        await js('window.keryxDesktop.db.call("User", "update", ["local", { show_forecast: true }])');
+        result.forecastOn = await waitFor(async () => /termina/.test(await tlHead()), 6000);
+        await js('window.keryxDesktop.db.call("User", "update", ["local", { show_forecast: false }])');
+        await waitFor(async () => !/termina/.test(await tlHead()), 6000);
 
         // Drag from the Biblioteca (synthetic DragEvents drive the handlers).
         // Wide enough that the Setlist column is on screen.
@@ -2022,7 +2031,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
-        && result.tlEmpty && result.tlBlocks && result.tlClosed
+        && result.tlEmpty && result.tlBlocks && result.forecastOff && result.forecastOn && result.tlClosed
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
         && result.colsFit && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent

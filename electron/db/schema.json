@@ -1642,6 +1642,10 @@
         "transition_ms": {
           "type": "integer"
         },
+        "show_forecast": {
+          "type": "boolean",
+          "default": false
+        },
         "standby_background": {
           "type": "text"
         },

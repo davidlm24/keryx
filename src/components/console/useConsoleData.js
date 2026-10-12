@@ -48,6 +48,18 @@ export function useLibrary() {
 // with KERYX by factory category, then the church's images from Mídia.
 const BUNDLED = [...new Set(Object.values(BACKGROUNDS).flat())]
     .map((id) => ({ id, url: backgroundUrl(id), category: Object.keys(BACKGROUNDS).find((k) => BACKGROUNDS[k].includes(id)) }));
+// Whether the church wants the forecast of the service's end and the delay
+// ("termina ~", "passou N min"): Configurações › Igreja, off by default.
+export function useShowForecast() {
+    const [on, setOn] = useState(false);
+    useEffect(() => {
+        const take = (u) => setOn(u?.show_forecast === true);
+        keryx.auth.me().then(take).catch(() => {});
+        return keryx.entities.User.subscribe?.((change) => { if (change?.data && change.type !== "delete") take(change.data); });
+    }, []);
+    return on;
+}
+
 export function useBackgroundPrefs() {
     return useList("BackgroundPref", []).data;
 }
