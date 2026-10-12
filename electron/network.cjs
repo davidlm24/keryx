@@ -9,7 +9,11 @@ const SETTINGS_KEY = "network";
 const DEFAULT_PORT = 7701;
 const PIN = /^\d{4,8}$/;
 
-function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, logger, port }) {
+// The controle remoto's code: six digits from the system's random source.
+const newRemoteCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+const newRemoteSecret = () => crypto.randomBytes(32).toString("hex");
+
+function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, logger, port, onRemote = null }) {
     if (port === undefined || Number.isNaN(port)) port = DEFAULT_PORT;
     const config = () => {
         const saved = settings.get(SETTINGS_KEY, {}) || {};
@@ -23,7 +27,11 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
     };
     const save = (patch) => settings.set(SETTINGS_KEY, { ...config(), ...patch });
 
-    const lan = createLanServer({ distDir, mediaDir, bundledDir, store, live, getConfig: () => config(), log: (m) => logger.warn(m) });
+    const lan = createLanServer({ distDir, mediaDir, bundledDir, store, live, getConfig: () => config(), onRemote, log: (m) => logger.warn(m) });
+    // The controle remoto's settings ("network".remote): on/off, its code and
+    // the key that signs the phones' cookie.
+    const remote = () => config().remote || {};
+    const saveRemote = (patch) => save({ remote: { ...remote(), ...patch } });
     let lastError = "";
 
     async function start() {
@@ -48,6 +56,8 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
             running,
             port: boundPort || port,
             hasPin: Boolean(pin),
+            // Never the code itself (revealRemoteCode, on demand).
+            remote: { enabled: Boolean(remote().enabled), hasCode: Boolean(remote().code) },
             error: lastError,
             urls: running ? lanAddresses().map((a) => ({ name: a.name, url: `http://${a.address}:${boundPort}` })) : [],
             clients: lan.clients(),
@@ -73,6 +83,18 @@ function createNetwork({ store, live, settings, distDir, mediaDir, bundledDir, l
                 }
                 return info();
             },
+            // Controle remoto: on (a code and a key are made the first time),
+            // off, a new code, Desconectar todos (a new key) — each signs the
+            // phones out but turning it on.
+            setRemote: async (_event, enabled) => {
+                if (enabled) saveRemote({ enabled: true, code: remote().code || newRemoteCode(), secret: remote().secret || newRemoteSecret() });
+                else { saveRemote({ enabled: false }); lan.dropRemotes(); }
+                logger.info(`[keryx-lan] controle remoto ${enabled ? "ligado" : "desligado"}`);
+                return info();
+            },
+            newRemoteCode: async () => { saveRemote({ code: newRemoteCode(), secret: newRemoteSecret() }); lan.dropRemotes(); return info(); },
+            disconnectRemotes: async () => { saveRemote({ secret: newRemoteSecret() }); lan.dropRemotes(); return info(); },
+            revealRemoteCode: async () => ({ code: remote().code || "" }),
             // The PIN itself, on demand (Mostrar PIN): only the console asks
             // (keryx:network is a trusted channel); info() never carries it.
             revealPin: async () => ({ pin: config().pin || "" }),

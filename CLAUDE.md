@@ -150,7 +150,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   BibleProjectionSync, BannerTemplate, ChatMessage) are kept: user data.
 - **Network screens** (`electron/lan.cjs`) see only the pages in
   `NETWORK_SCREENS` and only read the database. A page added there must
-  work from the database and the live state alone. Each screen says which
+  work from the database and the live state alone. The one thing on the
+  network that changes what is on air is the **controle remoto**
+  (`/Remote`, a phone): off by default, behind its own code (never
+  optional, separate from the screens' PIN), it posts commands from a
+  closed list (`REMOTE_ACTIONS`, `remoteCommand`) that main relays to the
+  console (`keryx:remote`), which runs them as its own keys would — never
+  a direct write to the store or the live state from the network. Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists
   the screens connected right now from that (`useOutputs`). Links and QR
   codes meant for other devices come from the network info's `urls`

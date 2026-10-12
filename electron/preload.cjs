@@ -29,6 +29,13 @@ ipcRenderer.on("keryx:live-change", (_event, snapshot) => {
 
 // Updates and the bell, pushed by the main process (electron/updater.cjs,
 // electron/notifications.cjs).
+// Controle remoto: commands from a phone, for the console to run and answer.
+const remoteListeners = new Set();
+ipcRenderer.on("keryx:remote", (_event, command) => {
+    for (const listener of remoteListeners) {
+        try { listener(command); } catch (err) { console.error("[keryx] remote listener failed:", err); }
+    }
+});
 const updateListeners = new Set();
 ipcRenderer.on("keryx:update", (_event, state) => {
     for (const listener of updateListeners) {
@@ -92,6 +99,13 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     },
     network: {
         call: (op, args) => ipcRenderer.invoke("keryx:network", { op, args }),
+    },
+    remote: {
+        onCommand(listener) {
+            remoteListeners.add(listener);
+            return () => remoteListeners.delete(listener);
+        },
+        reply: (id, answer) => ipcRenderer.send("keryx:remote:result", { id, ...answer }),
     },
     // Lyrics from the web (LRCLIB + letras.mus.br search), main process.
     lyrics: {
