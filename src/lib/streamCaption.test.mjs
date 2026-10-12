@@ -60,3 +60,10 @@ test("long text steps down in size", () => {
     assert.equal(captionSize("x".repeat(150)), "m");
     assert.equal(captionSize("x".repeat(260)), "s");
 });
+
+test("the stream's reference follows the church's choice (ref_line)", () => {
+    const show = (ref_line) => streamCaption(applyOp(emptyState(1), "content.show", { kind: "bible", title: "João 3:16 · NVI", slides: [{ text: "16 Porque Deus amou o mundo" }], style: ref_line ? { ref_line } : {} }, 1));
+    assert.equal(show(null).ref, "João 3:16 · NVI");
+    assert.equal(show("plain").ref, "João 3:16");
+    assert.equal(show("none").ref, "");
+});

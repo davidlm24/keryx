@@ -16,6 +16,10 @@ export const PREF_FIELDS = {
         normalize: (v) => (typeof v === "string" && /^[A-Za-z0-9]{1,12}$/.test(v.trim()) ? v.trim() : "NVI"),
     },
     bible_book_names: { default: "short", normalize: oneOf(["short", "full"], "short") },
+    bible_verses_per_slide: { default: "auto", normalize: oneOf(["auto", "1", "2", "3"], "auto") },
+    bible_show_reference: { default: true, normalize: (v) => v !== false },
+    bible_show_version: { default: true, normalize: (v) => v !== false },
+    bible_verse_numbers: { default: "sup", normalize: oneOf(["sup", "hide"], "sup") },
     import_lines: {
         default: 0,
         normalize: (v) => { const n = Number(v); return v !== null && v !== "" && Number.isInteger(n) && n >= 0 && n <= 12 ? n : 0; },

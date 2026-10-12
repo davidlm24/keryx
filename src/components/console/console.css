@@ -784,7 +784,9 @@
    in a container, so cqmin/cqw sizes apply as on the output itself. */
 .console .cfg .cfg-outprefs .cfg-outprefs-form { flex: 1 1 auto; min-width: 0; }
 .console .cfg .cfg-prevcol { flex: none; width: 340px; display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-2) var(--space-2) 0; }
-.console .cfg .cfg-prev { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: inset 0 0 0 1px var(--line); container-type: size; isolation: isolate; }
+.console .cfg .cfg-prev { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: inset 0 0 0 1px var(--line); container-type: size; isolation: isolate; contain: layout paint; }
+/* contain: layout makes this box the containing block of the renderer's fixed
+   root (.ks-fill): without it the sample escaped to the dialog (its transform). */
 .console .cfg .cfg-prev .cfg-prev-fill { position: absolute; inset: 0; }
 .console .cfg .cfg-prev-pastor { aspect-ratio: 3 / 4; width: 210px; margin-inline: auto; }
 @media (max-width: 1280px) { .console .cfg .cfg-outprefs { flex-wrap: wrap; } }

@@ -432,3 +432,10 @@ test("the idle wallpaper takes a dim and a blur; a new wallpaper starts without 
     assert.deepEqual([back.idleDim, back.idleBlur], [0.6, 20], "survives a restart");
     assert.deepEqual([restoreState({ idle: "logo" }, T0).idleDim, emptyState(T0).idleBlur], [null, null]);
 });
+
+test("a passage's display choices are part of its style (verse numbers, reference line)", () => {
+    const s = applyOp(emptyState(T0), "content.show", { kind: "bible", title: "João 3:16 · NVI", slides: [{ text: "16 Porque" }], style: { verse_numbers: "hide", ref_line: "plain" } }, T0);
+    assert.equal(s.content.style.verse_numbers, "hide");
+    assert.equal(s.content.style.ref_line, "plain");
+    assert.throws(() => applyOp(emptyState(T0), "content.show", { kind: "bible", slides: [{ text: "x" }], style: { ref_line: "big" } }, T0));
+});

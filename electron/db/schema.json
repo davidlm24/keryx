@@ -1685,6 +1685,18 @@
         "bible_book_names": {
           "type": "text"
         },
+        "bible_verses_per_slide": {
+          "type": "text"
+        },
+        "bible_show_reference": {
+          "type": "boolean"
+        },
+        "bible_show_version": {
+          "type": "boolean"
+        },
+        "bible_verse_numbers": {
+          "type": "text"
+        },
         "import_lines": {
           "type": "integer"
         },

@@ -39,6 +39,10 @@ export const SETTINGS_INDEX = [
         ["imagens", "vídeos", "enviar do computador", "Nome", "Categoria", "Escurecer", "Desfoque", "Nas galerias", "favorito", "oculto"], { tab: "fundos" }),
 
     e("biblia", "Livros da Bíblia", "abreviados (Gn) ou com o nome inteiro (Gênesis)", ["abreviados", "nome inteiro", "abrev", "livros"]),
+    e("biblia", "Versículos por slide", "quantos versículos de um trecho vão em cada slide", ["versículos", "slide", "automático", "trecho"]),
+    e("biblia", "Referência", "mostrar João 3:16 embaixo do texto", ["referência", "capítulo"]),
+    e("biblia", "Versão na referência", "João 3:16 · NVI, ou sem a versão", ["versão", "NVI"]),
+    e("biblia", "Números dos versículos", "pequenos no texto ou ocultos", ["números", "versículos", "ocultar"]),
     e("biblia", "Ao importar letras", "uma estrofe, 2 ou 4 linhas por slide", ["importar", "letras", "músicas", "estrofe", "linhas", "slide"]),
     e("biblia", "Bíblias instaladas", "baixar versões para usar sem internet; a versão padrão",
         ["versão padrão", "baixar", "instalar", "sem internet", "offline", "do arquivo", "NVI", "ARA", "ACF", "ARC", "NAA", "NTLH", "AA", "BKJ1611"]),
