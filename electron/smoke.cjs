@@ -1312,6 +1312,10 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(400);
         await click(".kx-tabs button", "Letras");
         await waitText(webContents, "Canto do console");
+        // Configurações › Culto: the day's setlist comes with the usual time,
+        // and the song with the church's song length.
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { service_start_time: "18:30", duration_song: 300 }])`);
+        await sleep(600);
         await js(`(() => {
             const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
             const to = document.querySelector(".rund-tail");
@@ -1330,6 +1334,13 @@ async function checkConsole(webContents, { live, outputs }) {
         }, 8000);
         result.autoSetlistShown = await waitText(webContents, "Setlist de");
         if (!svc) throw new Error("a setlist do dia não foi criada");
+        result.cultoDefaults = svc.startTime === "18:30" && await waitFor(async () => {
+            const its = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
+            return its.some((it) => it.type === "SONG" && it.duration === 300);
+        }, 4000);
+        // Back to no usual time (the checks below expect the setlist as before).
+        await js(`window.keryxDesktop.db.call("Service", "update", ["${svc.id}", { startTime: null }])`);
+        await js(`window.keryxDesktop.db.call("User", "update", ["local", { service_start_time: null, duration_song: null }])`);
         for (const [i, title] of ["Abertura", "Louvor"].entries()) {
             await js(`window.keryxDesktop.db.call("ServiceItem", "create", [{ serviceId: "${svc.id}", type: "TEXT", title: "${title}", order: ${i + 1}, duration: 300 }])`);
         }
@@ -2166,7 +2177,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && (result.bibleSplit === true || typeof result.bibleSplit === "string")
         && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"
         && result.arrowNextVerse && result.selMoved && result.selSent && result.slideSelMoved && result.slideSelSent
-        && result.autoSetlist && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
+        && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevRail && result.prevRailScreens && result.railFitsOk && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk

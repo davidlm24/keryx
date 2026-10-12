@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { newServiceDefaults, defaultDuration, teamRole } from "@/lib/console/serviceDefaults";
+import { getPrefs } from "@/hooks/useUser";
 import { useChurch } from "@/hooks/useChurch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
@@ -36,6 +38,9 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         .slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const templates = useQuery({ queryKey: ["console", "serviceTemplates"], queryFn: () => keryx.entities.ServiceTemplate.list("name") }).data || [];
     const team = useQuery({ queryKey: ["console", "worshipTeam"], queryFn: () => keryx.entities.WorshipTeam.list("name") }).data || [];
+    // Configurações › Culto edits both lists while the planner stays open.
+    useEffect(() => keryx.entities.ServiceTemplate.subscribe(() => client.invalidateQueries({ queryKey: ["console", "serviceTemplates"] })), [client]);
+    useEffect(() => keryx.entities.WorshipTeam.subscribe(() => client.invalidateQueries({ queryKey: ["console", "worshipTeam"] })), [client]);
     const [form, setForm] = useState(null);
     const [member, setMember] = useState("");
     const [sel, setSel] = useState(focusId);
@@ -50,7 +55,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
 
     useEffect(() => {
         if (!svc) return;
-        setForm({ title: svc.title || "", date: svc.date || today(), startTime: svc.startTime || svc.time || "19:00", location: svc.location || "", service_type: svc.service_type || "culto", event_description: svc.event_description || "", notes: svc.notes || "" });
+        setForm({ title: svc.title || "", date: svc.date || today(), startTime: svc.startTime || svc.time || "", location: svc.location || "", service_type: svc.service_type || "culto", event_description: svc.event_description || "", notes: svc.notes || "" });
     }, [svc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const refresh = () => client.invalidateQueries({ queryKey: ["console", "serviceItems"] });
@@ -134,8 +139,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         await run(keryx.entities.ServiceItem.bulkCreate(itemsFor(serviceId, source, items.length)), `Setlist de "${previous.title}" copiada.`);
     };
     const newService = async () => {
-        const d = new Date();
-        const row = await run(keryx.entities.Service.create({ title: `Culto de ${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`, date: today(), startTime: "19:00", status: "DRAFT", service_type: "culto" }), "Novo culto criado.");
+        const row = await run(keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto" }), "Novo culto criado.");
         if (row?.id) setServiceId(row.id);
     };
     const deleteService = async () => {
@@ -185,7 +189,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
 
     const f = (key) => ({ value: form[key], onChange: (v) => setForm({ ...form, [key]: v }), onBlur: () => commit(key), onKeyDown: (e) => { if (e.key === "Enter") e.currentTarget.blur(); } });
     const pickList = !adding ? [] : adding === "SONG"
-        ? data.songs.filter((s) => match(pick.toLowerCase(), s.title, s.artist)).slice(0, 30).map((s) => ({ key: s.id, icon: "music", title: s.title, meta: s.artist, row: { type: "SONG", title: s.title, contentId: s.id, duration: s.duration || 240 } }))
+        ? data.songs.filter((s) => match(pick.toLowerCase(), s.title, s.artist)).slice(0, 30).map((s) => ({ key: s.id, icon: "music", title: s.title, meta: s.artist, row: { type: "SONG", title: s.title, contentId: s.id, duration: s.duration || defaultDuration("SONG", getPrefs()) } }))
         : adding === "MATERIAL"
             ? (data.materials || []).filter((m) => match(pick.toLowerCase(), m.title, m.subject, m.class_name)).slice(0, 30).map((m) => ({ key: m.id, icon: "book", title: m.title, meta: [m.subject, m.class_name].filter(Boolean).join(" · ") || "Escola bíblica", row: { type: "MATERIAL", title: m.title, contentId: m.id, duration: 300 } }))
         : adding === "ANNOUNCEMENT"
@@ -242,7 +246,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                     ))}
                     <div className="pl-pad">
                         <Field icon={null} value={member} onChange={setMember} placeholder="Nome · função (Enter adiciona)" inputProps={{ list: "pl-team" }} onKeyDown={(e) => { if (e.key === "Enter") addMember(); }} />
-                        <datalist id="pl-team">{team.map((t) => <option key={t.id} value={`${t.name} · ${t.role === "other" ? "Equipe" : t.role}`} />)}</datalist>
+                        <datalist id="pl-team">{team.filter((t) => t.active !== false).map((t) => <option key={t.id} value={`${t.name} · ${teamRole(t.role)}`} />)}</datalist>
                     </div>
                 </Panel>
             </div>

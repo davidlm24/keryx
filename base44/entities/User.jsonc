@@ -66,6 +66,22 @@
       "enum": ["sup", "hide"],
       "description": "Biblia: numeros dos versiculos pequenos no texto (sup) ou ocultos (hide). Nulo = sup"
     },
+    "service_start_time": {
+      "type": "string",
+      "description": "Culto: horario de sempre (HH:MM), para Novo culto e a setlist do dia. Nulo = sem horario (nunca um horario inventado)"
+    },
+    "service_weekday": {
+      "type": "integer",
+      "description": "Culto: dia da semana de sempre (0 = domingo ... 6 = sabado), para Novo culto. Nulo = hoje"
+    },
+    "duration_song": {
+      "type": "integer",
+      "description": "Culto: duracao de uma musica na setlist quando ela nao tem a sua, em segundos. Nulo = 240"
+    },
+    "duration_other": {
+      "type": "integer",
+      "description": "Culto: duracao de qualquer outro item na setlist quando ele nao tem a sua, em segundos. Nulo = 120"
+    },
     "import_lines": {
       "type": "integer",
       "description": "Ao importar letras: linhas por slide (0 = uma estrofe por slide, 2 ou 4). Nulo = 0"

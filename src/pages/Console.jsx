@@ -5,7 +5,7 @@ import "@ds/components/bundle.css";
 import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
-import { useUser, usePrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
+import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole } from "@/components/console/useConsole";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
@@ -31,6 +31,7 @@ import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView from "@/components/console/settings/SettingsView";
 import { resolveSection } from "@/lib/console/settings";
+import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
@@ -296,7 +297,10 @@ export default function Console() {
         if (serviceId) return serviceId;
         const d = new Date();
         const two = (n) => String(n).padStart(2, "0");
-        const row = await keryx.entities.Service.create({ title: `Setlist de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, status: "DRAFT" });
+        // Today, at the church's usual time when it has one (Configurações › Culto).
+        const start = getPrefs().service_start_time;
+        const at = start ? { startTime: start } : {};
+        const row = await keryx.entities.Service.create({ title: `Setlist de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, status: "DRAFT", ...at });
         setServiceId(row.id);
         c.say("Criada a setlist de hoje · renomeie em Planejar o culto.");
         return row.id;
@@ -325,7 +329,7 @@ export default function Console() {
             }
             // Renumber from the end first, so two rows never share an order.
             for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + 1 });
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || (type === "SONG" ? 240 : 120) });
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || defaultDuration(type, getPrefs()) });
             c.say(`${stage.title} na setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     }, [c, items, ensureService]);
@@ -342,7 +346,7 @@ export default function Console() {
     const addSong = async (song) => {
         try {
             const sid = await ensureService();
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || 240 });
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "SONG", title: song.title, contentId: song.id, order: items.length, duration: song.duration || defaultDuration("SONG", getPrefs()) });
             c.say(`${song.title} adicionada ao fim da setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
@@ -409,10 +413,8 @@ export default function Console() {
     const openPlanner = useCallback(async (id, itemId = null) => {
         setOpen(null);
         if (id === "new") {
-            const d = new Date();
-            const two = (n) => String(n).padStart(2, "0");
             try {
-                const row = await keryx.entities.Service.create({ title: `Culto de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, startTime: "19:00", status: "DRAFT", service_type: "culto" });
+                const row = await keryx.entities.Service.create({ ...newServiceDefaults(getPrefs()), status: "DRAFT", service_type: "culto" });
                 setServiceId(row.id);
                 c.say("Novo culto criado.");
             } catch (err) { c.say(err?.message || "Não foi possível criar o culto."); return; }
@@ -451,7 +453,7 @@ export default function Console() {
             const sid = await ensureService();
             const row = await keryx.entities.BiblePassage.create(passage);
             const title = `${ref.book} ${ref.chapter}:${passage.verses}`;
-            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "BIBLE", title, contentId: row.id, order: items.length, duration: 120 });
+            await keryx.entities.ServiceItem.create({ serviceId: sid, type: "BIBLE", title, contentId: row.id, order: items.length, duration: defaultDuration("BIBLE", getPrefs()) });
             c.say(`${title} adicionado ao fim da setlist.`);
         } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
     };
