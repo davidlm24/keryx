@@ -2382,6 +2382,29 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         locked.close();
         await network.ops.setPin(null, "");
 
+        // Controle remoto, end to end: off it is not there; on, its code signs
+        // a phone in; a command runs on the console (Tela preta reaches the
+        // live state); locked screens refuse a new slide; off again, gone.
+        if (webContents) {
+            const remoteOff = (await fetch(`${base}/Remote`, { redirect: "manual" })).status;
+            await network.ops.setRemote(null, true);
+            const { code } = await network.ops.revealRemoteCode();
+            const signIn = await fetch(`${base}/lan/remote-code`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded" }, body: `code=${code}` });
+            const cookie = (signIn.headers.get("set-cookie") || "").split(";")[0];
+            const cmd = (action, args) => fetch(`${base}/api/remote`, { method: "POST", headers: { "content-type": "application/json", "x-keryx": "1", cookie }, body: JSON.stringify({ action, args }) });
+            live.call("screen.set", { mode: "show" });
+            const black = await cmd("black");
+            result.remote = { off: remoteOff, signedIn: signIn.status, black: black.status, screen: live.get().screen };
+            await cmd("black");
+            const st = await (await cmd("state")).json().catch(() => ({}));
+            result.remote.state = Boolean(st.data && st.data.result && Array.isArray(st.data.result.items));
+            live.call("screens.lock", { locked: true });
+            result.remote.locked = (await cmd("next")).status;
+            live.call("screens.lock", { locked: false });
+            await network.ops.setRemote(null, false);
+            result.remote.offAgain = (await cmd("black")).status;
+        }
+
         // The stage tablet drops mid-service: the console says which one and when,
         // instead of the screen silently leaving the list (outputs.js).
         if (webContents) {
@@ -2409,7 +2432,8 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         && result.projectorScreen && result.pastorScreen && result.streamScreen && result.streamBlack
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
-        && (!webContents || (result.dropBanner && result.dropStatus));
+        && (!webContents || (result.dropBanner && result.dropStatus))
+        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.locked === 423 && result.remote.offAgain === 404));
     return result;
 }
 

@@ -14,6 +14,7 @@ const FILES = {
     "TelasSection.jsx": "telas",
     "OutputPrefCard.jsx": "telas",
     "RedeSection.jsx": "rede",
+    "RemoteBlock.jsx": "rede",
     "AparenciaSection.jsx": "aparencia",
     "IdleBlock.jsx": "aparencia",
     "TemasSection.jsx": "aparencia",
