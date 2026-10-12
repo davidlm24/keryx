@@ -864,3 +864,5 @@
 .console .wn-li::before { content: ""; position: absolute; left: 3px; top: 7px; width: 4px; height: 4px; border-radius: 2px; background: var(--fg-3); }
 .console .wn-li b, .console .wn-p b { color: var(--fg-1); font-weight: 600; }
 .console .wn-p { margin: 0; font-size: 12px; line-height: 18px; color: var(--fg-2); }
+/* "no ar há m:ss" in the Programa's caption: digits that do not jump. */
+.console .kx-prog-cap .kx-since { font-variant-numeric: tabular-nums; flex: none; }

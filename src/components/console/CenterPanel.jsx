@@ -7,7 +7,7 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
-import { captionParts } from "@/lib/console/caption";
+import { captionParts, airFor } from "@/lib/console/caption";
 import { OUTPUT_VIEWS, SCREEN_PAGES, nextItems, previewSession } from "@/lib/network/views";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
@@ -78,6 +78,8 @@ function sendNote(stage, locked) {
 export function ProgramaCaption({ c, projectorDown }) {
     const { cur, locked } = c;
     const { title, pos } = captionParts(cur);
+    // How long this item has been on air (the live clock: every window agrees).
+    const since = airFor(cur, c.now);
     const idle = title === "nada";
     const tone = projectorDown ? "warn" : locked ? "rh" : idle ? "idle" : "air";
     return (
@@ -85,6 +87,7 @@ export function ProgramaCaption({ c, projectorDown }) {
             <span className="kx-live-cap">{locked ? "Programa · travado" : "Programa"}</span>
             <span className="kx-mon-t kx-live-title" title={title}>{title}</span>
             {pos && <span className="kx-meta">{pos}</span>}
+            {since && <span className="kx-meta kx-since" title="Há quanto tempo este item está no ar">no ar há {since}</span>}
         </span>
     );
 }
