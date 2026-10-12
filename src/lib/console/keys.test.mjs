@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { liveAction, focusKind, quickJumpKey, escapeTarget, ESC_ORDER } from "./keys.js";
+import { liveAction, focusKind, quickJumpKey, escapeTarget, ESC_ORDER, SHORTCUTS } from "./keys.js";
 
 // A stand-in element: its own selector matches and those of its ancestors.
 const el = (tagName, self = [], ancestors = []) => ({
@@ -110,4 +110,22 @@ test("Esc closes the topmost thing open, one per press; with nothing open it end
     assert.equal(escapeTarget({ drawer: true, edit: true }), "drawer");
     // The order is the visual stacking: a context menu over a popover over Configurações over Camadas over the edit mode.
     assert.deepEqual(ESC_ORDER, ["menu", "popover", "settings", "drawer", "edit"]);
+});
+
+test("the shortcut list and the keys never drift apart", () => {
+    const body = { tagName: "BODY", closest: () => null };
+    const press = (probe) => liveAction({ target: body, ctrlKey: false, metaKey: false, altKey: false, ...probe });
+    const listed = new Set();
+    for (const s of SHORTCUTS) {
+        for (const [action, probe] of [[s.action, s.probe], ...(s.also || [])]) {
+            if (!probe) continue;
+            assert.equal(press(probe), action, `${s.keys}: ${action}`);
+            listed.add(action);
+        }
+    }
+    // Every action the console handles is in the list ("blur" is only
+    // leaving a text field).
+    for (const action of ["send", "next", "prev", "selUp", "selDown", "black", "logo", "clear", "end", "search", "help", "play"]) {
+        assert.ok(listed.has(action), `${action} is not in the shortcut list`);
+    }
 });

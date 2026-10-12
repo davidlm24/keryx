@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
-const { cachedSize, createSystem } = require("./system.cjs");
+const { cachedSize, createSystem, loginItemArgs } = require("./system.cjs");
 
 // A system over a temp data folder, with settings in memory.
 function sys(initial = {}) {
@@ -47,5 +47,15 @@ test("backup settings are merged, never wiped by another change", async () => {
     assert.equal(saved.backup.enabled, false);
     assert.equal(info.backup.keep, 30);
     assert.equal(info.backup.enabled, false);
+    store.close();
+});
+
+test("Console: confirm on close is on unless turned off; login only when installed", async () => {
+    const { system, saved, store } = sys();
+    assert.deepEqual(await system.ops.machineGet(), { confirmClose: true, login: { available: false, on: false, blocked: false } });
+    await system.ops.machineSet(null, { confirmClose: false });
+    assert.equal(saved.machine.confirmClose, false);
+    await assert.rejects(() => system.ops.loginSet(null, { on: true }), /instalado/);
+    assert.deepEqual(loginItemArgs(true, "C:/KERYX.exe"), { openAtLogin: true, path: "C:/KERYX.exe" });
     store.close();
 });

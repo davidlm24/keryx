@@ -14,6 +14,7 @@ const { createNotifications } = require("./notifications.cjs");
 const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
 const { createLive, loadLiveRules } = require("./live.cjs");
+const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const schema = require("./db/schema.json");
 
@@ -80,6 +81,14 @@ let outputs = null;
 let system = null;
 let network = null;
 let live = null;
+// The live-state rules (shared/live-state.mjs) and this computer's settings,
+// for the close guard (electron/closeGuard.cjs).
+let liveRules = null;
+let appSettings = null;
+// A quit already decided (app.quit: the updater, the menu, the guard's
+// "Fechar o KERYX"): the console's X no longer asks.
+let quitting = false;
+app.on("before-quit", () => { quitting = true; });
 
 // Same database, same port: a second launch just focuses the first.
 const gotLock = app.requestSingleInstanceLock();
@@ -214,7 +223,15 @@ function createMainWindow() {
     // "close" (not "closed"): the import restart's app.exit() destroys windows
     // without it, so that restart is untouched; the updater's quitAndInstall
     // is already quitting, and app.quit() then does nothing more.
-    mainWindow.on("close", () => app.quit());
+    // With something on air the X asks first (closeGuard.cjs): "Continuar
+    // projetando" is the default; the smoke answers through setAsk.
+    mainWindow.on("close", (event) => {
+        const enabled = closeGuard.machinePrefs(appSettings?.get(closeGuard.MACHINE_KEY, {})).confirmClose;
+        const onAir = Boolean(liveRules?.isOnAir && live && liveRules.isOnAir(live.get()));
+        if (!closeGuard.shouldConfirmClose({ enabled, onAir, quitting })) { app.quit(); return; }
+        event.preventDefault();
+        closeGuard.askClose(dialog, mainWindow).then((close) => { if (close) app.quit(); }, () => {});
+    });
     mainWindow.on("closed", () => { mainWindow = null; });
     mainWindow.loadURL(appUrl + START_PATH).catch((err) => {
         // Also what a bad KERYX_START_PATH looks like (Git Bash rewrites "/Console"
@@ -293,6 +310,7 @@ app.whenReady().then(async () => {
     }, { useSystemPicker: false });
 
     const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
+    appSettings = settings;
     // First run: the main projector opens with the app (the operator can
     // turn it off in Telas e saídas). Smoke runs manage outputs themselves.
     if (!SMOKE && settings.get("outputs") === undefined) {
@@ -351,7 +369,8 @@ app.whenReady().then(async () => {
 
     // What every output shows right now (shared/live-state.mjs).
     try {
-        live = createLive({ file: path.join(dataDir, "live.json"), rules: await loadLiveRules(), log: (m) => logger.warn(m) });
+        liveRules = await loadLiveRules();
+        live = createLive({ file: path.join(dataDir, "live.json"), rules: liveRules, log: (m) => logger.warn(m) });
     } catch (err) {
         fatal("KERYX não conseguiu iniciar", `Não foi possível carregar o estado da projeção: ${err && err.message}`);
         return;

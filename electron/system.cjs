@@ -8,6 +8,7 @@ const { pipeline } = require("node:stream/promises");
 const yazl = require("yazl");
 const backup = require("./backup.cjs");
 const archive = require("./archive.cjs");
+const closeGuard = require("./closeGuard.cjs");
 
 const SETTINGS_KEY = "backup";
 
@@ -123,6 +124,16 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             logger.error(`[keryx-backup] ${reason} falhou: ${err.stack || err.message}`);
             throw err;
         }
+    }
+
+    // Iniciar com o Windows: the system's own setting (Task Manager can turn
+    // it off), only for the installed app (a dev run would register electron.exe).
+    function machineInfo() {
+        const login = app.isPackaged && app.getLoginItemSettings ? app.getLoginItemSettings({ path: process.execPath }) : null;
+        return {
+            ...closeGuard.machinePrefs(settings.get(closeGuard.MACHINE_KEY, {})),
+            login: { available: Boolean(login), on: Boolean(login?.openAtLogin), blocked: Boolean(login?.openAtLogin && login.executableWillLaunchAtLogin === false) },
+        };
     }
 
     function info() {
@@ -292,6 +303,18 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         ops: {
             info: async () => info(),
             backupNow: async () => { backupNow("manual"); return info(); },
+            // Configurações › Console: this computer's choices.
+            machineGet: async () => machineInfo(),
+            machineSet: async (_event, { confirmClose } = {}) => {
+                const cur = settings.get(closeGuard.MACHINE_KEY, {}) || {};
+                if (confirmClose !== undefined) settings.set(closeGuard.MACHINE_KEY, { ...cur, confirmClose: Boolean(confirmClose) });
+                return machineInfo();
+            },
+            loginSet: async (_event, { on } = {}) => {
+                if (!app.isPackaged) throw Object.assign(new Error("Só no KERYX instalado."), { status: 400 });
+                app.setLoginItemSettings(loginItemArgs(Boolean(on), process.execPath));
+                return machineInfo();
+            },
             backupSet: async (_event, { enabled, keep } = {}) => {
                 const patch = {};
                 if (enabled !== undefined) patch.enabled = Boolean(enabled);
@@ -326,4 +349,7 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
     };
 }
 
-module.exports = { createSystem, cachedSize };
+// The arguments for app.setLoginItemSettings.
+const loginItemArgs = (on, exe) => ({ openAtLogin: Boolean(on), path: exe });
+
+module.exports = { createSystem, cachedSize, loginItemArgs };

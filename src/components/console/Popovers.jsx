@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import ShortcutList from "./ShortcutList";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
@@ -81,26 +82,10 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
 
 export function Shortcuts({ open, setOpen }) {
     if (open !== "atalhos") return null;
-    const keys = [
-        ["Ctrl+Enter", "Enviar a Prévia ao ar (de qualquer lugar)"],
-        ["Enter", "Enviar ao ar (depois de clicar numa música ou versículo)"],
-        ["2 cliques", "Enviar o item ao ar na hora (biblioteca, setlist, slides, versículos)"],
-        ["← →", "Slide ou versículo anterior / próximo no ar"],
-        ["Espaço", "Tocar / pausar"],
-        ["B", "Tela preta (na hora)"],
-        ["L", "Mostrar logo"],
-        ["C", "Limpar texto"],
-        ["Esc", "Tirar tudo do ar na hora (o aviso traz Desfazer) ou fechar o que está aberto"],
-        ["Letra", "Na Bíblia: digitar a referência (ex.: jo 3 16)"],
-        ["/", "Buscar em tudo"],
-        ["?", "Esta lista"],
-    ];
     return (
         <div className="dialog">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>Atalhos</div>
-            <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "4px 12px" }}>
-                {keys.map(([k, d]) => <React.Fragment key={k}><span className="kx-kbd" style={{ color: "var(--fg-1)" }}>{k}</span><span style={{ color: "var(--fg-2)" }}>{d}</span></React.Fragment>)}
-            </div>
+            <ShortcutList />
             <div className="acts"><Btn onClick={() => setOpen(null)}>Fechar</Btn></div>
         </div>
     );
