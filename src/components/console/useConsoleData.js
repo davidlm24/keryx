@@ -35,6 +35,9 @@ function useMediaFiles(rows) {
     return useMemo(() => (info ? rows.map((m) => (info[m.file_url] ? { ...m, missing: !info[m.file_url].exists, size: info[m.file_url].size } : m)) : rows), [rows, info]);
 }
 
+// The projection themes (the same list and cache as useLibrary's).
+export const useThemes = () => useList("ProjectionTheme", ["name"]).data;
+
 export function useLibrary() {
     const songs = useList("Song", ["title"]).data;
     const media = useMediaFiles(useList("Media", ["-created_date"]).data);

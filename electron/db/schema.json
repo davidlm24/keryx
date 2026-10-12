@@ -1551,6 +1551,9 @@
           "type": "text",
           "default": "large"
         },
+        "style_mode": {
+          "type": "text"
+        },
         "font_family": {
           "type": "text",
           "default": "sans"

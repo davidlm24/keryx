@@ -45,7 +45,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   with `useNoticeAdvance`. Escola bíblica materials go on air as ordinary
   stages (`stageFromMaterial`; a quiz is question + answer slides; teacher
   notes ride in `content.stage`, never on the projector). What a song or
-  passage puts on screen is `src/lib/console/content.js`.
+  passage puts on screen is `src/lib/console/content.js`; the default theme
+  dresses one with no look of its own when it is sent (`stamp` in
+  useConsole.js, `withThemeDefaults` in themes.js), never what is on air.
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built
   on the design system in `docs/design-system/` (tokens and `kx-` classes,

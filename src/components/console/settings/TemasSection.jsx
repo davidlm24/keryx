@@ -7,7 +7,7 @@ import { FormRow, CfgKey } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import WallpaperPicker from "../WallpaperPicker";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs } from "@/lib/console/themes";
+import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
@@ -129,7 +129,15 @@ export default function TemasSection({ c }) {
         try { await p; if (message) c.say(message); } catch (err) { c.say(err?.message || "Não foi possível."); }
         reload();
     };
-    const makeDefault = (t) => run(Promise.all(themes.map((x) => (x.id === t.id ? keryx.entities.ProjectionTheme.update(x.id, { is_default: true }) : x.is_default ? keryx.entities.ProjectionTheme.update(x.id, { is_default: false }) : null))), `${t.name} é o tema padrão.`);
+    // One transaction: never two defaults, never none in between.
+    const def = defaultTheme(themes);
+    const setDefault = (id) => {
+        const rows = defaultChanges(themes, id);
+        if (!rows.length) return;
+        const t = themes.find((x) => x.id === id);
+        run(keryx.entities.ProjectionTheme.bulkUpdate(rows), t ? `${t.name} é o tema padrão: músicas e passagens sem estilo próprio vão ao ar com ele.` : "Sem tema padrão: vale o estilo de fábrica.");
+    };
+    const makeDefault = (t) => setDefault(t.id);
     const remove = (t) => {
         if (confirmDel !== t.id) { setConfirmDel(t.id); c.say(`Clique de novo em Excluir para apagar "${t.name}".`); return; }
         setConfirmDel(null);
@@ -139,6 +147,15 @@ export default function TemasSection({ c }) {
 
     return (
         <>
+            <div className="frm">
+                <FormRow k="Estilo padrão do texto">
+                    <select className="cfg-select" value={def?.id || ""} onChange={(e) => setDefault(e.target.value || null)} aria-label="Tema padrão">
+                        <option value="">Estilo de fábrica (sem tema)</option>
+                        {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                    <span className="kx-meta">músicas e passagens sem estilo próprio vão ao ar com ele · o que já está no ar não muda</span>
+                </FormRow>
+            </div>
             <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· texto e fundo prontos, aplicados na hora em Camadas</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => setEditing("new")}>Novo tema…</Btn></CfgKey>
             {editing === "new" && <ThemeEditor row={null} c={c} media={media} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
             {!themes.length && editing !== "new" && <Empty icon="palette" title="Nenhum tema ainda">Crie um em "Novo tema…", ou ajuste o texto em Camadas e use "Salvar como novo".</Empty>}
