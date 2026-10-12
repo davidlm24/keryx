@@ -30,6 +30,8 @@ export const PREF_FIELDS = {
     idle_mode: { default: "logo", normalize: oneOf(["logo", "black", "background"], "logo") },
     chime_on: { default: true, normalize: (v) => v !== false },
     chime_volume: { default: 35, normalize: (v) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) ? Math.min(100, Math.max(5, Math.round(n))) : 35; } },
+    show_item_title: { default: true, normalize: (v) => v !== false },
+    youtube_hide_title: { default: true, normalize: (v) => v !== false },
     import_lines: {
         default: 0,
         normalize: (v) => { const n = Number(v); return v !== null && v !== "" && Number.isInteger(n) && n >= 0 && n <= 12 ? n : 0; },

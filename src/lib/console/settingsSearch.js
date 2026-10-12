@@ -38,6 +38,7 @@ export const SETTINGS_INDEX = [
     e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte, para todo item", ["esmaecer", "deslizar", "corte", "fade", "animação"], { tab: "geral" }),
     e("aparencia", "Duração", "quanto dura a transição", ["ms", "velocidade", "tempo", "transição"], { tab: "geral" }),
     e("aparencia", "Fundo de espera padrão", "a imagem das telas quando nada está no ar", ["espera", "wallpaper", "imagem"], { tab: "geral" }),
+    e("aparencia", "Títulos nas telas", "o título do item no slide e a faixa de título do YouTube", ["título", "nome da música", "youtube", "canal", "esconder"], { tab: "geral" }),
     e("aparencia", "Tela ociosa", "logo, preto ou fundo quando nada está no ar", ["ociosa", "logo", "preto", "nada no ar"], { tab: "geral" }),
     e("aparencia", "Estilo padrão do texto", "o tema com que músicas e passagens vão ao ar", ["tema padrão", "estilo de fábrica", "padrão"], { tab: "temas" }),
     e("aparencia", "Temas", "estilos prontos de texto e fundo, aplicados em Camadas",

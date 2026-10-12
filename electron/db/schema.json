@@ -1767,6 +1767,12 @@
         "chime_volume": {
           "type": "integer"
         },
+        "show_item_title": {
+          "type": "boolean"
+        },
+        "youtube_hide_title": {
+          "type": "boolean"
+        },
         "standby_background": {
           "type": "text"
         },
