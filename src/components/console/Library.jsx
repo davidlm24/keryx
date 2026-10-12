@@ -13,6 +13,7 @@ import { importMediaFiles } from "@/lib/mediaImport";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromPieceList, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { noticeLabel, noticeIcon } from "@/lib/console/notice";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
+import { cleanPreset, canKeep, presetOf, orderPresets } from "@/lib/console/alertPresets";
 
 // A library row can be dragged onto the Prévia (prepares), the Programa
 // (sends) or the Setlist (adds the item there).
@@ -53,6 +54,18 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
         if (!text) return;
         c.callOp("alert.show", { message: text, type: "message" }).then(() => setAlertText("")).catch(() => {});
     };
+    // Mensagens prontas (AlertPreset, src/lib/console/alertPresets.js): a
+    // click puts one in the field to complete it, a double click shows it
+    // at once; Guardar keeps what is in the field.
+    const presets = orderPresets(data.alertPresets);
+    const kept = presetOf(alertText, presets);
+    const keep = canKeep(alertText, presets);
+    const keepAlert = () => {
+        if (!keep.ok) { c.say(keep.why); return; }
+        keryx.entities.AlertPreset.create({ message: cleanPreset(alertText) }).then(() => c.say("Mensagem guardada.")).catch((err) => c.say(err?.message || "Não foi possível guardar a mensagem."));
+    };
+    const dropPreset = (p) => keryx.entities.AlertPreset.delete(p.id).catch((err) => c.say(err?.message || "Não foi possível excluir a mensagem."));
+    const sendPreset = (p) => c.callOp("alert.show", { message: p.message, type: "message" }).catch(() => {});
     const alert = c.cur?.alert;
     const alertElapsed = alert ? mmss((c.now - alert.since) / 1000) : "";
 
@@ -237,8 +250,19 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                     <>
                         <div className="listhead"><span className="kx-section">Alerta rápido <span className="kx-count">· vai direto às telas</span></span></div>
                         <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-2) var(--space-1)" }}>
-                            <Field icon={null} value={alertText} onChange={setAlertText} placeholder="Ex.: Carro placa ABC-1234 com o farol aceso" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") showAlert(); }} />
+                            <Field icon={null} value={alertText} onChange={setAlertText} placeholder="Aviso para as telas" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") showAlert(); }} />
                             <Btn onClick={showAlert} title="Mostrar nas telas agora · Enter">Mostrar</Btn>
+                            <IconBtn name="star" on={Boolean(kept)} disabled={!kept && !alertText.trim()} title={kept ? "Esta mensagem já está guardada" : "Guardar esta mensagem como pronta"} onClick={keepAlert} />
+                        </div>
+                        <div className="kx-presets" role="list" aria-label="Mensagens prontas">
+                            {!presets.length && <span className="kx-meta kx-presets-empty">Escreva um aviso e use a estrela para guardá-lo como mensagem pronta. Ex.: Chamar pessoa, Kids, Carro.</span>}
+                            {presets.map((p) => (
+                                <span key={p.id} role="listitem" className={`kx-preset ${kept?.id === p.id ? "is-on" : ""}`}>
+                                    <button type="button" className="kx-t kx-preset-t" title={`${p.message}
+Clique coloca no campo · dois cliques mostram nas telas`} onClick={() => setAlertText(p.message)} onDoubleClick={() => sendPreset(p)}>{p.message}</button>
+                                    <button type="button" className="kx-t kx-preset-x" aria-label={`Excluir a mensagem: ${p.message}`} title="Excluir esta mensagem pronta" onClick={() => dropPreset(p)}><Icon name="x" size={12} /></button>
+                                </span>
+                            ))}
                         </div>
                         {alert && (
                             <div className="kx-alert">
