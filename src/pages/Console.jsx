@@ -235,13 +235,13 @@ export default function Console() {
         if (type === "SECTION") throw new Error(`"${item.title}" é uma seção da setlist.`);
         if (type === "MATERIAL") { const s = stageFromMaterial(await keryx.entities.BibleMaterial.get(item.contentId)); return { ...s, args: { ...s.args, ref: { ...(s.args.ref || {}), ...ref } } }; }
         if (type === "ANNOUNCEMENT" && item.contentId) { const s = stageFromPiece(await keryx.entities.CommunicationVideo.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
-        if (type === "SONG") return stageFromSong(await keryx.entities.Song.get(item.contentId), ref);
+        if (type === "SONG") return stageFromSong(await keryx.entities.Song.get(item.contentId), ref, data.themes);
         if (type === "BIBLE") return stageFromPassage(await keryx.entities.BiblePassage.get(item.contentId), ref);
         if (["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
         if (type === "TIMER") { const s = stageFromTool("timer", { minutes: Math.max(1, Math.round((item.duration || 300) / 60)) }); return { ...s, args: { ...s.args, ref } }; }
         const s = stageFromText(item.title || "Texto", item.notes || item.title || "");
         return { ...s, args: { ...s.args, ref } };
-    }, [serviceId]);
+    }, [serviceId, data.themes]);
 
     const prepareItem = useCallback(async (item, index) => {
         try { c.setPrev(await buildStage(item, index)); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
@@ -709,7 +709,7 @@ export default function Console() {
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
-            {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song)); openSong(song.id); }} />}
+            {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
                     <VerifyView c={c} items={playable} data={data} outputs={outputs} network={network}

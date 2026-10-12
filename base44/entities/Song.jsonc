@@ -26,6 +26,16 @@
       "type": "string",
       "description": "URL da imagem de fundo personalizada"
     },
+    "theme_id": {
+      "type": "string",
+      "default": "",
+      "description": "Tema da música (ProjectionTheme): enquanto existir, manda no visual inteiro e mudar o tema muda a música; vazio usa o visual próprio (fonte, cores, fundo) desta música"
+    },
+    "part_themes": {
+      "type": "object",
+      "default": {},
+      "description": "Tema por parte da letra: o nome da parte ([Refrão], [Ponte]...) em minúsculas -> id do ProjectionTheme; os slides dessa parte usam o tema inteiro"
+    },
     "lines_per_slide": {
       "type": "integer",
       "enum": [0, 2, 4],
