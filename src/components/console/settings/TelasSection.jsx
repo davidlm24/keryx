@@ -8,6 +8,8 @@ import { PREF_OUTPUTS, normalizePref, isDefaultPref, outputLook } from "@/lib/ou
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { ringBell } from "@/lib/bell";
+import { keryx } from "@/api/keryxClient";
+import { buildOutputsFile, readOutputsFile, prefWrites, fileName } from "@/lib/outputsFile";
 
 const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
 
@@ -40,6 +42,9 @@ export default function TelasSection({ c }) {
     const [tuning, setTuning] = useState(null);
     const prefRows = useOutputPrefRows();
     const prefRow = (key) => prefRows.find((r) => r.screen_path === key) || null;
+    // Importar ajustes: the file read and checked (outputsFile.js), waiting
+    // for the operator to confirm what changes.
+    const [pending, setPending] = useState(null);
     if (!displays) return <Empty icon="monitor" title="Telas e saídas">{desktopOnly}</Empty>;
     if (!state) return <Reading what="as telas" error={readError} />;
 
@@ -67,6 +72,45 @@ export default function TelasSection({ c }) {
         }
         apply(displays.set(o.key, { target }));
     };
+    // Exportar / Importar ajustes das saídas (src/lib/outputsFile.js): every
+    // output's screen and "Abrir ao iniciar", and every page's Ajustes.
+    const exportPrefs = async () => {
+        try {
+            const file = buildOutputsFile({ outputs, prefRows, themes, displays: list, appVersion: keryx.versions?.app || "" });
+            const res = await displays.exportFile(JSON.stringify(file, null, 2), fileName());
+            if (res?.error) c.say(res.error.message);
+            else if (res?.data?.file) c.say(`Ajustes das saídas exportados: ${res.data.file}`);
+        } catch (err) { c.say(err?.message || "Não foi possível exportar os ajustes das saídas."); }
+    };
+    const importPrefs = async () => {
+        try {
+            const res = await displays.importFile();
+            if (res?.error) { c.say(res.error.message); return; }
+            if (!res?.data) return; // the picker was closed
+            const read = readOutputsFile(res.data.text, { themes, displays: list });
+            if (read.error) { c.say(read.error); return; }
+            setPending({ read, name: res.data.name || "arquivo" });
+        } catch (err) { c.say(err?.message || "Não foi possível ler o arquivo."); }
+    };
+    // Through the same calls as the rows below: every window and network
+    // screen follows at once. Rows are updated or created, never deleted.
+    const applyImport = async () => {
+        const { read } = pending;
+        setPending(null);
+        try {
+            for (const { key, assignment } of read.assignments) {
+                const res = await displays.set(key, assignment);
+                if (res?.error) throw new Error(res.error.message);
+            }
+            for (const w of prefWrites(read.prefs, prefRows)) {
+                if (w.op === "update") await keryx.entities.OutputPref.update(w.id, w.data);
+                else await keryx.entities.OutputPref.create(w.data);
+            }
+            const now = await displays.list();
+            if (now?.data) setState(now.data);
+            c.say("Ajustes das saídas importados.");
+        } catch (err) { c.say(err?.message || "Não foi possível importar todos os ajustes das saídas."); }
+    };
     const status = (o) => {
         const p = o.placement || {};
         if (p.missing) return "A tela escolhida não está ligada · abre numa janela até ligar";
@@ -93,7 +137,19 @@ export default function TelasSection({ c }) {
                 <span style={{ flex: 1 }} />
                 <Btn onClick={identify} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
             </CfgKey>
-            <CfgKey k="Saídas" className="listhead"><span className="kx-section">Saídas <span className="kx-count">· cada saída mostra um conteúdo numa tela</span></span></CfgKey>
+            <CfgKey k="Saídas" className="listhead"><span className="kx-section">Saídas <span className="kx-count">· cada saída mostra um conteúdo numa tela</span></span>
+                <span style={{ flex: 1 }} />
+                <CfgKey as="span" k="Exportar ajustes das saídas"><Btn small onClick={exportPrefs} title="Salva num arquivo a tela e os ajustes de cada saída, para restaurar depois ou levar para outro computador">Exportar ajustes…</Btn></CfgKey>
+                <CfgKey as="span" k="Importar ajustes das saídas"><Btn small onClick={importPrefs} title="Abre um arquivo exportado e mostra o que muda antes de aplicar">Importar ajustes…</Btn></CfgKey>
+            </CfgKey>
+            {pending && (
+                <div className="cfg-import" role="group" aria-label="Importar ajustes das saídas">
+                    <span className="kx-section">Importar {pending.name}</span>
+                    <span className="kx-meta">{pending.read.exportedAt ? `Exportado em ${new Date(pending.read.exportedAt).toLocaleDateString("pt-BR")} · ` : ""}a tela de {pending.read.outputs} {pending.read.outputs === 1 ? "saída" : "saídas"} e os ajustes de {pending.read.pages} {pending.read.pages === 1 ? "saída" : "saídas"}. Substitui o que está configurado agora nessas saídas.</span>
+                    {pending.read.notes.map((n) => <span key={n} className="kx-meta kx-warn">{n}</span>)}
+                    <span className="cfg-import-acts"><Btn kind="brand" onClick={applyImport}>Importar</Btn><Btn onClick={() => setPending(null)}>Cancelar</Btn></span>
+                </div>
+            )}
             {outputs.map((raw) => {
                 const lk = outputLook(raw.key, prefRow(raw.key));
                 const o = { ...raw, label: lk.custom || raw.label };

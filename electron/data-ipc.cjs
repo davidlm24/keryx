@@ -95,6 +95,41 @@ function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaD
     ipcMain.handle("keryx:displays:close", outputsOp(({ key }) => { outputs.close(key); return outputs.list(); }));
     ipcMain.handle("keryx:displays:open", outputsOp(({ key }) => outputs.open(key)));
     ipcMain.handle("keryx:displays:identify", outputsOp(() => { outputs.identify(); return true; }));
+    // Exportar / Importar ajustes das saídas (src/lib/outputsFile.js): the main
+    // process only saves the file the console built and reads one back; the
+    // console checks it and applies it through displays.set and OutputPref.
+    const MAX_OUTPUTS_FILE = 1024 * 1024;
+    const fileOp = (fn) => async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        try {
+            return { data: await fn(event, payload || {}) };
+        } catch (err) {
+            log(`[keryx-outputs-file] ${err && err.stack}`);
+            return { error: { message: err.message || "Não foi possível usar o arquivo.", status: err.status || 500 } };
+        }
+    };
+    ipcMain.handle("keryx:displays:export-file", fileOp(async (event, { json, name }) => {
+        if (typeof json !== "string" || json.length > MAX_OUTPUTS_FILE) throw Object.assign(new Error("Ajustes das saídas grandes demais para exportar."), { status: 413 });
+        const { canceled, filePath } = await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender), {
+            title: "Exportar ajustes das saídas",
+            defaultPath: typeof name === "string" && /^[\w.-]{1,80}\.json$/.test(name) ? name : "keryx-saidas.json",
+            filters: [{ name: "Ajustes das saídas do KERYX (JSON)", extensions: ["json"] }],
+        });
+        if (canceled || !filePath) return null;
+        await fs.promises.writeFile(filePath, json, "utf8");
+        return { file: filePath };
+    }));
+    ipcMain.handle("keryx:displays:import-file", fileOp(async (event) => {
+        const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+            title: "Importar ajustes das saídas",
+            filters: [{ name: "Ajustes das saídas do KERYX (JSON)", extensions: ["json"] }],
+            properties: ["openFile"],
+        });
+        if (canceled || !filePaths[0]) return null;
+        const { size } = await fs.promises.stat(filePaths[0]);
+        if (size > MAX_OUTPUTS_FILE) throw Object.assign(new Error("Este arquivo é grande demais para ser um arquivo de saídas do KERYX."), { status: 413 });
+        return { text: await fs.promises.readFile(filePaths[0], "utf8"), name: path.basename(filePaths[0]) };
+    }));
 
     const bibleOp = (fn) => async (event, payload) => {
         if (!isTrustedSender(event)) return reject;

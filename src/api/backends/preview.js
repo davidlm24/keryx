@@ -72,6 +72,28 @@ export function createPreviewBridge() {
         },
         async close(key) { windows.get(key)?.close(); windows.delete(key); return { data: true }; },
         identify: async () => ({ data: true }),
+        // Exportar / Importar ajustes das saídas, the browser's way: a download
+        // and a file picker (the app uses its own save and open dialogs).
+        async exportFile(json, name) {
+            const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+            const a = Object.assign(document.createElement("a"), { href: url, download: name || "keryx-saidas.json" });
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            return { data: { file: a.download } };
+        },
+        importFile() {
+            return new Promise((resolve) => {
+                const input = Object.assign(document.createElement("input"), { type: "file", accept: ".json,application/json", className: "kx-preview-import" });
+                input.style.display = "none";
+                input.addEventListener("change", async () => {
+                    const file = input.files?.[0];
+                    input.remove();
+                    resolve(file ? { data: { text: await file.text(), name: file.name } } : { data: null });
+                });
+                document.body.appendChild(input);
+                input.click();
+            });
+        },
     };
 
     return {

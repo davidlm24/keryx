@@ -71,6 +71,9 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         open: (key) => ipcRenderer.invoke("keryx:displays:open", { key }),
         close: (key) => ipcRenderer.invoke("keryx:displays:close", { key }),
         identify: () => ipcRenderer.invoke("keryx:displays:identify"),
+        // Exportar / Importar ajustes das saídas: save the file the console built, read one back.
+        exportFile: (json, name) => ipcRenderer.invoke("keryx:displays:export-file", { json, name }),
+        importFile: () => ipcRenderer.invoke("keryx:displays:import-file"),
     },
     bible: {
         status: () => ipcRenderer.invoke("keryx:bible:status"),
