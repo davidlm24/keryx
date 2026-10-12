@@ -31,6 +31,7 @@ export const SETTINGS_INDEX = [
 
     e("rede", "Telas na rede", "celulares, tablets e TVs pela rede da igreja", ["wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),
     e("rede", "Transmissão", "a legenda para a live no OBS: cor, tamanho e posição da faixa", ["obs", "live", "legenda", "faixa", "transmissão", "youtube"], { target: "Telas na rede" }),
+    e("rede", "Controle remoto", "um celular conduz o culto: slides, Tela preta, setlist, Bíblia", ["celular", "remoto", "controle", "telefone", "palco", "pregador", "Celular", "Código", "Conectados", "desconectar"]),
     e("rede", "PIN", "o código que os aparelhos pedem para entrar; Mostrar PIN", ["senha", "código", "proteger", "mostrar pin", "esqueci"]),
     e("rede", "Telas conectadas pela rede", "os aparelhos conectados agora", ["aparelhos", "conectados"]),
 
