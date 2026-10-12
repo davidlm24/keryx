@@ -1258,6 +1258,14 @@ async function checkConsole(webContents, { live, outputs }) {
             return rows.length === 1 && rows[0].type === "video";
         }, 6000);
         result.ytListed = await waitText(webContents, "Vídeo do YouTube");
+        // The new row lands at the top and the list re-reads the files on
+        // disk: click after the rows stop moving (a click mid-shift hit the
+        // YouTube row and put it on air instead of the tone).
+        {
+            const rowsAt = () => js(`[...document.querySelectorAll(".kx-row")].map((n) => n.textContent.slice(0, 24) + Math.round(n.getBoundingClientRect().top)).join("|")`);
+            let prev = await rowsAt();
+            for (let i = 0; i < 20; i++) { await sleep(250); const now = await rowsAt(); if (now === prev) break; prev = now; }
+        }
         await click(".kx-row", "Tom de teste");
         result.audioPrepared = await waitCap(PREV, "Tom de teste");
         await press("Enter");
