@@ -2401,6 +2401,13 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             live.call("screens.lock", { locked: true });
             result.remote.locked = (await cmd("next")).status;
             live.call("screens.lock", { locked: false });
+            // The phone's page itself, signed in with that cookie.
+            const phone = tablet();
+            const [name, value] = cookie.split("=");
+            await phone.webContents.session.cookies.set({ url: base, name, value });
+            await phone.loadURL(`${base}/Remote`);
+            result.remote.page = await waitFor(phone, "Segure para encerrar tudo", 8000);
+            phone.close();
             await network.ops.setRemote(null, false);
             result.remote.offAgain = (await cmd("black")).status;
         }
@@ -2433,7 +2440,7 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
         && (!webContents || (result.dropBanner && result.dropStatus))
-        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.locked === 423 && result.remote.offAgain === 404));
+        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
     return result;
 }
 
