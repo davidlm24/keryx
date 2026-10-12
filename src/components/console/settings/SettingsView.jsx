@@ -67,7 +67,7 @@ const FLASH_MS = 1600;
 // without accents (src/lib/console/settingsSearch.js): the results replace
 // the section, the left column counts them, and Enter or a click opens the
 // section and lights the row up.
-export default function SettingsView({ c, section, tab, setSection, onClose, layout, setLayout, restoreLayout }) {
+export default function SettingsView({ c, section, tab, setSection, onClose, layout, setLayout, restoreLayout, onOpenLayout }) {
     const current = sectionOf(section);
     const [q, setQ] = useState("");
     const [active, setActive] = useState(0);
@@ -163,7 +163,7 @@ export default function SettingsView({ c, section, tab, setSection, onClose, lay
         ) : <Empty icon="search" title={`Nada encontrado para “${q.trim()}”`}>Tente outra palavra: PIN, fundo, backup, transição, logo…</Empty>;
     } else if (current.id === "aparencia") body = <AparenciaView c={c} tab={tab || "geral"} setTab={(t) => setSection("aparencia", t)} />;
     else if (current.id === "console") body = <ConsoleSection c={c} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
-    else { const Body = BODIES[current.id]; body = <Body c={c} />; }
+    else { const Body = BODIES[current.id]; body = <Body c={c} onOpenLayout={onOpenLayout} />; }
 
     return (
         <CfgFlash.Provider value={flash}>

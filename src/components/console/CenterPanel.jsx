@@ -11,8 +11,11 @@ import { captionParts, airFor } from "@/lib/console/caption";
 import { OUTPUT_VIEWS, SCREEN_PAGES, nextItems, previewSession } from "@/lib/network/views";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
+import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { prefState, prefVars, pastorOptions, stageHidden } from "@/lib/outputPrefs";
 import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
+import { useLayout } from "@/hooks/useLayout";
+import { useChurch } from "@/hooks/useChurch";
 import "@/components/screen/output-prefs.css";
 
 // What the Prévia would look like on air: the stage applied with the live
@@ -120,6 +123,12 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const railPage = (!railPref.content && SCREEN_PAGES.find((p) => p.key === railOut)) || null;
     const railDoc = useMemo(() => (railPage ? null : prefState(railOut, pdoc, railPref, railTheme)), [railPage, railOut, pdoc, railPref, railTheme]);
     const pastorDoc = useMemo(() => (railPage?.key === "/PastorView" && pdoc ? { ...pdoc, session: previewSession(cur?.session || null, prev?.args?.ref) } : null), [railPage, pdoc, cur?.session, prev]);
+    // A Palco/Pastor drawing a layout (Ajustes › Layout): the layout itself
+    // draws the prepared stage, as the output will.
+    const railLayout = useLayout(railPage ? railPref.layoutId : "");
+    const church = useChurch();
+    const layoutDoc = pastorDoc || pdoc;
+    const layoutNext = useMemo(() => (railLayout ? nextItems(items, layoutDoc?.session, 10) : []), [railLayout, items, layoutDoc?.session]);
     const railVars = railPage ? null : prefVars(railPref);
     const railName = railViews.find((o) => o.key === railOut)?.name || "";
     // Locked: the screens keep this image, blue (they are not following). On
@@ -161,10 +170,13 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         {prev && !railPage && !railDoc && <div className="kx-screen-empty">A saída {railName} não mostra este item</div>}
                         {prev && !railPage && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A saída {railName} não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Ajustes da saída › Mostrar)</div>}
-                        {prev && railPage?.key === "/StageView" && (pdoc?.content
+                        {prev && railPage && railLayout && (
+                            <LayoutRenderer layout={railLayout} live={layoutDoc} nowMs={now} logoUrl={logoUrl} upcoming={layoutNext} hasService={items.length > 0} church={church} scale={railPref.scale} embed />
+                        )}
+                        {prev && railPage?.key === "/StageView" && !railLayout && (pdoc?.content
                             ? <StageScreen content={pdoc.content} nowMs={now} embed opts={railPref.options} scale={railPref.scale} />
                             : <div className="kx-screen-empty">A saída Palco não mostra este item</div>)}
-                        {prev && pastorDoc && (
+                        {prev && pastorDoc && !railLayout && (
                             <div className="kp-portrait">
                                 <PastorScreen live={pastorDoc} nowMs={now} logo={logoUrl} upcoming={nextItems(items, pastorDoc.session, pastorOptions(railPref).next_count || 1)} hasService={items.length > 0} embed opts={railPref.options} scale={railPref.scale} />
                             </div>

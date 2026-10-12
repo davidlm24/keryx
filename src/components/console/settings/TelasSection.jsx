@@ -10,6 +10,8 @@ import { usePrefs, updateUser } from "@/hooks/useUser";
 import { ringBell } from "@/lib/bell";
 import { keryx } from "@/api/keryxClient";
 import { buildOutputsFile, readOutputsFile, prefWrites, fileName } from "@/lib/outputsFile";
+import { useLayoutRows } from "@/hooks/useLayout";
+import { normalizeLayout, LAYOUT_CATEGORIES, duplicateLayout, layoutFields } from "@/lib/layouts";
 
 const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
 
@@ -31,16 +33,57 @@ function SomBlock({ c }) {
     );
 }
 
+const CATEGORY = Object.fromEntries(LAYOUT_CATEGORIES);
+const CAT_ICON = { palco: "monitor", pastor: "tablet", outro: "layers" };
+
+// Layouts das telas: the operator's layouts (src/lib/layouts.js), each
+// with the outputs using it; Novo, Editar (the LayoutEditor view, through
+// `onOpenLayout`), Duplicar and Excluir (an output using a deleted layout
+// goes back to its page's own screen).
+function LayoutsBlock({ c, rows, prefRows, onOpenLayout }) {
+    const [confirm, setConfirm] = useState(null);
+    const layouts = rows.map(normalizeLayout).filter((l) => l.id).sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name, "pt-BR"));
+    const usedBy = (id) => prefRows.filter((r) => r.layout_id === id).map((r) => outputLook(r.screen_path, r).name);
+    const duplicate = (l) => keryx.entities.ScreenLayout.create(layoutFields(duplicateLayout(l))).then((row) => { c.say(`Layout "${row.name}" criado.`); onOpenLayout?.(row.id); }).catch((err) => c.say(err?.message || "Não foi possível duplicar o layout."));
+    const remove = (l) => {
+        if (confirm !== l.id) { setConfirm(l.id); c.say(`Clique de novo para excluir "${l.name}".`); return; }
+        setConfirm(null);
+        keryx.entities.ScreenLayout.delete(l.id).then(() => c.say(`Layout "${l.name}" excluído.${usedBy(l.id).length ? " As saídas que o usavam voltaram ao padrão." : ""}`)).catch((err) => c.say(err?.message || "Não foi possível excluir o layout."));
+    };
+    return (
+        <>
+            <CfgKey k="Layouts das telas" className="listhead"><span className="kx-section">Layouts das telas <span className="kx-count">· o desenho do Palco e da Tela do pastor</span></span>
+                <span style={{ flex: 1 }} />
+                <Btn small onClick={() => onOpenLayout?.("new")} title="Desenhar uma tela: onde ficam o relógio, o timer, a letra, a próxima…"><Icon name="plus" />Novo layout</Btn>
+            </CfgKey>
+            {!layouts.length && <div className="listhead"><span className="kx-meta">Nenhum layout seu ainda. Cada saída tem a tela padrão e os modelos Palco e Pastor; Novo layout desenha uma tela do zero, e Ajustes › Layout, numa saída, duplica um modelo para editar.</span></div>}
+            {layouts.map((l) => {
+                const uses = usedBy(l.id);
+                return (
+                    <div key={l.id} className="kx-row cfg-out">
+                        <span className="kx-glyph"><Icon name={CAT_ICON[l.category] || "layers"} /></span>
+                        <div className="kx-row-main"><div className="kx-row-title">{l.name}</div><div className="kx-row-meta">{CATEGORY[l.category]} · {l.elements.length} {l.elements.length === 1 ? "elemento" : "elementos"}{uses.length ? ` · em ${uses.join(", ")}` : ""}</div></div>
+                        <Btn small onClick={() => onOpenLayout?.(l.id)}><Icon name="edit" />Editar</Btn>
+                        <Btn small onClick={() => duplicate(l)}><Icon name="copy" />Duplicar</Btn>
+                        <Btn small kind={confirm === l.id ? "air" : ""} onClick={() => remove(l)}>{confirm === l.id ? "Excluir mesmo" : "Excluir"}</Btn>
+                    </div>
+                );
+            })}
+        </>
+    );
+}
+
 // Telas e saídas: the monitors as a diagram, each output's screen, "Abrir
 // ao iniciar", open/close, Identificar, each output's own settings (Ajustes,
-// OutputPrefCard). The idle look of the screens is in Aparência › Geral.
-// The placement rules live in electron/outputs.cjs.
-export default function TelasSection({ c }) {
+// OutputPrefCard), the layouts. The idle look of the screens is in
+// Aparência › Geral. The placement rules live in electron/outputs.cjs.
+export default function TelasSection({ c, onOpenLayout }) {
     const displays = useBridge("displays");
     const [state, , setState, readError] = usePoll(() => displays?.list(), 3000);
     const { themes } = useLibrary();
     const [tuning, setTuning] = useState(null);
     const prefRows = useOutputPrefRows();
+    const layoutRows = useLayoutRows();
     const prefRow = (key) => prefRows.find((r) => r.screen_path === key) || null;
     // Importar ajustes: the file read and checked (outputsFile.js), waiting
     // for the operator to confirm what changes.
@@ -76,7 +119,7 @@ export default function TelasSection({ c }) {
     // output's screen and "Abrir ao iniciar", and every page's Ajustes.
     const exportPrefs = async () => {
         try {
-            const file = buildOutputsFile({ outputs, prefRows, themes, displays: list, appVersion: keryx.versions?.app || "" });
+            const file = buildOutputsFile({ outputs, prefRows, themes, layouts: layoutRows, displays: list, appVersion: keryx.versions?.app || "" });
             const res = await displays.exportFile(JSON.stringify(file, null, 2), fileName());
             if (res?.error) c.say(res.error.message);
             else if (res?.data?.file) c.say(`Ajustes das saídas exportados: ${res.data.file}`);
@@ -87,7 +130,7 @@ export default function TelasSection({ c }) {
             const res = await displays.importFile();
             if (res?.error) { c.say(res.error.message); return; }
             if (!res?.data) return; // the picker was closed
-            const read = readOutputsFile(res.data.text, { themes, displays: list });
+            const read = readOutputsFile(res.data.text, { themes, layouts: layoutRows, displays: list });
             if (read.error) { c.say(read.error); return; }
             setPending({ read, name: res.data.name || "arquivo" });
         } catch (err) { c.say(err?.message || "Não foi possível ler o arquivo."); }
@@ -170,15 +213,16 @@ export default function TelasSection({ c }) {
                         : <Btn onClick={() => apply(displays.open(o.key))}>Abrir</Btn>}
                     <CfgKey as="span" k="Ajustes" className="cfg-tune">
                         <Btn on={tuning === o.key} onClick={() => setTuning(tuning === o.key ? null : o.key)} aria-expanded={tuning === o.key}
-                            title={`Nome, ícone${PREF_OUTPUTS.includes(o.key) ? ", conteúdo, escala do texto, margens, logo e tema" : ""} de ${o.label}`}>
+                            title={`Nome, ícone${PREF_OUTPUTS.includes(o.key) ? ", conteúdo, escala do texto, margens, logo e tema" : o.key === "/StageView" || o.key === "/PastorView" ? ", layout e escala do texto" : ""} de ${o.label}`}>
                             <Icon name="sliders" />Ajustes
                         </Btn>
                     </CfgKey>
                 </div>
-                {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} c={c} />}
+                {tuning === o.key && <OutputPrefCard output={o} row={prefRow(o.key)} themes={themes} c={c} onOpenLayout={onOpenLayout} />}
                 </React.Fragment>
                 );
             })}
+            <LayoutsBlock c={c} rows={layoutRows} prefRows={prefRows} onOpenLayout={onOpenLayout} />
             <SomBlock c={c} />
             <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas: use Trazer para a frente para ver uma de novo. Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou Fechar aqui. Fechar o KERYX fecha todas. Ligar um monitor aparece aqui em poucos segundos.</span></div>
         </>

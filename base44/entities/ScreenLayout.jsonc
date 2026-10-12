@@ -1,0 +1,36 @@
+{
+  "name": "ScreenLayout",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do layout (Palco · banda, Pastor, Timer no canto...)"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "palco",
+        "pastor",
+        "outro"
+      ],
+      "default": "palco",
+      "description": "Categoria na lista de layouts; qualquer saída pode usar qualquer layout"
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": [],
+      "description": "Os elementos desenhados na tela (src/lib/layouts.js): tipo, posição e tamanho em % da tela, quando aparece, fonte, cor, alinhamento e opções do tipo"
+    },
+    "background": {
+      "type": "object",
+      "default": {},
+      "description": "O fundo da tela: cor, imagem, ou a imagem da música no ar escurecida (color, image, song_image, dim)"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
