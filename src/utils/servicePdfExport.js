@@ -10,12 +10,24 @@ const dateBR = (iso) => (/^\d{4}-\d{2}-\d{2}$/.test(String(iso || "")) ? iso.spl
  * @param {object} service - entidade Service
  * @param {array} items - ServiceItems ordenados
  */
-export async function exportServiceToPdf(service, items) {
+// church: { name, city } (Configurações › Igreja), a line over the title.
+export async function exportServiceToPdf(service, items, church = null) {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
     let y = margin;
+
+    // A igreja, por cima do título.
+    const line = [church?.name, church?.city].filter(Boolean).join(" · ");
+    if (line) {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(110);
+        doc.text(line, margin, y);
+        doc.setTextColor(0);
+        y += 8;
+    }
 
     // Título
     doc.setFontSize(20);
@@ -27,9 +39,13 @@ export async function exportServiceToPdf(service, items) {
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
     const p = plan(service, items);
+    const hasStart = Boolean(service.startTime || service.time);
     const meta = [
         service.date && `Data: ${dateBR(service.date)}`,
-        `Início: ${service.startTime || service.time || "19:00"} · ${p.count} itens · ${total(p.seconds)} · termina às ${clockAt(p.ends)}`,
+        // No time chosen: no invented one (the plan's times start at the first item).
+        (service.startTime || service.time)
+            ? `Início: ${service.startTime || service.time} · ${p.count} itens · ${total(p.seconds)} · termina às ${clockAt(p.ends)}`
+            : `${p.count} itens · ${total(p.seconds)}`,
         service.location && `Local: ${service.location}`,
     ].filter(Boolean);
     meta.forEach(m => { doc.text(m, margin, y); y += 6; });
@@ -65,7 +81,7 @@ export async function exportServiceToPdf(service, items) {
         doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
         const at = p.rows[i]?.at;
-        doc.text(`${at != null ? `${clockAt(at)}  ` : ""}${typeLabel(item.type)}: ${item.title || ""}${item.duration ? `  (${span(item.duration)})` : ""}`, margin, y);
+        doc.text(`${hasStart && at != null ? `${clockAt(at)}  ` : ""}${typeLabel(item.type)}: ${item.title || ""}${item.duration ? `  (${span(item.duration)})` : ""}`, margin, y);
         y += 7;
 
         doc.setFontSize(10);

@@ -12,6 +12,8 @@ import NetStatus from '@/components/network/NetStatus';
 import DesktopOnly from '@/components/DesktopOnly';
 import PreviewBanner from '@/components/PreviewBanner';
 import { keryx } from '@/api/keryxClient';
+import { useWindowTitle } from '@/hooks/useChurch';
+import { outputMeta } from '@/lib/outputPrefs';
 
 import Console from './pages/Console';
 import Projection from './pages/Projection';
@@ -45,6 +47,16 @@ function NetworkStatus() {
   return pathname === '/StreamView' ? null : <NetStatus />;
 }
 
+// The window's (or the tab's) title carries the church: "Igreja X · KERYX"
+// for the console, "Palco · Igreja X" for a screen (on the taskbar, in
+// Alt-Tab and in a tablet's bookmarks).
+const TITLED = new Set(['/Projection', '/LyricProjection', '/StageView', '/VideoProjection', '/CommunicationProjection', '/PastorView', '/StreamView']);
+function WindowTitle() {
+  const { pathname } = useLocation();
+  useWindowTitle(TITLED.has(pathname) ? outputMeta(pathname).name : '');
+  return null;
+}
+
 // Development only: the network start page in the browser preview, with the
 // screens electron/lan.cjs lists (NETWORK_SCREENS), to check its layout.
 const PREVIEW_SCREENS = [
@@ -68,6 +80,7 @@ function App() {
     <QueryClientProvider client={queryClientInstance}>
       <Router>
         {import.meta.env.DEV && keryx.isPreview && <PreviewBanner />}
+        <WindowTitle />
         <ErrorBoundary>
           {keryx.isNetworkScreen ? (
             <>
