@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { usePrefs } from "@/hooks/useUser";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import LiveVideo from "@/components/projection/LiveVideo";
@@ -12,6 +13,8 @@ const IMAGE_SECONDS = 5;
  * reports that (media.advance, which ignores duplicate reports).
  */
 export default function LiveMediaView({ media }) {
+    // An image's name over it only when the church wants titles (Configurações › Aparência).
+    const showTitle = usePrefs().show_item_title;
     const inPlaylist = Boolean(media.playlist);
     const index = media.playlistIndex;
     // A playlist moves on; a single video that ends leaves the screen (the
@@ -52,7 +55,7 @@ export default function LiveMediaView({ media }) {
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 relative">
                 {counter}
-                {media.title && !inPlaylist && media.kind === "image" && (
+                {showTitle && media.title && !inPlaylist && media.kind === "image" && (
                     <h2 className="text-3xl font-semibold text-white mb-4">{media.title}</h2>
                 )}
                 <img
