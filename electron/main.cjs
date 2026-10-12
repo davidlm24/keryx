@@ -371,6 +371,14 @@ app.whenReady().then(async () => {
     try {
         liveRules = await loadLiveRules();
         live = createLive({ file: path.join(dataDir, "live.json"), rules: liveRules, log: (m) => logger.warn(m) });
+        // A live state starting empty takes the church's logo look and idle
+        // screen (Configurações › Igreja and Aparência, liveSeed.cjs).
+        if (live.fresh) {
+            try {
+                const profile = store.call("User", "get", ["local"]);
+                for (const [op, args] of require("./liveSeed.cjs").seedOps(profile)) live.call(op, args);
+            } catch (err) { logger.warn(`[keryx-live] não foi possível aplicar o logo e a tela ociosa da igreja: ${err.message}`); }
+        }
     } catch (err) {
         fatal("KERYX não conseguiu iniciar", `Não foi possível carregar o estado da projeção: ${err && err.message}`);
         return;

@@ -830,3 +830,5 @@
 .console .shortcuts .kx-kbd { color: var(--fg-1); }
 .console .shortcuts .shortcuts-d { color: var(--fg-2); }
 .console .cfg .cfg-shortcuts { padding: var(--space-2) var(--space-3) var(--space-3); }
+/* Transmissão's preview: the band over a stand-in camera. */
+.console .cfg .cfg-prev-stream { background: linear-gradient(160deg, #3a4a5c, #1b2430 60%, #2c2418); }

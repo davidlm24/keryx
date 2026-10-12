@@ -1691,6 +1691,18 @@
         "console_hidden_modules": {
           "type": "json"
         },
+        "logo_corner": {
+          "type": "text"
+        },
+        "logo_size": {
+          "type": "text"
+        },
+        "logo_opacity": {
+          "type": "real"
+        },
+        "idle_mode": {
+          "type": "text"
+        },
         "standby_background": {
           "type": "text"
         },

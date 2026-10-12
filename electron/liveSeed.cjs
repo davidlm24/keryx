@@ -1,0 +1,24 @@
+// A live state that starts empty (a new install, a lost live.json) takes the
+// church's own logo look and idle screen from the profile (Configurações ›
+// Igreja and Aparência), so the first screens already look like the church.
+// Pure: -> the [op, args] to apply, in order.
+
+const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
+const SIZES = ["small", "medium", "large"];
+const IDLE = ["logo", "black"];
+
+function seedOps(user) {
+    const ops = [];
+    const logo = {};
+    if (CORNERS.includes(user?.logo_corner)) logo.corner = user.logo_corner;
+    if (SIZES.includes(user?.logo_size)) logo.size = user.logo_size;
+    const opacity = Number(user?.logo_opacity);
+    if (user?.logo_opacity != null && Number.isFinite(opacity) && opacity >= 0.2 && opacity < 1) logo.opacity = opacity;
+    if (Object.keys(logo).length) ops.push(["logo.set", logo]);
+    // A background idle screen needs its picture: the church's standby one.
+    if (user?.idle_mode === "background" && user?.standby_background) ops.push(["idle.set", { mode: "background", url: user.standby_background }]);
+    else if (IDLE.includes(user?.idle_mode) && user.idle_mode !== "logo") ops.push(["idle.set", { mode: user.idle_mode }]);
+    return ops;
+}
+
+module.exports = { seedOps };

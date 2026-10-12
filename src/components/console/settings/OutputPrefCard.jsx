@@ -7,7 +7,8 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import { mainLayer } from "@shared/live-state.mjs";
-import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions } from "@/lib/outputPrefs";
+import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, streamOptions } from "@/lib/outputPrefs";
+import StreamBand from "@/components/network/StreamBand";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 import { useChurch } from "@/hooks/useChurch";
 
@@ -66,6 +67,9 @@ export default function OutputPrefCard({ output, row, themes, c }) {
     // the renderer rows too. Every output can be named and get an icon.
     const isStage = output.key === "/StageView";
     const isPastor = output.key === "/PastorView";
+    // Transmissão: the band of the lower third (no renderer, no Conteúdo).
+    const isStream = output.key === "/StreamView";
+    const stream = streamOptions(pref);
     const renderer = PREF_OUTPUTS.includes(output.key) || Boolean(pref.content);
     const meta = outputMeta(output.key);
     const now = c?.now || Date.now();
@@ -81,7 +85,10 @@ export default function OutputPrefCard({ output, row, themes, c }) {
     const prevLive = prefViewKey(output.key, pref) === "/CommunicationProjection" && !base.communication ? notice : base;
     const stage = stageOptions(pref);
     const pastor = pastorOptions(pref);
-    const preview = isStage && !pref.content
+    const streamSample = { key: "x", text: "Grande é o Senhor\ne mui digno de louvor", ref: "Salmos 48:1 · NVI" };
+    const preview = isStream
+        ? <div className="cfg-prev cfg-prev-stream"><div className="cfg-prev-fill" style={{ containerType: "size" }}><StreamBand caption={streamSample} opts={stream} scale={pref.scale} /></div></div>
+        : isStage && !pref.content
         ? <div className="cfg-prev"><StageScreen content={prevLive.content} nowMs={now} embed opts={pref.options} scale={pref.scale} /></div>
         : isPastor && !pref.content
             ? <div className="cfg-prev cfg-prev-pastor"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} church={church} /></div>
@@ -104,12 +111,12 @@ export default function OutputPrefCard({ output, row, themes, c }) {
                     ))}
                 </div>
             </FormRow>
-            <FormRow k="Conteúdo">
+            {!isStream && <FormRow k="Conteúdo">
                 <select className="cfg-select" value={pref.content} onChange={(e) => save({ content: e.target.value })} aria-label={`Conteúdo de ${output.label}`}>
                     {PREF_CONTENTS.map((o) => <option key={o.id} value={o.id}>{o.id === "" && (isStage || isPastor) ? "Padrão da página" : o.name}</option>)}
                 </select>
                 {(isStage || isPastor) && <span className="kx-meta">outro conteúdo troca o layout próprio pela tela escolhida</span>}
-            </FormRow>
+            </FormRow>}
             <FormRow k="Escala do texto">
                 <Seg small value={String(Math.round(pref.scale * 100))} options={SCALES} onChange={(v) => save({ text_scale: Number(v) })} />
             </FormRow>
@@ -127,6 +134,23 @@ export default function OutputPrefCard({ output, row, themes, c }) {
             </FormRow>
             <FormRow k="Próximo slide">
                 <Switch on={stage.next} onChange={(on) => saveOpt("next", on)} label="Próximo slide no Palco" />
+            </FormRow>
+            </>}
+            {isStream && <>
+            <FormRow k="Faixa">
+                <input type="color" className="ed-color" value={stream.band} onChange={(e) => saveOpt("band", e.target.value)} aria-label="Cor da faixa" title="Cor da faixa" />
+                <Seg small label="Opacidade da faixa" value={String(stream.band_opacity)} options={[["0", "Sem faixa"], ["0.5", "50%"], ["0.78", "78%"], ["1", "100%"]]} onChange={(v) => saveOpt("band_opacity", Number(v))} />
+            </FormRow>
+            <FormRow k="Tamanho do texto">
+                <Seg small label="Tamanho do texto da legenda" value={stream.size} options={[["auto", "Automático"], ["s", "P"], ["m", "M"], ["l", "G"]]} onChange={(v) => saveOpt("size", v)} />
+                <span className="kx-meta">automático: menor quando o texto é longo</span>
+            </FormRow>
+            <FormRow k="Posição">
+                <Seg small label="Posição da faixa" value={stream.position} options={[["bottom", "Embaixo"], ["middle", "No meio"], ["top", "Em cima"]]} onChange={(v) => saveOpt("position", v)} />
+            </FormRow>
+            <FormRow k="Referência na legenda">
+                <Switch on={stream.show_ref} onChange={(on) => saveOpt("show_ref", on)} label="Mostrar a referência na legenda" />
+                <span className="kx-meta">João 3:16 embaixo do versículo</span>
             </FormRow>
             </>}
             {isPastor && !pref.content && <>

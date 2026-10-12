@@ -17,14 +17,17 @@ export const SETTINGS_INDEX = [
     e("igreja", "Nome", "o nome da igreja", ["igreja", "título"]),
     e("igreja", "Cidade", "a cidade da igreja"),
     e("igreja", "Logo", "no canto das telas, na tela ociosa e em Mostrar logo", ["logotipo", "marca", "imagem"]),
+    e("igreja", "Logo nas telas", "o canto, o tamanho e a opacidade do logo", ["canto", "tamanho", "opacidade", "transparente", "mostrar logo"]),
 
     e("telas", "Identificar telas", "os monitores ligados e o número de cada um", ["monitores", "monitor", "projetor", "tv", "número"]),
     e("telas", "Saídas", "em que tela abre cada saída, tela cheia ou janela", ["projeção", "letras", "vídeo", "comunicação", "palco", "pastor", "tela cheia", "janela", "trazer para a frente", "fechar", "abrir"]),
     e("telas", "Abrir ao iniciar", "a saída abre sozinha quando o KERYX abre", ["iniciar", "automático"], { target: "Saídas" }),
     e("telas", "Ajustes", "nome, ícone, conteúdo, texto, margens, logo e tema de cada saída",
-        ["Nome", "Ícone", "Conteúdo", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra"]),
+        ["Nome", "Ícone", "Conteúdo", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra",
+            "Faixa", "Tamanho do texto", "Posição", "Referência na legenda"]),
 
     e("rede", "Telas na rede", "celulares, tablets e TVs pela rede da igreja", ["wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),
+    e("rede", "Transmissão", "a legenda para a live no OBS: cor, tamanho e posição da faixa", ["obs", "live", "legenda", "faixa", "transmissão", "youtube"], { target: "Telas na rede" }),
     e("rede", "PIN", "o código que os aparelhos pedem para entrar; Mostrar PIN", ["senha", "código", "proteger", "mostrar pin", "esqueci"]),
     e("rede", "Telas conectadas pela rede", "os aparelhos conectados agora", ["aparelhos", "conectados"]),
 

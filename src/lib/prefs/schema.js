@@ -24,6 +24,10 @@ export const PREF_FIELDS = {
     service_weekday: { default: null, normalize: (v) => (v !== null && v !== "" && Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) <= 6 ? Number(v) : null) },
     duration_song: { default: 240, normalize: (v) => (Number.isInteger(Number(v)) && Number(v) >= 10 && Number(v) <= 3600 && v !== null ? Number(v) : 240) },
     duration_other: { default: 120, normalize: (v) => (Number.isInteger(Number(v)) && Number(v) >= 10 && Number(v) <= 3600 && v !== null ? Number(v) : 120) },
+    logo_corner: { default: "bottom-right", normalize: oneOf(["top-left", "top-right", "bottom-left", "bottom-right"], "bottom-right") },
+    logo_size: { default: "medium", normalize: oneOf(["small", "medium", "large"], "medium") },
+    logo_opacity: { default: 1, normalize: (v) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) && n >= 0.2 && n <= 1 ? n : 1; } },
+    idle_mode: { default: "logo", normalize: oneOf(["logo", "black", "background"], "logo") },
     import_lines: {
         default: 0,
         normalize: (v) => { const n = Number(v); return v !== null && v !== "" && Number.isInteger(n) && n >= 0 && n <= 12 ? n : 0; },
