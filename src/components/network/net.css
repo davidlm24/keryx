@@ -133,3 +133,36 @@
 /* ---- Vídeo: the clip's name over the picture ---- */
 .net-vtitle { position: absolute; top: max(14px, 3vmin); left: 50%; transform: translateX(-50%); z-index: 10; pointer-events: none; padding: 1.2vmin 2.4vmin; border-radius: 999px; background: #000000a6; color: #fff; font-family: var(--font-sans); font-size: max(15px, 2.6vmin); font-weight: 600; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
 .np-cap .np-since { font-variant-numeric: tabular-nums; color: var(--fg-3); }
+
+/* ---- Controle remoto (/Remote): a phone in one hand ----
+   Big targets (min 56 px), the state on air on top, the risky action last
+   and held down. Sized in px, not cqmin: a phone, upright. */
+.net.rm { overflow: auto; display: flex; flex-direction: column; gap: 14px; padding: max(14px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom)); }
+.rm-h { display: flex; flex-direction: column; gap: 8px; }
+.rm-air { display: flex; align-items: baseline; gap: 10px; min-width: 0; padding: 12px 14px; border-radius: var(--radius-panel); background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line); }
+.rm-air.is-air { box-shadow: inset 0 0 0 2px var(--air); }
+.rm-air-k { flex: none; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-3); }
+.rm-air.is-air .rm-air-k { color: var(--air-fg); }
+.rm-air b { flex: 1 1 auto; min-width: 0; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-pos { flex: none; font-size: 13px; color: var(--fg-2); }
+.rm-locked { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-control); background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn-fg); font-size: 13px; }
+.rm-b { display: flex; flex-direction: column; gap: 12px; }
+.rm-btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; padding: 0 14px; border: 0; border-radius: var(--radius-panel); background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 15px; font-weight: 500; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.rm-btn:active:not(:disabled) { background: var(--bg-3); }
+.rm-btn:disabled { opacity: .5; }
+.rm-btn.is-on { background: var(--fg-1); color: var(--bg-0); }
+.rm-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rm-big { min-height: 96px; font-size: 17px; font-weight: 600; }
+.rm-send { justify-content: flex-start; gap: 12px; min-height: 64px; background: color-mix(in srgb, var(--prev) 22%, var(--bg-2)); box-shadow: inset 0 0 0 1px var(--prev); text-align: left; }
+.rm-send .kx-i { color: var(--prev-fg); flex: none; }
+.rm-send-t { display: flex; flex-direction: column; min-width: 0; }
+.rm-send-t small { font-size: 12px; color: var(--prev-fg); }
+.rm-send-t b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rm-end { margin-top: 8px; background: var(--bg-1); color: var(--air-fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--air) 50%, transparent); }
+.rm-end > :not(.rm-end-fill) { position: relative; }
+.rm-end-fill { position: absolute; inset: 0; transform: scaleX(0); transform-origin: left; background: color-mix(in srgb, var(--air) 34%, transparent); }
+.rm-end.is-holding .rm-end-fill { transform: scaleX(1); transition: transform var(--rm-hold, 1.5s) linear; }
+.rm-note { min-height: 20px; font-size: 14px; color: var(--fg-2); text-align: center; }
+.rm-note.is-bad { color: var(--warn-fg); }
+@media (prefers-reduced-motion: reduce) { .rm-end.is-holding .rm-end-fill { transition: none; transform: scaleX(1); opacity: .6; } }

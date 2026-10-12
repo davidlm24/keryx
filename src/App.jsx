@@ -23,6 +23,7 @@ import VideoProjection from './pages/VideoProjection';
 import CommunicationProjection from './pages/CommunicationProjection';
 import PastorView from './pages/PastorView';
 import StreamView from './pages/StreamView';
+import RemoteView from './pages/RemoteView';
 
 // The screens every output shows (the projector, the stage, the video
 // screens…): opened by the console or the main process on this computer,
@@ -53,7 +54,7 @@ function NetworkStatus() {
 const TITLED = new Set(['/Projection', '/LyricProjection', '/StageView', '/VideoProjection', '/CommunicationProjection', '/PastorView', '/StreamView']);
 function WindowTitle() {
   const { pathname } = useLocation();
-  useWindowTitle(TITLED.has(pathname) ? outputMeta(pathname).name : '');
+  useWindowTitle(pathname === '/Remote' ? 'Controle remoto' : TITLED.has(pathname) ? outputMeta(pathname).name : '');
   return null;
 }
 
@@ -87,6 +88,9 @@ function App() {
               <NetworkStatus />
               <Routes>
                 {screens}
+                {/* The phone that conducts the service: the network server
+                    serves it only while it is on, behind its own code. */}
+                <Route path="/Remote" element={<RemoteView />} />
                 <Route path="*" element={<NetworkHome />} />
               </Routes>
             </>
@@ -95,6 +99,7 @@ function App() {
               <Route path="/Console" element={<Console />} />
               {screens}
               {import.meta.env.DEV && keryx.isPreview && <Route path="/Rede" element={<NetworkHome screens={PREVIEW_SCREENS} />} />}
+              {import.meta.env.DEV && keryx.isPreview && <Route path="/Remote" element={<RemoteView />} />}
               <Route path="*" element={<Navigate to="/Console" replace />} />
             </Routes>
           )}
