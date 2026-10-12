@@ -865,6 +865,21 @@
 /* "no ar há m:ss" in the Programa's caption: digits that do not jump. */
 .console .kx-prog-cap .kx-since { font-variant-numeric: tabular-nums; flex: none; }
 
+/* ---- Camadas › Fundo › Gerado (GeneratorPanel.jsx) ---- */
+.console .lyr-gens { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.console .lyr-gen { display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 3px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 10px; line-height: 12px; text-align: center; }
+.console .lyr-gen i { display: block; aspect-ratio: 16 / 10; border-radius: 3px; }
+.console .lyr-gen.is-on { color: var(--fg-1); box-shadow: 0 0 0 2px var(--brand); }
+.console .lyr-presets { display: flex; flex-wrap: wrap; gap: 4px; }
+.console .lyr-preset { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px 0 4px; border-radius: 999px; background: var(--bg-2); color: var(--fg-2); font-size: 11px; }
+.console .lyr-preset i { width: 14px; height: 14px; border-radius: 999px; }
+.console .lyr-preset.is-on { color: var(--fg-1); box-shadow: 0 0 0 1px var(--brand); }
+.console .lyr-slider { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.console .lyr-slider .ap-range { flex: 1 1 80px; width: auto; min-width: 60px; accent-color: var(--brand); }
+.console .lyr-slider .kx-meta { flex: none; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+.console .lyr-colors { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
+.console .lyr-color { display: inline-flex; align-items: center; gap: 2px; }
+
 /* ---- Layout editor (LayoutEditor.jsx): the canvas and its handles ---- */
 .console .le-stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: var(--space-3); container-type: size; }
 .console .le-screen { position: relative; width: min(100%, 1100px, calc((100cqh - 2 * var(--space-3)) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); isolation: isolate; background: var(--bg-0); }

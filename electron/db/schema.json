@@ -1236,6 +1236,9 @@
         "background_blur": {
           "type": "real"
         },
+        "background_generator": {
+          "type": "json"
+        },
         "font_family": {
           "type": "text",
           "default": "sans"

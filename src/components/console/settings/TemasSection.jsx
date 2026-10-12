@@ -9,6 +9,7 @@ import WallpaperPicker from "../WallpaperPicker";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
+import { generatorOf } from "@/lib/generators";
 import { useLibrary } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "./sample";
 
@@ -81,14 +82,16 @@ function ThemeEditor({ row, c, media, onDone }) {
                     {draft.transition && <><input type="range" className="ap-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-content ap-ms">{Number(draft.transition_ms) || 400} ms</span></>}
                 </FormRow>
                 <FormRow k="Fundo">
-                    {draft.background_image ? <img className="cfg-wall" src={draft.background_image} alt="" /> : <span className="kx-meta">nenhum</span>}
+                    {draft.background_image ? <img className="cfg-wall" src={draft.background_image} alt="" /> : draft.background_generator?.id ? <span className="kx-meta">gerado · {generatorOf(draft.background_generator.id).name}</span> : <span className="kx-meta">nenhum</span>}
                     <Btn small on={picking} onClick={() => setPicking(!picking)}>{draft.background_image ? "Trocar…" : "Escolher…"}</Btn>
+                    {draft.background_generator?.id && <Btn small onClick={() => set({ background_generator: null })}>Tirar o gerado</Btn>}
+                    {!draft.background_image && !draft.background_generator?.id && <span className="kx-meta">um fundo gerado entra pelas Camadas › Fundo › Gerado e Salvar como novo</span>}
                 </FormRow>
                 {picking && (
                     <div className="pl-wallpick">
                         <WallpaperPicker value={draft.background_image || null} media={media} noneLabel="Sem fundo no tema"
                             onNone={() => { setPicking(false); set({ background_image: "" }); }}
-                            onPick={(url) => { setPicking(false); set({ background_image: url }); }} />
+                            onPick={(url) => { setPicking(false); set({ background_image: url, background_generator: null }); }} />
                     </div>
                 )}
                 {draft.background_image && <>

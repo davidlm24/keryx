@@ -20,7 +20,13 @@ export const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v
 
 // The theme's background look, for background.set; null when it has none.
 export const bgOf = (t) => Object.fromEntries([["fit", t?.background_fit], ["dim", t?.background_dim], ["blur", t?.background_blur]].filter(([, v]) => v != null && v !== ""));
-export const themeBackgroundArgs = (t) => (t?.background_image ? { kind: "image", value: t.background_image, title: t.name || "Tema", ...bgOf(t) } : null);
+export const themeBackgroundArgs = (t) => {
+    if (t?.background_image) return { kind: "image", value: t.background_image, title: t.name || "Tema", ...bgOf(t) };
+    // A generated background (shared/generators.mjs) saved with the theme.
+    const gen = t?.background_generator;
+    if (gen && typeof gen === "object" && typeof gen.id === "string") return { kind: "generator", value: gen.id, gen, title: t.name || "Tema", ...(t.background_dim != null && t.background_dim !== "" ? { dim: t.background_dim } : {}) };
+    return null;
+};
 
 // The default theme (Configurações › Aparência › Temas, "Tornar padrão"):
 // the one marked, the most recently changed if several are; none when none

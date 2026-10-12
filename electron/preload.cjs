@@ -49,6 +49,17 @@ ipcRenderer.on("keryx:notifications", (_event, list) => {
     }
 });
 
+const levelListeners = new Set();
+ipcRenderer.on("keryx:audio-level", (_event, level) => {
+    for (const listener of levelListeners) {
+        try {
+            listener(level);
+        } catch (err) {
+            console.error("[keryx] audio level listener failed:", err);
+        }
+    }
+});
+
 const meterListeners = new Set();
 ipcRenderer.on("keryx:meter", (_event, level) => {
     for (const listener of meterListeners) {
@@ -117,6 +128,12 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         onLevel(listener) {
             meterListeners.add(listener);
             return () => meterListeners.delete(listener);
+        },
+        // The system output's level (0..1): the console sends, the outputs listen.
+        sendLevel: (level) => ipcRenderer.send("keryx:audio-level", level),
+        onSystemLevel(listener) {
+            levelListeners.add(listener);
+            return () => levelListeners.delete(listener);
         },
     },
     system: {

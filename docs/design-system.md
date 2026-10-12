@@ -111,6 +111,26 @@ of the live state (typed and clamped in `shared/live-state.mjs`), so every
 output draws them; a theme saved with *Salvar como novo* keeps the text and
 background ones, and applying a theme without them clears them.
 
+**Fundos gerados (2026-10-12, as ProPresenter's generated backgrounds and
+the Claude Design mockup's *Propriedades* tab):** Fundo gains a **Gerado**
+row — five tiles (Fluido, Nuvens, Aurora, Luzes, Degradê vivo) drawn as
+gradients of their first preset — and, for the one on air, its **Presets**
+(chips with a colour dot), the sliders the generator uses (Velocidade,
+Escala, Intensidade, Detalhe, Espaçamento, Persistência, Contraste, in the
+mockup's order, with the value beside each), **Cores** (one to three colour
+swatches, dark → mid → light) and **Áudio-reativo** (*Desligado · em breve*).
+Sliders move the live state at most ten times a second. The screens compute
+it on a WebGL canvas (`GeneratorBackground`), 30 fps, at most 960 px wide
+and scaled up; the Programa monitor moves, the Prévia and the galleries are
+still; a PC without WebGL shows a still gradient of the colours. Ajuste,
+Posição and Desfoque do not apply to a generated background; Escurecer does
+(0 by default). **Áudio-reativo** is a switch: on, the pattern pushes out
+and brightens with the sound leaving the computer (what the meters show;
+only the outputs on this computer follow, a screen on the network draws it
+still-level). *Salvar como novo* keeps a generated Fundo in the theme
+(`background_generator`), and applying the theme brings it back; the Temas
+editor shows it and can take it out, not edit it.
+
 **Bible editions (settled 2026-10-10).** The edition the operator chooses
 is the one used, even when another is installed: ARA with NVI installed is
 read from the internet (the badge says "pela internet", amber), and a

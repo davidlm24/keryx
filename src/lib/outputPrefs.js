@@ -4,6 +4,7 @@
 // desktop window and a network screen showing the same page share it. No row,
 // or a row with nothing set, is the output exactly as before.
 import { outputView, RAIL_VIEWS } from "./network/views.js";
+import { themeBackgroundArgs } from "./console/themes.js";
 
 // Conteúdo: which view of the live state the output draws (views.js).
 export const PREF_CONTENTS = [
@@ -192,10 +193,8 @@ export function prefState(page, live, pref, theme = null) {
     if (pref.themeId && theme) {
         // The output's theme wins over the song's parts too: their own looks go.
         if (state.content) state = { ...state, content: { ...state.content, style: { ...state.content.style, ...themeLook(theme) }, slides: (state.content.slides || []).map(({ style: _own, ...s }) => s) } };
-        if (theme.background_image) {
-            const look = Object.fromEntries([["fit", theme.background_fit], ["dim", theme.background_dim], ["blur", theme.background_blur]].filter(([, v]) => v != null && v !== ""));
-            state = { ...state, background: { kind: "image", value: theme.background_image, title: theme.name || "", ...look } };
-        }
+        const bg = themeBackgroundArgs(theme);
+        if (bg) state = { ...state, background: bg };
     }
     return state;
 }

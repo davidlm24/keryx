@@ -8,6 +8,7 @@
 .ks-layer { position: absolute; inset: 0; }
 .ks-bg-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
 .ks-bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ks-bg-gen { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .ks-bg-dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); }
 .ks-bg-default { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 20%, #26304f 0%, #10131f 55%, #06070c 100%); }
 .ks-black { position: absolute; inset: 0; background: #000; }

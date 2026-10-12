@@ -26,6 +26,7 @@
     "background_fit": { "type": "string", "enum": ["cover", "contain"], "description": "Ajuste da imagem de fundo" },
     "background_dim": { "type": "number", "description": "Escurecer o fundo (0 a 0.9)" },
     "background_blur": { "type": "number", "description": "Desfoque do fundo (px numa tela de 1920)" },
+    "background_generator": { "type": "object", "description": "Fundo gerado do tema (shared/generators.mjs: gerador, números e cores); vazio quando o tema usa uma imagem ou nenhum fundo" },
     "font_family": {
       "type": "string",
       "enum": [

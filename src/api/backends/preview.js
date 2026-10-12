@@ -125,7 +125,7 @@ export function createPreviewBridge() {
             },
         },
         lyrics: { call: unavailable },
-        meters: { report() {}, onLevel: () => () => {} },
+        meters: { report() {}, onLevel: () => () => {}, sendLevel() {}, onSystemLevel: () => () => {} },
         system: { call: unavailable },
         media: {
             async importFile(file) {

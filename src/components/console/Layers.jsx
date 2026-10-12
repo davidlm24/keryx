@@ -4,9 +4,10 @@ import Icon from "./Icon";
 import { Btn, IconBtn, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
-import { THEME_FONTS, FAMILY_SET, themeStyle, sameLook, bgOf, defaultTheme } from "@/lib/console/themes";
+import { THEME_FONTS, FAMILY_SET, themeStyle, sameLook, themeBackgroundArgs, defaultTheme } from "@/lib/console/themes";
 import { useBackgrounds } from "./useConsoleData";
 import { STYLE_KEYS, LAYER_ORDER } from "@shared/live-state.mjs";
+import GeneratorPanel, { GeneratorTiles } from "./GeneratorPanel";
 
 // Camadas: the look of what is on air, as four layers of the live state —
 // Logo (live.logo), Sobreposição (live.overlays), Texto principal
@@ -78,15 +79,21 @@ export default function Layers({ c, themes, media = null }) {
     const applyTheme = (t) => {
         setThemeId(t.id);
         if (content) setStyle(themeStyle(t));
-        if (t.background_image) op("background.set", { kind: "image", value: t.background_image, title: t.name, ...bgOf(t) });
+        const bgArgs = themeBackgroundArgs(t);
+        if (bgArgs) op("background.set", bgArgs);
     };
     const saveAsNew = async () => {
         const name = `${theme ? theme.name : "Tema"} ${new Date().toLocaleDateString("pt-BR")}`;
         try {
             const bg = cur?.background?.kind === "image" ? cur.background : null;
+            // A generated Fundo on air is saved in the theme too (its generator,
+            // numbers and colours), with its dim.
+            const genBg = cur?.background?.kind === "generator" ? cur.background : null;
             const look = Object.fromEntries(Object.entries(themeStyle({ ...theme, ...style })).filter(([, v]) => v !== ""));
-            const row = await keryx.entities.ProjectionTheme.create({ name, ...look, background_image: bg ? bg.value : theme?.background_image || "",
-                ...(bg ? Object.fromEntries([["background_fit", bg.fit], ["background_dim", bg.dim], ["background_blur", bg.blur]].filter(([, v]) => v != null)) : {}) });
+            const row = await keryx.entities.ProjectionTheme.create({ name, ...look, background_image: bg ? bg.value : genBg ? "" : theme?.background_image || "",
+                ...(bg ? Object.fromEntries([["background_fit", bg.fit], ["background_dim", bg.dim], ["background_blur", bg.blur]].filter(([, v]) => v != null)) : {}),
+                background_generator: genBg ? genBg.gen : null,
+                ...(genBg && genBg.dim != null ? { background_dim: genBg.dim } : {}) });
             setThemeId(row.id);
             c.say(`Tema salvo como "${name}".`);
         } catch (err) {
@@ -168,11 +175,18 @@ export default function Layers({ c, themes, media = null }) {
                             <button type="button" key={b.source} disabled={disabled} onClick={() => op("background.set", { kind: "image", value: b.url, title: b.name, ...(b.dim !== null ? { dim: b.dim } : {}), ...(b.blur !== null ? { blur: b.blur } : {}) })} style={{ aspectRatio: "16/10", borderRadius: 3, backgroundImage: `url(${b.url})`, backgroundSize: "cover", backgroundPosition: "center", outline: cur?.background?.value === b.url ? "2px solid var(--brand)" : "none", outlineOffset: -2 }} aria-label={b.name} title={b.name} />
                         ))}
                     </div>
-                    {cur?.background && cur.background.kind !== "color" && <>
+                    {cur?.background && cur.background.kind !== "color" && cur.background.kind !== "generator" && <>
                         <span className="k">Ajuste</span><Seg small value={cur.background.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, fit: v })} />
                         <span className="k">Posição</span><Seg small value={cur.background.position || "center"} options={[["top", "Alto"], ["center", "Centro"], ["bottom", "Baixo"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, position: v })} />
                         <span className="k">Escurecer</span><Seg small value={num(cur.background.dim ?? (cur.background.kind === "video" ? 0 : 0.45))} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, dim: Number(v) })} />
                         <span className="k">Desfoque</span><Seg small value={num(cur.background.blur ?? 0)} options={[["0", "Sem"], ["4", "Leve"], ["10", "Forte"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, blur: Number(v) })} />
+                    </>}
+                    {/* Fundos gerados (src/lib/generators.js): the generators, then the one on air's presets, sliders and colours. */}
+                    <span className="k">Gerado</span>
+                    <GeneratorTiles current={cur?.background?.kind === "generator" ? cur.background.gen : null} disabled={disabled} op={op} />
+                    {cur?.background?.kind === "generator" && cur.background.gen && <>
+                        <GeneratorPanel background={cur.background} disabled={disabled} op={op} />
+                        <span className="k">Escurecer</span><Seg small value={num(cur.background.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, dim: Number(v) })} />
                     </>}
                     {galleryVids.length > 0 && <>
                         <span className="k">Vídeo</span>

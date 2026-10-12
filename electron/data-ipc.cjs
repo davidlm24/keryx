@@ -14,6 +14,8 @@
 //   keryx:live-change   event   the whole snapshot, sent to every window after each change
 //   keryx:meter         send    { layer, url, duration } the length of the item an output
 //                               plays, relayed to the other windows (the console's seek bar)
+//   keryx:audio-level   send    a number 0..1: the level of the PC's sound output, measured by
+//                               the console, relayed to the other windows (audio-reactive backgrounds)
 
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -226,6 +228,18 @@ function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaD
         };
         for (const win of BrowserWindow.getAllWindows()) {
             if (!win.isDestroyed() && win.webContents !== event.sender) win.webContents.send("keryx:meter", clean);
+        }
+    });
+
+    // The console measures the system output (its level meters) and, while a
+    // generated background follows the sound (shared/generators.mjs
+    // gen.audio), sends the level ~20 times a second; the outputs on this
+    // computer get it here. Never stored, never on the network.
+    ipcMain.on("keryx:audio-level", (event, level) => {
+        if (!isTrustedSender(event) || typeof level !== "number" || !Number.isFinite(level)) return;
+        const clean = Math.min(1, Math.max(0, level));
+        for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed() && win.webContents !== event.sender) win.webContents.send("keryx:audio-level", clean);
         }
     });
 
