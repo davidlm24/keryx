@@ -9,12 +9,15 @@ import PastorScreen from "@/components/network/PastorScreen";
 import { mainLayer } from "@shared/live-state.mjs";
 import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, showKindsFor, streamOptions } from "@/lib/outputPrefs";
 import StreamBand from "@/components/network/StreamBand";
+import LayoutRenderer from "@/components/screen/LayoutRenderer";
+import { layoutChoices, findLayout } from "@/lib/layouts";
+import { useLayoutRows } from "@/hooks/useLayout";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 import { useChurch } from "@/hooks/useChurch";
 
 const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], ["125", "125%"], ["140", "140%"]];
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
-const DEFAULTS = { content: "", hidden_kinds: [], text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", name: "", icon: "", options: {} };
+const DEFAULTS = { content: "", hidden_kinds: [], text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", layout_id: "", name: "", icon: "", options: {} };
 const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
 // The icons' names, for screen readers and the tooltip.
 const ICON_NAMES = { projector: "Projetor", tv: "TV", monitor: "Monitor", tablet: "Tablet", film: "Filme", megaphone: "Megafone", book: "Livro", image: "Imagem", text: "Texto", star: "Estrela", layers: "Camadas", external: "Janela" };
@@ -22,11 +25,15 @@ const sameJson = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
 
 // One output's own settings (OutputPref, src/lib/outputPrefs.js), under its
 // row in Telas e saídas. Each change is saved at once; the output (and any
-// network screen showing the same page) follows it live.
-export default function OutputPrefCard({ output, row, themes, c }) {
+// network screen showing the same page) follows it live. Palco and Pastor
+// also pick a Layout (src/lib/layouts.js); `onOpenLayout` opens the editor.
+export default function OutputPrefCard({ output, row, themes, c, onOpenLayout }) {
     const say = c.say;
     const church = useChurch();
     const pref = normalizePref(row);
+    const layoutRows = useLayoutRows();
+    const layout = findLayout(pref.layoutId, layoutRows);
+    const layoutGone = Boolean(pref.layoutId) && !layout;
     // The first change creates the row; changes made before it comes back
     // update that one instead of creating another. A failed create is
     // forgotten, so the next change tries again.
@@ -88,13 +95,17 @@ export default function OutputPrefCard({ output, row, themes, c }) {
     const stage = stageOptions(pref);
     const pastor = pastorOptions(pref);
     const streamSample = { key: "x", text: "Grande é o Senhor\ne mui digno de louvor", ref: "Salmos 48:1 · NVI" };
+    // What a renderer output draws of the sample (its view, Mostrar, theme).
+    const rendererState = renderer ? prefState(output.key, prevLive, pref, themeGone ? null : themes.find((t) => t.id === pref.themeId) || null) : null;
     const preview = isStream
         ? <div className="cfg-prev cfg-prev-stream"><div className="cfg-prev-fill" style={{ containerType: "size" }}><StreamBand caption={streamSample} opts={stream} scale={pref.scale} /></div></div>
+        : layout
+        ? <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><LayoutRenderer layout={layout} live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} screenState={renderer ? rendererState : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed /></div></div>
         : isStage && !pref.content
         ? <div className="cfg-prev"><StageScreen content={prevLive.content} nowMs={now} embed opts={pref.options} scale={pref.scale} /></div>
         : isPastor && !pref.content
             ? <div className="cfg-prev cfg-prev-pastor"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} church={church} /></div>
-            : <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={prefState(output.key, prevLive, pref, themeGone ? null : themes.find((t) => t.id === pref.themeId) || null)} now={now} preview audio={false} /></div></div>;
+            : <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={rendererState} now={now} preview audio={false} /></div></div>;
 
     return (
         <div className="cfg-outprefs" role="group" aria-label={`Ajustes de ${output.label}`}>
@@ -136,10 +147,19 @@ export default function OutputPrefCard({ output, row, themes, c }) {
                     <span className="kx-meta">o que fica de fora deixa esta saída no que está por baixo (ou no fundo de espera); a música continua tocando</span>
                 </FormRow>
             )}
+            {!isStream && <FormRow k="Layout">
+                <select className="cfg-select" value={layoutGone ? "" : pref.layoutId} onChange={(e) => save({ layout_id: e.target.value })} aria-label={`Layout de ${output.label}`}>
+                    {layoutChoices(layoutRows).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+                {layout && !layout.factory && <Btn small onClick={() => onOpenLayout?.(layout.id)}><Icon name="edit" />Editar layout…</Btn>}
+                {layout?.factory && <Btn small onClick={() => onOpenLayout?.(layout.id)} title="Um modelo não se edita: abre uma cópia sua"><Icon name="copy" />Duplicar e editar…</Btn>}
+                {!pref.layoutId && <Btn small onClick={() => onOpenLayout?.("new")}><Icon name="plus" />Novo layout…</Btn>}
+                <span className="kx-meta">{layoutGone ? "o layout escolhido foi excluído: a tela está no padrão" : renderer ? "o desenho da tela: a projeção inteira ou numa parte, o timer num canto…" : "o desenho da tela: onde ficam o relógio, o timer, a letra, a próxima…"}</span>
+            </FormRow>}
             <FormRow k="Escala do texto">
                 <Seg small value={String(Math.round(pref.scale * 100))} options={SCALES} onChange={(v) => save({ text_scale: Number(v) })} />
             </FormRow>
-            {isStage && !pref.content && <>
+            {isStage && !pref.content && !layout && <>
             <FormRow k="Cifra">
                 <Switch on={stage.chords} onChange={(on) => saveOpt("chords", on)} label="Cifra no Palco" />
                 <span className="kx-meta">o painel de acordes ao lado da letra</span>
@@ -172,7 +192,7 @@ export default function OutputPrefCard({ output, row, themes, c }) {
                 <span className="kx-meta">João 3:16 embaixo do versículo</span>
             </FormRow>
             </>}
-            {isPastor && !pref.content && <>
+            {isPastor && !pref.content && !layout && <>
             <FormRow k="Relógio">
                 <Switch on={pastor.clock} onChange={(on) => saveOpt("clock", on)} label="Relógio na Tela do pastor" />
                 <span className="kx-meta">a hora e o tempo de culto</span>

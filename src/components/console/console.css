@@ -781,26 +781,6 @@
 .console .toast .toast-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .console .toast .toast-act { height: 24px; margin-right: calc(-1 * var(--space-2)); padding: 0 var(--space-2); color: var(--fg-1); font-weight: 500; }
 
-/* The Prévia's output picker: the prepared stage as one output will show
-   it (src/lib/network/views.js). A column on the monitor's left, icon +
-   name; Projeção is the default and the choice is not kept. The column is
-   top-aligned with the Prévia caption so its six 24 px rows (154 px) fit
-   beside the monitor down to a ~490 px live block; narrower than that the
-   names go and it folds to a 2-column icon grid. */
-.console .prev-outs { flex: none; align-self: flex-start; display: flex; flex-direction: column; gap: 2px; width: 112px; }
-.console .prev-outs button { height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 6px; border-radius: var(--radius-control); color: var(--fg-2); font-size: 11px; }
-.console .prev-outs button .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.console .prev-outs button:hover { background: var(--bg-2); color: var(--fg-1); }
-.console .prev-outs button.is-on { background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }
-@container subrow (max-width: 490px) {
-    .console .prev-outs { display: grid; grid-auto-flow: column; grid-template-rows: repeat(3, 24px); width: auto; }
-    /* The icon grid still takes ~62 px from the row: the monitor gives it
-       back, or Enviar ao ar no longer fits beside it. */
-    .console .subrow .kx-mon { width: 40%; }
-    .console .prev-outs button { width: 24px; justify-content: center; padding: 0; }
-    .console .prev-outs button .t { display: none; }
-}
-
 /* Camadas › Fundo: a clip tile (name + film glyph; no frame grab needed). */
 .console .lyr-vtile { display: inline-flex; align-items: center; gap: 4px; min-width: 0; height: 24px; padding: 0 6px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 11px; }
 .console .lyr-vtile span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -864,8 +844,6 @@
 /* The Prévia as Palco or Pastor: the pages' own screens inside the monitor;
    the pastor's tablet upright, centred (3:4). */
 .net.net-embed { position: absolute; inset: 0; z-index: 1; }
-.console .kp-portrait { position: absolute; inset: 0; z-index: 1; display: flex; justify-content: center; background: #000; }
-.console .kp-portrait > .net.net-embed { position: relative; inset: auto; height: 100%; aspect-ratio: 3 / 4; }
 
 /* The shortcut list (? and Configurações › Console): key, what it does. */
 .console .shortcuts { display: grid; grid-template-columns: 96px 1fr; gap: 4px 12px; align-items: baseline; }
@@ -901,3 +879,24 @@
 .console .lyr-slider .kx-meta { flex: none; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
 .console .lyr-colors { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; }
 .console .lyr-color { display: inline-flex; align-items: center; gap: 2px; }
+
+/* ---- Layout editor (LayoutEditor.jsx): the canvas and its handles ---- */
+.console .le-stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: var(--space-3); container-type: size; }
+.console .le-screen { position: relative; width: min(100%, 1100px, calc((100cqh - 2 * var(--space-3)) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); isolation: isolate; background: var(--bg-0); }
+.console .le-use { width: auto; flex: none; }
+.console .le-screen > .kl { pointer-events: none; }
+.console .le-over { position: absolute; inset: 0; z-index: 5; }
+.console .le-hit { position: absolute; cursor: move; touch-action: none; user-select: none; }
+.console .le-hit:hover { outline: 1px solid color-mix(in srgb, var(--brand) 60%, transparent); outline-offset: -1px; }
+.console .le-hit.is-sel { outline: 2px solid var(--brand); outline-offset: -1px; }
+.console .le-h { position: absolute; width: 10px; height: 10px; background: var(--brand); border: 1px solid var(--bg-0); border-radius: 2px; transform: translate(-50%, -50%); }
+.console .le-h.n { left: 50%; top: 0; cursor: ns-resize; } .console .le-h.s { left: 50%; top: 100%; cursor: ns-resize; }
+.console .le-h.e { left: 100%; top: 50%; cursor: ew-resize; } .console .le-h.w { left: 0; top: 50%; cursor: ew-resize; }
+.console .le-h.ne { left: 100%; top: 0; cursor: nesw-resize; } .console .le-h.sw { left: 0; top: 100%; cursor: nesw-resize; }
+.console .le-h.nw { left: 0; top: 0; cursor: nwse-resize; } .console .le-h.se { left: 100%; top: 100%; cursor: nwse-resize; }
+.console .le-guide { position: absolute; background: var(--brand); pointer-events: none; z-index: 6; }
+.console .le-guide.x { top: 0; bottom: 0; width: 1px; } .console .le-guide.y { left: 0; right: 0; height: 1px; }
+.console .le-types { max-height: 320px; }
+.console .le-nums label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); }
+.console .le-num { width: 58px; }
+.console .le-range { flex: 1 1 80px; min-width: 60px; accent-color: var(--brand); }

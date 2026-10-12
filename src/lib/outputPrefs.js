@@ -121,13 +121,16 @@ export function normalizePref(row) {
         margin: clamp(num(row?.margin_pct, 0), MARGIN_RANGE),
         showLogo: row?.show_logo !== false,
         themeId: typeof row?.theme_id === "string" ? row.theme_id : "",
+        // Palco and Pastor: a layout the operator drew (src/lib/layouts.js);
+        // "" is the page's own screen.
+        layoutId: typeof row?.layout_id === "string" ? row.layout_id.slice(0, 80) : "",
         name: typeof row?.name === "string" ? row.name.trim().slice(0, 40) : "",
         icon: typeof row?.icon === "string" && ICON_RE.test(row.icon) ? row.icon : "",
         options: row?.options && typeof row.options === "object" && !Array.isArray(row.options) ? row.options : {},
     };
 }
 
-export const isDefaultPref = (p) => !p.content && !p.hidden?.length && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
+export const isDefaultPref = (p) => !p.content && !p.hidden?.length && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.layoutId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
 
 // Palco and Pastor draw their own layouts; OutputPref.options says which
 // parts (Configurações › Telas e saídas › Ajustes). Missing keys are the

@@ -28,6 +28,7 @@ import SongEditor from "@/components/console/SongEditor";
 import ServicePlanner from "@/components/console/ServicePlanner";
 import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
+import LayoutEditor from "@/components/console/LayoutEditor";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView from "@/components/console/settings/SettingsView";
@@ -95,6 +96,7 @@ export default function Console() {
             if (p.get("planner")) return { planner: true };
             if (p.get("media")) return { media: true };
             if (p.get("notice")) return { notice: p.get("notice") };
+            if (p.get("layout")) return { layout: p.get("layout") };
             if (p.get("school")) return { school: true };
             if (p.get("reports")) return { reports: true };
         } catch { /* no query */ }
@@ -104,6 +106,7 @@ export default function Console() {
     const planner = Boolean(view?.planner);
     const mediaView = Boolean(view?.media);
     const notice = view?.notice || null;
+    const layoutView = view?.layout || null;
     const school = Boolean(view?.school);
     const reports = Boolean(view?.reports);
     const closeView = useCallback(() => setView(null), []);
@@ -128,6 +131,9 @@ export default function Console() {
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
+    // The layout editor (Telas e saídas › Layouts das telas): a view, so
+    // Configurações closes to show it.
+    const openLayout = useCallback((id) => { setOpen(null); setCfgAt(null); setView({ layout: id || "new" }); }, []);
     // The Escola bíblica sends through the KERYX environment's Prévia.
     const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setView({ school: true }); }, []);
     const openReports = useCallback(() => { setOpen(null); setView({ reports: true }); }, []);
@@ -819,6 +825,7 @@ export default function Console() {
                 {reports && <ReportsView c={c} onClose={closeView} />}
                 {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}
                 {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} />}
+                {layoutView && <LayoutEditor key={layoutView} c={c} layoutId={layoutView} media={data.media} onClose={closeView} onSaved={(row) => { if (row?.id && layoutView !== row.id) setView({ layout: row.id }); }} />}
                 {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} layout={layout} setLayout={setLayout} editing={editing} />}
                 {!view && env === "culto" && withSplits(cols).map((it) => (it.type === "split" ? splitFor(it.key, it.sign, false, it.col) : renderCol(it.col)))}
             </div>
@@ -833,7 +840,7 @@ export default function Console() {
 
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
-            {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />}
+            {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onOpenLayout={openLayout} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (

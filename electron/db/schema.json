@@ -959,6 +959,10 @@
         "theme_id": {
           "type": "text",
           "default": ""
+        },
+        "layout_id": {
+          "type": "text",
+          "default": ""
         }
       }
     },
@@ -1350,6 +1354,41 @@
         },
         "drawn_at": {
           "type": "text"
+        }
+      }
+    },
+    "ScreenLayout": {
+      "table": "screen_layout",
+      "columns": {
+        "id": {
+          "type": "text"
+        },
+        "created_date": {
+          "type": "text"
+        },
+        "updated_date": {
+          "type": "text"
+        },
+        "created_by": {
+          "type": "text"
+        },
+        "created_by_id": {
+          "type": "text"
+        },
+        "name": {
+          "type": "text"
+        },
+        "category": {
+          "type": "text",
+          "default": "palco"
+        },
+        "elements": {
+          "type": "json",
+          "default": []
+        },
+        "background": {
+          "type": "json",
+          "default": {}
         }
       }
     },
@@ -1769,6 +1808,12 @@
         },
         "chime_volume": {
           "type": "integer"
+        },
+        "show_item_title": {
+          "type": "boolean"
+        },
+        "youtube_hide_title": {
+          "type": "boolean"
         },
         "standby_background": {
           "type": "text"

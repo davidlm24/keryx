@@ -107,3 +107,22 @@ test("the file knows the same outputs as the main process (electron/outputs.cjs)
     const { OUTPUTS } = require("../../electron/outputs.cjs");
     assert.deepEqual([...OUTPUTS.map((o) => o.key)].sort(), [...OUTPUT_KEYS].sort());
 });
+
+test("the layout travels by id and name; found by name elsewhere, else said", () => {
+    const layouts = [{ id: "L1", name: "Palco banda", category: "palco", elements: [] }];
+    const rows = [{ id: "r3", screen_path: "/StageView", layout_id: "L1" }, { id: "r4", screen_path: "/PastorView", layout_id: "factory:pastor" }];
+    const f = buildOutputsFile({ outputs, prefRows: rows, themes, layouts, displays });
+    assert.equal(f.prefs["/StageView"].layout_id, "L1");
+    assert.equal(f.prefs["/StageView"].layout_name, "Palco banda");
+    assert.equal(f.prefs["/PastorView"].layout_name, "Pastor (modelo)");
+    const text = JSON.stringify(f);
+    const same = readOutputsFile(text, { themes, layouts, displays });
+    assert.equal(same.prefs.find((p) => p.path === "/StageView").fields.layout_id, "L1");
+    assert.ok(!same.notes.some((n) => /layout/.test(n)));
+    const other = readOutputsFile(text, { themes, layouts: [{ id: "X9", name: "palco BANDA" }], displays });
+    assert.equal(other.prefs.find((p) => p.path === "/StageView").fields.layout_id, "X9");
+    assert.equal(other.prefs.find((p) => p.path === "/PastorView").fields.layout_id, "factory:pastor", "a factory layout exists everywhere");
+    const none = readOutputsFile(text, { themes, layouts: [], displays });
+    assert.equal(none.prefs.find((p) => p.path === "/StageView").fields.layout_id, "");
+    assert.ok(none.notes.some((n) => /Palco: o layout “Palco banda” não existe/.test(n)));
+});

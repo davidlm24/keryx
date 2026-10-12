@@ -123,6 +123,14 @@
       "type": "integer",
       "description": "Som do aviso: volume do sino, em porcentagem (5 a 100). Nulo = 35"
     },
+    "show_item_title": {
+      "type": "boolean",
+      "description": "Telas: mostrar o titulo do item (o nome da musica) no topo do slide. Nulo = sim"
+    },
+    "youtube_hide_title": {
+      "type": "boolean",
+      "description": "Telas: esconder a faixa de titulo e canal que o YouTube poe sobre o video (o player fica mais alto que a tela e as faixas ficam fora dela). Nulo = sim"
+    },
     "standby_background": {
       "type": "string",
       "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido)"

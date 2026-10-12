@@ -543,6 +543,17 @@ those keys.
 - **Keyboard and safety:** outputs ignore input; Esc in the operator window
   blanks all outputs; outputs survive the operator window being closed and
   reopened.
+- **Per-output settings and layouts (2026-10-12).** Each output page has one
+  `OutputPref` row (name, icon, Conteúdo, Mostrar, scale, margins, logo,
+  theme, page options) shared by its window and the network screens on that
+  path. The Palco and Pastor pages can also draw a **layout**: a
+  `ScreenLayout` row (or a factory one, `factory:palco` / `factory:pastor`)
+  describing a 16:9 canvas of elements in % of the screen — the pure model is
+  `src/lib/layouts.js`, drawn by `src/components/screen/LayoutRenderer.jsx`
+  on the output, the network screen (`?layout=<id>` overrides the pref), the
+  console's Prévia rail and the editor (`LayoutEditor.jsx`, a console view).
+  Outputs stay the fixed list: what the operator creates and categorizes is
+  the layout. `""` keeps the page's own screen.
 
 - **Generated backgrounds (2026-10-12).** The live `background` layer can be
   `{ kind: "generator", value: <id>, gen: { speed, scale, intensity, detail,

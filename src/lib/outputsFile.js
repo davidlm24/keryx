@@ -8,6 +8,7 @@
 // through the same calls Configurações uses, so every window and network
 // screen follows at once.
 import { normalizePref, outputMeta } from "./outputPrefs.js";
+import { findLayout } from "./layouts.js";
 
 export const FILE_KIND = "keryx-saidas";
 export const FILE_VERSION = 1;
@@ -33,9 +34,10 @@ export function cleanAssignment(a) {
 
 // An OutputPref row as the file keeps it (the settings, never ids or dates);
 // the theme travels with its name, so another computer can find its own.
-function prefFields(row, themes) {
+function prefFields(row, themes, layouts) {
     const p = normalizePref(row);
     const theme = p.themeId ? (themes || []).find((t) => t.id === p.themeId) : null;
+    const layout = p.layoutId ? findLayout(p.layoutId, layouts) : null;
     return {
         name: p.name,
         icon: p.icon,
@@ -46,6 +48,9 @@ function prefFields(row, themes) {
         show_logo: p.showLogo,
         theme_id: p.themeId,
         theme_name: theme ? theme.name || "" : "",
+        // The layout travels by name too (a factory id is the same everywhere).
+        layout_id: p.layoutId,
+        layout_name: layout ? layout.name : "",
         options: p.options,
     };
 }
@@ -53,7 +58,7 @@ function prefFields(row, themes) {
 // The file: every output's placement and every page's settings (a page
 // without a row is written with the defaults, so importing restores it
 // exactly, never only part of it).
-export function buildOutputsFile({ outputs = [], prefRows = [], themes = [], displays = [], appVersion = "", now = Date.now() } = {}) {
+export function buildOutputsFile({ outputs = [], prefRows = [], themes = [], layouts = [], displays = [], appVersion = "", now = Date.now() } = {}) {
     const assignments = {};
     for (const o of outputs) {
         if (!OUTPUT_KEYS.includes(o?.key)) continue;
@@ -61,7 +66,7 @@ export function buildOutputsFile({ outputs = [], prefRows = [], themes = [], dis
         if (a) assignments[o.key] = a;
     }
     const prefs = {};
-    for (const path of PREF_PATHS) prefs[path] = prefFields((prefRows || []).find((r) => r?.screen_path === path) || null, themes);
+    for (const path of PREF_PATHS) prefs[path] = prefFields((prefRows || []).find((r) => r?.screen_path === path) || null, themes, layouts);
     return {
         kind: FILE_KIND,
         version: FILE_VERSION,
@@ -84,7 +89,7 @@ const screenName = (t) => `${t.label ? `“${t.label}” ` : ""}${t.width && t.h
 // notes say, in pt-BR, what will not come out the same here: a screen that is
 // not plugged in (that output opens in a window until it is), a theme that
 // does not exist here (that output follows the projection's).
-export function readOutputsFile(text, { themes = [], displays = [] } = {}) {
+export function readOutputsFile(text, { themes = [], layouts = [], displays = [] } = {}) {
     let data;
     try { data = JSON.parse(String(text || "")); } catch { return { error: "Este arquivo não é um arquivo de saídas do KERYX (não é JSON)." }; }
     if (!data || typeof data !== "object" || data.kind !== FILE_KIND) return { error: "Este arquivo não é um arquivo de saídas do KERYX." };
@@ -105,6 +110,7 @@ export function readOutputsFile(text, { themes = [], displays = [] } = {}) {
     }
 
     const byName = new Map((themes || []).map((t) => [String(t.name || "").trim().toLocaleLowerCase("pt-BR"), t]));
+    const byLayoutName = new Map((layouts || []).filter((l) => l?.id && l.name).map((l) => [String(l.name).trim().toLocaleLowerCase("pt-BR"), l]));
     const prefs = [];
     for (const path of PREF_PATHS) {
         const raw = data.prefs?.[path];
@@ -118,9 +124,17 @@ export function readOutputsFile(text, { themes = [], displays = [] } = {}) {
             themeId = same ? same.id : named ? named.id : "";
             if (!themeId) notes.push(`${label(path)}: o tema${raw.theme_name ? ` “${raw.theme_name}”` : ""} não existe neste computador; a saída segue o tema da projeção.`);
         }
+        // The layout: the same id, else one with the same name here.
+        let layoutId = "";
+        if (p.layoutId) {
+            const same = findLayout(p.layoutId, layouts);
+            const named = byLayoutName.get(String(raw.layout_name || "").trim().toLocaleLowerCase("pt-BR"));
+            layoutId = same ? same.id : named ? named.id : "";
+            if (!layoutId) notes.push(`${label(path)}: o layout${raw.layout_name ? ` “${raw.layout_name}”` : ""} não existe neste computador; a saída volta à tela padrão.`);
+        }
         prefs.push({
             path,
-            fields: { name: p.name, icon: p.icon, content: p.content, hidden_kinds: p.hidden, text_scale: Math.round(p.scale * 100), margin_pct: p.margin, show_logo: p.showLogo, theme_id: themeId, options: p.options },
+            fields: { name: p.name, icon: p.icon, content: p.content, hidden_kinds: p.hidden, text_scale: Math.round(p.scale * 100), margin_pct: p.margin, show_logo: p.showLogo, theme_id: themeId, layout_id: layoutId, options: p.options },
         });
     }
     if (!assignments.length && !prefs.length) return { error: "O arquivo não tem nenhuma saída." };

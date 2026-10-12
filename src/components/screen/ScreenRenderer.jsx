@@ -21,6 +21,8 @@ import { refLine } from "@/lib/bibleDisplay";
 // in step with the screens, so the monitor mirrors the projector.
 export default function ScreenRenderer({ state, now, logoUrl = "", preview = false, motion = false, fill = false, audio = !preview, className = "" }) {
     const cls = `ks ${fill ? "ks-fill" : "ks-box"} ${className}`;
+    // The item's title on top of the slide (Configurações › Aparência).
+    const showTitle = usePrefs().show_item_title;
     if (!state) return <div className={cls}><Idle logoUrl={logoUrl} /></div>;
 
     const layer = mainLayer(state);
@@ -37,7 +39,7 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
             <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>
             <div className="ks-z" style={{ zIndex: z("content") }}>
                 {layer === "none" && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
-                {layer === "content" && <Content content={state.content} />}
+                {layer === "content" && <Content content={state.content} showTitle={showTitle} />}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
                 {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={audio} />}
                 {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} />)}
@@ -193,7 +195,7 @@ function verseNodes(text, numbers = "sup") {
     return segs.flatMap((x, i) => (x.n === null ? [x.text] : [<sup key={i}>{x.n}</sup>, x.text]));
 }
 
-function Content({ content }) {
+function Content({ content, showTitle = true }) {
     const style = slideStyle(content);
     const slide = currentSlide(content) || { text: "" };
     const size = SIZES.includes(style.font_size) ? style.font_size : "large";
@@ -205,7 +207,7 @@ function Content({ content }) {
     const key = `${content.startedAt}:${content.index}`;
     return (
         <>
-            {!bible && content.title && <div className="ks-title" style={{ fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }}>{content.title}</div>}
+            {!bible && showTitle && content.title && <div className="ks-title" style={{ fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }}>{content.title}</div>}
             <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": SIZE_CQW[size], ...(style.text_nudge ? { translate: `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` } : {}) }}>
                 <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
                     {slide.is_chorus && !bible && <div className="ks-chorus">Refrão</div>}

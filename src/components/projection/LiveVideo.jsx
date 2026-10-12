@@ -2,6 +2,15 @@ import React, { useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { playbackPlan } from "@shared/live-state.mjs";
 import { getYouTubeId, loadYouTubeApi } from "@/utils/youtube";
+import { usePrefs } from "@/hooks/useUser";
+
+// YouTube draws the video's title and channel over the top of its player
+// (at the start and on pause) and its logo at the bottom; no player option
+// turns them off. Made this much taller than the screen, the video still
+// fills the screen (fit to the width) and those bars sit on the black
+// letterbox outside it (Configurações › Aparência, on by default).
+// At least 64 px, 7% of the height on a big screen (its bars grow with it).
+const YT_CROP = "calc(-1 * max(64px, 7%))";
 import { useDurationReport } from "@/hooks/useDurationReport";
 
 const SYNC_MS = 2000;
@@ -20,6 +29,7 @@ const SYNC_MS = 2000;
  */
 export default function LiveVideo({ item, loop = false, muted = false, className = "", onEnded, onDuration, meter = null }) {
     const isYouTube = item?.kind === "youtube";
+    const hideYtTitle = usePrefs().youtube_hide_title;
     const videoRef = useRef(null);
     const ytBoxRef = useRef(null);
     const ytRef = useRef(null);
@@ -99,6 +109,8 @@ export default function LiveVideo({ item, loop = false, muted = false, className
         loadYouTubeApi().then((YT) => {
             if (cancelled) return;
             ytRef.current = new YT.Player(host, {
+                width: "100%",
+                height: "100%",
                 videoId: getYouTubeId(item.url),
                 playerVars: { autoplay: 0, controls: 0, modestbranding: 1, rel: 0, playsinline: 1 },
                 events: {
@@ -145,7 +157,9 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     return (
         <div className={`relative ${className}`}>
             {isYouTube ? (
-                <div ref={ytBoxRef} className="w-full h-full" />
+                <div className="w-full h-full" style={{ position: "relative", overflow: "hidden" }}>
+                    <div ref={ytBoxRef} style={hideYtTitle ? { position: "absolute", left: 0, right: 0, top: YT_CROP, bottom: YT_CROP } : { width: "100%", height: "100%" }} />
+                </div>
             ) : (
                 <video
                     ref={videoRef}
