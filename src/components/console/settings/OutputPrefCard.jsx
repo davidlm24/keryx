@@ -7,12 +7,12 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import { mainLayer } from "@shared/live-state.mjs";
-import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions } from "@/lib/outputPrefs";
+import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, showKindsFor } from "@/lib/outputPrefs";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 
 const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], ["125", "125%"], ["140", "140%"]];
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
-const DEFAULTS = { content: "", text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", name: "", icon: "", options: {} };
+const DEFAULTS = { content: "", hidden_kinds: [], text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", name: "", icon: "", options: {} };
 const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
 // The icons' names, for screen readers and the tooltip.
 const ICON_NAMES = { projector: "Projetor", tv: "TV", monitor: "Monitor", tablet: "Tablet", film: "Filme", megaphone: "Megafone", book: "Livro", image: "Imagem", text: "Texto", star: "Estrela", layers: "Camadas", external: "Janela" };
@@ -65,6 +65,8 @@ export default function OutputPrefCard({ output, row, themes, c }) {
     const isStage = output.key === "/StageView";
     const isPastor = output.key === "/PastorView";
     const renderer = PREF_OUTPUTS.includes(output.key) || Boolean(pref.content);
+    // Mostrar: only for renderer views, only the kinds the view can show.
+    const kinds = renderer ? showKindsFor(output.key, pref) : [];
     const meta = outputMeta(output.key);
     const now = c?.now || Date.now();
     // The preview: what is on air when something is, else a sample built
@@ -108,6 +110,23 @@ export default function OutputPrefCard({ output, row, themes, c }) {
                 </select>
                 {(isStage || isPastor) && <span className="kx-meta">outro conteúdo troca o layout próprio pela tela escolhida</span>}
             </FormRow>
+            {kinds.length > 0 && (
+                <FormRow k="Mostrar">
+                    <div className="cfg-kinds" role="group" aria-label={`O que ${output.label} mostra`}>
+                        {kinds.map((k) => {
+                            const on = !pref.hidden.includes(k.id);
+                            return (
+                                <button type="button" key={k.id} role="checkbox" aria-checked={on} className={`kx-t ${on ? "is-on" : ""}`}
+                                    title={on ? `${output.label} mostra ${k.name.toLowerCase()} · clique para esconder` : `${output.label} não mostra ${k.name.toLowerCase()} · clique para mostrar`}
+                                    onClick={() => save({ hidden_kinds: on ? [...pref.hidden, k.id] : pref.hidden.filter((x) => x !== k.id) })}>
+                                    <Icon name="check" size={12} />{k.name}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <span className="kx-meta">o que fica de fora deixa esta saída no que está por baixo (ou no fundo de espera); a música continua tocando</span>
+                </FormRow>
+            )}
             <FormRow k="Escala do texto">
                 <Seg small value={String(Math.round(pref.scale * 100))} options={SCALES} onChange={(v) => save({ text_scale: Number(v) })} />
             </FormRow>
