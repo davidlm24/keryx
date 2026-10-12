@@ -24,7 +24,7 @@ export const SETTINGS_INDEX = [
     e("telas", "Abrir ao iniciar", "a saída abre sozinha quando o KERYX abre", ["iniciar", "automático"], { target: "Saídas" }),
     e("telas", "Som do aviso", "o sino dos avisos: ligar, desligar, volume, testar", ["som", "sino", "alerta", "volume", "testar som", "áudio"]),
     e("telas", "Ajustes", "nome, ícone, conteúdo, texto, margens, logo e tema de cada saída",
-        ["Nome", "Ícone", "Conteúdo", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra",
+        ["Nome", "Ícone", "Conteúdo", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra", "Mostrar", "filtro", "só letras", "só Bíblia",
             "Faixa", "Tamanho do texto", "Posição", "Referência na legenda"]),
 
     e("rede", "Telas na rede", "celulares, tablets e TVs pela rede da igreja", ["wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),
