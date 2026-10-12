@@ -115,6 +115,14 @@
       "enum": ["logo", "black", "background"],
       "description": "Tela ociosa da igreja (o que as telas mostram sem nada no ar), para um estado ao vivo novo. Nulo = logo"
     },
+    "chime_on": {
+      "type": "boolean",
+      "description": "Som do aviso: tocar o sino dos avisos com Som de alerta (Configuracoes › Telas e saidas). Nulo = sim"
+    },
+    "chime_volume": {
+      "type": "integer",
+      "description": "Som do aviso: volume do sino, em porcentagem (5 a 100). Nulo = 35"
+    },
     "standby_background": {
       "type": "string",
       "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido)"

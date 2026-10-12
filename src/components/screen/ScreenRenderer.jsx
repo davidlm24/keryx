@@ -6,6 +6,7 @@ import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
 import { noticeTime, fileAt, clockOf } from "@/lib/console/notice";
 import { ringBell } from "@/lib/bell";
+import { usePrefs } from "@/hooks/useUser";
 import { verseSegments, withoutVerseMarks } from "@/lib/verseMarks";
 import { refLine } from "@/lib/bibleDisplay";
 
@@ -266,8 +267,10 @@ function Communication({ comm, now, logoUrl, preview, motion, audio }) {
     );
 }
 
+// The church's chime (on or off, its volume: Configurações, on the profile).
 function Chime() {
-    React.useEffect(() => { ringBell(); }, []);
+    const prefs = usePrefs();
+    React.useEffect(() => { ringBell({ on: prefs.chime_on, volume: prefs.chime_volume }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     return null;
 }
 

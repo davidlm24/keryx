@@ -1730,6 +1730,12 @@
         "idle_mode": {
           "type": "text"
         },
+        "chime_on": {
+          "type": "boolean"
+        },
+        "chime_volume": {
+          "type": "integer"
+        },
         "standby_background": {
           "type": "text"
         },
