@@ -51,7 +51,7 @@ test("search index: every jump lands on a row that exists", () => {
 test("search: accents and case do not matter, every word must match", () => {
     const labels = (q) => searchSettings(q).map((h) => h.label);
     assert.ok(labels("transicao").includes("Transição entre slides"));
-    assert.ok(labels("FUNDO de espera").includes("Fundo de espera padrão"));
+    assert.ok(labels("FUNDO de espera").includes("Fundo padrão"), "the old name still finds it");
     assert.deepEqual(labels("pin"), ["PIN"]);
     assert.deepEqual(labels(""), []);
     assert.deepEqual(labels("x"), [], "one letter is not a search");

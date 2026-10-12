@@ -304,6 +304,26 @@ test("the item title: shown or hidden for this item, else the church's choice", 
     assert.throws(() => applyOp(s, "content.update", { style: { title: "maybe" } }, T0), LiveError);
 });
 
+test("the Fundo padrão: Esc puts it on the Fundo; none, the Fundo stays", () => {
+    const song_bg = { kind: "generator", value: "aurora", title: "Aurora" };
+    const padrao = { kind: "image", value: "keryx-media://culto.webp", title: "Fundo do culto" };
+    let s = run([["background.set", song_bg], ["content.show", song]]);
+    assert.equal(applyOp(s, "clear", {}, T0).background.value, "aurora", "no Fundo padrão: Esc leaves the Fundo");
+    s = applyOp(s, "background.default", { background: padrao }, T0);
+    assert.equal(s.background.value, "aurora", "setting it changes nothing on screen");
+    assert.equal(applyOp(s, "background.default", { background: padrao }, T0), s, "the same: no change");
+    const after = applyOp(s, "clear", {}, T0);
+    assert.equal(after.content, null);
+    assert.equal(after.background.value, padrao.value, "Esc: the service's (or the day's) background");
+    const held = applyOp(s, "layers.lock", { layer: "background", locked: true }, T0);
+    assert.equal(applyOp(held, "clear", {}, T0).background.value, "aurora", "the padlock holds the Fundo");
+    const screens = applyOp(s, "screens.lock", { locked: true }, T0);
+    assert.equal(applyOp(screens, "background.default", { background: null }, T0).defaultBackground, null, "set with the screens locked too");
+    assert.deepEqual(restoreState(JSON.parse(JSON.stringify(s)), T0).defaultBackground, s.defaultBackground, "survives a restart");
+    assert.equal(restoreState({ ...JSON.parse(JSON.stringify(s)), defaultBackground: { kind: "nope" } }, T0).defaultBackground, null);
+    assert.throws(() => applyOp(s, "background.default", { background: { kind: "image" } }, T0), LiveError);
+});
+
 test("layer order: the operator stacks the look layers", () => {
     let s = emptyState(T0);
     assert.deepEqual(s.layerOrder, ["logo", "overlays", "content", "background"]);

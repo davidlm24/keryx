@@ -78,8 +78,10 @@ export default function Layers({ c, themes, media = null }) {
         else setLocalLocks({ ...localLocks, [id]: !localLocks[id] });
     };
     // A background from the library (Temas, Imagens, Vídeos, Gerados, Cor).
-    const openLibrary = async () => {
-        const r = await pick({ accept: ["image", "video", "generator", "color"], value: cur?.background || null, title: "Fundo", allowNone: Boolean(cur?.background), noneLabel: "Tirar o fundo" });
+    // It is the Fundo on air: "Ao vivo" can send each choice at once
+    // (Editar fundo… opens with it on, for the generated one on air).
+    const openLibrary = async (startLive = false) => {
+        const r = await pick({ accept: ["image", "video", "generator", "color"], value: cur?.background || null, title: startLive ? "Editar fundo" : "Fundo", allowNone: Boolean(cur?.background), noneLabel: "Tirar o fundo", live: true, startLive });
         if (r?.none) op("background.clear");
         else if (r?.spec) op("background.set", bgArgs(r.spec, r.spec.kind === "generator" ? GEN_NAMES[r.spec.value] : backgrounds.find((b) => b.url === r.spec.value)?.name || bgLabel(r.spec, GEN_NAMES)));
     };
@@ -185,7 +187,8 @@ export default function Layers({ c, themes, media = null }) {
                     <span className="k">Fundo</span>
                     <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         <span style={{ flex: 1, color: "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? cur.background.title || bgLabel(cur.background, GEN_NAMES) : "nenhum"}</span>
-                        <Btn small disabled={disabled} onClick={openLibrary} title="Temas, imagens, vídeos, fundos gerados e cores">Biblioteca…</Btn>
+                        {cur?.background?.kind === "generator" && <Btn small disabled={disabled} onClick={() => openLibrary(true)} title="Abre o fundo gerado grande, numa janela; cada ajuste vai às telas na hora">Editar fundo…</Btn>}
+                        <Btn small disabled={disabled} onClick={() => openLibrary(false)} title="Temas, imagens, vídeos, fundos gerados e cores">Biblioteca…</Btn>
                     </span>
                     {disabled && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Travado: nada que vai ao ar troca o fundo, e o fundo próprio das músicas não aparece.</span>}
                     <div className="lyr-quick" style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>

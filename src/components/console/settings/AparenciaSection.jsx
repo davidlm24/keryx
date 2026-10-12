@@ -4,7 +4,9 @@ import { FormRow, Switch } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { TRANSITIONS, TRANSITION_MS, NATURAL_MS, lookDefaults } from "@/lib/console/look";
-import BgChip from "../library/BgChip";
+import BgChip, { BgThumb } from "../library/BgChip";
+import { useLibraryPicker } from "../library/libraryContext";
+import { churchFundo, dayFundo, withDay, WEEKDAYS } from "@/lib/console/defaultFundo";
 import { SAMPLE_SLIDES } from "./sample";
 import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import IdleBlock from "./IdleBlock";
@@ -33,7 +35,15 @@ export default function AparenciaSection({ c }) {
             if (message) c.say(message);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };
-    const wall = user?.standby_background || null;
+    // Fundo padrão (src/lib/console/defaultFundo.js): the church's for every
+    // day, and optionally one per day of the week; the service's wins.
+    const pick = useLibraryPicker();
+    const church = churchFundo(user);
+    const pickDay = async (d) => {
+        const cur = dayFundo(user, d);
+        const r = await pick({ title: `Fundo de ${WEEKDAYS[d][2]}`, value: cur, allowNone: Boolean(cur), noneLabel: "Sem fundo neste dia (usa o padrão)" });
+        if (r?.spec || r?.none) save({ weekday_backgrounds: withDay(user?.weekday_backgrounds, d, r.spec || null) }, r.spec ? `Fundo de ${WEEKDAYS[d][2]} salvo.` : `${WEEKDAYS[d][2][0].toUpperCase()}${WEEKDAYS[d][2].slice(1)} usa o fundo padrão.`);
+    };
 
     // A sample of the screens with the chosen transition: Ver a transição
     // changes its slide.
@@ -62,11 +72,20 @@ export default function AparenciaSection({ c }) {
                     <div className="ap-sample">{doc && <ScreenRenderer state={doc} now={c.now} preview />}</div>
                     <Btn small onClick={() => setSlide((n) => (n + 1) % SAMPLE_SLIDES.length)} disabled={kind === "cut"} title="Troca o slide do exemplo com a transição escolhida">Ver a transição</Btn>
                 </FormRow>
-                <FormRow k="Fundo de espera padrão">
-                    <BgChip accept={["image"]} title="Fundo de espera padrão" empty="nenhum · as telas mostram o logo" value={wall ? { kind: "image", value: wall } : null}
-                        noneLabel={wall ? "Sem fundo padrão (logo da igreja)" : undefined}
-                        onPick={(spec) => save({ standby_background: spec ? spec.value : "" }, spec ? "Fundo de espera padrão salvo." : "Sem fundo de espera padrão.")} />
-                    <span className="kx-meta">as telas mostram quando nada está no ar e o culto não tem fundo próprio</span>
+                <FormRow k="Fundo padrão">
+                    <BgChip title="Fundo padrão" empty="nenhum · as telas mostram o logo" value={church}
+                        noneLabel={church ? "Sem fundo padrão (logo da igreja)" : undefined}
+                        onPick={(spec) => save({ default_background: spec || null, standby_background: spec?.kind === "image" ? spec.value : "" }, spec ? "Fundo padrão salvo." : "Sem fundo padrão.")} />
+                    <span className="kx-meta">na camada Fundo quando nada está no ar (ao abrir o KERYX, ao escolher o culto e a cada Esc), se o culto não tiver o seu</span>
+                </FormRow>
+                <FormRow k="Fundo por dia da semana">
+                    <span className="ap-days">
+                        {WEEKDAYS.map(([d, short, name]) => {
+                            const spec = dayFundo(user, d);
+                            return <button type="button" key={d} className={`kx-t ap-day ${spec ? "is-on" : ""}`} onClick={() => pickDay(Number(d))} title={spec ? `Fundo de ${name} · trocar` : `Escolher um fundo para ${name}`} aria-label={`Fundo de ${name}`}><BgThumb spec={spec} /><span>{short}</span></button>;
+                        })}
+                    </span>
+                    <span className="kx-meta">opcional: vale antes do fundo padrão no dia do culto (ou hoje, sem culto)</span>
                 </FormRow>
                 <IdleBlock c={c} />
                 <FormRow k="Títulos nas telas">

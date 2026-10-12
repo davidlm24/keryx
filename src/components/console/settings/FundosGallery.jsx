@@ -155,9 +155,8 @@ export function FundoDetail({ b, save, now, standby, onStandby, sample = true })
                     onChange={(v) => keep({ favorite: v === "fav", hidden: v === "hidden" })} />
             </FormRow>
             {onStandby && <FormRow k="">
-                {b.kind !== "video" && <Btn small on={isStandby} disabled={isStandby} onClick={() => onStandby(b.url)}>{isStandby ? "É o fundo de espera padrão" : "Usar como fundo de espera padrão"}</Btn>}
-                {b.kind === "video" && <span className="kx-meta">um vídeo entra pelo Camadas › Fundo; a tela de espera só aceita imagem</span>}
-                <span className="kx-meta">escurecer e desfoque entram quando um item, um aviso ou o fundo de espera com este fundo vai ao ar, e quando ele é escolhido em Camadas › Fundo</span>
+                <Btn small on={isStandby} disabled={isStandby} onClick={() => onStandby(b.url, b.kind)}>{isStandby ? "É o Fundo padrão" : "Usar como Fundo padrão"}</Btn>
+                <span className="kx-meta">escurecer e desfoque entram quando um item, um aviso ou o Fundo padrão com este fundo vai ao ar, e quando ele é escolhido em Camadas › Fundo</span>
             </FormRow>}
         </div>
     );

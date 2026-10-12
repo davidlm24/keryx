@@ -82,6 +82,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   button or Configurações › Bíblia e músicas. The item's title over the
   slide is `style.title` (show/hide, Camadas › Texto principal › Título);
   unset, Aparência's `show_item_title` decides.
+  **Fundo padrão** (owner's decision 2026-10-12): with nothing on air the
+  screen shows the service's background (`Service.background`), else the
+  church's for that weekday (`User.weekday_backgrounds`), else the church's
+  (`User.default_background`; the old `standby_background` still counts) —
+  `defaultFundo` in `src/lib/console/defaultFundo.js`. The console keeps it
+  in the live state (`background.default`, `defaultBackground`) and `clear`
+  (Esc, from anyone) puts it on the Fundo unless the padlock holds it;
+  Desfazer puts back the Fundo there was. It also goes on the Fundo when it
+  changes with nothing on air (KERYX opens, a service is chosen). The idle
+  screen is only Logo or Preto. In the library, Gerados shows the
+  background big; opened for the Fundo on air (`live: true`, Camadas'
+  Biblioteca… and Editar fundo…) "Ao vivo" sends each choice at once and
+  Cancelar/Esc put back the Fundo there was. A right click on a Temas card
+  offers Aplicar, Editar, Salvar para a música, Tornar padrão, Usar na Bíblia.
 
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built

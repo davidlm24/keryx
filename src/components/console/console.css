@@ -527,8 +527,6 @@
 .console .swatches button { width: 20px; height: 20px; border-radius: var(--radius-round); box-shadow: inset 0 0 0 1px #ffffff2e; }
 .console .swatches button.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
 .console .ed-color { width: 24px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
-/* The idle wallpaper beside Trocar… (Saídas). */
-.console .idle-wall img { width: 48px; height: 27px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
 .console .ed-tools { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; padding: 0 var(--space-2) var(--space-1); }
 .console .ed-lyrics { flex: 1; min-height: 0; display: flex; padding: 0 var(--space-2) var(--space-2); }
 .console .ed-lyrics .ed-text { flex: 1; font-size: 14px; line-height: 21px; }
@@ -929,3 +927,19 @@
 .console .tm-song { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; border-top: 1px solid var(--line); padding-top: var(--space-2); }
 .console .tm-song .kx-meta { flex: 1 1 120px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .tm-empty { padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+/* Aparência › Fundo por dia da semana: one small tile per day. */
+.console .ap-days { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.console .ap-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px; border-radius: var(--radius-control); font-size: 11px; color: var(--fg-3); }
+.console .ap-day.is-on { color: var(--fg-1); }
+.console .ap-day .bgchip-t { width: 40px; }
+/* The library's Gerados: the background alone, big and moving, while it is edited. */
+.console .lib-big { display: flex; flex-direction: column; gap: var(--space-1); }
+.console .lib-big-screen { width: 100%; max-width: 760px; display: grid; place-items: center; }
+.console .lib-big-cap { display: flex; gap: var(--space-2); align-items: baseline; font-size: 12px; }
+.console .lib-live { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: var(--space-2); }
+/* Gerados: the big screen on the left, the controls beside it, so every
+   change is seen as it is made. */
+.console .lib-main.is-gen { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-3); align-items: start; overflow: hidden; }
+.console .lib-main.is-gen > .lib-big { position: sticky; top: 0; }
+.console .lib-main.is-gen > .lib-gen { max-height: 100%; overflow: auto; align-self: stretch; padding-right: var(--space-1); }
+.console .lib-main.is-gen .lyr-gens { grid-template-columns: repeat(3, 1fr); }

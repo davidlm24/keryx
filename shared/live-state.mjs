@@ -125,6 +125,8 @@ export function emptyState(now = Date.now()) {
         hiddenLayers: [],
         // Layers held by Camadas' padlock (LOCKABLE_LAYERS).
         lockedLayers: [],
+        // The Fundo padrão (background.default): what Esc puts on the Fundo.
+        defaultBackground: null,
         // What was on the main projector before each change, newest first,
         // so the operator can bring it back (through the preview, never
         // straight to air).
@@ -142,7 +144,7 @@ export function emptyState(now = Date.now()) {
 // outputs carrying on with what was already playing (the next video of a
 // list, the next aviso of a "Tocar todos").
 export const WHILE_LOCKED = new Set([
-    "screens.lock", "screen.set", "idle.set", "session.end", "layers.hide", "layers.lock",
+    "screens.lock", "screen.set", "idle.set", "session.end", "layers.hide", "layers.lock", "background.default",
     "clear", "content.clear", "media.clear", "video.clear", "audio.clear", "tool.clear", "communication.clear", "alert.clear", "background.clear",
     "media.advance", "audio.advance", "communication.advance",
 ]);
@@ -301,6 +303,28 @@ function remember(s, now, only = null) {
     return { history: [entry, ...history].slice(0, MAX_HISTORY) };
 }
 
+// A background as background.set takes it (and the Fundo padrão), checked.
+function backgroundOf(a) {
+    const background = {
+        kind: oneOf(a.kind, BACKGROUND_KINDS, "Tipo de fundo"),
+        value: text(a.value, "Fundo", { max: MAX_URL * 1024, required: true }),
+        title: text(a.title, "Título", { max: 500 }),
+    };
+    // A generated background (generators.mjs): the generator is the
+    // value, its numbers and colours ride in `gen`, always complete.
+    if (background.kind === "generator") {
+        oneOf(background.value, GENERATOR_IDS, "Gerador");
+        background.gen = normalizeGenerator({ ...(isPlainObject(a.gen) ? a.gen : {}), id: background.value });
+    }
+    // Camadas: how the picture fills the screen, how dark, how blurred
+    // (px at 1920 wide) and which part shows; only when set.
+    if (a.fit !== undefined && a.fit !== null) background.fit = oneOf(a.fit, BACKGROUND_FITS, "Ajuste do fundo");
+    if (a.dim !== undefined && a.dim !== null) background.dim = ranged(a.dim, [0, 0.9], "Escurecer");
+    if (a.blur !== undefined && a.blur !== null) background.blur = ranged(a.blur, [0, 20], "Desfoque");
+    if (a.position !== undefined && a.position !== null) background.position = oneOf(a.position, BACKGROUND_POSITIONS, "Posição do fundo");
+    return background;
+}
+
 const OPS = {
     "screen.set": (_s, { mode }) => ({ screen: oneOf(mode, SCREEN_MODES, "Modo da tela") }),
 
@@ -343,25 +367,14 @@ const OPS = {
         return JSON.stringify(next) === JSON.stringify(s.logo) ? null : { logo: next };
     },
 
-    "background.set": (_s, a) => {
-        const background = {
-            kind: oneOf(a.kind, BACKGROUND_KINDS, "Tipo de fundo"),
-            value: text(a.value, "Fundo", { max: MAX_URL * 1024, required: true }),
-            title: text(a.title, "Título", { max: 500 }),
-        };
-        // A generated background (generators.mjs): the generator is the
-        // value, its numbers and colours ride in `gen`, always complete.
-        if (background.kind === "generator") {
-            oneOf(background.value, GENERATOR_IDS, "Gerador");
-            background.gen = normalizeGenerator({ ...(isPlainObject(a.gen) ? a.gen : {}), id: background.value });
-        }
-        // Camadas: how the picture fills the screen, how dark, how blurred
-        // (px at 1920 wide) and which part shows; only when set.
-        if (a.fit !== undefined && a.fit !== null) background.fit = oneOf(a.fit, BACKGROUND_FITS, "Ajuste do fundo");
-        if (a.dim !== undefined && a.dim !== null) background.dim = ranged(a.dim, [0, 0.9], "Escurecer");
-        if (a.blur !== undefined && a.blur !== null) background.blur = ranged(a.blur, [0, 20], "Desfoque");
-        if (a.position !== undefined && a.position !== null) background.position = oneOf(a.position, BACKGROUND_POSITIONS, "Posição do fundo");
-        return { background, ...without(_s, "background") };
+    "background.set": (s, a) => ({ background: backgroundOf(a), ...without(s, "background") }),
+    // The Fundo padrão (the service's, else the day's, else the church's;
+    // src/lib/console/defaultFundo.js): what Esc puts on the Fundo (clear,
+    // below). It changes nothing on screen by itself, so it is accepted with
+    // the screens locked. null: none (Esc leaves the Fundo as it is).
+    "background.default": (s, a) => {
+        const next = a.background === null || a.background === undefined ? null : backgroundOf(isPlainObject(a.background) ? a.background : {});
+        return JSON.stringify(next) === JSON.stringify(s.defaultBackground ?? null) ? null : { defaultBackground: next };
     },
     "background.clear": (s) => (s.background ? { background: null } : null),
 
@@ -584,9 +597,15 @@ const OPS = {
     }),
     "alert.clear": (s) => (s.alert ? { alert: null } : null),
 
-    // Stop: what Esc / "Encerrar" means. Background, logo, Escola bíblica,
-    // overlays and alerts stay; they have their own controls.
-    "clear": (s, _a, now) => ({ ...remember(s, now), ...without(s, "content"), screen: "show", content: null, media: null, video: null, tool: null, communication: null }),
+    // Stop: what Esc / "Encerrar" means. Logo, Escola bíblica, overlays and
+    // alerts stay; they have their own controls. The Fundo goes back to the
+    // Fundo padrão (owner's decision 2026-10-12: with nothing on air the
+    // screen shows the service's, else the day's background) — unless the
+    // padlock holds it; with no Fundo padrão it stays as it is.
+    "clear": (s, _a, now) => {
+        const fundo = s.defaultBackground && !layerLocked(s, "background") ? { background: { ...s.defaultBackground }, ...without(s, "background") } : {};
+        return { ...remember(s, now), ...without(s, "content"), ...fundo, screen: "show", content: null, media: null, video: null, tool: null, communication: null };
+    },
 };
 
 export const OP_NAMES = Object.keys(OPS);
@@ -634,8 +653,15 @@ export function restoreState(saved, now = Date.now()) {
         layerOrder: layerOrderOf(saved.layerOrder) || [...LAYER_ORDER],
         hiddenLayers: hiddenOf(saved.hiddenLayers),
         lockedLayers: lockedOf(saved.lockedLayers),
+        defaultBackground: savedBackground(saved.defaultBackground),
         history: Array.isArray(saved.history) ? saved.history.filter((h) => isPlainObject(h) && isPlainObject(h.data)).slice(0, MAX_HISTORY) : [],
     };
+}
+
+// A saved background, checked again (null when it no longer passes).
+function savedBackground(v) {
+    if (!isPlainObject(v)) return null;
+    try { return backgroundOf(v); } catch { return null; }
 }
 
 // Saves from before the wallpaper (a bare "logo" / "black") still load; a

@@ -6,7 +6,8 @@ import GeneratorPanel, { GeneratorTiles } from "../GeneratorPanel";
 import { FundoDetail, useSaveBackgroundPref } from "../settings/FundosGallery";
 import { useBackgrounds, useLibrary, useThemes } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "../settings/sample";
-import { applyOp, emptyState } from "@shared/live-state.mjs";
+import { applyOp, emptyState, layerLocked } from "@shared/live-state.mjs";
+import { Switch } from "../settings/parts";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { visibleBackgrounds, categoriesOf, sourceOf } from "@/lib/console/backgroundPrefs";
 import { cleanSpec, bgArgs, bgSpec, bgLabel, sameBg } from "@/lib/console/backgroundSpec";
@@ -21,7 +22,11 @@ import { ALL_KINDS } from "./libraryContext";
 // church's categories and favourites (BackgroundPref, managed here too),
 // files sent from the computer (they become Mídia rows), and a sample of
 // the choice on the real renderer. A click chooses, a double click (or
-// Usar) takes it; Esc or Cancelar closes without choosing.
+// Usar) takes it; Esc or Cancelar closes without choosing. Gerados shows the
+// background big and moving while it is edited (owner's request 2026-10-12,
+// as SPresenter does). Opened for the Fundo on air (request.live: Camadas),
+// "Ao vivo" sends every choice to the screens at once; Cancelar then puts
+// back the Fundo there was.
 const TABS = [["temas", "Temas"], ["image", "Imagens"], ["video", "Vídeos"], ["generator", "Gerados"], ["color", "Cor"]];
 const ALL = "__all";
 const HIDDEN = "__hidden";
@@ -71,7 +76,47 @@ export default function BackgroundLibrary({ c, request, onDone }) {
         setUploading(false);
     };
 
-    const done = (result) => onDone(result);
+    // Ao vivo: each choice on the Fundo at once (ten a second at most, as
+    // the sliders move), never past Camadas' padlock.
+    const canLive = Boolean(request.live) && !themeMode;
+    const held = layerLocked(c.cur, "background");
+    const [liveOn, setLiveOn] = useState(Boolean(request.live && request.startLive));
+    const sentLive = useRef(false);
+    const liveTimer = useRef(null);
+    const liveNext = useRef(null);
+    const nameOf = (spec) => (spec.kind === "generator" ? GEN_NAMES[spec.value] || "Gerado" : list.find((b) => b.source === sourceOf(spec.value))?.name || bgLabel(spec, GEN_NAMES));
+    const selKey = JSON.stringify(sel);
+    useEffect(() => {
+        const spec = cleanSpec(sel);
+        if (!canLive || !liveOn || held || !spec) return;
+        liveNext.current = spec;
+        if (liveTimer.current) return;
+        liveTimer.current = setTimeout(() => {
+            liveTimer.current = null;
+            const next = liveNext.current;
+            if (!next) return;
+            sentLive.current = true;
+            c.callOp("background.set", bgArgs(next, nameOf(next))).catch(() => {});
+        }, 100);
+    }, [selKey, liveOn, held]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Cancelar (or Esc, which closes the window from the console) after Ao
+    // vivo: the Fundo that was there comes back.
+    const finished = useRef(false);
+    const putBack = () => {
+        if (!sentLive.current || layerLocked(c.cur, "background")) return;
+        sentLive.current = false;
+        if (request.value) c.callOp("background.set", { ...request.value }).catch(() => {});
+        else c.callOp("background.clear").catch(() => {});
+    };
+    const putBackRef = useRef(putBack);
+    putBackRef.current = putBack;
+    useEffect(() => () => { clearTimeout(liveTimer.current); if (!finished.current) putBackRef.current(); }, []);
+    const done = (result) => {
+        clearTimeout(liveTimer.current);
+        finished.current = true;
+        if (!result) putBack();
+        onDone(result);
+    };
     const take = (spec = sel) => { const s = cleanSpec(spec); if (s) done({ spec: s }); };
     const takeTheme = (t = selTheme) => { if (t) done({ theme: t }); };
 
@@ -86,6 +131,12 @@ export default function BackgroundLibrary({ c, request, onDone }) {
     // blur from its settings; a theme's text look on a theme).
     const previewArgs = themeMode ? themeBackgroundArgs(selTheme) : sel ? { ...bgArgs(sel, ""), ...(entry && sel.dim === undefined && entry.dim !== null ? { dim: entry.dim } : {}), ...(entry && sel.blur === undefined && entry.blur !== null ? { blur: entry.blur } : {}) } : null;
     const doc = useMemo(() => sampleDoc(c.now, previewArgs, themeMode && selTheme ? themeStyle(selTheme) : {}), [JSON.stringify(previewArgs), selTheme]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Gerados: the background alone, big and moving.
+    const big = tab === "generator";
+    const bigDoc = useMemo(() => {
+        if (!big || !previewArgs) return null;
+        try { return applyOp(emptyState(c.now), "background.set", previewArgs, c.now); } catch { return null; }
+    }, [big, JSON.stringify(previewArgs)]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const title = request.title || (themeMode ? "Escolher tema" : "Escolher fundo");
     const can = themeMode ? Boolean(selTheme) : Boolean(cleanSpec(sel));
@@ -108,7 +159,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                     <IconBtn name="x" title="Fechar · Esc" onClick={() => done(null)} />
                 </div>
                 <div className="lib-body">
-                    <div className="lib-main">
+                    <div className={`lib-main ${big ? "is-gen" : ""}`}>
                         {tab === "temas" && (
                             <div className="lib-grid lib-themes">
                                 {(themeMode ? themes : withBg).map((t) => {
@@ -145,6 +196,12 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                             </div>
                         </>}
                         {tab === "generator" && (
+                            <div className="lib-big">
+                                <div className="ap-sample lib-big-screen">{bigDoc ? <ScreenRenderer state={bigDoc} now={c.now} preview motion /> : <span className="kx-meta">Escolha um gerador abaixo.</span>}</div>
+                                <span className="lib-big-cap"><span className="kx-meta">{sel?.kind === "generator" ? bgLabel(sel, GEN_NAMES) : "Nenhum gerador escolhido"}</span>{canLive && liveOn && !held && <span className="kx-air">· ao vivo nas telas</span>}</span>
+                            </div>
+                        )}
+                        {tab === "generator" && (
                             <div className="layerprops lib-gen">
                                 <span className="k">Gerador</span>
                                 <GeneratorTiles current={sel?.kind === "generator" ? sel.gen : null} op={(_op, args) => setSel(cleanSpec(args))} />
@@ -166,14 +223,20 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                             </div>
                         )}
                     </div>
-                    <div className="lib-side">
+                    {!big && <div className="lib-side">
                         <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} now={c.now} preview motion />}</div>
                         <div className="lib-label"><span className="kx-meta">Escolhido</span><span className="t">{label}</span></div>
                         {entry && <FundoDetail key={entry.source} b={entry} save={save} now={c.now} sample={false} />}
-                    </div>
+                    </div>}
                 </div>
                 <div className="lib-foot">
                     {request.allowNone && <Btn small onClick={() => done({ none: true })}>{request.noneLabel || (themeMode ? "Sem tema" : "Sem fundo")}</Btn>}
+                    {canLive && (
+                        <span className="lib-live" title={held ? "O Fundo está travado nas Camadas" : "Cada escolha vai às telas na hora; Cancelar volta o fundo que estava"}>
+                            <Switch on={liveOn && !held} disabled={held} onChange={setLiveOn} label="Ao vivo" />
+                            <span className="kx-meta">{held ? "Fundo travado" : "Ao vivo"}</span>
+                        </span>
+                    )}
                     <span style={{ flex: 1 }} />
                     <Btn small onClick={() => done(null)}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={!can} onClick={() => (themeMode ? takeTheme() : take())}>{request.useLabel || "Usar"}</Btn>

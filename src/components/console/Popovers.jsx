@@ -11,7 +11,6 @@ import { materialIcon, materialMeta } from "@/lib/console/school";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { readQuickRef } from "@/lib/console/quickRef";
 import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
-import { useLibraryPicker } from "./library/libraryContext";
 import { byGroup } from "@/lib/console/outputs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 
@@ -121,16 +120,9 @@ function useAnchor(selector, width, active) {
     return box;
 }
 
-export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, tries, idle, idleUrl, onIdle, onSettings }) {
+export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, tries, idle, onIdle, onSettings }) {
     const look = useOutputLooks();
     const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
-    // Fundo with no image yet (or "Trocar") shows the wallpapers to pick from.
-    // The idle wallpaper comes from the background library (pictures only).
-    const pickBg = useLibraryPicker();
-    const chooseWall = async () => {
-        const r = await pickBg({ accept: ["image"], value: idleUrl ? { kind: "image", value: idleUrl } : null, title: "Fundo da tela ociosa" });
-        if (r?.spec) onIdle("background", r.spec.value);
-    };
     if (open !== "outs") return null;
     const view = (r) => {
         const icon = r.local ? look(r.key).icon : r.screen ? look(r.screen).icon : DEVICE_ICON[r.kind] || "tv";
@@ -187,12 +179,11 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                 <Seg small value={locked ? "on" : "off"} onChange={(v) => onLock?.(v === "on")} options={[["off", "Destravadas"], ["on", "Travadas"]]} />
             </div>
             <div className="kx-menu-h"><span className="kx-section">Tela ociosa</span><span style={{ flex: 1 }} />
-                <Seg small value={idle} onChange={(m) => { if (m === "background" && !idleUrl) chooseWall(); else onIdle(m); }}
-                    options={[["logo", "Logo da igreja"], ["black", "Preto"], ["background", "Fundo", { title: "Uma imagem escolhida quando nada está no ar" }]]} />
+                {/* Logo or Preto when nothing is on air and there is no Fundo; a
+                    picture for those moments is the Fundo padrão. */}
+                <Seg small value={idle === "black" ? "black" : "logo"} onChange={(m) => onIdle(m)}
+                    options={[["logo", "Logo da igreja"], ["black", "Preto"]]} />
             </div>
-            {idle === "background" && idleUrl && (
-                <div className="kx-menu-h idle-wall"><img src={idleUrl} alt="" /><span className="kx-meta" style={{ flex: 1 }}>Fundo de espera nas telas</span><Btn small onClick={chooseWall}>Trocar…</Btn></div>
-            )}
             <div className="kx-menu-sep" />
             <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}>
                 <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo…</Btn>

@@ -21,8 +21,9 @@ import DadosSection from "./DadosSection";
 // Aparência › Fundos: the backgrounds library every gallery reads.
 function FundosTab({ c }) {
     const { media } = useLibrary();
-    const standby = useUser((u) => u?.standby_background || null);
-    const onStandby = (url) => updateUser({ standby_background: url }).then(() => c.say("Fundo de espera padrão salvo.")).catch(() => c.say("Não foi possível salvar."));
+    // "Usar como Fundo padrão": the church's, for every day (defaultFundo.js).
+    const standby = useUser((u) => (u?.default_background ? u.default_background.value : u?.standby_background) || null);
+    const onStandby = (url, kind = "image") => updateUser({ default_background: { kind, value: url }, standby_background: kind === "image" ? url : "" }).then(() => c.say("Fundo padrão salvo.")).catch(() => c.say("Não foi possível salvar."));
     return <FundosGallery c={c} media={media} standby={standby} onStandby={onStandby} />;
 }
 

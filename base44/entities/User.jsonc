@@ -137,7 +137,15 @@
     },
     "standby_background": {
       "type": "string",
-      "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido)"
+      "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido). Antigo: lido quando default_background esta vazio"
+    },
+    "default_background": {
+      "type": "object",
+      "description": "Fundo padrao da igreja, de qualquer tipo ({ kind, value, gen, dim, blur, fit }): na camada Fundo quando nada esta no ar e o culto nao tem o seu"
+    },
+    "weekday_backgrounds": {
+      "type": "object",
+      "description": "Fundo padrao por dia da semana: { \"0\".. \"6\": fundo } (0 = domingo); vale antes do fundo padrao da igreja"
     },
     "church_name": {
       "type": "string",
