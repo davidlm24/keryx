@@ -252,6 +252,11 @@ próprio de item continuam só imagem.
 
 ## 7 · Biblioteca Imagens/Vídeos + YouTube na setlist (item 5)
 
+**Built** (release session, 2026-10-11). Imagens = image/gif/pdf/powerpoint;
+Vídeos = video/youtube/áudio (com a seção Áudios). O campo do YouTube ganhou
+Guardar (`mediaFromYouTube`, reusa a linha) e é arrastável; arrastar o campo
+para a Setlist cria a linha Media e o ServiceItem VIDEO (branch `yt:`).
+
 - **Tabs da Biblioteca** (`Library.jsx` L43): Letras | **Imagens** | **Vídeos**
   | Avisos (+Setlist no compacto). Imagens = Media type image/gif; Vídeos =
   video + YouTube + seção "Áudios · Tocar em sequência" (áudio mora na aba
@@ -266,6 +271,11 @@ próprio de item continuam só imagem.
 - Smoke: `mvYouTube` continua; novo check de arrastar/guardar o link na setlist.
 
 ## 8 · Bíblia em colunas (item 11)
+
+**Built** (release session, 2026-10-11). Um painel só (`.bb-body`): Livros
+(grade 3×, rola; Nomes vira lista), Capítulos + leitura embaixo, Versículos
+em coluna (2×), linhas entre as colunas; a coluna No ar/Selecionado ficou.
+O fold das alturas (680/760) morreu junto com o toggleBooks.
 
 Layout aprovado: **Livros | Capítulos (leitura embaixo) | Versículos |
 No ar + Selecionado**, separados por `border-left` (`--line`).
@@ -284,6 +294,11 @@ No ar + Selecionado**, separados por `border-left` (`--line`).
   `docs/design-system.md` L175-193.
 
 ## 9 · Timeline: estudo, não implementação (item 10)
+
+**Estudo entregue** (release session, 2026-10-11):
+`docs/timeline-redesign-2026-10-11.md` + mockup no canvas "Linha do tempo
+KERYX". Termina com 6 perguntas fechadas; a implementação (3 fases) espera
+as respostas do dono.
 
 O dono pediu "vamos estudar bem essa parte". Entregável: documento
 `docs/timeline-redesign-<data>.md` + mockup navegável (HTML estático no

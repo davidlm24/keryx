@@ -175,24 +175,23 @@ time, seek, mute, a 2 px volume slider with a 10 px thumb, the L/R meters
 em". It narrows with container queries (drops "Toca em", the kind, the ±10 and
 the percentage, then the time). It shows only while something plays.
 
-**Bíblia (2026-10-09):** the picker is a band on top of the reading
-(`.bband`): search and version, all 66 books at once (26 px, coloured by
-group), the chosen book with every chapter (26 px), and a line with Recentes
-as chips and Favoritos/Anotações as dropdowns. Nothing in it scrolls (Salmos
-150 included). When the reading column is under 680 px tall the 66-book grid
-folds and the book's name in the chapters row opens it again (the choice is
-remembered). Under the chapters a **Versículo** row (2026-10-10) holds the
-chapter's verses as the same 26 px cells: a click selects as clicking the
-text does (Ctrl adds, Shift makes a range, a double click projects), green
-when selected and red when on air, and the reading scrolls to it; it folds
-first, under 760 px. **Abrev | Nomes** in the band's header shows the books
-as short codes or whole names (110 px cells, about 8 rows; same 680 px fold),
-remembered. Without internet every *Instalar* says "sem internet" and does
-nothing. The "No ar agora" monitor takes at most 35 % of its column's
-height. The edition is named beside the version: *instalada neste computador*,
-*pela internet* (amber) or *não disponível* (amber), and a missing edition
-offers *Instalar* or *Usar* an installed one; sample text is never shown in a
-Bible's place. The Bible column has no Prévia.
+**Bíblia (2026-10-11):** the picker is three columns inside one panel,
+separated by `--line` rules — **Livros** (all 66, coloured by group, a
+3-across grid of short codes that scrolls; **Abrev | Nomes** switches to a
+one-across list of whole names, remembered), **Capítulos** (the chosen
+book's name and every chapter; only a Salmos-sized book scrolls inside its
+own box) **with the reading right below them** (Ler/Buscar/Comparar and the
+verse list, scrolling on its own), and **Versículo** (the chapter's verses
+as 26 px cells, two across: a click selects as clicking the text does —
+Ctrl adds, Shift ranges, a double click projects — green selected, red on
+air). Recentes chips and the Favoritos/Anotações dropdowns sit on top of
+the middle column. The right column keeps **No ar agora** (at most 35 % of
+the column's height) and **Selecionado**; the Bible column has no Prévia.
+Without internet every *Instalar* says "sem internet" and does nothing. The
+edition is named beside the version: *instalada neste computador*, *pela
+internet* (amber) or *não disponível* (amber), and a missing edition offers
+*Instalar* or *Usar* an installed one; sample text is never shown in a
+Bible's place.
 
 **Other app departures (2026-10-07):** text fields show no gold focus ring
 while typing (a quiet inner `--line-strong` line instead; the gold ring stays

@@ -72,17 +72,25 @@ test("service clock: another day, and later today", () => {
 });
 
 test("service clock: running, with the forecast end", () => {
-    const c = serviceClock({ service: svc, seconds: 70 * 60, now: sec(19, 42, 10) });
+    const c = serviceClock({ service: svc, seconds: 70 * 60, now: sec(19, 42, 10), forecast: true });
     assert.deepEqual([c.text, c.more, c.warn], ["Culto 0:42:10", "termina ~20:10", false]);
     // Late: the end moves and turns amber.
-    const late = serviceClock({ service: svc, seconds: 70 * 60, late: 4, now: sec(19, 42, 10) });
+    const late = serviceClock({ service: svc, seconds: 70 * 60, late: 4, now: sec(19, 42, 10), forecast: true });
     assert.deepEqual([late.more, late.warn], ["termina ~20:14 · +4 min", true]);
     // No durations in the Setlist: no end is invented.
-    assert.equal(serviceClock({ service: svc, now: at(19, 5) }).more, "");
+    assert.equal(serviceClock({ service: svc, now: at(19, 5), forecast: true }).more, "");
+});
+
+test("service clock: the forecast is off by default (a church that plans only the order)", () => {
+    const quiet = serviceClock({ service: svc, seconds: 70 * 60, late: 4, now: sec(20, 15, 5) });
+    assert.deepEqual([quiet.text, quiet.more, quiet.warn], ["Culto 1:15:05", "", false], "no termina ~, no passou, no amber");
+    assert.ok(!/previsto/.test(quiet.title), "the tooltip does not name an invented planned end");
+    // Before the start the countdown is not a forecast: it stays.
+    assert.equal(serviceClock({ service: svc, now: sec(18, 48, 30) }).more, "em 12 min");
 });
 
 test("service clock: past the end, and a service long over", () => {
-    const over = serviceClock({ service: svc, seconds: 70 * 60, now: sec(20, 15, 5) });
+    const over = serviceClock({ service: svc, seconds: 70 * 60, now: sec(20, 15, 5), forecast: true });
     assert.deepEqual([over.text, over.more, over.warn], ["Culto 1:15:05", "passou 5 min", true]);
     // Running past midnight still counts from the start.
     assert.equal(serviceClock({ service: { date: "2026-10-09", startTime: "23:00" }, now: new Date(2026, 9, 10, 0, 30).getTime() }).text, "Culto 1:30:00");

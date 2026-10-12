@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mediaFromYouTube } from "@/lib/mediaImport";
 import "@ds/tokens.css";
 import "@ds/components/bundle.css";
 import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useConsole } from "@/components/console/useConsole";
-import { useLibrary, useRundown, useOutputs, pickDefaultService } from "@/components/console/useConsoleData";
+import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
 import { Panel, Split, IconBtn } from "@/components/console/kx";
 import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
@@ -274,6 +275,7 @@ export default function Console() {
         let type = null;
         let contentId = "";
         if (stage.kind === "lyrics" && stage.id?.startsWith("song:")) { type = "SONG"; contentId = stage.id.slice(5); }
+        else if (stage.id?.startsWith("yt:")) type = "YT"; // resolved to a Media row below
         else if (stage.id?.startsWith("material:")) { type = "MATERIAL"; contentId = stage.id.slice(9); }
         else if (stage.id?.startsWith("media:")) {
             contentId = stage.id.slice(6);
@@ -284,6 +286,11 @@ export default function Console() {
         const at = Math.max(0, Math.min(items.length, index ?? items.length));
         try {
             const sid = await ensureService();
+            if (type === "YT") {
+                const row = await mediaFromYouTube(stage.args?.url || stage.id.slice(3));
+                type = "VIDEO";
+                contentId = row.id;
+            }
             // Renumber from the end first, so two rows never share an order.
             for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + 1 });
             await keryx.entities.ServiceItem.create({ serviceId: sid, type, title: stage.title, contentId, order: at, duration: stage.args?.duration || (type === "SONG" ? 240 : 120) });
@@ -532,7 +539,8 @@ export default function Console() {
     // The service clock in the top bar, late as the Linha do tempo counts it.
     const playAirIdx = playable.findIndex((i) => i.id === airItemId);
     const late = service ? serviceTiming({ items: playable, times: plannedTimes(service, playable), airIdx: playAirIdx, startedAt: playAirIdx >= 0 ? log[airItemId]?.start : null, now: c.now }).late : 0;
-    const svc = serviceClock({ service, seconds: setPlan.seconds, late, now: c.now });
+    const showForecast = useShowForecast();
+    const svc = serviceClock({ service, seconds: setPlan.seconds, late, now: c.now, forecast: showForecast });
 
     // The palette opens centred (owner decision 2026-10-11); the dimmed scrim
     // keeps the console readable behind it.
@@ -644,7 +652,7 @@ export default function Console() {
             </div>
             {!view && env === "culto" && !layout.hidden.tl && (
                 <div className={`kx-panel tl-panel ${layout.tlOpen ? "is-open" : ""}`}>
-                    <Timeline service={service} items={playable} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
+                    <Timeline service={service} items={playable} airItemId={airItemId} prevItemId={prevItemId} log={log} now={c.now} forecast={showForecast} open={layout.tlOpen} onToggle={() => setLayout({ ...layout, tlOpen: !layout.tlOpen })} onPrepare={prepareItem} />
                 </div>
             )}
 

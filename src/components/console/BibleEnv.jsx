@@ -294,15 +294,9 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             if (r === "removed") c.say("Anotação apagada.");
         } catch (err) { c.say(err?.message || "Não foi possível salvar a anotação."); }
     };
-    // The 66-book grid: open or closed by the operator, else by the room
-    // (console.css folds it when the column is short, so the reading keeps
-    // its height). The book's name in the chapters row opens and closes it.
+    // The 66 books live in their own column (owner layout 2026-10-11:
+    // Livros | Capítulos + leitura | Versículos | No ar); no fold any more.
     const gridRef = useRef(null);
-    const toggleBooks = () => {
-        const shown = gridRef.current && getComputedStyle(gridRef.current).display !== "none";
-        const next = { ...mem, books: shown ? "closed" : "open" };
-        setMem(next); save(next);
-    };
     // Abrev | Nomes: the books as short codes (default) or full names, remembered.
     const fullNames = mem.bookNames === "full";
     const setBookNames = (v) => { const next = { ...mem, bookNames: v }; setMem(next); save(next); };
@@ -336,8 +330,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
 
     return (
         <>
-            <div className={`col center bible-center ${mem.books === "open" ? "books-open" : mem.books === "closed" ? "books-closed" : ""} ${fullNames ? "names-full" : ""}`}>
-                <Panel className="bband" title="Bíblia" count={version || wanted} actions={<>
+            <div className={`col center bible-center ${fullNames ? "names-full" : ""}`}>
+                <Panel className="bband bible-cols" title="Bíblia" count={version || wanted} actions={<>
                     <Seg small value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
                     {badge && <span className={`bsrc ${badge.warn ? "kx-warn" : ""}`} title={badge.title || badge.text}><Icon name={badge.warn ? "warn" : "check"} size={12} />{badge.text}</span>}
                     <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
@@ -351,82 +345,93 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                         <Field value={q} onChange={setQ} placeholder="Referência (Jo 3:16) ou palavra" onKeyDown={(e) => { if (e.key === "Enter") submitTop(); }} />
                         <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
                     </div>
-                    <div className="bgrid" ref={gridRef}>
-                        {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{fullNames ? b.name : b.short}</button>)}
-                    </div>
-                    <div className="bchap">
-                        <button type="button" className="bchap-name kx-t" style={{ "--group": groupColor(bookIdx) }} onClick={toggleBooks} title="Mostrar ou esconder os livros">{bookRow.name}<small>{bookRow.chapters} cap.</small><Icon name="chevron-down" size={12} /></button>
-                        <div className="chapters">
-                            {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
-                        </div>
-                    </div>
-                    {!error && verses.length > 0 && (
-                        <div className="bverses">
-                            <span className="bverses-k">Versículo</span>
-                            <div className="verse-cells" role="group" aria-label={`Versículos de ${book} ${chapter}`}>
-                                {verses.map((v) => (
-                                    <button type="button" key={v.number}
-                                        className={`kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`}
-                                        onClick={(e) => pickCell(v.number, e)} onDoubleClick={() => sendCell(v.number)}
-                                        title={`${book} ${chapter}:${v.number} · clique seleciona · 2 cliques projetam`}>{v.number}</button>
-                                ))}
+                    {/* Livros | Capítulos (a leitura embaixo) | Versículos, com uma
+                        linha entre as colunas (pedido do dono, 2026-10-11). */}
+                    <div className="bb-body">
+                        <div className="bb-col bb-books">
+                            <div className="bgrid" ref={gridRef}>
+                                {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{fullNames ? b.name : b.short}</button>)}
                             </div>
                         </div>
-                    )}
-                    <div className="bband-lists">
-                        <span className="kx-section">Recentes</span>
-                        {!(mem.recent || []).length && <span className="kx-meta">nenhum</span>}
-                        {(mem.recent || []).map(([b, ch]) => <button type="button" key={`${b}${ch}`} className="bchip kx-t" onClick={() => { setBook(b); setChapter(ch); setSel([]); setMode("ler"); }}><Icon name="history" size={12} />{b} {ch}</button>)}
-                        <span style={{ flex: 1 }} />
-                        <ListMenu icon="star" label="Favoritos" count={notesApi.favorites.length} empty="Selecione versículos e use a estrela."
-                            rows={notesApi.favorites.map((fv) => ({ key: fv.id, icon: "star", title: fv.reference, onPick: () => { if (goRef(fv.reference)) setMode("ler"); } }))} />
-                        <ListMenu icon="text" label="Anotações" count={notesApi.notes.length} empty="Selecione um versículo e escreva à direita."
-                            rows={notesApi.notes.map((n) => ({ key: n.id, icon: "text", title: n.reference, meta: n.note_text, onPick: () => { if (goRef(n.reference)) setMode("ler"); } }))} />
-                    </div>
-                </Panel>
-                <Panel title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}${ver ? ` · ${ver}` : ""}`}
-                    count={mode === "ler" ? "clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" : mode === "buscar" ? "↑↓ percorre os resultados · Enter ou 2 cliques projeta" : "versões lado a lado"}
-                    actions={<>
-                        {mode === "ler" && <><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}
-                        <Seg small value={mode} onChange={setMode} options={MODES} />
-                    </>} bodyStyle={mode === "ler" ? undefined : { display: "flex", flexDirection: "column" }}>
-                    {mode === "ler" && (
-                        <>
-                            {error && (
-                                <div className="kx-empty">
-                                    <span className="kx-glyph"><Icon name="book" /></span>
-                                    <span className="kx-empty-t">Capítulo indisponível</span>
-                                    <span>{error}</span>
-                                    <span>O KERYX nunca mostra texto de exemplo no lugar de uma Bíblia.</span>
-                                    {(canInstall(version || wanted) || others.length > 0) && (
-                                        <span className="bunavail-acts">
-                                            {canInstall(version || wanted) && <Btn kind="outline" disabled={!online} onClick={() => installVersion(version || wanted)} title={online ? undefined : "Sem internet agora: conecte o computador para baixar"}>Instalar {version || wanted}{installHint}</Btn>}
-                                            {others.map((v) => <Btn key={v} onClick={() => switchVersion(v)}>Usar {v}</Btn>)}
-                                        </span>
-                                    )}
+                        <div className="bb-col bb-mid">
+                            <div className="bband-lists">
+                                <span className="kx-section">Recentes</span>
+                                {!(mem.recent || []).length && <span className="kx-meta">nenhum</span>}
+                                {(mem.recent || []).map(([b, ch]) => <button type="button" key={`${b}${ch}`} className="bchip kx-t" onClick={() => { setBook(b); setChapter(ch); setSel([]); setMode("ler"); }}><Icon name="history" size={12} />{b} {ch}</button>)}
+                                <span style={{ flex: 1 }} />
+                                <ListMenu icon="star" label="Favoritos" count={notesApi.favorites.length} empty="Selecione versículos e use a estrela."
+                                    rows={notesApi.favorites.map((fv) => ({ key: fv.id, icon: "star", title: fv.reference, onPick: () => { if (goRef(fv.reference)) setMode("ler"); } }))} />
+                                <ListMenu icon="text" label="Anotações" count={notesApi.notes.length} empty="Selecione um versículo e escreva à direita."
+                                    rows={notesApi.notes.map((n) => ({ key: n.id, icon: "text", title: n.reference, meta: n.note_text, onPick: () => { if (goRef(n.reference)) setMode("ler"); } }))} />
+                            </div>
+                            <div className="bchap">
+                                <span className="bchap-name" style={{ "--group": groupColor(bookIdx) }}>{bookRow.name}<small>{bookRow.chapters} cap.</small></span>
+                                <div className="chapters">
+                                    {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
                                 </div>
-                            )}
-                            {!error && !verses.length && <Empty title="Carregando…" />}
-                            <div className="reading" ref={readingRef}>
-                                {verses.map((v) => (
-                                    <button type="button" key={v.number} data-verse={v.number}
-                                        className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""} ${marked.has(v.number) ? "has-note" : ""}`}
-                                        onClick={(e) => pick(v.number, e)}
-                                        onDoubleClick={() => { const st = verseStage(v.number); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }}
-                                        onContextMenu={(e) => menu(e, { title: `${book} ${chapter}:${v.number}`, items: [
-                                            { label: "Selecionar", icon: "check", onSelect: () => pick(v.number) },
-                                            { label: "Copiar o texto", icon: "text", onSelect: () => copyVerse(v) },
-                                            { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => sendCell(v.number) },
-                                        ] })}
-                                        title={marked.has(v.number) ? `Anotação: ${notesApi.noteOf(book, chapter, v.number)?.note_text || ""}` : "Clique seleciona · 2 cliques projetam a partir deste versículo"}>
-                                        <span className="kx-verse-n">{v.number}</span><span>{v.text}{marked.has(v.number) && <span className="be-notemark" aria-label="tem anotação"><Icon name="text" size={12} /></span>}</span>
-                                    </button>
-                                ))}
                             </div>
-                        </>
-                    )}
-                    {mode === "buscar" && <BibleSearchPanel search={search} selected={searchSel} onPick={pickResult} onSend={sendResult} inputRef={searchInputRef} />}
-                    {mode === "comparar" && <BibleCompareView book={book} chapter={chapter} version={version || wanted} sel={sel} onSelect={pick} onSendVersion={sendVersion} onUseVersion={switchVersion} />}
+                            <div className="bb-read">
+                                <div className="kx-panel-h bb-read-h">
+                                    <span className="kx-section">{mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}${ver ? ` · ${ver}` : ""}`}<span className="kx-count"> · {mode === "ler" ? "clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" : mode === "buscar" ? "↑↓ percorre os resultados · Enter ou 2 cliques projeta" : "versões lado a lado"}</span></span>
+                                    <span style={{ flex: 1 }} />
+                                    {mode === "ler" && <><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}
+                                    <Seg small value={mode} onChange={setMode} options={MODES} />
+                                </div>
+                                <div className="bb-read-b">
+                                    {mode === "ler" && (
+                                        <>
+                                            {error && (
+                                                <div className="kx-empty">
+                                                    <span className="kx-glyph"><Icon name="book" /></span>
+                                                    <span className="kx-empty-t">Capítulo indisponível</span>
+                                                    <span>{error}</span>
+                                                    <span>O KERYX nunca mostra texto de exemplo no lugar de uma Bíblia.</span>
+                                                    {(canInstall(version || wanted) || others.length > 0) && (
+                                                        <span className="bunavail-acts">
+                                                            {canInstall(version || wanted) && <Btn kind="outline" disabled={!online} onClick={() => installVersion(version || wanted)} title={online ? undefined : "Sem internet agora: conecte o computador para baixar"}>Instalar {version || wanted}{installHint}</Btn>}
+                                                            {others.map((v) => <Btn key={v} onClick={() => switchVersion(v)}>Usar {v}</Btn>)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {!error && !verses.length && <Empty title="Carregando…" />}
+                                            <div className="reading" ref={readingRef}>
+                                                {verses.map((v) => (
+                                                    <button type="button" key={v.number} data-verse={v.number}
+                                                        className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""} ${marked.has(v.number) ? "has-note" : ""}`}
+                                                        onClick={(e) => pick(v.number, e)}
+                                                        onDoubleClick={() => { const st = verseStage(v.number); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }}
+                                                        onContextMenu={(e) => menu(e, { title: `${book} ${chapter}:${v.number}`, items: [
+                                                            { label: "Selecionar", icon: "check", onSelect: () => pick(v.number) },
+                                                            { label: "Copiar o texto", icon: "text", onSelect: () => copyVerse(v) },
+                                                            { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => sendCell(v.number) },
+                                                        ] })}
+                                                        title={marked.has(v.number) ? `Anotação: ${notesApi.noteOf(book, chapter, v.number)?.note_text || ""}` : "Clique seleciona · 2 cliques projetam a partir deste versículo"}>
+                                                        <span className="kx-verse-n">{v.number}</span><span>{v.text}{marked.has(v.number) && <span className="be-notemark" aria-label="tem anotação"><Icon name="text" size={12} /></span>}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                    {mode === "buscar" && <BibleSearchPanel search={search} selected={searchSel} onPick={pickResult} onSend={sendResult} inputRef={searchInputRef} />}
+                                    {mode === "comparar" && <BibleCompareView book={book} chapter={chapter} version={version || wanted} sel={sel} onSelect={pick} onSendVersion={sendVersion} onUseVersion={switchVersion} />}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bb-col bb-verses">
+                            <span className="bverses-k">Versículo</span>
+                            {!error && verses.length > 0 && (
+                                <div className="bverses"><div className="verse-cells" role="group" aria-label={`Versículos de ${book} ${chapter}`}>
+                                    {verses.map((v) => (
+                                        <button type="button" key={v.number}
+                                            className={`kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`}
+                                            onClick={(e) => pickCell(v.number, e)} onDoubleClick={() => sendCell(v.number)}
+                                            title={`${book} ${chapter}:${v.number} · clique seleciona · 2 cliques projetam`}>{v.number}</button>
+                                    ))}
+                                </div></div>
+                            )}
+                        </div>
+                    </div>
                 </Panel>
             </div>
             <div className="kx-gap" />

@@ -6,6 +6,7 @@ import { useContextMenu } from "./ContextMenu";
 import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
 import { songsFromFile, importLines, IMPORT_LINES_KEY } from "@/lib/songImport";
+import { mediaFromYouTube } from "@/lib/mediaImport";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { stageFromSong, stageFromMedia, stageFromPiece, stageFromPieceList, stageFromTool, stageFromYouTube, stageFromAudioList, liveStageId } from "@/lib/console/stage";
@@ -41,7 +42,10 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
     const prevId = c.prev?.id;
     const state = (id) => (id === airId ? "is-air" : id === prevId ? "is-prev" : "");
 
-    const tabs = [...(compact ? [["roteiro", "Setlist"]] : []), ["letras", "Letras"], ["midia", "Mídia"], ["avisos", "Avisos"]];
+    // Mídia split into Imagens (what projects as a still: fotos, GIF, PDF,
+    // apresentações) and Vídeos (what plays: clipes, YouTube, áudios) —
+    // owner request 2026-10-11.
+    const tabs = [...(compact ? [["roteiro", "Setlist"]] : []), ["letras", "Letras"], ["imagens", "Imagens"], ["videos", "Vídeos"], ["avisos", "Avisos"]];
 
     const showAlert = () => {
         const text = alertText.trim();
@@ -99,9 +103,14 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
             },
             { label: "Exportar todas…", icon: "save", onClick: exportSongs },
         ]
-        : tab === "midia"
+        : tab === "imagens"
             ? [
-                { label: "Do computador…", icon: "folder", accept: "video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
+                { label: "Do computador…", icon: "folder", accept: "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
+                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+            ]
+        : tab === "videos"
+            ? [
+                { label: "Do computador…", icon: "folder", accept: "video/*,audio/*", onFiles: importMedia },
                 { label: "Link do YouTube", icon: "film", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
                 { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
@@ -126,9 +135,9 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
             )}
             {tab !== "roteiro" && (
                 <div className="searchrow">
-                    <Field value={q} onChange={setQ} placeholder={tab === "letras" ? "Letras" : tab === "midia" ? "Mídia" : "Avisos"} />
+                    <Field value={q} onChange={setQ} placeholder={tab === "letras" ? "Letras" : tab === "imagens" ? "Imagens" : tab === "videos" ? "Vídeos e áudios" : "Avisos"} />
                     {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} onClick={() => setFavOnly((f) => !f)} />}
-                    <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "midia" ? "Adicionar mídia" : "Adicionar aviso"} items={addItems} />
+                    <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
                 </div>
             )}
 
@@ -165,42 +174,56 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                 );
             })()}
 
-            {tab === "midia" && (() => {
-                const media = data.media.filter((m) => match(ql, m.title, m.description));
+            {(tab === "imagens" || tab === "videos") && (() => {
+                const kinds = tab === "imagens" ? ["image", "gif", "pdf", "powerpoint"] : ["video", "audio"];
+                const media = data.media.filter((m) => kinds.includes(m.type) && match(ql, m.title, m.description));
                 const audios = media.filter((m) => m.type === "audio" && !m.missing);
+                const ytStage = /youtu/.test(yt) ? stageFromYouTube(yt.trim()) : null;
+                const saveYt = async () => {
+                    if (!/youtu/.test(yt)) { c.say("Cole um link do YouTube."); return; }
+                    try {
+                        const row = await mediaFromYouTube(yt.trim());
+                        setYt("");
+                        c.say(`Guardado em Vídeos: "${row.title}" · arraste para a setlist, ou dois cliques tocam.`);
+                    } catch (err) { c.say(err?.message || "Não foi possível guardar."); }
+                };
+                const mediaRow = (m) => (
+                    <Row
+                        key={m.id}
+                        icon={MEDIA_ICON[m.type] || "film"}
+                        title={m.title}
+                        meta={m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
+                        metaClass={m.missing ? "kx-warn" : ""}
+                        state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
+                        onClick={() => onPrepare(stageFromMedia(m))}
+                        onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
+                        onContextMenu={(e) => menu(e, { title: m.title, items: [
+                            { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromMedia(m)) },
+                            m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
+                            onOpenMedia && { label: "Abrir a biblioteca de mídia", icon: "film", onSelect: () => onOpenMedia() },
+                            onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
+                        ] })}
+                        dragProps={dragProps(stageFromMedia(m))}
+                        actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label="Telas de vídeo"><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
+                    />
+                );
                 return (
                     <>
+                        {tab === "videos" && <>
                         <div className="listhead"><span className="kx-section">Link do YouTube</span></div>
-                        <div style={{ padding: "0 var(--space-2) var(--space-1)", display: "flex", gap: "var(--space-1)" }}>
+                        <div style={{ padding: "0 var(--space-2) var(--space-1)", display: "flex", gap: "var(--space-1)" }} {...(ytStage ? dragProps(ytStage) : {})} title={ytStage ? "Arraste para a Prévia, o Programa ou a Setlist" : undefined}>
                             <Field icon={null} className="kx-field kx-t yt-field" value={yt} onChange={setYt} placeholder="https://youtube.com/watch?v=…" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter" && /youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } }} />
                             <Btn onClick={() => { if (/youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } else c.say("Cole um link do YouTube."); }} title="Pôr na prévia · toca nas telas de vídeo">Tocar</Btn>
+                            <Btn onClick={saveYt} title="Guardar o link na lista de Vídeos, para a setlist e os cultos">Guardar</Btn>
                         </div>
+                        </>}
                         <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a biblioteca de mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir biblioteca</Btn>}</div>
                         {audios.length > 1 && (
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar em sequência</Btn></div>
                         )}
                         <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
-                            {!media.length && <Empty icon="film" title={ql ? `Nenhuma mídia com "${q}"` : "Nenhuma mídia"}>Use + para adicionar arquivos do computador.</Empty>}
-                            {media.map((m) => (
-                                <Row
-                                    key={m.id}
-                                    icon={MEDIA_ICON[m.type] || "film"}
-                                    title={m.title}
-                                    meta={m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
-                                    metaClass={m.missing ? "kx-warn" : ""}
-                                    state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
-                                    onClick={() => onPrepare(stageFromMedia(m))}
-                                    onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
-                                    onContextMenu={(e) => menu(e, { title: m.title, items: [
-                                        { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromMedia(m)) },
-                                        m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
-                                        onOpenMedia && { label: "Abrir a biblioteca de mídia", icon: "film", onSelect: () => onOpenMedia() },
-                                        onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
-                                    ] })}
-                                    dragProps={dragProps(stageFromMedia(m))}
-                                    actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label="Telas de vídeo"><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
-                                />
-                            ))}
+                            {!media.length && <Empty icon={tab === "imagens" ? "image" : "film"} title={ql ? `Nada com "${q}"` : tab === "imagens" ? "Nenhuma imagem" : "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
+                            {media.map(mediaRow)}
                         </div>
                     </>
                 );
