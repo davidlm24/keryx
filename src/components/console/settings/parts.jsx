@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 // Small pieces shared by the Configurações sections (console design system).
 
@@ -35,14 +35,29 @@ export function Switch({ on, onChange, label, disabled }) {
     return <button type="button" className={`sw2 kx-t ${on ? "is-on" : ""}`} role="switch" aria-checked={Boolean(on)} aria-label={label} title={label} disabled={disabled} onClick={() => onChange(!on)} />;
 }
 
+// The row the search just jumped to (its label), lit for a moment
+// (SettingsView). Rows find themselves by their label: data-cfg-k.
+export const CfgFlash = createContext(null);
+export function useFlash(k) {
+    const flash = useContext(CfgFlash);
+    return k && flash === k ? "is-flash" : "";
+}
+
 // One "label · control" line of a section form (design: .frm).
 export function FormRow({ k, children }) {
+    const flash = useFlash(k);
     return (
         <>
-            <span className="k">{k}</span>
-            <div className="frm-v">{children}</div>
+            <span className={`k ${flash}`} data-cfg-k={k || undefined}>{k}</span>
+            <div className={`frm-v ${flash}`}>{children}</div>
         </>
     );
+}
+
+// Any other element the search can jump to (a list's heading, a button).
+export function CfgKey({ k, as: Tag = "div", className = "", children, ...rest }) {
+    const flash = useFlash(k);
+    return <Tag className={`${className} ${flash}`} data-cfg-k={k} {...rest}>{children}</Tag>;
 }
 
 export const formatBytes = (n) => {

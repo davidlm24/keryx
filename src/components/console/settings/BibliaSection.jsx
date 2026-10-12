@@ -1,6 +1,6 @@
 import React from "react";
 import { Seg } from "../kx";
-import { FormRow } from "./parts";
+import { FormRow, CfgKey } from "./parts";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import BibliasSection from "./BibliasSection";
 
@@ -24,7 +24,7 @@ export default function BibliaSection({ c }) {
                     <span className="kx-meta">cada slide de uma letra importada (arquivo ou internet) tem uma estrofe, ou 2 ou 4 linhas</span>
                 </FormRow>
             </div>
-            <div className="listhead"><span className="kx-section">Bíblias instaladas</span></div>
+            <CfgKey k="Bíblias instaladas" className="listhead"><span className="kx-section">Bíblias instaladas</span></CfgKey>
             <BibliasSection c={c} />
         </>
     );

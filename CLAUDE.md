@@ -53,7 +53,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   look). One screen, always live (no steps; Verificar is an overlay from the
   Saídas popover; Configurações, `settings/SettingsView`, is a window over
   whatever is on screen, its own `cfg` state, `?config=`; its sections are
-  `src/lib/console/settings.js`, old ids resolve through `resolveSection`).
+  `src/lib/console/settings.js`, old ids resolve through `resolveSection`;
+  its search indexes every row in `settingsSearch.js` — a new `FormRow k`
+  goes in the index, or `npm test` fails).
   Everything else
   is a view inside it, one at a time (the `view` state in Console.jsx,
   `?song=`, `?planner=`, `?media=`, `?notice=`, `?school=`, `?reports=`):

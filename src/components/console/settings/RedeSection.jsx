@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import QRCode from "react-qr-code";
 import Icon from "../Icon";
 import { Btn, Field, Empty } from "../kx";
-import { useBridge, usePoll, Switch, desktopOnly } from "./parts";
+import { useBridge, usePoll, Switch, desktopOnly, CfgKey } from "./parts";
 import { byGroup } from "@/lib/console/outputs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 
@@ -41,7 +41,7 @@ export default function RedeSection({ c }) {
     return (
         <>
             <div className="frm">
-                <span className="k">Telas na rede</span>
+                <CfgKey as="span" k="Telas na rede" className="k">Telas na rede</CfgKey>
                 <div className="frm-v">
                     <Switch on={info.enabled} disabled={busy} onChange={(on) => run("setEnabled", on)} label="Ligar telas na rede" />
                     <span className={info.running ? "kx-prev" : info.enabled ? "kx-warn" : "kx-meta"}>
@@ -49,7 +49,7 @@ export default function RedeSection({ c }) {
                     </span>
                     {info.error && <span className="kx-warn">{info.error}</span>}
                 </div>
-                <span className="k">PIN</span>
+                <CfgKey as="span" k="PIN" className="k">PIN</CfgKey>
                 <div className="frm-v">
                     {shownPin ? <span className="kx-countdown cfg-pin">{shownPin.split("").join(" ")}</span> : <span className="kx-meta">{info.hasPin ? "Ativo · cada aparelho pede uma vez" : "Sem PIN · qualquer aparelho na rede pode ver as telas"}</span>}
                     <Btn disabled={busy} onClick={() => savePin(newPin())}>Gerar novo</Btn>
@@ -92,7 +92,7 @@ export default function RedeSection({ c }) {
                     ))}
                 </React.Fragment>
             ))}
-            <div className="listhead"><span className="kx-section">Telas conectadas pela rede</span></div>
+            <CfgKey k="Telas conectadas pela rede" className="listhead"><span className="kx-section">Telas conectadas pela rede</span></CfgKey>
             {!clients.length && <div className="listhead"><span className="kx-meta">{info.running ? "Nenhuma agora." : "Ligue as telas na rede para os aparelhos se conectarem."}</span></div>}
             {clients.map((cl) => (
                 <div key={`${cl.ip}-${cl.since}`} className="kx-row">
