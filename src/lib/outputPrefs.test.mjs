@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS } from "./outputPrefs.js";
+import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -14,7 +14,7 @@ const live = {
 test("no row, or an empty one, is the default: the output as before", () => {
     for (const row of [null, undefined, {}, { screen_path: "/Projection" }, { text_scale: "", margin_pct: null, show_logo: true, theme_id: "" }]) {
         const p = normalizePref(row);
-        assert.deepEqual(p, { content: "", scale: 1, margin: 0, showLogo: true, themeId: "", name: "", icon: "", options: {} });
+        assert.deepEqual(p, { content: "", hidden: [], scale: 1, margin: 0, showLogo: true, themeId: "", name: "", icon: "", options: {} });
         assert.ok(isDefaultPref(p));
         assert.equal(prefVars(p), null);
         assert.deepEqual(prefState("/LyricProjection", live, p), prefState("/LyricProjection", live, null));
@@ -23,8 +23,8 @@ test("no row, or an empty one, is the default: the output as before", () => {
 });
 
 test("normalizePref clamps scale and margins and drops unknown content", () => {
-    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", scale: 1.4, margin: 0, showLogo: true, themeId: "", name: "", icon: "", options: {} });
-    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", scale: 0.8, margin: 10, showLogo: false, themeId: "t1", name: "", icon: "", options: {} });
+    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", hidden: [], scale: 1.4, margin: 0, showLogo: true, themeId: "", name: "", icon: "", options: {} });
+    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", hidden: [], scale: 0.8, margin: 10, showLogo: false, themeId: "t1", name: "", icon: "", options: {} });
     assert.equal(normalizePref({ text_scale: 112.4 }).scale, 1.12);
 });
 
@@ -80,4 +80,59 @@ test("the Palco's and the Pastor's own switches: missing keys are the screen as 
     assert.equal(pastorOptions(normalizePref({ options: { next_count: 0 } })).next_count, 0, "0 is a choice (hide the list)");
     assert.deepEqual(normalizePref({ options: ["x"] }).options, {}, "an array is not options");
     assert.ok(!isDefaultPref(normalizePref({ options: { chords: false } })), "an option counts as an adjustment");
+});
+
+// Mostrar (2026-10-12): kinds an output leaves out.
+const songLive = {
+    screen: "show",
+    content: { kind: "lyrics", title: "Grande é o Senhor", index: 0, slides: [{ text: "Grande é o Senhor" }], audio: "keryx-media://faixa.mp3", startedAt: 5 },
+    media: null,
+    tool: { mode: "clock" },
+    communication: { item: { title: "Aviso" } },
+    alert: { type: "message", message: "Carro ABC-1234" },
+    background: { kind: "color", value: "#000000" },
+};
+
+test("Mostrar: unknown kinds are dropped, the order is fixed, nothing hidden is the default", () => {
+    assert.deepEqual(normalizePref({ hidden_kinds: ["alert", "nope", "lyrics", "alert"] }).hidden, ["lyrics", "alert"]);
+    assert.deepEqual(normalizePref({ hidden_kinds: "lyrics" }).hidden, []);
+    assert.ok(isDefaultPref(normalizePref({ hidden_kinds: [] })));
+    assert.ok(!isDefaultPref(normalizePref({ hidden_kinds: ["bible"] })));
+});
+
+test("Mostrar: a hidden kind on air goes, the rest stays; the same state when nothing hidden is on air", () => {
+    const noLyrics = prefState("/Projection", songLive, normalizePref({ hidden_kinds: ["lyrics"] }));
+    assert.equal(noLyrics.content, null);
+    assert.ok(noLyrics.tool && noLyrics.communication && noLyrics.alert);
+    // The song's playback track keeps playing on that output.
+    assert.deepEqual(noLyrics.track, { src: "keryx-media://faixa.mp3", startedAt: 5 });
+    // Hiding Bíblia leaves a song alone: the very same state.
+    assert.equal(hideKinds(songLive, ["bible"]), songLive);
+    const quiet = prefState("/Projection", songLive, normalizePref({ hidden_kinds: ["tool", "communication", "alert"] }));
+    assert.equal(quiet.tool, null);
+    assert.equal(quiet.communication, null);
+    assert.equal(quiet.alert, null);
+    assert.equal(quiet.content.title, "Grande é o Senhor");
+    // Logo, background and theme settings still apply on top.
+    assert.equal(prefState("/Projection", songLive, normalizePref({ hidden_kinds: ["lyrics"], show_logo: false })).background.value, "#000000");
+});
+
+test("Mostrar offers only what the output's view can show", () => {
+    assert.deepEqual(showKindsFor("/Projection", normalizePref({})).map((k) => k.id), ["lyrics", "bible", "text", "media", "tool", "communication", "alert"]);
+    assert.deepEqual(showKindsFor("/LyricProjection", normalizePref({})).map((k) => k.id), ["lyrics", "bible", "text", "alert"]);
+    assert.deepEqual(showKindsFor("/VideoProjection", normalizePref({})), []);
+    assert.deepEqual(showKindsFor("/CommunicationProjection", normalizePref({})), []);
+    // A projector set to "Só letras" offers the Letras kinds.
+    assert.deepEqual(showKindsFor("/Projection", normalizePref({ content: "lyrics" })).map((k) => k.id), ["lyrics", "bible", "text", "alert"]);
+});
+
+test("the Prévia says when the output it previews hides the prepared kind", () => {
+    const pref = normalizePref({ hidden_kinds: ["bible", "communication"] });
+    assert.equal(stageHidden("bible", pref), "Bíblia");
+    assert.equal(stageHidden("piece", pref), "Avisos");
+    assert.equal(stageHidden("lyrics", pref), null);
+    assert.equal(stageHidden("audio", pref), null);
+    assert.equal(stageHidden("bible", normalizePref({})), null);
+    assert.equal(hiddenOnAir(songLive, normalizePref({ hidden_kinds: ["alert"] })), "Aviso rápido");
+    assert.equal(hiddenOnAir(songLive, normalizePref({ hidden_kinds: ["bible"] })), null);
 });
