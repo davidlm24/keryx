@@ -57,6 +57,9 @@ export const SETTINGS_INDEX = [
     e("console", "Módulos", "Biblioteca, Slides, Camadas, Setlist e Linha do tempo", ["biblioteca", "slides", "camadas", "setlist", "linha do tempo", "mostrar", "esconder", "ocultar"]),
     e("console", "Densidade", "confortável ou compacta", ["compacta", "confortável", "linhas", "altura"]),
     e("console", "Layout", "restaurar os módulos, a densidade e as colunas", ["restaurar layout", "colunas", "tamanhos", "padrão"]),
+    e("console", "Ao fechar", "perguntar antes de fechar com algo no ar", ["fechar", "sair", "confirmar", "perguntar"]),
+    e("console", "Iniciar com o Windows", "abrir o KERYX quando o computador liga", ["windows", "iniciar", "ligar", "automático", "inicialização"]),
+    e("console", "Atalhos", "as teclas do console: Enter, setas, B, L, C, Esc", ["teclado", "teclas", "atalho", "enter", "esc"]),
 
     e("backup", "Backup", "o último backup e Fazer backup agora", ["cópia", "segurança", "backup agora"]),
     e("backup", "Backup automático", "um backup ao abrir e ao fechar, por dia; pode desligar", ["automático", "desligar", "ligar"]),

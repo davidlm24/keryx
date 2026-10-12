@@ -162,7 +162,7 @@ export default function SettingsView({ c, section, tab, setSection, onClose, lay
             </div>
         ) : <Empty icon="search" title={`Nada encontrado para “${q.trim()}”`}>Tente outra palavra: PIN, fundo, backup, transição, logo…</Empty>;
     } else if (current.id === "aparencia") body = <AparenciaView c={c} tab={tab || "geral"} setTab={(t) => setSection("aparencia", t)} />;
-    else if (current.id === "console") body = <ConsoleSection layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
+    else if (current.id === "console") body = <ConsoleSection c={c} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
     else { const Body = BODIES[current.id]; body = <Body c={c} />; }
 
     return (

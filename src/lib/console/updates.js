@@ -9,11 +9,9 @@ export const LAUNCH_WINDOW_MS = 3 * 60 * 1000;
 
 const ACTIVE = ["available", "downloading", "downloaded", "error"];
 
-// Something the congregation sees or hears right now.
-export function onAir(live) {
-    if (!live) return false;
-    return Boolean(live.content || live.media || live.video || live.tool || live.communication || (live.audio && !live.audio.playback?.paused));
-}
+// Something the congregation sees or hears right now (shared/live-state.mjs).
+import { isOnAir } from "../../../shared/live-state.mjs";
+export const onAir = isOnAir;
 
 // An update the operator can act on: found, coming down, ready, or failed after being found.
 export const hasUpdate = (u) => Boolean(u && u.version && ACTIVE.includes(u.status));

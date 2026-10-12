@@ -2502,20 +2502,36 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
         const report = (quit) => {
             if (reported) return;
             reported = true;
-            const passed = ok && quit.quits && quit.outputOpen;
+            const passed = ok && quit.quits && quit.outputOpen && quit.guardAsked && quit.guardKept;
             console.log(`SMOKE ${passed ? "OK" : "FAIL"} ${JSON.stringify({ ...details, quit, errors })}`);
             app.exit(passed ? 0 : 1);
         };
         try {
             outputs.open("/Projection");
         } catch { /* reported as outputOpen: false */ }
-        setTimeout(() => {
+        setTimeout(async () => {
             const outputOpen = outputs.trackedWindows().some((w) => !w.destroyed);
+            // With something on air the X asks first (closeGuard.cjs):
+            // "Continuar projetando" keeps the KERYX open; then it closes.
+            const guard = require("./closeGuard.cjs");
+            let guardAsked = false;
+            let guardKept = false;
+            try {
+                live.call("screens.lock", { locked: false });
+            } catch { /* not locked */ }
+            try {
+                live.call("content.show", { kind: "text", title: "Guarda", slides: [{ text: "Guarda" }] });
+                guard.setAsk(async () => { guardAsked = true; return false; });
+                if (!win.isDestroyed()) win.close();
+                await new Promise((r) => setTimeout(r, 800));
+                guardKept = !win.isDestroyed();
+            } catch { /* reported as guardKept: false */ }
+            guard.setAsk(async () => true);
             app.once("will-quit", (event) => {
                 event.preventDefault();
-                report({ quits: true, outputOpen });
+                report({ quits: true, outputOpen, guardAsked, guardKept });
             });
-            setTimeout(() => report({ quits: false, outputOpen, note: "o KERYX continuou aberto depois de fechar o console" }), 10000);
+            setTimeout(() => report({ quits: false, outputOpen, guardAsked, guardKept, note: "o KERYX continuou aberto depois de fechar o console" }), 10000);
             if (!win.isDestroyed()) win.close();
         }, 1500);
     };

@@ -840,3 +840,9 @@
 .net.net-embed { position: absolute; inset: 0; z-index: 1; }
 .console .kp-portrait { position: absolute; inset: 0; z-index: 1; display: flex; justify-content: center; background: #000; }
 .console .kp-portrait > .net.net-embed { position: relative; inset: auto; height: 100%; aspect-ratio: 3 / 4; }
+
+/* The shortcut list (? and Configurações › Console): key, what it does. */
+.console .shortcuts { display: grid; grid-template-columns: 96px 1fr; gap: 4px 12px; align-items: baseline; }
+.console .shortcuts .kx-kbd { color: var(--fg-1); }
+.console .shortcuts .shortcuts-d { color: var(--fg-2); }
+.console .cfg .cfg-shortcuts { padding: var(--space-2) var(--space-3) var(--space-3); }
