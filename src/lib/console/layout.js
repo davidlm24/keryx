@@ -13,7 +13,6 @@ export const MODULES = [
     ["slides", "Slides"],
     ["camadas", "Camadas"],
     ["roteiro", "Setlist"],
-    ["tl", "Linha do tempo"],
 ];
 
 // The console's width tiers, measured on its grid (.main), not the window:
@@ -38,7 +37,6 @@ export const DEFAULT_LAYOUT = {
     camadasH: 300,
     bibleSelW: 300,
     bibleAirW: 400,
-    tlOpen: false,
     density: "comfortable",
     order: DEFAULT_ORDER,
     stacks: DEFAULT_STACKS,

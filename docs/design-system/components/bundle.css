@@ -215,25 +215,6 @@
 .kx-layer.is-hidden .kx-layer-name { color: var(--fg-3); }
 .kx-layer .kx-layer-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ---- Timeline (Linha do tempo) ---- */
-.kx-tl { display: flex; align-items: center; gap: var(--space-4); height: var(--row); padding: 0 var(--space-2); white-space: nowrap; }
-.kx-tl .kx-tl-k { color: var(--fg-3); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 500; }
-.kx-tl .kx-tl-v { color: var(--fg-1); }
-.kx-tl .kx-tl-now { display: inline-flex; align-items: center; gap: var(--space-2); }
-.kx-tl .kx-tl-now .kx-dot { background: var(--air); }
-.kx-tl .kx-tl-next .kx-dot { background: var(--prev); }
-.kx-tl-track { position: relative; height: 56px; margin: 0 var(--space-2) var(--space-2); }
-.kx-tl-blk { position: absolute; top: 20px; height: 28px; border-radius: var(--radius-control); background: var(--bg-2); padding: 0 var(--space-2); display: flex; align-items: center; gap: var(--space-2); overflow: hidden; font-size: 11px; color: var(--fg-1); white-space: nowrap; }
-.kx-tl-blk .kx-meta { color: var(--fg-3); }
-.kx-tl-blk.is-plan { top: 4px; height: 12px; background: none; box-shadow: inset 0 0 0 1px var(--line-strong); padding: 0 6px; font-size: 10px; line-height: 12px; color: var(--fg-3); }
-.kx-tl-blk.is-done { opacity: var(--dim); }
-.kx-tl-blk.is-air { background: var(--air-tint); box-shadow: inset var(--bar) 0 0 var(--air); color: var(--air-fg); }
-.kx-tl-blk.is-prev { background: var(--prev-tint); box-shadow: inset var(--bar) 0 0 var(--prev); color: var(--prev-fg); }
-.kx-tl-blk.is-late { box-shadow: inset 0 -2px 0 var(--warn); }
-.kx-tl-now-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--air); }
-.kx-tl-now-line::after { content: "agora"; position: absolute; top: -2px; left: 5px; font-size: 10px; color: var(--air-fg); letter-spacing: .06em; text-transform: uppercase; }
-.kx-tl-tick { position: absolute; bottom: 0; font-size: 10px; color: var(--fg-3); transform: translateX(-50%); }
-
 /* ---- Transport + meters: appear only while audio plays ---- */
 .kx-transport { height: var(--row); display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-1); }
 .kx-transport .kx-seek { flex: 1; height: 2px; background: var(--bg-3); border-radius: 1px; position: relative; min-width: 80px; }

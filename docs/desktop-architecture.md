@@ -272,8 +272,10 @@ redesign.
 Decided 2026-10-07 after the mockup in Claude Design (`docs/design-system.md`
 has the link and the tokens). One screen, `/Console`, replaces the operator
 pages: the library (Letras, Mídia, Avisos), the slides in hand, Programa and
-Prévia, Camadas, Setlist, Linha do tempo, Bíblia as its own environment, the
-command palette (`/`) and Saídas (with *Travar telas*).
+Prévia, Camadas, Setlist, Bíblia as its own environment, the
+command palette (`/`) and Saídas (with *Travar telas*). (The Linha do tempo
+strip it also had was removed on 2026-10-12: the church plans the order, not
+the times; the top bar's service clock stays.)
 
 - **Verses on screen** follow one set of rules wherever they come from
   (`src/lib/console/bibleVerses.js`, tested; `stageFromVerses` in

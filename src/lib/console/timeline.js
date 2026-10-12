@@ -1,6 +1,7 @@
-// What the collapsed Linha do tempo says: how far the service is and when it
-// will end, which nothing else on the console shows. (What is on air and what
-// is next are the live column's job.) Pure; tested in timeline.test.mjs.
+// The service's timing for the top bar's clock: how far the service is, how
+// late the item on air runs and when it should end. (The Linha do tempo strip
+// that also showed it was removed, owner decision 2026-10-12.) Pure; tested
+// in timeline.test.mjs.
 
 const minutesOf = (hhmm) => {
     if (!/^\d{1,2}:\d{2}$/.test(String(hhmm || ""))) return null;
@@ -27,10 +28,6 @@ export function serviceTiming({ items, times, airIdx, startedAt, now }) {
     const forecastEnd = plannedEnd == null ? null : plannedEnd + (airIdx >= 0 && startedAt ? late * 60000 : 0);
     return { count, done, late, plannedEnd, forecastEnd };
 }
-
-export const lateWords = (late, onAir) => (!onAir ? "" : late > 0 ? `+${late} min atrasado` : late < 0 ? `−${-late} min adiantado` : "no horário");
-
-export const clock = (ms) => new Date(ms).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 const two = (n) => String(n).padStart(2, "0");
 const hm = (ms) => { const d = new Date(ms); return `${two(d.getHours())}:${two(d.getMinutes())}`; };

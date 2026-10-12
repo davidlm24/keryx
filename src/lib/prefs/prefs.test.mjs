@@ -12,9 +12,9 @@ test("prefs: an empty or old row reads as the defaults", () => {
 });
 
 test("prefs: bad values fall back, good ones pass", () => {
-    const p = prefsOf({ bible_version: " ARA ", bible_book_names: "full", import_lines: 4, console_density: "compact", console_hidden_modules: ["tl", "nope", "tl"] });
-    assert.deepEqual(p, { bible_version: "ARA", bible_book_names: "full", bible_verses_per_slide: "auto", bible_show_reference: true, bible_show_version: true, bible_verse_numbers: "sup", service_start_time: "", service_weekday: null, duration_song: 240, duration_other: 120, logo_corner: "bottom-right", logo_size: "medium", logo_opacity: 1, idle_mode: "logo", chime_on: true, chime_volume: 35, show_item_title: true, youtube_hide_title: true, import_lines: 4, console_density: "compact", console_hidden_modules: ["tl"] });
-    const bad = prefsOf({ bible_version: "<x>", bible_book_names: "long", import_lines: 2.5, console_density: "tiny", console_hidden_modules: "tl" });
+    const p = prefsOf({ bible_version: " ARA ", bible_book_names: "full", import_lines: 4, console_density: "compact", console_hidden_modules: ["camadas", "tl", "nope", "camadas"] });
+    assert.deepEqual(p, { bible_version: "ARA", bible_book_names: "full", bible_verses_per_slide: "auto", bible_show_reference: true, bible_show_version: true, bible_verse_numbers: "sup", service_start_time: "", service_weekday: null, duration_song: 240, duration_other: 120, logo_corner: "bottom-right", logo_size: "medium", logo_opacity: 1, idle_mode: "logo", chime_on: true, chime_volume: 35, show_item_title: true, youtube_hide_title: true, import_lines: 4, console_density: "compact", console_hidden_modules: ["camadas"] }, "a saved \"tl\" (the Linha do tempo, removed) is dropped");
+    const bad = prefsOf({ bible_version: "<x>", bible_book_names: "long", import_lines: 2.5, console_density: "tiny", console_hidden_modules: "camadas" });
     assert.deepEqual(bad, { bible_version: "NVI", bible_book_names: "short", bible_verses_per_slide: "auto", bible_show_reference: true, bible_show_version: true, bible_verse_numbers: "sup", service_start_time: "", service_weekday: null, duration_song: 240, duration_other: 120, logo_corner: "bottom-right", logo_size: "medium", logo_opacity: 1, idle_mode: "logo", chime_on: true, chime_volume: 35, show_item_title: true, youtube_hide_title: true, import_lines: 0, console_density: "comfortable", console_hidden_modules: [] });
     const culto = prefsOf({ service_start_time: "18:30", service_weekday: 0, duration_song: 300, duration_other: 5 });
     assert.deepEqual([culto.service_start_time, culto.service_weekday, culto.duration_song, culto.duration_other], ["18:30", 0, 300, 120]);
@@ -24,8 +24,8 @@ test("prefs: bad values fall back, good ones pass", () => {
 });
 
 test("prefs: hidden modules map and list round-trip", () => {
-    assert.deepEqual(hiddenList({ tl: true, lib: false, camadas: true }), ["camadas", "tl"]);
-    assert.deepEqual(hiddenMap(["tl"]), { tl: true });
+    assert.deepEqual(hiddenList({ tl: true, lib: false, camadas: true }), ["camadas"], "unknown modules (the old \"tl\") are left out");
+    assert.deepEqual(hiddenMap(["camadas"]), { camadas: true });
     assert.deepEqual(hiddenMap(null), {});
 });
 
@@ -33,10 +33,10 @@ test("migration: moves the local preferences into an empty row", () => {
     const s = storage({
         [LEGACY.bible]: JSON.stringify({ version: "ARA", bookNames: "full", book: "Salmos", chapter: 23, favs: [] }),
         [LEGACY.importLines]: "4",
-        [LEGACY.layout("Operador")]: JSON.stringify({ density: "compact", hidden: { tl: true, lib: false }, libW: 300 }),
+        [LEGACY.layout("Operador")]: JSON.stringify({ density: "compact", hidden: { slides: true, lib: false }, libW: 300 }),
     });
     assert.deepEqual(migrateLocalPrefs({ full_name: "Operador" }, s), {
-        bible_version: "ARA", bible_book_names: "full", import_lines: 4, console_density: "compact", console_hidden_modules: ["tl"],
+        bible_version: "ARA", bible_book_names: "full", import_lines: 4, console_density: "compact", console_hidden_modules: ["slides"],
     });
 });
 
