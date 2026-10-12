@@ -917,6 +917,10 @@
           "type": "text",
           "default": ""
         },
+        "hidden_kinds": {
+          "type": "json",
+          "default": []
+        },
         "text_scale": {
           "type": "real",
           "default": 100
