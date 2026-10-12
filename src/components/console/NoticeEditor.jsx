@@ -6,8 +6,7 @@ import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, BackBtn } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { NOTICE_TYPES, newNotice, noticeLabel } from "@/lib/console/notice";
 import { parseDuration, formatDuration } from "@/lib/songImport";
-import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
-import { useBackgrounds } from "./useConsoleData";
+import BgChip from "./library/BgChip";
 import { FONT_MAP } from "@/lib/deviceStyles";
 import { stageFromPiece } from "@/lib/console/stage";
 
@@ -26,8 +25,6 @@ const pickFields = (row) => Object.fromEntries(FIELDS.filter((k) => row[k] !== u
 // Saving changes the library only; "Pôr na prévia do console" prepares it.
 export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved }) {
     const chimeOn = usePrefs().chime_on;
-    const backgrounds = useBackgrounds(media);
-    const galleryBgs = (() => { const imgs = visibleBackgrounds(backgrounds).filter((b) => b.kind !== "video"); const own = imgs.filter((b) => b.category === "Comunicação"); return (own.length ? own : imgs).slice(0, 12); })();
     const isNew = noticeId === "new";
     const [draft, setDraft] = useState(() => (isNew ? newNotice("countdown") : null));
     const [saved, setSaved] = useState(() => (isNew ? null : undefined));
@@ -37,7 +34,6 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
     const [pick, setPick] = useState(null); // "video" | "audio" | "files"
     const [confirm, setConfirm] = useState(null); // "delete" | "discard"
     const [busy, setBusy] = useState(false);
-    const imgRef = useRef(null);
     const fileRef = useRef(null);
     const fileKind = useRef(null);
 
@@ -148,7 +144,6 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                 <Panel lead={<BackBtn onClick={leave} />} title={<>Aviso <span className="kx-count">· {isNew ? "Novo aviso" : draft.title}{dirty ? " · não salvo" : ""}</span></>} actions={<>
                     {!isNew && <Btn small kind={confirm === "delete" ? "air" : ""} onClick={remove}>{confirm === "delete" ? "Excluir mesmo" : "Excluir"}</Btn>}
                                     </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                    <input ref={imgRef} type="file" hidden accept="image/*" onChange={(e) => { upload(e.target.files?.[0], (url) => set({ background_image: url, background_color: "" })); e.target.value = ""; }} />
                     <input ref={fileRef} type="file" hidden onChange={(e) => { fileChosen(e.target.files?.[0]); e.target.value = ""; }} />
                     <div className="nv-scroll">
                         <div className="listhead"><span className="kx-section">Tipo</span></div>
@@ -194,13 +189,14 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
 
                         <div className="listhead"><span className="kx-section">Fundo</span></div>
                         <div className="nv-pad">
-                            <div className="bgpick">
-                                {galleryBgs.map((b) => <button type="button" key={b.source} className={`kx-t ${draft.background_image === b.url ? "is-on" : ""}`} aria-label={b.name} title={b.name} onClick={() => set({ background_image: b.url, background_color: "" })}><img src={b.url} alt="" loading="lazy" /></button>)}
-                            </div>
+                            {/* A picture or a colour from the library (its Comunicação
+                                category among the others); the clip, the audio and
+                                the sequence have their own pickers below. */}
                             <div className="nv-inline">
-                                <Btn small onClick={() => imgRef.current?.click()}><Icon name="image" />Imagem…</Btn>
-                                <label className="nv-color">Cor<input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.background_color || "") ? draft.background_color : "#101014"} onChange={(e) => set({ background_color: e.target.value, background_image: "" })} aria-label="Cor de fundo" title="Cor de fundo" /></label>
-                                {(draft.background_image || draft.background_color) && <Btn small onClick={() => set({ background_image: "", background_color: "" })}>Sem imagem</Btn>}
+                                <BgChip accept={["image", "color"]} title="Fundo do aviso" empty="nenhum"
+                                    value={draft.background_image ? { kind: "image", value: draft.background_image } : /^#[0-9a-f]{6}$/i.test(draft.background_color || "") ? { kind: "color", value: draft.background_color } : null}
+                                    noneLabel={draft.background_image || draft.background_color ? "Sem fundo" : undefined}
+                                    onPick={(spec) => set(spec?.kind === "image" ? { background_image: spec.value, background_color: "" } : spec?.kind === "color" ? { background_color: spec.value, background_image: "" } : { background_image: "", background_color: "" })} />
                             </div>
                             <div className="nv-media">
                                 <Btn small on={pick === "video"} onClick={() => setPick(pick === "video" ? null : "video")}><Icon name="film" />Vídeo de fundo</Btn>

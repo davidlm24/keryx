@@ -2,6 +2,7 @@
 // the text style it applies, the Fundo layer it sets, which theme starts
 // selected. Shared by Camadas (apply/save) and Configurações › Aparência › Temas (the
 // editor). Pure, so node --test checks it.
+import { bgSpec, bgArgs } from "./backgroundSpec.js";
 
 // The text sizes a theme or a song can choose, smallest first.
 export const TEXT_SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
@@ -18,15 +19,10 @@ const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""])
 export const themeStyle = (t) => ({ font_size: t?.font_size || "large", font_family: t?.font_family || "sans", text_effect: t?.text_effect || "shadow", text_color: t?.text_color || "#ffffff", text_color_2: t?.text_color_2 || "", ...extra(t) });
 export const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v]) => (EXTRA_KEYS.includes(k) || k === "text_color_2" ? String(style?.[k] ?? "") === String(v) : (style?.[k] || v) === v));
 
-// The theme's background look, for background.set; null when it has none.
-export const bgOf = (t) => Object.fromEntries([["fit", t?.background_fit], ["dim", t?.background_dim], ["blur", t?.background_blur]].filter(([, v]) => v != null && v !== ""));
-export const themeBackgroundArgs = (t) => {
-    if (t?.background_image) return { kind: "image", value: t.background_image, title: t.name || "Tema", ...bgOf(t) };
-    // A generated background (shared/generators.mjs) saved with the theme.
-    const gen = t?.background_generator;
-    if (gen && typeof gen === "object" && typeof gen.id === "string") return { kind: "generator", value: gen.id, gen, title: t.name || "Tema", ...(t.background_dim != null && t.background_dim !== "" ? { dim: t.background_dim } : {}) };
-    return null;
-};
+// The theme's background (ProjectionTheme.background, or the picture or
+// generated background saved before it; backgroundSpec.js), as
+// background.set's arguments; null when it has none.
+export const themeBackgroundArgs = (t) => bgArgs(bgSpec(t), t?.name || "Tema");
 
 // The default theme (Configurações › Aparência › Temas, "Tornar padrão"):
 // the one marked, the most recently changed if several are; none when none
@@ -62,10 +58,11 @@ export const followsTheme = (row) => row?.style_mode === "theme" || (row?.style_
 //     (box, case, ...) fill what the item leaves empty.
 //   - the theme's transition goes where the item has none (the church's
 //     transition, look.js, fills after it).
-//   - background: the theme's picture, as the item's own background, only
-//     when the item has none and no Fundo is up (the operator's choice in
-//     Camadas wins).
-export function withThemeDefaults(op, args, theme, { fundo = null } = {}) {
+//   - background: the theme's (picture, video, generated or colour), when
+//     the item has none of its own, rides in args.fundo: it goes to the Fundo
+//     layer when the item is sent (backgroundSpec.js fundoOps), so it stays
+//     after Esc; the Fundo held by Camadas' padlock is left alone.
+export function withThemeDefaults(op, args, theme) {
     if (op !== "content.show" || !args?.inherit) return args;
     const { inherit, ...rest } = args;
     if (!theme) return rest;
@@ -78,10 +75,6 @@ export function withThemeDefaults(op, args, theme, { fundo = null } = {}) {
         style.transition = t.transition;
         if (t.transition_ms !== "" && style.transition_ms == null) style.transition_ms = t.transition_ms;
     }
-    if (inherit.background && !style.background_image && !fundo && theme.background_image) {
-        style.background_image = theme.background_image;
-        if (theme.background_dim !== "" && theme.background_dim != null) style.background_dim = Number(theme.background_dim);
-        if (theme.background_blur !== "" && theme.background_blur != null) style.background_blur = Number(theme.background_blur);
-    }
-    return { ...rest, style };
+    const fundo = inherit.background && !style.background_image && !rest.fundo ? themeBackgroundArgs(theme) : null;
+    return { ...rest, style, ...(fundo ? { fundo } : {}) };
 }

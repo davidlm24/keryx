@@ -54,6 +54,22 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the stage is built (`songTheme.js`, so `stageFromSong`/`songContent` take
   the themes); the part's look rides in `slide.style`, which the renderer
   lays over the content's, and an output with its own theme drops it.
+  **The Fundo layer is the screen's background** (2026-10-12): an item's
+  own background (the song's, its theme's, the default theme's) rides in
+  `args.fundo` and goes to the Fundo layer when it is sent —
+  `background.set` before `content.show`, `fundoOps` in
+  `src/lib/console/backgroundSpec.js`, used by `send` and the Prévia — so
+  it stays after Esc; only a part theme's picture stays in `slide.style`.
+  Camadas' padlock on the Fundo is the live state's (`layers.lock`,
+  `lockedLayers`; refuses `background.set`/`.clear` from anyone, and the
+  renderer leaves a song's own picture out). A background is one spec
+  everywhere, `{ kind: image|video|generator|color, value, gen?, dim?, blur?, fit? }`
+  (`bgSpec` reads `Song.background`/`ProjectionTheme.background` and the
+  old `background_image`/`background_generator`; `bgFields` writes both).
+  **Every background or theme picker opens the library**
+  (`library/BackgroundLibrary.jsx`: Temas · Imagens · Vídeos · Gerados ·
+  Cor; awaited with `useLibraryPicker()`, the chip `library/BgChip.jsx`);
+  don't add a gallery of thumbnails to a form.
 
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built
@@ -98,7 +114,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   container units — so a preview is the output; the Programa monitor plays
   videos muted (`motion`). Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
-  topmost thing open (`escapeTarget`: a right-click menu, a popover, then
+  topmost thing open (`escapeTarget`: a right-click menu, the background library, a popover, then
   Configurações, then the Camadas drawer; views defer while a `.scrim` is
   up) and with nothing
   open ends at once (music on the audio channel keeps playing; the Fundo

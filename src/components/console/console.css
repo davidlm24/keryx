@@ -527,15 +527,7 @@
 .console .swatches button { width: 20px; height: 20px; border-radius: var(--radius-round); box-shadow: inset 0 0 0 1px #ffffff2e; }
 .console .swatches button.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
 .console .ed-color { width: 24px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
-.console .bgpick { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-1); }
-.console .bgpick button { aspect-ratio: 16 / 10; border-radius: var(--radius-control); overflow: hidden; position: relative; box-shadow: inset 0 0 0 1px var(--line); background: var(--bg-2); color: var(--fg-2); font-size: 11px; }
-.console .bgpick button img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.console .bgpick button.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
-/* The idle wallpaper: the chosen image beside Trocar…, and the picker. */
-.console .wallpick { display: flex; flex-direction: column; gap: var(--space-1); }
-.console .wallpick-h { padding-top: var(--space-1); }
-.console .bgpick button.wallpick-none { aspect-ratio: auto; height: 32px; grid-column: 1 / -1; }
-.console .idle-pick { max-height: 300px; overflow: auto; padding: 0 var(--space-1) var(--space-1); }
+/* The idle wallpaper beside Trocar… (Saídas). */
 .console .idle-wall img { width: 48px; height: 27px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
 .console .ed-tools { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; padding: 0 var(--space-2) var(--space-1); }
 .console .ed-lyrics { flex: 1; min-height: 0; display: flex; padding: 0 var(--space-2) var(--space-2); }
@@ -578,8 +570,6 @@
 .console .pl-danger { display: flex; justify-content: flex-end; padding: 0 var(--space-2) var(--space-2); }
 .console .cfg-wall { width: 48px; height: 27px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
 .console .pl-wall { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-.console .pl-wall img { width: 64px; height: 36px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
-.console .pl-wallpick { grid-column: 1 / -1; max-height: 260px; overflow: auto; padding: var(--space-1); border-radius: var(--radius-control); background: var(--bg-2); }
 .console .pl-acts { display: flex; gap: var(--space-1); flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 /* The Setlist header keeps its count, length and end time readable: when the
    four buttons do not fit beside it, they drop to a second line. */
@@ -897,3 +887,36 @@
 .console .le-nums label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); }
 .console .le-num { width: 58px; }
 .console .le-range { flex: 1 1 80px; min-width: 60px; accent-color: var(--brand); }
+
+/* Biblioteca de temas e fundos (library/BackgroundLibrary.jsx): one window
+   for every picker, above Configurações (it opens from there too), below the
+   right-click menu. Tabs in the header, the tiles on the left, the sample
+   and the chosen background's settings on the right. */
+.console .lib-scrim { z-index: 36; }
+.console .lib-dialog { position: absolute; z-index: 37; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
+.console .lib-tabs { height: 40px; border-bottom: 0; margin-left: var(--space-3); }
+.console .lib-body { flex: 1; min-height: 0; display: flex; }
+.console .lib-main { flex: 1; min-width: 0; overflow: auto; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.console .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--space-2); align-content: start; }
+.console .lib-thumb { position: absolute; inset: 0; container-type: inline-size; }
+.console .lib-thumb > .ks-box { width: 100%; }
+.console .lib-gen { padding: 0; grid-template-columns: 96px minmax(0, 1fr); border-top: 0; }
+.console .lib-colors { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.console .lib-swatch { width: 48px; height: 32px; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18); }
+.console .lib-swatch.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
+.console .lib-free { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 11px; color: var(--fg-2); margin-left: var(--space-2); }
+.console .lib-side { flex: 0 0 340px; min-width: 0; overflow: auto; border-left: 1px solid var(--line); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.console .lib-sample { width: 100%; }
+.console .lib-label { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.console .lib-label .t { color: var(--fg-1); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .lib-side .fg-detail { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--space-2); align-items: center; }
+.console .lib-side .fg-detail .k { font-size: 11px; color: var(--fg-3); }
+.console .lib-side .fg-detail .frm-v { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
+.console .lib-foot { flex: none; height: 44px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border-top: 1px solid var(--line); }
+@media (max-width: 900px) { .console .lib-side { flex-basis: 260px; } }
+/* What background is chosen, and the library button (library/BgChip.jsx). */
+.console .bgchip { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.console .bgchip-t { flex: none; width: 48px; aspect-ratio: 16 / 10; border-radius: 3px; overflow: hidden; background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line); display: grid; place-items: center; color: var(--fg-2); }
+.console .bgchip-t img { width: 100%; height: 100%; object-fit: cover; }
+.console .bgchip-t.is-none { background: repeating-linear-gradient(135deg, var(--bg-2) 0 4px, var(--bg-1) 4px 8px); }
+.console .bgchip-l { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }

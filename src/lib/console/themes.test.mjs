@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { themeStyle, sameLook, bgOf, themeBackgroundArgs, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
+import { normalizeGenerator } from "../../../shared/generators.mjs";
+import { themeStyle, sameLook, themeBackgroundArgs, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
 
 test("themeStyle: classics defaulted, extras empty unless saved", () => {
     const t = { font_family: "serif", text_box: "band", transition: "slide", transition_ms: 300 };
@@ -20,7 +21,9 @@ test("background args and the default theme", () => {
     assert.equal(themeBackgroundArgs({ name: "X" }), null);
     assert.deepEqual(themeBackgroundArgs({ name: "X", background_image: "u.png", background_dim: 0.3, background_fit: "" }),
         { kind: "image", value: "u.png", title: "X", dim: 0.3 });
-    assert.deepEqual(bgOf({ background_blur: 4 }), { blur: 4 });
+    assert.deepEqual(themeBackgroundArgs({ name: "X", background_image: "u.png", background_blur: 4 }), { kind: "image", value: "u.png", title: "X", blur: 4 });
+    // The new field wins over the old ones, any kind.
+    assert.deepEqual(themeBackgroundArgs({ name: "V", background: { kind: "video", value: "keryx-media://v.mp4", dim: 0.2 }, background_image: "u.png" }), { kind: "video", value: "keryx-media://v.mp4", dim: 0.2, title: "V" });
     const themes = [{ id: "a" }, { id: "b", is_default: true }];
     assert.equal(defaultTheme(themes).id, "b");
     assert.equal(defaultTheme([{ id: "a" }]), null, "no theme marked: none (never the first by surprise)");
@@ -57,15 +60,20 @@ test("default theme: filled in at send time, only where the item asks", () => {
     assert.equal(out.style.font_size, "xlarge");
     assert.equal(out.style.text_box, "band");
     assert.equal(out.style.transition, "slide");
-    assert.equal(out.style.background_image, "bg.jpg");
-    assert.equal(out.style.background_dim, 0.3);
+    // The theme's background goes to the Fundo layer when sent (args.fundo),
+    // not inside the content: it stays after Esc.
+    assert.equal(out.style.background_image, undefined);
+    assert.deepEqual(out.fundo, { kind: "image", value: "bg.jpg", dim: 0.3, title: "Tema" });
     // An own look keeps itself; the theme's transition still fills the gap.
     const own = withThemeDefaults("content.show", { ...args, style: { font_family: "mono" }, inherit: { look: false, background: false } }, theme);
     assert.equal(own.style.font_family, "mono");
     assert.equal(own.style.transition, "slide");
     assert.equal(own.style.background_image, undefined);
-    // A Fundo up in Camadas wins over the theme's picture.
-    assert.equal(withThemeDefaults("content.show", args, theme, { fundo: { kind: "video" } }).style.background_image, undefined);
+    assert.equal(own.fundo, undefined, "an item with its own background keeps it");
+    // A generated background in the theme comes too (it used to be lost).
+    const gen = withThemeDefaults("content.show", args, { name: "Céu", background_generator: { id: "clouds" } });
+    assert.equal(gen.fundo.kind, "generator");
+    assert.equal(gen.fundo.gen.id, "clouds");
     // No default theme: just the item, without inherit.
     assert.deepEqual(withThemeDefaults("content.show", args, null), { title: "X", slides: [], style: args.style });
     // Other ops and items without inherit pass untouched.
@@ -76,7 +84,7 @@ test("default theme: filled in at send time, only where the item asks", () => {
 
 test("a theme with a generated background sets the Fundo as a generator", () => {
     const gen = { id: "clouds", speed: 0.3, colors: ["#000000", "#ffffff"] };
-    assert.deepEqual(themeBackgroundArgs({ name: "Céu", background_generator: gen, background_dim: 0.2 }), { kind: "generator", value: "clouds", gen, title: "Céu", dim: 0.2 });
+    assert.deepEqual(themeBackgroundArgs({ name: "Céu", background_generator: gen, background_dim: 0.2 }), { kind: "generator", value: "clouds", gen: normalizeGenerator(gen), title: "Céu", dim: 0.2 });
     assert.deepEqual(themeBackgroundArgs({ name: "Céu", background_generator: gen, background_image: "u.png" }).kind, "image", "a picture wins");
     assert.equal(themeBackgroundArgs({ name: "X", background_generator: {} }), null);
 });

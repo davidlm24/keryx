@@ -6,8 +6,13 @@ import { useContextMenu } from "./ContextMenu";
 import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
 import { THEME_FONTS, FAMILY_SET, themeStyle, sameLook, themeBackgroundArgs, defaultTheme } from "@/lib/console/themes";
 import { useBackgrounds } from "./useConsoleData";
-import { STYLE_KEYS, LAYER_ORDER, layerHidden } from "@shared/live-state.mjs";
-import GeneratorPanel, { GeneratorTiles } from "./GeneratorPanel";
+import { STYLE_KEYS, LAYER_ORDER, layerHidden, layerLocked } from "@shared/live-state.mjs";
+import GeneratorPanel from "./GeneratorPanel";
+import { useLibraryPicker } from "./library/libraryContext";
+import { bgArgs, bgFields, bgLabel, cleanSpec } from "@/lib/console/backgroundSpec";
+import { GENERATORS } from "@/lib/generators";
+
+const GEN_NAMES = Object.fromEntries(GENERATORS.map((g) => [g.id, g.name]));
 
 // Camadas: the look of what is on air, as four layers of the live state —
 // Logo (live.logo), Sobreposição (live.overlays), Texto principal
@@ -35,7 +40,10 @@ export default function Layers({ c, themes, media = null }) {
     const backgrounds = useBackgrounds(media);
     const { cur } = c;
     const [sel, setSel] = useState("text");
-    const [locked, setLocked] = useState({ bg: false });
+    // The padlock: the Fundo's is the live state's (layers.lock: nothing
+    // changes it, whoever sends); the others only hold Camadas' controls.
+    const [localLocks, setLocalLocks] = useState({});
+    const pick = useLibraryPicker();
     const menu = useContextMenu();
     const [themeId, setThemeId] = useState(null);
     // Drag to reorder: the list follows live.layerOrder (top first).
@@ -60,6 +68,17 @@ export default function Layers({ c, themes, media = null }) {
 
     const visible = { logo: logo.visible, ov: Boolean(textOverlay) && textOverlay.enabled !== false, text: Boolean(content) && !layerHidden(cur, "content"), bg: Boolean(cur?.background) && !layerHidden(cur, "background") };
     const op = (name, args) => c.callOp(name, args).catch(() => {});
+    const locked = { ...localLocks, bg: layerLocked(cur, "background") };
+    const toggleLock = (id) => {
+        if (id === "bg") op("layers.lock", { layer: "background", locked: !locked.bg });
+        else setLocalLocks({ ...localLocks, [id]: !localLocks[id] });
+    };
+    // A background from the library (Temas, Imagens, Vídeos, Gerados, Cor).
+    const openLibrary = async () => {
+        const r = await pick({ accept: ["image", "video", "generator", "color"], value: cur?.background || null, title: "Fundo", allowNone: Boolean(cur?.background), noneLabel: "Tirar o fundo" });
+        if (r?.none) op("background.clear");
+        else if (r?.spec) op("background.set", bgArgs(r.spec, r.spec.kind === "generator" ? GEN_NAMES[r.spec.value] : backgrounds.find((b) => b.url === r.spec.value)?.name || bgLabel(r.spec, GEN_NAMES)));
+    };
     const setStyle = (patch) => { if (content) op("content.update", { style: Object.fromEntries(Object.entries({ ...style, ...patch }).filter(([k]) => STYLE_KEYS.includes(k))) }); };
     const setOverlays = (list) => op("overlays.set", { overlays: list });
 
@@ -88,15 +107,12 @@ export default function Layers({ c, themes, media = null }) {
     const saveAsNew = async () => {
         const name = `${theme ? theme.name : "Tema"} ${new Date().toLocaleDateString("pt-BR")}`;
         try {
-            const bg = cur?.background?.kind === "image" ? cur.background : null;
-            // A generated Fundo on air is saved in the theme too (its generator,
-            // numbers and colours), with its dim.
-            const genBg = cur?.background?.kind === "generator" ? cur.background : null;
+            // The Fundo on air goes with the theme, any kind (a picture, a
+            // clip, a generated one with its numbers and colours, a colour);
+            // with none, the theme's own stays.
             const look = Object.fromEntries(Object.entries(themeStyle({ ...theme, ...style })).filter(([, v]) => v !== ""));
-            const row = await keryx.entities.ProjectionTheme.create({ name, ...look, background_image: bg ? bg.value : genBg ? "" : theme?.background_image || "",
-                ...(bg ? Object.fromEntries([["background_fit", bg.fit], ["background_dim", bg.dim], ["background_blur", bg.blur]].filter(([, v]) => v != null)) : {}),
-                background_generator: genBg ? genBg.gen : null,
-                ...(genBg && genBg.dim != null ? { background_dim: genBg.dim } : {}) });
+            const spec = cleanSpec(cur?.background) || (theme ? cleanSpec(themeBackgroundArgs(theme)) : null);
+            const row = await keryx.entities.ProjectionTheme.create({ name, ...look, ...bgFields(spec) });
             setThemeId(row.id);
             c.say(`Tema salvo como "${name}".`);
         } catch (err) {
@@ -105,8 +121,9 @@ export default function Layers({ c, themes, media = null }) {
     };
 
     const disabled = locked[sel];
-    const galleryBgs = visibleBackgrounds(backgrounds).filter((b) => b.kind !== "video").slice(0, 12);
-    const galleryVids = visibleBackgrounds(backgrounds).filter((b) => b.kind === "video").slice(0, 8);
+    // A short strip of pictures (favourites first) for one click; the whole
+    // library is one button away.
+    const quickBgs = visibleBackgrounds(backgrounds).filter((b) => b.kind === "image").slice(0, 8);
 
     return (
         <>
@@ -131,7 +148,7 @@ export default function Layers({ c, themes, media = null }) {
                     onClick={() => setSel(L.id)} role="button" tabIndex={0}
                     onContextMenu={(e) => menu(e, { title: L.name, items: [
                         { label: visible[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] ? "eye-off" : "eye", onSelect: () => toggleEye(L.id) },
-                        { label: locked[L.id] ? "Desbloquear" : "Bloquear", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => setLocked({ ...locked, [L.id]: !locked[L.id] }) },
+                        { label: locked[L.id] ? "Desbloquear" : "Bloquear", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => toggleLock(L.id) },
                         { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
                         { label: "Descer", disabled: i === rows.length - 1, onSelect: () => moveLayer(L.key, i + 2) },
                     ] })}
@@ -143,7 +160,7 @@ export default function Layers({ c, themes, media = null }) {
                     title="Arraste para mudar a ordem das camadas">
                     <span className="kx-glyph" style={{ cursor: "grab" }}><Icon name="grip" /></span>
                     <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>
-                    <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); setLocked({ ...locked, [L.id]: !locked[L.id] }); }} aria-label={locked[L.id] ? "Desbloquear" : "Bloquear"} title={locked[L.id] ? "Desbloquear" : "Bloquear"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
+                    <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={locked[L.id] ? "Desbloquear" : "Bloquear"} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Desbloquear" : "Bloquear"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
                     <span className="kx-layer-name">{L.name}</span>
                 </div>
             ))}
@@ -172,40 +189,28 @@ export default function Layers({ c, themes, media = null }) {
                     <span className="k">Ajuste fino</span><Seg small value={num(style.text_nudge ?? 0)} options={[["-10", "↑ 10"], ["-5", "↑ 5"], ["0", "0"], ["5", "↓ 5"], ["10", "↓ 10"]]} onChange={(v) => !disabled && setStyle({ text_nudge: v === "0" ? "" : Number(v) })} />
                 </>)}
                 {sel === "bg" && (<>
-                    <span className="k">Fundo</span><span style={{ color: "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? cur.background.title || cur.background.kind : "nenhum"}</span>
-                    <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
-                        {galleryBgs.map((b) => (
+                    <span className="k">Fundo</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        <span style={{ flex: 1, color: "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? cur.background.title || bgLabel(cur.background, GEN_NAMES) : "nenhum"}</span>
+                        <Btn small disabled={disabled} onClick={openLibrary} title="Temas, imagens, vídeos, fundos gerados e cores">Biblioteca…</Btn>
+                    </span>
+                    {disabled && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Travado: nada que vai ao ar troca o fundo, e o fundo próprio das músicas não aparece.</span>}
+                    <div className="lyr-quick" style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
+                        {quickBgs.map((b) => (
                             <button type="button" key={b.source} disabled={disabled} onClick={() => op("background.set", { kind: "image", value: b.url, title: b.name, ...(b.dim !== null ? { dim: b.dim } : {}), ...(b.blur !== null ? { blur: b.blur } : {}) })} style={{ aspectRatio: "16/10", borderRadius: 3, backgroundImage: `url(${b.url})`, backgroundSize: "cover", backgroundPosition: "center", outline: cur?.background?.value === b.url ? "2px solid var(--brand)" : "none", outlineOffset: -2 }} aria-label={b.name} title={b.name} />
                         ))}
                     </div>
-                    {cur?.background && cur.background.kind !== "color" && cur.background.kind !== "generator" && <>
+                    {cur?.background && (cur.background.kind === "image" || cur.background.kind === "video") && <>
                         <span className="k">Ajuste</span><Seg small value={cur.background.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, fit: v })} />
                         <span className="k">Posição</span><Seg small value={cur.background.position || "center"} options={[["top", "Alto"], ["center", "Centro"], ["bottom", "Baixo"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, position: v })} />
                         <span className="k">Escurecer</span><Seg small value={num(cur.background.dim ?? (cur.background.kind === "video" ? 0 : 0.45))} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, dim: Number(v) })} />
                         <span className="k">Desfoque</span><Seg small value={num(cur.background.blur ?? 0)} options={[["0", "Sem"], ["4", "Leve"], ["10", "Forte"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, blur: Number(v) })} />
                     </>}
-                    {/* Fundos gerados (src/lib/generators.js): the generators, then the one on air's presets, sliders and colours. */}
-                    <span className="k">Gerado</span>
-                    <GeneratorTiles current={cur?.background?.kind === "generator" ? cur.background.gen : null} disabled={disabled} op={op} />
+                    {/* The generated Fundo on air: its presets, sliders and colours, live. */}
                     {cur?.background?.kind === "generator" && cur.background.gen && <>
                         <GeneratorPanel background={cur.background} disabled={disabled} op={op} />
                         <span className="k">Escurecer</span><Seg small value={num(cur.background.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, dim: Number(v) })} />
                     </>}
-                    {galleryVids.length > 0 && <>
-                        <span className="k">Vídeo</span>
-                        <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
-                            {galleryVids.map((b) => (
-                                <button type="button" key={b.source} disabled={disabled} className="lyr-vtile" onClick={() => op("background.set", { kind: "video", value: b.url, title: b.name, ...(b.dim !== null ? { dim: b.dim } : {}), ...(b.blur !== null ? { blur: b.blur } : {}) })}
-                                    style={{ outline: cur?.background?.value === b.url ? "2px solid var(--brand)" : "none", outlineOffset: -2 }} aria-label={b.name} title={`${b.name} · toca em loop, sem som`}>
-                                    <Icon name="film" size={14} /><span>{b.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </>}
-                    <span className="k">Cor</span>
-                    <div style={{ display: "flex", gap: 4 }}>
-                        {["#000000", "#0f1a2e", "#1f1308", "#101f14"].map((hex) => <button type="button" key={hex} disabled={disabled} onClick={() => op("background.set", { kind: "color", value: hex, title: "Cor" })} style={{ width: 20, height: 20, borderRadius: 999, background: hex, boxShadow: "inset 0 0 0 1px rgba(255,255,255,.2)" }} aria-label={hex} />)}
-                    </div>
                 </>)}
                 {sel === "logo" && (<>
                     <span className="k">Canto</span>

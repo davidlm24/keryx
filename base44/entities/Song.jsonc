@@ -26,6 +26,10 @@
       "type": "string",
       "description": "URL da imagem de fundo personalizada"
     },
+    "background": {
+      "type": "object",
+      "description": "Fundo próprio da música, de qualquer tipo ({ kind: image|video|generator|color, value, gen, dim, blur, fit }; src/lib/console/backgroundSpec.js). Vai para a camada Fundo quando a música vai ao ar; background_image continua com a imagem para quem ainda lê só ela"
+    },
     "theme_id": {
       "type": "string",
       "default": "",

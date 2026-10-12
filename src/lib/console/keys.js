@@ -92,11 +92,13 @@ export const SHORTCUTS = [
 // the field (liveAction's "blur"), before any of these. The Bible quick jump
 // and the full-screen views (editors, planner) handle their own Esc and defer
 // while anything above them is open.
-// layers: { menu, popover, settings, drawer } (truthy = open)
+// layers: { menu, library, popover, settings, drawer, edit } (truthy = open)
 // -> the layer to close, or "end".
 // "edit" (Ver › Editar layout) is the outermost: Esc leaves the edit mode
-// before it would end the projection.
-export const ESC_ORDER = ["menu", "popover", "settings", "drawer", "edit"];
+// before it would end the projection. The background library opens from a
+// popover, Configurações or a view, always on top: it closes right after a
+// right-click menu.
+export const ESC_ORDER = ["menu", "library", "popover", "settings", "drawer", "edit"];
 export function escapeTarget(layers = {}) {
     return ESC_ORDER.find((k) => Boolean(layers[k])) || "end";
 }

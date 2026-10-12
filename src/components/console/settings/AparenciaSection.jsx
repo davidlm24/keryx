@@ -4,8 +4,7 @@ import { FormRow, Switch } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { TRANSITIONS, TRANSITION_MS, NATURAL_MS, lookDefaults } from "@/lib/console/look";
-import WallpaperPicker from "../WallpaperPicker";
-import { useLibrary } from "../useConsoleData";
+import BgChip from "../library/BgChip";
 import { SAMPLE_SLIDES } from "./sample";
 import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import IdleBlock from "./IdleBlock";
@@ -17,11 +16,9 @@ import IdleBlock from "./IdleBlock";
 // show when nothing is on air and the service has none of its own. On the
 // local profile (User), but the idle look (the live state).
 export default function AparenciaSection({ c }) {
-    const { media } = useLibrary();
     const user = useUser();
     const prefs = usePrefs();
     const [slide, setSlide] = useState(0);
-    const [picking, setPicking] = useState(false);
     const kind = lookDefaults(user).transition || "fade";
     // The length saved, else what this transition lasts by itself; the
     // slider moves a draft, saved once when it is let go.
@@ -66,18 +63,12 @@ export default function AparenciaSection({ c }) {
                     <Btn small onClick={() => setSlide((n) => (n + 1) % SAMPLE_SLIDES.length)} disabled={kind === "cut"} title="Troca o slide do exemplo com a transição escolhida">Ver a transição</Btn>
                 </FormRow>
                 <FormRow k="Fundo de espera padrão">
-                    {wall ? <img className="cfg-wall" src={wall} alt="" /> : <span className="kx-meta">nenhum · as telas mostram o logo</span>}
-                    <Btn small on={picking} onClick={() => setPicking(!picking)}>{wall ? "Trocar…" : "Escolher…"}</Btn>
+                    <BgChip accept={["image"]} title="Fundo de espera padrão" empty="nenhum · as telas mostram o logo" value={wall ? { kind: "image", value: wall } : null}
+                        noneLabel={wall ? "Sem fundo padrão (logo da igreja)" : undefined}
+                        onPick={(spec) => save({ standby_background: spec ? spec.value : "" }, spec ? "Fundo de espera padrão salvo." : "Sem fundo de espera padrão.")} />
                     <span className="kx-meta">as telas mostram quando nada está no ar e o culto não tem fundo próprio</span>
                 </FormRow>
-                {picking && (
-                    <div className="pl-wallpick">
-                        <WallpaperPicker value={wall} media={media} noneLabel="Sem fundo padrão (logo da igreja)"
-                            onNone={() => { setPicking(false); save({ standby_background: "" }, "Sem fundo de espera padrão."); }}
-                            onPick={(url) => { setPicking(false); save({ standby_background: url }, "Fundo de espera padrão salvo."); }} />
-                    </div>
-                )}
-                <IdleBlock c={c} media={media} />
+                <IdleBlock c={c} />
                 <FormRow k="Títulos nas telas">
                     <span className="cfg-launch"><Switch on={prefs.show_item_title} onChange={(on) => save({ show_item_title: on }, on ? "O título do item aparece nas telas." : "Sem o título do item nas telas.")} label="Mostrar o título do item nas telas" /><span className="kx-meta">Título do item nas telas</span></span>
                     <span className="cfg-launch"><Switch on={prefs.youtube_hide_title} onChange={(on) => save({ youtube_hide_title: on }, on ? "A faixa de título do YouTube fica escondida." : "O YouTube volta a mostrar o título sobre o vídeo.")} label="Esconder o título e o canal que o YouTube põe sobre o vídeo" /><span className="kx-meta">Esconder o título do YouTube</span></span>

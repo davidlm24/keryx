@@ -6,6 +6,7 @@ import PlayerBar from "./PlayerBar";
 import MultiView from "./MultiView";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
+import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { captionParts, airFor } from "@/lib/console/caption";
@@ -24,11 +25,12 @@ export function previewDoc(stage, cur, now, stamp) {
         // A preview, never sent: the lock (which refuses goTo) does not apply to it.
         try { return applyOp({ ...cur, locked: false }, "content.goTo", { index: stage.index }, now); } catch { return cur; }
     }
-    const base = { ...emptyState(now), background: cur?.background || null, logo: cur?.logo || emptyState().logo, overlays: cur?.overlays || [] };
+    const base = { ...emptyState(now), background: cur?.background || null, lockedLayers: cur?.lockedLayers || [], logo: cur?.logo || emptyState().logo, overlays: cur?.overlays || [] };
     try {
         if (stage.video) return applyOp(base, "content.show", { title: stage.title, slides: [{ text: "" }] }, now);
         const [op, args] = stageOp(stage);
-        return applyOp(base, op, stamp ? stamp(op, args) : args, now);
+        // As send does it: the item's background replaces the Fundo.
+        return applyWithFundo(base, op, stamp ? stamp(op, args) : args, now);
     } catch {
         return base;
     }
