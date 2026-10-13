@@ -8,7 +8,7 @@ Data: 2026-10-11. Feita olhando os dois programas abertos no PC da igreja (Holyr
 - Nada foi salvo, criado ou projetado de propósito. Dois efeitos colaterais, já desfeitos: no Holyrics, um clique direito selecionou outro tema por alguns minutos (voltou ao original); no SPresenter ficou um item de teste na setlist (criado por você).
 - As senhas de acesso por celular do Holyrics não foram reveladas.
 - O SPresenter estava sem músicas, temas ou setlist, então vi estrutura, não uso real. O Holyrics tem a biblioteca real da igreja.
-- Do KERYX, tudo vem de `CLAUDE.md`, `README.md`, `docs/presenter-layout-proposal-2026-10-09.md` e `CenterPanel.jsx`. Não renderizei o KERYX nesta sessão.
+- Do KERYX, tudo vem de `CLAUDE.md`, `README.md`, a proposta do presenter de 09/10 e `CenterPanel.jsx`. Não renderizei o KERYX nesta sessão.
 
 ## Lado a lado
 
@@ -55,7 +55,7 @@ Data: 2026-10-11. Feita olhando os dois programas abertos no PC da igreja (Holyr
 
 ## A pergunta do player
 
-Hoje o KERYX tem a ordem Programa → Prévia (+ Enviar) → **slot do player** → Próximo. O slot é reservado, então o monitor não se mexe quando um vídeo começa (`CenterPanel.jsx`, `.pslot`; `docs/presenter-layout-proposal-2026-10-09.md`).
+Hoje o KERYX tem a ordem Programa → Prévia (+ Enviar) → **slot do player** → Próximo. O slot é reservado, então o monitor não se mexe quando um vídeo começa (`CenterPanel.jsx`, `.pslot`).
 
 - **Holyrics:** faixa fina acima da prévia, recolhível.
 - **SPresenter:** não é barra fixa, é uma aba (Controle de mídia) no painel de baixo.

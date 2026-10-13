@@ -142,7 +142,7 @@ happens without internet.
 
 **Travar telas and the service clock (decided 2026-10-09, built
 2026-10-10).** The owner dropped the Ensaio | Ao vivo toggle
-(`docs/send-and-live-research-2026-10-09.md`):
+(research of 2026-10-09):
 
 - **Travar telas** replaces Ensaio. It is the live state's `locked` flag,
   set from the Saídas popover and enforced in the main process (`applyOp`),

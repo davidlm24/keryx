@@ -238,7 +238,7 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
      communication (`CommunicationProjectionView` live mode: counted from
      `startedAt`, sequences advanced by the desktop projector), media,
      content over the background layer (image, colour or video loop),
-     overlays (`LiveOverlays`) and the alert on top, black/logo over all.
+     overlays (the renderer's `Overlays`) and the alert on top, black/logo over all.
    - `CommunicationProjection` is a view of the communication layer;
      `BibleMaterialProjection` of the school layer (no `?channel=` needed);
      the alert renderer and the video screen show the live alert.
