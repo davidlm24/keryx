@@ -929,11 +929,6 @@
 .console .tm-song { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; border-top: 1px solid var(--line); padding-top: var(--space-2); }
 .console .tm-song .kx-meta { flex: 1 1 120px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .tm-empty { padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
-/* Aparência › Fundo por dia da semana: one small tile per day. */
-.console .ap-days { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-.console .ap-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px; border-radius: var(--radius-control); font-size: 11px; color: var(--fg-3); }
-.console .ap-day.is-on { color: var(--fg-1); }
-.console .ap-day .bgchip-t { width: 40px; }
 /* The library's Gerados: the background alone, big and moving, while it is edited. */
 .console .lib-big { display: flex; flex-direction: column; gap: var(--space-1); }
 .console .lib-big-screen { width: 100%; max-width: 760px; display: grid; place-items: center; }
@@ -979,3 +974,17 @@
 .console .cfg .tmg-kinds { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .console .cfg .tmg-kind { font-size: 11px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .06em; }
 @media (max-width: 900px) { .console .cfg .tmg-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Visual do culto (library/LookDialog.jsx): over Configurações and the views,
+   under the library that picks a theme for it. */
+.console .look-scrim { z-index: 34; }
+.console .look-dialog { position: absolute; z-index: 35; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(820px, calc(100% - 48px)); max-height: calc(100% - var(--pop-top) - 24px); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
+.console .look-body { flex: 1; min-height: 0; overflow: auto; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.console .look-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.console .look .tmg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); padding: 0; }
+.console .look .tmg-kind { font-size: 11px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .06em; }
+.console .look .tmg-meta { font-size: 11px; }
+.console .look-note { display: flex; align-items: center; gap: var(--space-1); color: var(--warn); }
+.console .pl-look { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) { .console .look .tmg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.console .rund-look { display: flex; justify-content: flex-end; padding: var(--space-1) var(--space-2) 0; }

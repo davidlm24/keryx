@@ -1338,6 +1338,10 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
         result.tlGone = await js("!document.querySelector('.tl-panel') && !document.querySelector('.kx-tl')");
+        // No service yet: the Setlist offers the day's look (Visual de hoje…,
+        // which would start today's setlist, as adding an item does).
+        await click(".kx-tabs button", "Setlist"); // narrower: the Setlist is a Biblioteca tab
+        result.dayLookButton = await waitFor(() => js("[...document.querySelectorAll('.rund-look button')].some((b) => b.textContent.includes('Visual de hoje'))"), 4000);
         // No service yet: dropping a song on the Setlist starts today's setlist.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(400);
@@ -1897,6 +1901,17 @@ async function checkConsole(webContents, { live, outputs }) {
         await js('window.keryxDesktop.db.call("User", "update", ["local", { default_background: null }])');
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background: null }])`);
         await waitFor(() => !live.get().defaultBackground, 5000);
+        // Visual do culto: the service's own theme for songs comes before the
+        // church's Temas padrão (Service.kind_themes, serviceLook.js).
+        const svcTheme = (await js('window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Tema do culto smoke", font_family: "mono", text_color: "#abcdef" }])')).data;
+        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { kind_themes: { lyrics: ${JSON.stringify(svcTheme.id)} } }])`);
+        await sleep(1200);
+        await dblclick(".kx-row", "Canto do console");
+        result.serviceThemeSent = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "mono" && st.text_color === "#abcdef"); }, 5000);
+        if (!result.serviceThemeSent) result.serviceThemeDiag = JSON.stringify((live.get().content || {}).style || null);
+        live.call("clear", {});
+        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { kind_themes: null }])`);
+        await js(`window.keryxDesktop.db.call("ProjectionTheme", "delete", [${JSON.stringify(svcTheme.id)}])`);
         live.call("background.clear", {});
         await js(`window.keryxDesktop.db.call("Media", "delete", [${JSON.stringify(vidRow.id)}])`);
         await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "delete", [r.id]); return true; })()');
@@ -2308,7 +2323,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
-        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia
+        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.dayLookButton && result.serviceThemeSent
         && result.libBig && result.libLive && result.libLiveBack && result.padraoKept && result.padraoAfterEsc && result.padraoService
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc

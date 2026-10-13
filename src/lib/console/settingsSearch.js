@@ -40,7 +40,6 @@ export const SETTINGS_INDEX = [
     e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte, para todo item", ["esmaecer", "deslizar", "corte", "fade", "animação"]),
     e("aparencia", "Duração", "quanto dura a transição", ["ms", "velocidade", "tempo", "transição"]),
     e("aparencia", "Fundo padrão", "o fundo das telas quando nada está no ar (e depois do Esc), se o culto não tiver o seu", ["fundo de espera", "espera", "wallpaper", "imagem", "esc"]),
-    e("aparencia", "Fundo por dia da semana", "um fundo para cada dia (domingo, quarta…), antes do fundo padrão", ["domingo", "quarta", "dia", "semana", "fundo de espera"]),
     e("aparencia", "Títulos nas telas", "o título do item no slide e a faixa de título do YouTube", ["título", "nome da música", "youtube", "canal", "esconder"]),
     e("aparencia", "Tela ociosa", "logo ou preto quando nada está no ar e não há fundo", ["ociosa", "logo", "preto", "nada no ar"]),
     e("aparencia", "Fundos", "a biblioteca de fundos: imagens, vídeos, gerados e cores; nome, categoria, escurecer, desfoque, ocultar",
@@ -62,7 +61,7 @@ export const SETTINGS_INDEX = [
     e("culto", "Dia do culto", "o dia da semana do Novo culto", ["domingo", "dia", "semana"]),
     e("culto", "Horário padrão", "o horário de sempre do culto", ["horário", "hora", "início", "19:00"]),
     e("culto", "Duração padrão", "quanto dura uma música, e qualquer outro item, na setlist", ["duração", "minutos", "música", "tempo"]),
-    e("culto", "Modelos de culto", "renomear e excluir os modelos salvos da setlist", ["modelo", "template", "setlist"]),
+    e("culto", "Modelos de culto", "renomear, excluir e o visual (fundo e temas) que cada modelo traz ao culto", ["modelo", "template", "setlist", "visual", "visual do culto", "tema do culto", "fundo do culto"]),
     e("culto", "Equipe de louvor", "os músicos e cantores para escalar no culto", ["equipe", "músicos", "louvor", "vocal", "banda", "membro"]),
     e("culto", "Previsão do culto", "termina ~ e passou N min na barra do topo", ["previsão", "atraso", "termina", "passou", "fim", "duração"]),
 
