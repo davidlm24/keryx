@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Menu, dialog, ipcMain, screen, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, powerMonitor, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
@@ -10,6 +10,7 @@ const { outputKeyForUrl } = require("./outputs.cjs");
 const { createLogger, captureConsole } = require("./logger.cjs");
 const { applyPendingImport } = require("./archive.cjs");
 const { createUpdater, installedNote } = require("./updater.cjs");
+const { createCheckSchedule } = require("./updateSchedule.cjs");
 const { createNotifications } = require("./notifications.cjs");
 const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
@@ -421,11 +422,14 @@ app.whenReady().then(async () => {
     });
     await network.startIfEnabled();
     // Finds out on launch (at once with Atualizar automaticamente, which also
-    // downloads) and every 6 hours for a PC left on. It never installs by
-    // itself: the console does, from its popup, only with nothing on air.
+    // downloads), every 6 hours for a PC left on, again soon after a check
+    // that failed (a PC that boots before its network does) and when the PC
+    // wakes (electron/updateSchedule.cjs). The bell tells; it never installs
+    // by itself: the console does, from its popup, only with nothing on air.
     if (updater.enabled() && !SMOKE && !DEV_URL) {
-        setTimeout(() => updater.check(), autoUpdates() ? 2000 : 8000);
-        setInterval(() => updater.check(), 6 * 60 * 60 * 1000).unref();
+        const checks = createCheckSchedule({ updater, firstMs: autoUpdates() ? 2000 : 8000 });
+        checks.start();
+        powerMonitor.on("resume", () => checks.resume());
     }
 
     registerDataIpc({

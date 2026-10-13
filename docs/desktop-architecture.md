@@ -723,7 +723,11 @@ Original plan, for reference:
   saves a zip of the recent logs plus system info (versions, displays, output
   assignments, installed Bibles, backup state). Nothing is sent anywhere.
 - **Updates** (`electron/updater.cjs`, electron-updater, from
-  comunidadegerar/keryx-releases): checks on launch and every 6 hours. By
+  comunidadegerar/keryx-releases): checks on launch and every 6 hours
+  (`electron/updateSchedule.cjs`), again 30 s / 2 / 10 / 30 min after a check
+  that failed (a PC that boots before its network does: the log of
+  2026-10-10 shows `ERR_NAME_NOT_RESOLVED` on launch and nothing until the
+  operator pressed "Verificar") and 15 s after the PC wakes. By
   default it only tells (the bell, and "Atualizar agora" under Configurações
   in the KERYX menu); **Atualizar automaticamente** (Configurações › Dados)
   checks at once on launch and downloads what it finds. Every state change is
