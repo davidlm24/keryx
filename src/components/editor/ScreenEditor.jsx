@@ -26,6 +26,13 @@ const SEED = { "/StageView": "factory:palco", "/PastorView": "factory:pastor" };
 // What a design keeps on the row: the drawing alone (no name or category —
 // the screen itself is the identity; owner 2026-10-13).
 const designFields = (d) => { if (!d) return null; const f = layoutFields(normalizeLayout(d)); return { elements: f.elements, background: f.background }; };
+const CATEGORY = { "/StageView": "palco", "/PastorView": "pastor" };
+// The page's ready design, as a fresh draft for this screen.
+const seedFor = (path) => {
+    const cat = CATEGORY[path] || "publico";
+    const f = findLayout(SEED[path] || "factory:projecao", []);
+    return normalizeLayout(f ? { ...duplicateLayout(f), name: "", category: cat, factory: false } : newLayout(cat));
+};
 
 // The screens half of the Editor (its own window, src/pages/Editor.jsx;
 // owner's decision 2026-10-13: each screen owns its design — the layout
@@ -33,8 +40,10 @@ const designFields = (d) => { if (!d) return null; const f = layoutFields(normal
 // canvas edits THIS screen's drawing (OutputPref.design) with the screen's
 // real settings dressing the preview, and the screen's visual settings
 // (content, Mostrar, theme, margins…) live in the same window
-// (OutputPrefCard, inEditor). A screen with no design follows its page
-// ("Desenhar esta tela" starts from the ready design, or from zero).
+// (OutputPrefCard, inEditor). A screen with no design follows its page and
+// opens straight into editing, the canvas seeded with that page's ready
+// design (owner 2026-10-13): the seed is the baseline, so only real edits
+// are "não salvo", and nothing is written until "Salvar a tela".
 export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch }) {
     const prefRows = useOutputPrefRows();
     const church = useChurch();
@@ -47,6 +56,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
 
     const [draft, setDraft] = useState(null);
     const [saved, setSaved] = useState(null);
+    const [own, setOwn] = useState(false); // the row has a design of its own
     const [sel, setSel] = useState(null);
     const [adding, setAdding] = useState(false);
     const [confirm, setConfirm] = useState(null); // "reset" | "discard"
@@ -70,9 +80,11 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
             const legacy = r && !r.design && r.layout_id ? await keryx.entities.ScreenLayout.list().catch(() => []) : [];
             const base = designOf(normalizePref(r), legacy);
             loaded.current = true;
-            setDraft(base ? normalizeLayout({ ...base, factory: false }) : null);
-            setSaved(base ? normalizeLayout(base) : null);
-        }).catch(() => { loaded.current = true; });
+            const start = base ? normalizeLayout({ ...base, factory: false }) : seedFor(path);
+            setDraft(start);
+            setSaved(start);
+            setOwn(Boolean(base));
+        }).catch(() => { if (!alive) return; loaded.current = true; const seed = seedFor(path); setDraft(seed); setSaved(seed); });
         return () => { alive = false; };
     }, [path, isStream]);
 
@@ -107,6 +119,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
             const fields = { design: designFields(draft), layout_id: "" };
             const next = row ? await keryx.entities.OutputPref.update(row.id, fields) : await keryx.entities.OutputPref.create({ screen_path: path, ...fields });
             setSaved(normalizeLayout({ ...draft }));
+            setOwn(true);
             say(`${name} salva. A janela e as telas na rede já mudaram.`);
             setBusy(false);
             return next;
@@ -114,23 +127,17 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
         setBusy(false);
         return null;
     };
-    // Voltar à página padrão: the design goes; the page draws itself again.
+    // Voltar à página padrão: the design goes, the page draws itself again
+    // and the canvas starts over from its ready design.
     const resetToPage = async () => {
         if (confirm !== "reset") { setConfirm("reset"); say(`Clique de novo: ${name} volta ao desenho padrão da página.`); return; }
         setConfirm(null);
         try {
-            if (row) await keryx.entities.OutputPref.update(row.id, { design: null, layout_id: "" });
-            setDraft(null); setSaved(null); setSel(null);
+            if (row && own) await keryx.entities.OutputPref.update(row.id, { design: null, layout_id: "" });
+            const seed = seedFor(path);
+            setDraft(seed); setSaved(seed); setSel(null); setOwn(false);
             say(`${name} voltou à página padrão.`);
         } catch (err) { say(err?.message || "Não foi possível."); }
-    };
-    const startFrom = (kind) => {
-        const cat = path === "/StageView" ? "palco" : path === "/PastorView" ? "pastor" : "publico";
-        if (kind === "seed") {
-            const f = findLayout(SEED[path] || "factory:projecao", []);
-            setDraft(f ? { ...duplicateLayout(f), name: "", category: cat } : newLayout(cat));
-        } else setDraft(newLayout(cat));
-        setSel(null);
     };
     const leave = () => {
         if (dirty && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · clique de novo (ou Esc) para descartar."); return; }
@@ -244,19 +251,12 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
             <div className="kx-gap" />
             <div className="col nv-l" style={{ flex: "0 1 400px", minWidth: 340 }}>
                 <Panel title={<>Tela <span className="kx-count">· {name}{dirty ? " · não salvo" : ""}</span></>} actions={<>
-                    {draft && <Btn small kind={confirm === "reset" ? "air" : ""} onClick={resetToPage}>{confirm === "reset" ? "Voltar mesmo" : "Voltar à página padrão"}</Btn>}
+                    {draft && (own || dirty) && <Btn small kind={confirm === "reset" ? "air" : ""} onClick={resetToPage}>{confirm === "reset" ? "Voltar mesmo" : "Voltar à página padrão"}</Btn>}
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
-                    <div className="nv-scroll">
+                    <div className="nv-scroll cfg">
                         {isStream && <div className="listhead"><span className="kx-meta">A Transmissão é uma legenda sobre a live, sem canvas: só os ajustes abaixo.</span></div>}
-                        {!isStream && !draft && (
-                            <div className="listhead" style={{ flexWrap: "wrap", gap: 6 }}>
-                                <span className="kx-meta">{name} usa a página padrão. Desenhe para mover e redimensionar cada elemento.</span>
-                                <Btn small kind="brand" onClick={() => startFrom("seed")}><Icon name="edit" />Desenhar esta tela</Btn>
-                                <Btn small onClick={() => startFrom("zero")}>Começar do zero</Btn>
-                            </div>
-                        )}
-                        {draft && <>
+                        {!isStream && draft && <>
                         <div className="frm nv-frm">
                             <span className="k">Fundo</span>
                             <span className="nv-inline">
@@ -377,8 +377,8 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                     <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {isStream || !draft ? (
-                        <Empty icon={isStream ? "text" : "monitor"} title={isStream ? "Sem canvas" : "A página padrão"}>
-                            {isStream ? "A legenda da Transmissão segue os ajustes ao lado." : "Esta tela desenha a própria página. Use \"Desenhar esta tela\" para um desenho próprio."}
+                        <Empty icon={isStream ? "text" : "monitor"} title={isStream ? "Sem canvas" : "Abrindo a tela…"}>
+                            {isStream ? "A legenda da Transmissão segue os ajustes ao lado." : null}
                         </Empty>
                     ) : (
                         <div className="le-stage">

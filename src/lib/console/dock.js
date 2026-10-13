@@ -32,13 +32,15 @@ const PX_MAX = 4000;
 export const NEW_PX = 320;
 
 // The smallest size each module is usable at, its panel's header included.
+// The Slides keep a slide's lines whole down to 300 px (layout.js LIMITS).
 export const MODULES = {
     lib: { name: "Biblioteca", minW: 200, minH: 160 },
-    slides: { name: "Slides", minW: 200, minH: 140 },
+    slides: { name: "Slides", minW: 300, minH: 140 },
     programa: { name: "Programa", minW: 320, minH: 200, required: true },
     previa: { name: "Prévia", minW: 220, minH: 200, required: true },
-    setlist: { name: "Setlist", minW: 180, minH: 120 },
-    camadas: { name: "Camadas", minW: 280, minH: 160 },
+    abas: { name: "Painel de abas", minW: 220, minH: 140 },
+    setlist: { name: "Setlist", minW: 220, minH: 120 },
+    camadas: { name: "Camadas", minW: 280, minH: 120 },
     player: { name: "Player", minW: 280, minH: 36, home: "programa" },
 };
 export const MODULE_IDS = Object.keys(MODULES);
@@ -155,29 +157,35 @@ export function normalizeDock(saved) {
 }
 
 // The dock that matches the console before Editar disposição became a tree
-// (the 2026-10-13 two bands), from the layout saved then: the column order,
-// the hidden modules and the widths. `width`: the console's grid width, to
-// turn the Prévia's percentage into pixels (the band was a share of it).
+// (the four columns of the 2026-10-13 console audit), from the layout saved
+// then: the column order, the order of Camadas and the Setlist in the right
+// column, the hidden modules and the sizes. `width`: the console's grid
+// width, to turn the Prévia's percentage into pixels (it was a share of the
+// centre).
 export function fromArrangement(layout = {}, { width = 1908 } = {}) {
     const hidden = layout?.hidden || {};
     const px = (k, d) => pxOrNull(layout?.[k]) ?? d;
     const libW = px("libW", 260);
     const slidesW = px("slidesW", 300);
     const rightW = px("rightW", 320);
-    let band = width;
-    if (!hidden.lib) band -= libW + G;
-    if (!hidden.slides) band -= slidesW + G;
-    const pct = Number.isFinite(layout?.prevPct) ? layout.prevPct : 30;
-    const prevW = Math.round(Math.min(900, Math.max(MODULES.previa.minW, (band * pct) / 100)));
+    const camadasH = px("camadasH", 360);
+    let centre = width - rightW - G;
+    if (!hidden.lib) centre -= libW + G;
+    if (!hidden.slides) centre -= slidesW + G;
+    const pct = Number.isFinite(layout?.prevPct) ? layout.prevPct : 44;
+    const prevW = Math.round(Math.min(900, Math.max(MODULES.previa.minW, (centre * pct) / 100)));
     // The bottom band was as tall as the Prévia's column: its 16:9 monitor,
     // Enviar ao ar and the panel's header and padding.
     const bottomH = Math.round((prevW * 9) / 16 + 84);
-    const top = hidden.camadas ? group(["programa"]) : split("row", [group(["programa"]), group(["camadas"])], [null, rightW]);
-    const live = split("col", [top, split("row", [group(["previa"]), group(["setlist"])], [prevW, null])], [null, bottomH]);
+    const live = split("col", [group(["programa"]), split("row", [group(["previa"]), group(["abas"])], [prevW, null])], [null, bottomH]);
+    // Camadas over the Setlist (or under it), Camadas with its own height.
+    const stack = normalizeOrder(layout?.stacks?.side, ["camadas", "roteiro"]).filter((id) => id !== "camadas" || !hidden.camadas);
+    const side = split("col", stack.map((id) => group([id === "roteiro" ? "setlist" : id])), stack.map((id) => (id === "camadas" ? camadasH : null)));
     const cols = [];
     const sizes = [];
     for (const id of normalizeOrder(layout?.order?.culto, DEFAULT_ORDER.culto)) {
         if (id === "live") { cols.push(live); sizes.push(null); }
+        else if (id === "side") { cols.push(side); sizes.push(rightW); }
         else if (!hidden[id]) { cols.push(group([id])); sizes.push(id === "lib" ? libW : slidesW); }
     }
     return normalizeDock({ tree: split("row", cols, sizes), hidden: ["lib", "slides", "camadas"].filter((id) => hidden[id]) });

@@ -142,14 +142,15 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
     );
 }
 
-// The bottom band, a full row under Programa and Camadas (owner's decision
-// 2026-10-13): `previa` (PreviaPanel) then `setlist` in the rest (Console.jsx
-// builds both). The band is as tall as the Prévia's column; only the
-// Setlist's list scrolls. The Prévia's width is the operator's (the
-// splitter, % of the band, saved with the layout; it works in pixels, so
-// the band's width is kept here). Only the arrangement: what each module
-// shows is its own.
-export function PreviewBand({ previa = null, setlist = null, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
+// The centre's bottom band, under the Programa and no wider than it (the
+// console audit, 2026-10-13): `previa` (PreviaPanel), then `side` in the
+// rest — the tabs panel (TabsPanel) in the wide tier, the Setlist where
+// there is no right column (Console.jsx builds both). The band is as tall
+// as the Prévia's column; only the side's body scrolls. The Prévia's width
+// is the operator's (the splitter, % of the band, saved with the layout; it
+// works in pixels, so the band's width is kept here). Only the arrangement:
+// what each module shows is its own.
+export function PreviewBand({ previa = null, side = null, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
     const bandRef = useRef(null);
     const [bandW, setBandW] = useState(0);
     useEffect(() => {
@@ -165,16 +166,16 @@ export function PreviewBand({ previa = null, setlist = null, prevPct = DEFAULT_L
         <div className="band-bottom" data-live-keys="" tabIndex={-1} ref={bandRef} style={{ "--prev": pct / 100 }}>
             {previa}
             {previa && onPrevPct && bandW > 0 && <Split size={prevPx} sign={1} onSize={(px) => onPrevPct(clampSize("prevPct", (px / bandW) * 100))} onReset={() => onPrevPct(DEFAULT_LAYOUT.prevPct)} clamp={(px) => px} />}
-            {setlist}
+            {side}
         </div>
     );
 }
 
 // The Prévia module: the prepared stage as Projeção will show it, with
 // Enviar ao ar right under the monitor, what sending will do when it is not
-// obvious, and the teacher notes. `className` places it (PreviewBand's
-// bb-prev today).
-export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, className = "" }) {
+// obvious, and the teacher notes — unless the Notas tab is on screen
+// (`notesInTab`). `className` places it (PreviewBand's bb-prev today).
+export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notesInTab = false, className = "" }) {
     const { cur, prev, now, locked, stamp } = c;
     // Built with a time fixed per prepared stage, never the ticking clock:
     // a new startedAt each second replayed the slide's transition (the
@@ -219,7 +220,7 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, class
                 {SEND_LABEL}
             </Btn>
             {note && <div className="kx-meta sendnote">{note}</div>}
-            <TeacherNotes prev={prev} cur={cur} />
+            {!notesInTab && <TeacherNotes prev={prev} cur={cur} />}
         </Panel>
     );
 }

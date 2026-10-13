@@ -43,11 +43,13 @@ import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialo
 import LookDialog, { LookContext } from "@/components/console/library/LookDialog";
 import { lookFields, lookOf, templateLookFields } from "@/lib/console/serviceLook";
 import { useServiceTemplates } from "@/components/console/useConsoleData";
-import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew } from "@/components/console/Popovers";
+import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew, TabsMenu } from "@/components/console/Popovers";
+import TabsPanel from "@/components/console/TabsPanel";
+import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor, densityOf, restoreArrangement } from "@/lib/console/layout";
-import { cultoColumns, withSplits, moveColumn, moveTo, CARD_NAMES } from "@/lib/console/arrange";
+import { cultoColumns, withSplits, stackSplit, moveColumn, moveTo, CARD_NAMES } from "@/lib/console/arrange";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { ColumnBar, StackLead, EditBanner, DropLine, usePointerReorder } from "@/components/console/Arrange";
@@ -167,7 +169,8 @@ export default function Console() {
     const [libTab, setLibTab] = useState(() => {
         try { return new URLSearchParams(window.location.search).get("lib") === "avisos" ? "avisos" : "letras"; } catch { return "letras"; }
     });
-    const openNotices = useCallback(() => { setOpen(null); setView(null); setEnvState("culto"); setLibTab("avisos"); }, []);
+    // The tab in front of the panel beside the Prévia (its tabs: layout.tabs).
+    const [panelTab, setPanelTab] = useState("notas");
     const [drawer, setDrawer] = useState(false);
     // Ver › Editar layout: moving the columns and stacked cards (arrange.js).
     // A view (editor, planner, ...) takes the whole grid: editing ends.
@@ -194,7 +197,6 @@ export default function Console() {
     const mainRef = useRef(null);
     const centerRef = useRef(null);
     const [tier, setTier] = useState(() => tierFor(window.innerWidth - 12));
-    const compact = tier !== "wide";
 
     useEffect(() => {
         keryx.auth.me().then((u) => { const p = u?.email || u?.full_name || ""; setProfile(p); setLayoutState(loadLayout(p)); }).catch(() => {});
@@ -217,6 +219,21 @@ export default function Console() {
         if (Object.keys(patch).length) updateUser(patch).catch(() => say("Não foi possível salvar o layout."));
     }, [profile, prefs.console_density, prefs.console_hidden_modules, say]);
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT }); c.say("Layout padrão restaurado."); };
+    // The trimmable tab rows (panelTabs.js): what each shows, the (+) list.
+    const tabLists = layout.tabs || DEFAULT_TABS;
+    const setTabList = (row, list) => setLayout({ ...layout, tabs: { ...tabLists, [row]: list } });
+    const toggleTabIn = (row, id) => {
+        const next = toggleTab(row, tabLists[row], id);
+        if (next.length === tabLists[row].length && next.every((x, i) => x === tabLists[row][i])) { c.say("Pelo menos uma aba fica à vista."); return; }
+        setTabList(row, next);
+    };
+    const libTabNow = activeTab("lib", tabLists.lib, libTab);
+    const panelTabNow = activeTab("panel", tabLists.panel, panelTab);
+    // KERYX › Avisos: the Biblioteca on its Avisos tab, shown again if it was unchecked.
+    const openNotices = () => {
+        setOpen(null); setView(null); setEnvState("culto"); setLibTab("avisos");
+        if (!tabLists.lib.includes("avisos")) setTabList("lib", showTab("lib", tabLists.lib, "avisos"));
+    };
 
     const { services, items } = useRundown(serviceId);
     useEffect(() => { if (!serviceId && services.length) setServiceId(pickDefaultService(services)?.id || null); }, [services, serviceId]);
@@ -722,12 +739,16 @@ export default function Console() {
     // "Voltar ao anterior" opens over the Programa, wherever its column is.
     const histLeft = open === "hist" ? Math.round(centerRef.current?.getBoundingClientRect().left ?? 6) : 0;
     // The columns on screen come from the layout's order (Ver › Editar
-    // layout; src/lib/console/arrange.js): wide, a column with Camadas and
-    // the Setlist stacked (each can be hidden in Ver); narrower, the Setlist
-    // is the Biblioteca's first tab and Camadas a drawer opened from the
-    // Programa; narrow, Biblioteca and Slides share one column.
+    // layout; src/lib/console/arrange.js): wide, a right column with Camadas
+    // over the Setlist, full height (the console audit, 2026-10-13; Camadas
+    // can be hidden in Ver, the Setlist never); narrower, Camadas is a
+    // drawer opened from the Programa and the Setlist sits beside the
+    // Prévia; narrow, Biblioteca and Slides share one column.
     const cols = cultoColumns({ tier, hidden: layout.hidden, order: layout.order.culto, stacks: layout.stacks });
-    const camadasRight = tier === "wide" && !layout.hidden.camadas;
+    const sideCards = cols.find((col) => col.id === "side")?.cards || [];
+    const setlistRight = sideCards.includes("roteiro");
+    const camadasRight = sideCards.includes("camadas");
+    const sideSplit = stackSplit(sideCards, "camadas", layout.collapsed);
     // Camadas on screen: no drawer left open behind it (Esc would close that first).
     useEffect(() => { if (camadasRight) setDrawer(false); }, [camadasRight]);
     // Editing: each column's bar moves it (◀ ▶ or a drag); stacked cards
@@ -735,9 +756,10 @@ export default function Console() {
     const moveCol = (id, to) => setLayout({ ...layout, order: { ...layout.order, culto: moveColumn(layout.order.culto, cols, id, to) } });
     const colDrag = usePointerReorder({ axis: "x", ids: cols.map((col) => col.id), find: (id) => mainRef.current?.querySelector(`:scope > [data-col="${id}"]`), onDrop: moveCol });
     const moveCard = (stack, id, to) => setLayout({ ...layout, stacks: { ...layout.stacks, [stack]: moveTo(layout.stacks[stack], id, to) } });
-    const stackCards = { source: cols.find((col) => col.id === "source")?.cards || [] };
+    const stackCards = { side: sideCards, source: cols.find((col) => col.id === "source")?.cards || [] };
+    const sideDrag = usePointerReorder({ axis: "y", ids: stackCards.side, find: (id) => mainRef.current?.querySelector(`[data-col="side"] > .arr-card-${id}`), onDrop: (id, at) => moveCard("side", id, at) });
     const sourceDrag = usePointerReorder({ axis: "y", ids: stackCards.source, find: (id) => mainRef.current?.querySelector(`[data-col="source"] > .arr-card-${id}`), onDrop: (id, at) => moveCard("source", id, at) });
-    const stackDrag = { source: sourceDrag };
+    const stackDrag = { side: sideDrag, source: sourceDrag };
     // The grip and ▲ ▼ of a card stacked with others, while editing.
     const leadOf = (stack, id) => {
         const list = stackCards[stack] || [];
@@ -745,25 +767,40 @@ export default function Console() {
         const i = list.indexOf(id);
         return <StackLead name={CARD_NAMES[id]} index={i} count={list.length} onMove={(d) => moveCard(stack, id, i + d)} handle={stackDrag[stack].handleProps(id)} />;
     };
-    const stackOf = (id) => (stackCards.source.includes(id) ? "source" : null);
-    // The Setlist beside the Prévia (owner's decision 2026-10-13), a panel
-    // like its neighbours since 2026-10-13's spacing pass: the card's old
-    // header (title, count, Planejar, +) and the whole rundown, scrolled to
-    // the item in hand (Rundown). PreviewBand slots it into the bottom band.
-    const setlistArea = (
-        <Panel className="bb-side" title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
+    const stackOf = (id) => (stackCards.side.includes(id) ? "side" : stackCards.source.includes(id) ? "source" : null);
+    // The Setlist: under Camadas in the right column (wide), else beside the
+    // Prévia in place of the tabs panel — never out of reach. Its header
+    // (title, count, Planejar, +) and the whole rundown, scrolled to the
+    // item in hand (Rundown).
+    const setlistPanel = (
+        <Panel className={setlistRight ? "" : "bb-side"} title="Setlist" lead={leadOf("side", "roteiro")} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
             actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} /></>}>
             <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
         </Panel>
     );
+    // Camadas over the Setlist: its own height (camadasH, the splitter
+    // between them); collapsed, the Setlist takes the column.
     const camadasPanel = (
-        <Panel title="Camadas" count="o que está no ar" style={sideCol("rightW", layout.rightW)}>
+        <Panel title="Camadas" lead={leadOf("side", "camadas")} count="o que está no ar" collapsed={layout.collapsed.camadas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })}
+            style={sideSplit ? { flex: `0 1 ${layout.camadasH}px` } : undefined}>
             <Layers c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} />
         </Panel>
     );
+    // The panel beside the Prévia, wide tier: the tabs the operator checked
+    // in its (+) (Notas, Aviso rápido, Timers, Ferramentas, Esteve no ar).
+    const panelTabsShown = shownTabs("panel", tabLists.panel);
+    const panelOnScreen = setlistRight;
+    const panelHas = panelOnScreen ? Object.fromEntries(tabLists.panel.map((id) => [id, true])) : {};
+    const prepare = (s) => c.setPrev(s);
+    const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
+    const tabsPanel = (
+        <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
+            items={items} prevItemId={prevItemId} airItemId={airItemId} onPrepare={prepare} onGo={prepareAndSend} />
+    );
     const libraryPanel = (
         <Panel title="Biblioteca" lead={leadOf(stackOf("lib"), "lib")} collapsed={layout.collapsed.lib} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, lib: !layout.collapsed.lib } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <Library c={c} data={data} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
+            <Library c={c} data={data} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} onTabsMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} tabsMenuOpen={open === "tabs:lib"} elsewhere={panelHas}
+                onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
         </Panel>
     );
     const slidesPanel = (
@@ -771,6 +808,7 @@ export default function Console() {
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
     );
+    const cardPanel = { lib: libraryPanel, slides: slidesPanel, camadas: camadasPanel, roteiro: setlistPanel };
     const splitFor = (key, sign = 1, horizontal = false, id = key) => (
         <Split key={`split-${id}`} horizontal={horizontal} size={layout[key]} sign={sign} onSize={(v) => setLayout({ ...layout, [key]: v })} onReset={() => setLayout({ ...layout, [key]: DEFAULT_LAYOUT[key] })} clamp={(v) => clampSize(key, v)} />
     );
@@ -816,9 +854,10 @@ export default function Console() {
                 ] })} />
         </Panel>
     );
-    // The Prévia, Enviar ao ar under its monitor.
+    // The Prévia, Enviar ao ar under its monitor (the teacher notes too,
+    // unless the Notas tab is on screen).
     const previaPanel = (
-        <PreviaPanel c={c} logoUrl={logoUrl} className="bb-prev"
+        <PreviaPanel c={c} logoUrl={logoUrl} className="bb-prev" notesInTab={panelOnScreen && tabLists.panel.includes("notas")}
             onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
             onPrevMenu={(e) => openMenu(e, { title: "Prévia", items: [
                 { label: "Limpar a prévia", icon: "x", disabled: !c.prev, onSelect: () => c.setPrev(null) },
@@ -828,11 +867,11 @@ export default function Console() {
     // Every module of the culto environment, each built apart from where it
     // goes (the ids are src/lib/console/dock.js's MODULES). Today's
     // arrangement places them below; the player rides inside the Programa.
-    const modulePanels = { lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, setlist: setlistArea, camadas: camadasPanel, player: playerSlot };
-    // The bottom band: the Prévia and the Setlist, one full row under
-    // Programa and Camadas (owner's decision 2026-10-13).
+    const modulePanels = { lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, abas: tabsPanel, setlist: setlistPanel, camadas: camadasPanel, player: playerSlot };
+    // The centre's bottom band: the Prévia and, beside it, the tabs panel —
+    // or the Setlist where there is no right column.
     const previewBand = (
-        <PreviewBand previa={modulePanels.previa} setlist={modulePanels.setlist} prevPct={layout.prevPct} onPrevPct={(v) => setLayout({ ...layout, prevPct: v })} />
+        <PreviewBand previa={modulePanels.previa} side={panelOnScreen ? modulePanels.abas : modulePanels.setlist} prevPct={layout.prevPct} onPrevPct={(v) => setLayout({ ...layout, prevPct: v })} />
     );
 
     // One column on screen. While editing, a bar on top moves it.
@@ -841,23 +880,24 @@ export default function Console() {
         const bar = editing ? <ColumnBar name={col.name} index={i} count={cols.length} onMove={(d) => moveCol(col.id, i + d)} handle={colDrag.handleProps(col.id)} moving={colDrag.drag?.id === col.id} /> : null;
         const moving = colDrag.drag?.id === col.id ? "is-moving" : "";
         if (col.id === "live") {
-            // The centre block, to the screen's right edge: Programa |
-            // Camadas on top, then the Prévia + Setlist row under both.
+            // The centre: the Programa on top, then the Prévia and the panel
+            // beside it (the band ends at the centre's edge).
             return (
                 <div key="live" data-col="live" className={`col center ${moving}`} ref={centerRef}>
                     {bar}
-                    <div className="band-top">
-                        {modulePanels.programa}
-                        {camadasRight && <>{splitFor("rightW", -1)}{modulePanels.camadas}</>}
-                    </div>
+                    <div className="band-top">{modulePanels.programa}</div>
                     {previewBand}
                 </div>
             );
         }
-        // A stack (narrow: Biblioteca and Slides): the cards in their order.
-        if (col.id === "source") {
-            const cards = col.cards.map((id) => React.cloneElement(modulePanels[id], { key: id, className: `arr-card arr-card-${id}` }));
-            return <div key={col.id} data-col={col.id} className={`col source ${moving}`} style={{ ...sideCol(col.widthKey, layout[col.widthKey]), gap: "var(--gutter)" }}>{bar}{cards}</div>;
+        // A stack (wide: Camadas and the Setlist; narrow: Biblioteca and
+        // Slides): the cards in their order. One gutter between them: the
+        // splitter, else the cards' own margin (console.css).
+        if (col.id === "side" || col.id === "source") {
+            const cards = col.cards.map((id) => React.cloneElement(cardPanel[id], { key: id, className: `arr-card arr-card-${id}` }));
+            // The splitter beside Camadas: below it when it is on top, else above it.
+            if (col.id === "side" && sideSplit) { const at = col.cards.indexOf("camadas"); cards.splice(sideSplit.sign === 1 ? at + 1 : at, 0, splitFor("camadasH", sideSplit.sign, true)); }
+            return <div key={col.id} data-col={col.id} className={`col ${col.id} ${moving}`} style={sideCol(col.widthKey, layout[col.widthKey])}>{bar}{cards}</div>;
         }
         return <div key={col.id} data-col={col.id} className={`col ${moving}`} style={sideCol(col.widthKey, layout[col.widthKey])}>{bar}{modulePanels[col.id]}</div>;
     };
@@ -919,6 +959,7 @@ export default function Console() {
                 {!view && env === "culto" && withSplits(cols).map((it) => (it.type === "split" ? splitFor(it.key, it.sign, false, it.col) : renderCol(it.col)))}
             </div>
             {editing && <DropLine drag={colDrag.drag} axis="x" />}
+            {editing && <DropLine drag={sideDrag.drag} axis="y" />}
             {editing && <DropLine drag={sourceDrag.drag} axis="y" />}
 
             {/* Configurações: a window over the console or the view behind it. */}
@@ -944,6 +985,7 @@ export default function Console() {
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."))} onSettings={openSettings} />
+            <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />

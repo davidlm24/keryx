@@ -195,25 +195,41 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   environment moves to a free arrangement, a tree of splits and tab groups
   in `src/lib/console/dock.js` (tested; `fromArrangement` migrates the old
   layout); every module is built apart from where it goes (`modulePanels`
-  in Console.jsx: Programa, `PreviaPanel`, Setlist, Camadas, `PlayerSlot`,
-  Biblioteca, Slides). **The centre is two bands**
-  (owner's decision 2026-10-13: left = content, middle = order and
-  projection/media control, right = the projection's look): Biblioteca and
-  Slides are whole columns; the rest, to the screen's right edge, is the
-  `live` column — on top the Programa (CenterPanel: the monitor or the
-  Multiview, and the player **always visible**, dimmed while idle) beside
-  the Camadas panel (width `rightW`, wide tier only; else the drawer);
-  below, **one full row** (`PreviewBand`), **two panels like their
-  neighbours** (2026-10-13 spacing pass): the Prévia panel (caption in its
-  header like the Programa's; width `prevPct` of the band, default 30,
-  limits 18–45) with **Enviar ao ar inside it, right under the monitor**
-  and the teacher notes, then the Setlist panel in the rest (Console.jsx
-  builds `setlistArea`; the panel body scrolls, the list follows the item
-  on air). **One gutter everywhere**: `.console` overrides `--gutter` to
-  6px and the bands use `gap: 0` — the splitter IS the gap, as in
-  `.main`; don't add a second gap beside a splitter.
-  There is no `side` column or `camadasH` any more (arrange.js: culto =
-  lib, slides, live; an old save normalizes in silence). The old
+  in Console.jsx: Programa, `PreviaPanel`, the tabs panel, Setlist,
+  Camadas, `PlayerSlot`, Biblioteca, Slides). **Four columns** (the console audit,
+  owner 2026-10-13, which replaced the two-band centre of #136/#138):
+  Biblioteca and Slides are whole columns; the **centre** (`live`) is the
+  Programa on top (CenterPanel: the monitor or the Multiview, and the
+  player **always visible**, dimmed while idle) and below it one row
+  (`PreviewBand`) that **ends at the centre's edge**: the Prévia panel
+  (caption in its header like the Programa's; width `prevPct` of the row,
+  default 44, limits 18–45) with **Enviar ao ar inside it, right under the
+  monitor**, then the **tabs panel** (`TabsPanel.jsx`); the **right
+  column** (`side`, width `rightW`, wide tier only) is **Camadas over the
+  Setlist, full height**, with a height splitter between them (`camadasH`,
+  default 360: the Setlist gets most of the column; `stackSplit`; Camadas
+  collapses, and Ver can hide it — never the Setlist). Medium and narrow
+  tiers have no right column: Camadas is a drawer and the **Setlist sits
+  beside the Prévia in place of the tabs panel** (never out of reach).
+  Old saves normalize in silence (culto order lib, slides, live, side;
+  stack side = camadas, roteiro). **The tabs panel and the Biblioteca end
+  their tab row in a (+)** that lists every tab with a check mark
+  (`TabsMenu` in Popovers.jsx, as Ver lists the modules): checked = shown,
+  in the list's order, at least one always, "Restaurar abas padrão" at the
+  bottom; saved per computer as `layout.tabs` (`src/lib/console/panelTabs.js`,
+  tested; "Restaurar disposição" resets it). The panel's tabs reuse what
+  exists, no projection logic of their own: **Notas** (the
+  `ServiceItem.notes` of the item in the Prévia / on air, and the Escola
+  bíblica teacher notes — these sit under Enviar ao ar when the Notas tab
+  is not on screen), **Aviso rápido**, **Timers** (`QuickTools.jsx`; the
+  defaults), **Ferramentas** and **Esteve no ar** (the "Voltar ao
+  anterior" history). Where the panel shows the Aviso rápido or the
+  Ferramentas, Biblioteca › Avisos leaves them out (`elsewhere`); the
+  Biblioteca's search-row "+" stays "add content". **One gutter
+  everywhere**: `.console` overrides `--gutter` to 6px and the rows and
+  stacks use `gap: 0` — the splitter IS the gap, as in `.main` (two cards
+  stacked without one keep the gutter as a margin); don't add a second gap
+  beside a splitter. The old
   Próximo/Depois lines, the Setlist side card and the Biblioteca's compact
   Setlist tab are gone. Setlist sections are ServiceItems of type `SECTION`: headers that
   take no time and never go on air — use `playableItems`/`plan` from
@@ -233,7 +249,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Service). Screens and the console's monitors render with
   `src/components/screen/ScreenRenderer.jsx` — one component, sized in
   container units — so a preview is the output; the Programa monitor plays
-  videos muted (`motion`). Keys go through `src/lib/console/keys.js` (with
+  videos muted (`motion`). The player's eye ("Tirar o vídeo · o som
+  continua", as in Holyrics) moves a video off the projector into the
+  audio channel at the same second (`media.toAudio`; "Mostrar o vídeo" is
+  `audio.toMedia`; `videoSwap` in `src/lib/console/player.js`, no
+  YouTube). Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background library, a popover, then
   Configurações, then the Camadas drawer; views defer while a `.scrim` is
@@ -369,9 +389,15 @@ nunca em NETWORK_SCREENS). O rodapé alterna **Temas | Telas**:
     (`EDITOR_SCREENS`), o canvas edita o design DELA com os ajustes reais
     da própria tela vestindo a prévia (prefState + kp-out, ou só a Escala
     no Palco/Pastor), e os ajustes visuais moram na mesma janela
-    (`OutputPrefCard inEditor`). Sem design: "Desenhar esta tela" parte do
-    desenho pronto (`factory:palco`/`pastor`/`projecao`); "Voltar à página
-    padrão" zera. A Transmissão não tem canvas, só os ajustes.
+    (`OutputPrefCard inEditor`; a coluna é `.nv-scroll.cfg`, então o
+    card tem o estilo das Configurações). **Clicar numa tela já é editar**
+    (owner 2026-10-13): sem design, o canvas abre semeado com o desenho
+    pronto da página (`seedFor`: `factory:palco`/`pastor`/`projecao`),
+    a semente é a base (`saved`), então só mudança real é "não salvo" e
+    nada se grava sem "Salvar a tela"; "Voltar à página padrão" (cabeçalho,
+    com design próprio ou mudanças) zera a linha e semeia de novo. Não há
+    mais "Desenhar esta tela"/"Começar do zero". A Transmissão não tem
+    canvas, só os ajustes.
   - um TEMA (`ThemeEditor.jsx`): o ÚNICO lugar em que um tema se edita —
     Configurações › Temas é só a lista; Camadas ajusta o ar e captura com
     "Salvar como novo". `text_align`/`text_position` em `EXTRA_KEYS`
@@ -379,7 +405,14 @@ nunca em NETWORK_SCREENS). O rodapé alterna **Temas | Telas**:
     a caixa do canvas mapeia por `src/lib/console/themeBox.js` (testado).
 A ScreenRenderer `fill` is `position: fixed`: inside a canvas or preview
 its wrapper needs `contain: layout paint` (`.le-screen`, `.cfg-prev`).
-Every screen is landscape. A new kind of element is an entry in
+Every screen is landscape: every still of an output (Telas e saídas'
+cards, the Editor's canvas) is 16:9, the Pastor's included; only the
+real /PastorView page turns with a tablet held upright (its container
+query). **The Slides column has a minimum width** (`LIMITS.slidesW`, 300
+px, `layout.js`, tested): squeezed, a 2-line verse wrapped into 3 and
+looked split wrong; the splitter clamps there and the narrow tier's
+Biblioteca-over-Slides column takes `slidesW` too. Long lines still wrap,
+never an ellipsis. A new kind of element is an entry in
 `ELEMENT_TYPES` (with its `group`) plus its case in `elementText` or the
 renderer's `Body`. Generated backgrounds are the next step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa header, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 
