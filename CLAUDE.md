@@ -205,8 +205,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   side of another (splits) or its middle (tabs), a click on the name opens
   "Mover para…", × puts it in the tray (the edit banner). The Programa, the
   Prévia and the Setlist never go to the tray; the player rides under the
-  Programa until it is placed (× sends it home). The tray follows Ver's
-  module switches (a church preference, `syncHidden`). Splits have one
+  Programa until it is placed (× sends it home). The tray is this
+  computer's (owner 2026-10-13): Ver's and Configurações › Console's module
+  switches move a module in or out of it (`uiLayout`/`setUiLayout` in
+  Console.jsx); the church's old `console_hidden_modules` only seeds a
+  console whose arrangement was never changed, and nothing writes it any
+  more. Splits have one
   flexible child and fixed pixel sizes (`allocate`); what cannot fit side
   by side joins as tabs, a pair at a time, the Programa last (`fitDock`) —
   that replaced the width tiers' arrangements. A new module is an entry in

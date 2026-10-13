@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, syncHidden, defaultSize, setActive, resizeChild, fitDock, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, PLAYER_SLOT } from "./dock.js";
+import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, defaultSize, setActive, resizeChild, fitDock, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, PLAYER_SLOT } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The console of the 2026-10-13 audit: Biblioteca | Slides | Programa over
@@ -138,16 +138,6 @@ test("back from the tray: to the default place, beside what is on screen", () =>
     const both = hideModule(hideModule(d, "lib"), "slides");
     assert.equal(leaves(returnModule(both, "lib").tree)[0], "lib");
     assert.deepEqual(returnModule(d, "lib"), d, "not in the tray: nothing moves");
-});
-
-test("the tray follows the modules hidden in Ver", () => {
-    const ids = ["lib", "slides", "camadas"];
-    const off = syncHidden(defaultDock(), { lib: true, camadas: true }, ids);
-    assert.deepEqual(off.hidden, ["lib", "camadas"]);
-    assert.deepEqual(syncHidden(off, {}, ids), defaultDock());
-    // A module out of that list keeps its own tray.
-    const abas = hideModule(defaultDock(), "abas");
-    assert.deepEqual(syncHidden(abas, {}, ids).hidden, ["abas"]);
 });
 
 test("switching tabs and resizing", () => {

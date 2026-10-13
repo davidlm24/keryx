@@ -49,7 +49,7 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreEnv } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, syncHidden, fitDock, moveModules, hideModule, canTray, leaves, pathOf } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, moveModules, hideModule, returnModule, canTray, leaves, pathOf } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
@@ -66,8 +66,10 @@ import { readChapter } from "@/lib/bibleText";
 import { formatReference, parseReference } from "@/lib/bibleBooks";
 import { remoteState, remoteSay, passagePreview } from "@/lib/console/remote";
 
-// The modules Ver (and Configurações › Console) show or hide: the church's
-// preference; in the dock, their place in or out of the tray.
+// The modules Ver (and Configurações › Console) show or hide: in the culto's
+// dock, in or out of the tray, on this computer (owner 2026-10-13). The
+// church's old preference (console_hidden_modules) only seeds a console
+// whose arrangement was never changed.
 const VER_MODULES = VER_LIST.map(([id]) => id);
 
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
@@ -231,7 +233,9 @@ export default function Console() {
         if (Object.keys(patch).length) updateUser(patch).catch(() => say("Não foi possível salvar o layout."));
     }, [profile, prefs.console_density, prefs.console_hidden_modules, say]);
     // Everything back to the console's own, but the named arrangements stay.
-    const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT, dockPresets: layout.dockPresets || [] }); c.say("Layout padrão restaurado."); };
+    // Everything back to the console's own (every module on screen), but the
+    // named arrangements stay; the church's preferences are not touched.
+    const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT, hidden: layout.hidden, dock: defaultDock({ width: mainSize.w }), dockPresets: layout.dockPresets || [] }); c.say("Layout padrão restaurado."); };
     // The trimmable tab rows (panelTabs.js): what each shows, the (+) list.
     const tabLists = layout.tabs || DEFAULT_TABS;
     const setTabList = (row, list) => setLayout({ ...layout, tabs: { ...tabLists, [row]: list } });
@@ -751,20 +755,27 @@ export default function Console() {
 
     // Where the culto environment's modules go (Ver › Editar disposição;
     // src/lib/console/dock.js): the operator's tree, or, until they change
-    // it, the one the old columns make (fromArrangement); the tray follows
-    // the modules hidden in Ver (a church preference, in the database).
+    // it, the one the old columns make (fromArrangement; the modules the
+    // church's old preference hid start in the tray).
     const dockOpts = { width: mainSize.w };
-    const dock = useMemo(() => syncHidden(layout.dock || fromArrangement(layout, dockOpts), layout.hidden, VER_MODULES, dockOpts),
+    const dock = useMemo(() => (layout.dock ? normalizeDock(layout.dock) : fromArrangement(layout, dockOpts)),
         [layout.dock, layout.order, layout.stacks, layout.libW, layout.slidesW, layout.rightW, layout.camadasH, layout.prevPct, layout.hidden, mainSize.w]); // eslint-disable-line react-hooks/exhaustive-deps
     const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h), [dock, mainSize.w, mainSize.h]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
     const playerDocked = !onScreen("player");
-    // A change to the dock; a module of Ver that went in or out of the tray
-    // is written there too.
-    const setDock = (next) => {
-        const hidden = { ...layout.hidden };
-        for (const id of VER_MODULES) hidden[id] = next.hidden.includes(id);
-        setLayout({ ...layout, dock: next, hidden });
+    const setDock = (next) => setLayout({ ...layout, dock: next });
+    // Ver's and Configurações' module switches: the culto's tray on this
+    // computer. They see the layout with the tray as `hidden`; a switch
+    // moves the module out (to the tray) or back (to its default place).
+    const trayHidden = Object.fromEntries(VER_MODULES.map((id) => [id, dock.hidden.includes(id)]));
+    const uiLayout = { ...layout, hidden: trayHidden };
+    const setUiLayout = (next) => {
+        let d = dock;
+        for (const id of VER_MODULES) {
+            const want = Boolean(next.hidden?.[id]);
+            if (want !== trayHidden[id]) d = want ? hideModule(d, id) : returnModule(d, id, dockOpts);
+        }
+        setLayout({ ...next, hidden: layout.hidden, dock: d === dock ? next.dock : d });
     };
     // The Bíblia's own dock (BibleEnv.jsx draws its modules), the same way.
     const bibleDock = useMemo(() => (layout.bibleDock ? normalizeDock({ ...layout.bibleDock, env: "biblia" }) : fromBibleArrangement(layout)),
@@ -782,22 +793,17 @@ export default function Console() {
     const dockKey = env === "biblia" ? "bibleDock" : "dock";
     const presets = presetsFor(allPresets, env);
     const preset = presetOf(presets, layout[presetKey]);
-    // Changed: from its preset, or (Padrão) from the environment's own (the
-    // culto's with Ver's modules).
-    const padraoDock = useMemo(() => syncHidden(fromArrangement({ hidden: layout.hidden }, dockOpts), layout.hidden, VER_MODULES, dockOpts),
-        [layout.hidden, mainSize.w]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Changed: from its preset, or (Padrão) from the environment's own.
+    const padraoDock = useMemo(() => defaultDock(dockOpts), [mainSize.w]); // eslint-disable-line react-hooks/exhaustive-deps
     const biblePadrao = useMemo(() => defaultDock({ env: "biblia" }), []);
     const presetDirty = presetChanged(preset || { dock: env === "biblia" ? biblePadrao : padraoDock }, envDock);
+    // The environment on screen back to its own (Padrão, Restaurar posições):
+    // the culto with every module on screen.
+    const restoreHere = () => (env === "biblia" ? restoreEnv(layout, "biblia") : { ...restoreEnv(layout, "culto"), dock: padraoDock });
     const pickPreset = (id) => {
         const p = presetOf(presets, id);
-        if (!p) { setLayout(restoreEnv(layout, env)); c.say("Disposição padrão."); return; }
-        const next = { ...layout, [dockKey]: p.dock, [presetKey]: p.id };
-        // The culto's tray is also Ver's modules (a church preference).
-        if (env !== "biblia") {
-            next.hidden = { ...layout.hidden };
-            for (const m of VER_MODULES) next.hidden[m] = p.dock.hidden.includes(m);
-        }
-        setLayout(next);
+        if (!p) { setLayout(restoreHere()); c.say("Disposição padrão."); return; }
+        setLayout({ ...layout, [dockKey]: p.dock, [presetKey]: p.id });
         c.say(`Disposição “${p.name}”.`);
     };
     const savePresetAs = (name) => {
@@ -981,7 +987,7 @@ export default function Console() {
             )}
             {/* Travar telas: the console prepares, the screens keep what they show. */}
             {editing && (
-                <EditBanner onRestore={() => { setLayout(restoreEnv(layout, env)); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
+                <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {!view && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
                     {!view && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
                 </EditBanner>
@@ -1009,7 +1015,7 @@ export default function Console() {
             {lookReq && <LookDialog c={c} row={lookRow} save={saveLook} onClose={() => setLookReq(null)} what={lookReq.kind === "template" ? "do modelo" : "do culto"}
                 title={lookReq.kind === "template" ? `Visual do modelo · ${lookRow?.name || ""}` : `Visual do culto · ${lookRow?.title || "hoje"}`}
                 note={lookReq.kind === "service" && !lookRow ? "Nenhum culto escolhido: a primeira escolha cria a setlist de hoje." : null} />}
-            {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} />}
+            {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
@@ -1019,7 +1025,7 @@ export default function Console() {
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} onOpenMedia={openMedia} />
                 </div>
             )}
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} onWhatsNew={openWhatsNew} />
+            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} onWhatsNew={openWhatsNew} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />

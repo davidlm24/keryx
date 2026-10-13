@@ -327,19 +327,6 @@ export function returnModule(dock, id, opts) {
     return moveModules(d, [id], { kind: "group", path: firstGroupPath(d.tree), zone: "left" }, { share: false });
 }
 
-// The dock with the tray following a list kept elsewhere (Ver › the
-// modules, a preference of the church in the database): each of `ids`
-// hidden there goes to the tray, each shown there comes back to its place.
-export function syncHidden(dock, hidden = {}, ids = [], opts) {
-    let d = normalizeDock(dock);
-    for (const id of ids) {
-        const inTray = d.hidden.includes(id);
-        if (hidden[id] && !inTray) d = hideModule(d, id);
-        else if (!hidden[id] && inTray) d = returnModule(d, id, opts);
-    }
-    return d;
-}
-
 // A fixed child's size in the default console, for a splitter's "restore":
 // the slot there that holds the same modules; null when there is none.
 export function defaultSize(dock, path, index, opts) {
