@@ -49,7 +49,7 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreArrangement } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, syncHidden, fitDock, moveModules, hideModule, canTray, leaves, pathOf } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, normalizeDock, syncHidden, fitDock, moveModules, hideModule, canTray, leaves, pathOf } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
@@ -766,7 +766,15 @@ export default function Console() {
         for (const id of VER_MODULES) hidden[id] = next.hidden.includes(id);
         setLayout({ ...layout, dock: next, hidden });
     };
-    const dockDrag = useDockDrag({ dock, onDock: setDock });
+    // The Bíblia's own dock (BibleEnv.jsx draws its modules), the same way.
+    const bibleDock = useMemo(() => (layout.bibleDock ? normalizeDock({ ...layout.bibleDock, env: "biblia" }) : fromBibleArrangement(layout)),
+        [layout.bibleDock, layout.order, layout.stacks, layout.bibleSelW, layout.bibleAirW]); // eslint-disable-line react-hooks/exhaustive-deps
+    const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h), [bibleDock, mainSize.w, mainSize.h]);
+    const setBibleDock = (next) => setLayout({ ...layout, bibleDock: next });
+    // Editing moves the modules of the environment on screen.
+    const envDock = env === "biblia" ? bibleDock : dock;
+    const setEnvDock = env === "biblia" ? setBibleDock : setDock;
+    const dockDrag = useDockDrag({ dock: envDock, onDock: setEnvDock });
     // Named arrangements (Ver › Disposição; src/lib/console/dockPresets.js).
     const presets = layout.dockPresets || [];
     const preset = presetOf(presets, layout.dockPreset);
@@ -804,15 +812,16 @@ export default function Console() {
         const r = e.currentTarget?.getBoundingClientRect?.();
         const at = { clientX: e.clientX || r?.left || 0, clientY: e.clientY || r?.bottom || 0, preventDefault() {}, stopPropagation() {} };
         const name = DOCK_MODULES[id].name;
-        const others = leaves(dock.tree).filter((m) => m !== id);
+        const d = envDock;
+        const others = leaves(d.tree).filter((m) => m !== id);
         const besideOf = (other) => openMenu(at, { title: `${name} · em relação a ${DOCK_MODULES[other].name}`, items: Object.entries(ZONE_LABEL).map(([zone, label]) => ({
             label, icon: zone === "center" ? "layers" : "grip",
-            onSelect: () => setDock(moveModules(dock, [id], { kind: "group", path: pathOf(dock.tree, other), zone })),
+            onSelect: () => setEnvDock(moveModules(d, [id], { kind: "group", path: pathOf(d.tree, other), zone })),
         })) });
         openMenu(e, { title: `Mover ${name} para perto de…`, items: [
             ...others.map((other) => ({ label: DOCK_MODULES[other].name, onSelect: () => besideOf(other) })),
-            ...(id === "player" && !playerDocked ? ["sep", { label: "Voltar para baixo do Programa", icon: "undo", onSelect: () => setDock(moveModules(dock, ["player"], { kind: "home" })) }] : []),
-            ...(canTray(id) && onScreen(id) ? ["sep", { label: "Guardar na bandeja", icon: "x", onSelect: () => setDock(hideModule(dock, id)) }] : []),
+            ...(id === "player" && !playerDocked ? ["sep", { label: "Voltar para baixo do Programa", icon: "undo", onSelect: () => setEnvDock(moveModules(d, ["player"], { kind: "home" })) }] : []),
+            ...(canTray(id) && pathOf(d.tree, id) ? ["sep", { label: "Guardar na bandeja", icon: "x", onSelect: () => setEnvDock(hideModule(d, id)) }] : []),
         ] });
     };
     // The Programa's box on screen: "Voltar ao anterior" and the Camadas
@@ -962,8 +971,8 @@ export default function Console() {
             )}
             {/* Travar telas: the console prepares, the screens keep what they show. */}
             {editing && (
-                <EditBanner env={env} onRestore={() => { setLayout(restoreArrangement(layout)); c.say("Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
-                    {env === "culto" && !view && <DockTray dock={dock} dnd={dockDrag} onChipMenu={moveMenu} />}
+                <EditBanner onRestore={() => { setLayout(restoreArrangement(layout)); c.say("Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
+                    {!view && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
                     {env === "culto" && !view && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
                 </EditBanner>
             )}
@@ -977,7 +986,8 @@ export default function Console() {
                 {reports && <ReportsView c={c} onClose={closeView} />}
                 {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}
                 {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} />}
-                {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} layout={layout} setLayout={setLayout} editing={editing} />}
+                {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)}
+                    dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu }} />}
                 {!view && env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
             </div>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}

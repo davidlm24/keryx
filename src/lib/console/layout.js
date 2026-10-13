@@ -55,6 +55,8 @@ export const DEFAULT_LAYOUT = {
     // disposição); null until the operator changes it: the console builds it
     // from the columns above (fromArrangement), so an old save keeps its look.
     dock: null,
+    // The Bíblia's, the same way (fromBibleArrangement until it changes).
+    bibleDock: null,
     // Named arrangements (dockPresets.js, Ver › Disposição) and the one in
     // use (null = Padrão).
     dockPresets: [],
@@ -66,7 +68,7 @@ export const DEFAULT_LAYOUT = {
 
 // What "Restaurar posições" (the edit mode's banner) puts back: the order,
 // the stacks and the sizes; which modules are shown and the density stay.
-export const ARRANGEMENT_KEYS = ["dock", "dockPreset", "order", "stacks", "libW", "slidesW", "rightW", "camadasH", "bibleSelW", "bibleAirW", "prevPct"];
+export const ARRANGEMENT_KEYS = ["dock", "bibleDock", "dockPreset", "order", "stacks", "libW", "slidesW", "rightW", "camadasH", "bibleSelW", "bibleAirW", "prevPct"];
 export const restoreArrangement = (layout) => ({ ...layout, ...Object.fromEntries(ARRANGEMENT_KEYS.map((k) => [k, DEFAULT_LAYOUT[k]])) });
 
 export const densityOf = (layout) => (DENSITIES.some(([k]) => k === layout?.density) ? layout.density : DEFAULT_LAYOUT.density);
@@ -90,7 +92,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const saved = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }

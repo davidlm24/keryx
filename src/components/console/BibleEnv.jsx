@@ -1,10 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, Field, Row, Seg, Empty, Split } from "./kx";
-import { ColumnBar, StackLead, DropLine, usePointerReorder } from "./Arrange";
-import { bibleColumns, withSplits, moveColumn, moveTo, CARD_NAMES } from "@/lib/console/arrange";
-import { DEFAULT_LAYOUT, sideCol, clampSize } from "@/lib/console/layout";
+import { Panel, Btn, Field, Row, Seg, Empty } from "./kx";
+import DockView from "./Dock";
 import { useContextMenu } from "./ContextMenu";
 import AddMenu from "./AddMenu";
 import BibleSearchPanel, { useBibleSearch } from "./BibleSearchPanel";
@@ -80,7 +78,7 @@ function ListMenu({ icon, label, count, empty, rows }) {
     );
 }
 
-export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, layout = DEFAULT_LAYOUT, setLayout, editing = false }) {
+export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, dockProps }) {
     const [mem, setMem] = useState(load);
     const [version, setVersion] = useState(null);
     const [book, setBook] = useState(mem.book || "João");
@@ -352,27 +350,14 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const airTitle = c.cur?.content ? c.cur.content.title : c.cur?.media ? c.cur.media.title : "nada";
     const searchSel = sel.length === 1 ? { book, chapter, verse: sel[0] } : null;
 
-    // Three columns (owner layout 2026-10-12): Livro · Capítulo · Versículo
-    // stacked on the left, the chosen text in the middle, what is on air on
-    // the right. Their order, the order of the three pickers and the two side
-    // widths are the layout's (Ver › Editar layout; src/lib/console/arrange.js).
-    const bcols = bibleColumns({ order: layout?.order?.biblia, stacks: layout?.stacks });
-    const pickerCards = bcols.find((col) => col.id === "picker")?.cards || [];
-    const findCol = (id) => document.querySelector(`.console .main > [data-col="${id}"]`);
-    const moveBibleCol = (id, to) => setLayout?.({ ...layout, order: { ...layout.order, biblia: moveColumn(layout.order.biblia, bcols, id, to) } });
-    const movePicker = (id, to) => setLayout?.({ ...layout, stacks: { ...layout.stacks, picker: moveTo(layout.stacks.picker, id, to) } });
-    const colDrag = usePointerReorder({ axis: "x", ids: bcols.map((col) => col.id), find: findCol, onDrop: moveBibleCol });
-    const cardDrag = usePointerReorder({ axis: "y", ids: pickerCards, find: (id) => document.querySelector(`.console .bible-pick > .arr-card-${id}`), onDrop: movePicker });
-    const widthOf = (key) => layout?.[key] ?? DEFAULT_LAYOUT[key];
-    const lead = (id) => {
-        if (!editing) return null;
-        const i = pickerCards.indexOf(id);
-        return <StackLead name={CARD_NAMES[id]} index={i} count={pickerCards.length} onMove={(d) => movePicker(id, i + d)} handle={cardDrag.handleProps(id)} />;
-    };
-
-    const pickerCard = {
+    // The Bíblia's modules (owner layout 2026-10-12: Livro · Capítulo ·
+    // Versículo stacked on the left under the version and search, the
+    // chosen text in the middle, what is on air on the right). Where they go
+    // is the Bíblia's dock (Ver › Editar disposição; src/lib/console/dock.js,
+    // Console.jsx keeps it): each is built here apart from its place.
+    const modules = {
         books: (
-            <Panel key="books" className="arr-card arr-card-books bpick-books" title="Livros" lead={lead("books")} actions={
+            <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={
                 <Seg small value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
             }>
                 <div className="bgrid" ref={gridRef}>
@@ -381,7 +366,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             </Panel>
         ),
         chapters: (
-            <Panel key="chapters" className="arr-card arr-card-chapters bpick-chapters" title="Capítulos" count={`${bookRow.name} · ${bookRow.chapters}`} lead={lead("chapters")}>
+            <Panel className="bpick-chapters" title="Capítulos" count={`${bookRow.name} · ${bookRow.chapters}`}>
                 <div className="bchap">
                     <div className="chapters">
                         {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
@@ -390,7 +375,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             </Panel>
         ),
         verses: (
-            <Panel key="verses" className="arr-card arr-card-verses bpick-verses" title="Versículos" count={`${book} ${chapter}`} lead={lead("verses")}>
+            <Panel className="bpick-verses" title="Versículos" count={`${book} ${chapter}`}>
                 {!error && verses.length > 0 && (
                     <div className="bverses"><div className="verse-cells" role="group" aria-label={`Versículos de ${book} ${chapter}`}>
                         {verses.map((v) => (
@@ -403,141 +388,113 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 )}
             </Panel>
         ),
-    };
-
-    const renderCol = (col) => {
-        const i = bcols.indexOf(col);
-        const moving = colDrag.drag?.id === col.id ? "is-moving" : "";
-        const bar = editing ? <ColumnBar name={col.name} index={i} count={bcols.length} onMove={(d) => moveBibleCol(col.id, i + d)} handle={colDrag.handleProps(col.id)} moving={Boolean(moving)} /> : null;
-        if (col.id === "picker") {
-            return (
-                <div key="picker" data-col="picker" className={`col bible-pick ${fullNames ? "names-full" : ""} ${moving}`} style={sideCol("bibleSelW", widthOf("bibleSelW"))}>
-                    {bar}
-                    <Panel className="bpick-head" title="Bíblia" count={version || wanted} actions={<>
-                        <Btn small onClick={chooseTheme} title={`Tema da Bíblia: ${bibleTheme ? bibleTheme.name : "estilo de fábrica"}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"} · as passagens vão ao ar com ele`}>Tema</Btn>
-                        <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
-                    </>}>
-                        {badge && <div className={`bsrc ${badge.warn ? "kx-warn" : ""}`} title={badge.title || badge.text}><Icon name={badge.warn ? "warn" : "check"} size={12} /><span>{badge.text}</span></div>}
-                        {ver && ver !== wanted && (
-                            <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
-                                {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
-                            </div>
-                        )}
-                        <div className="searchrow">
-                            <Field value={q} onChange={setQ} placeholder="Referência (Jo 3:16) ou palavra" onKeyDown={(e) => { if (e.key === "Enter") submitTop(); }} />
-                            <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
-                        </div>
-                    </Panel>
-                    {pickerCards.map((id) => pickerCard[id])}
+        bhead: (
+            <Panel className="bpick-head" title="Bíblia" count={version || wanted} actions={<>
+                <Btn small onClick={chooseTheme} title={`Tema da Bíblia: ${bibleTheme ? bibleTheme.name : "estilo de fábrica"}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"} · as passagens vão ao ar com ele`}>Tema</Btn>
+                <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
+            </>}>
+                {badge && <div className={`bsrc ${badge.warn ? "kx-warn" : ""}`} title={badge.title || badge.text}><Icon name={badge.warn ? "warn" : "check"} size={12} /><span>{badge.text}</span></div>}
+                {ver && ver !== wanted && (
+                    <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
+                        {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
+                    </div>
+                )}
+                <div className="searchrow">
+                    <Field value={q} onChange={setQ} placeholder="Referência (Jo 3:16) ou palavra" onKeyDown={(e) => { if (e.key === "Enter") submitTop(); }} />
+                    <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
                 </div>
-            );
-        }
-        if (col.id === "reading") {
-            return (
-                <div key="reading" data-col="reading" className={`col center bible-center ${moving}`}>
-                    {bar}
-                    <Panel className="bread" title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}${ver ? ` · ${ver}` : ""}`}
-                        count={mode === "ler" ? "clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" : mode === "buscar" ? "↑↓ percorre os resultados · Enter ou 2 cliques projeta" : "versões lado a lado"}
-                        actions={<>
-                            {mode === "ler" && <><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}
-                            <Seg small value={mode} onChange={setMode} options={MODES} />
-                        </>}>
-                        <div className="bband-lists">
-                            <span className="kx-section">Recentes</span>
-                            {!(mem.recent || []).length && <span className="kx-meta">nenhum</span>}
-                            {(mem.recent || []).map(([b, ch]) => <button type="button" key={`${b}${ch}`} className="bchip kx-t" onClick={() => { setBook(b); setChapter(ch); setSel([]); setMode("ler"); }}><Icon name="history" size={12} />{b} {ch}</button>)}
-                            <span style={{ flex: 1 }} />
-                            <ListMenu icon="star" label="Favoritos" count={notesApi.favorites.length} empty="Selecione versículos e use a estrela."
-                                rows={notesApi.favorites.map((fv) => ({ key: fv.id, icon: "star", title: fv.reference, onPick: () => { if (goRef(fv.reference)) setMode("ler"); } }))} />
-                            <ListMenu icon="text" label="Anotações" count={notesApi.notes.length} empty="Selecione um versículo e escreva à direita."
-                                rows={notesApi.notes.map((n) => ({ key: n.id, icon: "text", title: n.reference, meta: n.note_text, onPick: () => { if (goRef(n.reference)) setMode("ler"); } }))} />
-                        </div>
-                        <div className="bread-b">
-                            {mode === "ler" && (
-                                <>
-                                    {error && (
-                                        <div className="kx-empty">
-                                            <span className="kx-glyph"><Icon name="book" /></span>
-                                            <span className="kx-empty-t">Capítulo indisponível</span>
-                                            <span>{error}</span>
-                                            <span>O KERYX nunca mostra texto de exemplo no lugar de uma Bíblia.</span>
-                                            {(canInstall(version || wanted) || others.length > 0) && (
-                                                <span className="bunavail-acts">
-                                                    {canInstall(version || wanted) && <Btn kind="outline" disabled={!online} onClick={() => installVersion(version || wanted)} title={online ? undefined : "Sem internet agora: conecte o computador para baixar"}>Instalar {version || wanted}{installHint}</Btn>}
-                                                    {others.map((v) => <Btn key={v} onClick={() => switchVersion(v)}>Usar {v}</Btn>)}
-                                                </span>
-                                            )}
-                                        </div>
+            </Panel>
+        ),
+        reading: (
+            <Panel className="bread bible-center" title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}${ver ? ` · ${ver}` : ""}`}
+                count={mode === "ler" ? "clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" : mode === "buscar" ? "↑↓ percorre os resultados · Enter ou 2 cliques projeta" : "versões lado a lado"}
+                actions={<>
+                    {mode === "ler" && <><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}
+                    <Seg small value={mode} onChange={setMode} options={MODES} />
+                </>}>
+                <div className="bband-lists">
+                    <span className="kx-section">Recentes</span>
+                    {!(mem.recent || []).length && <span className="kx-meta">nenhum</span>}
+                    {(mem.recent || []).map(([b, ch]) => <button type="button" key={`${b}${ch}`} className="bchip kx-t" onClick={() => { setBook(b); setChapter(ch); setSel([]); setMode("ler"); }}><Icon name="history" size={12} />{b} {ch}</button>)}
+                    <span style={{ flex: 1 }} />
+                    <ListMenu icon="star" label="Favoritos" count={notesApi.favorites.length} empty="Selecione versículos e use a estrela."
+                        rows={notesApi.favorites.map((fv) => ({ key: fv.id, icon: "star", title: fv.reference, onPick: () => { if (goRef(fv.reference)) setMode("ler"); } }))} />
+                    <ListMenu icon="text" label="Anotações" count={notesApi.notes.length} empty="Selecione um versículo e escreva à direita."
+                        rows={notesApi.notes.map((n) => ({ key: n.id, icon: "text", title: n.reference, meta: n.note_text, onPick: () => { if (goRef(n.reference)) setMode("ler"); } }))} />
+                </div>
+                <div className="bread-b">
+                    {mode === "ler" && (
+                        <>
+                            {error && (
+                                <div className="kx-empty">
+                                    <span className="kx-glyph"><Icon name="book" /></span>
+                                    <span className="kx-empty-t">Capítulo indisponível</span>
+                                    <span>{error}</span>
+                                    <span>O KERYX nunca mostra texto de exemplo no lugar de uma Bíblia.</span>
+                                    {(canInstall(version || wanted) || others.length > 0) && (
+                                        <span className="bunavail-acts">
+                                            {canInstall(version || wanted) && <Btn kind="outline" disabled={!online} onClick={() => installVersion(version || wanted)} title={online ? undefined : "Sem internet agora: conecte o computador para baixar"}>Instalar {version || wanted}{installHint}</Btn>}
+                                            {others.map((v) => <Btn key={v} onClick={() => switchVersion(v)}>Usar {v}</Btn>)}
+                                        </span>
                                     )}
-                                    {!error && !verses.length && <Empty title="Carregando…" />}
-                                    <div className="reading" ref={readingRef}>
-                                        {verses.map((v) => (
-                                            <button type="button" key={v.number} data-verse={v.number}
-                                                className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""} ${marked.has(v.number) ? "has-note" : ""}`}
-                                                onClick={(e) => pick(v.number, e)}
-                                                onDoubleClick={() => { const st = verseStage(v.number); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }}
-                                                onContextMenu={(e) => menu(e, { title: `${book} ${chapter}:${v.number}`, items: [
-                                                    { label: "Selecionar", icon: "check", onSelect: () => pick(v.number) },
-                                                    { label: "Copiar o texto", icon: "text", onSelect: () => copyVerse(v) },
-                                                    { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => sendCell(v.number) },
-                                                ] })}
-                                                title={marked.has(v.number) ? `Anotação: ${notesApi.noteOf(book, chapter, v.number)?.note_text || ""}` : "Clique seleciona · 2 cliques projetam a partir deste versículo"}>
-                                                <span className="kx-verse-n">{v.number}</span><span>{v.text}{marked.has(v.number) && <span className="be-notemark" aria-label="tem anotação"><Icon name="text" size={12} /></span>}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </>
+                                </div>
                             )}
-                            {mode === "buscar" && <BibleSearchPanel search={search} selected={searchSel} onPick={pickResult} onSend={sendResult} inputRef={searchInputRef} />}
-                            {mode === "comparar" && <BibleCompareView book={book} chapter={chapter} version={version || wanted} sel={sel} onSelect={pick} onSendVersion={sendVersion} onUseVersion={switchVersion} />}
-                        </div>
-                    </Panel>
-                </div>
-            );
-        }
-        return (
-            <div key="air" data-col="air" className={`col bible-air-col ${moving}`} style={sideCol("bibleAirW", widthOf("bibleAirW"))}>
-                {bar}
-                <Panel title={<span className={c.locked ? "kx-rh" : "kx-air"}>{c.locked ? "No ar · travado" : "No ar agora"}</span>} count={airTitle} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                    <div className="bible-air">
-                        <div className={`kx-mon ${c.locked ? "is-rh" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview /></div></div>
-                    </div>
-                    <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
-                        <span className="kx-section">Selecionado <span className="kx-count">· {sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>
-                        {sel.length > 1 && (
-                            <div className="kx-seg" style={{ height: 22, padding: 1 }}>
-                                {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} style={{ height: 20, padding: "0 7px", fontSize: 11 }} onClick={() => setHow(v)} title={v === "auto" ? "Pelo tamanho do texto" : `${v} por slide`}>{l}</button>)}
+                            {!error && !verses.length && <Empty title="Carregando…" />}
+                            <div className="reading" ref={readingRef}>
+                                {verses.map((v) => (
+                                    <button type="button" key={v.number} data-verse={v.number}
+                                        className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""} ${marked.has(v.number) ? "has-note" : ""}`}
+                                        onClick={(e) => pick(v.number, e)}
+                                        onDoubleClick={() => { const st = verseStage(v.number); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }}
+                                        onContextMenu={(e) => menu(e, { title: `${book} ${chapter}:${v.number}`, items: [
+                                            { label: "Selecionar", icon: "check", onSelect: () => pick(v.number) },
+                                            { label: "Copiar o texto", icon: "text", onSelect: () => copyVerse(v) },
+                                            { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => sendCell(v.number) },
+                                        ] })}
+                                        title={marked.has(v.number) ? `Anotação: ${notesApi.noteOf(book, chapter, v.number)?.note_text || ""}` : "Clique seleciona · 2 cliques projetam a partir deste versículo"}>
+                                        <span className="kx-verse-n">{v.number}</span><span>{v.text}{marked.has(v.number) && <span className="be-notemark" aria-label="tem anotação"><Icon name="text" size={12} /></span>}</span>
+                                    </button>
+                                ))}
                             </div>
-                        )}
-                    </div>
-                    <div className="vgroup" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
-                        {!slides.length && <Empty title="Nenhum versículo selecionado">Clique num versículo ou use ↑ ↓. Enter projeta.</Empty>}
-                        {slides.map((s, i) => <div key={i} className="vslide"><b>{i + 1}</b><span>{s.text}</span></div>)}
-                    </div>
-                    {oneVerse && (
-                        <div className="be-note">
-                            <div className="listhead"><span className="kx-section">Anotação <span className="kx-count">· {book} {chapter}:{oneVerse.number} · só no console</span></span></div>
-                            <textarea key={`${book}:${chapter}:${oneVerse.number}:${note?.id || "novo"}`} className="ed-text" rows={3} defaultValue={note?.note_text || ""} placeholder="Uma nota sobre este versículo (não vai para as telas)" aria-label="Anotação"
-                                onBlur={(e) => saveNote(e.target.value)} />
+                        </>
+                    )}
+                    {mode === "buscar" && <BibleSearchPanel search={search} selected={searchSel} onPick={pickResult} onSend={sendResult} inputRef={searchInputRef} />}
+                    {mode === "comparar" && <BibleCompareView book={book} chapter={chapter} version={version || wanted} sel={sel} onSelect={pick} onSendVersion={sendVersion} onUseVersion={switchVersion} />}
+                </div>
+            </Panel>
+        ),
+        air: (
+            <Panel className="bible-air-col" title={<span className={c.locked ? "kx-rh" : "kx-air"}>{c.locked ? "No ar · travado" : "No ar agora"}</span>} count={airTitle} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <div className="bible-air">
+                    <div className={`kx-mon ${c.locked ? "is-rh" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview /></div></div>
+                </div>
+                <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
+                    <span className="kx-section">Selecionado <span className="kx-count">· {sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>
+                    {sel.length > 1 && (
+                        <div className="kx-seg" style={{ height: 22, padding: 1 }}>
+                            {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} style={{ height: 20, padding: "0 7px", fontSize: 11 }} onClick={() => setHow(v)} title={v === "auto" ? "Pelo tamanho do texto" : `${v} por slide`}>{l}</button>)}
                         </div>
                     )}
-                    <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-2)", flexWrap: "wrap", borderTop: "1px solid var(--line)" }}>
-                        <Btn kind="prev" className="kx-btn-live" disabled={!stage || c.locked} onClick={() => onSend(stage)} title={sendTip(c.locked)}>{SEND_LABEL}</Btn>
-                        <Btn disabled={!sel.length} onClick={addToService}>Adicionar à setlist</Btn>
-                        <Btn kind="icon" on={notesApi.isFavorite(reference)} disabled={!reference} onClick={toggleFav} title={notesApi.isFavorite(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
+                </div>
+                <div className="vgroup" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
+                    {!slides.length && <Empty title="Nenhum versículo selecionado">Clique num versículo ou use ↑ ↓. Enter projeta.</Empty>}
+                    {slides.map((s, i) => <div key={i} className="vslide"><b>{i + 1}</b><span>{s.text}</span></div>)}
+                </div>
+                {oneVerse && (
+                    <div className="be-note">
+                        <div className="listhead"><span className="kx-section">Anotação <span className="kx-count">· {book} {chapter}:{oneVerse.number} · só no console</span></span></div>
+                        <textarea key={`${book}:${chapter}:${oneVerse.number}:${note?.id || "novo"}`} className="ed-text" rows={3} defaultValue={note?.note_text || ""} placeholder="Uma nota sobre este versículo (não vai para as telas)" aria-label="Anotação"
+                            onBlur={(e) => saveNote(e.target.value)} />
                     </div>
-                </Panel>
-            </div>
-        );
+                )}
+                <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-2)", flexWrap: "wrap", borderTop: "1px solid var(--line)" }}>
+                    <Btn kind="prev" className="kx-btn-live" disabled={!stage || c.locked} onClick={() => onSend(stage)} title={sendTip(c.locked)}>{SEND_LABEL}</Btn>
+                    <Btn disabled={!sel.length} onClick={addToService}>Adicionar à setlist</Btn>
+                    <Btn kind="icon" on={notesApi.isFavorite(reference)} disabled={!reference} onClick={toggleFav} title={notesApi.isFavorite(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
+                </div>
+            </Panel>
+        ),
     };
 
-    return (
-        <>
-            {withSplits(bcols).map((it) => (it.type === "split"
-                ? <Split key={`split-${it.col}`} size={widthOf(it.key)} sign={it.sign} onSize={(v) => setLayout?.({ ...layout, [it.key]: v })} onReset={() => setLayout?.({ ...layout, [it.key]: DEFAULT_LAYOUT[it.key] })} clamp={(v) => clampSize(it.key, v)} />
-                : renderCol(it.col)))}
-            {editing && <DropLine drag={colDrag.drag} axis="x" />}
-            {editing && <DropLine drag={cardDrag.drag} axis="y" />}
-        </>
-    );
+    return dockProps ? <DockView {...dockProps} render={(id) => (modules[id] ? React.cloneElement(modules[id], { key: id }) : null)} playerDocked={false} /> : null;
 }

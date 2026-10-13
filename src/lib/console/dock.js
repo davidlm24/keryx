@@ -1,11 +1,12 @@
 // The console's arrangement as a tree (Ver › Editar disposição; the
 // 2026-10-13 prototype "Disposição do console", model Livre): every module
-// of the culto environment can go anywhere. Pure: the console renders what
-// fitDock returns and reports drops and splitter moves; this module decides
-// what they do. It takes over from arrange.js's fixed columns for the culto
-// environment (the Bíblia keeps arrange.js for now).
+// of an environment (the culto, the Bíblia) can go anywhere in it. Pure:
+// the console renders what fitDock returns and reports drops and splitter
+// moves; this module decides what they do. It took over from arrange.js's
+// fixed columns.
 //
-// A dock is { tree, hidden }:
+// A dock is { env?, tree, hidden } (env "biblia" for the Bíblia's; absent:
+// the culto's):
 //   - tree: a node, either
 //       a group  { tabs: [moduleId…], active }   modules as tabs, one showing
 //       a split  { dir: "row"|"col", children: [node…], sizes: [px|null…] }
@@ -31,8 +32,9 @@ const PX_MAX = 4000;
 // A new group's size along its split when nothing better is known.
 export const NEW_PX = 320;
 
-// The smallest size each module is usable at, its panel's header included.
-// The Slides keep a slide's lines whole down to 300 px (layout.js LIMITS).
+// The smallest size each module is usable at, its panel's header included,
+// and its environment (env; absent: the culto). The Slides keep a slide's
+// lines whole down to 300 px (layout.js LIMITS).
 export const MODULES = {
     lib: { name: "Biblioteca", minW: 200, minH: 160 },
     slides: { name: "Slides", minW: 300, minH: 140 },
@@ -43,8 +45,22 @@ export const MODULES = {
     setlist: { name: "Setlist", minW: 220, minH: 120, required: true },
     camadas: { name: "Camadas", minW: 280, minH: 120 },
     player: { name: "Player", minW: 280, minH: 36, home: "programa" },
+    // The Bíblia (BibleEnv.jsx): the version, theme and search; the three
+    // pickers; the text; what is on air with Enviar ao ar.
+    bhead: { name: "Versão e busca", minW: 240, minH: 100, required: true, env: "biblia" },
+    books: { name: "Livros", minW: 200, minH: 120, env: "biblia" },
+    chapters: { name: "Capítulos", minW: 200, minH: 90, env: "biblia" },
+    verses: { name: "Versículos", minW: 200, minH: 96, env: "biblia" },
+    reading: { name: "Texto", minW: 360, minH: 200, required: true, env: "biblia" },
+    air: { name: "No ar", minW: 300, minH: 300, required: true, env: "biblia" },
 };
-export const MODULE_IDS = Object.keys(MODULES);
+export const ENVS = ["culto", "biblia"];
+const envOf = (id) => MODULES[id]?.env || "culto";
+export const envModules = (env) => Object.keys(MODULES).filter((id) => envOf(id) === env);
+const dockEnv = (d) => (d?.env === "biblia" ? "biblia" : "culto");
+// A dock object for an environment (the culto's carries no env).
+const make = (env, tree, hidden) => (env === "culto" ? { tree, hidden } : { env, tree, hidden });
+export const MODULE_IDS = envModules("culto");
 export const ZONES = ["center", "left", "right", "top", "bottom"];
 
 export const isGroup = (n) => Boolean(n) && Array.isArray(n.tabs);
@@ -99,11 +115,11 @@ function withOneFlex(sp) {
 // A saved node made safe: unknown and repeated modules go, empty groups go,
 // a split of one becomes its child, a split inside a split of the same
 // direction merges into it.
-function clean(node, seen) {
+function clean(node, seen, env) {
     if (isGroup(node)) {
         const tabs = [];
         for (const id of node.tabs) {
-            if (MODULES[id] && !seen.has(id)) { seen.add(id); tabs.push(id); }
+            if (MODULES[id] && envOf(id) === env && !seen.has(id)) { seen.add(id); tabs.push(id); }
         }
         if (!tabs.length) return null;
         return group(tabs, tabs.includes(node.active) ? node.active : tabs[0]);
@@ -113,7 +129,7 @@ function clean(node, seen) {
     const kids = [];
     const sizes = [];
     node.children.forEach((c, i) => {
-        const k = clean(c, seen);
+        const k = clean(c, seen, env);
         if (!k) return;
         const s = pxOrNull(Array.isArray(node.sizes) ? node.sizes[i] : null);
         if (isSplit(k) && k.dir === dir) {
@@ -144,17 +160,19 @@ function addBeside(tree, id) {
 // A saved dock made safe. Every module ends up in exactly one place: the
 // tree, the tray, or (the player) its home.
 export function normalizeDock(saved) {
+    const env = dockEnv(saved);
+    const ids = envModules(env);
     const seen = new Set();
-    let tree = clean(saved?.tree, seen);
-    for (const id of MODULE_IDS) {
+    let tree = clean(saved?.tree, seen, env);
+    for (const id of ids) {
         if (MODULES[id].required && !seen.has(id)) { tree = addBeside(tree, id); seen.add(id); }
     }
-    const trayable = (id) => MODULES[id] && !MODULES[id].required && !MODULES[id].home && !seen.has(id);
+    const trayable = (id) => ids.includes(id) && !MODULES[id].required && !MODULES[id].home && !seen.has(id);
     const hidden = [];
     for (const id of Array.isArray(saved?.hidden) ? saved.hidden : []) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
     // A module the save does not know (a newer KERYX) starts in the tray.
-    for (const id of MODULE_IDS) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
-    return { tree, hidden };
+    for (const id of ids) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
+    return make(env, tree, hidden);
 }
 
 // The dock that matches the console before Editar disposição became a tree
@@ -192,7 +210,27 @@ export function fromArrangement(layout = {}, { width = 1908 } = {}) {
     return normalizeDock({ tree: split("row", cols, sizes), hidden: ["lib", "slides", "camadas"].filter((id) => hidden[id]) });
 }
 
-export const defaultDock = (opts) => fromArrangement({}, opts);
+// The Bíblia's dock from the columns it had before (2026-10-12: Livro ·
+// Capítulo · Versículo stacked on the left under the version and search,
+// the text, No ar), with their saved order and widths.
+export function fromBibleArrangement(layout = {}) {
+    const px = (k, d) => pxOrNull(layout?.[k]) ?? d;
+    const HEIGHT = { books: 320, chapters: 200, verses: null };
+    const stack = normalizeOrder(layout?.stacks?.picker, ["books", "chapters", "verses"]);
+    // The last picker takes the rest of the column; the others their height.
+    const sizes = stack.map((id, i) => (i === stack.length - 1 ? null : HEIGHT[id] ?? 200));
+    const picker = split("col", [group(["bhead"]), ...stack.map((id) => group([id]))], [132, ...sizes]);
+    const cols = [];
+    const widths = [];
+    for (const id of normalizeOrder(layout?.order?.biblia, DEFAULT_ORDER.biblia)) {
+        if (id === "picker") { cols.push(picker); widths.push(px("bibleSelW", 300)); }
+        else if (id === "reading") { cols.push(group(["reading"])); widths.push(null); }
+        else if (id === "air") { cols.push(group(["air"])); widths.push(px("bibleAirW", 400)); }
+    }
+    return normalizeDock({ env: "biblia", tree: split("row", cols, widths), hidden: [] });
+}
+
+export const defaultDock = (opts) => (opts?.env === "biblia" ? fromBibleArrangement({}) : fromArrangement({}, opts));
 
 // ---------- changes (each returns a new, normalized dock) ----------
 
@@ -220,7 +258,7 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
         if (target.kind === "home" && list.some((m) => !MODULES[m].home)) return d;
         const tree = clone(d.tree);
         strip(tree, list);
-        return normalizeDock({ tree, hidden: [...d.hidden, ...list.filter((m) => !MODULES[m].home)] });
+        return normalizeDock(make(dockEnv(d), tree, [...d.hidden, ...list.filter((m) => !MODULES[m].home)]));
     }
     if (target.kind !== "group") return d;
     const tg = nodeAt(d.tree, target.path);
@@ -260,7 +298,7 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
             else tree = wrapped;
         }
     }
-    return normalizeDock({ tree, hidden: d.hidden.filter((m) => !list.includes(m)) });
+    return normalizeDock(make(dockEnv(d), tree, d.hidden.filter((m) => !list.includes(m))));
 }
 
 export const hideModule = (dock, id) => moveModules(dock, [id], { kind: "tray" });
@@ -272,7 +310,7 @@ export const hideModule = (dock, id) => moveModules(dock, [id], { kind: "tray" }
 export function returnModule(dock, id, opts) {
     const d = normalizeDock(dock);
     if (!d.hidden.includes(id)) return d;
-    const def = defaultDock(opts).tree;
+    const def = defaultDock({ ...opts, env: dockEnv(d) }).tree;
     const onScreen = (m) => m !== id && pathOf(d.tree, m);
     let p = pathOf(def, id);
     while (p && p.length) {
@@ -317,7 +355,7 @@ export function defaultSize(dock, path, index, opts) {
         }
         return null;
     };
-    return find(defaultDock(opts).tree);
+    return find(defaultDock({ ...opts, env: dockEnv(dock) }).tree);
 }
 
 // Every module's place on screen, for "Mover para…" and the tray:
@@ -331,7 +369,7 @@ export function setActive(dock, path, id) {
     const n = nodeAt(tree, path);
     if (!isGroup(n) || !n.tabs.includes(id) || n.active === id) return d;
     n.active = id;
-    return { tree, hidden: d.hidden };
+    return make(dockEnv(d), tree, d.hidden);
 }
 
 // A splitter moved: the fixed child at `index` of the split at `path` gets
@@ -347,7 +385,7 @@ export function resizeChild(dock, path, index, px) {
     if (!Number.isFinite(px)) return d;
     // A drag far past the edge (even below zero) stops at the minimum.
     sp.sizes[index] = Math.min(PX_MAX, Math.max(min, Math.round(px)));
-    return { tree, hidden: d.hidden };
+    return make(dockEnv(d), tree, d.hidden);
 }
 
 // ---------- sizes and fitting ----------

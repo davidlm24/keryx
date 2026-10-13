@@ -234,13 +234,9 @@
    headers, the panels' content veiled so a click never prepares or sends
    while things move, and a line where a dragged column or card would land. */
 .console .arr-banner { background: var(--brand-tint); color: var(--fg-1); box-shadow: inset 0 var(--bar) 0 var(--brand); }
-.console .arr-bar { flex: none; height: 32px; display: flex; align-items: center; gap: 2px; margin-bottom: var(--gutter); padding: 0 var(--space-1) 0 var(--space-2); border-radius: var(--radius-panel, var(--radius-control)); background: var(--brand-tint); box-shadow: inset 0 0 0 1px var(--brand); color: var(--fg-1); font-size: 12px; font-weight: 500; }
-.console .arr-bar .arr-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .arr-grip { flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--fg-2); cursor: grab; touch-action: none; }
 .console .arr-grip:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .arr-grip:active { cursor: grabbing; }
-.console .arr-lead { display: inline-flex; align-items: center; gap: 0; margin-right: var(--space-1); }
-.console .col.is-moving { opacity: .55; }
 .console.is-editing .main .kx-panel-b { pointer-events: none; opacity: .5; transition: opacity var(--duration-fast) var(--ease-out); }
 .console.is-editing .main .kx-split { pointer-events: auto; }
 /* The culto environment's dock (Dock.jsx, src/lib/console/dock.js): splits
@@ -280,24 +276,15 @@
 .console .dock-hint { position: fixed; z-index: 45; pointer-events: none; border: 2px solid var(--brand); border-radius: var(--radius-panel); background: color-mix(in srgb, var(--brand) 18%, transparent); }
 .console .dock-hint > span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 11px/16px var(--font-sans); white-space: nowrap; }
 .console .dock-ghost { position: fixed; z-index: 46; pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font: 500 12px/16px var(--font-sans); }
-.console .arr-line { position: fixed; z-index: 40; border-radius: 1px; background: var(--brand); pointer-events: none; }
 /* The Bíblia in three columns (owner layout 2026-10-12): Livro, Capítulo
    and Versículo stacked, the chosen text, what is on air. Their order and the
    side widths are the operator's (Ver › Editar layout). Each picker card
    scrolls on its own; Versículos takes what is left. */
-.console .main > .col.center.bible-center { min-width: 360px; }
-.console .col.bible-center { container: bible / inline-size; }
-.console .bible-pick { gap: var(--gutter); }
-.console .bible-pick > .kx-panel { flex: none; min-height: 0; }
-.console .bible-pick > .arr-card { flex: 0 1 auto; }
-.console .bible-pick > .arr-card > .kx-panel-b { overflow: auto; min-height: 0; }
-.console .bible-pick > .arr-card-books { max-height: 42%; }
-.console .bible-pick > .arr-card-chapters { max-height: 30%; }
-.console .bible-pick > .arr-card-verses { flex: 1 1 0; min-height: 96px; }
+.console .bible-center { container: bible / inline-size; }
 .console .bpick-head .kx-panel-b { overflow: visible; }
 .console .bpick-head .bsrc { display: flex; height: 20px; padding: 0 var(--space-2); }
 .console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: var(--space-1) var(--space-2) var(--space-2); }
-.console .bible-pick.names-full .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.console .bpick-books.names-full .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
 .console .bpick-chapters .bchap { border-top: 0; padding-bottom: var(--space-2); }
 .console .bpick-chapters .chapters { max-height: none; overflow: visible; }
 .console .bpick-verses .bverses { padding: var(--space-1) var(--space-2) var(--space-2); }
@@ -333,7 +320,7 @@
 .console .verse-cells button.is-prev { background: var(--prev-tint); color: var(--prev-fg); box-shadow: inset 0 0 0 1px var(--prev); }
 .console .verse-cells button.is-air { background: var(--air-tint); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
 /* Nomes: the books with their whole names, left-aligned. */
-.console .bible-pick.names-full .bgrid .kx-book { align-items: flex-start; padding: 0 6px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 26px; text-align: left; }
+.console .bpick-books.names-full .bgrid .kx-book { align-items: flex-start; padding: 0 6px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 26px; text-align: left; }
 .console .bband-lists { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); }
 .console .bband-lists > .kx-section { margin-right: var(--space-1); }
 .console .bchip { height: 24px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }

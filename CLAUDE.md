@@ -187,13 +187,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   it projects through the console's Prévia/Programa and every live key
   works there) and Relatórios (`ReportsView.jsx`). The Bíblia is the
   console's second environment (`BibleEnv.jsx`: Ler, Buscar, Comparar,
-  notes; three columns). Where columns and stacked cards go is the
-  operator's (Ver › Editar layout): `layout.order`/`layout.stacks`, turned
-  into columns and splitters by `src/lib/console/arrange.js` (tested) —
-  render from `cultoColumns`/`bibleColumns` + `withSplits`, never place a
-  column by hand in `Console.jsx` (the Bíblia still does). **The culto
-  environment is a dock** (owner 2026-10-13, the "Disposição do console"
-  prototype, model Livre): a tree of splits and tab groups,
+  notes). Where the modules go is the operator's: **each environment is a
+  dock** (owner 2026-10-13, the "Disposição do console" prototype, model
+  Livre) — never place a column by hand in `Console.jsx` or `BibleEnv.jsx`.
+  The Bíblia's dock (`layout.bibleDock`, `env: "biblia"`; modules Versão e
+  busca, Livros, Capítulos, Versículos, Texto, No ar — the first, the text
+  and No ar never leave) starts as its three columns
+  (`fromBibleArrangement`); BibleEnv builds the modules, Console.jsx keeps
+  the dock. `src/lib/console/arrange.js` now only reads the old
+  `order`/`stacks` saves. The culto's: a tree of splits and tab groups,
   `src/lib/console/dock.js` (tested), drawn by `Dock.jsx`, saved as
   `layout.dock` (per computer; null = the one the old columns make,
   `fromArrangement`, so an old save keeps its look). Every module is built

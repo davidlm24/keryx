@@ -1179,13 +1179,12 @@ async function checkConsole(webContents, { live, outputs }) {
             if (operatorWin) operatorWin.setContentSize(w, h);
             await sleep(500);
             result.bibleNoScroll[`${w}x${h}`] = await js(`(() => {
-                const cols = [...document.querySelectorAll(".console .main > [data-col]")];
-                if (cols.map((n) => n.dataset.col).join(",") !== "picker,reading,air") return "colunas: " + cols.map((n) => n.dataset.col).join(",");
-                const xs = cols.map((c2) => c2.getBoundingClientRect().left);
-                if (!(xs[0] < xs[1] && xs[1] < xs[2])) return "fora de ordem";
-                const stack = [...document.querySelectorAll(".bible-pick > .arr-card")].map((n) => n.className.match(/arr-card-(\\w+)/)[1]).join(",");
-                if (stack !== "books,chapters,verses") return "pilha: " + stack;
-                const box = document.querySelector(".arr-card-chapters > .kx-panel-b");
+                const mods = [...document.querySelectorAll(".console .dock .dock-group")].map((n) => n.dataset.dockMods).join(",");
+                if (mods !== "bhead,books,chapters,verses,reading,air") return "módulos: " + mods;
+                const g = (m) => document.querySelector('.console .dock .dock-group[data-dock-mods="' + m + '"]').getBoundingClientRect();
+                if (!(g("books").right <= g("reading").left + 1 && g("reading").right <= g("air").left + 1)) return "fora de ordem";
+                if (!(g("bhead").bottom <= g("books").top + 1 && g("books").bottom <= g("chapters").top + 1 && g("chapters").bottom <= g("verses").top + 1)) return "pilha fora de ordem";
+                const box = document.querySelector(".bpick-chapters > .kx-panel-b");
                 const c150 = [...box.querySelectorAll(".chapters button")].find((b) => b.textContent === "150");
                 if (!c150) return "sem 150";
                 c150.scrollIntoView({ block: "nearest" });
@@ -1212,7 +1211,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Bíblia's splitters are real (they were a fixed gap): → grows the
         // Livro · Capítulo · Versículo column, Enter restores it.
         {
-            const BSPLIT = `document.querySelector(".console .main > .kx-split[role='separator']")`;
+            const BSPLIT = `document.querySelector(".console .dock > .dock-split > .kx-split[role='separator']")`;
             const bWidth = () => js(`(() => { const s = ${BSPLIT}; return s && s.previousElementSibling ? Math.round(s.previousElementSibling.getBoundingClientRect().width) : null; })()`);
             const focused = await js(`(() => { const s = ${BSPLIT}; if (s) s.focus(); return Boolean(s) && document.activeElement === s; })()`);
             const w0 = await bWidth();
