@@ -4,11 +4,11 @@ import { FormRow, Switch, CfgKey, useBridge } from "./parts";
 import ShortcutList from "../ShortcutList";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
 
-// Console: the operator's screen and this computer. Which modules show and
-// the density are the church's (they ride backups); the column sizes and the
-// arrangement are this computer's, and so are "Ao fechar" and "Iniciar com
-// o Windows" (settings.json, electron/closeGuard.cjs). The Ver menu keeps
-// its quick toggles.
+// Console: the operator's screen and this computer. The density is the
+// church's (it rides backups); which modules show (the culto's tray), the
+// sizes and the arrangement are this computer's, and so are "Ao fechar" and
+// "Iniciar com o Windows" (settings.json, electron/closeGuard.cjs). The Ver
+// menu keeps its quick toggles.
 export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) {
     const system = useBridge("system");
     const [machine, setMachine] = useState(null);
@@ -37,6 +37,7 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                             <span className="kx-meta">{name}</span>
                         </span>
                     ))}
+                    <span className="kx-meta">neste computador</span>
                 </FormRow>
                 <FormRow k="Densidade">
                     <Seg small label="Densidade" value={densityOf(layout)} onChange={(v) => setLayout({ ...layout, density: v })} options={DENSITIES} />

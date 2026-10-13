@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf, loadLayout, restoreArrangement, clampSize, sideCol } from "./layout.js";
-import { DEFAULT_ORDER, DEFAULT_STACKS, COLUMNS, cultoColumns } from "./arrange.js";
+import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf, loadLayout, restoreArrangement, restoreEnv, clampSize, sideCol } from "./layout.js";
+import { DEFAULT_ORDER, DEFAULT_STACKS } from "./arrange.js";
 import { DEFAULT_TILES } from "./multiview.js";
 import { DEFAULT_TABS } from "./panelTabs.js";
 
@@ -93,14 +93,32 @@ test("the multiview is off by default; a saved one keeps its outputs, cleaned", 
     assert.equal(withStore({ multiview: "yes" }, () => loadLayout("x")).multiview, false);
 });
 
-test("the Slides never get narrower than a slide's line: 300 px, splitter and narrow column alike", () => {
+test("the Slides never get narrower than a slide's line: 300 px, the splitter's limit", () => {
     assert.deepEqual(LIMITS.slidesW, [300, 520]);
     assert.ok(DEFAULT_LAYOUT.slidesW >= LIMITS.slidesW[0]);
     assert.equal(clampSize("slidesW", 120), 300, "the splitter dragged below the minimum stops there");
     assert.equal(clampSize("slidesW", 410), 410);
     assert.equal(sideCol("slidesW", 250).minWidth, 300, "an old save below the minimum still renders at it");
-    // Narrow: Biblioteca over Slides in one column, as wide as the Slides.
-    const source = cultoColumns({ tier: "narrow" }).find((c) => c.id === "source");
-    assert.equal(source.widthKey, "slidesW");
-    assert.equal(COLUMNS.culto.source.widthKey, "slidesW");
+});
+
+test("restoring one environment leaves the other's arrangement as it is", () => {
+    const custom = { ...DEFAULT_LAYOUT, dock: { tree: null, hidden: [] }, dockPreset: "c1", libW: 400, bibleDock: { env: "biblia", tree: null, hidden: [] }, bibleDockPreset: "b1", bibleSelW: 350,
+        order: { culto: ["live", "lib", "slides", "side"], biblia: ["air", "reading", "picker"] }, stacks: { ...DEFAULT_STACKS, side: ["roteiro", "camadas"], picker: ["verses", "books", "chapters"] } };
+    const culto = restoreEnv(custom, "culto");
+    assert.equal(culto.dock, null);
+    assert.equal(culto.dockPreset, null);
+    assert.equal(culto.libW, DEFAULT_LAYOUT.libW);
+    assert.deepEqual(culto.order.culto, DEFAULT_ORDER.culto);
+    assert.deepEqual(culto.stacks.side, DEFAULT_STACKS.side);
+    assert.equal(culto.bibleDockPreset, "b1", "the Bíblia's untouched");
+    assert.equal(culto.bibleSelW, 350);
+    assert.deepEqual(culto.order.biblia, ["air", "reading", "picker"]);
+    assert.deepEqual(culto.stacks.picker, ["verses", "books", "chapters"]);
+    const biblia = restoreEnv(custom, "biblia");
+    assert.equal(biblia.bibleDock, null);
+    assert.equal(biblia.bibleDockPreset, null);
+    assert.deepEqual(biblia.order.biblia, DEFAULT_ORDER.biblia);
+    assert.deepEqual(biblia.stacks.picker, DEFAULT_STACKS.picker);
+    assert.equal(biblia.dockPreset, "c1", "the culto's untouched");
+    assert.equal(biblia.libW, 400);
 });

@@ -1,0 +1,237 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, defaultSize, setActive, resizeChild, fitDock, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, PLAYER_SLOT } from "./dock.js";
+
+const g = (...tabs) => group(tabs);
+// The console of the 2026-10-13 audit: Biblioteca | Slides | Programa over
+// Prévia · Painel de abas | Camadas over the Setlist.
+const fourColumns = () => split("row", [
+    g("lib"), g("slides"),
+    split("col", [g("programa"), split("row", [g("previa"), g("abas")], [444, null])], [null, 334]),
+    split("col", [g("camadas"), g("setlist")], [360, null]),
+], [260, 300, null, 320]);
+
+test("the default dock is the four-column console, nothing in the tray", () => {
+    // centre = 1908 − 326 − 266 − 306 = 1010; the Prévia 44 % = 444; 444 · 9/16 + 84 = 334
+    assert.deepEqual(defaultDock(), { tree: fourColumns(), hidden: [] });
+});
+
+test("an old layout migrates: its column order, stack order, hidden modules and sizes", () => {
+    const d = fromArrangement({ order: { culto: ["live", "side", "lib", "slides"] }, stacks: { side: ["roteiro", "camadas"] }, hidden: { lib: true, camadas: true }, slidesW: 340, prevPct: 25 }, { width: 1500 });
+    // centre = 1500 − 326 − 346 = 828; 25 % = 207, at least the Prévia's 220; 220 · 9/16 + 84 = 208
+    assert.deepEqual(d.tree, split("row", [
+        split("col", [g("programa"), split("row", [g("previa"), g("abas")], [220, null])], [null, 208]),
+        g("setlist"),
+        g("slides"),
+    ], [null, 320, 340]));
+    assert.deepEqual(d.hidden, ["lib", "camadas"]);
+    // The Setlist over Camadas: Camadas keeps its own height.
+    assert.deepEqual(fromArrangement({ stacks: { side: ["roteiro", "camadas"] }, camadasH: 200 }).tree.children[3], split("col", [g("setlist"), g("camadas")], [null, 200]));
+});
+
+test("a saved dock is made safe: every module in exactly one place", () => {
+    const d = normalizeDock({
+        tree: { dir: "row", children: [{ tabs: ["lib", "lib", "nope"] }, { tabs: [] }, { dir: "col", children: [{ tabs: ["programa"] }], sizes: [null] }], sizes: [200, 100, null] },
+        hidden: ["player", "programa", "camadas", "camadas"],
+    });
+    // Repeats and unknown ids go, the empty group goes, a split of one is its
+    // child; the missing Prévia and Setlist come back at the right; the
+    // player rides the Programa (never the tray); modules the save did not
+    // place go to the tray.
+    assert.deepEqual(d.tree, split("row", [g("lib"), g("programa"), g("previa"), g("setlist")], [200, null, NEW_PX, NEW_PX]));
+    assert.deepEqual(d.hidden, ["camadas", "slides", "abas"]);
+    assert.deepEqual(normalizeDock(null), { tree: split("row", [g("programa"), g("previa"), g("setlist")], [null, NEW_PX, NEW_PX]), hidden: ["lib", "slides", "abas", "camadas"] });
+    assert.deepEqual(normalizeDock({ tree: "junk", hidden: "junk" }), normalizeDock(null));
+});
+
+test("one flexible child per split, the Programa's when there is a choice", () => {
+    const row = (...kids) => normalizeDock({ tree: split("row", [...kids.map((k) => k[0]), g("setlist")], [...kids.map((k) => k[1]), 400]) }).tree.sizes;
+    assert.deepEqual(row([g("lib"), 100], [g("programa"), 200], [g("previa"), 300]), [100, null, 300, 400]);
+    assert.deepEqual(row([g("lib"), null], [g("previa"), null], [g("programa"), 300]), [null, NEW_PX, 300, 400], "the first of the flexible ones");
+    assert.deepEqual(row([g("lib"), null], [g("programa"), null], [g("previa"), 300]), [NEW_PX, null, 300, 400], "the Programa's when it is one of them");
+    const noProg = normalizeDock({ tree: split("row", [split("col", [g("programa"), g("previa")], [null, 200]), split("col", [g("lib"), g("slides")], [500, 400]), g("setlist")], [null, 300, 400]) });
+    assert.deepEqual(noProg.tree.children[1].sizes, [null, 400], "the largest becomes flexible");
+});
+
+test("a split inside a split of the same direction merges into it", () => {
+    const flexSlot = normalizeDock({ tree: split("row", [g("lib"), split("row", [g("slides"), g("programa")], [300, null]), g("previa"), g("setlist")], [200, null, 320, 400]) });
+    assert.deepEqual(flexSlot.tree, split("row", [g("lib"), g("slides"), g("programa"), g("previa"), g("setlist")], [200, 300, null, 320, 400]));
+    // A fixed slot: its flexible child keeps what was left of the slot.
+    const fixedSlot = normalizeDock({ tree: split("row", [g("programa"), split("row", [g("slides"), g("lib")], [100, null]), g("previa"), g("setlist")], [null, 400, 320, 400]) });
+    assert.deepEqual(fixedSlot.tree.sizes, [null, 100, 294, 320, 400]);
+});
+
+test("dropping in the middle of a group makes tabs", () => {
+    const d = moveModules(defaultDock(), ["camadas"], { kind: "group", path: [2, 0], zone: "center" });
+    assert.deepEqual(nodeAt(d.tree, [2]), split("col", [group(["programa", "camadas"], "camadas"), split("row", [g("previa"), g("abas")], [444, null])], [null, 334]));
+    assert.deepEqual(nodeAt(d.tree, [3]), g("setlist"), "the right column is the Setlist alone");
+});
+
+test("dropping on a side along the split inserts beside, halving a fixed neighbour", () => {
+    // Half of the Biblioteca's 260, each kept at its minimum (Setlist 220, Biblioteca 200).
+    const d = moveModules(defaultDock(), ["setlist"], { kind: "group", path: [0], zone: "left" });
+    assert.deepEqual(leaves(d.tree), ["setlist", "lib", "slides", "programa", "previa", "abas", "camadas"]);
+    assert.deepEqual(d.tree.sizes, [220, 200, 300, null, 320]);
+    assert.deepEqual(nodeAt(d.tree, [4]), g("camadas"));
+    const wide = moveModules(fromArrangement({ libW: 480 }), ["abas"], { kind: "group", path: [0], zone: "right" });
+    assert.deepEqual(wide.tree.sizes.slice(0, 2), [237, 237]);
+    // Beside the flexible one: the new group gets the size it was given.
+    const e = moveModules(defaultDock(), ["lib"], { kind: "group", path: [2, 1, 1], zone: "right" }, { px: 280 });
+    assert.deepEqual(nodeAt(e.tree, [1, 1]), split("row", [g("previa"), g("abas"), g("lib")], [444, null, 280]));
+    // Over the Programa: the centre column takes it.
+    const f = moveModules(defaultDock(), ["slides"], { kind: "group", path: [2, 0], zone: "top" }, { px: 180 });
+    assert.deepEqual(nodeAt(f.tree, [1]).sizes, [180, null, 334]);
+});
+
+test("dropping on a side across the split wraps the group in a new split", () => {
+    const d = moveModules(defaultDock(), ["slides"], { kind: "group", path: [2, 1, 0], zone: "top" }, { px: 180 });
+    assert.deepEqual(nodeAt(d.tree, [1, 1, 0]), split("col", [g("slides"), g("previa")], [180, null]));
+    assert.deepEqual(nodeAt(d.tree, [1, 1]).sizes, [444, null], "the wrap keeps the Prévia's slot");
+    assert.deepEqual(d.tree.sizes, [260, null, 320], "the column it left is gone");
+    // The whole console: a new root.
+    const one = { tree: group(["programa", "previa", "setlist"]), hidden: [] };
+    const r = moveModules(one, ["setlist"], { kind: "group", path: [], zone: "bottom" }, { px: 250 });
+    assert.deepEqual(r.tree, split("col", [g("programa", "previa"), g("setlist")], [null, 250]));
+});
+
+test("a drop onto where it already is changes nothing", () => {
+    const d = defaultDock();
+    assert.deepEqual(moveModules(d, ["programa"], { kind: "group", path: [2, 0], zone: "center" }), d);
+    assert.deepEqual(moveModules(d, ["programa"], { kind: "group", path: [2, 0], zone: "left" }), d, "a lone tab beside itself");
+    // One tab of several can leave its group for its own side.
+    const tabs = normalizeDock({ tree: split("row", [g("programa", "camadas"), g("previa"), g("setlist")], [null, 300, 400]) });
+    const out = moveModules(tabs, ["camadas"], { kind: "group", path: [0], zone: "right" }, { px: 280 });
+    assert.deepEqual(out.tree, split("row", [g("programa"), g("camadas"), g("previa"), g("setlist")], [null, 280, 300, 400]));
+});
+
+test("the tray: modules leave the console; the Programa, the Prévia and the Setlist never do", () => {
+    const d = hideModule(defaultDock(), "camadas");
+    assert.deepEqual(d.hidden, ["camadas"]);
+    assert.deepEqual(nodeAt(d.tree, [3]), g("setlist"));
+    assert.deepEqual(hideModule(defaultDock(), "programa"), defaultDock());
+    assert.deepEqual(hideModule(defaultDock(), "setlist"), defaultDock());
+    assert.deepEqual(moveModules(defaultDock(), ["previa", "abas"], { kind: "tray" }), defaultDock());
+    // Back from the tray onto the console.
+    const back = moveModules(d, ["camadas"], { kind: "group", path: [0], zone: "center" });
+    assert.deepEqual(back.hidden, []);
+    assert.deepEqual(back.tree.children[0], group(["lib", "camadas"], "camadas"));
+});
+
+test("the player rides the Programa until it is placed, and goes home instead of the tray", () => {
+    const placed = moveModules(defaultDock(), ["player"], { kind: "group", path: [3, 1], zone: "top" }, { px: 60 });
+    assert.deepEqual(nodeAt(placed.tree, [3]), split("col", [g("camadas"), g("player"), g("setlist")], [360, 60, null]));
+    assert.deepEqual(pathOf(placed.tree, "player"), [3, 1]);
+    const hidden = hideModule(placed, "player");
+    assert.equal(pathOf(hidden.tree, "player"), null);
+    assert.deepEqual(hidden.hidden, [], "never in the tray");
+    assert.deepEqual(hidden.tree, defaultDock().tree);
+    assert.deepEqual(moveModules(placed, ["player"], { kind: "home" }).tree, defaultDock().tree);
+    assert.deepEqual(moveModules(defaultDock(), ["lib"], { kind: "home" }), defaultDock(), "only the player has a home");
+});
+
+test("back from the tray: to the default place, beside what is on screen", () => {
+    const d = defaultDock();
+    assert.deepEqual(returnModule(hideModule(d, "lib"), "lib"), d);
+    assert.deepEqual(returnModule(hideModule(d, "camadas"), "camadas"), d, "over the Setlist, with its height");
+    assert.deepEqual(leaves(returnModule(hideModule(d, "abas"), "abas").tree), leaves(d.tree));
+    // The Slides gone too: the Biblioteca goes before the centre.
+    const both = hideModule(hideModule(d, "lib"), "slides");
+    assert.equal(leaves(returnModule(both, "lib").tree)[0], "lib");
+    assert.deepEqual(returnModule(d, "lib"), d, "not in the tray: nothing moves");
+});
+
+test("switching tabs and resizing", () => {
+    const tabs = moveModules(defaultDock(), ["camadas"], { kind: "group", path: [2, 0], zone: "center" });
+    assert.equal(setActive(tabs, [2, 0], "programa").tree.children[2].children[0].active, "programa");
+    assert.deepEqual(setActive(tabs, [2, 0], "lib"), tabs, "not a tab of that group");
+    assert.equal(resizeChild(defaultDock(), [], 0, 400).tree.sizes[0], 400);
+    assert.equal(resizeChild(defaultDock(), [], 0, 50).tree.sizes[0], 200, "never under the module's minimum");
+    assert.equal(resizeChild(defaultDock(), [], 1, -350).tree.sizes[1], 300, "a drag past the edge stops at the minimum");
+    assert.deepEqual(resizeChild(defaultDock(), [], 2, 900), defaultDock(), "the flexible one takes the rest");
+});
+
+test("a splitter's restore: the size the default console gives the same modules", () => {
+    const d = defaultDock();
+    assert.equal(defaultSize(d, [], 0), 260);
+    assert.equal(defaultSize(d, [3], 0), 360);
+    const moved = moveModules(d, ["camadas"], { kind: "group", path: [0], zone: "center" });
+    assert.equal(defaultSize(moved, [], 0), null, "Biblioteca with Camadas: nothing to restore to");
+});
+
+test("sizes: fixed children keep theirs, then give way toward their minimums", () => {
+    assert.deepEqual(allocate([260, 300, null, 320], [200, 300, 320, 280], 1890), [260, 300, 1010, 320]);
+    assert.deepEqual(allocate([260, 300, null], [200, 200, 320], 800), [230, 250, 320]);
+    // The Programa's minimum height includes the player riding under it.
+    assert.equal(minSize(g("programa"), false), 200 + PLAYER_SLOT);
+    assert.equal(minSize(g("programa"), false, { playerDocked: false }), 200);
+});
+
+test("fitting: what does not fit side by side becomes tabs, the dock itself unchanged", () => {
+    const d = defaultDock();
+    const wide = fitDock(d, 1908, 1000);
+    assert.deepEqual(wide.children.map((c) => c.size), [260, 300, 1010, 320]);
+    assert.equal(JSON.stringify(wide).includes('"collapsed"'), false);
+    // 1200 px: the side columns give way to their minimums; the centre is
+    // too narrow for the Prévia and the Painel de abas side by side.
+    const mid = fitDock(d, 1200, 700);
+    assert.deepEqual(mid.children.map((c) => Math.round(c.size)), [249, 300, 320, 313]);
+    const bottom = mid.children[2].frame.children[1];
+    assert.equal(Math.round(bottom.size), 334);
+    assert.deepEqual({ ...bottom.frame, w: Math.round(bottom.frame.w) }, { kind: "group", path: [2, 1], tabs: ["previa", "abas"], active: "previa", w: 320, h: 334, collapsed: true, target: [2, 1, 0] });
+    // 1000 px: the Biblioteca and the Slides join as tabs (the pair that
+    // gives back the most room without touching the Programa); the rest stays.
+    const small = fitDock(d, 1000, 700);
+    assert.deepEqual(small.children.map((c) => [c.index, Math.round(c.size), c.frame.tabs || c.frame.dir]), [[0, 300, ["lib", "slides"]], [2, 368, "col"], [3, 320, "col"]]);
+    assert.deepEqual(small.children[0].frame.target, [0]);
+    // 700 px: the Programa's column joins them too; Camadas and the Setlist stay apart.
+    const narrow = fitDock(d, 700, 500);
+    assert.deepEqual(narrow.children.map((c) => c.frame.tabs || c.frame.dir), [["lib", "slides", "programa", "previa", "abas"], "col"]);
+    // Nothing fits beside anything: one group of tabs.
+    const tiny = fitDock(d, 400, 500);
+    assert.equal(tiny.collapsed, true);
+    assert.deepEqual(tiny.tabs, ["lib", "slides", "programa", "previa", "abas", "camadas", "setlist"]);
+    assert.deepEqual(tiny.target, [0]);
+});
+
+// The Bíblia's dock: the same engine, its own modules.
+const bible = () => split("row", [
+    split("col", [g("bhead"), g("books"), g("chapters"), g("verses")], [132, 320, 200, null]),
+    g("reading"),
+    g("air"),
+], [300, null, 400]);
+
+test("the Bíblia: its default dock is the three columns it had", () => {
+    assert.deepEqual(defaultDock({ env: "biblia" }), { env: "biblia", tree: bible(), hidden: [] });
+    // An old arrangement: the text first, the pickers in another order, a wider picker column.
+    const d = fromBibleArrangement({ order: { biblia: ["reading", "picker", "air"] }, stacks: { picker: ["verses", "books", "chapters"] }, bibleSelW: 340 });
+    assert.deepEqual(d.tree, split("row", [
+        g("reading"),
+        split("col", [g("bhead"), g("verses"), g("books"), g("chapters")], [132, 200, 320, null]),
+        g("air"),
+    ], [null, 340, 400]));
+});
+
+test("the Bíblia: only its modules, its required ones back, the environment kept", () => {
+    const d = normalizeDock({ env: "biblia", tree: split("row", [g("reading", "lib"), g("programa")], [null, 300]), hidden: ["slides", "books"] });
+    assert.equal(d.env, "biblia");
+    assert.deepEqual(leaves(d.tree), ["reading", "bhead", "air"], "culto modules are not the Bíblia's; Versão e busca and No ar come back");
+    assert.deepEqual(d.hidden, ["books", "chapters", "verses"]);
+    // The culto never takes the Bíblia's modules.
+    assert.equal(leaves(normalizeDock({ tree: g("programa", "reading") }).tree).includes("reading"), false);
+    const off = hideModule(defaultDock({ env: "biblia" }), "books");
+    assert.equal(off.env, "biblia");
+    assert.deepEqual(off.hidden, ["books"]);
+    assert.deepEqual(hideModule(defaultDock({ env: "biblia" }), "air"), defaultDock({ env: "biblia" }), "No ar never leaves");
+    assert.deepEqual(returnModule(off, "books"), defaultDock({ env: "biblia" }));
+    const tabs = moveModules(defaultDock({ env: "biblia" }), ["chapters"], { kind: "group", path: [0, 1], zone: "center" });
+    assert.equal(tabs.env, "biblia");
+    assert.deepEqual(nodeAt(tabs.tree, [0, 1]), group(["books", "chapters"], "chapters"));
+    assert.equal(defaultSize(defaultDock({ env: "biblia" }), [], 2), 400);
+});
+
+test("the Bíblia fits the smallest window side by side", () => {
+    const f = fitDock(defaultDock({ env: "biblia" }), 960, 600);
+    assert.equal(JSON.stringify(f).includes('"collapsed"'), false);
+    // 948 px: the side columns give way in proportion to their room (60 and 100 px).
+    assert.deepEqual(f.children.map((c) => Math.round(c.size)), [258, 360, 330]);
+});

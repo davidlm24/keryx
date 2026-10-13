@@ -20,7 +20,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 
 // The KERYX menu: pages that stay outside the console, the service picker,
 // Ver (modules) and the layout reset.
-export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow, onWhatsNew }) {
+export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow, onWhatsNew }) {
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     if (open === "ver") {
         return (
@@ -36,7 +36,16 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                     <MenuItem key={key} checked={densityOf(layout) === key} onClick={() => setLayout({ ...layout, density: key })} title={key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item"}>{name}</MenuItem>
                 ))}
                 <div className="kx-menu-sep" />
-                <MenuItem icon="grip" checked={editing} onClick={onEditLayout} title="Mudar as colunas e os cards de lugar (arrastar ou setas) · Esc conclui">{editing ? "Concluir a edição" : "Editar disposição"}</MenuItem>
+                {/* Named arrangements (dockPresets.js): Padrão and the operator's. */}
+                <div className="kx-menu-h"><span className="kx-section">Disposição</span></div>
+                {[{ id: null, name: "Padrão" }, ...presets].map((p) => (
+                    <MenuItem key={p.id || "padrao"} checked={presetId === p.id} onClick={() => onPickPreset?.(p.id)}
+                        title={p.id ? `Trocar para a disposição “${p.name}”` : "A disposição de fábrica do console"}>
+                        {p.name}{presetId === p.id && presetDirty ? " · alterada" : ""}
+                    </MenuItem>
+                ))}
+                <div className="kx-menu-sep" />
+                <MenuItem icon="grip" checked={editing} onClick={onEditLayout} title="Mudar os módulos de lugar, salvar disposições com nome · Esc conclui">{editing ? "Concluir a edição" : "Editar disposição"}</MenuItem>
                 <MenuItem onClick={() => { restoreLayout(); setOpen(null); }}>Restaurar disposição</MenuItem>
                 <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos do teclado</MenuItem>
             </div>

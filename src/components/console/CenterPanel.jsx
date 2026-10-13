@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Icon from "./Icon";
-import { Monitor, Btn, Split, Panel } from "./kx";
-import { DEFAULT_LAYOUT, clampSize } from "@/lib/console/layout";
+import { Monitor, Btn, Panel } from "./kx";
 import PlayerBar from "./PlayerBar";
 import MultiView from "./MultiView";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
@@ -93,14 +92,24 @@ export function ProgramaCaption({ c, projectorDown }) {
     );
 }
 
-// The Programa band (the 2026-10-13 two-band console): what is on air (or
-// the Multiview: four outputs at once, { tiles, rows, onPick }) and, right
-// under it, the player — always visible, dimmed while idle (owner's
-// decision 2026-10-13; it drives what is on air; reserved, so the monitor
-// never moves). Sized by console.css (.liveblock): as wide as the band
-// allows, limited by the 16:9 of its height. The Prévia and the panel beside
-// it live in the band below (PreviewBand).
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, items = [], multiview = null }) {
+// The player module (PlayerBar in its reserved slot): always visible,
+// dimmed while idle (owner's decision 2026-10-13; it drives what is on air;
+// reserved, so the monitor never moves). It rides under the Programa unless
+// the console's arrangement puts it somewhere else.
+export function PlayerSlot({ c, picked, setPicked, videoScreens, projectorOpen }) {
+    return (
+        <div className="pslot">
+            <PlayerBar c={c} picked={picked} setPicked={setPicked} videoScreens={videoScreens} projectorOpen={projectorOpen} />
+        </div>
+    );
+}
+
+// The Programa module: what is on air (or the Multiview: four outputs at
+// once, { tiles, rows, onPick }) and, right under it, `player` (PlayerSlot)
+// when the player rides with the Programa. Sized by console.css
+// (.liveblock): as wide as its panel allows, limited by the 16:9 of its
+// height. The Prévia is its own module (PreviaPanel); the dock places both.
+export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, onProgMenu, items = [], multiview = null, player = null }) {
     const { cur, now, locked } = c;
     const [dropOn, setDropOn] = useState(null);
     // Locked: the screens keep this image, blue (they are not following). On
@@ -114,7 +123,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
         onDrop: (e) => { const st = getDragStage(); setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "air"); },
     };
     return (
-        <div className="mons" data-live-keys="" tabIndex={-1}>
+        <div className={`mons ${player ? "" : "no-player"}`} data-live-keys="" tabIndex={-1}>
             <div className="liveblock">
                 {multiview ? (
                     <MultiView live={cur} now={now} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick}
@@ -126,36 +135,18 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                         {dropOn && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
                     </Monitor>
                 )}
-                <div className="pslot">
-                    <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
-                </div>
+                {player}
             </div>
         </div>
     );
 }
 
-// The centre's bottom band, under the Programa and no wider than it (the
-// console audit, 2026-10-13): the Prévia with Enviar ao ar right under it,
-// then `side` in the rest — the tabs panel (TabsPanel) in the wide tier,
-// the Setlist where there is no right column (Console.jsx builds both). The
-// band is as tall as the Prévia's column; only the side's body scrolls.
-// The teacher notes sit under Enviar ao ar unless the Notas tab is on
-// screen (`notesInTab`). The Prévia's width is the operator's (the
-// splitter, % of the band, saved with the layout; it works in pixels, so
-// the band's width is kept here).
-export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, side = null, notesInTab = false, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
+// The Prévia module: the prepared stage as Projeção will show it, with
+// Enviar ao ar right under the monitor, what sending will do when it is not
+// obvious, and the teacher notes — unless the Notas tab is on screen
+// (`notesInTab`). Where it goes is the dock's (Dock.jsx).
+export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notesInTab = false, className = "" }) {
     const { cur, prev, now, locked, stamp } = c;
-    const bandRef = useRef(null);
-    const [bandW, setBandW] = useState(0);
-    useEffect(() => {
-        const el = bandRef.current;
-        if (!el || typeof ResizeObserver === "undefined") return undefined;
-        const ro = new ResizeObserver(([e]) => setBandW(e.contentRect.width));
-        ro.observe(el);
-        return () => ro.disconnect();
-    }, []);
-    const pct = clampSize("prevPct", prevPct);
-    const prevPx = (bandW * pct) / 100;
     // Built with a time fixed per prepared stage, never the ticking clock:
     // a new startedAt each second replayed the slide's transition (the
     // Prévia "pulsed"). A timer still counts (the renderer gets `now`).
@@ -187,23 +178,19 @@ export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, side 
         onDrop: (e) => { const st = getDragStage(); setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "prev"); },
     };
     return (
-        <div className="band-bottom" data-live-keys="" tabIndex={-1} ref={bandRef} style={{ "--prev": pct / 100 }}>
-            <Panel className="prev-panel bb-prev" caption={prevCap}>
-                <Monitor className={`${dropOn ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} noCap live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu }}>
-                    {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
-                    {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
-                    {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Telas e saídas › Mostrar)</div>}
-                    {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"}</div>}
-                    {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
-                </Monitor>
-                <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={sendTip(locked)}>
-                    {SEND_LABEL}
-                </Btn>
-                {note && <div className="kx-meta sendnote">{note}</div>}
-                {!notesInTab && <TeacherNotes prev={prev} cur={cur} />}
-            </Panel>
-            {onPrevPct && bandW > 0 && <Split size={prevPx} sign={1} onSize={(px) => onPrevPct(clampSize("prevPct", (px / bandW) * 100))} onReset={() => onPrevPct(DEFAULT_LAYOUT.prevPct)} clamp={(px) => px} />}
-            {side}
-        </div>
+        <Panel className={`prev-panel ${className}`} caption={prevCap}>
+            <Monitor className={`${dropOn ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} noCap live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu }}>
+                {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
+                {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
+                {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Telas e saídas › Mostrar)</div>}
+                {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"}</div>}
+                {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
+            </Monitor>
+            <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={sendTip(locked)}>
+                {SEND_LABEL}
+            </Btn>
+            {note && <div className="kx-meta sendnote">{note}</div>}
+            {!notesInTab && <TeacherNotes prev={prev} cur={cur} />}
+        </Panel>
     );
 }

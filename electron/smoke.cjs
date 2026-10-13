@@ -617,9 +617,17 @@ async function checkConsole(webContents, { live, outputs }) {
     };
     const js = (code) => webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← ${String(code).replace(/s+/g, " ").slice(0, 160)}`); });
     // The live column's monitors caption in parts (state word, title, position):
-    // read the title of the Programa (".prog") or the Prévia (".bb-prev .kx-mon").
+    // read the title of the Programa (".prog") or the Prévia (".prev-panel .kx-mon").
     const PROG = ".prog";
-    const PREV = ".bb-prev .kx-mon";
+    const PREV = ".prev-panel .kx-mon";
+    // The culto environment's modules (the dock, Ver › Editar disposição):
+    // every group inside the window, none over another.
+    const GROUPS_FIT = `(() => {
+        const gs = [...document.querySelectorAll(".console .dock .dock-group")].map((n) => n.getBoundingClientRect());
+        const inside = gs.length > 0 && gs.every((r) => r.left >= -1 && r.right <= innerWidth + 1 && r.width > 0 && r.height > 0);
+        const apart = gs.every((a, i) => gs.every((b, j) => j <= i || a.right <= b.left + 1 || b.right <= a.left + 1 || a.bottom <= b.top + 1 || b.bottom <= a.top + 1));
+        return inside && apart;
+    })()`;
     // Both captions are panel headers (.kx-prog-cap): the Programa's in the
     // prog panel, the Prévia's in the prev panel (2026-10-13).
     const capSel = (mon) => (mon === PROG ? ".prog-panel .kx-prog-cap .kx-mon-t" : ".prev-panel .kx-prog-cap .kx-mon-t");
@@ -782,7 +790,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // One PROGRAMA title (the panel header's caption, red while on air) and no
         // permanent red frame on the monitor; the panel header no longer repeats it.
         result.progOneTitle = await js(`(() => {
-            const caps = [...document.querySelectorAll(".console .col.center .kx-live-cap")].filter((e) => /^programa/i.test(e.textContent.trim()));
+            const caps = [...document.querySelectorAll(".console .dock .kx-live-cap")].filter((e) => /^programa/i.test(e.textContent.trim()));
             const word = caps[0] && getComputedStyle(caps[0]).color;
             const frame = getComputedStyle(document.querySelector(".prog .kx-mon-screen"), "::after").borderTopColor;
             return caps.length === 1 && word === "rgb(255, 107, 112)" && frame !== "rgb(229, 72, 77)" && !document.querySelector(".prog .kx-mon-cap");
@@ -805,12 +813,7 @@ async function checkConsole(webContents, { live, outputs }) {
             await sleep(500);
             result.bar[w] = await barFits();
             result.cols = result.cols || {};
-            result.cols[w] = await js(`(() => {
-                const cols = [...document.querySelectorAll(".console .main > .col")].map((n) => n.getBoundingClientRect());
-                const inside = cols.every((r) => r.left >= -1 && r.right <= innerWidth + 1 && r.width > 0);
-                const apart = cols.every((r, i) => i === 0 || r.left >= cols[i - 1].right - 1);
-                return inside && apart;
-            })()`);
+            result.cols[w] = await js(GROUPS_FIT);
             result[`shot${w}`] = await shot(String(w));
         }
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
@@ -831,9 +834,9 @@ async function checkConsole(webContents, { live, outputs }) {
         })()`);
         const airIndex = () => (live.get().content ? live.get().content.index : null);
         const indexBefore = airIndex();
-        const SPLIT = `document.querySelector(".console .main > .kx-split[role='separator']")`;
+        const SPLIT = `document.querySelector(".console .dock > .dock-split > .kx-split[role='separator']")`;
         const splitWidth = () => js(`(() => { const s = ${SPLIT}; return s && s.previousElementSibling ? Math.round(s.previousElementSibling.getBoundingClientRect().width) : null; })()`);
-        result.splitterFound = await js(`(() => { const s = ${SPLIT}; if (s) s.focus(); return s ? document.activeElement === s : [...document.querySelector(".console .main").children].map((c) => c.className).join(" | "); })()`);
+        result.splitterFound = await js(`(() => { const s = ${SPLIT}; if (s) s.focus(); return s ? document.activeElement === s : [...document.querySelector(".console .dock").children].map((c) => c.className).join(" | "); })()`);
         const widthBefore = await splitWidth();
         if (result.splitterFound === true) { await press("ArrowRight"); await sleep(300); }
         const widthAfter = await splitWidth();
@@ -852,17 +855,14 @@ async function checkConsole(webContents, { live, outputs }) {
         for (const w of [1460]) {
             if (operatorWin) operatorWin.setContentSize(w, 820);
             await sleep(500);
-            result.cols[w] = await js(`(() => {
-                const cols = [...document.querySelectorAll(".console .main > .col")].map((n) => n.getBoundingClientRect());
-                return cols.every((r, i) => r.left >= -1 && r.right <= innerWidth + 1 && (i === 0 || r.left >= cols[i - 1].right - 1));
-            })()`);
+            result.cols[w] = await js(GROUPS_FIT);
         }
         // The Slides have a minimum width (a slide's line stays whole): the
         // splitter widens them, then dragged far narrower stops at 300 px;
         // a double click restores.
         result.slidesMinDiag = await js(`(async () => {
-            const colW = () => Math.round(document.querySelector(".console .main > [data-col='slides']").getBoundingClientRect().width);
-            const col = document.querySelector(".console .main > [data-col='slides']");
+            const col = document.querySelector(".console .dock > .dock-split > .dock-cell:has(> .dock-group[data-dock-mods='slides'])");
+            const colW = () => Math.round(col.getBoundingClientRect().width);
             const s = col && [col.nextElementSibling, col.previousElementSibling].find((n) => n && n.getAttribute("role") === "separator");
             if (!s) return { found: false };
             const sign = s === col.nextElementSibling ? 1 : -1;
@@ -883,21 +883,37 @@ async function checkConsole(webContents, { live, outputs }) {
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.colsFit = Object.values(result.cols).every(Boolean);
-        // Ver › Editar layout (arrange.js): a banner, a bar per column; ▶ on
-        // the Biblioteca swaps it with Slides, saved with the layout; the
-        // columns still fit; Esc leaves the edit mode without ending the
-        // projection; Restaurar posições puts the default order back.
+        // Ver › Editar disposição (dock.js): a banner with the tray, a bar on
+        // every group; the Biblioteca dragged by its name to the right of the
+        // Slides goes there (a hint shows where while dragging), saved with
+        // the layout; the groups still fit; Esc leaves the edit mode without
+        // ending the projection; Restaurar posições puts the default back.
         {
-            const colOrder = () => js(`[...document.querySelectorAll(".console .main > [data-col]")].map((n) => n.dataset.col).join(",")`);
-            const orderBefore = await colOrder();
+            const groupOrder = () => js(`[...document.querySelectorAll(".console .dock .dock-group")].map((n) => n.dataset.dockMods).join(",")`);
+            const orderBefore = await groupOrder();
             await click(".topbar .tb-ver");
             await click(".pop .kx-menu-item", "Editar disposição");
-            result.editBanner = await waitFor(() => js("Boolean(document.querySelector('.arr-banner')) && document.querySelectorAll('.console .main > [data-col] > .arr-bar').length === document.querySelectorAll('.console .main > [data-col]').length"));
-            await js(`(() => { const b = document.querySelector('[data-col="lib"] .arr-bar button[title^="Mover Biblioteca para a direita"]'); if (b) b.click(); return Boolean(b); })()`);
-            const orderMoved = await colOrder();
-            const savedOrder = await js(`(() => { const k = Object.keys(localStorage).find((x) => x.startsWith("keryx.console.layout")); try { return JSON.parse(localStorage.getItem(k)).order.culto.join(","); } catch { return null; } })()`);
-            const fits = await js(`(() => { const cols = [...document.querySelectorAll(".console .main > .col")].map((n) => n.getBoundingClientRect()); return cols.every((r, i) => r.left >= -1 && r.right <= innerWidth + 1 && (i === 0 || r.left >= cols[i - 1].right - 1)); })()`);
-            result.editMove = orderMoved.startsWith("slides,lib") && Boolean(savedOrder && savedOrder.startsWith("slides,lib")) && fits ? true : { orderBefore, orderMoved, savedOrder, fits };
+            result.editBanner = await waitFor(() => js("Boolean(document.querySelector('.arr-banner [data-dock-tray]')) && [...document.querySelectorAll('.console .dock .dock-group')].every((g) => g.querySelector(':scope > .dock-bar'))"));
+            const dragHint = await js(`(async () => {
+                const chip = document.querySelector('.dock-group[data-dock-mods="lib"] .dock-chip');
+                const to = document.querySelector('.dock-group[data-dock-mods="slides"]');
+                if (!chip || !to) return "faltou " + (chip ? "alvo" : "nome");
+                const a = chip.getBoundingClientRect();
+                const b = to.getBoundingClientRect();
+                const pe = (type, x, y, target) => target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 1, isPrimary: true }));
+                pe("pointerdown", a.left + 8, a.top + 8, chip);
+                pe("pointermove", a.left + 40, a.top + 40, window);
+                pe("pointermove", b.right - 6, b.top + b.height / 2, window);
+                await new Promise((res) => setTimeout(res, 150));
+                const hint = Boolean(document.querySelector(".dock-hint"));
+                pe("pointerup", b.right - 6, b.top + b.height / 2, window);
+                await new Promise((res) => setTimeout(res, 300));
+                return hint;
+            })()`);
+            const orderMoved = await groupOrder();
+            const savedLeaves = await js(`(() => { const k = Object.keys(localStorage).find((x) => x.startsWith("keryx.console.layout")); try { const out = []; const walk = (n) => (n.tabs ? out.push(...n.tabs) : n.children.forEach(walk)); walk(JSON.parse(localStorage.getItem(k)).dock.tree); return out.join(","); } catch { return null; } })()`);
+            const fits = await js(GROUPS_FIT);
+            result.editMove = dragHint === true && orderMoved.startsWith("slides,lib") && Boolean(savedLeaves && savedLeaves.startsWith("slides,lib")) && fits ? true : { dragHint, orderBefore, orderMoved, savedLeaves, fits };
             const airBefore = JSON.stringify(live.get().content || null);
             await js("document.activeElement && document.activeElement.blur(); true");
             await press("Escape");
@@ -906,7 +922,7 @@ async function checkConsole(webContents, { live, outputs }) {
             await click(".pop .kx-menu-item", "Editar disposição");
             await click(".arr-banner button", "Restaurar posições");
             await click(".arr-banner button", "Concluir");
-            result.editRestore = (await colOrder()) === orderBefore;
+            result.editRestore = (await groupOrder()) === orderBefore;
         }
         result.noGoldRing = await js(`(() => {
             const input = document.querySelector(".console .searchrow .kx-field input");
@@ -1163,13 +1179,12 @@ async function checkConsole(webContents, { live, outputs }) {
             if (operatorWin) operatorWin.setContentSize(w, h);
             await sleep(500);
             result.bibleNoScroll[`${w}x${h}`] = await js(`(() => {
-                const cols = [...document.querySelectorAll(".console .main > [data-col]")];
-                if (cols.map((n) => n.dataset.col).join(",") !== "picker,reading,air") return "colunas: " + cols.map((n) => n.dataset.col).join(",");
-                const xs = cols.map((c2) => c2.getBoundingClientRect().left);
-                if (!(xs[0] < xs[1] && xs[1] < xs[2])) return "fora de ordem";
-                const stack = [...document.querySelectorAll(".bible-pick > .arr-card")].map((n) => n.className.match(/arr-card-(\\w+)/)[1]).join(",");
-                if (stack !== "books,chapters,verses") return "pilha: " + stack;
-                const box = document.querySelector(".arr-card-chapters > .kx-panel-b");
+                const mods = [...document.querySelectorAll(".console .dock .dock-group")].map((n) => n.dataset.dockMods).join(",");
+                if (mods !== "bhead,books,chapters,verses,reading,air") return "módulos: " + mods;
+                const g = (m) => document.querySelector('.console .dock .dock-group[data-dock-mods="' + m + '"]').getBoundingClientRect();
+                if (!(g("books").right <= g("reading").left + 1 && g("reading").right <= g("air").left + 1)) return "fora de ordem";
+                if (!(g("bhead").bottom <= g("books").top + 1 && g("books").bottom <= g("chapters").top + 1 && g("chapters").bottom <= g("verses").top + 1)) return "pilha fora de ordem";
+                const box = document.querySelector(".bpick-chapters > .kx-panel-b");
                 const c150 = [...box.querySelectorAll(".chapters button")].find((b) => b.textContent === "150");
                 if (!c150) return "sem 150";
                 c150.scrollIntoView({ block: "nearest" });
@@ -1196,7 +1211,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Bíblia's splitters are real (they were a fixed gap): → grows the
         // Livro · Capítulo · Versículo column, Enter restores it.
         {
-            const BSPLIT = `document.querySelector(".console .main > .kx-split[role='separator']")`;
+            const BSPLIT = `document.querySelector(".console .dock > .dock-split > .kx-split[role='separator']")`;
             const bWidth = () => js(`(() => { const s = ${BSPLIT}; return s && s.previousElementSibling ? Math.round(s.previousElementSibling.getBoundingClientRect().width) : null; })()`);
             const focused = await js(`(() => { const s = ${BSPLIT}; if (s) s.focus(); return Boolean(s) && document.activeElement === s; })()`);
             const w0 = await bWidth();
@@ -1374,10 +1389,10 @@ async function checkConsole(webContents, { live, outputs }) {
         // No service yet: the Fundo layer's strip offers the day's look
         // (Visual de hoje…, which would start today's setlist, as adding an
         // item does). Camadas may be a card or the drawer at this width.
-        const dayLookDrawer = await js("(() => { const b = [...document.querySelectorAll('.center .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return Boolean(b); })()");
+        const dayLookDrawer = await js("(() => { const b = [...document.querySelectorAll('.prog-panel .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return Boolean(b); })()");
         await click(".kx-layer", "Fundo");
         result.dayLookButton = await waitFor(() => js("[...document.querySelectorAll('.tm-acts button')].some((b) => b.textContent.includes('Visual de hoje'))"), 4000);
-        if (dayLookDrawer) await js("(() => { const b = [...document.querySelectorAll('.center .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return true; })()");
+        if (dayLookDrawer) await js("(() => { const b = [...document.querySelectorAll('.prog-panel .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return true; })()");
         // No service yet: dropping a song on the Setlist (the right column,
         // under Camadas, in the wide tier) starts today's setlist.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
@@ -1390,7 +1405,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(600);
         await js(`(() => {
             const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
-            const to = document.querySelector('[data-col="side"] .rund-tail');
+            const to = document.querySelector('[data-dock-mods~="setlist"] .rund-tail');
             if (!from || !to) return false;
             const dt = new DataTransfer();
             from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
@@ -1442,7 +1457,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitText(webContents, "Canto do console");
         result.dragPrev = await js(`(() => {
             const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
-            const to = document.querySelector(".bb-prev .kx-mon");
+            const to = document.querySelector(".prev-panel .kx-mon");
             if (!from || !to) return "faltou " + (from ? "alvo" : "origem");
             const dt = new DataTransfer();
             from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
@@ -1456,7 +1471,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.dragDidNotSend = !live.get().content;
         result.dragSetlist = await js(`(() => {
             const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
-            const to = document.querySelector('[data-col="side"] .rund-tail');
+            const to = document.querySelector('[data-dock-mods~="setlist"] .rund-tail');
             if (!from || !to) return "faltou " + (from ? "cauda" : "origem");
             const dt = new DataTransfer();
             from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
@@ -1469,16 +1484,17 @@ async function checkConsole(webContents, { live, outputs }) {
             const rows = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
             return rows.length === 4 && rows.filter((r) => r.title === "Canto do console" && r.type === "SONG").length === 2;
         }, 8000);
-        // The right column: Camadas over the Setlist with the splitter between
-        // them; the band under the Programa ends at the centre's edge and
-        // holds the Prévia and the tabs panel.
+        // The default dock: Camadas over the Setlist in the right column, the
+        // splitter between them; under the Programa, the Prévia beside the
+        // tabs panel, ending at the Programa's edge.
         result.setlistRight = await js(`(() => {
-            const side = document.querySelector('[data-col="side"]');
-            const center = document.querySelector('[data-col="live"]');
-            if (!side || !center || !side.querySelector('.rund') || document.querySelector('.band-bottom .rund')) return false;
-            const cards = [...side.children].filter((n) => !n.classList.contains('arr-bar')).map((n) => (n.classList.contains('kx-split') ? '|' : (n.className.match(/arr-card-(\\w+)/) || [])[1])).join(',');
-            const band = document.querySelector('.band-bottom').getBoundingClientRect();
-            return cards === 'camadas,|,roteiro' && band.right <= center.getBoundingClientRect().right + 1 && Boolean(document.querySelector('.band-bottom .tabs-panel'));
+            const g = (m) => document.querySelector('.console .dock .dock-group[data-dock-mods="' + m + '"]');
+            const set = g('setlist'), prog = g('programa'), prev = g('previa'), abas = g('abas');
+            if (!g('camadas') || !set || !prog || !prev || !abas || !set.querySelector('.rund')) return false;
+            const col = set.closest('.dock-split.is-col');
+            const order = col ? [...col.children].map((n) => (n.classList.contains('kx-split') ? '|' : ((n.querySelector(':scope > .dock-group') || {}).dataset || {}).dockMods)).join(',') : '';
+            const r = (n) => n.getBoundingClientRect();
+            return order === 'camadas,|,setlist' && Math.abs(r(prev).top - r(abas).top) < 2 && r(abas).right <= r(prog).right + 1 && Boolean(abas.querySelector('.tabs-panel'));
         })()`);
         // Notas: the item prepared from the Setlist shows its notes in the
         // panel beside the Prévia (ServiceItem.notes, never on a screen).
@@ -1487,7 +1503,7 @@ async function checkConsole(webContents, { live, outputs }) {
         if (notedRow) await js(`window.keryxDesktop.db.call("ServiceItem", "update", [${JSON.stringify(notedRow.id)}, { notes: "Nota do smoke: entrar no segundo refrão" }])`);
         await sleep(600);
         await tabIn("Notas");
-        await click('[data-col="side"] .rund .kx-row', "Canto do console");
+        await click('[data-dock-mods~="setlist"] .rund .kx-row', "Canto do console");
         result.notesPanel = Boolean(notedRow) && await waitFor(() => js(`(document.querySelector(".tabs-panel .kx-panel-b") || {}).textContent.includes("Nota do smoke: entrar no segundo refrão")`), 5000);
         if (notedRow) await js(`window.keryxDesktop.db.call("ServiceItem", "update", [${JSON.stringify(notedRow.id)}, { notes: "" }])`);
         // The panel's (+): unchecking a tab hides it; the last one stays;
@@ -1510,9 +1526,9 @@ async function checkConsole(webContents, { live, outputs }) {
         result.tabsMenu = tabsMenuOpen && tabsHidden && tabsLastStays && tabsRestored && tabsClosed;
         if (!result.tabsMenu) result.tabsMenuDiag = { tabsMenuOpen, tabsHidden, tabsLastStays, tabsRestored, tabsClosed, now: await panelTabs() };
         result.layersBefore = (live.get().layerOrder || []).join(",");
-        // Camadas: a section above the Setlist in the wide tier, else a drawer
-        // opened from the Programa's header.
-        const camadasDrawer = await click(".center .kx-panel-h .kx-btn", "Camadas");
+        // Camadas: in the dock (over the Setlist by default), else (in the
+        // tray) a drawer opened from the Programa's header.
+        const camadasDrawer = await click(".prog-panel .kx-panel-h .kx-btn", "Camadas");
         result.camadasWhere = camadasDrawer ? "drawer" : "section";
         await waitFor(() => js("Boolean(document.querySelector('.kx-layer'))"), 4000);
         result.layerDrag = await js(`(async () => {
@@ -1650,7 +1666,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-tabs button", "Letras");
         await click(".kx-row", "Canto do console");
         await waitCap(PREV, "Canto do console");
-        result.prevShows = await waitFor(() => js("(() => { const m = document.querySelector('.bb-prev .kx-mon'); return Boolean(m && m.querySelector('.ks-text')) && !document.querySelector('.bb-prev .prev-outs'); })()"), 3000);
+        result.prevShows = await waitFor(() => js("(() => { const m = document.querySelector('.prev-panel .kx-mon'); return Boolean(m && m.querySelector('.ks-text')) && !document.querySelector('.prev-panel .prev-outs'); })()"), 3000);
         await js("document.activeElement && document.activeElement.blur(); true");
 
         // Hover actions never reach the middle of a row, in every Biblioteca
@@ -1753,7 +1769,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-pop button", "Configurações");
         result.cfgOpen = await waitFor(() => js("Boolean(document.querySelector('.console .cfg'))"));
         // Over the console, which stays mounted behind it.
-        result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .col.center') && document.querySelector('.console .cfg-scrim'))");
+        result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .dock') && document.querySelector('.console .cfg-scrim'))");
         result.cfgSections = {};
         for (const name of ["Igreja", "Telas e saídas", "Telas na rede", "Aparência", "Temas", "Bíblia e músicas", "Culto", "Console", "Backup e atualizações"]) {
             await click(".console .cfg-dialog .kx-row", name);
@@ -1909,7 +1925,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { church_name: "" }])`);
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("Escape");
-        result.cfgEsc = await waitFor(() => js("!document.querySelector('.console .cfg') && Boolean(document.querySelector('.console .main .col.center'))"));
+        result.cfgEsc = await waitFor(() => js("!document.querySelector('.console .cfg') && Boolean(document.querySelector('.console .main .dock'))"));
         // The X closes it as well.
         await click(".topbar .markbtn", "");
         await click(".kx-pop button", "Configurações");
@@ -2109,7 +2125,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.shotPlanner = await shot("planejador");
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("Escape");
-        result.plClosed = await waitFor(() => js("!document.querySelector('.console .pl-frm') && Boolean(document.querySelector('.console .main .col.center'))"));
+        result.plClosed = await waitFor(() => js("!document.querySelector('.console .pl-frm') && Boolean(document.querySelector('.console .main .dock'))"));
         result.plRundownSection = await waitFor(() => js("[...document.querySelectorAll('.rund-sec')].some((n) => n.textContent.includes('Pré-culto'))"));
 
         // The media library inside the console: a lost file says so, a
@@ -2158,7 +2174,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.shotMedia = await shot("midia");
         await press("Escape");
         await press("Escape");
-        result.mvClosed = await waitFor(() => js("!document.querySelector('.console .mv') && Boolean(document.querySelector('.console .main .col.center'))"));
+        result.mvClosed = await waitFor(() => js("!document.querySelector('.console .mv') && Boolean(document.querySelector('.console .main .dock'))"));
 
         // The aviso editor: "Novo aviso", the kind "Chamar atenção" shows its
         // flag in the live preview, Ctrl+S saves; "Tocar todos" in
@@ -2320,7 +2336,7 @@ async function checkConsole(webContents, { live, outputs }) {
             return Math.abs((p.left + p.right) / 2 - innerWidth / 2) <= 1 && p.left >= 0 && p.right <= innerWidth;
         })()`);
         await press("Enter");
-        result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'KERYX') && [...document.querySelectorAll('.bb-prev .kx-prog-cap, .bb-prev .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
+        result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'KERYX') && [...document.querySelectorAll('.prev-panel .kx-prog-cap, .prev-panel .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
             && JSON.stringify(live.get().content || null) === airBefore;
         await press("/");
         await waitFor(() => js("Boolean(document.querySelector('.palette input'))"));
@@ -2375,7 +2391,7 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear");
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("Escape");
-        result.svClosed = await waitFor(() => js("!document.querySelector('.console .sv-mons') && Boolean(document.querySelector('.console .main .col.center'))"));
+        result.svClosed = await waitFor(() => js("!document.querySelector('.console .sv-mons') && Boolean(document.querySelector('.console .main .dock'))"));
 
         // Relatórios: the song sent live in this run is the top song, its CCLI
         // number is in the report and Copiar puts it on the clipboard.
