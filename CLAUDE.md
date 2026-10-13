@@ -70,11 +70,18 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`library/BackgroundLibrary.jsx`: Temas · Imagens · Vídeos · Gerados ·
   Cor; awaited with `useLibraryPicker()`, the chip `library/BgChip.jsx`);
   don't add a gallery of thumbnails to a form.
+  Deleting from a right-click menu ("Excluir…": songs, media, avisos,
+  themes) always asks first through `useConfirm()` (`ConfirmDialog.jsx`;
+  Esc answers no, before anything else). The Prévia's width is the
+  operator's (`layout.prevPct`, the splitter beside it; the Programa gives
+  way, `--prev` in console.css); the Próximo sits beside it.
   **Temas** is a console card (module `temas`, between Camadas and the
   Setlist; in the Camadas drawer on narrower screens; `ThemesCard.jsx`):
-  the themes as small screens, a click dresses what is on air
+  the themes as small screens, a click dresses the text on air
   (`applyThemeOnAir`: text look + Fundo, padlock respected; `c.themeId` is
-  what Camadas calls "Tema: …"), a double click edits it in Configurações,
+  what Camadas calls "Tema: …") — with nothing on air it puts an example in
+  the Prévia instead (`themeSampleStage`, `stage.theme`: sending it only
+  applies the theme's background, never the example text), a double click edits it in Configurações,
   and "Salvar tema para a música" writes `Song.theme_id` for the song on air
   or in the Prévia. A Bible passage takes **the Bíblia's own theme**
   (`User.bible_theme_id`: "" = the songs' default, "none" = factory;

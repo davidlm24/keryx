@@ -7,7 +7,8 @@ import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
-import { themeForKind, withThemeDefaults } from "@/lib/console/themes";
+import { themeForKind, withThemeDefaults, themeBackgroundArgs } from "@/lib/console/themes";
+import { layerLocked } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { useUser, usePrefs } from "@/hooks/useUser";
 
@@ -97,6 +98,17 @@ export function useConsole() {
         if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
+        // A theme's example (the Temas card, nothing on air): sending it uses
+        // the theme — its background on the Fundo (not past the padlock) —
+        // never the example text.
+        if (stage.theme) {
+            const bg = themeBackgroundArgs(stage.theme);
+            try { if (bg && !layerLocked(live, "background")) await callOp("background.set", bg); } catch { return false; }
+            setThemeId(stage.theme.id);
+            setPrevState(null);
+            say(`Tema ${stage.theme.name} em uso.`);
+            return true;
+        }
         const [op, stageArgs] = stageOp(stage);
         const args = stamp(op, stageArgs);
         const ref = stage.args?.ref || {};

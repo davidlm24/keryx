@@ -6,6 +6,9 @@ import { Btn, Seg, Empty } from "../kx";
 import { FormRow, CfgKey } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import BgChip from "../library/BgChip";
+import { ThemeThumb } from "../library/BackgroundLibrary";
+import { useContextMenu } from "../ContextMenu";
+import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
@@ -123,7 +126,6 @@ export default function TemasSection({ c }) {
     const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["settings", "themes"] })), [client]);
     const [editing, setEditing] = useState(() => { const id = pendingEdit; pendingEdit = null; return id; }); // "new" | theme id | null
-    const [confirmDel, setConfirmDel] = useState(null);
     const reload = () => client.invalidateQueries({ queryKey: ["settings", "themes"] });
     const run = async (p, message) => {
         try { await p; if (message) c.say(message); } catch (err) { c.say(err?.message || "Não foi possível."); }
@@ -138,12 +140,20 @@ export default function TemasSection({ c }) {
         run(keryx.entities.ProjectionTheme.bulkUpdate(rows), t ? `${t.name} é o tema padrão: músicas e passagens sem estilo próprio vão ao ar com ele.` : "Sem tema padrão: vale o estilo de fábrica.");
     };
     const makeDefault = (t) => setDefault(t.id);
-    const remove = (t) => {
-        if (confirmDel !== t.id) { setConfirmDel(t.id); c.say(`Clique de novo em Excluir para apagar "${t.name}".`); return; }
-        setConfirmDel(null);
+    // Excluir asks first (ConfirmDialog.jsx), as in the console's menus.
+    const confirm = useConfirm();
+    const remove = async (t) => {
+        if (!(await confirm(deleteQuestion("o tema", t.name, "Músicas e saídas que usam este tema voltam ao padrão.")))) return;
         if (editing === t.id) setEditing(null);
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
+    const menu = useContextMenu();
+    const themeMenu = (e, t) => menu(e, { title: t.name, items: [
+        { label: "Editar", icon: "edit", onSelect: () => setEditing(t.id) },
+        { label: t.is_default ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: Boolean(t.is_default), onSelect: () => makeDefault(t) },
+        { label: "Excluir…", icon: "trash", onSelect: () => remove(t) },
+    ] });
+    const editingRow = themes.find((t) => t.id === editing) || null;
 
     return (
         <>
@@ -156,26 +166,35 @@ export default function TemasSection({ c }) {
                     <span className="kx-meta">músicas e passagens sem estilo próprio vão ao ar com ele · o que já está no ar não muda</span>
                 </FormRow>
             </div>
-            <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· texto e fundo prontos, aplicados na hora em Camadas</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => setEditing("new")}>Novo tema…</Btn></CfgKey>
-            {editing === "new" && <ThemeEditor row={null} c={c} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
+            <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· clique para editar · botão direito: mais opções</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => setEditing("new")}>Novo tema…</Btn></CfgKey>
+            {/* The themes as small screens, as in the library (owner's request
+                2026-10-13); the one being edited opens below the grid. */}
+            <div className="tmg" role="list" aria-label="Temas">
+                {themes.map((t) => (
+                    <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tmg-tile ${editing === t.id ? "is-on" : ""}`} aria-pressed={editing === t.id} aria-label={t.name}
+                        title={`${t.name} · clique para editar · botão direito: mais opções`} onClick={() => setEditing(editing === t.id ? null : t.id)} onContextMenu={(e) => themeMenu(e, t)}>
+                        <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
+                        <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{t.name}</span>
+                        <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G", t.is_default ? "padrão" : ""].filter(Boolean).join(" · ")}</span>
+                    </button>
+                ))}
+                <button type="button" className={`kx-t fg-tile tmg-tile tmg-new ${editing === "new" ? "is-on" : ""}`} onClick={() => setEditing("new")} aria-label="Novo tema">
+                    <span className="fg-img"><span className="tmg-plus"><Icon name="plus" />Novo tema</span></span>
+                </button>
+            </div>
             {!themes.length && editing !== "new" && <Empty icon="palette" title="Nenhum tema ainda">Crie um em "Novo tema…", ou ajuste o texto em Camadas e use "Salvar como novo".</Empty>}
-            {themes.map((t) => (
-                <React.Fragment key={t.id}>
-                <div className={`kx-row ${t.is_default ? "is-selected" : ""}`}>
-                    <span className="kx-glyph"><Icon name="palette" /></span>
-                    <div className="kx-row-main">
-                        <div className="kx-row-title">{t.name}</div>
-                        <div className="kx-row-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G", t.text_effect && t.text_effect !== "none" ? t.text_effect : "", t.transition ? `transição ${t.transition}` : "", t.background_image ? "com fundo" : ""].filter(Boolean).join(" · ")}</div>
+            {editing === "new" && <ThemeEditor row={null} c={c} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
+            {editingRow && (
+                <>
+                    <div className="listhead tmg-edit-h">
+                        <span className="kx-section">Editando · {editingRow.name}</span>
+                        <span style={{ flex: 1 }} />
+                        {editingRow.is_default ? <span className="kx-meta">tema padrão</span> : <Btn small onClick={() => makeDefault(editingRow)}>Tornar padrão</Btn>}
+                        <Btn small onClick={() => remove(editingRow)}><Icon name="trash" />Excluir…</Btn>
                     </div>
-                    <span className="cfg-acts">
-                        {t.is_default ? <span className="kx-meta">padrão</span> : <Btn onClick={() => makeDefault(t)}>Tornar padrão</Btn>}
-                        <Btn on={editing === t.id} onClick={() => setEditing(editing === t.id ? null : t.id)}>Editar</Btn>
-                        <Btn kind={confirmDel === t.id ? "air" : ""} onClick={() => remove(t)}>{confirmDel === t.id ? "Excluir mesmo" : "Excluir"}</Btn>
-                    </span>
-                </div>
-                {editing === t.id && <ThemeEditor row={t} c={c} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />}
-                </React.Fragment>
-            ))}
+                    <ThemeEditor key={editingRow.id} row={editingRow} c={c} onDone={(saved) => { setEditing(null); if (saved) reload(); }} />
+                </>
+            )}
         </>
     );
 }

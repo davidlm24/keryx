@@ -1640,6 +1640,30 @@ async function checkConsole(webContents, { live, outputs }) {
         const ctxLabels = (ctxShape && ctxShape.labels) || [];
         result.ctxMenuOk = Boolean(ctxOpened && ctxShape && ctxShape.inside && ctxLabels[0] === "Pôr na prévia" && ctxLabels[ctxLabels.length - 1] === "Enviar ao ar" && ctxLabels[ctxLabels.length - 2] === "|" && ctxUntouched && ctxClosed && ctxAfterEsc);
 
+        // Excluir… in the menu asks first (ConfirmDialog.jsx): Esc keeps the
+        // song, Excluir deletes it.
+        const doomed = (await js('window.keryxDesktop.db.call("Song", "create", [{ title: "Apagar smoke", lyrics: "um" }])')).data;
+        await waitFor(() => js("[...document.querySelectorAll('.console .kx-row')].some((n) => n.textContent.includes('Apagar smoke'))"), 5000);
+        const rightClick = async (text) => {
+            const at = await js(`(() => { const row = [...document.querySelectorAll(".console .kx-row")].find((n) => n.textContent.includes(${JSON.stringify(text)})); if (!row) return null; row.scrollIntoView({ block: "nearest" }); const r = row.getBoundingClientRect(); return { x: Math.round(r.left + 24), y: Math.round(r.top + r.height / 2) }; })()`);
+            if (!at) return false;
+            webContents.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y });
+            webContents.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "right", clickCount: 1 });
+            webContents.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "right", clickCount: 1 });
+            return waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
+        };
+        const songLeft = async () => Boolean((await js(`window.keryxDesktop.db.call("Song", "get", [${JSON.stringify(doomed.id)}])`)).data);
+        await rightClick("Apagar smoke");
+        await click(".console .ctx-menu button", "Excluir…");
+        result.deleteAsks = await waitFor(() => js("Boolean(document.querySelector('.console .confirm-dialog'))"), 3000);
+        await press("Escape");
+        result.deleteKept = await waitFor(() => js("!document.querySelector('.console .confirm-dialog')"), 3000) && await songLeft();
+        await rightClick("Apagar smoke");
+        await click(".console .ctx-menu button", "Excluir…");
+        await waitFor(() => js("Boolean(document.querySelector('.console .confirm-dialog'))"), 3000);
+        await click(".console .confirm-dialog button", "Excluir");
+        result.deleteDone = await waitFor(async () => !(await songLeft()), 4000);
+
         // Configurações, a window over the console: from the KERYX menu, every
         // section renders, Tela ociosa and Igreja save, Esc closes it, the X too.
         await click(".topbar .markbtn", "");
@@ -2277,6 +2301,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
+        && result.deleteAsks && result.deleteKept && result.deleteDone
         && result.libBig && result.libLive && result.libLiveBack && result.padraoKept && result.padraoAfterEsc && result.padraoService
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc

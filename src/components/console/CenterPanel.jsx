@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Monitor, Btn, Row } from "./kx";
+import { Monitor, Btn, Row, Split } from "./kx";
+import { DEFAULT_LAYOUT, clampSize } from "@/lib/console/layout";
 import { typeIcon } from "@/lib/console/setlist";
 import PlayerBar from "./PlayerBar";
 import MultiView from "./MultiView";
@@ -105,8 +106,23 @@ export function ProgramaCaption({ c, projectorDown }) {
 // below it, never between the monitors. With `multiview` ({ tiles, rows,
 // onPick }; Programa › Multiview) the Programa is four outputs at once, in
 // the same place and size (MultiView.jsx).
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu, items = [], multiview = null }) {
+export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu, items = [], multiview = null, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
     const { cur, prev, now, locked, stamp } = c;
+    // The Prévia's width is the operator's (the splitter beside it, % of the
+    // column, saved with the layout); the Programa gives way when the window
+    // is short (console.css, --prev). The splitter works in pixels, so the
+    // row's width is kept here.
+    const subRef = useRef(null);
+    const [subW, setSubW] = useState(0);
+    useEffect(() => {
+        const el = subRef.current;
+        if (!el || typeof ResizeObserver === "undefined") return undefined;
+        const ro = new ResizeObserver(([e]) => setSubW(e.contentRect.width));
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+    const pct = clampSize("prevPct", prevPct);
+    const prevPx = (subW * pct) / 100;
     const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
     const [dropOn, setDropOn] = useState(null);
     // The Prévia: the prepared stage as Projeção will show it, with that
@@ -137,7 +153,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
 
 
     return (
-        <div className="mons" data-live-keys="" tabIndex={-1}>
+        <div className="mons" data-live-keys="" tabIndex={-1} style={{ "--prev": pct / 100 }}>
             <div className="liveblock">
                 {multiview ? (
                     <MultiView live={cur} now={now} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick}
@@ -152,7 +168,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                 <div className="pslot">
                     <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
                 </div>
-                <div className="subrow">
+                <div className="subrow" ref={subRef}>
                     <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
                         {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
@@ -160,6 +176,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                         {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
                         {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
                     </Monitor>
+                    {onPrevPct && subW > 0 && <Split size={prevPx} sign={1} onSize={(px) => onPrevPct(clampSize("prevPct", (px / subW) * 100))} onReset={() => onPrevPct(DEFAULT_LAYOUT.prevPct)} clamp={(px) => px} />}
                     <div className="side">
                         <div className="sendrow">
                             <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={sendTip(locked)}>
@@ -167,13 +184,14 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                             </Btn>
                         </div>
                         {note && <div className="kx-meta sendnote">{note}</div>}
+                        {/* Próximo: what the Setlist has next, beside the Prévia it goes into. */}
+                        <div className="nextline">
+                            <span className="kx-section">Próximo</span>
+                            <span className={`t ${nextItem ? "kx-next-title" : "kx-meta"}`} title={nextItem?.title || ""}>{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>
+                            {nextItem && <Btn small onClick={onPrepNext} title="Pôr o próximo item da Setlist na Prévia">Pôr na prévia</Btn>}
+                        </div>
                         <TeacherNotes prev={prev} cur={cur} />
                     </div>
-                </div>
-                <div className="nextline">
-                    <span className="kx-section">Próximo</span>
-                    <span className={`t ${nextItem ? "kx-next-title" : "kx-meta"}`}>{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>
-                    {nextItem && <Btn small onClick={onPrepNext} title="Pôr o próximo item da Setlist na Prévia">Pôr na prévia</Btn>}
                 </div>
                 {later.length > 0 && (
                     <div className="later">
