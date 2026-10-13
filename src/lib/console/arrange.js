@@ -12,7 +12,7 @@ export const COLUMNS = {
         lib: { name: "Biblioteca", widthKey: "libW" },
         slides: { name: "Slides", widthKey: "slidesW" },
         live: { name: "Programa", flex: true },
-        side: { name: "Camadas, Temas e Setlist", widthKey: "rightW" },
+        side: { name: "Camadas", widthKey: "rightW" },
         // Narrow tier only: Biblioteca over Slides in one column.
         source: { name: "Biblioteca e Slides", widthKey: "libW" },
     },
@@ -30,13 +30,12 @@ export const DEFAULT_ORDER = {
 
 // Cards stacked in one column, top to bottom.
 export const DEFAULT_STACKS = {
-    // Temas (the console's theme thumbnails, 2026-10-12) between them.
-    side: ["camadas", "roteiro"],
+    side: ["camadas"],
     source: ["lib", "slides"],
     picker: ["books", "chapters", "verses"],
 };
 
-export const CARD_NAMES = { camadas: "Camadas", roteiro: "Setlist", lib: "Biblioteca", slides: "Slides", books: "Livros", chapters: "Capítulos", verses: "Versículos" };
+export const CARD_NAMES = { camadas: "Camadas", lib: "Biblioteca", slides: "Slides", books: "Livros", chapters: "Capítulos", verses: "Versículos" };
 
 // A saved list made safe: known ids in the saved order, no repeats, and any
 // id it lacks (a new module, an old save) appended in the default order.
@@ -75,9 +74,9 @@ export const moveBy = (list, id, delta) => moveTo(list, id, list.indexOf(id) + d
 const col = (env, id, cards, members) => ({ id, name: COLUMNS[env][id].name, flex: Boolean(COLUMNS[env][id].flex), widthKey: COLUMNS[env][id].widthKey || null, cards, members });
 
 // The console's columns, left to right, for a width tier.
-//   - wide: Biblioteca, Slides, Programa, and Camadas over the Setlist;
-//   - medium: no Camadas/Setlist column (the Setlist is a Biblioteca tab,
-//     Camadas a drawer);
+//   - wide: Biblioteca, Slides, Programa and Camadas (the Setlist lives
+//     beside the Prévia, inside the Programa column, at every tier);
+//   - medium: no Camadas column (Camadas is a drawer);
 //   - narrow: Biblioteca over Slides in one column (where the first of the
 //     two is in the order), and the Programa.
 // A column whose cards are all hidden is not there. `members`: the order ids

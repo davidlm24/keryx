@@ -264,12 +264,6 @@ export default function Console() {
     // Sections (Pré-culto, Culto…) are headers: never prepared, never next.
     const playable = useMemo(() => playableItems(items), [items]);
     const nextItem = (airIdx >= 0 ? items.slice(airIdx + 1) : items).find((i) => !isSection(i)) || null;
-    // After the next one, for the live column when the Setlist has no column of its own.
-    const laterItems = useMemo(() => {
-        if (!nextItem) return [];
-        const from = items.indexOf(nextItem) + 1;
-        return items.slice(from).map((item, k) => ({ item, index: from + k })).filter(({ item }) => !isSection(item)).slice(0, 8);
-    }, [items, nextItem]);
     const setPlan = useMemo(() => plan(service, items), [service, items]);
 
     // A rundown item as a stage: the row it points at, with the item's id in ref.
@@ -713,7 +707,6 @@ export default function Console() {
         if (t && !t.closest(".dialog, .palette, .qj, .lyr, .addmenu")) setTimeout(() => t.blur?.(), 0);
     };
 
-    const rundownProps = { service, items, airItemId, prevItemId, prepare: prepareItem, go: goItem, addStage: addStageToSetlist };
     // "Voltar ao anterior" opens over the Programa, wherever its column is.
     const histLeft = open === "hist" ? Math.round(centerRef.current?.getBoundingClientRect().left ?? 6) : 0;
     // The columns on screen come from the layout's order (Ver › Editar
@@ -723,12 +716,10 @@ export default function Console() {
     // Programa; narrow, Biblioteca and Slides share one column.
     const cols = cultoColumns({ tier, hidden: layout.hidden, order: layout.order.culto, stacks: layout.stacks });
     const sideCards = cols.find((col) => col.id === "side")?.cards || [];
-    const setlistRight = sideCards.includes("roteiro");
     const camadasRight = sideCards.includes("camadas");
     const sideSplit = stackSplit(sideCards, "camadas", layout.collapsed);
     // Camadas on screen: no drawer left open behind it (Esc would close that first).
     useEffect(() => { if (camadasRight) setDrawer(false); }, [camadasRight]);
-    useEffect(() => { if (!compact && libTab === "roteiro") setLibTab("letras"); }, [compact, libTab]);
     // Editing: each column's bar moves it (◀ ▶ or a drag); stacked cards
     // move up and down from their header.
     const moveCol = (id, to) => setLayout({ ...layout, order: { ...layout.order, culto: moveColumn(layout.order.culto, cols, id, to) } });
@@ -746,11 +737,22 @@ export default function Console() {
         return <StackLead name={CARD_NAMES[id]} index={i} count={list.length} onMove={(d) => moveCard(stack, id, i + d)} handle={stackDrag[stack].handleProps(id)} />;
     };
     const stackOf = (id) => (stackCards.side.includes(id) ? "side" : stackCards.source.includes(id) ? "source" : null);
-    const setlistPanel = (
-        <Panel title="Setlist" lead={leadOf("side", "roteiro")} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"} collapsed={layout.collapsed.roteiro} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, roteiro: !layout.collapsed.roteiro } })}
-            actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} /></>}>
-            <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
-        </Panel>
+    // The Setlist beside the Prévia (owner's decision 2026-10-13): a compact
+    // header with the card's old actions, then the whole rundown, scrolled to
+    // the item in hand (Rundown). CenterPanel slots it into the Prévia row.
+    const setlistArea = (
+        <>
+            <div className="listhead side-sl-h">
+                <span className="kx-section">Setlist</span>
+                <span className="kx-count" title={service?.title || ""}>{service ? ` · ${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : " · nenhum culto"}</span>
+                <span style={{ flex: 1 }} />
+                <IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} />
+                <IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} />
+            </div>
+            <div className="side-sl">
+                <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
+            </div>
+        </>
     );
     const camadasPanel = (
         <Panel title="Camadas" lead={leadOf("side", "camadas")} count="o que está no ar" collapsed={layout.collapsed.camadas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })}
@@ -760,7 +762,7 @@ export default function Console() {
     );
     const libraryPanel = (
         <Panel title="Biblioteca" lead={leadOf(stackOf("lib"), "lib")} collapsed={layout.collapsed.lib} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, lib: !layout.collapsed.lib } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <Library c={c} data={data} rundown={rundownProps} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
+            <Library c={c} data={data} tab={libTab} setTab={setLibTab} compact={compact} onPrepare={(s) => c.setPrev(s)} onGo={(s) => { c.setPrev(s); sendStage(s); }} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
         </Panel>
     );
     const slidesPanel = (
@@ -768,7 +770,7 @@ export default function Console() {
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
     );
-    const cardPanel = { lib: libraryPanel, slides: slidesPanel, camadas: camadasPanel, roteiro: setlistPanel };
+    const cardPanel = { lib: libraryPanel, slides: slidesPanel, camadas: camadasPanel };
     const splitFor = (key, sign = 1, horizontal = false, id = key) => (
         <Split key={`split-${id}`} horizontal={horizontal} size={layout[key]} sign={sign} onSize={(v) => setLayout({ ...layout, [key]: v })} onReset={() => setLayout({ ...layout, [key]: DEFAULT_LAYOUT[key] })} clamp={(v) => clampSize(key, v)} />
     );
@@ -796,8 +798,7 @@ export default function Console() {
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <CenterPanel c={c} prevPct={layout.prevPct} onPrevPct={(v) => setLayout({ ...layout, prevPct: v })} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
-                nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))}
-                later={setlistRight ? [] : laterItems} items={playable} multiview={multiview} onPrepareItem={prepareItem} onGoItem={goItem}
+                setlist={setlistArea} items={playable} multiview={multiview}
                 onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
                 onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
                     { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },

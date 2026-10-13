@@ -107,7 +107,7 @@
    min(column, (height − K) / 0.82125): 0.82125 = 9/16 for the Programa +
    0.46 × 9/16 for the Prévia, K = the fixed rows (the Programa has no
    caption row: it is the panel's header; Prévia caption 24 + 4, gaps 3 × 8, player slot 36, Próximo 28). Spare
-   height goes below the block ("Depois"), never between the monitors. */
+   height goes to the Setlist beside the Prévia, never between the monitors. */
 .console .mons { --live-k: 80px; --prev: 0.55; display: flex; flex-direction: column; align-items: center; padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; container-type: size; }
 .console .liveblock { width: min(100cqw, calc((100cqh - var(--live-k)) / (0.5625 * (1 + var(--prev))))); flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .console .liveblock > * { flex: none; }
@@ -157,17 +157,21 @@
 .console .mx-lbl.is-idle .mx-st { color: var(--fg-3); }
 .console .mx-lbl.is-warn .mx-st { color: var(--warn-fg); }
 @container (max-width: 200px) { .console .mx-st { display: none; } }
-/* The Prévia docked under the Programa, its output picker on the left; the
-   side (send, note, teacher notes) never makes the row taller than the
-   Prévia (contain: size), it scrolls. */
-.console .subrow { display: flex; gap: var(--space-1); align-items: stretch; container: subrow / inline-size; }
+/* The Prévia docked under the Programa; beside it the side column (send,
+   note, teacher notes, the Setlist). The row takes the spare height under
+   the Prévia, so the Setlist gets it; only its list scrolls (.side-sl). */
+.console .liveblock > .subrow { flex: 1 1 auto; min-height: 0; }
+.console .subrow { display: flex; gap: var(--space-1); align-items: flex-start; container: subrow / inline-size; }
 .console .subrow .kx-mon { width: calc(var(--prev) * 100%); flex: none; }
-.console .subrow > .kx-split { flex: none; }
-.console .subrow .side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding-top: 28px; contain: size; overflow: auto; }
+.console .subrow > .kx-split { flex: none; align-self: stretch; }
+.console .subrow .side { flex: 1; align-self: stretch; min-width: 180px; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); padding-top: 28px; overflow: hidden; }
+.console .side-sl-h { display: flex; align-items: center; gap: var(--space-1); min-width: 0; padding-top: var(--space-2); border-top: 1px solid var(--line); }
+.console .side-sl-h .kx-section { flex: none; }
+.console .side-sl-h .kx-count { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .side-sl { flex: 1; min-height: 0; overflow: auto; }
 /* The player's slot is always there; the player shows only while something plays. */
 .console .pslot { height: 36px; }
 .console .pslot .player.is-idle { visibility: hidden; }
-.console .liveblock > .later { flex: 1; min-height: 0; overflow: auto; }
 /* Density (Ver › Densidade). Confortável: 32 px rows, 14 px titles that may
    take two lines (long Portuguese names stay readable); the slides' text at
    14 px. Compacta keeps the 28 px single lines. Headers and controls stay 28 px. */
@@ -197,11 +201,6 @@
 .console .kx-warnbar .kx-btn { color: var(--fg-1); }
 .console .mons:focus { outline: none; }
 /* Próximo, in the column beside the Prévia: the label, the title, Pôr na prévia. */
-.console .nextline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-width: 0; padding-top: var(--space-2); border-top: 1px solid var(--line); }
-.console .nextline .kx-section { flex: none; }
-.console .nextline .kx-btn { flex: none; }
-.console .nextline .t { flex: 1 1 100%; order: 1; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.console .nextline .kx-btn { order: 2; }
 .console .layerprops { padding: var(--space-1) var(--space-2) var(--space-2); display: grid; grid-template-columns: 80px 1fr; gap: var(--space-1) var(--space-2); align-items: center; border-top: 1px solid var(--line); }
 .console .layerprops .k { font-size: 11px; color: var(--fg-3); }
 /* Camadas is on screen in the wide tier: its choices are 24 px targets like every control (the Seg "small" inline sizes are overridden). */

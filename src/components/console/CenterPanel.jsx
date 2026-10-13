@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Monitor, Btn, Row, Split } from "./kx";
+import { Monitor, Btn, Split } from "./kx";
 import { DEFAULT_LAYOUT, clampSize } from "@/lib/console/layout";
-import { typeIcon } from "@/lib/console/setlist";
 import PlayerBar from "./PlayerBar";
 import MultiView from "./MultiView";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
@@ -100,13 +99,14 @@ export function ProgramaCaption({ c, projectorDown }) {
 // is the banner under the top bar, never here), right under it a reserved
 // slot where the player shows while something plays (it drives what is on
 // air; reserved, so the monitors never move; user decision 2026-10-12), the
-// Prévia with its one send button, the next item and, when the Setlist has no
-// column of its own, the items after it. The block is as wide as the column
+// Prévia with its one send button and, beside it, the Setlist (owner's
+// decision 2026-10-13: the rundown is where the Prévia feeds from; the old
+// Próximo/Depois lines went with it). The block is as wide as the column
 // allows and as tall as fits (console.css, .liveblock); spare height goes
-// below it, never between the monitors. With `multiview` ({ tiles, rows,
+// to the Setlist's row, never between the monitors. With `multiview` ({ tiles, rows,
 // onPick }; Programa › Multiview) the Programa is four outputs at once, in
 // the same place and size (MultiView.jsx).
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, nextItem, onPrepNext, later = [], onPrepareItem, onGoItem, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu, items = [], multiview = null, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
+export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, setlist = null, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu, items = [], multiview = null, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
     const { cur, prev, now, locked, stamp } = c;
     // The Prévia's width is the operator's (the splitter beside it, % of the
     // column, saved with the layout); the Programa gives way when the window
@@ -188,23 +188,13 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
                             </Btn>
                         </div>
                         {note && <div className="kx-meta sendnote">{note}</div>}
-                        {/* Próximo: what the Setlist has next, beside the Prévia it goes into. */}
-                        <div className="nextline">
-                            <span className="kx-section">Próximo</span>
-                            <span className={`t ${nextItem ? "kx-next-title" : "kx-meta"}`} title={nextItem?.title || ""}>{nextItem ? nextItem.title || "Item" : "fim da setlist"}</span>
-                            {nextItem && <Btn small onClick={onPrepNext} title="Pôr o próximo item da Setlist na Prévia">Pôr na prévia</Btn>}
-                        </div>
                         <TeacherNotes prev={prev} cur={cur} />
+                        {/* The Setlist lives beside the Prévia (owner's decision
+                            2026-10-13): what comes next, where it is sent from.
+                            Console.jsx builds it (header + Rundown). */}
+                        {setlist}
                     </div>
                 </div>
-                {later.length > 0 && (
-                    <div className="later">
-                        <div className="kx-menu-h"><span className="kx-section">Depois</span></div>
-                        {later.map(({ item, index }) => (
-                            <Row key={item.id} single icon={typeIcon(item.type)} title={item.title || "Item"} onClick={() => onPrepareItem?.(item, index)} onDoubleClick={() => onGoItem?.(item, index)} />
-                        ))}
-                    </div>
-                )}
             </div>
         </div>
     );

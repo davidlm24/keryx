@@ -1344,9 +1344,9 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
         result.tlGone = await js("!document.querySelector('.tl-panel') && !document.querySelector('.kx-tl')");
-        // No service yet: the Setlist offers the day's look (Visual de hoje…,
-        // which would start today's setlist, as adding an item does).
-        await click(".kx-tabs button", "Setlist"); // narrower: the Setlist is a Biblioteca tab
+        // No service yet: the Setlist (beside the Prévia, at every tier)
+        // offers the day's look (Visual de hoje…, which would start today's
+        // setlist, as adding an item does).
         result.dayLookButton = await waitFor(() => js("[...document.querySelectorAll('.rund-look button')].some((b) => b.textContent.includes('Visual de hoje'))"), 4000);
         // No service yet: dropping a song on the Setlist starts today's setlist.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
@@ -1402,7 +1402,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await js(`window.keryxDesktop.db.call("Service", "update", ["${svc.id}", { startTime: null }])`);
 
         // Drag from the Biblioteca (synthetic DragEvents drive the handlers).
-        // Wide enough that the Setlist column is on screen.
+        // The Setlist sits beside the Prévia at every width.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(400);
         await click(".kx-tabs button", "Letras");

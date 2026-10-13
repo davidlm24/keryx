@@ -14,10 +14,10 @@ test("a saved order is made safe: unknown and repeated ids go, missing ones come
 
 test("an arrangement saved before the order existed gets the defaults", () => {
     assert.deepEqual(normalizeArrangement({}), { order: DEFAULT_ORDER, stacks: DEFAULT_STACKS });
-    const a = normalizeArrangement({ order: { biblia: ["air", "reading"] }, stacks: { side: ["roteiro"] } });
+    const a = normalizeArrangement({ order: { biblia: ["air", "reading"] }, stacks: { side: ["roteiro"] } }); // roteiro: the Setlist card from before 2026-10-13
     assert.deepEqual(a.order.biblia, ["air", "reading", "picker"]);
     assert.deepEqual(a.order.culto, DEFAULT_ORDER.culto);
-    assert.deepEqual(a.stacks.side, ["roteiro", "camadas"]);
+    assert.deepEqual(a.stacks.side, ["camadas"], "a card that no longer exists is dropped in silence");
 });
 
 test("moving: to a position, by one step, clamped at the ends", () => {
@@ -31,18 +31,17 @@ test("moving: to a position, by one step, clamped at the ends", () => {
     assert.equal(moveBy(list, "a", -1), list);
 });
 
-test("wide: four columns in the saved order; Camadas and the Setlist stacked", () => {
+test("wide: four columns in the saved order; the side column is Camadas", () => {
     assert.deepEqual(ids(cultoColumns({ tier: "wide" })), ["lib", "slides", "live", "side"]);
-    assert.deepEqual(cultoColumns({ tier: "wide" })[3].cards, ["camadas", "roteiro"]);
+    assert.deepEqual(cultoColumns({ tier: "wide" })[3].cards, ["camadas"]);
     const swapped = cultoColumns({ tier: "wide", order: ["side", "live", "slides", "lib"], stacks: { side: ["roteiro", "camadas"] } });
     assert.deepEqual(ids(swapped), ["side", "live", "slides", "lib"]);
-    assert.deepEqual(swapped[0].cards, ["roteiro", "camadas"]);
+    assert.deepEqual(swapped[0].cards, ["camadas"], "the old Setlist card id is dropped");
 });
 
-test("hidden modules drop their column; the side column goes when both its cards are hidden", () => {
+test("hidden modules drop their column; the side column goes when Camadas is hidden", () => {
     assert.deepEqual(ids(cultoColumns({ tier: "wide", hidden: { lib: true } })), ["slides", "live", "side"]);
-    assert.deepEqual(cultoColumns({ tier: "wide", hidden: { camadas: true } })[3].cards, ["roteiro"]);
-    assert.deepEqual(ids(cultoColumns({ tier: "wide", hidden: { camadas: true, roteiro: true } })), ["lib", "slides", "live"]);
+    assert.deepEqual(ids(cultoColumns({ tier: "wide", hidden: { camadas: true } })), ["lib", "slides", "live"]);
 });
 
 test("medium: no Camadas/Setlist column, the rest keeps the order", () => {
