@@ -14,6 +14,7 @@ import { layoutChoices, findLayout } from "@/lib/layouts";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 import { useChurch } from "@/hooks/useChurch";
+import { openEditor } from "@/lib/editorWindow";
 
 const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], ["125", "125%"], ["140", "140%"]];
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
@@ -218,6 +219,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                     {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     {themeGone && <option value={pref.themeId} disabled>(tema excluído)</option>}
                 </select>
+                {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor de temas e layouts"><Icon name="edit" />Editar tema</Btn>}
             </FormRow>
             </>}
             <FormRow k="">

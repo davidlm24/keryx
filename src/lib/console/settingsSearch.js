@@ -48,8 +48,8 @@ export const SETTINGS_INDEX = [
     e("aparencia", "Fundos", "a biblioteca de fundos: imagens, vídeos, gerados e cores; nome, categoria, escurecer, desfoque, ocultar",
         ["imagens", "vídeos", "gerados", "enviar do computador", "Categoria", "Escurecer", "Desfoque", "Nas galerias", "favorito", "oculto", "biblioteca"]),
     e("temas", "Estilo padrão do texto", "o tema com que músicas e passagens vão ao ar", ["tema padrão", "estilo de fábrica", "padrão"]),
-    e("temas", "Temas", "estilos prontos de texto e fundo; no console, o card Temas",
-        ["tema padrão", "presets", "estilo", "Nome", "Fonte", "Efeito e cor", "Caixa do texto", "Transição", "Fundo", "Ajuste do fundo", "Escurecer", "Escurecer · desfoque", "Tornar padrão", "Novo tema"]),
+    e("temas", "Temas", "estilos prontos de texto e fundo; Editar abre o Editor de temas e layouts, na janela dele",
+        ["tema padrão", "presets", "estilo", "fonte", "efeito", "cor", "caixa do texto", "transição", "fundo", "alinhamento", "posição do texto", "Tornar padrão", "Novo tema", "editor de temas"]),
 
     e("biblia", "Livros da Bíblia", "abreviados (Gn) ou com o nome inteiro (Gênesis)", ["abreviados", "nome inteiro", "abrev", "livros"]),
     e("biblia", "Tema da Bíblia", "o tema das passagens, separado do das músicas", ["tema", "bíblia", "passagens", "fundo", "estilo"]),

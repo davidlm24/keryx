@@ -22,7 +22,6 @@ import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
 import ThemesCard from "@/components/console/ThemesCard";
-import { requestThemeEdit } from "@/components/console/settings/TemasSection";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
@@ -739,7 +738,8 @@ export default function Console() {
         </Panel>
     );
     // Temas: a double click opens the theme in Configurações › Temas.
-    const editTheme = (id) => { requestThemeEdit(id); openSettings("temas"); };
+    // Editing a theme happens in the Editor de temas e layouts (its window).
+    const editTheme = (id) => { const r = openEditor({ theme: id || "new" }); if (r?.error) c.say(r.error); };
     const themesCard = <ThemesCard c={c} themes={data.themes} songs={data.songs} onEdit={editTheme} onNew={() => editTheme("new")} />;
     const temasPanel = (
         <Panel title="Temas" lead={leadOf("side", "temas")} count="clique aplica no ar" collapsed={layout.collapsed.temas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, temas: !layout.collapsed.temas } })}

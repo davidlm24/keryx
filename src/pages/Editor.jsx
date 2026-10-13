@@ -5,13 +5,19 @@
 // window (IPC on the desktop, SSE in the browser preview), so Salvar reaches
 // the console, the outputs and the network screens at once.
 //
-// Deep links: ?layout=<id | new | factory:…> picks the document, and
-// &for=<output path> binds a new layout to that output on the first save.
-// The window is named (keryx-editor): opening the editor again navigates
-// this one instead of stacking a second.
+// Two kinds of document, one window: a TEMA (how the projection dresses the
+// text: look, placement, background — ThemeEditor) or a LAYOUT (the drawing
+// of a screen: elements on a canvas — LayoutEditor). Deep links:
+// ?theme=<id | new> or ?layout=<id | new | factory:…>; &for=<output path>
+// binds a new layout to that output on the first save. The window is named
+// (keryx-editor): opening the editor again navigates this one instead of
+// stacking a second.
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import LayoutEditor from "@/components/editor/LayoutEditor";
-import { Btn } from "@/components/console/kx";
+import ThemeEditor from "@/components/editor/ThemeEditor";
+import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
+import { LibraryContext } from "@/components/console/library/libraryContext";
+import { Seg } from "@/components/console/kx";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useLibrary } from "@/components/console/useConsoleData";
 import "@/components/console/console.css";
@@ -19,8 +25,9 @@ import "@/components/console/console.css";
 const readUrl = () => {
     try {
         const p = new URLSearchParams(window.location.search);
-        return { layout: p.get("layout") || "new", for: p.get("for") || "" };
-    } catch { return { layout: "new", for: "" }; }
+        if (p.get("theme")) return { kind: "theme", id: p.get("theme"), for: "" };
+        return { kind: "layout", id: p.get("layout") || "new", for: p.get("for") || "" };
+    } catch { return { kind: "layout", id: "new", for: "" }; }
 };
 
 export default function Editor() {
@@ -42,28 +49,49 @@ export default function Editor() {
     }, []);
     useEffect(() => () => clearTimeout(toastTimer.current), []);
 
+    // The background library, awaited by BgChip (as the console mounts it).
+    const [libReq, setLibReq] = useState(null);
+    const pickFromLibrary = useCallback((opts = {}) => new Promise((resolve) => {
+        setLibReq((prev) => { prev?.resolve(null); return { ...opts, resolve }; });
+    }), []);
+    const closeLibrary = useCallback((result = null) => setLibReq((prev) => { prev?.resolve(result); return null; }), []);
+    // What the library needs of a console (`c`): the toast, the clock and —
+    // only for its Ao vivo mode, never used from here — the live state.
+    const libC = { say, now, cur: live || undefined, callOp: async () => {} };
+
     const setUrl = (next) => {
         const p = new URLSearchParams();
-        if (next.layout) p.set("layout", next.layout);
+        p.set(next.kind === "theme" ? "theme" : "layout", next.id);
         if (next.for) p.set("for", next.for);
         try { window.history.replaceState(null, "", `/Editor?${p}`); } catch { /* the URL is cosmetic */ }
     };
     // The first save of a new document: keep the URL pointing at the row, so
-    // a reload (F5) reopens the same layout. No remount.
-    const onSaved = (row) => { if (row?.id && doc.layout !== row.id) { const next = { ...doc, layout: row.id, for: "" }; setDoc(next); setUrl(next); } };
-    const onSwitch = (id) => { const next = { layout: id || "new", for: "" }; setDoc(next); setUrl(next); setDocKey((k) => k + 1); };
+    // a reload (F5) reopens the same document. No remount.
+    const onSaved = (row) => { if (row?.id && doc.id !== row.id) { const next = { ...doc, id: row.id, for: "" }; setDoc(next); setUrl(next); } };
+    const onSwitch = (id) => { const next = { ...doc, id: id || "new", for: "" }; setDoc(next); setUrl(next); setDocKey((k) => k + 1); };
+    const onKind = (kind) => { if (kind === doc.kind) return; const next = { kind, id: "new", for: "" }; setDoc(next); setUrl(next); setDocKey((k) => k + 1); };
     // window.close works here: this window is always script-opened (the
     // console's openEditor, or window.open in the preview). Opened by a typed
     // URL it may be refused — then the toast says what to do.
     const close = () => { window.close(); setTimeout(() => say("Feche esta janela quando terminar."), 150); };
 
+    const editor = doc.kind === "theme"
+        ? <ThemeEditor key={`${docKey}:theme:${doc.id}`} themeId={doc.id} say={say} now={now} onClose={close} onSaved={onSaved} onSwitch={onSwitch} />
+        : <LayoutEditor key={`${docKey}:layout:${doc.id}`} layoutId={doc.id} forPath={doc.for} media={media} say={say} live={live} now={now} onClose={close} onSaved={onSaved} onSwitch={onSwitch} />;
+
     return (
+        <LibraryContext.Provider value={pickFromLibrary}>
         <div className="console edw">
-            <div className="main">
-                <LayoutEditor key={`${docKey}:${doc.layout}`} layoutId={doc.layout} forPath={doc.for} media={media} say={say} live={live} now={now} onClose={close} onSaved={onSaved} onSwitch={onSwitch} />
+            <div className="main">{editor}</div>
+            <div className="edw-foot">
+                <Seg small label="O que editar" value={doc.kind} options={[["theme", "Temas"], ["layout", "Layouts"]]} onChange={onKind} />
+                <span className="kx-meta">as mudanças salvas valem na hora no console e nas telas</span>
+                <span style={{ flex: 1 }} />
+                <button type="button" className="kx-btn kx-t" onClick={close}>Fechar janela</button>
             </div>
-            <div className="edw-foot"><span className="kx-meta">Editor de temas e layouts · as mudanças salvas valem na hora no console e nas telas</span><span style={{ flex: 1 }} /><Btn small onClick={close}>Fechar janela</Btn></div>
+            {libReq && <BackgroundLibrary c={libC} request={libReq} onDone={closeLibrary} />}
             {toast && <div className="toast" role="status"><span className="toast-t">{toast}</span></div>}
         </div>
+        </LibraryContext.Provider>
     );
 }
