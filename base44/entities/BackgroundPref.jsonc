@@ -24,6 +24,16 @@
       "type": "number",
       "description": "Desfoque padrão em px numa tela de 1920 (0 a 20)"
     },
+    "fit": {
+      "type": "string",
+      "enum": ["", "cover", "contain"],
+      "description": "Ajuste na tela: cobrir (padrão) ou conter"
+    },
+    "position": {
+      "type": "string",
+      "enum": ["", "top", "center", "bottom"],
+      "description": "Que parte aparece quando cobre: alto, centro (padrão) ou baixo"
+    },
     "hidden": {
       "type": "boolean",
       "default": false,

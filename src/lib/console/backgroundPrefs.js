@@ -83,6 +83,17 @@ export function backgroundDefaults(prefs, url) {
     return { dim: dim === null ? null : dim / 100, blur: clamp(pref?.blur_px, BLUR_PX) };
 }
 
+// A background's whole look from its settings (the library is the one place
+// to set it, 2026-10-13): dim and blur as backgroundDefaults, plus how it
+// fills the screen (fit) and which part shows (position); null where unset.
+export function backgroundLook(prefs, url) {
+    const { dim, blur } = backgroundDefaults(prefs, url);
+    const pref = url ? (prefs || []).find((p) => p?.source === sourceOf(url)) : null;
+    const fit = pref?.fit === "contain" || pref?.fit === "cover" ? pref.fit : null;
+    const position = ["top", "center", "bottom"].includes(pref?.position) ? pref.position : null;
+    return { dim, blur, fit, position };
+}
+
 // The arguments of an op that puts a background on the screens, with that
 // background's dim and blur filled in where the item has none of its own:
 //   content.show   style.background_image  -> style.background_dim/_blur
@@ -105,10 +116,11 @@ export function withBackgroundDefaults(op, args, prefs) {
     // A picture or a clip for the Fundo layer (background.set, or an item's
     // args.fundo): its dim and blur where it has none.
     const fillBg = (bg) => {
-        if (!bg || (bg.kind !== "image" && bg.kind !== "video") || (bg.dim != null && bg.blur != null)) return bg;
-        const { dim, blur } = backgroundDefaults(prefs, bg.value);
-        const next = { ...bg, ...(bg.dim == null && dim !== null ? { dim } : {}), ...(bg.blur == null && blur !== null ? { blur } : {}) };
-        return next.dim === bg.dim && next.blur === bg.blur ? bg : next;
+        if (!bg || (bg.kind !== "image" && bg.kind !== "video")) return bg;
+        const look = backgroundLook(prefs, bg.value);
+        const next = { ...bg };
+        for (const k of ["dim", "blur", "fit", "position"]) if (next[k] == null && look[k] !== null) next[k] = look[k];
+        return ["dim", "blur", "fit", "position"].every((k) => next[k] === bg[k]) ? bg : next;
     };
     if (op === "content.show") {
         const style = fill(args.style, "background_image");

@@ -9,7 +9,6 @@ import { THEME_FONTS, FAMILY_SET, themeStyle, sameLook, themeBackgroundArgs, def
 import { applyThemeOnAir } from "./ThemesCard";
 import { useBackgrounds } from "./useConsoleData";
 import { STYLE_KEYS, LAYER_ORDER, layerHidden, layerLocked } from "@shared/live-state.mjs";
-import GeneratorPanel from "./GeneratorPanel";
 import { useLibraryPicker } from "./library/libraryContext";
 import { bgArgs, bgFields, bgLabel, cleanSpec } from "@/lib/console/backgroundSpec";
 import { GENERATORS } from "@/lib/generators";
@@ -196,17 +195,15 @@ export default function Layers({ c, themes }) {
                             <button type="button" key={b.source} disabled={disabled} onClick={() => op("background.set", { kind: "image", value: b.url, title: b.name, ...(b.dim !== null ? { dim: b.dim } : {}), ...(b.blur !== null ? { blur: b.blur } : {}) })} style={{ aspectRatio: "16/10", borderRadius: 3, backgroundImage: `url(${b.url})`, backgroundSize: "cover", backgroundPosition: "center", outline: cur?.background?.value === b.url ? "2px solid var(--brand)" : "none", outlineOffset: -2 }} aria-label={b.name} title={b.name} />
                         ))}
                     </div>
-                    {cur?.background && (cur.background.kind === "image" || cur.background.kind === "video") && <>
-                        <span className="k">Ajuste</span><Seg small value={cur.background.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, fit: v })} />
-                        <span className="k">Posição</span><Seg small value={cur.background.position || "center"} options={[["top", "Alto"], ["center", "Centro"], ["bottom", "Baixo"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, position: v })} />
-                        <span className="k">Escurecer</span><Seg small value={num(cur.background.dim ?? (cur.background.kind === "video" ? 0 : 0.45))} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, dim: Number(v) })} />
-                        <span className="k">Desfoque</span><Seg small value={num(cur.background.blur ?? 0)} options={[["0", "Sem"], ["4", "Leve"], ["10", "Forte"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, blur: Number(v) })} />
-                    </>}
-                    {/* The generated Fundo on air: its presets, sliders and colours, live. */}
-                    {cur?.background?.kind === "generator" && cur.background.gen && <>
-                        <GeneratorPanel background={cur.background} disabled={disabled} op={op} />
-                        <span className="k">Escurecer</span><Seg small value={num(cur.background.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => !disabled && op("background.set", { ...cur.background, dim: Number(v) })} />
-                    </>}
+                    {/* Ajuste, posição, escurecer e desfoque are the picture's own (the
+                        library; the Fundo on air follows them), and a generated
+                        one is edited big in Editar fundo… — one place each. */}
+                    {cur?.background && (cur.background.kind === "image" || cur.background.kind === "video") && (
+                        <span style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 6 }}>
+                            <Btn small disabled={disabled} onClick={() => openLibrary(false)} title="Ajuste, posição, escurecer e desfoque deste fundo, guardados com ele (valem sempre que ele for ao ar)">Ajustes deste fundo…</Btn>
+                            <span className="kx-meta">{[cur.background.dim != null ? `escurecer ${Math.round(cur.background.dim * 100)}%` : "", cur.background.blur ? "desfoque" : "", cur.background.fit === "contain" ? "conter" : ""].filter(Boolean).join(" · ")}</span>
+                        </span>
+                    )}
                 </>)}
                 {sel === "logo" && (<>
                     <span className="k">Canto</span>

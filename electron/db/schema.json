@@ -92,6 +92,12 @@
         "blur_px": {
           "type": "real"
         },
+        "fit": {
+          "type": "text"
+        },
+        "position": {
+          "type": "text"
+        },
         "hidden": {
           "type": "boolean",
           "default": false

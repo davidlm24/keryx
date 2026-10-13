@@ -123,7 +123,11 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     }, []);
     const pct = clampSize("prevPct", prevPct);
     const prevPx = (subW * pct) / 100;
-    const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
+    // Built with a time fixed per prepared stage, never the ticking clock:
+    // a new startedAt each second replayed the slide's transition (the
+    // Prévia "pulsed"). A timer still counts (the renderer gets `now`).
+    const madeAt = useMemo(() => Date.now(), [prev]); // eslint-disable-line react-hooks/exhaustive-deps
+    const pdoc = useMemo(() => previewDoc(prev, cur, madeAt, stamp), [prev, cur, madeAt, stamp]);
     const [dropOn, setDropOn] = useState(null);
     // The Prévia: the prepared stage as Projeção will show it, with that
     // output's own settings (Configurações › Telas e saídas: Mostrar, theme,
