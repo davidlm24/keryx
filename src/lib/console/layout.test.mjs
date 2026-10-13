@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf, loadLayout, restoreArrangement } from "./layout.js";
-import { DEFAULT_ORDER, DEFAULT_STACKS } from "./arrange.js";
+import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf, loadLayout, restoreArrangement, clampSize, sideCol } from "./layout.js";
+import { DEFAULT_ORDER, DEFAULT_STACKS, COLUMNS, cultoColumns } from "./arrange.js";
 import { DEFAULT_TILES } from "./multiview.js";
 
 // localStorage stand-in for loadLayout.
@@ -79,4 +79,16 @@ test("the multiview is off by default; a saved one keeps its outputs, cleaned", 
     assert.equal(mine.multiview, true);
     assert.deepEqual(mine.mvTiles, ["/PastorView", "/Projection", "/LyricProjection", "/StageView"]);
     assert.equal(withStore({ multiview: "yes" }, () => loadLayout("x")).multiview, false);
+});
+
+test("the Slides never get narrower than a slide's line: 300 px, splitter and narrow column alike", () => {
+    assert.deepEqual(LIMITS.slidesW, [300, 520]);
+    assert.ok(DEFAULT_LAYOUT.slidesW >= LIMITS.slidesW[0]);
+    assert.equal(clampSize("slidesW", 120), 300, "the splitter dragged below the minimum stops there");
+    assert.equal(clampSize("slidesW", 410), 410);
+    assert.equal(sideCol("slidesW", 250).minWidth, 300, "an old save below the minimum still renders at it");
+    // Narrow: Biblioteca over Slides in one column, as wide as the Slides.
+    const source = cultoColumns({ tier: "narrow" }).find((c) => c.id === "source");
+    assert.equal(source.widthKey, "slidesW");
+    assert.equal(COLUMNS.culto.source.widthKey, "slidesW");
 });
