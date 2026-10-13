@@ -38,6 +38,9 @@ export const DEFAULT_LAYOUT = {
     camadasH: 300,
     bibleSelW: 300,
     bibleAirW: 400,
+    // The Prévia's width, % of the live column (the splitter beside it; the
+    // Programa above gives way when the window is short).
+    prevPct: 55,
     density: "comfortable",
     order: DEFAULT_ORDER,
     stacks: DEFAULT_STACKS,
@@ -48,12 +51,12 @@ export const DEFAULT_LAYOUT = {
 
 // What "Restaurar posições" (the edit mode's banner) puts back: the order,
 // the stacks and the sizes; which modules are shown and the density stay.
-export const ARRANGEMENT_KEYS = ["order", "stacks", "libW", "slidesW", "rightW", "camadasH", "bibleSelW", "bibleAirW"];
+export const ARRANGEMENT_KEYS = ["order", "stacks", "libW", "slidesW", "rightW", "camadasH", "bibleSelW", "bibleAirW", "prevPct"];
 export const restoreArrangement = (layout) => ({ ...layout, ...Object.fromEntries(ARRANGEMENT_KEYS.map((k) => [k, DEFAULT_LAYOUT[k]])) });
 
 export const densityOf = (layout) => (DENSITIES.some(([k]) => k === layout?.density) ? layout.density : DEFAULT_LAYOUT.density);
 
-export const LIMITS = { libW: [200, 480], slidesW: [200, 520], rightW: [280, 520], camadasH: [120, 600], bibleSelW: [240, 520], bibleAirW: [300, 560] };
+export const LIMITS = { libW: [200, 480], slidesW: [200, 520], rightW: [280, 520], camadasH: [120, 600], bibleSelW: [240, 520], bibleAirW: [300, 560], prevPct: [30, 75] };
 
 // A side column: its saved width is the flex basis, and it may shrink down
 // to its minimum when the window narrows, so it never spills over the center

@@ -5,13 +5,32 @@ import { Btn } from "./kx";
 import { ThemeThumb } from "./library/BackgroundLibrary";
 import { themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
 import { useContextMenu } from "./ContextMenu";
+import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { updateUser } from "@/hooks/useUser";
 import { STYLE_KEYS, layerLocked } from "@shared/live-state.mjs";
 
-// A theme on what is on air, at once (the Temas card, Camadas' Restaurar):
-// its text look on the text on air (the item's title choice kept), its
-// background on the Fundo — unless Camadas' padlock holds the Fundo. With
-// nothing on air the theme still sets the Fundo, as in Holyrics.
+// A theme as a stage for the Prévia: example text in its look over its
+// background (stage.theme: sending it applies the theme, useConsole.send).
+const SAMPLE_TEXT = [{ text: "Grande é o Senhor\ne mui digno de louvor" }];
+export const themeSampleStage = (theme) => ({
+    kind: "text", id: `theme:${theme.id}`, title: `Tema · ${theme.name}`, meta: "Exemplo do tema", slides: SAMPLE_TEXT, index: 0, theme,
+    op: "content.show", args: { kind: "text", title: theme.name, slides: SAMPLE_TEXT, style: themeStyle(theme), ...(themeBackgroundArgs(theme) ? { fundo: themeBackgroundArgs(theme) } : {}) },
+});
+
+// A click on a theme (the Temas card): with text on air, it dresses it at
+// once (applyThemeOnAir); with nothing on air, an example goes to the
+// Prévia so the look can be seen before it is used (owner's request
+// 2026-10-13); Enviar ao ar then applies it.
+export function pickTheme(c, theme) {
+    if (!theme) return;
+    if (c.cur?.content) applyThemeOnAir(c, theme);
+    else { c.setThemeId(theme.id); c.setPrev(themeSampleStage(theme)); }
+}
+
+// A theme on what is on air, at once (Camadas' Restaurar, the menu's
+// Aplicar no ar): its text look on the text on air (the item's title choice
+// kept), its background on the Fundo — unless Camadas' padlock holds the
+// Fundo. With nothing on air the theme still sets the Fundo, as in Holyrics.
 export async function applyThemeOnAir(c, theme) {
     if (!theme) return;
     c.setThemeId(theme.id);
@@ -53,6 +72,12 @@ export default function ThemesCard({ c, themes, songs, onEdit, onNew }) {
     // Right click on a theme: everything that can be done with it from here.
     const menu = useContextMenu();
     const run = (p, message) => p.then(() => c.say(message)).catch((err) => c.say(err?.message || "Não foi possível."));
+    const confirm = useConfirm();
+    const removeTheme = async (t) => {
+        if (!(await confirm(deleteQuestion("o tema", t.name, "Músicas e saídas que usam este tema voltam ao padrão.")))) return;
+        if (c.themeId === t.id) c.setThemeId(null);
+        run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
+    };
     const themeMenu = (e, t) => menu(e, { title: t.name, items: [
         { label: "Aplicar no ar", icon: "play", onSelect: () => applyThemeOnAir(c, t) },
         { label: "Editar tema…", icon: "edit", onSelect: () => onEdit(t.id) },
@@ -61,6 +86,7 @@ export default function ThemesCard({ c, themes, songs, onEdit, onNew }) {
             : { label: `Salvar para "${song.title}"`, onSelect: () => saveForSong(t.id) }] : []),
         { label: t.id === def?.id ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: t.id === def?.id, onSelect: () => run(keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, t.id)), `${t.name} é o tema padrão.`) },
         { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), `As passagens vão ao ar com o tema ${t.name}.`) },
+        { label: "Excluir…", icon: "trash", onSelect: () => removeTheme(t) },
     ] });
     if (!themes.length) {
         return (
@@ -75,8 +101,8 @@ export default function ThemesCard({ c, themes, songs, onEdit, onNew }) {
             <div className="tm-grid" role="list" aria-label="Temas">
                 {themes.map((t) => (
                     <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={t.name}
-                        title={`${t.name}${t.id === def?.id ? " · tema padrão" : ""} · clique: aplica no que está no ar · duplo clique ou botão direito: editar`}
-                        onClick={() => applyThemeOnAir(c, t)} onDoubleClick={() => onEdit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
+                        title={`${t.name}${t.id === def?.id ? " · tema padrão" : ""} · clique: aplica no texto no ar (sem nada no ar, mostra um exemplo na Prévia) · duplo clique ou botão direito: editar`}
+                        onClick={() => pickTheme(c, t)} onDoubleClick={() => onEdit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                         <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
                         <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{t.name}</span>
                     </button>

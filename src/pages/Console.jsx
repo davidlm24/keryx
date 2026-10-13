@@ -40,6 +40,7 @@ import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaul
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
+import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
@@ -135,6 +136,10 @@ export default function Console() {
         setLibReq((prev) => { prev?.resolve(null); return { ...opts, resolve }; });
     }), []);
     const closeLibrary = useCallback((result = null) => setLibReq((prev) => { prev?.resolve(result); return null; }), []);
+    // "Excluir…" asks first (ConfirmDialog.jsx): one question at a time.
+    const [confirmReq, setConfirmReq] = useState(null);
+    const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
+    const answerConfirm = useCallback((yes) => setConfirmReq((prev) => { prev?.resolve(Boolean(yes)); return null; }), []);
     // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
@@ -602,10 +607,11 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                const top = escapeTarget({ menu: ctxMenu, library: libReq, popover: open, settings: cfg, drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq, library: libReq, popover: open, settings: cfg, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
+                    else if (top === "confirm") answerConfirm(false);
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "settings") setCfgAt(null);
@@ -618,7 +624,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if (libReq && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq) && !["black", "logo"].includes(action)) return;
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
             // So do the planner, the media library, the aviso editor and the
@@ -653,7 +659,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm]);
     useEffect(() => { if (view) setEditing(false); }, [view]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -756,7 +762,7 @@ export default function Console() {
                 <button type="button" className={`kx-btn kx-t mx-toggle ${layout.multiview ? "is-on" : ""}`} style={{ height: 24 }} onClick={toggleMultiview} aria-pressed={layout.multiview} title={layout.multiview ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar"} aria-label="Multiview"><Icon name="grid" /><span className="hist-lbl">Multiview</span></button>
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
+            <CenterPanel c={c} prevPct={layout.prevPct} onPrevPct={(v) => setLayout({ ...layout, prevPct: v })} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
                 nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))}
                 later={setlistRight ? [] : laterItems} items={playable} multiview={multiview} onPrepareItem={prepareItem} onGoItem={goItem}
                 onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
@@ -807,6 +813,7 @@ export default function Console() {
     return (
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
+        <ConfirmContext.Provider value={askConfirm}>
         <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
@@ -855,6 +862,7 @@ export default function Console() {
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
+            {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onOpenLayout={openLayout} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
@@ -903,6 +911,7 @@ export default function Console() {
             )}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
+        </ConfirmContext.Provider>
         </LibraryContext.Provider>
         </ContextMenuProvider>
     );

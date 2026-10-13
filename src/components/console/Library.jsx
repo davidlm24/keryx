@@ -3,6 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Row, Btn, IconBtn, Field, Empty, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
+import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
 import { songsFromFile } from "@/lib/songImport";
@@ -114,6 +115,13 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
         c.say(`${songs.length} ${songs.length === 1 ? "música exportada" : "músicas exportadas"}.`);
     };
     const menu = useContextMenu();
+    // "Excluir…" in the menus asks first (ConfirmDialog.jsx).
+    const confirm = useConfirm();
+    const removeRow = async (entity, row, what, name, done) => {
+        if (!(await confirm(deleteQuestion(what, name)))) return;
+        try { await keryx.entities[entity].delete(row.id); c.say(done); } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
+    };
+    const MEDIA_WORD = { image: "a imagem", video: "o vídeo", audio: "o áudio", gif: "a imagem", pdf: "o arquivo" };
     const toggleFav = (s) => keryx.entities.Song.update(s.id, { is_favorite: !s.is_favorite }).catch((err) => c.say(err?.message || "Não foi possível."));
     // "+ › Do computador" in Mídia: videos, audio, images, PDF, PowerPoint.
     const importMedia = async (files) => {
@@ -190,6 +198,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                                     onAddSong && { label: "Adicionar à setlist", icon: "plus", onSelect: () => onAddSong(s) },
                                     onEditSong && { label: "Editar", icon: "edit", onSelect: () => onEditSong(s.id) },
                                     { label: s.is_favorite ? "Tirar dos favoritos" : "Favoritar", icon: "star", onSelect: () => toggleFav(s) },
+                                    { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Song", s, "a música", s.title, "Música excluída.") },
                                     onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) },
                                 ] })}
                                 dragProps={dragProps(stageFromSong(s, {}, data.themes))}
@@ -231,6 +240,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                             { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromMedia(m)) },
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
                             onOpenMedia && { label: "Abrir a biblioteca de mídia", icon: "film", onSelect: () => onOpenMedia() },
+                            { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Media", m, MEDIA_WORD[m.type] || "o arquivo", m.title || "sem título", "Excluído da Mídia.") },
                             onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
                         ] })}
                         dragProps={dragProps(stageFromMedia(m))}
@@ -336,6 +346,7 @@ Clique coloca no campo · dois cliques mostram nas telas`} onClick={() => setAle
                                     onContextMenu={(e) => menu(e, { title: p.title || p.text, items: [
                                         { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromPiece(p)) },
                                         onEditNotice && { label: "Editar", icon: "edit", onSelect: () => onEditNotice(p.id) },
+                                        { label: "Excluir…", icon: "trash", onSelect: () => removeRow("CommunicationVideo", p, "o aviso", p.title || p.text || "sem título", "Aviso excluído.") },
                                         onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromPiece(p)) },
                                     ] })}
                                     actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso" aria-label="Editar"><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>} />
