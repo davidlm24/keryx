@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { IconBtn, Seg } from "./kx";
 import { livePosition } from "@shared/live-state.mjs";
-import { playerLayers, playerLayer, playerOp, LAYER_LABEL, clock } from "@/lib/console/player";
+import { playerLayers, playerLayer, playerOp, videoSwap, LAYER_LABEL, clock } from "@/lib/console/player";
 import { levelsNow, useReportedDuration, useMeterFeed } from "./meterStore";
 
 const HOT = 0.95; // about -3 dBFS
@@ -88,7 +88,8 @@ function Volume({ volume, onVolume, disabled }) {
 
 // The player between the Programa and the Prévia: whatever plays with sound on the screens
 // or the KERYX computer (a video, a YouTube link, an audio file or list), with
-// Anterior, −10 s, Tocar/Pausar, +10 s, Próximo, Parar, the position, the
+// Anterior, −10 s, Tocar/Pausar, +10 s, Próximo, Tirar o vídeo (its sound
+// carries on; Mostrar o vídeo brings it back), Parar, the position, the
 // volume and the output's level meters. Always there, so the monitors never
 // move; idle when nothing plays. Acts on the document the console drives
 // (the live state; while the screens are locked its controls are refused).
@@ -108,7 +109,8 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
     };
     const list = item?.playlist;
     const at = item?.playlistIndex ?? 0;
-    const kindWord = item ? (item.kind === "youtube" ? "YouTube" : item.kind === "audio" ? "Áudio" : "Vídeo") : "";
+    const kindWord = item ? (item.kind === "youtube" ? "YouTube" : item.kind === "audio" ? "Áudio" : layer === "audio" ? "Som do vídeo" : "Vídeo") : "";
+    const swap = videoSwap(cur, layer);
     const where = layer === "video" ? (videoScreens || "telas de vídeo") : layer === "media" ? "Projetor" : layer === "audio" ? "Computador do projetor" : "";
     const silent = (layer === "audio" || layer === "media") && !projectorOpen;
     const pct = duration ? Math.min(100, (shownPos / duration) * 100) : 0;
@@ -130,6 +132,7 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
                 <IconBtn name={pb && !pb.paused ? "pause" : "play"} className="pl-play" title={pb && !pb.paused ? "Pausar · Espaço" : "Tocar · Espaço"} disabled={off} onClick={() => run("toggle")} />
                 <button type="button" className="kx-btn kx-t pl-skip" disabled={off} onClick={() => run("forward")} title="Avançar 10 segundos">+10</button>
                 <IconBtn name="skip-fwd" title="Próximo da lista" disabled={off || !list || at >= list.length - 1} onClick={() => run("next")} />
+                {swap && <IconBtn name={swap.action === "audioOnly" ? "eye-off" : "eye"} title={swap.title} disabled={swap.disabled} onClick={() => run(swap.action)} />}
                 <IconBtn name="stop" title="Parar e tirar do ar" disabled={off} onClick={() => run("stop")} />
             </span>
             <span className="kx-time pl-time">{clock(shownPos)}</span>

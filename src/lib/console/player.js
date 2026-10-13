@@ -50,8 +50,26 @@ export function playerOp(doc, layer, action, { pos = 0, duration = null, volume 
         case "next": return list && at < list.length - 1 ? ["playlist.goTo", { layer, index: at + 1 }] : null;
         case "volume": return ["transport", { layer, action: "volume", volume: Math.max(0, Math.min(1, volume ?? 1)) }];
         case "stop": return [`${layer}.clear`, {}];
+        case "audioOnly":
+        case "showVideo": {
+            const swap = videoSwap(doc, layer);
+            if (!swap || swap.disabled || swap.action !== action) return null;
+            return action === "audioOnly" ? ["media.toAudio", {}] : ["audio.toMedia", {}];
+        }
         default: return null;
     }
+}
+
+// The player's video/sound button (as in Holyrics): a video on the projector
+// can leave the screen and keep its sound (the audio channel), and come back.
+// null: no button for this layer. disabled: shown, with why not in title.
+export function videoSwap(doc, layer) {
+    const item = layer ? doc?.[layer] : null;
+    if (!item) return null;
+    if (layer === "media" && item.kind === "youtube") return { action: "audioOnly", disabled: true, title: "Um vídeo do YouTube não toca só o som" };
+    if (layer === "media" && item.kind === "video") return { action: "audioOnly", title: "Tirar o vídeo · o som continua" };
+    if (layer === "audio" && item.kind === "video") return { action: "showVideo", title: "Mostrar o vídeo" };
+    return null;
 }
 
 const two = (n) => String(n).padStart(2, "0");

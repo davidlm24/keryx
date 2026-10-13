@@ -428,6 +428,54 @@ test("audio channel: plays under the screens, survives Encerrar, has its own tra
     assert.equal(back.audio.playback.paused, true, "restored paused");
 });
 
+test("Tirar o vídeo · o som continua: the video leaves the projector, its sound goes on in the audio channel", () => {
+    let s = run([["content.show", song], ["media.show", { kind: "video", url: "keryx-media://v.mp4", title: "Abertura", duration: 90 }, T0]]);
+    s = applyOp(s, "transport", { layer: "media", action: "volume", volume: 0.6 }, T0);
+    const moved = applyOp(s, "media.toAudio", {}, T0 + 12_000);
+    assert.equal(moved.media, null);
+    assert.equal(mainLayer(moved), "content", "the screen shows what was under the video");
+    assert.deepEqual([moved.audio.kind, moved.audio.url, moved.audio.title, moved.audio.duration], ["video", "keryx-media://v.mp4", "Abertura", 90]);
+    assert.deepEqual(moved.audio.playback, { paused: false, position: 12, at: T0 + 12_000, volume: 0.6 }, "same second, same volume");
+    assert.equal(moved.audio.shownAt, T0 + 12_000, "the player follows it");
+    assert.equal(moved.history[0].layer, "media", "Voltar ao anterior can bring the video back");
+    assert.ok(applyOp(moved, "clear", {}, T0 + 13_000).audio, "Esc leaves the sound playing");
+    assert.ok(applyOp(moved, "content.show", song, T0 + 13_000).audio, "so does the next send");
+
+    // Paused stays paused, where it was.
+    const paused = applyOp(applyOp(s, "transport", { layer: "media", action: "pause" }, T0 + 5000), "media.toAudio", {}, T0 + 60_000);
+    assert.deepEqual([paused.audio.playback.paused, paused.audio.playback.position], [true, 5]);
+
+    // And back: the same file on the projector, from the second it reached.
+    const back = applyOp(moved, "audio.toMedia", {}, T0 + 20_000);
+    assert.equal(back.audio, null);
+    assert.equal(mainLayer(back), "media");
+    assert.deepEqual(back.media.playback, { paused: false, position: 20, at: T0 + 20_000, volume: 0.6 });
+    assert.throws(() => applyOp(run([["audio.show", { url: "a.mp3" }]]), "audio.toMedia", {}, T0), LiveError, "music has no picture");
+
+    // Only what can be heard; YouTube cannot play hidden.
+    assert.throws(() => applyOp(emptyState(T0), "media.toAudio", {}, T0), (e) => e.status === 409);
+    assert.throws(() => applyOp(run([["media.show", { kind: "image", url: "i.jpg" }]]), "media.toAudio", {}, T0), LiveError);
+    assert.throws(() => applyOp(run([["media.show", { kind: "youtube", url: "https://youtu.be/x" }]]), "media.toAudio", {}, T0), LiveError);
+
+    // Locked: the video can leave the screen, not come back.
+    const locked = applyOp(s, "screens.lock", { locked: true }, T0);
+    const off = applyOp(locked, "media.toAudio", {}, T0 + 1000);
+    assert.equal(off.media, null);
+    assert.throws(() => applyOp(off, "audio.toMedia", {}, T0), (e) => e.status === 423);
+});
+
+test("Tirar o vídeo from a list: the list goes along, only what can be heard, and stops at its end", () => {
+    const items = [{ kind: "image", url: "i" }, { kind: "video", url: "a" }, { kind: "pdf", url: "p" }, { kind: "video", url: "b" }, { kind: "audio", url: "c" }];
+    const s = run([["media.playlist", { items, index: 3 }, T0], ["media.toAudio", {}, T0 + 1000]]);
+    assert.deepEqual(s.audio.playlist.map((it) => it.url), ["a", "b", "c"]);
+    assert.equal(s.audio.playlistIndex, 1, "the same item, in the shorter list");
+    assert.equal(s.audio.url, "b");
+    const last = applyOp(applyOp(s, "audio.advance", { fromIndex: 1 }, T0 + 2000), "audio.advance", { fromIndex: 2 }, T0 + 3000);
+    assert.equal(last.audio.playback.paused, true, "music does not wrap");
+    const alone = run([["media.playlist", { items: [{ kind: "image", url: "i" }, { kind: "video", url: "a" }], index: 1 }, T0], ["media.toAudio", {}, T0]]);
+    assert.equal(alone.audio.playlist, null, "one item left is not a list");
+});
+
 test("playlist.goTo: Anterior / Próximo in the player keep the volume", () => {
     let s = run([["media.playlist", { items: [{ kind: "video", url: "a" }, { kind: "video", url: "b" }, { kind: "image", url: "c" }], index: 1 }, T0]]);
     s = applyOp(s, "transport", { layer: "media", action: "volume", volume: 0.3 }, T0);
