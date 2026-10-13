@@ -34,14 +34,21 @@ export function defaultTheme(themes) {
 }
 export const isDefaultTheme = (themes, t) => Boolean(t) && defaultTheme(themes)?.id === t.id;
 
-// The theme that dresses an item of this kind when it is sent: a Bible
-// passage follows the Bíblia's own theme (User.bible_theme_id; "none" the
-// factory look; a deleted one falls back), everything else the default theme.
-export function themeForKind(themes, kind, bibleThemeId = "") {
+// A default theme per kind of content (owner's decision 2026-10-13, as in
+// SPresenter): Música is the theme marked padrão (ProjectionTheme.is_default);
+// Bíblia, Texto (text items, Escola bíblica) and Timer (the clock, the
+// stopwatch and timers) have their own on the profile (User.bible_theme_id,
+// text_theme_id, timer_theme_id): "" = the same as Música, "none" = the
+// factory look, else a theme (a deleted one falls back to Música's).
+export const THEME_KINDS = [["lyrics", "Música"], ["bible", "Bíblia"], ["text", "Texto"], ["tool", "Timer"]];
+export const KIND_FIELD = { bible: "bible_theme_id", text: "text_theme_id", tool: "timer_theme_id" };
+// ids: { bible, text, tool } (or, as before, the Bíblia's id alone).
+export function themeForKind(themes, kind, ids = {}) {
     const def = defaultTheme(themes);
-    if (kind !== "bible" || !bibleThemeId) return def;
-    if (bibleThemeId === "none") return null;
-    return (themes || []).find((t) => t?.id === bibleThemeId) || def;
+    const own = typeof ids === "string" ? (kind === "bible" ? ids : "") : ids?.[kind] || "";
+    if (!KIND_FIELD[kind] || !own) return def;
+    if (own === "none") return null;
+    return (themes || []).find((t) => t?.id === own) || def;
 }
 
 // The bulkUpdate rows that make `id` the only default (null: none is).
@@ -73,6 +80,13 @@ export const followsTheme = (row) => row?.style_mode === "theme" || (row?.style_
 //     layer when the item is sent (backgroundSpec.js fundoOps), so it stays
 //     after Esc; the Fundo held by Camadas' padlock is left alone.
 export function withThemeDefaults(op, args, theme) {
+    // A clock, stopwatch or timer with no look of its own takes its theme's
+    // font and colour, and its background goes to the Fundo (fundoOps).
+    if (op === "tool.show" && args && !args.style && theme) {
+        const t = themeStyle(theme);
+        const fundo = themeBackgroundArgs(theme);
+        return { ...args, style: { font_family: t.font_family, text_color: t.text_color }, ...(fundo ? { fundo } : {}) };
+    }
     if (op !== "content.show" || !args?.inherit) return args;
     const { inherit, ...rest } = args;
     if (!theme) return rest;

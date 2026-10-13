@@ -1806,7 +1806,14 @@ async function checkConsole(webContents, { live, outputs }) {
         // the theme select applies a preset to what is on air, at once.
         const vidFile = require("node:path").join(process.env.KERYX_DATA_DIR || "", "media", "smoke-fundo.mp4");
         require("node:fs").writeFileSync(vidFile, Buffer.from("smoke-video"));
-        const vidRow = (await js('window.keryxDesktop.db.call("Media", "create", [{ title: "Clipe de fundo", type: "video", file_url: "keryx-media://smoke-fundo.mp4", category: "other", duration: 0 }])')).data;
+        const vidRow = (await js('window.keryxDesktop.db.call("Media", "create", [{ title: "Clipe de fundo", type: "video", file_url: "keryx-media://smoke-fundo.mp4", category: "background", duration: 0 }])')).data;
+        // A background clip is the background library's, not the Biblioteca's
+        // Vídeos (the libraries are separate, owner's decision 2026-10-13).
+        await click(".kx-tabs button", "Vídeos");
+        await sleep(600);
+        result.bgNotInMedia = await js("Boolean(document.querySelector('.console .kx-tabs button.is-on')) && ![...document.querySelectorAll('.console .kx-row')].some((n) => n.textContent.includes('Clipe de fundo'))");
+        await click(".kx-tabs button", "Letras");
+        await waitText(webContents, "Canto do console");
         await dblclick(".kx-row", "Canto do console");
         await waitFor(() => Boolean(live.get().content));
         const styleBefore = JSON.stringify(live.get().content.style || {});
@@ -2301,7 +2308,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
-        && result.deleteAsks && result.deleteKept && result.deleteDone
+        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia
         && result.libBig && result.libLive && result.libLiveBack && result.padraoKept && result.padraoAfterEsc && result.padraoService
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc

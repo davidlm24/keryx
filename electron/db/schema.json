@@ -1824,6 +1824,12 @@
         "bible_theme_id": {
           "type": "text"
         },
+        "text_theme_id": {
+          "type": "text"
+        },
+        "timer_theme_id": {
+          "type": "text"
+        },
         "youtube_hide_title": {
           "type": "boolean"
         },

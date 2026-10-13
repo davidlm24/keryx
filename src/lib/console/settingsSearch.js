@@ -45,7 +45,7 @@ export const SETTINGS_INDEX = [
     e("aparencia", "Tela ociosa", "logo ou preto quando nada está no ar e não há fundo", ["ociosa", "logo", "preto", "nada no ar"]),
     e("aparencia", "Fundos", "a biblioteca de fundos: imagens, vídeos, gerados e cores; nome, categoria, escurecer, desfoque, ocultar",
         ["imagens", "vídeos", "gerados", "enviar do computador", "Categoria", "Escurecer", "Desfoque", "Nas galerias", "favorito", "oculto", "biblioteca"]),
-    e("temas", "Estilo padrão do texto", "o tema com que músicas e passagens vão ao ar", ["tema padrão", "estilo de fábrica", "padrão"]),
+    e("temas", "Temas padrão", "um tema para cada tipo: músicas, Bíblia, texto e timer", ["tema padrão", "estilo padrão do texto", "estilo de fábrica", "padrão", "música", "bíblia", "texto", "timer", "relógio", "escola bíblica"]),
     e("temas", "Temas", "estilos prontos de texto e fundo; no console, o card Temas",
         ["tema padrão", "presets", "estilo", "Nome", "Fonte", "Efeito e cor", "Caixa do texto", "Transição", "Fundo", "Ajuste do fundo", "Escurecer", "Escurecer · desfoque", "Tornar padrão", "Novo tema"]),
 

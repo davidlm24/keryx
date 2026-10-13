@@ -41,7 +41,8 @@
         "worship",
         "announcement",
         "testimony",
-        "other"
+        "other",
+        "background"
       ],
       "default": "other",
       "description": "Categoria da m\u00eddia"
