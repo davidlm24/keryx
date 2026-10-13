@@ -244,7 +244,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Service). Screens and the console's monitors render with
   `src/components/screen/ScreenRenderer.jsx` — one component, sized in
   container units — so a preview is the output; the Programa monitor plays
-  videos muted (`motion`). Keys go through `src/lib/console/keys.js` (with
+  videos muted (`motion`). The player's eye ("Tirar o vídeo · o som
+  continua", as in Holyrics) moves a video off the projector into the
+  audio channel at the same second (`media.toAudio`; "Mostrar o vídeo" is
+  `audio.toMedia`; `videoSwap` in `src/lib/console/player.js`, no
+  YouTube). Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background library, a popover, then
   Configurações, then the Camadas drawer; views defer while a `.scrim` is

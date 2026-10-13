@@ -146,7 +146,7 @@ export function emptyState(now = Date.now()) {
 export const WHILE_LOCKED = new Set([
     "screens.lock", "screen.set", "idle.set", "session.end", "layers.hide", "layers.lock", "background.default",
     "clear", "content.clear", "media.clear", "video.clear", "audio.clear", "tool.clear", "communication.clear", "alert.clear", "background.clear",
-    "media.advance", "audio.advance", "communication.advance",
+    "media.advance", "audio.advance", "communication.advance", "media.toAudio",
 ]);
 
 // -- Checking what pages send -------------------------------------------------
@@ -268,6 +268,20 @@ function audioItem(value) {
 }
 
 const freshPlayback = (now, volume = 1) => ({ paused: false, position: 0, at: now, volume });
+
+// What can move between the projector and the audio channel (media.toAudio).
+const SOUND_KINDS = ["video", "audio"];
+// An item moved to another layer: the same file, at the same second and
+// volume, paused or not; shownAt is now, so the player follows it.
+function carried(item, now) {
+    const out = { kind: item.kind, url: item.url, title: item.title || "" };
+    if (item.duration != null) out.duration = item.duration;
+    if (item.id != null) out.id = item.id;
+    const pb = item.playback;
+    out.playback = { paused: Boolean(pb?.paused), position: livePosition(pb, now), at: now, volume: pb?.volume ?? 1 };
+    out.shownAt = now;
+    return out;
+}
 
 const need = (layer, label) => {
     if (!layer) throw new LiveError(`Nada ${label} no momento.`, 409);
@@ -469,6 +483,39 @@ const OPS = {
         return { audio: { ...audio, ...audio.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, audio.playback.volume) } };
     },
     "audio.clear": (s) => (s.audio ? { audio: null } : null),
+
+    // "Tirar o vídeo · o som continua" (the player, as in Holyrics): the
+    // video on the projector leaves the screen and its sound carries on in
+    // the audio channel, from the same second at the same volume, so it
+    // survives Esc and whatever is sent next. A list goes along (only what
+    // can be heard) and, as music, stops at its end. Taking something off
+    // the screen, so it works locked.
+    "media.toAudio": (s, _a, now) => {
+        const media = need(s.media, "em reprodução");
+        if (media.kind === "youtube") throw new LiveError("Um vídeo do YouTube não toca só o som.");
+        if (!SOUND_KINDS.includes(media.kind)) throw new LiveError("Esta mídia não tem som.");
+        const list = media.playlist || [];
+        const items = list.filter((it) => SOUND_KINDS.includes(it.kind));
+        const index = list.slice(0, media.playlistIndex).filter((it) => SOUND_KINDS.includes(it.kind)).length;
+        const playlist = items.length > 1 ? items : null;
+        return {
+            ...remember(s, now, "media"),
+            media: null,
+            audio: { ...carried(media, now), playlist, playlistIndex: playlist ? index : 0 },
+        };
+    },
+    // "Mostrar o vídeo": the way back, a video file the audio channel plays
+    // goes on the projector again, from the same second.
+    "audio.toMedia": (s, _a, now) => {
+        const audio = need(s.audio, "tocando");
+        if (audio.kind !== "video") throw new LiveError("Só um vídeo volta para a tela.");
+        return {
+            ...remember(s, now),
+            ...reveal(["tool", "communication"]),
+            audio: null,
+            media: { ...carried(audio, now), playlist: audio.playlist || null, playlistIndex: audio.playlist ? audio.playlistIndex : 0 },
+        };
+    },
 
     // The operator jumps to an item of a media or audio list (Anterior /
     // Próximo in the player): it starts from the top, at the same volume.
