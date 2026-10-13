@@ -180,7 +180,7 @@ export function prefViewKey(page, pref) {
 // The text look of a theme, only the keys it sets (a theme's empty key leaves
 // the operator's choice in place).
 const LOOK_KEYS = ["font_size", "font_family", "text_effect", "text_color", "text_color_2", "text_opacity", "text_max_width",
-    "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge"];
+    "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position"];
 export const themeLook = (theme) => Object.fromEntries(LOOK_KEYS.filter((k) => theme?.[k] != null && theme[k] !== "").map((k) => [k, theme[k]]));
 
 // What the output draws: the live state through the page's view, then the

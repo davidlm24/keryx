@@ -11,6 +11,7 @@
       "enum": [
         "palco",
         "pastor",
+        "publico",
         "outro"
       ],
       "default": "palco",

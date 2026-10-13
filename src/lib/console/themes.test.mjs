@@ -82,6 +82,26 @@ test("default theme: filled in at send time, only where the item asks", () => {
     assert.equal(withThemeDefaults("content.show", plain, theme), plain);
 });
 
+test("text placement rides as extras: the theme fills, the item wins", () => {
+    const theme = { id: "t", text_align: "left", text_position: "bottom", text_max_width: 60 };
+    assert.equal(themeStyle(theme).text_align, "left");
+    assert.equal(themeStyle(theme).text_position, "bottom");
+    assert.equal(themeStyle({}).text_align, "", "an unmoved theme writes nothing");
+    const args = { style: { font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff" }, inherit: { look: true, background: false } };
+    // The item left the placement empty: the theme's lands.
+    const out = withThemeDefaults("content.show", args, theme);
+    assert.equal(out.style.text_align, "left");
+    assert.equal(out.style.text_position, "bottom");
+    assert.equal(out.style.text_max_width, 60);
+    // The item placed its text (Camadas, a song's own look): it survives.
+    const own = withThemeDefaults("content.show", { ...args, style: { ...args.style, text_align: "right", text_position: "top" } }, theme);
+    assert.equal(own.style.text_align, "right");
+    assert.equal(own.style.text_position, "top");
+    // sameLook sees a moved box as a change.
+    assert.ok(sameLook({ ...themeStyle(theme) }, theme));
+    assert.ok(!sameLook({ ...themeStyle(theme), text_position: "top" }, theme));
+});
+
 test("a theme with a generated background sets the Fundo as a generator", () => {
     const gen = { id: "clouds", speed: 0.3, colors: ["#000000", "#ffffff"] };
     assert.deepEqual(themeBackgroundArgs({ name: "Céu", background_generator: gen, background_dim: 0.2 }), { kind: "generator", value: "clouds", gen: normalizeGenerator(gen), title: "Céu", dim: 0.2 });
