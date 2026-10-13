@@ -87,6 +87,10 @@ export default function AparenciaSection({ c }) {
                     </span>
                     <span className="kx-meta">opcional: vale antes do fundo padrão no dia do culto (ou hoje, sem culto)</span>
                 </FormRow>
+                <FormRow k="Fundos">
+                    <Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir biblioteca</Btn>
+                    <span className="kx-meta">imagens, vídeos, gerados e cores: nome, categoria, escurecer, desfoque, favoritos e ocultos; e enviar do computador</span>
+                </FormRow>
                 <IdleBlock c={c} />
                 <FormRow k="Títulos nas telas">
                     <span className="cfg-launch"><Switch on={prefs.show_item_title} onChange={(on) => save({ show_item_title: on }, on ? "O título do item aparece nas telas." : "Sem o título do item nas telas.")} label="Mostrar o título do item nas telas" /><span className="kx-meta">Título do item nas telas</span></span>

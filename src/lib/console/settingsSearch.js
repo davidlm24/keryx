@@ -9,7 +9,7 @@
 // query rules, src/lib/bibleSearch.js) and a word matches the start of a
 // word: "transi" finds Transição, "nvi" finds NVI but not "enviar".
 import { fold, searchTerms } from "../bibleSearch.js";
-import { SECTIONS, APPEARANCE_TABS } from "./settings.js";
+import { SECTIONS, TELAS_TABS } from "./settings.js";
 
 const e = (section, label, hint, keywords = [], extra = {}) => ({ section, label, hint, keywords, target: extra.target || label, tab: extra.tab || null });
 
@@ -22,14 +22,14 @@ export const SETTINGS_INDEX = [
     e("telas", "Identificar telas", "os monitores ligados e o número de cada um", ["monitores", "monitor", "projetor", "tv", "número"]),
     e("telas", "Saídas", "em que tela abre cada saída, tela cheia ou janela", ["projeção", "letras", "vídeo", "comunicação", "palco", "pastor", "tela cheia", "janela", "trazer para a frente", "fechar", "abrir"]),
     e("telas", "Abrir ao iniciar", "a saída abre sozinha quando o KERYX abre", ["iniciar", "automático"], { target: "Saídas" }),
-    e("telas", "Exportar ajustes das saídas", "salva num arquivo a tela e os ajustes de cada saída", ["exportar", "salvar", "arquivo", "backup das saídas", "outro computador", "reinstalar", "spo"]),
-    e("telas", "Importar ajustes das saídas", "abre um arquivo de saídas e mostra o que muda antes de aplicar", ["importar", "restaurar", "arquivo", "outro computador", "reinstalar", "carregar"]),
-    e("telas", "Som do aviso", "o sino dos avisos: ligar, desligar, volume, testar", ["som", "sino", "alerta", "volume", "testar som", "áudio"]),
+    e("telas", "Exportar ajustes das saídas", "salva num arquivo a tela e os ajustes de cada saída", ["exportar", "salvar", "arquivo", "backup das saídas", "outro computador", "reinstalar", "spo"], { tab: "geral" }),
+    e("telas", "Importar ajustes das saídas", "abre um arquivo de saídas e mostra o que muda antes de aplicar", ["importar", "restaurar", "arquivo", "outro computador", "reinstalar", "carregar"], { tab: "geral" }),
+    e("telas", "Som do aviso", "o sino dos avisos: ligar, desligar, volume, testar", ["som", "sino", "alerta", "volume", "testar som", "áudio"], { tab: "geral" }),
     e("telas", "Ajustes", "nome, ícone, conteúdo, layout, texto, margens, logo e tema de cada saída",
         ["Nome", "Ícone", "Conteúdo", "Layout", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra", "Mostrar", "filtro", "só letras", "só Bíblia",
             "Faixa", "Tamanho do texto", "Posição", "Referência na legenda"]),
     e("telas", "Layouts das telas", "os desenhos do Palco e da Tela do pastor: onde ficam relógio, timer, letra e próxima",
-        ["layout", "layouts", "desenho", "canvas", "elementos", "palco", "pastor", "retorno", "relógio", "timer", "próxima letra", "próximo slide", "cifra", "monitor", "Novo layout", "Editar", "Duplicar", "Excluir"]),
+        ["layout", "layouts", "desenho", "canvas", "elementos", "palco", "pastor", "retorno", "relógio", "timer", "próxima letra", "próximo slide", "cifra", "monitor", "Novo layout", "Editar", "Duplicar", "Excluir", "editar no canvas"], { tab: "layouts" }),
 
     e("rede", "Telas na rede", "celulares, tablets e TVs pela rede da igreja", ["wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),
     e("rede", "Transmissão", "a legenda para a live no OBS: cor, tamanho e posição da faixa", ["obs", "live", "legenda", "faixa", "transmissão", "youtube"], { target: "Telas na rede" }),
@@ -37,17 +37,17 @@ export const SETTINGS_INDEX = [
     e("rede", "PIN", "o código que os aparelhos pedem para entrar; Mostrar PIN", ["senha", "código", "proteger", "mostrar pin", "esqueci"]),
     e("rede", "Telas conectadas pela rede", "os aparelhos conectados agora", ["aparelhos", "conectados"]),
 
-    e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte, para todo item", ["esmaecer", "deslizar", "corte", "fade", "animação"], { tab: "geral" }),
-    e("aparencia", "Duração", "quanto dura a transição", ["ms", "velocidade", "tempo", "transição"], { tab: "geral" }),
-    e("aparencia", "Fundo padrão", "o fundo das telas quando nada está no ar (e depois do Esc), se o culto não tiver o seu", ["fundo de espera", "espera", "wallpaper", "imagem", "esc"], { tab: "geral" }),
-    e("aparencia", "Fundo por dia da semana", "um fundo para cada dia (domingo, quarta…), antes do fundo padrão", ["domingo", "quarta", "dia", "semana", "fundo de espera"], { tab: "geral" }),
-    e("aparencia", "Títulos nas telas", "o título do item no slide e a faixa de título do YouTube", ["título", "nome da música", "youtube", "canal", "esconder"], { tab: "geral" }),
-    e("aparencia", "Tela ociosa", "logo ou preto quando nada está no ar e não há fundo", ["ociosa", "logo", "preto", "nada no ar"], { tab: "geral" }),
-    e("aparencia", "Estilo padrão do texto", "o tema com que músicas e passagens vão ao ar", ["tema padrão", "estilo de fábrica", "padrão"], { tab: "temas" }),
-    e("aparencia", "Temas", "estilos prontos de texto e fundo, aplicados em Camadas",
-        ["tema padrão", "presets", "estilo", "Nome", "Fonte", "Efeito e cor", "Caixa do texto", "Transição", "Fundo", "Ajuste do fundo", "Escurecer · desfoque", "Tornar padrão", "Novo tema"], { tab: "temas" }),
-    e("aparencia", "Fundos", "a biblioteca de fundos de todas as galerias",
-        ["imagens", "vídeos", "enviar do computador", "Nome", "Categoria", "Escurecer", "Desfoque", "Nas galerias", "favorito", "oculto"], { tab: "fundos" }),
+    e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte, para todo item", ["esmaecer", "deslizar", "corte", "fade", "animação"]),
+    e("aparencia", "Duração", "quanto dura a transição", ["ms", "velocidade", "tempo", "transição"]),
+    e("aparencia", "Fundo padrão", "o fundo das telas quando nada está no ar (e depois do Esc), se o culto não tiver o seu", ["fundo de espera", "espera", "wallpaper", "imagem", "esc"]),
+    e("aparencia", "Fundo por dia da semana", "um fundo para cada dia (domingo, quarta…), antes do fundo padrão", ["domingo", "quarta", "dia", "semana", "fundo de espera"]),
+    e("aparencia", "Títulos nas telas", "o título do item no slide e a faixa de título do YouTube", ["título", "nome da música", "youtube", "canal", "esconder"]),
+    e("aparencia", "Tela ociosa", "logo ou preto quando nada está no ar e não há fundo", ["ociosa", "logo", "preto", "nada no ar"]),
+    e("aparencia", "Fundos", "a biblioteca de fundos: imagens, vídeos, gerados e cores; nome, categoria, escurecer, desfoque, ocultar",
+        ["imagens", "vídeos", "gerados", "enviar do computador", "Categoria", "Escurecer", "Desfoque", "Nas galerias", "favorito", "oculto", "biblioteca"]),
+    e("temas", "Estilo padrão do texto", "o tema com que músicas e passagens vão ao ar", ["tema padrão", "estilo de fábrica", "padrão"]),
+    e("temas", "Temas", "estilos prontos de texto e fundo; no console, o card Temas",
+        ["tema padrão", "presets", "estilo", "Nome", "Fonte", "Efeito e cor", "Caixa do texto", "Transição", "Fundo", "Ajuste do fundo", "Escurecer", "Escurecer · desfoque", "Tornar padrão", "Novo tema"]),
 
     e("biblia", "Livros da Bíblia", "abreviados (Gn) ou com o nome inteiro (Gênesis)", ["abreviados", "nome inteiro", "abrev", "livros"]),
     e("biblia", "Tema da Bíblia", "o tema das passagens, separado do das músicas", ["tema", "bíblia", "passagens", "fundo", "estilo"]),
@@ -96,9 +96,9 @@ const matches = (text, terms) => { const hay = fold(text); return terms.every((t
 
 const ORDER = Object.fromEntries(SECTIONS.map((s, i) => [s.id, i]));
 const NAME = Object.fromEntries(SECTIONS.map((s) => [s.id, s.name]));
-const TAB = Object.fromEntries(APPEARANCE_TABS);
+const TAB = Object.fromEntries(TELAS_TABS);
 
-// "Aparência › Temas": where an entry lives, for its result line.
+// "Telas e saídas › Layouts das telas": where an entry lives, for its result line.
 export const placeOf = (entry) => [NAME[entry.section], entry.tab && TAB[entry.tab]].filter(Boolean).join(" › ");
 
 // -> the entries matching the query (every word, in the label, the hint, the

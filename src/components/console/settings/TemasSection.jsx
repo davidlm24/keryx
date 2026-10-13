@@ -117,7 +117,7 @@ function ThemeEditor({ row, c, onDone }) {
 
 // Aparência › Temas: the projection presets — each one text + background,
 // created and edited here with a live sample (Camadas' "Salvar como novo"
-// still works). The Fundos library is the next tab (FundosGallery).
+// still works). The backgrounds are managed in the library (Aparência › Fundos).
 export default function TemasSection({ c }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];

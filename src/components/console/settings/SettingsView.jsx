@@ -1,54 +1,32 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Panel, Row, IconBtn, Seg, Field, Empty } from "../kx";
-import { SECTIONS, APPEARANCE_TABS, sectionOf } from "@/lib/console/settings";
+import { Panel, Row, IconBtn, Field, Empty } from "../kx";
+import { SECTIONS, TELAS_TABS, sectionOf } from "@/lib/console/settings";
 import { searchSettings, groupHits, countBySection } from "@/lib/console/settingsSearch";
 import { searchTerms, highlightParts } from "@/lib/bibleSearch";
 import { focusKind } from "@/lib/console/keys";
 import { useLibrary } from "../useConsoleData";
-import { useUser, updateUser } from "@/hooks/useUser";
 import { CfgFlash } from "./parts";
 import IgrejaSection from "./IgrejaSection";
 import TelasSection from "./TelasSection";
 import RedeSection from "./RedeSection";
 import AparenciaSection from "./AparenciaSection";
 import TemasSection from "./TemasSection";
-import FundosGallery from "./FundosGallery";
 import BibliaSection from "./BibliaSection";
 import CultoSection from "./CultoSection";
 import ConsoleSection from "./ConsoleSection";
 import DadosSection from "./DadosSection";
 
-// Aparência › Fundos: the backgrounds library every gallery reads.
-function FundosTab({ c }) {
-    const { media } = useLibrary();
-    // "Usar como Fundo padrão": the church's, for every day (defaultFundo.js).
-    const standby = useUser((u) => (u?.default_background ? u.default_background.value : u?.standby_background) || null);
-    const onStandby = (url, kind = "image") => updateUser({ default_background: { kind, value: url }, standby_background: kind === "image" ? url : "" }).then(() => c.say("Fundo padrão salvo.")).catch(() => c.say("Não foi possível salvar."));
-    return <FundosGallery c={c} media={media} standby={standby} onStandby={onStandby} />;
-}
-
-// Aparência: three tabs, Geral (transition, idle look, standby wallpaper),
-// Temas (the presets) and Fundos (the library).
-function AparenciaView({ c, tab, setTab }) {
-    const Body = tab === "temas" ? TemasSection : tab === "fundos" ? FundosTab : AparenciaSection;
-    return (
-        <>
-            <div className="cfg-tabs"><Seg small value={tab} onChange={setTab} options={APPEARANCE_TABS} /></div>
-            <Body c={c} />
-        </>
-    );
-}
-
 const BODIES = {
     igreja: IgrejaSection,
-    telas: TelasSection,
     rede: RedeSection,
+    aparencia: AparenciaSection,
+    temas: TemasSection,
     biblia: BibliaSection,
     culto: CultoSection,
     backup: DadosSection,
 };
 const ICON = Object.fromEntries(SECTIONS.map((s) => [s.id, s.icon]));
-const TAB_NAME = Object.fromEntries(APPEARANCE_TABS);
+const TAB_NAME = Object.fromEntries(TELAS_TABS);
 
 // A text with the searched words marked (accents and case ignored).
 function Marked({ text, terms }) {
@@ -77,7 +55,7 @@ export default function SettingsView({ c, section, tab, setSection, onClose, lay
     const inputRef = useRef(null);
     const { themes } = useLibrary();
     // The church's themes are found by name too.
-    const extra = useMemo(() => (themes || []).filter((t) => t?.name).map((t) => ({ section: "aparencia", tab: "temas", label: t.name, hint: "Tema", keywords: [], target: "Temas" })), [themes]);
+    const extra = useMemo(() => (themes || []).filter((t) => t?.name).map((t) => ({ section: "temas", tab: null, label: t.name, hint: "Tema", keywords: [], target: "Temas" })), [themes]);
     const hits = useMemo(() => searchSettings(q, extra), [q, extra]);
     const terms = useMemo(() => searchTerms(q), [q]);
     const searching = terms.length > 0;
@@ -151,7 +129,7 @@ export default function SettingsView({ c, section, tab, setSection, onClose, lay
                         <div className="kx-menu-h"><span className="kx-section">{g.name}</span></div>
                         {g.hits.map((h) => {
                             const i = hits.indexOf(h);
-                            const where = h.tab ? `${TAB_NAME[h.tab]} · ` : "";
+                            const where = h.tab && TAB_NAME[h.tab] ? `${TAB_NAME[h.tab]} · ` : "";
                             return (
                                 <Row key={`${h.section}:${h.tab}:${h.label}:${i}`} icon={ICON[h.section]} state={i === active ? "is-selected" : ""}
                                     title={<Marked text={h.label} terms={terms} />} meta={<>{where}<Marked text={h.hint} terms={terms} /></>}
@@ -162,7 +140,7 @@ export default function SettingsView({ c, section, tab, setSection, onClose, lay
                 ))}
             </div>
         ) : <Empty icon="search" title={`Nada encontrado para “${q.trim()}”`}>Tente outra palavra: PIN, fundo, backup, transição, logo…</Empty>;
-    } else if (current.id === "aparencia") body = <AparenciaView c={c} tab={tab || "geral"} setTab={(t) => setSection("aparencia", t)} />;
+    } else if (current.id === "telas") body = <TelasSection c={c} tab={tab} setTab={(t) => setSection("telas", t)} onOpenLayout={onOpenLayout} />;
     else if (current.id === "console") body = <ConsoleSection c={c} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
     else { const Body = BODIES[current.id]; body = <Body c={c} onOpenLayout={onOpenLayout} />; }
 

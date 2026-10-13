@@ -1648,7 +1648,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Over the console, which stays mounted behind it.
         result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .col.center') && document.querySelector('.console .cfg-scrim'))");
         result.cfgSections = {};
-        for (const name of ["Igreja", "Telas e saídas", "Telas na rede", "Aparência", "Bíblia e músicas", "Culto", "Console", "Backup e atualizações"]) {
+        for (const name of ["Igreja", "Telas e saídas", "Telas na rede", "Aparência", "Temas", "Bíblia e músicas", "Culto", "Console", "Backup e atualizações"]) {
             await click(".console .cfg-dialog .kx-row", name);
             result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
         }
@@ -1691,18 +1691,21 @@ async function checkConsole(webContents, { live, outputs }) {
             el.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
             return true;
         })()`);
-        await click(".console .cfg .cfg-tune button", "Ajustes");
+        // Telas e saídas has a vertical tab per output (Projeção first) with
+        // its settings always open beside it, the Layout on top.
+        result.cfgOutTabs = await waitFor(() => js("document.querySelectorAll('.console .cfg .cfg-outtab').length >= 6 && Boolean(document.querySelector('.console .cfg .cfg-outtab.is-on'))"), 5000);
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs input.fg-input'))"));
+        result.cfgLayoutFirst = await js("(() => { const k = [...document.querySelectorAll('.cfg-outs-detail .cfg-outprefs-form > .k')].map((n) => n.textContent).filter(Boolean); return k[0] === 'Layout'; })()");
         await nameField("Telão");
         result.outName = await waitFor(() => js(`[...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Telão")`), 5000);
         await nameField("");
         result.outNameBack = await waitFor(() => js(`[...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Projeção principal")`), 5000);
-        await click(".console .cfg .cfg-tune button", "Ajustes");
 
         // Palco's and Pastor's own Ajustes, with the live preview beside the
         // controls: a switch changes the preview at once, Restaurar padrão
         // puts it back, and the Pastor's "Não" hides the next-items list.
-        const tuneOf = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .cfg .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); const b = row && [...row.querySelectorAll("button")].find((x) => x.textContent.includes("Ajustes")); if (b) b.click(); return Boolean(b); })()`);
+        // An output's tab (Telas e saídas' vertical list).
+        const tuneOf = (title) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg .cfg-outtab")].find((n) => { const t = n.querySelector(".cfg-outtab-t"); return t && t.textContent === ${JSON.stringify(title)}; }); if (b) b.click(); return Boolean(b); })()`);
         await tuneOf("Palco");
         result.palcoPrev = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .net-stage .ns-chords'))"), 5000);
         await js("(() => { const b = document.querySelector('.cfg-outprefs button[aria-label=\"Cifra no Palco\"]'); if (b) b.click(); return Boolean(b); })()");
@@ -1710,7 +1713,6 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar padrão'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar mesmo'); if (b) b.click(); return Boolean(b); })()"), 3000);
         result.palcoRestored = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .ns-chords'))"), 5000);
-        await tuneOf("Palco");
         await tuneOf("Tela do pastor");
         result.pastorPrev = await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .cfg-prev-pastor .np-list'))"), 5000);
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs .kx-seg button')].find((x) => x.textContent === 'Não'); if (b) b.click(); return Boolean(b); })()");
@@ -1718,16 +1720,14 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar padrão'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar mesmo'); if (b) b.click(); return Boolean(b); })()"), 3000);
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .np-side'))"), 5000);
-        await tuneOf("Tela do pastor");
 
-        // Aparência › Temas: the editor creates a theme with a live sample;
-        // the Fundos library is the next tab (not inside Temas). Element
-        // clicks (not coordinates): the dialog relayouts while it opens.
+        // Temas (a section of its own): the editor creates a theme with a live
+        // sample; the backgrounds are managed in the library, opened from
+        // Aparência › Fundos. Element clicks (not coordinates): the dialog
+        // relayouts while it opens.
         const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .cfg-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
         const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
-        const tab = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg .cfg-tabs button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
-        await section("Aparência");
-        await waitFor(() => tab("Temas"), 4000);
+        await waitFor(() => section("Temas"), 4000);
         await waitFor(() => press2("Novo tema…"), 4000);
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs input.fg-input'))"));
         await js(`(() => {
@@ -1745,11 +1745,15 @@ async function checkConsole(webContents, { live, outputs }) {
             return rows.length === 1 && rows[0].font_family === "serif";
         }, 6000);
         if (!result.themeSaved) result.themeDiag = await js("(document.querySelector('.toast') || {}).textContent || document.querySelector('.console .cfg').innerText.slice(0, 300)");
-        result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .fg')"), 4000);
-        await tab("Fundos");
-        result.fundosInTemas = await waitFor(() => js("Boolean(document.querySelector('.console .cfg .fg'))"), 4000);
-        // Tela ociosa is in Aparência › Geral (no longer in Telas e saídas).
-        await tab("Geral");
+        // Aparência has no tabs; its Fundos row opens the library to manage
+        // the backgrounds (Fechar, no Usar), over Configurações.
+        await section("Aparência");
+        result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .cfg-tabs') && !document.querySelector('.console .cfg .fg')"), 4000);
+        await waitFor(() => press2("Abrir biblioteca"), 4000);
+        result.fundosInTemas = await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog')) && [...document.querySelectorAll('.lib-foot button')].some((b) => b.textContent === 'Fechar')"), 4000);
+        await js("(() => { const b = [...document.querySelectorAll('.lib-foot button')].find((x) => x.textContent === 'Fechar'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 3000);
+        // Tela ociosa is in Aparência (no longer in Telas e saídas).
         await waitText(webContents, "Tela ociosa");
         await click(".console .cfg .kx-seg button", "Preto");
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
@@ -2288,7 +2292,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutTabs && result.cfgLayoutFirst && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
