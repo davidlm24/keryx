@@ -102,9 +102,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   unset, Aparência's `show_item_title` decides.
   **Fundo padrão** (owner's decision 2026-10-12): with nothing on air the
   screen shows the service's background (`Service.background`), else the
-  church's for that weekday (`User.weekday_backgrounds`), else the church's
-  (`User.default_background`; the old `standby_background` still counts) —
-  `defaultFundo` in `src/lib/console/defaultFundo.js`. The console keeps it
+  church's (`User.default_background`; the old `standby_background` still
+  counts; `User.weekday_backgrounds` is no longer read) — `defaultFundo` in
+  `src/lib/console/defaultFundo.js`. **The look is the service's**
+  (2026-10-13, `src/lib/console/serviceLook.js`): its background and its
+  own theme per kind (`Service.kind_themes` { lyrics, bible, text, tool }),
+  which `themeForKind` puts before the church's Temas padrão; edited in
+  "Visual do culto…" (`library/LookDialog.jsx`, `useLookEditor()`: the top of
+  the Setlist, Planejar o culto, a template's "Visual…" in Configurações ›
+  Culto). With no service it is "Visual de hoje…" and the first choice
+  starts the day's draft (`ensureService`), as in Holyrics. A template
+  (`ServiceTemplate.background`/`kind_themes`) keeps the look: "Salvar como
+  modelo" saves it, applying one fills what the service has not chosen
+  (`lookForService`). The console keeps it
   in the live state (`background.default`, `defaultBackground`) and `clear`
   (Esc, from anyone) puts it on the Fundo unless the padlock holds it;
   Desfazer puts back the Fundo there was. It also goes on the Fundo when it

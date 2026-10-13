@@ -10,6 +10,14 @@
       "type": "string",
       "description": "Descricao do template"
     },
+    "background": {
+      "type": "object",
+      "description": "Fundo do culto que o modelo traz ({ kind, value, gen, dim, blur, fit }); aplicado so quando o culto ainda nao tem o seu"
+    },
+    "kind_themes": {
+      "type": "object",
+      "description": "Temas por tipo que o modelo traz ({ lyrics, bible, text, tool }); aplicados so onde o culto ainda nao tem o seu"
+    },
     "items": {
       "type": "array",
       "items": {

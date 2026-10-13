@@ -7,6 +7,9 @@ import { FormRow, Switch, CfgKey } from "./parts";
 import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import { WEEKDAYS, TEAM_ROLES, teamRole } from "@/lib/console/serviceDefaults";
 import { parseDuration, formatDuration } from "@/lib/songImport";
+import { BgThumb } from "../library/BgChip";
+import { useLookEditor } from "../library/LookDialog";
+import { lookOf, hasLook } from "@/lib/console/serviceLook";
 
 // The two lists this section edits, with the planner's query keys: a change
 // here reaches the planner (and back) through each table's realtime.
@@ -32,6 +35,7 @@ function Inline({ value, onCommit, placeholder, label, width = 220, type = "text
 // without a length, the forecast of the end, the setlist templates and the
 // worship team.
 export default function CultoSection({ c }) {
+    const openLook = useLookEditor();
     const user = useUser();
     const prefs = usePrefs();
     const forecast = user?.show_forecast === true;
@@ -93,8 +97,9 @@ export default function CultoSection({ c }) {
                 <div key={t.id} className="kx-row cfg-edit-row">
                     <span className="kx-glyph"><Icon name="list" /></span>
                     <Inline value={t.name} label={`Nome do modelo ${t.name}`} onCommit={(name) => { if (name) run(keryx.entities.ServiceTemplate.update(t.id, { name }), "Modelo renomeado."); }} />
-                    <span className="kx-meta">{(t.items || []).length} {(t.items || []).length === 1 ? "item" : "itens"}{t.isDefault ? " · modelo do KERYX" : ""}</span>
+                    <span className="kx-meta">{(t.items || []).length} {(t.items || []).length === 1 ? "item" : "itens"}{t.isDefault ? " · modelo do KERYX" : ""}{hasLook(t) ? " · com visual" : ""}</span>
                     <span style={{ flex: 1 }} />
+                    {!t.isDefault && <><BgThumb spec={lookOf(t).background} /><Btn small onClick={() => openLook({ kind: "template", id: t.id })} title="O fundo e os temas que este modelo traz ao culto">Visual…</Btn></>}
                     {!t.isDefault && <Btn small kind={confirm === `tpl:${t.id}` ? "air" : ""} onClick={() => twoStep(`tpl:${t.id}`, `Clique de novo para excluir o modelo "${t.name}".`, () => run(keryx.entities.ServiceTemplate.delete(t.id), "Modelo excluído."))}>{confirm === `tpl:${t.id}` ? "Excluir mesmo" : "Excluir"}</Btn>}
                 </div>
             ))}

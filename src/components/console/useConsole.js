@@ -48,7 +48,10 @@ export function useConsole() {
     // Texto and Timer (a tool.show).
     const prefs = usePrefs();
     const kindIds = useMemo(() => ({ bible: prefs.bible_theme_id, text: prefs.text_theme_id, tool: prefs.timer_theme_id }), [prefs.bible_theme_id, prefs.text_theme_id, prefs.timer_theme_id]);
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds)), look), bgPrefs), [themes, kindIds, look, bgPrefs]);
+    // The service in hand may have its own theme per kind (Visual do culto,
+    // serviceLook.js): they come before the church's. Console.jsx sets them.
+    const [serviceThemes, setServiceThemes] = useState(null);
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, serviceThemes)), look), bgPrefs), [themes, kindIds, serviceThemes, look, bgPrefs]);
     // The theme the operator last applied to what is on air (the Temas
     // card), shown in Camadas as "Tema: …"; null = the default theme.
     const [themeId, setThemeId] = useState(null);
@@ -181,5 +184,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
+    return { live, now, cur: live, bgPrefs, themeId, setThemeId, setServiceThemes, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
 }

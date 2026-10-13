@@ -43,7 +43,16 @@ export const isDefaultTheme = (themes, t) => Boolean(t) && defaultTheme(themes)?
 export const THEME_KINDS = [["lyrics", "Música"], ["bible", "Bíblia"], ["text", "Texto"], ["tool", "Timer"]];
 export const KIND_FIELD = { bible: "bible_theme_id", text: "text_theme_id", tool: "timer_theme_id" };
 // ids: { bible, text, tool } (or, as before, the Bíblia's id alone).
-export function themeForKind(themes, kind, ids = {}) {
+// serviceIds: the service's own themes per kind (Service.kind_themes:
+// { lyrics, bible, text, tool }, src/lib/console/serviceLook.js), which come
+// first (owner's decision 2026-10-13); one that was deleted is passed over.
+export function themeForKind(themes, kind, ids = {}, serviceIds = null) {
+    const svc = serviceIds && typeof serviceIds === "object" ? serviceIds[kind] : "";
+    if (svc) {
+        if (svc === "none") return null;
+        const t = (themes || []).find((x) => x?.id === svc);
+        if (t) return t;
+    }
     const def = defaultTheme(themes);
     const own = typeof ids === "string" ? (kind === "bible" ? ids : "") : ids?.[kind] || "";
     if (!KIND_FIELD[kind] || !own) return def;
