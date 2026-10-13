@@ -15,11 +15,20 @@ import { Switch } from "../console/settings/parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import BgChip from "../console/library/BgChip";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs } from "@/lib/console/themes";
+import Icon from "../console/Icon";
+import { IconBtn } from "../console/kx";
+import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
 import { themeBoxRect, rectToTheme, MIN_WIDTH } from "@/lib/console/themeBox";
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
-import { SAMPLE_SLIDES } from "../console/settings/sample";
+// The samples the canvas dresses (as ThemeStudio had them, folded in here
+// 2026-10-13): what the theme looks like on a song, a passage and a text,
+// with their own slides.
+const SAMPLES = {
+    lyrics: { label: "Música", args: { kind: "lyrics", title: "Grande é o Senhor", slides: [{ text: "Grande é o Senhor\ne mui digno de louvor" }, { text: "Na cidade do nosso Deus\nno seu santo monte", is_chorus: true }] } },
+    bible: { label: "Bíblia", args: { kind: "bible", title: "João 3:16 · NVI", ref: { reference: "João 3:16" }, slides: [{ text: "Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito, para que todo aquele que nele crê não pereça, mas tenha a vida eterna.", ref: "João 3:16 · NVI" }] } },
+    text: { label: "Texto", args: { kind: "text", title: "Avisos", slides: [{ text: "Culto de oração\nquarta-feira às 20h" }] } },
+};
 
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const BOXES = [["", "Sem"], ["band", "Faixa"], ["block", "Bloco"]];
@@ -48,6 +57,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     const [confirm, setConfirm] = useState(null); // "delete" | "discard"
     const [busy, setBusy] = useState(false);
     const [dragging, setDragging] = useState(false);
+    // Which sample the canvas dresses, and its slide.
+    const [sample, setSample] = useState("lyrics");
+    const [slide, setSlide] = useState(0);
     const loaded = useRef(false);
     const screenRef = useRef(null);
     const drag = useRef(null);
@@ -130,9 +142,12 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
             let st = emptyState(madeAt.current);
             const b = themeBackgroundArgs(draft);
             if (b) st = applyOp(st, "background.set", b, madeAt.current);
-            return applyOp(st, "content.show", { kind: "lyrics", title: "Exemplo", slides: SAMPLE_SLIDES, style: themeStyle(draft) }, madeAt.current);
+            const s = SAMPLES[sample].args;
+            st = applyOp(st, "content.show", { ...s, style: themeStyle(draft) }, madeAt.current);
+            return slide && st.content.slides.length > slide ? { ...st, content: { ...st.content, index: slide } } : st;
         } catch { return null; }
-    }, [draft]);
+    }, [draft, sample, slide]);
+    const slides = SAMPLES[sample].args.slides.length;
 
     // ---- The lyrics box on the canvas (themeBox.js) ----
     const rect = draft ? themeBoxRect(themeStyle(draft)) : null;
@@ -194,6 +209,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                                     {EFFECTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                                 </select>
                                 <input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.text_color) ? draft.text_color : "#ffffff"} onChange={(e) => set({ text_color: e.target.value })} aria-label="Cor do texto" title="Cor do texto" />
+                                {draft.text_color_2
+                                    ? <><input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.text_color_2) ? draft.text_color_2 : "#ffffff"} onChange={(e) => set({ text_color_2: e.target.value })} aria-label="Segunda cor (degradê)" title="Segunda cor (degradê)" /><Btn small onClick={() => set({ text_color_2: "" })}>Cor única</Btn></>
+                                    : <Btn small onClick={() => set({ text_color_2: "#c9a25b" })} title="O texto em degradê de duas cores">Degradê</Btn>}
                             </span>
                             <span className="k">Opacidade</span>
                             <Seg small value={num(draft.text_opacity)} options={OPACITIES} onChange={(v) => set({ text_opacity: v === "" ? "" : Number(v) })} />
@@ -247,11 +265,16 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             <span className="k">Transição</span>
                             <span className="nv-inline">
                                 <Seg small value={draft.transition || ""} options={[["", "Herdar"], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
-                                {draft.transition && <><input type="range" className="le-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-meta">{Number(draft.transition_ms) || 400} ms</span></>}
+                                {draft.transition && draft.transition !== "cut" && <><input type="range" className="le-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-meta">{Number(draft.transition_ms) || 400} ms</span></>}
                             </span>
                         </div>
                     </div>
                     <div className="nv-foot">
+                        {/* Tornar padrão lives here too (as ThemeStudio had):
+                            one transaction, never two defaults. */}
+                        {Boolean(savedId.current) && (defaultTheme(themes)?.id === savedId.current
+                            ? <span className="kx-meta" style={{ marginRight: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="star" size={12} />tema padrão</span>
+                            : <Btn style={{ marginRight: "auto" }} onClick={async () => { try { await keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, savedId.current)); say(`${draft.name || "O tema"} é o tema padrão das músicas.`); } catch (err) { say(err?.message || "Não foi possível."); } }}><Icon name="star" />Tornar padrão</Btn>)}
                         <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
                         <Btn kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar tema</Btn>
                     </div>
@@ -259,7 +282,15 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
             </div>
             <div className="kx-gap" />
             <div className="col center">
-                <Panel title={<>Tela <span className="kx-count">· exemplo · 16:9</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={<>Tela <span className="kx-count">· exemplo · 16:9</span></>} actions={<>
+                    {/* The sample: a song, a passage or a text, with its slides. */}
+                    <Seg small label="Amostra" value={sample} options={Object.entries(SAMPLES).map(([k, s]) => [k, s.label])} onChange={(v) => { setSample(v); setSlide(0); }} />
+                    {slides > 1 && <>
+                        <IconBtn name="chevron-left" small title="Slide anterior da amostra" disabled={slide === 0} onClick={() => setSlide((n) => Math.max(0, n - 1))} />
+                        <span className="kx-meta">{slide + 1}/{slides}</span>
+                        <IconBtn name="chevron-right" small title="Próximo slide da amostra" disabled={slide >= slides - 1} onClick={() => setSlide((n) => Math.min(slides - 1, n + 1))} />
+                    </>}
+                </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="le-stage">
                         <div ref={screenRef} className="le-screen">
                             {doc && <ScreenRenderer fill state={doc} now={madeAt.current} preview audio={false} />}

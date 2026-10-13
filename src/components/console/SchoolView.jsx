@@ -115,7 +115,11 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     }, []);
 
     const { cur, prev, now, locked, stamp } = c;
-    const pdoc = useMemo(() => previewDoc(prev, cur, now, stamp), [prev, cur, now, stamp]);
+    // Built with a time fixed per prepared stage, never the ticking clock:
+    // a new startedAt each second replayed the slide's transition (the
+    // Prévia "pulsed"). A timer still counts (the renderer gets `now`).
+    const madeAt = useMemo(() => Date.now(), [prev]); // eslint-disable-line react-hooks/exhaustive-deps
+    const pdoc = useMemo(() => previewDoc(prev, cur, madeAt, stamp), [prev, cur, madeAt, stamp]);
     const airId = liveStageId(cur);
     const stateOf = (m) => (airId === `material:${m.id}` || (cur?.media?.id === m.id && !cur?.content) ? "is-air" : prev?.id === `material:${m.id}` ? "is-prev" : "");
     const airSlide = cur?.content?.slides?.[cur.content.index];

@@ -92,6 +92,12 @@
         "blur_px": {
           "type": "real"
         },
+        "fit": {
+          "type": "text"
+        },
+        "position": {
+          "type": "text"
+        },
         "hidden": {
           "type": "boolean",
           "default": false
@@ -1223,6 +1229,12 @@
         },
         "text_box_opacity": {
           "type": "real"
+        },
+        "text_align": {
+          "type": "text"
+        },
+        "text_position": {
+          "type": "text"
         },
         "text_nudge": {
           "type": "real"

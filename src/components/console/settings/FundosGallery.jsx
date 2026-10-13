@@ -91,6 +91,12 @@ export function FundoDetail({ b, save, now, standby, onStandby, sample = true })
                 <span className="kx-content ap-ms">{blur ? `${blur} px` : "sem"}</span>
                 {(dim !== null || blur !== null) && <Btn small onClick={() => { setDim(null); setBlur(null); keep({ dim_pct: null, blur_px: null }); }} title="Volta ao escurecer de sempre e sem desfoque">Restaurar</Btn>}
             </FormRow>
+            <FormRow k="Ajuste">
+                <Seg small value={b.pref?.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => keep({ fit: v === "cover" ? "" : v })} />
+            </FormRow>
+            <FormRow k="Posição">
+                <Seg small value={b.pref?.position || "center"} options={[["top", "Alto"], ["center", "Centro"], ["bottom", "Baixo"]]} onChange={(v) => keep({ position: v === "center" ? "" : v })} />
+            </FormRow>
             <FormRow k="Nas galerias">
                 <Seg small value={b.hidden ? "hidden" : b.favorite ? "fav" : "shown"} options={[["fav", "Favorito"], ["shown", "Aparece"], ["hidden", "Oculto"]]}
                     onChange={(v) => keep({ favorite: v === "fav", hidden: v === "hidden" })} />

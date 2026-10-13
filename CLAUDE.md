@@ -60,6 +60,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `background.set` before `content.show`, `fundoOps` in
   `src/lib/console/backgroundSpec.js`, used by `send` and the Prévia — so
   it stays after Esc; only a part theme's picture stays in `slide.style`.
+  A picture's dim, blur, fit and position are its own settings
+  (BackgroundPref, edited in the library; `backgroundLook`): they fill the
+  Fundo when it goes on air and the Fundo on air follows when they change
+  (`useConsole`); Camadas › Fundo has no sliders of its own (2026-10-13). The
+  Prévia and other still previews draw the text without its transition
+  (`Content still`) and are built with a time fixed per stage, never the
+  ticking clock (it replayed the transition every second).
   Camadas' padlock on the Fundo is the live state's (`layers.lock`,
   `lockedLayers`; refuses `background.set`/`.clear` from anyone, and the
   renderer leaves a song's own picture out). A background is one spec
@@ -93,8 +100,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   what Camadas calls "Tema: …") — with nothing on air it puts an example in
   the Prévia instead (`themeSampleStage`, `stage.theme`: sending it only
   applies the theme's background, never the example text), a double click
-  edits it in the Editor de temas e layouts (its own window,
-  `openEditor({ theme })`),
+  (or the menu's Editar, or Configurações › Temas) edits it in the Editor
+  de temas e layouts (its own window, `openEditor({ theme })`; the one-off
+  ThemeStudio overlay from 2026-10-13 was folded into it — don't bring a
+  second theme editor back),
   and "Salvar tema para a música" writes `Song.theme_id` for the song on air
   or in the Prévia. A Bible passage takes **the Bíblia's own theme**
   (`User.bible_theme_id`: "" = the songs' default, "none" = factory;

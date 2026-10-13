@@ -769,8 +769,8 @@ export default function Console() {
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
     );
-    // Temas: a double click opens the theme in Configurações › Temas.
-    // Editing a theme happens in the Editor de temas e layouts (its window).
+    // Temas: a double click (or the menu's Editar) opens the theme in the
+    // Editor de temas e layouts (its own window).
     const editTheme = (id) => { const r = openEditor({ theme: id || "new" }); if (r?.error) c.say(r.error); };
     const themesCard = <ThemesCard c={c} themes={data.themes} songs={data.songs} onEdit={editTheme} onNew={() => editTheme("new")} />;
     const temasPanel = (

@@ -5,7 +5,7 @@ import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
-import { withBackgroundDefaults, backgroundDefaults } from "@/lib/console/backgroundPrefs";
+import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
 import { themeForKind, withThemeDefaults, themeBackgroundArgs } from "@/lib/console/themes";
 import { layerLocked } from "@shared/live-state.mjs";
@@ -92,6 +92,26 @@ export function useConsole() {
         if (dim === (live.idleDim ?? null) && blur === (live.idleBlur ?? null)) return;
         keryx.live.call("idle.set", { mode: "background", url: live.idleUrl, dim, blur }).catch(() => {});
     }, [live?.idle, live?.idleUrl, live?.idleDim, live?.idleBlur, bgPrefs]);
+
+    // The Fundo on air follows its picture's settings (the library is the one
+    // place to set dim, blur, fit and position, 2026-10-13): when they change,
+    // the Fundo showing that picture takes them at once. Only on a change of
+    // the settings — a theme that brought its own dim keeps it until then —
+    // and never past Camadas' padlock.
+    const liveRef = useRef(live);
+    liveRef.current = live;
+    const seenPrefs = useRef(null);
+    useEffect(() => {
+        const first = seenPrefs.current === null;
+        seenPrefs.current = bgPrefs;
+        if (first) return;
+        const cur = liveRef.current;
+        const bg = cur?.background;
+        if (!bg || (bg.kind !== "image" && bg.kind !== "video") || layerLocked(cur, "background")) return;
+        const look = backgroundLook(bgPrefs, bg.value);
+        const patch = Object.fromEntries(Object.entries(look).filter(([k, v]) => v !== null && v !== (bg[k] ?? null)));
+        if (Object.keys(patch).length) keryx.live.call("background.set", { ...bg, ...patch }).catch(() => {});
+    }, [bgPrefs]);
 
     const setPrev = useCallback((stage) => {
         if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);

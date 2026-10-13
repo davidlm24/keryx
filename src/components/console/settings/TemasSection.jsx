@@ -86,7 +86,7 @@ export default function TemasSection({ c }) {
     // Excluir asks first (ConfirmDialog.jsx), as in the console's menus.
     const confirm = useConfirm();
     const remove = async (t) => {
-        if (!(await confirm(deleteQuestion("o tema", t.name, "Músicas e saídas que usam este tema voltam ao padrão.")))) return;
+        if (!(await confirm(deleteQuestion("o tema", t.name, "Músicas, cultos e saídas que usam este tema voltam ao padrão.")))) return;
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
     const menu = useContextMenu();

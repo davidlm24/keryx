@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { sourceOf, backgroundList, visibleBackgrounds, categoriesOf, backgroundDefaults, withBackgroundDefaults } from "./backgroundPrefs.js";
+import { sourceOf, backgroundList, visibleBackgrounds, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults } from "./backgroundPrefs.js";
 
 test("a bundled background has one key whatever serves it", () => {
     assert.equal(sourceOf("http://127.0.0.1:7700/media/bundled/backgrounds/1557672172-298e090bd0f1.webp"), "bundled:1557672172-298e090bd0f1");
@@ -84,4 +84,17 @@ test("an aviso and the idle wallpaper bring their background's dim and blur too"
     assert.equal(withBackgroundDefaults("idle.set", given, prefs), given, "an explicit look is kept");
     const mode = { mode: "black" };
     assert.equal(withBackgroundDefaults("idle.set", mode, prefs), mode, "a mode change alone: untouched");
+});
+
+test("a background's whole look: dim, blur, fit and position, filled into the Fundo", () => {
+    const url = "keryx-media://bundled/backgrounds/1557672172-298e090bd0f1.webp";
+    const prefs = [{ source: "bundled:1557672172-298e090bd0f1", dim_pct: 70, blur_px: 6, fit: "contain", position: "top" }];
+    assert.deepEqual(backgroundLook(prefs, url), { dim: 0.7, blur: 6, fit: "contain", position: "top" });
+    assert.deepEqual(backgroundLook([{ source: "x.png", fit: "stretch" }], "x.png"), { dim: null, blur: null, fit: null, position: null });
+    const set = withBackgroundDefaults("background.set", { kind: "image", value: url }, prefs);
+    assert.deepEqual([set.dim, set.blur, set.fit, set.position], [0.7, 6, "contain", "top"]);
+    const own = withBackgroundDefaults("background.set", { kind: "image", value: url, fit: "cover", dim: 0.2 }, prefs);
+    assert.deepEqual([own.dim, own.fit, own.position], [0.2, "cover", "top"], "what the call brings stays");
+    const gen = { kind: "generator", value: "fluid" };
+    assert.equal(withBackgroundDefaults("background.set", gen, prefs), gen);
 });
