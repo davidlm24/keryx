@@ -51,7 +51,7 @@ export function useDockDrag({ dock, onDock }) {
             if (p.fromTray) return null;
             const next = moveModules(d, p.mods, { kind: "tray" });
             if (same(next, d)) return null;
-            return { el: tray, zone: "center", label: p.mods.includes("player") ? "Voltar para baixo do Programa" : "Guardar na bandeja", next };
+            return { el: tray, zone: "center", label: p.mods.includes("player") ? "Voltar para baixo do Programa" : "Tirar para a bandeja", next };
         }
         const ge = el.closest("[data-dock-group]");
         if (!ge) return null;
@@ -176,7 +176,7 @@ export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, pr
         <span className="dock-presets">
             <span className="kx-meta">Disposição: <b className="dock-preset-name">{preset ? preset.name : "Padrão"}</b>{changed ? " · alterada" : ""}</span>
             {preset && changed && <button type="button" className="kx-btn kx-t" onClick={onSave} title={`Gravar as mudanças em “${preset.name}”`}>Salvar</button>}
-            <button type="button" className="kx-btn kx-t" onClick={() => setNaming("")} title="Guardar a disposição como está, com um nome, para trocar depois em Ver">Salvar como…</button>
+            <button type="button" className="kx-btn kx-t" onClick={() => setNaming("")} title="Salvar a disposição como está, com um nome, para trocar depois em Ver">Salvar como…</button>
             {preset && <button type="button" className="kx-btn kx-t" onClick={onDelete} title={`Excluir a disposição “${preset.name}”`}>Excluir…</button>}
         </span>
     );
@@ -202,7 +202,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
                     {nameOf(id)}{home ? <span className="kx-meta"> · sob o Programa</span> : null}
                 </button>
                 {out && (
-                    <button type="button" className="dock-x" title={id === "player" ? "Voltar para baixo do Programa" : `Guardar ${nameOf(id)} na bandeja`} aria-label={id === "player" ? "Voltar o player para baixo do Programa" : `Guardar ${nameOf(id)} na bandeja`}
+                    <button type="button" className="dock-x" title={id === "player" ? "Voltar para baixo do Programa" : `Tirar ${nameOf(id)} para a bandeja`} aria-label={id === "player" ? "Voltar o player para baixo do Programa" : `Tirar ${nameOf(id)} para a bandeja`}
                         onClick={() => onDock(id === "player" ? moveModules(dock, ["player"], { kind: "home" }) : hideModule(dock, id))}>
                         <Icon name="x" />
                     </button>

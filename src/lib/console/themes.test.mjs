@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeGenerator } from "../../../shared/generators.mjs";
-import { consoleThemes, withThemeInUse, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
+import { consoleThemes, withThemeInUse, themeInUseSeed, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
 
 test("themeStyle: classics defaulted, extras empty unless saved", () => {
     const t = { font_family: "serif", text_box: "band", transition: "slide", transition_ms: 300 };
@@ -154,4 +154,14 @@ test("the theme in use rides as the service's Música theme", () => {
     const themes = [{ id: "padrao", is_default: true }, { id: "vinho" }];
     assert.equal(themeForKind(themes, "lyrics", {}, withThemeInUse({ lyrics: "padrao" }, "vinho")).id, "vinho");
     assert.equal(themeForKind(themes, "lyrics", {}, withThemeInUse(null, null)).id, "padrao");
+});
+
+test("the theme in use: choosing a culto seeds it; the day's draft the operator just started leaves it", () => {
+    assert.equal(themeInUseSeed({ serviceId: "s1", lyrics: "vinho" }), "vinho", "a culto with its Música theme");
+    assert.equal(themeInUseSeed({ serviceId: "s2" }), null, "a culto without one: the default");
+    assert.equal(themeInUseSeed({ serviceId: null }), null, "no culto");
+    assert.equal(themeInUseSeed({ serviceId: "d1", draftId: "d1" }), undefined, "the draft the first item started: the clicked theme stays");
+    assert.equal(themeInUseSeed({ serviceId: "d1", draftId: "d1", lyrics: "azul" }), "azul", "Visual de hoje gave the draft a Música theme");
+    assert.equal(themeInUseSeed({ serviceId: "s1", draftId: "d1" }), null, "another culto chosen afterwards");
+    assert.equal(themeInUseSeed(), null);
 });

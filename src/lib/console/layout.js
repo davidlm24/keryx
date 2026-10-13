@@ -57,6 +57,10 @@ export const DEFAULT_LAYOUT = {
     dock: null,
     // The Bíblia's, the same way (fromBibleArrangement until it changes).
     bibleDock: null,
+    // A console never edited starts with the modules the church's old
+    // preference hid (console_hidden_modules) in the tray; after a restore,
+    // with every module (false).
+    trayFromChurch: true,
     // Named arrangements (dockPresets.js, Ver › Disposição) and the one in
     // use (null = Padrão).
     dockPresets: [],
@@ -75,7 +79,7 @@ export const restoreArrangement = (layout) => ({ ...layout, ...Object.fromEntrie
 // One environment's arrangement back to the console's own (Padrão, the edit
 // banner's Restaurar posições), the other's left as it is.
 const ENV_KEYS = {
-    culto: { keys: ["dock", "dockPreset", "libW", "slidesW", "rightW", "camadasH", "prevPct"], order: "culto", stacks: ["side", "source"] },
+    culto: { keys: ["dock", "dockPreset", "libW", "slidesW", "rightW", "camadasH", "prevPct"], order: "culto", stacks: ["side", "source"], also: { trayFromChurch: false } },
     biblia: { keys: ["bibleDock", "bibleDockPreset", "bibleSelW", "bibleAirW"], order: "biblia", stacks: ["picker"] },
 };
 export function restoreEnv(layout, env) {
@@ -85,6 +89,7 @@ export function restoreEnv(layout, env) {
         ...Object.fromEntries(k.keys.map((key) => [key, DEFAULT_LAYOUT[key]])),
         order: { ...layout.order, [k.order]: DEFAULT_LAYOUT.order[k.order] },
         stacks: { ...layout.stacks, ...Object.fromEntries(k.stacks.map((s) => [s, DEFAULT_LAYOUT.stacks[s]])) },
+        ...(k.also || {}),
     };
 }
 
@@ -109,7 +114,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const saved = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }

@@ -110,6 +110,7 @@ test("restoring one environment leaves the other's arrangement as it is", () => 
     assert.equal(culto.libW, DEFAULT_LAYOUT.libW);
     assert.deepEqual(culto.order.culto, DEFAULT_ORDER.culto);
     assert.deepEqual(culto.stacks.side, DEFAULT_STACKS.side);
+    assert.equal(culto.trayFromChurch, false, "Padrão brings every module back, whatever the church once hid");
     assert.equal(culto.bibleDockPreset, "b1", "the Bíblia's untouched");
     assert.equal(culto.bibleSelW, 350);
     assert.deepEqual(culto.order.biblia, ["air", "reading", "picker"]);

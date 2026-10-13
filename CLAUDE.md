@@ -120,7 +120,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`withThemeInUse` in stamp; `c.themeId` is what Camadas calls "Tema: …"),
   until someone changes it — without writing the service's preset. The
   Visual do culto only seeds it (choosing the culto, or its Música theme
-  changing); the menu's "Salvar no visual do culto" records it, "Seguir o
+  changing; the day's draft an action of the operator starts is not a
+  choice of culto and leaves it, `themeInUseSeed`); the menu's "Salvar no visual do culto" records it, "Seguir o
   culto" goes back, and the Fundo section has no quick-picture strip (the
   library is one button away). With nothing on air a click puts an example
   in the Prévia instead
@@ -161,7 +162,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   in the live state (`background.default`, `defaultBackground`) and `clear`
   (Esc, from anyone) puts it on the Fundo unless the padlock holds it;
   Desfazer puts back the Fundo there was. It also goes on the Fundo when it
-  changes with nothing on air (KERYX opens, a service is chosen). The idle
+  changes with nothing on air (KERYX opens, a service is chosen), under
+  Tela preta too — KERYX reopens with the screens black — but never past
+  Travar telas or the padlock (`fundoGoesOnNow` in defaultFundo.js). The idle
   screen is only Logo or Preto. In the library, Gerados shows the
   background big; opened for the Fundo on air (`live: true`, Camadas'
   Biblioteca… and Editar fundo…) "Ao vivo" sends each choice at once and
@@ -209,11 +212,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   computer's (owner 2026-10-13): Ver's and Configurações › Console's module
   switches move a module in or out of it (`uiLayout`/`setUiLayout` in
   Console.jsx); the church's old `console_hidden_modules` only seeds a
-  console whose arrangement was never changed, and nothing writes it any
-  more. Splits have one
+  console whose arrangement was never changed (after a restore every
+  module comes back, `trayFromChurch`), and nothing writes it any more.
+  Until the operator changes it, the culto's dock follows the width as the
+  old tiers did (`fromArrangement` with `tier`: wide, the four columns;
+  medium, no right column — Camadas a drawer, the Setlist beside the
+  Prévia; narrow, also the Biblioteca over the Slides), and Padrão does
+  too. Splits have one
   flexible child and fixed pixel sizes (`allocate`); what cannot fit side
-  by side joins as tabs, a pair at a time, the Programa last (`fitDock`) —
-  that replaced the width tiers' arrangements. A new module is an entry in
+  by side joins as tabs, a pair at a time, the Programa last (`fitDock`).
+  A new module is an entry in
   dock.js `MODULES` and in `modulePanels`. **Disposições com nome**
   (`src/lib/console/dockPresets.js`, tested): the edit banner saves the dock
   as it is ("Salvar como…", "Salvar" over the one in use, "Excluir…" via
@@ -288,7 +296,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/lib/console/restore.js`). Camadas' eyes on Texto principal and Fundo
   hide the layer and keep it on air (`layers.hide`/`layers.show`,
   `hiddenLayers`, `layerHidden`; hiding works locked): the next send shows
-  the text again, choosing a Fundo shows the Fundo again. The rundown is called
+  the text again, choosing a Fundo shows the Fundo again. The Fundo hidden
+  takes a song's own picture with it, never an aviso's or a tool's own
+  background (theirs, not the Fundo's; ScreenRenderer's Background). The rundown is called
   **"Setlist"** in the UI. Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
   taps — the level meters read the system loopback in the console.

@@ -175,39 +175,59 @@ export function normalizeDock(saved) {
     return make(env, tree, hidden);
 }
 
-// The dock that matches the console before Editar disposição became a tree
-// (the four columns of the 2026-10-13 console audit), from the layout saved
-// then: the column order, the order of Camadas and the Setlist in the right
-// column, the hidden modules and the sizes. `width`: the console's grid
-// width, to turn the Prévia's percentage into pixels (it was a share of the
-// centre).
-export function fromArrangement(layout = {}, { width = 1908 } = {}) {
+// The dock that matches the console before Editar disposição became a tree,
+// from the layout saved then (the column order, the order of the stacked
+// cards, the hidden modules, the sizes) and, as the console did then, the
+// width it is shown at (`tier`, layout.js tierFor):
+//   wide    the four columns of the 2026-10-13 console audit;
+//   medium  no right column: Camadas is a drawer (in the tray) and the
+//           Setlist sits beside the Prévia, where the Painel de abas was;
+//   narrow  the same, and the Biblioteca over the Slides in one column.
+// `width`, `height`: the console's grid, to turn the Prévia's percentage
+// and a stacked column into pixels.
+export function fromArrangement(layout = {}, { width = 1908, height = 900, tier = "wide" } = {}) {
     const hidden = layout?.hidden || {};
     const px = (k, d) => pxOrNull(layout?.[k]) ?? d;
     const libW = px("libW", 260);
     const slidesW = px("slidesW", 300);
     const rightW = px("rightW", 320);
     const camadasH = px("camadasH", 360);
-    let centre = width - rightW - G;
-    if (!hidden.lib) centre -= libW + G;
-    if (!hidden.slides) centre -= slidesW + G;
+    const wide = tier !== "medium" && tier !== "narrow";
+    const narrow = tier === "narrow";
+    // Narrow: the Biblioteca and the Slides share a column, in the stack's order.
+    const pair = normalizeOrder(layout?.stacks?.source, ["lib", "slides"]).filter((id) => !hidden[id]);
+    let centre = width - (wide ? rightW + G : 0);
+    if (narrow) { if (pair.length) centre -= slidesW + G; }
+    else {
+        if (!hidden.lib) centre -= libW + G;
+        if (!hidden.slides) centre -= slidesW + G;
+    }
     const pct = Number.isFinite(layout?.prevPct) ? layout.prevPct : 44;
     const prevW = Math.round(Math.min(900, Math.max(MODULES.previa.minW, (centre * pct) / 100)));
     // The bottom band was as tall as the Prévia's column: its 16:9 monitor,
     // Enviar ao ar and the panel's header and padding.
     const bottomH = Math.round((prevW * 9) / 16 + 84);
-    const live = split("col", [group(["programa"]), split("row", [group(["previa"]), group(["abas"])], [prevW, null])], [null, bottomH]);
+    const live = split("col", [group(["programa"]), split("row", [group(["previa"]), group([wide ? "abas" : "setlist"])], [prevW, null])], [null, bottomH]);
     // Camadas over the Setlist (or under it), Camadas with its own height.
     const stack = normalizeOrder(layout?.stacks?.side, ["camadas", "roteiro"]).filter((id) => id !== "camadas" || !hidden.camadas);
     const side = split("col", stack.map((id) => group([id === "roteiro" ? "setlist" : id])), stack.map((id) => (id === "camadas" ? camadasH : null)));
     const cols = [];
     const sizes = [];
+    let pairDone = false;
     for (const id of normalizeOrder(layout?.order?.culto, DEFAULT_ORDER.culto)) {
         if (id === "live") { cols.push(live); sizes.push(null); }
-        else if (id === "side") { cols.push(side); sizes.push(rightW); }
+        else if (id === "side") { if (wide) { cols.push(side); sizes.push(rightW); } }
+        else if (narrow) {
+            if (pairDone || !pair.length) continue;
+            pairDone = true;
+            cols.push(pair.length === 1 ? group(pair) : split("col", pair.map((m) => group([m])), [Math.max(PX_MIN, Math.round((height - G) / 2)), null]));
+            sizes.push(slidesW);
+        }
         else if (!hidden[id]) { cols.push(group([id])); sizes.push(id === "lib" ? libW : slidesW); }
     }
-    return normalizeDock({ tree: split("row", cols, sizes), hidden: ["lib", "slides", "camadas"].filter((id) => hidden[id]) });
+    const tray = ["lib", "slides", "camadas"].filter((id) => hidden[id]);
+    if (!wide) tray.push("camadas", "abas");
+    return normalizeDock({ tree: split("row", cols, sizes), hidden: tray });
 }
 
 // The Bíblia's dock from the columns it had before (2026-10-12: Livro ·
@@ -303,14 +323,15 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
 
 export const hideModule = (dock, id) => moveModules(dock, [id], { kind: "tray" });
 
-// A module back from the tray to where the default console has it: beside
-// the first module after it in its default split that is on screen now (or
-// the last one before it), with its default size; failing that, one level
-// up. `opts`: as defaultDock's.
+// A module back from the tray to where the default console has it (the
+// wide one: every module has a place there): beside the first module after
+// it in its default split that is on screen now (or the last one before
+// it), with its default size; failing that, one level up. `opts`: as
+// defaultDock's.
 export function returnModule(dock, id, opts) {
     const d = normalizeDock(dock);
     if (!d.hidden.includes(id)) return d;
-    const def = defaultDock({ ...opts, env: dockEnv(d) }).tree;
+    const def = defaultDock({ ...opts, tier: "wide", env: dockEnv(d) }).tree;
     const onScreen = (m) => m !== id && pathOf(d.tree, m);
     let p = pathOf(def, id);
     while (p && p.length) {
