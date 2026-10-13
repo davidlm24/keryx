@@ -422,10 +422,15 @@ shell. Don't ask for their values and don't write them into tracked files.
 While working, the loop is `npm test`, `npm run lint`, `npm run build`
 and the browser preview — none of them open windows. **The desktop smoke
 (`npm run desktop:smoke`, or `KERYX_SMOKE=1 npm run desktop:dev` when
-touching `src/api`) runs once, at the end of a task or before a release,
-and the user is told right before it starts:** it opens real projection
-windows on their monitors, takes focus and plays a test tone for ~5 minutes
-(user decision 2026-10-08). The quick look is the browser preview (`npm run dev`, the
+touching `src/api`) runs once per release, never per task** (user
+decision 2026-10-13: several sessions each ending in a smoke ran it over
+and over): it opens real projection windows on their monitors, takes focus
+and plays a test tone for ~5 minutes. Changes are made in batches across
+sessions; a feature session stops at test, lint, build and the preview,
+says what only the smoke (or `desktop:dev`) can confirm, and does not run
+it or offer to. When the user says in some session that the batch is
+ready for the release, that session runs the smoke once, on master with
+every merged PR, and tells the user right before it starts. The quick look is the browser preview (`npm run dev`, the
 side-panel "keryx-ui"): the real store and live engine on sample data in a
 temp folder (`scripts/preview/`, `src/api/backends/preview.js`,
 docs/desktop-architecture.md 8a); outputs open as tabs from Saídas. The
@@ -449,8 +454,9 @@ so a release follows these rules. The steps and commands are in README ›
 - **Only the release session releases.** That is the session the user asks
   in chat to publish a given version ("publica a 0.2.15"): the user picks it,
   release by release (user decision, 2026-10-12; before, one fixed session,
-  "Plan KERYX phase 6"). It also writes that version's note
-  (`docs/release-notes/<version>.md`) before the build. Every other session
+  "Plan KERYX phase 6"). It runs the batch's one smoke first, on master
+  with every merged PR (see "Verifying a change"), and writes that
+  version's note (`docs/release-notes/<version>.md`) before the build. Every other session
   ships features as normal PRs but never changes `version` in
   `package.json`, never opens a `release/<version>` branch or PR, and never
   runs `electron-builder --publish`. A session that sees a claim by another
