@@ -44,7 +44,7 @@ export function OutputPreview({ path, pref, design, themes = [], live, now, chur
     if (isStream) return <div className="cfg-prev cfg-prev-stream"><div className="cfg-prev-fill" style={{ containerType: "size" }}><StreamBand caption={streamSample} opts={streamOptions(pref)} scale={pref.scale} /></div></div>;
     if (design) return <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><LayoutRenderer layout={design} live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} screenState={renderer ? rendererState : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed /></div></div>;
     if (isStage && !pref.content) return <div className="cfg-prev"><StageScreen content={prevLive.content} nowMs={now} embed opts={pref.options} scale={pref.scale} /></div>;
-    if (isPastor && !pref.content) return <div className="cfg-prev cfg-prev-pastor"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} church={church} /></div>;
+    if (isPastor && !pref.content) return <div className="cfg-prev"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} church={church} /></div>;
     return <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={rendererState} now={now} preview audio={false} /></div></div>;
 }
 

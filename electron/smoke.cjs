@@ -857,6 +857,29 @@ async function checkConsole(webContents, { live, outputs }) {
                 return cols.every((r, i) => r.left >= -1 && r.right <= innerWidth + 1 && (i === 0 || r.left >= cols[i - 1].right - 1));
             })()`);
         }
+        // The Slides have a minimum width (a slide's line stays whole): the
+        // splitter widens them, then dragged far narrower stops at 300 px;
+        // a double click restores.
+        result.slidesMinDiag = await js(`(async () => {
+            const colW = () => Math.round(document.querySelector(".console .main > [data-col='slides']").getBoundingClientRect().width);
+            const col = document.querySelector(".console .main > [data-col='slides']");
+            const s = col && [col.nextElementSibling, col.previousElementSibling].find((n) => n && n.getAttribute("role") === "separator");
+            if (!s) return { found: false };
+            const sign = s === col.nextElementSibling ? 1 : -1;
+            const drag = async (dx) => {
+                const r = s.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2;
+                const ev = (t, cx, target) => target.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, clientX: cx, clientY: y, button: 0 }));
+                ev("mousedown", x, s); ev("mousemove", x + sign * dx, window); ev("mouseup", x + sign * dx, window);
+                await new Promise((res) => setTimeout(res, 300));
+                return colW();
+            };
+            const wider = await drag(150);
+            const squeezed = await drag(-800);
+            s.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+            await new Promise((res) => setTimeout(res, 300));
+            return { found: true, wider, squeezed, back: colW() };
+        })()`).catch((err) => ({ error: err.message }));
+        { const d = result.slidesMinDiag || {}; result.slidesMinW = d.found === true && d.wider > 400 && d.squeezed === 300; }
         if (operatorWin && size) operatorWin.setContentSize(size[0], size[1]);
         await sleep(300);
         result.colsFit = Object.values(result.cols).every(Boolean);
@@ -1777,7 +1800,15 @@ async function checkConsole(webContents, { live, outputs }) {
         result.palcoCifraOff = await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; return Boolean(c && c.querySelector(".net-stage") && !c.querySelector(".ns-chords")); })()`), 8000);
         { const r = await stagePrefRow(); if (r) await js(`window.keryxDesktop.db.call("OutputPref", "update", [${JSON.stringify(r.id)}, { options: {} }])`); }
         result.palcoRestored = await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; return Boolean(c && c.querySelector(".ns-chords")); })()`), 8000);
-        result.pastorPrev = await waitFor(() => js(`(() => { const c = ${cardOf("Tela do pastor")}; return Boolean(c && c.querySelector(".cfg-prev-pastor .np-list")); })()`), 8000);
+        // Every screen is landscape: the Pastor's still is a 16:9 card like
+        // the others (the real /PastorView still turns with a tablet).
+        result.pastorPrev = await waitFor(() => js(`(() => {
+            const c = ${cardOf("Tela do pastor")};
+            const p = c && c.querySelector(".cfg-prev .np-list") && c.querySelector(".np-list").closest(".cfg-prev");
+            if (!p) return false;
+            const r = p.getBoundingClientRect();
+            return r.height > 0 && Math.abs(r.width / r.height - 16 / 9) < 0.05;
+        })()`), 8000);
 
         // Temas: Configurações keeps only the list; "Novo tema…" opens the
         // Editor de temas e layouts in its own window (/Editor), where the
@@ -1812,17 +1843,18 @@ async function checkConsole(webContents, { live, outputs }) {
         { const w = editorWin(); if (w) w.close(); }
         result.themeWindowClosed = await waitFor(() => !editorWin(), 5000);
         // Each screen owns its design (owner 2026-10-13): "Editar a tela…"
-        // opens the Editor on that screen, Desenhar seeds the ready design,
-        // Salvar writes OutputPref.design and the vertical menu lists the
-        // screens.
+        // opens the Editor on that screen straight into editing (the canvas
+        // seeded with the ready design, nothing "não salvo" yet), Salvar
+        // writes OutputPref.design and the vertical menu lists the screens.
         await section("Telas e saídas");
         await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; const b = c && c.querySelector(".cfg-card-thumb"); if (b) b.click(); return Boolean(b); })()`), 5000);
         result.screenEditor = await waitFor(() => Boolean(editorWin()), 8000);
         const sw = editorWin();
         const sjs = (code) => sw.webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← editor ← ${String(code).replace(/s+/g, " ").slice(0, 120)}`); });
-        await waitFor(() => sjs("[...document.querySelectorAll('button')].some((b) => b.textContent.includes('Desenhar esta tela'))").catch(() => false), 8000);
-        await sjs("(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('Desenhar esta tela')); if (b) b.click(); return Boolean(b); })()");
-        await waitFor(() => sjs("Boolean(document.querySelector('.le-screen'))").catch(() => false), 5000);
+        result.screenStraight = await waitFor(() => sjs("Boolean(document.querySelector('.le-screen .le-hit')) && !/Desenhar esta tela|não salvo/.test(document.body.innerText)").catch(() => false), 8000);
+        // The Ajustes card is styled in the Editor too (.cfg): labels in a
+        // column beside the controls, not stacked over them.
+        result.screenCardStyled = await sjs("(() => { const f = document.querySelector('.nv-scroll.cfg .cfg-outprefs .frm'); return Boolean(f) && getComputedStyle(f).display === 'grid'; })()").catch(() => false);
         result.screenMenu = await sjs("[...document.querySelectorAll('.kx-row-title')].filter((n) => ['Projeção', 'Palco', 'Pastor', 'Transmissão'].includes(n.textContent)).length >= 4").catch(() => false);
         await sjs("(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Salvar a tela'); if (b) b.click(); return Boolean(b); })()");
         result.screenSaved = await waitFor(async () => {
@@ -2425,7 +2457,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.targets24 && result.escEnded && result.escToast && result.escUndo
+        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
@@ -2447,7 +2479,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

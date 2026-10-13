@@ -380,9 +380,15 @@ nunca em NETWORK_SCREENS). O rodapé alterna **Temas | Telas**:
     (`EDITOR_SCREENS`), o canvas edita o design DELA com os ajustes reais
     da própria tela vestindo a prévia (prefState + kp-out, ou só a Escala
     no Palco/Pastor), e os ajustes visuais moram na mesma janela
-    (`OutputPrefCard inEditor`). Sem design: "Desenhar esta tela" parte do
-    desenho pronto (`factory:palco`/`pastor`/`projecao`); "Voltar à página
-    padrão" zera. A Transmissão não tem canvas, só os ajustes.
+    (`OutputPrefCard inEditor`; a coluna é `.nv-scroll.cfg`, então o
+    card tem o estilo das Configurações). **Clicar numa tela já é editar**
+    (owner 2026-10-13): sem design, o canvas abre semeado com o desenho
+    pronto da página (`seedFor`: `factory:palco`/`pastor`/`projecao`),
+    a semente é a base (`saved`), então só mudança real é "não salvo" e
+    nada se grava sem "Salvar a tela"; "Voltar à página padrão" (cabeçalho,
+    com design próprio ou mudanças) zera a linha e semeia de novo. Não há
+    mais "Desenhar esta tela"/"Começar do zero". A Transmissão não tem
+    canvas, só os ajustes.
   - um TEMA (`ThemeEditor.jsx`): o ÚNICO lugar em que um tema se edita —
     Configurações › Temas é só a lista; Camadas ajusta o ar e captura com
     "Salvar como novo". `text_align`/`text_position` em `EXTRA_KEYS`
@@ -390,7 +396,14 @@ nunca em NETWORK_SCREENS). O rodapé alterna **Temas | Telas**:
     a caixa do canvas mapeia por `src/lib/console/themeBox.js` (testado).
 A ScreenRenderer `fill` is `position: fixed`: inside a canvas or preview
 its wrapper needs `contain: layout paint` (`.le-screen`, `.cfg-prev`).
-Every screen is landscape. A new kind of element is an entry in
+Every screen is landscape: every still of an output (Telas e saídas'
+cards, the Editor's canvas) is 16:9, the Pastor's included; only the
+real /PastorView page turns with a tablet held upright (its container
+query). **The Slides column has a minimum width** (`LIMITS.slidesW`, 300
+px, `layout.js`, tested): squeezed, a 2-line verse wrapped into 3 and
+looked split wrong; the splitter clamps there and the narrow tier's
+Biblioteca-over-Slides column takes `slidesW` too. Long lines still wrap,
+never an ellipsis. A new kind of element is an entry in
 `ELEMENT_TYPES` (with its `group`) plus its case in `elementText` or the
 renderer's `Body`. Generated backgrounds are the next step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa header, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 

@@ -14,8 +14,9 @@ export const COLUMNS = {
         live: { name: "Programa", flex: true },
         // Wide tier only: Camadas over the Setlist, the window's full height.
         side: { name: "Camadas e Setlist", widthKey: "rightW" },
-        // Narrow tier only: Biblioteca over Slides in one column.
-        source: { name: "Biblioteca e Slides", widthKey: "libW" },
+        // Narrow tier only: Biblioteca over Slides in one column, as wide as
+        // the Slides (its minimum keeps a slide's lines whole).
+        source: { name: "Biblioteca e Slides", widthKey: "slidesW" },
     },
     biblia: {
         picker: { name: "Livro · Capítulo · Versículo", widthKey: "bibleSelW" },
