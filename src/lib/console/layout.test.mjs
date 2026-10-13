@@ -19,7 +19,7 @@ test("the column order is part of the layout; an old save gets the default order
     assert.deepEqual(old.order, DEFAULT_ORDER);
     assert.deepEqual(old.stacks, DEFAULT_STACKS);
     const odd = withStore({ order: { culto: ["side", "side", "live", "zz"] } }, () => loadLayout("x"));
-    assert.deepEqual(odd.order.culto, ["side", "live", "lib", "slides"]);
+    assert.deepEqual(odd.order.culto, ["live", "lib", "slides"], "the old side column id is dropped");
     assert.deepEqual(odd.order.biblia, DEFAULT_ORDER.biblia);
 });
 
@@ -63,10 +63,10 @@ test("the default Electron window (1440) is wide, not compact", () => {
     assert.equal(tierFor(1440 - 12), "wide");
 });
 
-test("Camadas is a module in Ver again, above the Setlist", () => {
+test("Camadas is a module in Ver; its band width is rightW", () => {
     assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "camadas"]);
-    assert.deepEqual(LIMITS.camadasH, [120, 600]);
-    assert.equal(DEFAULT_LAYOUT.camadasH, 300);
+    assert.deepEqual(LIMITS.rightW, [280, 520]);
+    assert.equal("camadasH" in DEFAULT_LAYOUT, false, "the stacked-card height died with the side column");
 });
 
 test("the multiview is off by default; a saved one keeps its outputs, cleaned", () => {

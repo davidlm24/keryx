@@ -12,7 +12,6 @@ export const COLUMNS = {
         lib: { name: "Biblioteca", widthKey: "libW" },
         slides: { name: "Slides", widthKey: "slidesW" },
         live: { name: "Programa", flex: true },
-        side: { name: "Camadas", widthKey: "rightW" },
         // Narrow tier only: Biblioteca over Slides in one column.
         source: { name: "Biblioteca e Slides", widthKey: "libW" },
     },
@@ -24,18 +23,17 @@ export const COLUMNS = {
 };
 
 export const DEFAULT_ORDER = {
-    culto: ["lib", "slides", "live", "side"],
+    culto: ["lib", "slides", "live"],
     biblia: ["picker", "reading", "air"],
 };
 
 // Cards stacked in one column, top to bottom.
 export const DEFAULT_STACKS = {
-    side: ["camadas"],
     source: ["lib", "slides"],
     picker: ["books", "chapters", "verses"],
 };
 
-export const CARD_NAMES = { camadas: "Camadas", lib: "Biblioteca", slides: "Slides", books: "Livros", chapters: "Capítulos", verses: "Versículos" };
+export const CARD_NAMES = { lib: "Biblioteca", slides: "Slides", books: "Livros", chapters: "Capítulos", verses: "Versículos" };
 
 // A saved list made safe: known ids in the saved order, no repeats, and any
 // id it lacks (a new module, an old save) appended in the default order.
@@ -74,9 +72,9 @@ export const moveBy = (list, id, delta) => moveTo(list, id, list.indexOf(id) + d
 const col = (env, id, cards, members) => ({ id, name: COLUMNS[env][id].name, flex: Boolean(COLUMNS[env][id].flex), widthKey: COLUMNS[env][id].widthKey || null, cards, members });
 
 // The console's columns, left to right, for a width tier.
-//   - wide: Biblioteca, Slides, Programa and Camadas (the Setlist lives
-//     beside the Prévia, inside the Programa column, at every tier);
-//   - medium: no Camadas column (Camadas is a drawer);
+//   - wide: Biblioteca, Slides and the centre block (two bands: Programa |
+//     Camadas on top, the Prévia + Setlist row under both — Console.jsx);
+//   - medium: the same without Camadas (it is a drawer);
 //   - narrow: Biblioteca over Slides in one column (where the first of the
 //     two is in the order), and the Programa.
 // A column whose cards are all hidden is not there. `members`: the order ids
@@ -97,11 +95,6 @@ export function cultoColumns({ tier = "wide", hidden = {}, order = DEFAULT_ORDER
         if (id === "lib" || id === "slides") {
             if (!hidden[id]) out.push(col("culto", id, [id], [id]));
             continue;
-        }
-        if (id === "side") {
-            if (tier !== "wide") continue;
-            const cards = normalizeOrder(stacks?.side, DEFAULT_STACKS.side).filter((c) => !hidden[c]);
-            if (cards.length) out.push(col("culto", "side", cards, ["side"]));
         }
     }
     return out;
@@ -144,12 +137,3 @@ export function withSplits(columns) {
     return out;
 }
 
-// Two stacked cards where one has a saved height (Camadas, `camadasH`) and
-// the other takes the rest: the horizontal splitter between them, or null.
-// Dragging down grows the fixed card when it is on top (sign 1), shrinks it
-// when it is below (sign -1). No splitter when the fixed card is collapsed or
-// alone.
-export function stackSplit(cards, fixed, collapsed = {}) {
-    if (cards.length < 2 || !cards.includes(fixed) || collapsed[fixed]) return null;
-    return { sign: cards.indexOf(fixed) === 0 ? 1 : -1 };
-}

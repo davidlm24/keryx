@@ -617,9 +617,9 @@ async function checkConsole(webContents, { live, outputs }) {
     };
     const js = (code) => webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← ${String(code).replace(/s+/g, " ").slice(0, 160)}`); });
     // The live column's monitors caption in parts (state word, title, position):
-    // read the title of the Programa (".prog") or the Prévia (".subrow .kx-mon").
+    // read the title of the Programa (".prog") or the Prévia (".bb-prev .kx-mon").
     const PROG = ".prog";
-    const PREV = ".subrow .kx-mon";
+    const PREV = ".bb-prev .kx-mon";
     // The Programa's caption is its panel's header (.kx-prog-cap); the Prévia's is on its monitor.
     const capSel = (mon) => (mon === PROG ? ".kx-prog-cap .kx-mon-t" : `${mon} .kx-mon-t`);
     const capTitle = (mon) => js(`(document.querySelector(${JSON.stringify(capSel(mon))}) || {}).textContent || ""`).catch(() => "");
@@ -1340,6 +1340,9 @@ async function checkConsole(webContents, { live, outputs }) {
         result.audioSurvivesEnd = Boolean(live.get().audio);
         await click(".player button", "Parar e tirar do ar");
         result.audioStopped = await waitFor(() => !live.get().audio);
+        // The player is always visible under the Programa (owner's decision
+        // 2026-10-13): idle it dims, it never disappears.
+        result.playerAlwaysThere = await js("(() => { const pl = document.querySelector('.pslot .player'); return Boolean(pl) && pl.className.includes('is-idle') && getComputedStyle(pl).visibility === 'visible'; })()");
 
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
@@ -1580,7 +1583,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-tabs button", "Letras");
         await click(".kx-row", "Canto do console");
         await waitCap(PREV, "Canto do console");
-        result.prevShows = await waitFor(() => js("(() => { const m = document.querySelector('.subrow .kx-mon'); return Boolean(m && m.querySelector('.ks-text')) && !document.querySelector('.subrow .prev-outs'); })()"), 3000);
+        result.prevShows = await waitFor(() => js("(() => { const m = document.querySelector('.bb-prev .kx-mon'); return Boolean(m && m.querySelector('.ks-text')) && !document.querySelector('.bb-prev .prev-outs'); })()"), 3000);
         await js("document.activeElement && document.activeElement.blur(); true");
 
         // Hover actions never reach the middle of a row, in every Biblioteca
@@ -2218,7 +2221,7 @@ async function checkConsole(webContents, { live, outputs }) {
             return Math.abs((p.left + p.right) / 2 - innerWidth / 2) <= 1 && p.left >= 0 && p.right <= innerWidth;
         })()`);
         await press("Enter");
-        result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'KERYX') && [...document.querySelectorAll('.subrow .kx-mon-cap, .subrow .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
+        result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'KERYX') && [...document.querySelectorAll('.bb-prev .kx-mon-cap, .bb-prev .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
             && JSON.stringify(live.get().content || null) === airBefore;
         await press("/");
         await waitFor(() => js("Boolean(document.querySelector('.palette input'))"));
@@ -2367,7 +2370,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
-        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
+        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped && result.playerAlwaysThere
         && result.tlGone && result.forecastOff && result.forecastOn
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
         && result.colsFit && result.editBanner && result.editMove === true && result.editEsc && result.editRestore

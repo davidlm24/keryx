@@ -93,36 +93,67 @@ export function ProgramaCaption({ c, projectorDown }) {
     );
 }
 
-// The live column, one block the same at every width
-// (the 2026-10-09 presenter proposal, P0): the Programa (what is
-// on air, or the local copy with the real screen in a PiP; an output failure
-// is the banner under the top bar, never here), right under it a reserved
-// slot where the player shows while something plays (it drives what is on
-// air; reserved, so the monitors never move; user decision 2026-10-12), the
-// Prévia with its one send button and, beside it, the Setlist (owner's
-// decision 2026-10-13: the rundown is where the Prévia feeds from; the old
-// Próximo/Depois lines went with it). The block is as wide as the column
-// allows and as tall as fits (console.css, .liveblock); spare height goes
-// to the Setlist's row, never between the monitors. With `multiview` ({ tiles, rows,
-// onPick }; Programa › Multiview) the Programa is four outputs at once, in
-// the same place and size (MultiView.jsx).
-export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onAir, setlist = null, onSend, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, onPrevMenu, items = [], multiview = null, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
+// The Programa band (the 2026-10-13 two-band console): what is on air (or
+// the Multiview: four outputs at once, { tiles, rows, onPick }) and, right
+// under it, the player — always visible, dimmed while idle (owner's
+// decision 2026-10-13; it drives what is on air; reserved, so the monitor
+// never moves). Sized by console.css (.liveblock): as wide as the band
+// allows, limited by the 16:9 of its height. The Prévia and the Setlist
+// live in the band below (PreviewBand).
+export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, items = [], multiview = null }) {
+    const { cur, now, locked } = c;
+    const [dropOn, setDropOn] = useState(null);
+    // Locked: the screens keep this image, blue (they are not following). On
+    // air there is no frame: the red lives in the header's state word and on
+    // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
+    const progState = projectorDown ? "warn" : locked ? "rh" : "";
+    // A drop from the Biblioteca on the Programa sends.
+    const dropProps = {
+        onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (!dropOn) setDropOn(true); } },
+        onDragLeave: () => setDropOn(null),
+        onDrop: (e) => { const st = getDragStage(); setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "air"); },
+    };
+    return (
+        <div className="mons" data-live-keys="" tabIndex={-1}>
+            <div className="liveblock">
+                {multiview ? (
+                    <MultiView live={cur} now={now} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick}
+                        state={progState} className={dropOn ? "is-dropover" : ""} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
+                        {dropOn && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
+                    </MultiView>
+                ) : (
+                    <Monitor className={`prog ${dropOn ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={now} logoUrl={logoUrl} motion dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
+                        {dropOn && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
+                    </Monitor>
+                )}
+                <div className="pslot">
+                    <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// The bottom band, a full row under Programa and Camadas (owner's decision
+// 2026-10-13): the Prévia with Enviar ao ar right under it (and the teacher
+// notes), then the Setlist in the rest (Console.jsx builds it, `setlist`).
+// The band is as tall as the Prévia's column; only the Setlist's list
+// scrolls. The Prévia's width is the operator's (the splitter, % of the
+// band, saved with the layout; it works in pixels, so the band's width is
+// kept here).
+export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, setlist = null, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
     const { cur, prev, now, locked, stamp } = c;
-    // The Prévia's width is the operator's (the splitter beside it, % of the
-    // column, saved with the layout); the Programa gives way when the window
-    // is short (console.css, --prev). The splitter works in pixels, so the
-    // row's width is kept here.
-    const subRef = useRef(null);
-    const [subW, setSubW] = useState(0);
+    const bandRef = useRef(null);
+    const [bandW, setBandW] = useState(0);
     useEffect(() => {
-        const el = subRef.current;
+        const el = bandRef.current;
         if (!el || typeof ResizeObserver === "undefined") return undefined;
-        const ro = new ResizeObserver(([e]) => setSubW(e.contentRect.width));
+        const ro = new ResizeObserver(([e]) => setBandW(e.contentRect.width));
         ro.observe(el);
         return () => ro.disconnect();
     }, []);
     const pct = clampSize("prevPct", prevPct);
-    const prevPx = (subW * pct) / 100;
+    const prevPx = (bandW * pct) / 100;
     // Built with a time fixed per prepared stage, never the ticking clock:
     // a new startedAt each second replayed the slide's transition (the
     // Prévia "pulsed"). A timer still counts (the renderer gets `now`).
@@ -131,71 +162,38 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     const [dropOn, setDropOn] = useState(null);
     // The Prévia: the prepared stage as Projeção will show it, with that
     // output's own settings (Configurações › Telas e saídas: Mostrar, theme,
-    // scale). The other outputs are the Multiview's (the picker that used to
-    // sit beside the Prévia went with it, 2026-10-12).
+    // scale). The other outputs are the Multiview's.
     const railOut = OUTPUT_VIEWS[0].key;
     const { pref: railPref, theme: railTheme } = useOutputPref(railOut);
     const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
     const railVars = prefVars(railPref);
-    // Locked: the screens keep this image, blue (they are not following). On
-    // air there is no frame: the red lives in the header's state word and on
-    // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
-    const progState = projectorDown ? "warn" : locked ? "rh" : "";
-    // The Prévia's caption: the state word, the title (prepared: next-title,
-    // 14px) and the position (meta).
-    const prevCap = dropOn === "prev" ? { word: "Prévia", title: "solte para preparar", pos: "", size: "next" }
+    const prevCap = dropOn ? { word: "Prévia", title: "solte para preparar", pos: "", size: "next" }
         : { word: "Prévia", title: prev ? prev.title : "", pos: prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "", size: "next" };
     const note = sendNote(prev, locked);
-
-    // Drops from the Biblioteca: the Prévia prepares, the Programa sends.
-    // (Declared before the captions, which say "solte para…" during a drag.)
-    const dropProps = (where) => ({
-        onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (dropOn !== where) setDropOn(where); } },
-        onDragLeave: () => setDropOn((d) => (d === where ? null : d)),
-        onDrop: (e) => { const s = getDragStage(); setDropOn(null); if (!s) return; e.preventDefault(); clearDragStage(); onDropStage?.(s, where); },
-    });
-
-
+    // A drop from the Biblioteca on the Prévia prepares.
+    const dropProps = {
+        onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (!dropOn) setDropOn(true); } },
+        onDragLeave: () => setDropOn(null),
+        onDrop: (e) => { const st = getDragStage(); setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "prev"); },
+    };
     return (
-        <div className="mons" data-live-keys="" tabIndex={-1} style={{ "--prev": pct / 100 }}>
-            <div className="liveblock">
-                {multiview ? (
-                    <MultiView live={cur} now={now} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick}
-                        state={progState} className={dropOn === "air" ? "is-dropover" : ""} dropProps={{ ...dropProps("air"), onContextMenu: onProgMenu }}>
-                        {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
-                    </MultiView>
-                ) : (
-                    <Monitor className={`prog ${dropOn === "air" ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={now} logoUrl={logoUrl} motion dropProps={{ ...dropProps("air"), onContextMenu: onProgMenu }}>
-                        {dropOn === "air" && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
-                    </Monitor>
-                )}
-                <div className="pslot">
-                    <PlayerBar c={c} picked={playerPick} setPicked={setPlayerPick} videoScreens={videoScreens} projectorOpen={projectorOpen} />
-                </div>
-                <div className="subrow" ref={subRef}>
-                    <Monitor className={`${dropOn === "prev" ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps("prev"), onContextMenu: onPrevMenu }}>
-                        {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
-                        {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
-                        {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Ajustes da saída › Mostrar)</div>}
-                        {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
-                        {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
-                    </Monitor>
-                    {onPrevPct && subW > 0 && <Split size={prevPx} sign={1} onSize={(px) => onPrevPct(clampSize("prevPct", (px / subW) * 100))} onReset={() => onPrevPct(DEFAULT_LAYOUT.prevPct)} clamp={(px) => px} />}
-                    <div className="side">
-                        <div className="sendrow">
-                            <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={sendTip(locked)}>
-                                {SEND_LABEL}
-                            </Btn>
-                        </div>
-                        {note && <div className="kx-meta sendnote">{note}</div>}
-                        <TeacherNotes prev={prev} cur={cur} />
-                        {/* The Setlist lives beside the Prévia (owner's decision
-                            2026-10-13): what comes next, where it is sent from.
-                            Console.jsx builds it (header + Rundown). */}
-                        {setlist}
-                    </div>
-                </div>
+        <div className="band-bottom" data-live-keys="" tabIndex={-1} ref={bandRef} style={{ "--prev": pct / 100 }}>
+            <div className="bb-prev">
+                <Monitor className={`${dropOn ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu }}>
+                    {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
+                    {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
+                    {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Ajustes da saída › Mostrar)</div>}
+                    {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
+                    {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
+                </Monitor>
+                <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={sendTip(locked)}>
+                    {SEND_LABEL}
+                </Btn>
+                {note && <div className="kx-meta sendnote">{note}</div>}
+                <TeacherNotes prev={prev} cur={cur} />
             </div>
+            {onPrevPct && bandW > 0 && <Split size={prevPx} sign={1} onSize={(px) => onPrevPct(clampSize("prevPct", (px / bandW) * 100))} onReset={() => onPrevPct(DEFAULT_LAYOUT.prevPct)} clamp={(px) => px} />}
+            <div className="bb-side">{setlist}</div>
         </div>
     );
 }
