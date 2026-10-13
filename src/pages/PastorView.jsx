@@ -4,7 +4,7 @@ import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { useChurch } from "@/hooks/useChurch";
 import OutputScreen from "@/components/screen/OutputScreen";
 import { useOutputPref } from "@/hooks/useOutputPref";
-import { useLayout, urlLayoutId } from "@/hooks/useLayout";
+import { useDesign } from "@/hooks/useLayout";
 import { useUpcoming } from "@/hooks/useUpcoming";
 import { pastorOptions } from "@/lib/outputPrefs";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
@@ -20,7 +20,7 @@ export default function PastorView() {
     const session = live?.session || null;
     const { upcoming, hasService } = useUpcoming(live);
     const { pref, theme } = useOutputPref("/PastorView");
-    const layout = useLayout(urlLayoutId() || pref.layoutId);
+    const layout = useDesign(pref);
     if (pref.content) return <OutputScreen page="/PastorView" live={live} prefs={{ pref, theme }} now={nowMs} logoUrl={church.logo} audio={false} />;
     if (layout) return <LayoutRenderer layout={layout} live={live} nowMs={nowMs} logoUrl={church.logo} upcoming={upcoming} hasService={hasService} church={church} scale={pref.scale} />;
     const count = pastorOptions(pref).next_count;

@@ -6,14 +6,13 @@
 // the console, the outputs and the network screens at once.
 //
 // Two kinds of document, one window: a TEMA (how the projection dresses the
-// text: look, placement, background — ThemeEditor) or a LAYOUT (the drawing
-// of a screen: elements on a canvas — LayoutEditor). Deep links:
-// ?theme=<id | new> or ?layout=<id | new | factory:…>; &for=<output path>
-// binds a new layout to that output on the first save. The window is named
-// (keryx-editor): opening the editor again navigates this one instead of
-// stacking a second.
+// text: look, placement, background — ThemeEditor) or a TELA (its drawing
+// and its visual settings — ScreenEditor; each screen owns its design,
+// owner 2026-10-13). Deep links: ?theme=<id | new> or ?screen=<path>. The
+// window is named (keryx-editor): opening the editor again navigates this
+// one instead of stacking a second.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import LayoutEditor from "@/components/editor/LayoutEditor";
+import ScreenEditor from "@/components/editor/ScreenEditor";
 import ThemeEditor from "@/components/editor/ThemeEditor";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
@@ -25,9 +24,9 @@ import "@/components/console/console.css";
 const readUrl = () => {
     try {
         const p = new URLSearchParams(window.location.search);
-        if (p.get("theme")) return { kind: "theme", id: p.get("theme"), for: "" };
-        return { kind: "layout", id: p.get("layout") || "new", for: p.get("for") || "" };
-    } catch { return { kind: "layout", id: "new", for: "" }; }
+        if (p.get("theme")) return { kind: "theme", id: p.get("theme") };
+        return { kind: "screen", id: p.get("screen") || "/Projection" };
+    } catch { return { kind: "screen", id: "/Projection" }; }
 };
 
 export default function Editor() {
@@ -61,15 +60,14 @@ export default function Editor() {
 
     const setUrl = (next) => {
         const p = new URLSearchParams();
-        p.set(next.kind === "theme" ? "theme" : "layout", next.id);
-        if (next.for) p.set("for", next.for);
+        p.set(next.kind === "theme" ? "theme" : "screen", next.id);
         try { window.history.replaceState(null, "", `/Editor?${p}`); } catch { /* the URL is cosmetic */ }
     };
-    // The first save of a new document: keep the URL pointing at the row, so
-    // a reload (F5) reopens the same document. No remount.
-    const onSaved = (row) => { if (row?.id && doc.id !== row.id) { const next = { ...doc, id: row.id, for: "" }; setDoc(next); setUrl(next); } };
-    const onSwitch = (id) => { const next = { ...doc, id: id || "new", for: "" }; setDoc(next); setUrl(next); setDocKey((k) => k + 1); };
-    const onKind = (kind) => { if (kind === doc.kind) return; const next = { kind, id: "new", for: "" }; setDoc(next); setUrl(next); setDocKey((k) => k + 1); };
+    // The first save of a new theme: keep the URL pointing at the row, so a
+    // reload (F5) reopens the same document. No remount.
+    const onSaved = (row) => { if (doc.kind === "theme" && row?.id && doc.id !== row.id) { const next = { ...doc, id: row.id }; setDoc(next); setUrl(next); } };
+    const onSwitch = (id) => { const next = { ...doc, id: id || (doc.kind === "theme" ? "new" : "/Projection") }; setDoc(next); setUrl(next); setDocKey((k) => k + 1); };
+    const onKind = (kind) => { if (kind === doc.kind) return; const next = { kind, id: kind === "theme" ? "new" : "/Projection" }; setDoc(next); setUrl(next); setDocKey((k) => k + 1); };
     // window.close works here: this window is always script-opened (the
     // console's openEditor, or window.open in the preview). Opened by a typed
     // URL it may be refused — then the toast says what to do.
@@ -77,14 +75,14 @@ export default function Editor() {
 
     const editor = doc.kind === "theme"
         ? <ThemeEditor key={`${docKey}:theme:${doc.id}`} themeId={doc.id} say={say} now={now} onClose={close} onSaved={onSaved} onSwitch={onSwitch} />
-        : <LayoutEditor key={`${docKey}:layout:${doc.id}`} layoutId={doc.id} forPath={doc.for} media={media} themes={themes} say={say} live={live} now={now} onClose={close} onSaved={onSaved} onSwitch={onSwitch} />;
+        : <ScreenEditor key={`${docKey}:screen:${doc.id}`} screenPath={doc.id} media={media} themes={themes} say={say} live={live} now={now} onClose={close} onSwitch={onSwitch} />;
 
     return (
         <LibraryContext.Provider value={pickFromLibrary}>
         <div className="console edw">
             <div className="main">{editor}</div>
             <div className="edw-foot">
-                <Seg small label="O que editar" value={doc.kind} options={[["theme", "Temas"], ["layout", "Layouts"]]} onChange={onKind} />
+                <Seg small label="O que editar" value={doc.kind} options={[["theme", "Temas"], ["screen", "Telas"]]} onChange={onKind} />
                 <span style={{ flex: 1 }} />
                 <button type="button" className="kx-btn kx-t" onClick={close}>Fechar janela</button>
             </div>

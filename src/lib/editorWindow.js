@@ -11,13 +11,11 @@ const NAME = "keryx-editor";
 let handle = null;
 
 // openEditor({ layout: id|"new"|"factory:…" } | { theme: id|"new" }, for:
-// an output path that "Ver como" and the first save should bind to.
 // -> { error } when the browser blocked the window, else {}.
-export function openEditor({ theme = "", layout = "", for: forPath = "" } = {}) {
+export function openEditor({ theme = "", screen = "" } = {}) {
     const p = new URLSearchParams();
     if (theme) p.set("theme", theme);
-    else if (layout) p.set("layout", layout);
-    if (forPath) p.set("for", forPath);
+    else if (screen) p.set("screen", screen);
     const q = p.toString();
     const win = window.open(`${window.location.origin}/Editor${q ? `?${q}` : ""}`, NAME, "width=1280,height=800");
     if (!win) return { error: "O navegador bloqueou a janela do editor: permita pop-ups para abrir o Editor de temas e layouts." };

@@ -73,7 +73,11 @@
     "layout_id": {
       "type": "string",
       "default": "",
-      "description": "O layout que a tela desenha (ScreenLayout, ou um layout de fábrica: factory:palco, factory:pastor); vazio é a tela padrão da página (Palco e Pastor)"
+      "description": "Antigo (até 2026-10-13): o ScreenLayout que a tela desenhava; lido só quando design está vazio (designOf em src/lib/outputPrefs.js). Nada escreve mais aqui."
+    },
+    "design": {
+      "type": "object",
+      "description": "O desenho desta tela (owner 2026-10-13: cada tela é dona do seu desenho; o catálogo de layouts morreu): { elements, background } no formato de normalizeLayout (src/lib/layouts.js); vazio = a página padrão"
     }
   },
   "required": [

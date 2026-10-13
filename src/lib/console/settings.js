@@ -18,7 +18,7 @@ export const SECTIONS = [
 
 // Telas e saídas' tabs besides one per output (an output's tab is its page
 // path without the "/": "Projection", "StageView"…).
-export const TELAS_TABS = [["layouts", "Layouts das telas"], ["geral", "Som e arquivo"]];
+export const TELAS_TABS = [["geral", "Som e arquivo"]];
 
 // Ids of older versions, still in links (?config=), in notifications saved
 // in settings.json ("settings:dados") and in muscle memory.

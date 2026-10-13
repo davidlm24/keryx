@@ -5,7 +5,7 @@ import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import OutputScreen from "@/components/screen/OutputScreen";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useOutputPref } from "@/hooks/useOutputPref";
-import { useLayout, urlLayoutId } from "@/hooks/useLayout";
+import { useDesign } from "@/hooks/useLayout";
 import { useUpcoming } from "@/hooks/useUpcoming";
 import { useChurch } from "@/hooks/useChurch";
 import { keryx } from "@/api/keryxClient";
@@ -22,7 +22,7 @@ export default function StageView() {
     const nowMs = useLiveNow(1000);
     const church = useChurch();
     const { pref, theme } = useOutputPref("/StageView");
-    const layout = useLayout(urlLayoutId() || pref.layoutId);
+    const layout = useDesign(pref);
     const { upcoming, hasService } = useUpcoming(live);
 
     useEffect(() => {

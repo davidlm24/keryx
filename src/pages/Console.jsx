@@ -153,23 +153,12 @@ export default function Console() {
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
     // The Editor de temas e layouts: its own window (src/lib/editorWindow.js)
     // — the console stays exactly where it is; closing the window is the way
-    // back. `opts.for` binds a new layout to the output whose tab opened it.
-    const openLayout = useCallback((id, opts = {}) => {
-        const r = openEditor({ layout: id || "new", for: opts.for || "" });
+    // back. Each screen owns its design (2026-10-13), so the Editor opens on
+    // a screen, never a catalog layout.
+    const openScreen = useCallback((path) => {
+        const r = openEditor({ screen: path || "/Projection" });
         if (r?.error) c.say(r.error);
     }, [c]);
-    // ?layout= used to be a console view: an old link opens the window once
-    // and leaves the console's URL clean.
-    useEffect(() => {
-        try {
-            const p = new URLSearchParams(window.location.search);
-            const id = p.get("layout");
-            if (!id) return;
-            p.delete("layout");
-            window.history.replaceState(null, "", `/Console${p.toString() ? `?${p}` : ""}`);
-            openLayout(id);
-        } catch { /* no query */ }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
     // The Escola bíblica sends through the KERYX environment's Prévia.
     const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setView({ school: true }); }, []);
     const openReports = useCallback(() => { setOpen(null); setView({ reports: true }); }, []);
@@ -927,7 +916,7 @@ export default function Console() {
             {lookReq && <LookDialog c={c} row={lookRow} save={saveLook} onClose={() => setLookReq(null)} what={lookReq.kind === "template" ? "do modelo" : "do culto"}
                 title={lookReq.kind === "template" ? `Visual do modelo · ${lookRow?.name || ""}` : `Visual do culto · ${lookRow?.title || "hoje"}`}
                 note={lookReq.kind === "service" && !lookRow ? "Nenhum culto escolhido: a primeira escolha cria a setlist de hoje." : null} />}
-            {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onOpenLayout={openLayout} />}
+            {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (

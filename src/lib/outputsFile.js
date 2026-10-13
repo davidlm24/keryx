@@ -8,7 +8,7 @@
 // through the same calls Configurações uses, so every window and network
 // screen follows at once.
 import { normalizePref, outputMeta } from "./outputPrefs.js";
-import { findLayout } from "./layouts.js";
+import { findLayout, normalizeLayout } from "./layouts.js";
 
 export const FILE_KIND = "keryx-saidas";
 export const FILE_VERSION = 1;
@@ -51,7 +51,9 @@ function prefFields(row, themes, layouts) {
         show_logo: p.showLogo,
         theme_id: p.themeId,
         theme_name: theme ? theme.name || "" : "",
-        // The layout travels by name too (a factory id is the same everywhere).
+        // The screen's own drawing travels whole (owner 2026-10-13); the old
+        // layout fields ride along so an old KERYX still matches by name.
+        design: p.design ? { elements: p.design.elements, background: p.design.background } : layout ? { elements: layout.elements, background: layout.background } : null,
         layout_id: p.layoutId,
         layout_name: layout ? layout.name : "",
         options: p.options,
@@ -128,17 +130,20 @@ export function readOutputsFile(text, { themes = [], layouts = [], displays = []
             themeId = same ? same.id : named ? named.id : "";
             if (!themeId) notes.push(`${label(path)}: o tema${raw.theme_name ? ` “${raw.theme_name}”` : ""} não existe neste computador; a saída segue o tema da projeção.`);
         }
-        // The layout: the same id, else one with the same name here.
+        // The drawing: the file's own design wins (2026-10-13); an old file
+        // still matches its layout by id, else by name.
+        let design = p.design ? { elements: p.design.elements, background: p.design.background } : null;
         let layoutId = "";
-        if (p.layoutId) {
+        if (!design && p.layoutId) {
             const same = findLayout(p.layoutId, layouts);
             const named = byLayoutName.get(String(raw.layout_name || "").trim().toLocaleLowerCase("pt-BR"));
-            layoutId = same ? same.id : named ? named.id : "";
-            if (!layoutId) notes.push(`${label(path)}: o layout${raw.layout_name ? ` “${raw.layout_name}”` : ""} não existe neste computador; a saída volta à tela padrão.`);
+            const found = same || named || null;
+            if (found) design = { elements: normalizeLayout(found).elements, background: normalizeLayout(found).background };
+            else notes.push(`${label(path)}: o desenho${raw.layout_name ? ` “${raw.layout_name}”` : ""} não veio no arquivo nem existe aqui; a tela volta à página padrão.`);
         }
         prefs.push({
             path,
-            fields: { name: p.name, icon: p.icon, content: p.content, hidden_kinds: p.hidden, text_scale: Math.round(p.scale * 100), margin_pct: p.margin, show_logo: p.showLogo, theme_id: themeId, layout_id: layoutId, options: p.options },
+            fields: { name: p.name, icon: p.icon, content: p.content, hidden_kinds: p.hidden, text_scale: Math.round(p.scale * 100), margin_pct: p.margin, show_logo: p.showLogo, theme_id: themeId, design, layout_id: layoutId, options: p.options },
         });
     }
     if (!assignments.length && !prefs.length) return { error: "O arquivo não tem nenhuma saída." };

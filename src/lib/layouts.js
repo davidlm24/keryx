@@ -1,6 +1,6 @@
 // Layouts das telas (ScreenLayout rows, 2026-10-12): what a stage monitor or
 // the pastor's tablet draws and where, designed by the operator on a canvas
-// (LayoutEditor) and drawn by LayoutRenderer on the output, on a network
+// (ScreenEditor) and drawn by LayoutRenderer on the output, on a network
 // screen, in the console's Prévia rail and in the editor itself, all from
 // the same description. An output (OutputPref.layout_id) and a network
 // screen (?layout=) pick a layout; "" is the page's own screen (StageScreen,

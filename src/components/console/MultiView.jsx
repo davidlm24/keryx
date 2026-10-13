@@ -6,7 +6,7 @@ import PastorScreen from "@/components/network/PastorScreen";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { prefState, prefVars, pastorOptions } from "@/lib/outputPrefs";
 import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
-import { useLayout } from "@/hooks/useLayout";
+import { useDesign } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
 import { SCREEN_PAGES, nextItems } from "@/lib/network/views";
 import { tileStatus, motionTile } from "@/lib/console/multiview";
@@ -20,7 +20,7 @@ import "@/components/screen/output-prefs.css";
 // is on screen.
 function Tile({ page, index, live, now, logoUrl, items, motion, look, status, onPick, church }) {
     const { pref, theme } = useOutputPref(page);
-    const layout = useLayout(pref.layoutId);
+    const layout = useDesign(pref);
     const own = !pref.content && SCREEN_PAGES.some((p) => p.key === page) ? page : null;
     const doc = useMemo(() => (own ? null : prefState(page, live, pref, theme)), [own, page, live, pref, theme]);
     const vars = own ? null : prefVars(pref);

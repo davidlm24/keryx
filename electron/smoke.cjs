@@ -1736,7 +1736,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // its settings always open beside it, the Layout on top.
         result.cfgOutTabs = await waitFor(() => js("document.querySelectorAll('.console .cfg .cfg-outtab').length >= 6 && Boolean(document.querySelector('.console .cfg .cfg-outtab.is-on'))"), 5000);
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs input.fg-input'))"));
-        result.cfgLayoutFirst = await js("(() => { const k = [...document.querySelectorAll('.cfg-outs-detail .cfg-outprefs-form > .k')].map((n) => n.textContent).filter(Boolean); return k[0] === 'Layout'; })()");
+        result.cfgLayoutFirst = await js("(() => { const k = [...document.querySelectorAll('.cfg-outs-detail .cfg-outprefs-form > .k')].map((n) => n.textContent).filter(Boolean); return k[0] === 'Desenho'; })()");
         await nameField("Telão");
         result.outName = await waitFor(() => js(`[...document.querySelectorAll(".console .cfg .kx-row-title")].some((n) => n.textContent === "Telão")`), 5000);
         await nameField("");
@@ -1794,6 +1794,29 @@ async function checkConsole(webContents, { live, outputs }) {
         // Saved: the window closes clean (the dirty guard has nothing to ask).
         { const w = editorWin(); if (w) w.close(); }
         result.themeWindowClosed = await waitFor(() => !editorWin(), 5000);
+        // Each screen owns its design (owner 2026-10-13): "Editar a tela…"
+        // opens the Editor on that screen, Desenhar seeds the ready design,
+        // Salvar writes OutputPref.design and the vertical menu lists the
+        // screens.
+        await section("Telas e saídas");
+        await tuneOf("Palco");
+        await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent.includes('Editar a tela')); if (b) b.click(); return Boolean(b); })()"), 5000);
+        result.screenEditor = await waitFor(() => Boolean(editorWin()), 8000);
+        const sw = editorWin();
+        const sjs = (code) => sw.webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← editor ← ${String(code).replace(/s+/g, " ").slice(0, 120)}`); });
+        await waitFor(() => sjs("[...document.querySelectorAll('button')].some((b) => b.textContent.includes('Desenhar esta tela'))").catch(() => false), 8000);
+        await sjs("(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('Desenhar esta tela')); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => sjs("Boolean(document.querySelector('.le-screen'))").catch(() => false), 5000);
+        result.screenMenu = await sjs("[...document.querySelectorAll('.kx-row-title')].filter((n) => ['Projeção', 'Palco', 'Pastor', 'Transmissão'].includes(n.textContent)).length >= 4").catch(() => false);
+        await sjs("(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Salvar a tela'); if (b) b.click(); return Boolean(b); })()");
+        result.screenSaved = await waitFor(async () => {
+            const rows = (await js('window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: "/StageView" }])')).data || [];
+            return Boolean(rows[0] && rows[0].design && Array.isArray(rows[0].design.elements) && rows[0].design.elements.length > 0 && !rows[0].layout_id);
+        }, 6000);
+        if (!result.screenSaved) result.screenDiag = await sjs("(document.querySelector('.toast') || {}).textContent || document.body.innerText.slice(0, 300)").catch(() => "");
+        await js('(async () => { const rows = (await window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: "/StageView" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("OutputPref", "update", [r.id, { design: null }]); return true; })()');
+        { const w = editorWin(); if (w) w.close(); }
+        await waitFor(() => !editorWin(), 5000);
         // Aparência has no tabs; its Fundos row opens the library to manage
         // the backgrounds (Fechar, no Usar), over Configurações.
         await section("Aparência");
@@ -2381,7 +2404,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutTabs && result.cfgLayoutFirst && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeWindow && result.themeSample && result.themeSaved && result.themeWindowClosed && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutTabs && result.cfgLayoutFirst && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeWindow && result.themeSample && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
