@@ -5,7 +5,11 @@ import { Btn, Field, Empty } from "../kx";
 import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading } from "./parts";
 import { byGroup } from "@/lib/console/outputs";
 import { useOutputLooks, useOutputPrefRows } from "@/hooks/useOutputPref";
-import OutputPrefCard from "./OutputPrefCard";
+import OutputPrefCard, { OutputPreview } from "./OutputPrefCard";
+import { normalizePref, designOf } from "@/lib/outputPrefs";
+import { useLayoutRows } from "@/hooks/useLayout";
+import { useChurch } from "@/hooks/useChurch";
+import { useThemes } from "../useConsoleData";
 import RemoteBlock from "./RemoteBlock";
 
 // How long Mostrar PIN keeps it on screen.
@@ -24,6 +28,9 @@ const newPin = () => {
 export default function RedeSection({ c }) {
     const look = useOutputLooks();
     const prefRows = useOutputPrefRows();
+    const layoutRows = useLayoutRows();
+    const church = useChurch();
+    const themes = useThemes();
     const [tuning, setTuning] = useState(false);
     const network = useBridge("network");
     const [info, , setInfo, readError] = usePoll(() => network?.call("info"), 3000);
@@ -146,12 +153,20 @@ export default function RedeSection({ c }) {
             <RemoteBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} />
             <CfgKey k="Telas conectadas pela rede" className="listhead"><span className="kx-section">Telas conectadas pela rede</span></CfgKey>
             {!clients.length && <div className="listhead"><span className="kx-meta">{info.running ? "Nenhuma agora." : "Ligue as telas na rede para os aparelhos se conectarem."}</span></div>}
-            {clients.map((cl) => (
-                <div key={`${cl.ip}-${cl.since}`} className="kx-row">
-                    <span className="kx-glyph"><Icon name="tv" /></span>
-                    <div className="kx-row-main"><div className="kx-row-title">{cl.label || "Página inicial"}</div><div className="kx-row-meta">{cl.ip} · conectada desde {new Date(cl.since).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div></div>
-                                    </div>
-            ))}
+            {clients.map((cl) => {
+                const path = cl.screen && cl.screen !== "/Remote" ? cl.screen : "";
+                const pref = path ? normalizePref(prefRows.find((r) => r.screen_path === path) || null) : null;
+                return (
+                    <div key={`${cl.ip}-${cl.since}`} className="kx-row cfg-net-row">
+                        {/* A still of what this screen draws right now: the same
+                            page, the same settings, the same live state. */}
+                        {pref
+                            ? <span className="cfg-net-thumb"><OutputPreview path={path} pref={pref} design={designOf(pref, layoutRows)} themes={themes} live={c.live} now={c.now} church={church} /></span>
+                            : <span className="kx-glyph"><Icon name={cl.screen === "/Remote" ? "tablet" : "tv"} /></span>}
+                        <div className="kx-row-main"><div className="kx-row-title">{cl.label || "Página inicial"}</div><div className="kx-row-meta">{cl.ip} · conectada desde {new Date(cl.since).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div></div>
+                    </div>
+                );
+            })}
             <div className="listhead"><span className="kx-meta">Na primeira vez o Windows pergunta se o KERYX pode usar a rede: permita em redes privadas.</span></div>
         </>
     );
