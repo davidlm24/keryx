@@ -868,7 +868,7 @@ async function checkConsole(webContents, { live, outputs }) {
             const colOrder = () => js(`[...document.querySelectorAll(".console .main > [data-col]")].map((n) => n.dataset.col).join(",")`);
             const orderBefore = await colOrder();
             await click(".topbar .tb-ver");
-            await click(".pop .kx-menu-item", "Editar layout");
+            await click(".pop .kx-menu-item", "Editar disposição");
             result.editBanner = await waitFor(() => js("Boolean(document.querySelector('.arr-banner')) && document.querySelectorAll('.console .main > [data-col] > .arr-bar').length === document.querySelectorAll('.console .main > [data-col]').length"));
             await js(`(() => { const b = document.querySelector('[data-col="lib"] .arr-bar button[title^="Mover Biblioteca para a direita"]'); if (b) b.click(); return Boolean(b); })()`);
             const orderMoved = await colOrder();
@@ -880,7 +880,7 @@ async function checkConsole(webContents, { live, outputs }) {
             await press("Escape");
             result.editEsc = await waitFor(() => js("!document.querySelector('.arr-banner')")) && JSON.stringify(live.get().content || null) === airBefore;
             await click(".topbar .tb-ver");
-            await click(".pop .kx-menu-item", "Editar layout");
+            await click(".pop .kx-menu-item", "Editar disposição");
             await click(".arr-banner button", "Restaurar posições");
             await click(".arr-banner button", "Concluir");
             result.editRestore = (await colOrder()) === orderBefore;

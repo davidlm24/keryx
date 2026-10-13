@@ -36,7 +36,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                 ))}
                 <div className="kx-menu-sep" />
                 <MenuItem icon="grip" checked={editing} onClick={onEditLayout} title="Mudar as colunas e os cards de lugar (arrastar ou setas) · Esc conclui">{editing ? "Concluir a edição" : "Editar disposição"}</MenuItem>
-                <MenuItem onClick={() => { restoreLayout(); setOpen(null); }}>Restaurar layout</MenuItem>
+                <MenuItem onClick={() => { restoreLayout(); setOpen(null); }}>Restaurar disposição</MenuItem>
                 <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos do teclado</MenuItem>
             </div>
         );
