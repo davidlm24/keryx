@@ -191,24 +191,40 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   operator's (Ver › Editar layout): `layout.order`/`layout.stacks`, turned
   into columns and splitters by `src/lib/console/arrange.js` (tested) —
   render from `cultoColumns`/`bibleColumns` + `withSplits`, never place a
-  column by hand in `Console.jsx`. **The centre is two bands**
-  (owner's decision 2026-10-13: left = content, middle = order and
-  projection/media control, right = the projection's look): Biblioteca and
-  Slides are whole columns; the rest, to the screen's right edge, is the
-  `live` column — on top the Programa (CenterPanel: the monitor or the
-  Multiview, and the player **always visible**, dimmed while idle) beside
-  the Camadas panel (width `rightW`, wide tier only; else the drawer);
-  below, **one full row** (`PreviewBand`), **two panels like their
-  neighbours** (2026-10-13 spacing pass): the Prévia panel (caption in its
-  header like the Programa's; width `prevPct` of the band, default 30,
-  limits 18–45) with **Enviar ao ar inside it, right under the monitor**
-  and the teacher notes, then the Setlist panel in the rest (Console.jsx
-  builds `setlistArea`; the panel body scrolls, the list follows the item
-  on air). **One gutter everywhere**: `.console` overrides `--gutter` to
-  6px and the bands use `gap: 0` — the splitter IS the gap, as in
-  `.main`; don't add a second gap beside a splitter.
-  There is no `side` column or `camadasH` any more (arrange.js: culto =
-  lib, slides, live; an old save normalizes in silence). The old
+  column by hand in `Console.jsx`. **Four columns** (the console audit,
+  owner 2026-10-13, which replaced the two-band centre of #136/#138):
+  Biblioteca and Slides are whole columns; the **centre** (`live`) is the
+  Programa on top (CenterPanel: the monitor or the Multiview, and the
+  player **always visible**, dimmed while idle) and below it one row
+  (`PreviewBand`) that **ends at the centre's edge**: the Prévia panel
+  (caption in its header like the Programa's; width `prevPct` of the row,
+  default 44, limits 18–45) with **Enviar ao ar inside it, right under the
+  monitor**, then the **tabs panel** (`TabsPanel.jsx`); the **right
+  column** (`side`, width `rightW`, wide tier only) is **Camadas over the
+  Setlist, full height**, with a height splitter between them (`camadasH`,
+  default 360: the Setlist gets most of the column; `stackSplit`; Camadas
+  collapses, and Ver can hide it — never the Setlist). Medium and narrow
+  tiers have no right column: Camadas is a drawer and the **Setlist sits
+  beside the Prévia in place of the tabs panel** (never out of reach).
+  Old saves normalize in silence (culto order lib, slides, live, side;
+  stack side = camadas, roteiro). **The tabs panel and the Biblioteca end
+  their tab row in a (+)** that lists every tab with a check mark
+  (`TabsMenu` in Popovers.jsx, as Ver lists the modules): checked = shown,
+  in the list's order, at least one always, "Restaurar abas padrão" at the
+  bottom; saved per computer as `layout.tabs` (`src/lib/console/panelTabs.js`,
+  tested; "Restaurar disposição" resets it). The panel's tabs reuse what
+  exists, no projection logic of their own: **Notas** (the
+  `ServiceItem.notes` of the item in the Prévia / on air, and the Escola
+  bíblica teacher notes — these sit under Enviar ao ar when the Notas tab
+  is not on screen), **Aviso rápido**, **Timers** (`QuickTools.jsx`; the
+  defaults), **Ferramentas** and **Esteve no ar** (the "Voltar ao
+  anterior" history). Where the panel shows the Aviso rápido or the
+  Ferramentas, Biblioteca › Avisos leaves them out (`elsewhere`); the
+  Biblioteca's search-row "+" stays "add content". **One gutter
+  everywhere**: `.console` overrides `--gutter` to 6px and the rows and
+  stacks use `gap: 0` — the splitter IS the gap, as in `.main` (two cards
+  stacked without one keep the gutter as a margin); don't add a second gap
+  beside a splitter. The old
   Próximo/Depois lines, the Setlist side card and the Biblioteca's compact
   Setlist tab are gone. Setlist sections are ServiceItems of type `SECTION`: headers that
   take no time and never go on air — use `playableItems`/`plan` from

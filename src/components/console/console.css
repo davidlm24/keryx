@@ -12,7 +12,7 @@
 /* Side columns shrink down to their minimum (inline flex-basis/min-width
    from Console.jsx); the center keeps room for the monitors. */
 .console .main > .col.center { min-width: 480px; }
-/* Narrow tier: Biblioteca (with the Setlist tab) over Slides in one column. */
+/* Narrow tier: Biblioteca over Slides in one column. */
 .console .col.source > .kx-panel { flex: 1 1 0; }
 .console .col.source > .kx-panel.is-collapsed { flex: none; }
 .console .col { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
@@ -156,21 +156,39 @@
 .console .mx-lbl.is-idle .mx-st { color: var(--fg-3); }
 .console .mx-lbl.is-warn .mx-st { color: var(--warn-fg); }
 @container (max-width: 200px) { .console .mx-st { display: none; } }
-/* The two bands (owner's decision 2026-10-13): Programa | Camadas on top,
-   then one full row for the Prévia (Enviar ao ar under it) and the Setlist,
-   edge to edge under both. The band is as tall as the Prévia's column
-   (contain: size on .bb-side); only the Setlist's list scrolls. */
+/* The centre (the console audit, 2026-10-13): the Programa on top, then a
+   row for the Prévia (Enviar ao ar under it) and the panel beside it — the
+   tabs panel, or the Setlist where there is no right column — ending at the
+   centre's edge. The row is as tall as the Prévia's column (contain: size
+   on .bb-side); only the side's body scrolls. */
 .console .col.center { gap: var(--gutter); }
-.console .band-top { flex: 1 1 auto; min-height: 140px; display: flex; gap: 0; min-width: 0; } /* the splitter IS the gutter, as in .main */
+.console .band-top { flex: 1 1 auto; min-height: 140px; display: flex; min-width: 0; }
 .console .band-top > .kx-panel { flex: 1; min-width: 0; }
-.console .band-top > .kx-panel + .kx-panel, .console .band-top > .kx-split + .kx-panel { margin-top: 0; }
-.console .band-top > .kx-panel:last-child:not(:first-child) { flex: none; }
 .console .band-bottom { flex: none; display: flex; gap: 0; align-items: stretch; min-width: 0; }
 .console .bb-prev { width: calc(var(--prev) * 100%); min-width: 220px; flex: none; }
 .console .bb-prev > .kx-panel-b { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; }
 .console .bb-prev .kx-btn-send { width: 100%; }
 .console .band-bottom > .kx-split { flex: none; align-self: stretch; }
 .console .bb-side { flex: 1; align-self: stretch; min-width: 180px; min-height: 0; contain: size; }
+/* The right column (wide): Camadas (camadasH, inline) over the Setlist,
+   which takes the rest; the splitter between them is the gutter. */
+.console .col.side > .arr-card-roteiro { flex: 1 1 0; min-height: 160px; }
+/* A row of tabs the operator trims (TabsPanel.jsx, the Biblioteca): the
+   (+) at its end opens the list with check marks. */
+.console .tabrow > .tabs-plus { margin-left: auto; align-self: center; flex: none; width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border-radius: var(--radius-control); color: var(--fg-3); }
+.console .tabrow > .tabs-plus:hover { background: var(--bg-2); color: var(--fg-1); }
+.console .tabrow > .tabs-plus.is-on { background: var(--bg-3); color: var(--fg-1); }
+.console .tabrow > .tabs-plus.is-on::after { display: none; }
+.console .tabrow > button[role="tab"] { white-space: nowrap; min-width: 0; overflow: clip; overflow-clip-margin: 1px; text-overflow: ellipsis; } /* many tabs in a narrow panel: they shorten, the (+) stays */
+.console .tabs-panel > .kx-tabs { flex: none; overflow: hidden; }
+.console .tabs-pad { padding-top: var(--space-2); }
+.console .tabs-notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); }
+.console .tabs-notes .tnotes { max-height: none; }
+.console .tabs-menu .tabs-menu-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .tabs-menu [aria-disabled="true"] { color: var(--fg-3); }
+/* Aviso rápido and the timer minutes (QuickTools.jsx). */
+.console .qt-row { display: flex; gap: var(--space-1); padding: 0 var(--space-2) var(--space-1); }
+.console .qt-min { width: 52px; height: 24px; background: var(--bg-2); border: 0; border-radius: 4px; color: var(--fg-1); padding: 0 6px; font: inherit; }
 
 /* The player's slot is always there; the player shows only while something plays. */
 .console .pslot { height: 36px; }

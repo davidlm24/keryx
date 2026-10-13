@@ -98,8 +98,8 @@ export function ProgramaCaption({ c, projectorDown }) {
 // under it, the player — always visible, dimmed while idle (owner's
 // decision 2026-10-13; it drives what is on air; reserved, so the monitor
 // never moves). Sized by console.css (.liveblock): as wide as the band
-// allows, limited by the 16:9 of its height. The Prévia and the Setlist
-// live in the band below (PreviewBand).
+// allows, limited by the 16:9 of its height. The Prévia and the panel beside
+// it live in the band below (PreviewBand).
 export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, onDropStage, videoScreens, playerPick, setPlayerPick, onProgMenu, items = [], multiview = null }) {
     const { cur, now, locked } = c;
     const [dropOn, setDropOn] = useState(null);
@@ -134,14 +134,16 @@ export default function CenterPanel({ c, logoUrl, projectorDown, projectorOpen, 
     );
 }
 
-// The bottom band, a full row under Programa and Camadas (owner's decision
-// 2026-10-13): the Prévia with Enviar ao ar right under it (and the teacher
-// notes), then the Setlist in the rest (Console.jsx builds it, `setlist`).
-// The band is as tall as the Prévia's column; only the Setlist's list
-// scrolls. The Prévia's width is the operator's (the splitter, % of the
-// band, saved with the layout; it works in pixels, so the band's width is
-// kept here).
-export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, setlist = null, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
+// The centre's bottom band, under the Programa and no wider than it (the
+// console audit, 2026-10-13): the Prévia with Enviar ao ar right under it,
+// then `side` in the rest — the tabs panel (TabsPanel) in the wide tier,
+// the Setlist where there is no right column (Console.jsx builds both). The
+// band is as tall as the Prévia's column; only the side's body scrolls.
+// The teacher notes sit under Enviar ao ar unless the Notas tab is on
+// screen (`notesInTab`). The Prévia's width is the operator's (the
+// splitter, % of the band, saved with the layout; it works in pixels, so
+// the band's width is kept here).
+export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, side = null, notesInTab = false, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
     const { cur, prev, now, locked, stamp } = c;
     const bandRef = useRef(null);
     const [bandW, setBandW] = useState(0);
@@ -198,10 +200,10 @@ export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, setli
                     {SEND_LABEL}
                 </Btn>
                 {note && <div className="kx-meta sendnote">{note}</div>}
-                <TeacherNotes prev={prev} cur={cur} />
+                {!notesInTab && <TeacherNotes prev={prev} cur={cur} />}
             </Panel>
             {onPrevPct && bandW > 0 && <Split size={prevPx} sign={1} onSize={(px) => onPrevPct(clampSize("prevPct", (px / bandW) * 100))} onReset={() => onPrevPct(DEFAULT_LAYOUT.prevPct)} clamp={(px) => px} />}
-            {setlist}
+            {side}
         </div>
     );
 }

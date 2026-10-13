@@ -5,6 +5,7 @@ import ShortcutList from "./ShortcutList";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
+import { PANEL_TABS, TABS_MENU_TITLE, tabsMenu } from "@/lib/console/panelTabs";
 import { restoreArgs } from "@/lib/projection";
 import { stageFromHistory, stageFromSong, stageFromMedia, stageFromPiece, stageFromMaterial } from "@/lib/console/stage";
 import { materialIcon, materialMeta } from "@/lib/console/school";
@@ -197,6 +198,35 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                 <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo…</Btn>
                 <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas…</Btn>
             </div>
+        </div>
+    );
+}
+
+// The (+) at the end of a trimmable tab row (open: "tabs:panel" or
+// "tabs:lib"): every tab with its check mark, as Ver lists the modules.
+// A click checks or unchecks and the list stays open; the last tab checked
+// cannot go. Under the (+), its right edge on the button's — above it when
+// the window has no room below (the panel beside the Prévia is low).
+export function TabsMenu({ open, list, onToggle, onRestore }) {
+    const row = open?.startsWith("tabs:") ? open.slice(5) : null;
+    if (!row || !PANEL_TABS[row]) return null;
+    const plus = document.querySelector(`.console [data-tabs-plus="${row}"]`)?.getBoundingClientRect();
+    const tall = (PANEL_TABS[row].length + 2) * 32 + 24;
+    const below = !plus || plus.bottom + 4 + tall <= window.innerHeight - 8;
+    const style = !plus ? { right: 8, top: "var(--pop-top)", width: 240 }
+        : below ? { right: Math.max(8, Math.round(window.innerWidth - plus.right)), top: Math.round(plus.bottom + 4), width: 240 }
+            : { right: Math.max(8, Math.round(window.innerWidth - plus.right)), bottom: Math.round(window.innerHeight - plus.top + 4), width: 240 };
+    return (
+        <div className="pop kx-pop tabs-menu" style={style} role="menu" aria-label={TABS_MENU_TITLE[row]}>
+            <div className="kx-menu-h"><span className="kx-section">{TABS_MENU_TITLE[row]}</span></div>
+            {tabsMenu(row, list).map((t) => (
+                <MenuItem key={t.id} role="menuitemcheckbox" aria-checked={t.checked} checked={t.checked} onClick={() => onToggle(row, t.id)}
+                    title={t.last ? "Pelo menos uma aba fica à vista" : undefined} aria-disabled={t.last || undefined}>
+                    <span className="tabs-menu-t">{t.name}{t.hint && <span className="kx-meta"> {t.hint}</span>}</span>
+                </MenuItem>
+            ))}
+            <div className="kx-menu-sep" />
+            <MenuItem onClick={() => onRestore(row)}>Restaurar abas padrão</MenuItem>
         </div>
     );
 }
