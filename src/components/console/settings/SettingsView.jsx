@@ -140,7 +140,7 @@ export default function SettingsView({ c, section, tab, setSection, onClose, lay
                 ))}
             </div>
         ) : <Empty icon="search" title={`Nada encontrado para “${q.trim()}”`}>Tente outra palavra: PIN, fundo, backup, transição, logo…</Empty>;
-    } else if (current.id === "telas") body = <TelasSection c={c} tab={tab} setTab={(t) => setSection("telas", t)} onOpenScreen={onOpenScreen} />;
+    } else if (current.id === "telas") body = <TelasSection c={c} onOpenScreen={onOpenScreen} />;
     else if (current.id === "console") body = <ConsoleSection c={c} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
     else { const Body = BODIES[current.id]; body = <Body c={c} onOpenScreen={onOpenScreen} />; }
 

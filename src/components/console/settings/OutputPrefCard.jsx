@@ -23,6 +23,31 @@ const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4
 const ICON_NAMES = { projector: "Projetor", tv: "TV", monitor: "Monitor", tablet: "Tablet", film: "Filme", megaphone: "Megafone", book: "Livro", image: "Imagem", text: "Texto", star: "Estrela", layers: "Camadas", external: "Janela" };
 const sameJson = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
 
+// What this screen shows right now (or a sample when nothing is on air),
+// exactly as the page draws it: its view, Mostrar, theme, design, scale and
+// margins. A still — previews never play (ScreenRenderer preview). Used by
+// the card below and by Telas e saídas' thumbnails (owner 2026-10-13).
+export function OutputPreview({ path, pref, design, themes = [], live, now, church }) {
+    const renderer = PREF_OUTPUTS.includes(path);
+    const isStream = path === "/StreamView";
+    const isStage = path === "/StageView";
+    const isPastor = path === "/PastorView";
+    const liveOn = live && mainLayer(live) !== "none" ? live : null;
+    const madeAt = useRef(now);
+    const sample = useMemo(() => sampleLive(madeAt.current), []);
+    const notice = useMemo(() => sampleNotice(madeAt.current), []);
+    const base = liveOn || sample;
+    const prevLive = prefViewKey(path, pref) === "/CommunicationProjection" && !base.communication ? notice : base;
+    const pastor = pastorOptions(pref);
+    const streamSample = { key: "x", text: "Grande é o Senhor\ne mui digno de louvor", ref: "Salmos 48:1 · NVI" };
+    const rendererState = renderer ? prefState(path, prevLive, pref, themes.find((t) => t.id === pref.themeId) || null) : null;
+    if (isStream) return <div className="cfg-prev cfg-prev-stream"><div className="cfg-prev-fill" style={{ containerType: "size" }}><StreamBand caption={streamSample} opts={streamOptions(pref)} scale={pref.scale} /></div></div>;
+    if (design) return <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><LayoutRenderer layout={design} live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} screenState={renderer ? rendererState : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed /></div></div>;
+    if (isStage && !pref.content) return <div className="cfg-prev"><StageScreen content={prevLive.content} nowMs={now} embed opts={pref.options} scale={pref.scale} /></div>;
+    if (isPastor && !pref.content) return <div className="cfg-prev cfg-prev-pastor"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} church={church} /></div>;
+    return <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={rendererState} now={now} preview audio={false} /></div></div>;
+}
+
 // One output's own settings (OutputPref, src/lib/outputPrefs.js), under its
 // row in Telas e saídas. Each change is saved at once; the output (and any
 // network screen showing the same page) follows it live. Palco and Pastor
@@ -82,30 +107,11 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
     const kinds = renderer ? showKindsFor(output.key, pref) : [];
     const meta = outputMeta(output.key);
     const now = c?.now || Date.now();
-    // The preview: what is on air when something is, else a sample built
-    // with real ops — the preview is the renderer itself, following every
-    // change the instant it saves. The sample is made once: rebuilt every
-    // second it would replay its fade.
+    // The preview: this screen right now (OutputPreview above).
     const liveOn = c?.live && mainLayer(c.live) !== "none" ? c.live : null;
-    const madeAt = useRef(now);
-    const sample = useMemo(() => sampleLive(madeAt.current), []);
-    const notice = useMemo(() => sampleNotice(madeAt.current), []);
-    const base = liveOn || sample;
-    const prevLive = prefViewKey(output.key, pref) === "/CommunicationProjection" && !base.communication ? notice : base;
     const stage = stageOptions(pref);
     const pastor = pastorOptions(pref);
-    const streamSample = { key: "x", text: "Grande é o Senhor\ne mui digno de louvor", ref: "Salmos 48:1 · NVI" };
-    // What a renderer output draws of the sample (its view, Mostrar, theme).
-    const rendererState = renderer ? prefState(output.key, prevLive, pref, themeGone ? null : themes.find((t) => t.id === pref.themeId) || null) : null;
-    const preview = isStream
-        ? <div className="cfg-prev cfg-prev-stream"><div className="cfg-prev-fill" style={{ containerType: "size" }}><StreamBand caption={streamSample} opts={stream} scale={pref.scale} /></div></div>
-        : design
-        ? <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><LayoutRenderer layout={design} live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} screenState={renderer ? rendererState : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed /></div></div>
-        : isStage && !pref.content
-        ? <div className="cfg-prev"><StageScreen content={prevLive.content} nowMs={now} embed opts={pref.options} scale={pref.scale} /></div>
-        : isPastor && !pref.content
-            ? <div className="cfg-prev cfg-prev-pastor"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} church={church} /></div>
-            : <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={rendererState} now={now} preview audio={false} /></div></div>;
+    const preview = <OutputPreview path={output.key} pref={pref} design={design} themes={themeGone ? [] : themes} live={c?.live} now={now} church={church} />;
 
     return (
         <div className="cfg-outprefs" role="group" aria-label={`Ajustes de ${output.label}`}>
