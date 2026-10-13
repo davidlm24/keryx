@@ -87,6 +87,9 @@ downloads it when asked and installs it on the next restart, never on its own
 and never mid-service.
 
 ```bash
+# 0. the batch's one smoke, on master with every merged PR (feature
+#    sessions don't run it; tell the user first: ~5 min of windows and a tone)
+npm run desktop:smoke
 # 1. bump "version" in package.json (and commit), and write
 #    docs/release-notes/<version>.md: what changed, in pt-BR, for the operator
 #    (docs/release-notes/README.md). It becomes the release text, and KERYX
