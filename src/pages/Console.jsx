@@ -757,22 +757,15 @@ export default function Console() {
         return <StackLead name={CARD_NAMES[id]} index={i} count={list.length} onMove={(d) => moveCard(stack, id, i + d)} handle={stackDrag[stack].handleProps(id)} />;
     };
     const stackOf = (id) => (stackCards.source.includes(id) ? "source" : null);
-    // The Setlist beside the Prévia (owner's decision 2026-10-13): a compact
-    // header with the card's old actions, then the whole rundown, scrolled to
-    // the item in hand (Rundown). CenterPanel slots it into the Prévia row.
+    // The Setlist beside the Prévia (owner's decision 2026-10-13), a panel
+    // like its neighbours since 2026-10-13's spacing pass: the card's old
+    // header (title, count, Planejar, +) and the whole rundown, scrolled to
+    // the item in hand (Rundown). PreviewBand slots it into the bottom band.
     const setlistArea = (
-        <>
-            <div className="listhead side-sl-h">
-                <span className="kx-section">Setlist</span>
-                <span className="kx-count" title={service?.title || ""}>{service ? ` · ${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : " · nenhum culto"}</span>
-                <span style={{ flex: 1 }} />
-                <IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} />
-                <IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} />
-            </div>
-            <div className="side-sl">
-                <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
-            </div>
-        </>
+        <Panel className="bb-side" title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
+            actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} /></>}>
+            <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
+        </Panel>
     );
     const camadasPanel = (
         <Panel title="Camadas" count="o que está no ar" style={sideCol("rightW", layout.rightW)}>

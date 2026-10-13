@@ -183,10 +183,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `live` column — on top the Programa (CenterPanel: the monitor or the
   Multiview, and the player **always visible**, dimmed while idle) beside
   the Camadas panel (width `rightW`, wide tier only; else the drawer);
-  below, **one full row** (`PreviewBand`): the Prévia (width `prevPct` of
-  the band, default 30, limits 18–45) with **Enviar ao ar right under it**
-  and the teacher notes, then the Setlist in the rest (Console.jsx builds
-  `setlistArea`; `.side-sl` scrolls, the list follows the item on air).
+  below, **one full row** (`PreviewBand`), **two panels like their
+  neighbours** (2026-10-13 spacing pass): the Prévia panel (caption in its
+  header like the Programa's; width `prevPct` of the band, default 30,
+  limits 18–45) with **Enviar ao ar inside it, right under the monitor**
+  and the teacher notes, then the Setlist panel in the rest (Console.jsx
+  builds `setlistArea`; the panel body scrolls, the list follows the item
+  on air). **One gutter everywhere**: `.console` overrides `--gutter` to
+  6px and the bands use `gap: 0` — the splitter IS the gap, as in
+  `.main`; don't add a second gap beside a splitter.
   There is no `side` column or `camadasH` any more (arrange.js: culto =
   lib, slides, live; an old save normalizes in silence). The old
   Próximo/Depois lines, the Setlist side card and the Biblioteca's compact

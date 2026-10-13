@@ -620,8 +620,9 @@ async function checkConsole(webContents, { live, outputs }) {
     // read the title of the Programa (".prog") or the Prévia (".bb-prev .kx-mon").
     const PROG = ".prog";
     const PREV = ".bb-prev .kx-mon";
-    // The Programa's caption is its panel's header (.kx-prog-cap); the Prévia's is on its monitor.
-    const capSel = (mon) => (mon === PROG ? ".kx-prog-cap .kx-mon-t" : `${mon} .kx-mon-t`);
+    // Both captions are panel headers (.kx-prog-cap): the Programa's in the
+    // prog panel, the Prévia's in the prev panel (2026-10-13).
+    const capSel = (mon) => (mon === PROG ? ".prog-panel .kx-prog-cap .kx-mon-t" : ".prev-panel .kx-prog-cap .kx-mon-t");
     const capTitle = (mon) => js(`(document.querySelector(${JSON.stringify(capSel(mon))}) || {}).textContent || ""`).catch(() => "");
     const waitCap = (mon, title, ms = 8000) => waitFor(async () => (await capTitle(mon)) === title, ms);
     // Real key presses. Printable keys also send the "char" event that types.
@@ -762,7 +763,7 @@ async function checkConsole(webContents, { live, outputs }) {
         }
         // Live information has its own type steps: what is prepared at 14 px
         // (next-title); the Programa's title is 16 px (live-title) once on air.
-        result.prevTitle14 = await js(`getComputedStyle(document.querySelector("${PREV} .kx-mon-t")).fontSize === "14px"`).catch(() => false);
+        result.prevTitle14 = await js(`getComputedStyle(document.querySelector(${JSON.stringify(capSel(PREV))})).fontSize === "14px"`).catch(() => false);
         result.airUntouched = !live.get().content;
         result.clickLeftNoFocus = (await active()) === "BODY";
         // A control focused from the keyboard keeps its own Enter.
@@ -1415,7 +1416,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitText(webContents, "Canto do console");
         result.dragPrev = await js(`(() => {
             const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
-            const to = [...document.querySelectorAll(".kx-mon")].find((n) => n.textContent.includes("Prévia"));
+            const to = document.querySelector(".bb-prev .kx-mon");
             if (!from || !to) return "faltou " + (from ? "alvo" : "origem");
             const dt = new DataTransfer();
             from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
@@ -2221,7 +2222,7 @@ async function checkConsole(webContents, { live, outputs }) {
             return Math.abs((p.left + p.right) / 2 - innerWidth / 2) <= 1 && p.left >= 0 && p.right <= innerWidth;
         })()`);
         await press("Enter");
-        result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'KERYX') && [...document.querySelectorAll('.bb-prev .kx-mon-cap, .bb-prev .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
+        result.paletteRefHere = await waitFor(() => js("!document.querySelector('.palette') && [...document.querySelectorAll('.envtabs button')].some((b) => b.classList.contains('is-on') && b.textContent === 'KERYX') && [...document.querySelectorAll('.bb-prev .kx-prog-cap, .bb-prev .kx-mon')].some((n) => n.textContent.includes('João 3:16'))"), 6000)
             && JSON.stringify(live.get().content || null) === airBefore;
         await press("/");
         await waitFor(() => js("Boolean(document.querySelector('.palette input'))"));

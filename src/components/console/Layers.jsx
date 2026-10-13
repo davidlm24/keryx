@@ -187,20 +187,14 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
                 {sel === "bg" && (<>
                     <span className="k">Fundo</span>
                     <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                        <span style={{ flex: 1, color: "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? cur.background.title || bgLabel(cur.background, GEN_NAMES) : "nenhum"}</span>
+                        <span style={{ flex: "0 1 auto", color: "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? cur.background.title || bgLabel(cur.background, GEN_NAMES) : "nenhum"}</span>
+                        {/* The picture's own settings (dim, blur, fit, position) ride with it;
+                            the library edits them — one window, one button (owner 2026-10-13). */}
+                        <span className="kx-meta" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? [cur.background.dim != null ? `escurecer ${Math.round(cur.background.dim * 100)}%` : "", cur.background.blur ? "desfoque" : "", cur.background.fit === "contain" ? "conter" : ""].filter(Boolean).join(" · ") : ""}</span>
                         {cur?.background?.kind === "generator" && <Btn small disabled={disabled} onClick={() => openLibrary(true)} title="Abre o fundo gerado grande, numa janela; cada ajuste vai às telas na hora">Editar fundo…</Btn>}
-                        <Btn small disabled={disabled} onClick={() => openLibrary(false)} title="Temas, imagens, vídeos, fundos gerados e cores">Biblioteca…</Btn>
+                        <Btn small disabled={disabled} onClick={() => openLibrary(false)} title="Temas, imagens, vídeos, fundos gerados e cores · abre no fundo no ar, com os ajustes dele (escurecer, desfoque, ajuste, posição)">Biblioteca…</Btn>
                     </span>
                     {disabled && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Travado: nada que vai ao ar troca o fundo, e o fundo próprio das músicas não aparece.</span>}
-                    {/* Ajuste, posição, escurecer e desfoque are the picture's own (the
-                        library; the Fundo on air follows them), and a generated
-                        one is edited big in Editar fundo… — one place each. */}
-                    {cur?.background && (cur.background.kind === "image" || cur.background.kind === "video") && (
-                        <span style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 6 }}>
-                            <Btn small disabled={disabled} onClick={() => openLibrary(false)} title="Ajuste, posição, escurecer e desfoque deste fundo, guardados com ele (valem sempre que ele for ao ar)">Ajustes deste fundo…</Btn>
-                            <span className="kx-meta">{[cur.background.dim != null ? `escurecer ${Math.round(cur.background.dim * 100)}%` : "", cur.background.blur ? "desfoque" : "", cur.background.fit === "contain" ? "conter" : ""].filter(Boolean).join(" · ")}</span>
-                        </span>
-                    )}
                     {/* The themes as presets (owner's decision 2026-10-13):
                         text look + background in one click, Holyrics-style. */}
                     <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 6 }}>Temas <span className="kx-count">· o culto segue o escolhido</span></span>
