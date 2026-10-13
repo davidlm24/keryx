@@ -16,6 +16,21 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   cronômetro, usuário) — the church is Brazilian; do not use pt-PT forms
   (ecrã, guardar, ficheiro, eliminar, telemóvel). Do not introduce English UI
   copy. Code identifiers and comments are English.
+- **Copy rules (owner 2026-10-13).** One word per concept, everywhere:
+  Visual do culto (fundo+temas) / Fundo do culto (só o fundo) / Fundo padrão
+  (o da igreja); "O mesmo das músicas" (herdar) e "Estilo de fábrica" (sem
+  tema); Excluir = apaga (sempre via `useConfirm`/ConfirmDialog; the
+  Editor window alone keeps the two-click, it has no provider), Tirar =
+  sai do lugar, Remover só em "Remover saída"; Travar/Destravar; Tela =
+  monitor físico e telas na rede, Saída = janela/página (aberta/fechada;
+  rede = conectada/desconectada); Pôr na prévia / Enviar ao ar; Fixar no
+  console; Exemplo (nunca "amostra"); posições Alto/Meio/Baixo e
+  Esq./Centro/Dir.; "Do computador…"; Aviso rápido; Atalhos; "Instalar e
+  reiniciar"; Ver › "Editar disposição" (o arranjo do console — "layout" é
+  das telas). Heading hierarchy: the page title is the Panel's header; a
+  listhead is a smaller sub-title (its "· hint" never in caps, console.css)
+  that NEVER repeats the page title, only where a section has 2+ groups;
+  hints must not restate the row's own options.
 - **`src/components/ui/` is generated shadcn/ui.** It is excluded from lint and
   from editor type checking. Don't hand-edit it; add components with the
   shadcn CLI (`components.json` is configured) or wrap them instead.

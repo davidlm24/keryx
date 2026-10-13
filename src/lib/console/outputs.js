@@ -70,12 +70,12 @@ const hhmm = (t) => {
 // own words for what is on air ("Canto do console · 2/6", "Tela preta", …).
 const SHOWS = {
     "/Projection": (air) => air,
-    "/LyricProjection": (air) => `Letras · ${air}`,
-    "/StageView": () => "Palco · atual, próximo e relógio",
+    "/LyricProjection": (air) => air,
+    "/StageView": () => "atual, próximo e relógio",
     "/VideoProjection": () => "Só os vídeos enviados",
     "/CommunicationProjection": () => "Avisos e contagens",
-    "/PastorView": (air) => `Pastor · ${air}`,
-    "/StreamView": () => "Transmissão · só o texto, em legenda",
+    "/PastorView": (air) => air,
+    "/StreamView": () => "só o texto, em legenda",
 };
 export const showsOn = (screen, air) => (SHOWS[screen] || ((a) => a))(air || "nada");
 
@@ -108,8 +108,8 @@ export function rowStatus(row, { locked = false } = {}) {
         if (row.state === "disconnected") return { switchOn: null, text: `Desconectada às ${hhmm(row.droppedAt)}`, tone: "warn", hint: "A tela volta sozinha quando a rede voltar." };
         return { switchOn: null, text: "Conectada", tone: locked ? "rh" : "ok", hint: null };
     }
-    if (row.state === "reconnecting") return { switchOn: true, text: "Monitor desligado", tone: "warn", hint: "mostrando numa janela até ele ligar" };
-    if (row.state === "connected") return { switchOn: true, text: locked ? "Conectada · travada" : "Conectada", tone: locked ? "rh" : "ok", hint: null };
+    if (row.state === "reconnecting") return { switchOn: true, text: "Tela desligada", tone: "warn", hint: "mostrando numa janela até ela ligar" };
+    if (row.state === "connected") return { switchOn: true, text: locked ? "Aberta · travada" : "Aberta", tone: locked ? "rh" : "ok", hint: null };
     if (row.state === "closed") return { switchOn: false, text: "Fechada", tone: "off", hint: `caiu às ${hhmm(row.droppedAt)}` };
     return { switchOn: false, text: "Fechada", tone: "off", hint: null };
 }
@@ -135,7 +135,7 @@ export function outputHealth({ outputs = [], seen = {}, locked = false, air = ""
             problem: state === "reconnecting" || state === "closed",
             droppedAt: mem?.droppedAt || null,
             shows: state === "connected" || state === "reconnecting" ? showsOn(o.key, air) : null,
-            meta: state === "reconnecting" ? "O monitor escolhido não está ligado · mostrando numa janela"
+            meta: state === "reconnecting" ? "A tela escolhida está desligada · abre numa janela até ligar"
                 : o.placement?.mode === "fullscreen" ? `Tela ${o.placement.displayId ?? ""}`.trim() : "Janela",
         });
     }

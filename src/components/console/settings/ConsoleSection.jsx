@@ -42,14 +42,14 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                     <Seg small label="Densidade" value={densityOf(layout)} onChange={(v) => setLayout({ ...layout, density: v })} options={DENSITIES} />
                     <span className="kx-meta">a altura das linhas das listas</span>
                 </FormRow>
-                <FormRow k="Layout">
-                    <Btn small onClick={restoreLayout}>Restaurar layout</Btn>
+                <FormRow k="Disposição">
+                    <Btn small onClick={restoreLayout}>Restaurar disposição</Btn>
                     <span className="kx-meta">volta os módulos, a densidade, os tamanhos e a ordem das colunas ao padrão</span>
                 </FormRow>
                 <FormRow k="Ao fechar">
                     <Switch on={machine ? machine.confirmClose : true} disabled={!system || !machine} label="Perguntar antes de fechar o KERYX"
                         onChange={(on) => change("machineSet", { confirmClose: on }, on ? "O KERYX pergunta antes de fechar." : "Fechar o KERYX não pergunta mais.")} />
-                    <span className="kx-meta">com algo no ar, o X do console pergunta antes de fechar (fechar tira tudo das telas)</span>
+                    <span className="kx-meta">fechar tira tudo das telas</span>
                 </FormRow>
                 <FormRow k="Iniciar com o Windows">
                     <Switch on={Boolean(login?.on)} disabled={!login?.available} label="Abrir o KERYX quando o Windows iniciar"
@@ -59,7 +59,7 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                     </span>
                 </FormRow>
             </div>
-            <CfgKey k="Atalhos" className="listhead"><span className="kx-section">Atalhos do teclado <span className="kx-count">· também no ? do console</span></span></CfgKey>
+            <CfgKey k="Atalhos" className="listhead"><span className="kx-section">Atalhos <span className="kx-count">· também no ? do console</span></span></CfgKey>
             <div className="cfg-shortcuts"><ShortcutList /></div>
         </>
     );

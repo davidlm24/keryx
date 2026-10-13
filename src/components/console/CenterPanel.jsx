@@ -168,7 +168,7 @@ export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, setli
     const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
     const railVars = prefVars(railPref);
     // The caption lives in the panel's header, like the Programa's.
-    const capTitle = dropOn ? "solte para preparar" : prev ? prev.title : "";
+    const capTitle = dropOn ? "Solte para preparar" : prev ? prev.title : "";
     const capPos = !dropOn && prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "";
     const prevCap = (
         <span className={`kx-prog-cap ${prev ? "is-prevcap" : "is-idle"}`}>
@@ -190,8 +190,8 @@ export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, setli
                 <Monitor className={`${dropOn ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} noCap live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu }}>
                     {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                     {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
-                    {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Ajustes da saída › Mostrar)</div>}
-                    {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"} · as telas não mudam</div>}
+                    {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Telas e saídas › Mostrar)</div>}
+                    {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"}</div>}
                     {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
                 </Monitor>
                 <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={sendTip(locked)}>

@@ -55,7 +55,7 @@ export default function AparenciaSection({ c }) {
             <div className="frm">
                 <FormRow k="Transição entre slides">
                     <Seg small value={kind} onChange={(v) => save({ transition_type: v }, `Transição padrão: ${TRANSITIONS.find(([k]) => k === v)?.[1]}.`)} options={TRANSITIONS} />
-                    <span className="kx-meta">vale para todo item que for ao ar; nas Camadas cada item pode escolher a sua</span>
+                    <span className="kx-meta">cada item pode escolher a sua em Camadas</span>
                 </FormRow>
                 <FormRow k="Duração">
                     <input type="range" className="ap-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={ms} disabled={kind === "cut"}
@@ -71,17 +71,15 @@ export default function AparenciaSection({ c }) {
                     <BgChip title="Fundo padrão" empty="nenhum · as telas mostram o logo" value={church}
                         noneLabel={church ? "Sem fundo padrão (logo da igreja)" : undefined}
                         onPick={(spec) => save({ default_background: spec || null, standby_background: spec?.kind === "image" ? spec.value : "" }, spec ? "Fundo padrão salvo." : "Sem fundo padrão.")} />
-                    <span className="kx-meta">na camada Fundo quando nada está no ar (ao abrir o KERYX, ao escolher o culto e a cada Esc), se o culto não tiver o seu (Visual do culto)</span>
+                    <span className="kx-meta">o fundo da igreja: aparece quando nada está no ar, se o culto não tiver o seu</span>
                 </FormRow>
                 <FormRow k="Fundos">
-                    <Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir biblioteca</Btn>
-                    <span className="kx-meta">imagens, vídeos, gerados e cores: nome, categoria, escurecer, desfoque, favoritos e ocultos; e enviar do computador</span>
+                    <Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca…</Btn>
                 </FormRow>
                 <IdleBlock c={c} />
-                <FormRow k="Títulos nas telas">
+                <FormRow k="Títulos">
                     <span className="cfg-launch"><Switch on={prefs.show_item_title} onChange={(on) => save({ show_item_title: on }, on ? "O título do item aparece nas telas." : "Sem o título do item nas telas.")} label="Mostrar o título do item nas telas" /><span className="kx-meta">Título do item nas telas</span></span>
-                    <span className="cfg-launch"><Switch on={prefs.youtube_hide_title} onChange={(on) => save({ youtube_hide_title: on }, on ? "A faixa de título do YouTube fica escondida." : "O YouTube volta a mostrar o título sobre o vídeo.")} label="Esconder o título e o canal que o YouTube põe sobre o vídeo" /><span className="kx-meta">Esconder o título do YouTube</span></span>
-                    <span className="kx-meta">o nome da música, do texto ou da imagem por cima do que vai ao ar (a referência da Bíblia continua); e o nome do vídeo e do canal que o YouTube mostra no começo e na pausa (o vídeo não é cortado)</span>
+                    <span className="cfg-launch"><Switch on={prefs.youtube_hide_title} onChange={(on) => save({ youtube_hide_title: on }, on ? "A faixa de título do YouTube fica escondida." : "O YouTube volta a mostrar o título sobre o vídeo.")} label="Esconder o título que o YouTube põe sobre o vídeo" /><span className="kx-meta">Esconder o título do YouTube</span></span>
                 </FormRow>
             </div>
         </>

@@ -116,9 +116,9 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                 <select className="cfg-select" value={layoutGone ? "" : pref.layoutId} onChange={(e) => save({ layout_id: e.target.value })} aria-label={`Layout de ${output.label}`}>
                     {layoutChoices(layoutRows).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
-                {layout && !layout.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id, { for: output.key })} title="Abre o layout no canvas para mover e redimensionar cada elemento"><Icon name="edit" />Editar no canvas</Btn>}
-                {layout?.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id, { for: output.key })} title="Um modelo não se edita: abre uma cópia sua no canvas; salvar já a põe nesta saída"><Icon name="copy" />Duplicar e editar no canvas</Btn>}
-                <Btn small onClick={() => onOpenLayout?.("new", { for: output.key })} title="Desenhar uma tela do zero no canvas; salvar já a põe nesta saída"><Icon name="plus" />Novo layout no canvas</Btn>
+                {layout && !layout.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id, { for: output.key })} title="Abre o layout no canvas para mover e redimensionar cada elemento"><Icon name="edit" />Editar</Btn>}
+                {layout?.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id, { for: output.key })} title="Um modelo não se edita: abre uma cópia sua no canvas; salvar já a põe nesta saída"><Icon name="copy" />Duplicar e editar</Btn>}
+                <Btn small onClick={() => onOpenLayout?.("new", { for: output.key })} title="Desenhar uma tela do zero no canvas; salvar já a põe nesta saída"><Icon name="plus" />Novo layout</Btn>
                 <span className="kx-meta">{layoutGone ? "o layout escolhido foi excluído: a tela está no padrão" : renderer ? "o desenho da tela: a projeção inteira ou numa parte, o timer num canto…" : "o desenho da tela: onde ficam o relógio, o timer, a letra, a próxima…"}</span>
             </FormRow>}
             <FormRow k="Nome">
@@ -137,7 +137,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
             </FormRow>
             {!isStream && <FormRow k="Conteúdo">
                 <select className="cfg-select" value={pref.content} onChange={(e) => save({ content: e.target.value })} aria-label={`Conteúdo de ${output.label}`}>
-                    {PREF_CONTENTS.map((o) => <option key={o.id} value={o.id}>{o.id === "" && (isStage || isPastor) ? "Padrão da página" : o.name}</option>)}
+                    {PREF_CONTENTS.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
                 {(isStage || isPastor) && <span className="kx-meta">outro conteúdo troca o layout próprio pela tela escolhida</span>}
             </FormRow>}
@@ -158,9 +158,9 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                     <span className="kx-meta">o que fica de fora deixa esta saída no que está por baixo (ou no fundo de espera); a música continua tocando</span>
                 </FormRow>
             )}
-            <FormRow k="Escala do texto">
+            {!isStream && <FormRow k="Escala do texto">
                 <Seg small value={String(Math.round(pref.scale * 100))} options={SCALES} onChange={(v) => save({ text_scale: Number(v) })} />
-            </FormRow>
+            </FormRow>}
             {isStage && !pref.content && !layout && <>
             <FormRow k="Cifra">
                 <Switch on={stage.chords} onChange={(on) => saveOpt("chords", on)} label="Cifra no Palco" />
@@ -187,11 +187,11 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                 <span className="kx-meta">automático: menor quando o texto é longo</span>
             </FormRow>
             <FormRow k="Posição">
-                <Seg small label="Posição da faixa" value={stream.position} options={[["bottom", "Embaixo"], ["middle", "No meio"], ["top", "Em cima"]]} onChange={(v) => saveOpt("position", v)} />
+                <Seg small label="Posição da faixa" value={stream.position} options={[["bottom", "Baixo"], ["middle", "Meio"], ["top", "Alto"]]} onChange={(v) => saveOpt("position", v)} />
             </FormRow>
             <FormRow k="Referência na legenda">
                 <Switch on={stream.show_ref} onChange={(on) => saveOpt("show_ref", on)} label="Mostrar a referência na legenda" />
-                <span className="kx-meta">João 3:16 embaixo do versículo</span>
+                <span className="kx-meta">João 3:16 embaixo do texto</span>
             </FormRow>
             </>}
             {isPastor && !pref.content && !layout && <>
@@ -215,21 +215,20 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
             </FormRow>
             <FormRow k="Tema">
                 <select className="cfg-select" value={pref.themeId} onChange={(e) => save({ theme_id: e.target.value })} aria-label={`Tema de ${output.label}`}>
-                    <option value="">Herdar da projeção</option>
+                    <option value="">O mesmo da Projeção</option>
                     {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     {themeGone && <option value={pref.themeId} disabled>(tema excluído)</option>}
                 </select>
-                {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor de temas e layouts"><Icon name="edit" />Editar tema</Btn>}
+                {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor, na janela dele"><Icon name="edit" />Editar tema…</Btn>}
             </FormRow>
             </>}
             <FormRow k="">
                 <Btn small kind={confirmReset ? "air" : ""} disabled={isDefaultPref(pref)} onClick={reset}>{confirmReset ? "Restaurar mesmo" : "Restaurar padrão"}</Btn>
-                <span className="kx-meta">vale também para as telas na rede que mostram esta página</span>
             </FormRow>
         </div>
         <div className="cfg-prevcol">
             {preview}
-            <span className="kx-meta">{liveOn ? "No ar agora" : "Exemplo"} · a prévia segue cada ajuste</span>
+            <span className="kx-meta">{liveOn ? "No ar agora" : "Exemplo"}</span>
         </div>
         </div>
     );

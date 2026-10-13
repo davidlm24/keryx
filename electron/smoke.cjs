@@ -868,7 +868,7 @@ async function checkConsole(webContents, { live, outputs }) {
             const colOrder = () => js(`[...document.querySelectorAll(".console .main > [data-col]")].map((n) => n.dataset.col).join(",")`);
             const orderBefore = await colOrder();
             await click(".topbar .tb-ver");
-            await click(".pop .kx-menu-item", "Editar layout");
+            await click(".pop .kx-menu-item", "Editar disposição");
             result.editBanner = await waitFor(() => js("Boolean(document.querySelector('.arr-banner')) && document.querySelectorAll('.console .main > [data-col] > .arr-bar').length === document.querySelectorAll('.console .main > [data-col]').length"));
             await js(`(() => { const b = document.querySelector('[data-col="lib"] .arr-bar button[title^="Mover Biblioteca para a direita"]'); if (b) b.click(); return Boolean(b); })()`);
             const orderMoved = await colOrder();
@@ -880,7 +880,7 @@ async function checkConsole(webContents, { live, outputs }) {
             await press("Escape");
             result.editEsc = await waitFor(() => js("!document.querySelector('.arr-banner')")) && JSON.stringify(live.get().content || null) === airBefore;
             await click(".topbar .tb-ver");
-            await click(".pop .kx-menu-item", "Editar layout");
+            await click(".pop .kx-menu-item", "Editar disposição");
             await click(".arr-banner button", "Restaurar posições");
             await click(".arr-banner button", "Concluir");
             result.editRestore = (await colOrder()) === orderBefore;
@@ -1798,7 +1798,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // the backgrounds (Fechar, no Usar), over Configurações.
         await section("Aparência");
         result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .cfg-tabs') && !document.querySelector('.console .cfg .fg')"), 4000);
-        await waitFor(() => press2("Abrir biblioteca"), 4000);
+        await waitFor(() => press2("Abrir a biblioteca…"), 4000);
         result.fundosInTemas = await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog')) && [...document.querySelectorAll('.lib-foot button')].some((b) => b.textContent === 'Fechar')"), 4000);
         await js("(() => { const b = [...document.querySelectorAll('.lib-foot button')].find((x) => x.textContent === 'Fechar'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 3000);
@@ -1887,7 +1887,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-layer", "Fundo");
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "keryx-media://bundled/backgrounds/1557672172-298e090bd0f1.webp" }])`);
         await sleep(600);
-        await js("(() => { const row = [...document.querySelectorAll('.kx-layer')].find((n) => n.textContent.includes('Fundo')); const b = row && row.querySelector('button[aria-label=\"Bloquear\"]'); if (b) b.click(); return Boolean(b); })()");
+        await js("(() => { const row = [...document.querySelectorAll('.kx-layer')].find((n) => n.textContent.includes('Fundo')); const b = row && row.querySelector('button[aria-label=\"Travar\"]'); if (b) b.click(); return Boolean(b); })()");
         result.fundoLocked = await waitFor(() => (live.get().lockedLayers || []).includes("background"), 4000);
         await dblclick(".kx-row", "Canto do console");
         await sleep(800);
@@ -2057,7 +2057,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await thumb("Foto um");
         await thumb("Foto dois", ["control"]);
         result.mvSelected = await waitFor(() => js("document.querySelectorAll('.mv-th.is-sel').length === 2"));
-        await click(".mv-acts button", "Tocar em sequência");
+        await click(".mv-acts button", "Tocar todos");
         result.mvSequence = await waitFor(() => (live.get().media?.playlist || []).length === 2);
         live.call("clear");
         await click(".mv-cats button", "Todas");

@@ -218,7 +218,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             <span className="k">Entrelinhas</span>
                             <span className="nv-inline">
                                 <Seg small value={draft.line_height || ""} options={LINES} onChange={(v) => set({ line_height: v })} />
-                                <Switch on={draft.text_case === "upper"} onChange={(on) => set({ text_case: on ? "upper" : "" })} label="Maiúsculas" /><span className="kx-meta">maiúsculas</span>
+                                <Switch on={draft.text_case === "upper"} onChange={(on) => set({ text_case: on ? "upper" : "" })} label="Maiúsculas" /><span className="kx-meta">Maiúsculas</span>
                             </span>
                             <span className="k">Caixa do texto</span>
                             <span className="nv-inline">
@@ -227,7 +227,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             </span>
                         </div>
                         {/* Where the text sits: the same fields the canvas box writes. */}
-                        <div className="listhead"><span className="kx-section">Texto na tela <span className="kx-count">· arraste a caixa na amostra</span></span></div>
+                        <div className="listhead"><span className="kx-section">Texto na tela</span></div>
                         <div className="frm nv-frm">
                             <span className="k">Alinhamento</span>
                             <Seg small value={draft.text_align || ""} options={H_ALIGNS} onChange={(v) => set({ text_align: v })} />
@@ -274,7 +274,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             one transaction, never two defaults. */}
                         {Boolean(savedId.current) && (defaultTheme(themes)?.id === savedId.current
                             ? <span className="kx-meta" style={{ marginRight: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="star" size={12} />tema padrão</span>
-                            : <Btn style={{ marginRight: "auto" }} onClick={async () => { try { await keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, savedId.current)); say(`${draft.name || "O tema"} é o tema padrão das músicas.`); } catch (err) { say(err?.message || "Não foi possível."); } }}><Icon name="star" />Tornar padrão</Btn>)}
+                            : <Btn style={{ marginRight: "auto" }} onClick={async () => { try { await keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, savedId.current)); say(`${draft.name || "O tema"} é o tema padrão.`); } catch (err) { say(err?.message || "Não foi possível."); } }}><Icon name="star" />Tornar padrão</Btn>)}
                         <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
                         <Btn kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar tema</Btn>
                     </div>
@@ -282,9 +282,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
             </div>
             <div className="kx-gap" />
             <div className="col center">
-                <Panel title={<>Tela <span className="kx-count">· exemplo · 16:9</span></>} actions={<>
+                <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={<>
                     {/* The sample: a song, a passage or a text, with its slides. */}
-                    <Seg small label="Amostra" value={sample} options={Object.entries(SAMPLES).map(([k, s]) => [k, s.label])} onChange={(v) => { setSample(v); setSlide(0); }} />
+                    <Seg small label="Exemplo" value={sample} options={Object.entries(SAMPLES).map(([k, s]) => [k, s.label])} onChange={(v) => { setSample(v); setSlide(0); }} />
                     {slides > 1 && <>
                         <IconBtn name="chevron-left" small title="Slide anterior da amostra" disabled={slide === 0} onClick={() => setSlide((n) => Math.max(0, n - 1))} />
                         <span className="kx-meta">{slide + 1}/{slides}</span>
@@ -299,7 +299,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                                 {dragging && [33.3, 66.7].map((at) => <React.Fragment key={at}><i className="le-guide x" style={{ left: `${at}%` }} /><i className="le-guide y" style={{ top: `${at}%` }} /></React.Fragment>)}
                                 {rect && (
                                     <div className="le-hit is-sel tb-box" style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.w}%`, height: `${rect.h}%` }}
-                                        title="A caixa da letra: arraste; as alças laterais mudam a largura" onPointerDown={(e) => startDrag(e)}>
+                                        title="A caixa da letra" onPointerDown={(e) => startDrag(e)}>
                                         {!band && <><i className="le-h e" onPointerDown={(e) => startDrag(e, "e")} /><i className="le-h w" onPointerDown={(e) => startDrag(e, "w")} /></>}
                                     </div>
                                 )}

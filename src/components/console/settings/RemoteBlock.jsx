@@ -51,7 +51,7 @@ export default function RemoteBlock({ c, network, info, setInfo, url }) {
 
     return (
         <>
-            <CfgKey k="Controle remoto" className="listhead"><span className="kx-section">Controle remoto <span className="kx-count">· um celular conduz o culto pelo Wi-Fi da igreja</span></span></CfgKey>
+            <CfgKey k="Controle remoto" className="listhead"><span className="kx-section">Controle remoto</span></CfgKey>
             <div className="frm">
                 <FormRow k="Celular">
                     <Switch on={remote.enabled} disabled={busy} label="Ligar o controle remoto"
@@ -65,7 +65,7 @@ export default function RemoteBlock({ c, network, info, setInfo, url }) {
                         <FormRow k="Código">
                             {code ? <span className="kx-countdown cfg-pin">{code.split("").join(" ")}</span> : <span className="kx-meta">6 números, pedidos uma vez em cada celular · diferente do PIN das telas</span>}
                             <Btn disabled={busy} on={Boolean(code)} onClick={reveal}>{code ? "Ocultar" : "Mostrar código"}</Btn>
-                            <Btn kind={confirm === "code" ? "air" : ""} disabled={busy} onClick={() => twice("code", "Clique de novo em Novo código: os celulares conectados vão pedir o código novo.", async () => { await run("newRemoteCode", undefined, "Código novo. Os celulares precisam digitá-lo de novo."); setCode(""); })}>{confirm === "code" ? "Gerar mesmo" : "Novo código"}</Btn>
+                            <Btn kind={confirm === "code" ? "air" : ""} disabled={busy} onClick={() => twice("code", "Clique de novo em Gerar novo: os celulares conectados vão pedir o código novo.", async () => { await run("newRemoteCode", undefined, "Código novo. Os celulares precisam digitá-lo de novo."); setCode(""); })}>{confirm === "code" ? "Gerar mesmo" : "Gerar novo"}</Btn>
                         </FormRow>
                         <FormRow k="Conectados">
                             <Btn kind={confirm === "drop" ? "air" : ""} disabled={busy || !remotes.length} onClick={() => twice("drop", "Clique de novo para desconectar todos os celulares.", () => run("disconnectRemotes", undefined, "Celulares desconectados. Eles precisam digitar o código de novo."))}>
@@ -80,13 +80,13 @@ export default function RemoteBlock({ c, network, info, setInfo, url }) {
                 <div className="cfg-qr">
                     <div className="cfg-qr-box"><QRCode value={address} size={132} /></div>
                     <div className="cfg-qr-list">
-                        <span className="kx-meta">No celular, conectado ao mesmo Wi-Fi, abra:</span>
+                        <span className="kx-meta">No celular, abra:</span>
                         <div className="cfg-url"><code className="is-main">{address}</code><Icon name="tablet" /></div>
                         <span className="kx-meta">O celular passa slides, liga Tela preta e Logo, envia itens da setlist e versículos, e encerra a projeção (segurando o botão). Com as telas travadas, nada novo vai ao ar. Cada comando aparece aqui no console.</span>
                     </div>
                 </div>
             )}
-            {remote.enabled && !info.running && <div className="listhead"><span className="kx-warn">Ligue as Telas na rede (acima) para o celular encontrar o KERYX.</span></div>}
+            {remote.enabled && !info.running && <div className="listhead"><span className="kx-warn">Ligue as telas na rede (acima) para o celular encontrar o KERYX.</span></div>}
         </>
     );
 }

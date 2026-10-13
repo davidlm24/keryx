@@ -37,7 +37,7 @@ function KindThemes({ c, themes, setDefault }) {
     };
     return (
         <>
-            <CfgKey k="Temas padrão" className="listhead"><span className="kx-section">Temas padrão <span className="kx-count">· o tema com que cada tipo de conteúdo sem estilo próprio vai ao ar · o que já está no ar não muda</span></span></CfgKey>
+            <CfgKey k="Temas padrão" className="listhead"><span className="kx-section">Temas padrão <span className="kx-count">· um por tipo de conteúdo</span></span></CfgKey>
             <div className="tmg tmg-kinds">
                 {THEME_KINDS.map(([kind, name]) => {
                     const field = KIND_FIELD[kind];
@@ -47,9 +47,9 @@ function KindThemes({ c, themes, setDefault }) {
                     return (
                         <button type="button" key={kind} className="kx-t fg-tile tmg-tile" onClick={() => choose(kind, name)} aria-label={`Tema padrão de ${name}: ${what}`} title={`${name} · clique para escolher o tema`}>
                             <span className="tmg-kind">{name}</span>
-                            <span className="fg-img">{t ? <ThemeThumb theme={t} now={c.now} /> : <span className="tmg-plus">Estilo de fábrica</span>}</span>
+                            <span className="fg-img">{t ? <ThemeThumb theme={t} now={c.now} /> : <span className="tmg-plus" />}</span>
                             <span className="fg-name">{what}</span>
-                            <span className="kx-meta tmg-meta">{same ? "o mesmo das músicas" : kind === "lyrics" ? "o tema padrão" : "próprio"}</span>
+                            <span className="kx-meta tmg-meta">{same ? "o mesmo das músicas" : kind === "lyrics" ? "" : "próprio"}</span>
                         </button>
                     );
                 })}
@@ -80,27 +80,27 @@ export default function TemasSection({ c }) {
         const rows = defaultChanges(themes, id);
         if (!rows.length) return;
         const t = themes.find((x) => x.id === id);
-        run(keryx.entities.ProjectionTheme.bulkUpdate(rows), t ? `${t.name} é o tema padrão: músicas e passagens sem estilo próprio vão ao ar com ele.` : "Sem tema padrão: vale o estilo de fábrica.");
+        run(keryx.entities.ProjectionTheme.bulkUpdate(rows), t ? `${t.name} é o tema padrão.` : "Sem tema padrão: vale o estilo de fábrica.");
     };
     const makeDefault = (t) => setDefault(t.id);
     // Excluir asks first (ConfirmDialog.jsx), as in the console's menus.
     const confirm = useConfirm();
     const remove = async (t) => {
-        if (!(await confirm(deleteQuestion("o tema", t.name, "Músicas, cultos e saídas que usam este tema voltam ao padrão.")))) return;
+        if (!(await confirm(deleteQuestion("o tema", t.name, "Quem usa este tema volta ao padrão.")))) return;
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
     const menu = useContextMenu();
     const themeMenu = (e, t) => menu(e, { title: t.name, items: [
         { label: "Editar", icon: "edit", onSelect: () => edit(t.id) },
         { label: t.is_default ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: Boolean(t.is_default), onSelect: () => makeDefault(t) },
-        { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${t.name} saiu da camada Fundo.` : `${t.name} fixado na camada Fundo.`) },
+        { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${t.name} saiu do console.` : `${t.name} fixado no console.`) },
         { label: "Excluir…", icon: "trash", onSelect: () => remove(t) },
     ] });
 
     return (
         <>
             <KindThemes c={c} themes={themes} setDefault={setDefault} />
-            <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· clique para editar (abre o Editor, na janela dele) · botão direito: mais opções</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => edit("new")}>Novo tema…</Btn></CfgKey>
+            <CfgKey k="Todos os temas" className="listhead"><span className="kx-section">Todos os temas</span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => edit("new")}>Novo tema…</Btn></CfgKey>
             {/* The themes as small screens, as in the library (owner's request
                 2026-10-13); a click edits in the Editor de temas e layouts. */}
             <div className="tmg" role="list" aria-label="Temas">
@@ -109,14 +109,14 @@ export default function TemasSection({ c }) {
                         title={`${t.name} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                         <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
                         <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{t.name}</span>
-                        <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G", t.is_default ? "padrão" : ""].filter(Boolean).join(" · ")}</span>
+                        <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G"].filter(Boolean).join(" · ")}</span>
                     </button>
                 ))}
                 <button type="button" className="kx-t fg-tile tmg-tile tmg-new" onClick={() => edit("new")} aria-label="Novo tema">
                     <span className="fg-img"><span className="tmg-plus"><Icon name="plus" />Novo tema</span></span>
                 </button>
             </div>
-            {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Crie um em "Novo tema…" (abre o Editor de temas e layouts), ou ajuste o texto em Camadas e use "Salvar como novo".</Empty>}
+            {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Use "Novo tema…", ou ajuste o texto em Camadas e salve como novo.</Empty>}
         </>
     );
 }

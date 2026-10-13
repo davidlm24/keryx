@@ -14,7 +14,7 @@ export default function BibliasSection({ c }) {
     const [installed, refresh, , readError] = usePoll(() => bible?.status(), 0);
     const [busy, setBusy] = useState("");
     const def = usePrefs().bible_version;
-    if (!bible) return <Empty icon="book" title="Bíblias instaladas">{desktopOnly}</Empty>;
+    if (!bible) return <Empty icon="book" title="Só no aplicativo">{desktopOnly}</Empty>;
     if (!installed) return <Reading what="as Bíblias" error={readError} />;
 
     const run = async (version, fromFile) => {
@@ -54,7 +54,6 @@ export default function BibliasSection({ c }) {
                             {def !== v.id && <Btn onClick={() => setDefault(v.id)}>Tornar padrão</Btn>}
                             {v.install && <Btn kind={count ? "" : "outline"} disabled={Boolean(busy)} onClick={() => run(v.id, false)}>{busy === v.id ? "Baixando…" : count ? "Reinstalar" : "Baixar · 4 MB"}</Btn>}
                             {v.install && <Btn disabled={Boolean(busy)} onClick={() => run(v.id, true)}>Do arquivo…</Btn>}
-                            {count ? <span className="kx-prev" style={{ fontSize: 11 }}>Instalada</span> : null}
                         </span>
                     </div>
                 );

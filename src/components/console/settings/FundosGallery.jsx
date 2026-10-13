@@ -37,9 +37,9 @@ export function useSaveBackgroundPref(say) {
     }, [say]);
 }
 
-// One background's settings and a sample. Without onStandby (the library
-// window) the standby wallpaper button is left out.
-export function FundoDetail({ b, save, now, standby, onStandby, sample = true }) {
+// One background's settings and a sample. (The library
+// window.)
+export function FundoDetail({ b, save, now, sample = true }) {
     const [name, setName] = useState(b.pref?.name || "");
     const [category, setCategory] = useState(b.pref?.category || "");
     const [dim, setDim] = useState(b.dim === null ? null : Math.round(b.dim * 100));
@@ -66,7 +66,6 @@ export function FundoDetail({ b, save, now, standby, onStandby, sample = true })
     const savedDim = b.dim === null ? null : Math.round(b.dim * 100);
     const commitDim = () => { if (dim !== savedDim) keep({ dim_pct: dim }); };
     const commitBlur = () => { if ((blur ?? null) !== (b.blur ?? null)) keep({ blur_px: blur }); };
-    const isStandby = standby && standby === b.url;
 
     return (
         <div className="fg-detail frm">
@@ -101,10 +100,6 @@ export function FundoDetail({ b, save, now, standby, onStandby, sample = true })
                 <Seg small value={b.hidden ? "hidden" : b.favorite ? "fav" : "shown"} options={[["fav", "Favorito"], ["shown", "Aparece"], ["hidden", "Oculto"]]}
                     onChange={(v) => keep({ favorite: v === "fav", hidden: v === "hidden" })} />
             </FormRow>
-            {onStandby && <FormRow k="">
-                <Btn small on={isStandby} disabled={isStandby} onClick={() => onStandby(b.url, b.kind)}>{isStandby ? "É o Fundo padrão" : "Usar como Fundo padrão"}</Btn>
-                <span className="kx-meta">escurecer e desfoque entram quando um item, um aviso ou o Fundo padrão com este fundo vai ao ar, e quando ele é escolhido em Camadas › Fundo</span>
-            </FormRow>}
         </div>
     );
 }

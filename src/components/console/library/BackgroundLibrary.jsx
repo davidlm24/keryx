@@ -187,7 +187,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                     <span className="cfg-h-gap" />
                     {(kinds.includes("image") || kinds.includes("video")) && <>
                         {(tab === "image" || tab === "video") && <Btn small on={fromMedia} onClick={() => setFromMedia(!fromMedia)} title="Usar como fundo uma imagem ou vídeo que já está na Mídia">Trazer da Mídia…</Btn>}
-                        <Btn small disabled={uploading} onClick={() => fileRef.current?.click()}><Icon name="download" />{uploading ? "Enviando…" : "Enviar do computador…"}</Btn>
+                        <Btn small disabled={uploading} onClick={() => fileRef.current?.click()}><Icon name="download" />{uploading ? "Enviando…" : "Do computador…"}</Btn>
                         <input ref={fileRef} type="file" multiple hidden accept={[kinds.includes("image") && "image/*,.gif", kinds.includes("video") && "video/mp4,video/webm"].filter(Boolean).join(",")} onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; if (files.length) upload(files); }} />
                     </>}
                     <IconBtn name="x" title="Fechar · Esc" onClick={() => done(null)} />
@@ -209,7 +209,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                         </button>
                                     );
                                 })}
-                                {!(themeMode ? themes : withBg).length && <span className="kx-meta">Nenhum tema ainda. Crie em Configurações › Aparência › Temas, ou salve o que está no ar em Camadas.</span>}
+                                {!(themeMode ? themes : withBg).length && <span className="kx-meta">Nenhum tema ainda. Crie em Configurações › Temas, ou salve o que está no ar em Camadas.</span>}
                             </div>
                         )}
                         {(tab === "image" || tab === "video") && fromMedia && (
@@ -284,8 +284,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                     {request.allowNone && <Btn small onClick={() => done({ none: true })}>{request.noneLabel || (themeMode ? "Sem tema" : "Sem fundo")}</Btn>}
                     {canLive && (
                         <span className="lib-live" title={held ? "O Fundo está travado nas Camadas" : "Cada escolha vai às telas na hora; Cancelar volta o fundo que estava"}>
-                            <Switch on={liveOn && !held} disabled={held} onChange={setLiveOn} label="Ao vivo" />
-                            <span className="kx-meta">{held ? "Fundo travado" : "Ao vivo"}</span>
+                            <Switch on={liveOn && !held} disabled={held} onChange={setLiveOn} label="Ao vivo: cada escolha já vai às telas" />
+                            <span className="kx-meta" title="Cada clique já troca o Fundo nas telas; Cancelar ou Esc devolve o que estava">{held ? "Fundo travado" : "Ao vivo · cada escolha já vai às telas"}</span>
                         </span>
                     )}
                     <span style={{ flex: 1 }} />
