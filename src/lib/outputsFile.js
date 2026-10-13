@@ -20,14 +20,17 @@ export const OUTPUT_KEYS = ["/Projection", "/LyricProjection", "/VideoProjection
 export const PREF_PATHS = [...OUTPUT_KEYS, "/StreamView"];
 
 // A placement as the app writes it, else null: "auto", "window", or a screen
-// ({ id, label, width, height }), with "Abrir ao iniciar".
+// ({ id, label, width, height }), with "Abrir ao iniciar" and whether the
+// operator removed the output from the lists (which outputs a church uses is
+// part of its setup; an older KERYX reading the file simply ignores the field).
 export function cleanAssignment(a) {
     if (!a || typeof a !== "object") return null;
     const openAtLaunch = a.openAtLaunch === true;
+    const removed = a.removed === true;
     const t = a.target;
-    if (t === "auto" || t === "window") return { target: t, openAtLaunch };
+    if (t === "auto" || t === "window") return { target: t, openAtLaunch, removed };
     if (t && typeof t === "object" && Number.isFinite(Number(t.id))) {
-        return { target: { id: Number(t.id), label: String(t.label || "").slice(0, 120), width: Math.max(0, Math.round(Number(t.width) || 0)), height: Math.max(0, Math.round(Number(t.height) || 0)) }, openAtLaunch };
+        return { target: { id: Number(t.id), label: String(t.label || "").slice(0, 120), width: Math.max(0, Math.round(Number(t.width) || 0)), height: Math.max(0, Math.round(Number(t.height) || 0)) }, openAtLaunch, removed };
     }
     return null;
 }
@@ -102,6 +105,7 @@ export function readOutputsFile(text, { themes = [], layouts = [], displays = []
         const a = cleanAssignment(data.assignments?.[key]);
         if (!a) continue;
         assignments.push({ key, assignment: a });
+        if (a.removed) notes.push(`${label(key)}: removida neste arquivo; some das Saídas (Adicionar saída traz de volta).`);
         if (typeof a.target === "object") {
             const t = a.target;
             const here = (displays || []).some((d) => d.id === t.id || (t.label && d.label === t.label && (d.bounds?.width || d.width) === t.width && (d.bounds?.height || d.height) === t.height));

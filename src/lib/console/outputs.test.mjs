@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { remember, forget, outputHealth, netId, localId, showsOn, byGroup, groupOf } from "./outputs.js";
+import { remember, forget, outputHealth, rowStatus, netId, localId, showsOn, byGroup, groupOf } from "./outputs.js";
 
 const proj = (open, missing = false) => ({ key: "/Projection", label: "Projeção principal", open, placement: { mode: "fullscreen", displayId: 2, missing } });
 const stage = (open) => ({ key: "/StageView", label: "Palco", open, placement: { mode: "window", displayId: null, missing: false } });
@@ -102,6 +102,38 @@ test("Telas travadas: blue status unless something is wrong; the Programa still 
     assert.equal(h.status.state, "warn");
     // Unlocked is the default.
     assert.equal(outputHealth({ outputs: [proj(true)], seen }).status.label, "Saídas · 1 conectada");
+});
+
+test("a removed output is no row, no count, no banner; its network screen still is", () => {
+    // Palco removed while a TV on the network shows /StageView.
+    const palcoTv = { ip: "::ffff:192.168.0.40", screen: "/StageView", label: "Palco", agent: "SmartTV", since: "a" };
+    const seen = remember({}, { outputs: [proj(true)], clients: [palcoTv] }, at(19, 0));
+    const h = outputHealth({ outputs: [proj(true), { ...stage(false), removed: true }], seen, air: "Canto" });
+    assert.ok(!h.rows.some((r) => r.local && r.key === "/StageView"), "no local row");
+    assert.equal(h.status.label, "Saídas · 2 conectadas", "the projector and the network TV");
+    assert.equal(h.banner, null);
+    assert.equal(h.rows.find((r) => !r.local).screen, "/StageView", "the network screen stays");
+    // Even one that was open and dropped: removed wins, no Fechada nag.
+    let dropped = remember({}, { outputs: [stage(true)] }, at(19, 0));
+    dropped = remember(dropped, { outputs: [stage(false)] }, at(19, 30));
+    assert.equal(outputHealth({ outputs: [{ ...stage(false), removed: true }], seen: dropped }).banner, null);
+});
+
+test("rowStatus: one switch and one text per row", () => {
+    const local = (state, droppedAt = null) => ({ local: true, state, droppedAt });
+    assert.deepEqual(rowStatus(local("connected")), { switchOn: true, text: "Conectada", tone: "ok", hint: null });
+    assert.deepEqual(rowStatus(local("connected"), { locked: true }), { switchOn: true, text: "Conectada · travada", tone: "rh", hint: null });
+    assert.deepEqual(rowStatus(local("reconnecting")), { switchOn: true, text: "Monitor desligado", tone: "warn", hint: "mostrando numa janela até ele ligar" });
+    assert.deepEqual(rowStatus(local("unused")), { switchOn: false, text: "Fechada", tone: "off", hint: null });
+    const closed = rowStatus(local("closed", at(19, 42)));
+    assert.equal(closed.switchOn, false);
+    assert.equal(closed.text, "Fechada");
+    assert.equal(closed.hint, "caiu às 19:42");
+    // Network rows have no switch.
+    assert.equal(rowStatus({ local: false, state: "connected" }).switchOn, null);
+    const off = rowStatus({ local: false, state: "disconnected", droppedAt: at(19, 42) });
+    assert.equal(off.text, "Desconectada às 19:42");
+    assert.equal(off.tone, "warn");
 });
 
 test("what a page shows", () => {

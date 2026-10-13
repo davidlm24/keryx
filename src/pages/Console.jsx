@@ -31,7 +31,7 @@ import SongEditor from "@/components/console/SongEditor";
 import ServicePlanner from "@/components/console/ServicePlanner";
 import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
-import LayoutEditor from "@/components/console/LayoutEditor";
+import { openEditor } from "@/lib/editorWindow";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView from "@/components/console/settings/SettingsView";
@@ -42,7 +42,6 @@ import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
 import LookDialog, { LookContext } from "@/components/console/library/LookDialog";
-import ThemeStudio, { ThemeEditorContext } from "@/components/console/themes/ThemeStudio";
 import { lookFields, templateLookFields } from "@/lib/console/serviceLook";
 import { useServiceTemplates } from "@/components/console/useConsoleData";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew } from "@/components/console/Popovers";
@@ -106,7 +105,6 @@ export default function Console() {
             if (p.get("planner")) return { planner: true };
             if (p.get("media")) return { media: true };
             if (p.get("notice")) return { notice: p.get("notice") };
-            if (p.get("layout")) return { layout: p.get("layout") };
             if (p.get("school")) return { school: true };
             if (p.get("reports")) return { reports: true };
         } catch { /* no query */ }
@@ -116,7 +114,6 @@ export default function Console() {
     const planner = Boolean(view?.planner);
     const mediaView = Boolean(view?.media);
     const notice = view?.notice || null;
-    const layoutView = view?.layout || null;
     const school = Boolean(view?.school);
     const reports = Boolean(view?.reports);
     const closeView = useCallback(() => setView(null), []);
@@ -147,9 +144,6 @@ export default function Console() {
     // Visual do culto (library/LookDialog.jsx): { kind: "service" | "template", id }.
     const [lookReq, setLookReq] = useState(null);
     const openLook = useCallback((req) => setLookReq(req || { kind: "service", id: null }), []);
-    // The theme editor (themes/ThemeStudio.jsx): a theme id or "new".
-    const [themeEdit, setThemeEdit] = useState(null);
-    const openTheme = useCallback((id) => setThemeEdit(id || "new"), []);
     // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
@@ -158,9 +152,25 @@ export default function Console() {
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
-    // The layout editor (Telas e saídas › Layouts das telas): a view, so
-    // Configurações closes to show it.
-    const openLayout = useCallback((id) => { setOpen(null); setCfgAt(null); setView({ layout: id || "new" }); }, []);
+    // The Editor de temas e layouts: its own window (src/lib/editorWindow.js)
+    // — the console stays exactly where it is; closing the window is the way
+    // back. `opts.for` binds a new layout to the output whose tab opened it.
+    const openLayout = useCallback((id, opts = {}) => {
+        const r = openEditor({ layout: id || "new", for: opts.for || "" });
+        if (r?.error) c.say(r.error);
+    }, [c]);
+    // ?layout= used to be a console view: an old link opens the window once
+    // and leaves the console's URL clean.
+    useEffect(() => {
+        try {
+            const p = new URLSearchParams(window.location.search);
+            const id = p.get("layout");
+            if (!id) return;
+            p.delete("layout");
+            window.history.replaceState(null, "", `/Console${p.toString() ? `?${p}` : ""}`);
+            openLayout(id);
+        } catch { /* no query */ }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
     // The Escola bíblica sends through the KERYX environment's Prévia.
     const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setView({ school: true }); }, []);
     const openReports = useCallback(() => { setOpen(null); setView({ reports: true }); }, []);
@@ -469,6 +479,10 @@ export default function Console() {
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
     // Closed here on purpose: forgotten, so it is not reported as a problem.
     const closeOutput = (key) => window.keryxDesktop?.displays.close(key).then(() => forgetOutput(localId(key))).catch(() => {});
+    // Adicionar saída (the Saídas popover): back on the list with the same
+    // screen, "Abrir ao iniciar" and Ajustes it had.
+    const restoreOutput = (key) => window.keryxDesktop?.displays.set(key, { removed: false }).catch((err) => c.say(err?.message || "Não foi possível adicionar a saída."));
+    const removedOutputs = useMemo(() => outputs.filter((o) => o.removed), [outputs]);
 
     // ↑/↓ in the KERYX environment: the selection walks the slides of the
     // item in hand (the Prévia's own, else the ones on air); Enter sends it.
@@ -635,13 +649,12 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq, library: libReq, theme: themeEdit, look: lookReq, popover: open, settings: cfg, drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq, library: libReq, look: lookReq, popover: open, settings: cfg, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
                     else if (top === "confirm") answerConfirm(false);
                     else if (top === "library") closeLibrary(null);
-                    else if (top === "theme") setThemeEdit(null);
                     else if (top === "look") setLookReq(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "settings") setCfgAt(null);
@@ -654,7 +667,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if ((libReq || confirmReq || lookReq || themeEdit) && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq || lookReq) && !["black", "logo"].includes(action)) return;
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
             // So do the planner, the media library, the aviso editor and the
@@ -689,7 +702,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm, lookReq, themeEdit]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm, lookReq]);
     useEffect(() => { if (view) setEditing(false); }, [view]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -756,8 +769,9 @@ export default function Console() {
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
     );
-    // Temas: a double click (or the menu's Editar) opens the theme editor.
-    const editTheme = (id) => openTheme(id);
+    // Temas: a double click (or the menu's Editar) opens the theme in the
+    // Editor de temas e layouts (its own window).
+    const editTheme = (id) => { const r = openEditor({ theme: id || "new" }); if (r?.error) c.say(r.error); };
     const themesCard = <ThemesCard c={c} themes={data.themes} songs={data.songs} onEdit={editTheme} onNew={() => editTheme("new")} />;
     const temasPanel = (
         <Panel title="Temas" lead={leadOf("side", "temas")} count="clique aplica no ar" collapsed={layout.collapsed.temas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, temas: !layout.collapsed.temas } })}
@@ -845,7 +859,6 @@ export default function Console() {
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
         <LookContext.Provider value={openLook}>
-        <ThemeEditorContext.Provider value={openTheme}>
         <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
@@ -883,7 +896,6 @@ export default function Console() {
                 {reports && <ReportsView c={c} onClose={closeView} />}
                 {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}
                 {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} />}
-                {layoutView && <LayoutEditor key={layoutView} c={c} layoutId={layoutView} media={data.media} onClose={closeView} onSaved={(row) => { if (row?.id && layoutView !== row.id) setView({ layout: row.id }); }} />}
                 {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} layout={layout} setLayout={setLayout} editing={editing} />}
                 {!view && env === "culto" && withSplits(cols).map((it) => (it.type === "split" ? splitFor(it.key, it.sign, false, it.col) : renderCol(it.col)))}
             </div>
@@ -895,7 +907,6 @@ export default function Console() {
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
-            {themeEdit && <ThemeStudio key={themeEdit} c={c} id={themeEdit} themes={data.themes} onClose={() => setThemeEdit(null)} />}
             {lookReq && <LookDialog c={c} row={lookRow} save={saveLook} onClose={() => setLookReq(null)} what={lookReq.kind === "template" ? "do modelo" : "do culto"}
                 title={lookReq.kind === "template" ? `Visual do modelo · ${lookRow?.name || ""}` : `Visual do culto · ${lookRow?.title || "hoje"}`}
                 note={lookReq.kind === "service" && !lookRow ? "Nenhum culto escolhido: a primeira escolha cria a setlist de hoje." : null} />}
@@ -904,7 +915,7 @@ export default function Console() {
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
-                    <VerifyView c={c} items={playable} data={data} outputs={outputs} network={network}
+                    <VerifyView c={c} items={playable} data={data} outputs={outputs.filter((o) => !o.removed)} network={network}
                         onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} onOpenMedia={openMedia} />
                 </div>
@@ -914,7 +925,7 @@ export default function Console() {
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."))} onSettings={openSettings} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."))} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
@@ -947,7 +958,6 @@ export default function Console() {
             )}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
-        </ThemeEditorContext.Provider>
         </LookContext.Provider>
         </ConfirmContext.Provider>
         </LibraryContext.Provider>

@@ -14,6 +14,7 @@ import { layoutChoices, findLayout } from "@/lib/layouts";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 import { useChurch } from "@/hooks/useChurch";
+import { openEditor } from "@/lib/editorWindow";
 
 const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], ["125", "125%"], ["140", "140%"]];
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
@@ -115,9 +116,9 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                 <select className="cfg-select" value={layoutGone ? "" : pref.layoutId} onChange={(e) => save({ layout_id: e.target.value })} aria-label={`Layout de ${output.label}`}>
                     {layoutChoices(layoutRows).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
-                {layout && !layout.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id)} title="Abre o layout no canvas para mover e redimensionar cada elemento"><Icon name="edit" />Editar no canvas</Btn>}
-                {layout?.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id)} title="Um modelo não se edita: abre uma cópia sua no canvas"><Icon name="copy" />Duplicar e editar no canvas</Btn>}
-                {!pref.layoutId && <Btn small onClick={() => onOpenLayout?.("new")} title="Desenhar uma tela do zero no canvas"><Icon name="plus" />Novo layout no canvas</Btn>}
+                {layout && !layout.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id, { for: output.key })} title="Abre o layout no canvas para mover e redimensionar cada elemento"><Icon name="edit" />Editar no canvas</Btn>}
+                {layout?.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id, { for: output.key })} title="Um modelo não se edita: abre uma cópia sua no canvas; salvar já a põe nesta saída"><Icon name="copy" />Duplicar e editar no canvas</Btn>}
+                <Btn small onClick={() => onOpenLayout?.("new", { for: output.key })} title="Desenhar uma tela do zero no canvas; salvar já a põe nesta saída"><Icon name="plus" />Novo layout no canvas</Btn>
                 <span className="kx-meta">{layoutGone ? "o layout escolhido foi excluído: a tela está no padrão" : renderer ? "o desenho da tela: a projeção inteira ou numa parte, o timer num canto…" : "o desenho da tela: onde ficam o relógio, o timer, a letra, a próxima…"}</span>
             </FormRow>}
             <FormRow k="Nome">
@@ -218,6 +219,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                     {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     {themeGone && <option value={pref.themeId} disabled>(tema excluído)</option>}
                 </select>
+                {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor de temas e layouts"><Icon name="edit" />Editar tema</Btn>}
             </FormRow>
             </>}
             <FormRow k="">

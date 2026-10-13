@@ -1239,6 +1239,12 @@
         "text_nudge": {
           "type": "real"
         },
+        "text_align": {
+          "type": "text"
+        },
+        "text_position": {
+          "type": "text"
+        },
         "background_fit": {
           "type": "text"
         },

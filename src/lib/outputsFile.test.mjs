@@ -23,7 +23,7 @@ test("the file carries every output's placement and every page's settings, never
     assert.equal(f.version, 1);
     assert.equal(f.exportedAt, "2026-10-12T00:00:00.000Z");
     assert.deepEqual(Object.keys(f.assignments), ["/Projection", "/StageView"]); // the unknown one is not written
-    assert.deepEqual(f.assignments["/Projection"], { target: { id: 22, label: "EPSON PROJ", width: 1280, height: 800 }, openAtLaunch: true });
+    assert.deepEqual(f.assignments["/Projection"], { target: { id: 22, label: "EPSON PROJ", width: 1280, height: 800 }, openAtLaunch: true, removed: false });
     assert.deepEqual(Object.keys(f.prefs), PREF_PATHS); // every page, rows or not
     assert.equal(f.prefs["/Projection"].theme_id, "t-azul");
     assert.equal(f.prefs["/Projection"].theme_name, "Culto azul");
@@ -44,7 +44,7 @@ test("read back on the same computer: everything applies, nothing to note", () =
     assert.deepEqual(r.notes, []);
     assert.equal(r.outputs, 2);
     assert.equal(r.pages, PREF_PATHS.length);
-    assert.deepEqual(r.assignments[0], { key: "/Projection", assignment: { target: { id: 22, label: "EPSON PROJ", width: 1280, height: 800 }, openAtLaunch: true } });
+    assert.deepEqual(r.assignments[0], { key: "/Projection", assignment: { target: { id: 22, label: "EPSON PROJ", width: 1280, height: 800 }, openAtLaunch: true, removed: false } });
     const proj = r.prefs.find((p) => p.path === "/Projection").fields;
     assert.equal(proj.theme_id, "t-azul");
     assert.ok(!("theme_name" in proj)); // the name is only for finding the theme
@@ -75,7 +75,7 @@ test("bad files are refused with a reason; odd values inside are cleaned", () =>
     const odd = readOutputsFile(JSON.stringify({ kind: FILE_KIND, version: 1,
         assignments: { "/Projection": { target: "lua", openAtLaunch: "sim" }, "/StageView": { target: "auto", openAtLaunch: true }, "/Hack": { target: "auto" } },
         prefs: { "/Projection": { text_scale: 999, hidden_kinds: ["lyrics", "nope"], content: "cifra", icon: "<script>", options: [1] }, "/Hack": { name: "x" } } }), { themes, displays });
-    assert.deepEqual(odd.assignments, [{ key: "/StageView", assignment: { target: "auto", openAtLaunch: true } }]);
+    assert.deepEqual(odd.assignments, [{ key: "/StageView", assignment: { target: "auto", openAtLaunch: true, removed: false } }]);
     const f = odd.prefs[0].fields;
     assert.equal(odd.prefs.length, 1);
     assert.equal(f.text_scale, 140);
@@ -86,11 +86,22 @@ test("bad files are refused with a reason; odd values inside are cleaned", () =>
 });
 
 test("a placement is only one the app writes", () => {
-    assert.deepEqual(cleanAssignment({ target: "window", openAtLaunch: true }), { target: "window", openAtLaunch: true });
-    assert.deepEqual(cleanAssignment({ target: { id: "7", label: "TV", width: "1920", height: 1080 } }), { target: { id: 7, label: "TV", width: 1920, height: 1080 }, openAtLaunch: false });
+    assert.deepEqual(cleanAssignment({ target: "window", openAtLaunch: true }), { target: "window", openAtLaunch: true, removed: false });
+    assert.deepEqual(cleanAssignment({ target: { id: "7", label: "TV", width: "1920", height: 1080 } }), { target: { id: 7, label: "TV", width: 1920, height: 1080 }, openAtLaunch: false, removed: false });
     assert.equal(cleanAssignment({ target: "lua" }), null);
     assert.equal(cleanAssignment(null), null);
     assert.equal(OUTPUT_KEYS.length, 6);
+});
+
+test("a removed output travels in the file and is said on import", () => {
+    const outs = [...outputs.slice(0, 2), { key: "/CommunicationProjection", assignment: { target: "auto", openAtLaunch: false, removed: true } }];
+    const f = buildOutputsFile({ outputs: outs, prefRows, themes, displays });
+    assert.equal(f.assignments["/CommunicationProjection"].removed, true);
+    const r = readOutputsFile(JSON.stringify(f), { themes, displays });
+    assert.equal(r.assignments.find((a) => a.key === "/CommunicationProjection").assignment.removed, true);
+    assert.ok(r.notes.some((n) => /Avisos: removida neste arquivo/.test(n)), r.notes.join(" | "));
+    // A file from an older KERYX (no removed field) means every output present.
+    assert.equal(cleanAssignment({ target: "auto" }).removed, false);
 });
 
 test("applying updates the page's row or creates one, never deletes", () => {

@@ -28,33 +28,42 @@ export const MAX_ELEMENTS = 40;
 // The kinds of element, with the defaults a new one gets. `text` elements
 // are one string drawn by the renderer (elementText); the others draw
 // themselves (a list, chords, the projection's monitor, dots, pictures).
+// `group` sorts the editor's Adicionar picker (ELEMENT_GROUPS).
 export const ELEMENT_TYPES = [
-    { id: "screen", name: "Projeção", icon: "projector", hint: "o que esta saída projeta (letras, Bíblia, mídia, avisos), em tela cheia ou numa parte; com um elemento Relógio ou timer no layout, o timer sai daqui e fica nele", w: 100, h: 100, size: 2, when: "always", props: {} },
-    { id: "clock", name: "Hora", icon: "clock", hint: "a hora de agora", w: 20, h: 10, size: 6, when: "always", props: { seconds: false } },
-    { id: "date", name: "Data", icon: "clock", hint: "sábado, 10 de outubro", w: 30, h: 6, size: 2.2, when: "always", props: {} },
-    { id: "timer", name: "Relógio ou timer no ar", icon: "clock", hint: "o que a ferramenta no ar mostra: o tempo restante, o cronômetro, a hora, o texto livre", w: 30, h: 14, size: 8, when: "tool", props: {} },
-    { id: "service_time", name: "Tempo de culto", icon: "clock", hint: "há quanto tempo o culto começou", w: 20, h: 6, size: 2.4, when: "always", label: "Culto há", props: {} },
-    { id: "air_for", name: "No ar há", icon: "history", hint: "há quanto tempo o item está no ar", w: 16, h: 6, size: 2.4, when: "always", label: "No ar há", props: {} },
-    { id: "air_title", name: "O que está no ar", icon: "eye", hint: "o nome do item no ar e a posição (2/6)", w: 40, h: 6, size: 3, when: "always", label: "No ar", props: {} },
-    { id: "church", name: "Igreja", icon: "logo", hint: "o nome e a cidade da igreja", w: 40, h: 8, size: 2.6, when: "always", props: {} },
-    { id: "title", name: "Título da música", icon: "music", hint: "o título e o artista do que está no ar", w: 50, h: 10, size: 4.2, weight: "bold", when: "content", props: { artist: true } },
-    { id: "current", name: "Letra atual", icon: "text", hint: "o slide no ar; com a cifra sobre as sílabas quando a letra a tem", w: 60, h: 50, size: 7.4, weight: "bold", align: "center", valign: "middle", when: "content", props: { chords: true } },
-    { id: "next", name: "Próximo slide", icon: "list", hint: "o slide seguinte", w: 94, h: 12, size: 3, when: "content", label: "Próximo", props: {} },
-    { id: "next_items", name: "Próximos da Setlist", icon: "list", hint: "os itens que vêm depois do que está no ar", w: 30, h: 60, size: 2.8, when: "always", label: "Próximo", props: { count: 3 } },
-    { id: "song_key", name: "Tom", icon: "music", hint: "o tom da música", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "Tom", box: true, props: {} },
-    { id: "bpm", name: "BPM", icon: "music", hint: "o andamento da música", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "BPM", box: true, props: {} },
-    { id: "song_time", name: "Tempo na música", icon: "clock", hint: "há quanto tempo a música está no ar", w: 12, h: 10, size: 3.4, weight: "bold", when: "content", label: "Na música", box: true, props: {} },
-    { id: "chords", name: "Cifra", icon: "music", hint: "o bloco de cifra da música, transponível", w: 31, h: 50, size: 2.2, font: "mono", when: "content", label: "Cifra", box: true, props: {} },
-    { id: "notes", name: "Notas para músicos", icon: "edit", hint: "as notas da música para a banda", w: 94, h: 8, size: 2.4, when: "content", props: {} },
-    { id: "monitor", name: "Monitor da projeção", icon: "projector", hint: "o que o projetor mostra, em miniatura", w: 60, h: 58, size: 2, when: "always", props: {} },
-    { id: "progress", name: "Progresso dos slides", icon: "dot", hint: "um ponto por slide, o do ar em vermelho", w: 94, h: 3, size: 1, when: "content", props: {} },
-    { id: "logo", name: "Logo da igreja", icon: "logo", hint: "o logo de Configurações › Igreja", w: 10, h: 16, size: 2, when: "always", props: {} },
-    { id: "text", name: "Texto fixo", icon: "text", hint: "um texto seu, sempre o mesmo", w: 40, h: 8, size: 3, when: "always", props: { text: "Texto" } },
-    { id: "image", name: "Imagem", icon: "image", hint: "uma imagem da Mídia", w: 30, h: 30, size: 2, when: "always", props: { url: "" } },
+    { id: "screen", name: "Projeção", icon: "projector", group: "tela", hint: "o que esta saída projeta (letras, Bíblia, mídia, avisos), em tela cheia ou numa parte; com um elemento Relógio ou timer no layout, o timer sai daqui e fica nele", w: 100, h: 100, size: 2, when: "always", props: {} },
+    { id: "clock", name: "Hora", icon: "clock", group: "tempo", hint: "a hora de agora", w: 20, h: 10, size: 6, when: "always", props: { seconds: false } },
+    { id: "date", name: "Data", icon: "clock", group: "tempo", hint: "sábado, 10 de outubro", w: 30, h: 6, size: 2.2, when: "always", props: {} },
+    { id: "timer", name: "Relógio ou timer no ar", icon: "clock", group: "tempo", hint: "o que a ferramenta no ar mostra: o tempo restante, o cronômetro, a hora, o texto livre", w: 30, h: 14, size: 8, when: "tool", props: {} },
+    { id: "service_time", name: "Tempo de culto", icon: "clock", group: "tempo", hint: "há quanto tempo o culto começou", w: 20, h: 6, size: 2.4, when: "always", label: "Culto há", props: {} },
+    { id: "air_for", name: "No ar há", icon: "history", group: "tempo", hint: "há quanto tempo o item está no ar", w: 16, h: 6, size: 2.4, when: "always", label: "No ar há", props: {} },
+    { id: "air_title", name: "O que está no ar", icon: "eye", group: "setlist", hint: "o nome do item no ar e a posição (2/6)", w: 40, h: 6, size: 3, when: "always", label: "No ar", props: {} },
+    { id: "church", name: "Igreja", icon: "logo", group: "tela", hint: "o nome e a cidade da igreja", w: 40, h: 8, size: 2.6, when: "always", props: {} },
+    { id: "title", name: "Título da música", icon: "music", group: "musica", hint: "o título e o artista do que está no ar", w: 50, h: 10, size: 4.2, weight: "bold", when: "content", props: { artist: true } },
+    { id: "current", name: "Letra atual", icon: "text", group: "musica", hint: "o slide no ar; com a cifra sobre as sílabas quando a letra a tem", w: 60, h: 50, size: 7.4, weight: "bold", align: "center", valign: "middle", when: "content", props: { chords: true } },
+    { id: "next", name: "Próximo slide", icon: "list", group: "musica", hint: "o slide seguinte", w: 94, h: 12, size: 3, when: "content", label: "Próximo", props: {} },
+    { id: "next_items", name: "Próximos da Setlist", icon: "list", group: "setlist", hint: "os itens que vêm depois do que está no ar", w: 30, h: 60, size: 2.8, when: "always", label: "Próximo", props: { count: 3 } },
+    { id: "song_key", name: "Tom", icon: "music", group: "musica", hint: "o tom da música", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "Tom", box: true, props: {} },
+    { id: "bpm", name: "BPM", icon: "music", group: "musica", hint: "o andamento da música", w: 9, h: 10, size: 3.4, weight: "bold", when: "content", label: "BPM", box: true, props: {} },
+    { id: "song_time", name: "Tempo na música", icon: "clock", group: "musica", hint: "há quanto tempo a música está no ar", w: 12, h: 10, size: 3.4, weight: "bold", when: "content", label: "Na música", box: true, props: {} },
+    { id: "chords", name: "Cifra", icon: "music", group: "musica", hint: "o bloco de cifra da música, transponível", w: 31, h: 50, size: 2.2, font: "mono", when: "content", label: "Cifra", box: true, props: {} },
+    { id: "notes", name: "Notas para músicos", icon: "edit", group: "musica", hint: "as notas da música para a banda", w: 94, h: 8, size: 2.4, when: "content", props: {} },
+    { id: "monitor", name: "Monitor da projeção", icon: "projector", group: "tela", hint: "o que o projetor mostra, em miniatura", w: 60, h: 58, size: 2, when: "always", props: {} },
+    { id: "progress", name: "Progresso dos slides", icon: "dot", group: "setlist", hint: "um ponto por slide, o do ar em vermelho", w: 94, h: 3, size: 1, when: "content", props: {} },
+    { id: "logo", name: "Logo da igreja", icon: "logo", group: "tela", hint: "o logo de Configurações › Igreja", w: 10, h: 16, size: 2, when: "always", props: {} },
+    { id: "text", name: "Texto fixo", icon: "text", group: "tela", hint: "um texto seu, sempre o mesmo", w: 40, h: 8, size: 3, when: "always", props: { text: "Texto" } },
+    { id: "image", name: "Imagem", icon: "image", group: "tela", hint: "uma imagem da Mídia", w: 30, h: 30, size: 2, when: "always", props: { url: "" } },
 ];
 export const typeOf = (id) => ELEMENT_TYPES.find((t) => t.id === id) || null;
+// The Adicionar picker's groups, in its order.
+export const ELEMENT_GROUPS = [["tempo", "Tempo"], ["musica", "Música"], ["setlist", "Setlist"], ["tela", "Tela"]];
 // The elements drawn as one string (elementText).
 export const TEXT_TYPES = new Set(["clock", "date", "timer", "service_time", "air_for", "air_title", "church", "title", "next", "song_key", "bpm", "song_time", "notes", "text"]);
+// The elements whose panel shows the text look (Rótulo, tamanho, fonte, cor,
+// alinhamento, caixa): the string ones plus the blocks that draw text
+// themselves. The others (Projeção, monitor, logo, imagem, progresso) only
+// take position, size and the "Aparece" rule — the editor must not offer
+// fields the renderer ignores.
+export const LOOK_TYPES = new Set([...TEXT_TYPES, "current", "chords", "next_items"]);
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const num = (v, d) => (v === "" || v == null || !Number.isFinite(Number(v)) ? d : Number(v));

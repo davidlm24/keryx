@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../shared/live-state.mjs";
 import {
-    ELEMENT_TYPES, TEXT_TYPES, FACTORY_LAYOUTS, normalizeElement, normalizeLayout, newElement, newLayout, duplicateLayout,
+    ELEMENT_TYPES, TEXT_TYPES, LOOK_TYPES, ELEMENT_GROUPS, FACTORY_LAYOUTS, normalizeElement, normalizeLayout, newElement, newLayout, duplicateLayout,
     findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, snapRect, resizeRect, moveRect, reorderElement, formatSpan,
 } from "./layouts.js";
 
@@ -14,6 +14,13 @@ const song = (now = T0) => applyOp(emptyState(now), "content.show", {
 
 test("element types: every text type exists and the factory layouts are valid", () => {
     for (const id of TEXT_TYPES) assert.ok(ELEMENT_TYPES.some((t) => t.id === id), id);
+    // Every type sits in one of the picker's groups.
+    const groups = new Set(ELEMENT_GROUPS.map(([k]) => k));
+    for (const t of ELEMENT_TYPES) assert.ok(groups.has(t.group), `${t.id} has a group`);
+    // The text-look fields belong only to the elements that draw text:
+    // Projeção, monitor, logo, imagem and progresso take none.
+    for (const id of ["screen", "monitor", "progress", "logo", "image"]) assert.ok(!LOOK_TYPES.has(id), id);
+    for (const id of [...TEXT_TYPES, "current", "chords", "next_items"]) assert.ok(LOOK_TYPES.has(id), id);
     assert.equal(FACTORY_LAYOUTS.length, 3);
     for (const l of FACTORY_LAYOUTS) {
         assert.ok(l.factory && l.id.startsWith("factory:"));

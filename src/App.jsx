@@ -16,6 +16,7 @@ import { useWindowTitle } from '@/hooks/useChurch';
 import { outputMeta } from '@/lib/outputPrefs';
 
 import Console from './pages/Console';
+import Editor from './pages/Editor';
 import Projection from './pages/Projection';
 import LyricProjection from './pages/LyricProjection';
 import StageView from './pages/StageView';
@@ -54,7 +55,7 @@ function NetworkStatus() {
 const TITLED = new Set(['/Projection', '/LyricProjection', '/StageView', '/VideoProjection', '/CommunicationProjection', '/PastorView', '/StreamView']);
 function WindowTitle() {
   const { pathname } = useLocation();
-  useWindowTitle(pathname === '/Remote' ? 'Controle remoto' : TITLED.has(pathname) ? outputMeta(pathname).name : '');
+  useWindowTitle(pathname === '/Remote' ? 'Controle remoto' : pathname === '/Editor' ? 'Editor de temas e layouts' : TITLED.has(pathname) ? outputMeta(pathname).name : '');
   return null;
 }
 
@@ -97,6 +98,10 @@ function App() {
           ) : (
             <Routes>
               <Route path="/Console" element={<Console />} />
+              {/* The Editor de temas e layouts: its own window, opened by
+                  src/lib/editorWindow.js. Never a network screen (lan.cjs
+                  serves only NETWORK_SCREENS, so it stays off the network). */}
+              <Route path="/Editor" element={<Editor />} />
               {screens}
               {import.meta.env.DEV && keryx.isPreview && <Route path="/Rede" element={<NetworkHome screens={PREVIEW_SCREENS} />} />}
               {import.meta.env.DEV && keryx.isPreview && <Route path="/Remote" element={<RemoteView />} />}

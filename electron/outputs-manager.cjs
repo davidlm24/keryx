@@ -8,7 +8,7 @@
 
 const { BrowserWindow } = require("electron");
 const {
-    OUTPUTS, outputForKey, outputKeyForUrl, displayRef, resolvePlacement, windowedBounds, normalizeAssignment,
+    OUTPUTS, outputForKey, outputKeyForUrl, displayRef, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
 } = require("./outputs.cjs");
 
 const SETTINGS_KEY = "outputs";
@@ -146,11 +146,13 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
             outputs: OUTPUTS.map((o) => {
                 const placement = resolvePlacement(o, current, assignmentFor(o.key));
                 const win = windows.get(o.key);
+                const assignment = assignmentFor(o.key);
                 return {
                     key: o.key,
                     label: o.label,
                     windowName: o.windowName,
-                    assignment: assignmentFor(o.key),
+                    assignment,
+                    removed: assignment.removed,
                     placement: { mode: placement.mode, displayId: placement.display ? placement.display.id : null, missing: Boolean(placement.missing) },
                     open: Boolean(win && !win.isDestroyed()),
                 };
@@ -158,19 +160,26 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
         };
     }
 
-    // A partial change ({ target } or { openAtLaunch }) keeps the rest.
+    // A partial change ({ target }, { openAtLaunch } or { removed }) keeps the
+    // rest. Removing closes the open window; the entry stays, so re-adding
+    // restores the same screen and "Abrir ao iniciar".
     function setAssignment(key, assignment) {
         if (!outputForKey(key)) throw new Error(`Saída desconhecida: ${key}`);
+        if (assignment && assignment.removed === true && !canRemove(key)) throw new Error("A Projeção principal não pode ser removida.");
         const next = normalizeAssignment({ ...assignmentFor(key), ...(assignment || {}) });
         settings.set(SETTINGS_KEY, { ...assignments(), [key]: next });
         const win = windows.get(key);
-        if (win && !win.isDestroyed()) present(win, placementFor(key));
+        if (win && !win.isDestroyed()) {
+            if (next.removed) win.close();
+            else present(win, placementFor(key));
+        }
         return list();
     }
 
     // Opens (or brings forward) an output from the main process.
     function open(key) {
         if (!outputForKey(key)) throw new Error(`Saída desconhecida: ${key}`);
+        if (assignmentFor(key).removed) throw new Error("Saída removida. Adicione-a de novo em Telas e saídas.");
         const existing = windows.get(key);
         if (existing && !existing.isDestroyed()) {
             existing.showInactive();
@@ -187,7 +196,8 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
     function openAtLaunch() {
         const opened = [];
         for (const o of OUTPUTS) {
-            if (!assignmentFor(o.key).openAtLaunch) continue;
+            const a = assignmentFor(o.key);
+            if (a.removed || !a.openAtLaunch) continue;
             try {
                 open(o.key);
                 opened.push(o.key);

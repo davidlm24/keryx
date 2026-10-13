@@ -479,6 +479,12 @@
 .console .sw2.is-on { background: var(--prev-fill); }
 .console .sw2.is-on::after { left: 14px; background: var(--on-state); }
 .console .sw2:disabled { opacity: var(--dim); }
+/* Saídas: a switch per local row (ligado = a janela existe); the name of an
+   open output is a button that brings it forward. */
+.console .pop-outs .kx-out.has-sw { grid-template-columns: 28px 16px 1fr auto; }
+.console .pop-outs .kx-out.has-sw .sw2 { margin-top: 2px; }
+.console .pop-outs .kx-out-front { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; cursor: pointer; }
+.console .pop-outs .kx-out-front:hover { text-decoration: underline; text-underline-offset: 2px; }
 .console .cfg .diagram { display: flex; gap: var(--space-3); align-items: flex-end; padding: var(--space-3); flex-wrap: wrap; }
 .console .cfg .dmon { display: flex; flex-direction: column; gap: var(--space-1); align-items: center; }
 .console .cfg .dmon .box { border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--fg-2); text-align: center; padding: 4px; }
@@ -869,9 +875,13 @@
 
 /* ---- Layout editor (LayoutEditor.jsx): the canvas and its handles ---- */
 .console .le-stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: var(--space-3); container-type: size; }
-.console .le-screen { position: relative; width: min(100%, 1100px, calc((100cqh - 2 * var(--space-3)) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); isolation: isolate; background: var(--bg-0); }
+/* contain: a ScreenRenderer `fill` (position: fixed, screen.css) stays
+   inside the canvas, as .cfg-prev does for the settings previews. */
+.console .le-screen { position: relative; width: min(100%, 1100px, calc((100cqh - 2 * var(--space-3)) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); isolation: isolate; background: var(--bg-0); contain: layout paint; container-type: size; }
 .console .le-use { width: auto; flex: none; }
-.console .le-screen > .kl { pointer-events: none; }
+.console .le-screen .kl { pointer-events: none; }
+/* Ver como: the output-context wrapper between the canvas and the renderer. */
+.console .le-fill { position: absolute; inset: 0; pointer-events: none; }
 .console .le-over { position: absolute; inset: 0; z-index: 5; }
 .console .le-hit { position: absolute; cursor: move; touch-action: none; user-select: none; }
 .console .le-hit:hover { outline: 1px solid color-mix(in srgb, var(--brand) 60%, transparent); outline-offset: -1px; }
@@ -887,6 +897,10 @@
 .console .le-nums label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); }
 .console .le-num { width: 58px; }
 .console .le-range { flex: 1 1 80px; min-width: 60px; accent-color: var(--brand); }
+/* The Editor de temas e layouts window (/Editor, src/pages/Editor.jsx):
+   the console's shell without its top bar; a one-line footer instead. */
+.console.edw .edw-foot { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); font-size: 11px; color: var(--fg-3); }
+.console.edw .kx-gap { flex: none; width: var(--gutter); }
 
 /* Biblioteca de temas e fundos (library/BackgroundLibrary.jsx): one window
    for every picker, above Configurações (it opens from there too), below the
@@ -952,6 +966,11 @@
 .console .cfg-outtab-dot { flex: none; width: 7px; height: 7px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--fg-3); }
 .console .cfg-outtab-dot.is-open { background: var(--air); box-shadow: none; }
 .console .cfg-outs-sep { height: 1px; background: var(--line); margin: var(--space-1) 0; }
+/* Adicionar saída: the removed outputs come back from here. The wrapper is a
+   search target (CfgKey), laid out like the tab column it sits in. */
+.console .cfg-outs-add { display: flex; flex-direction: column; gap: 2px; }
+.console .cfg-outtab.is-add { color: var(--fg-3); }
+.console .cfg-outtab.is-add:hover { color: var(--fg-1); }
 .console .cfg-outs-detail { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .console .cfg .cfg-outs-detail > .cfg-out { padding-inline: 0; }
 @media (max-width: 900px) { .console .cfg-outs { flex-direction: column; } .console .cfg-outs-nav { position: static; flex-basis: auto; width: 100%; flex-direction: row; flex-wrap: wrap; } }
@@ -987,22 +1006,3 @@
 .console .pl-look { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 760px) { .console .look .tmg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .console .rund-look { display: flex; justify-content: flex-end; padding: var(--space-1) var(--space-2) 0; }
-/* The theme editor (themes/ThemeStudio.jsx): a window of its own — the theme
-   big on the left on a sample, its settings grouped on the right. Over
-   Configurações and the console, under the library that picks its background. */
-.console .te-scrim { z-index: 35; }
-.console .te-dialog { position: absolute; z-index: 35; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1180px, calc(100% - 48px)); height: min(760px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
-.console .te-dialog .te-name { flex: 0 1 320px; min-width: 140px; height: 28px; margin-left: var(--space-3); background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 var(--space-2); font: inherit; font-size: 13px; }
-.console .te-default { display: inline-flex; align-items: center; gap: 4px; margin-left: var(--space-2); }
-.console .te-body { flex: 1; min-height: 0; display: flex; }
-.console .te-stage { flex: 1; min-width: 0; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); overflow: auto; }
-.console .te-samples { display: flex; align-items: center; gap: var(--space-2); }
-.console .te-screen { width: 100%; }
-.console .te-panel { flex: 0 0 380px; min-width: 0; overflow: auto; border-left: 1px solid var(--line); padding: var(--space-2) var(--space-3) var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
-.console .te-group-h { padding: var(--space-1) 0; border-bottom: 1px solid var(--line); margin-bottom: var(--space-2); color: var(--fg-1); }
-.console .te-rows { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--space-2); align-items: center; }
-.console .te-rows .k { font-size: 11px; color: var(--fg-3); }
-.console .te-v { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
-.console .te-v .cfg-select { min-width: 0; max-width: 100%; }
-.console .te-note { display: block; grid-column: 1 / -1; }
-@media (max-width: 960px) { .console .te-body { flex-direction: column; overflow: auto; } .console .te-panel { flex: none; border-left: 0; border-top: 1px solid var(--line); overflow: visible; } .console .te-stage { overflow: visible; } }

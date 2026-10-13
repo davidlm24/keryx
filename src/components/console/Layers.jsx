@@ -12,6 +12,7 @@ import { STYLE_KEYS, LAYER_ORDER, layerHidden, layerLocked } from "@shared/live-
 import { useLibraryPicker } from "./library/libraryContext";
 import { bgArgs, bgFields, bgLabel, cleanSpec } from "@/lib/console/backgroundSpec";
 import { GENERATORS } from "@/lib/generators";
+import { openEditor } from "@/lib/editorWindow";
 
 const GEN_NAMES = Object.fromEntries(GENERATORS.map((g) => [g.id, g.name]));
 
@@ -128,6 +129,10 @@ export default function Layers({ c, themes }) {
         <>
             <div className="themerow">
                 <span className="t" title="Escolha o tema no card Temas">Tema: {theme ? theme.name : "nenhum"}{modified && <span> · Modificado</span>}</span>
+                <span style={{ flex: 1 }} />
+                {/* Editing lives in the Editor de temas e layouts (its window);
+                    here the operator only adjusts what is on air. */}
+                {theme && <Btn small onClick={() => { const r = openEditor({ theme: theme.id }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor de temas e layouts">Editar tema…</Btn>}
             </div>
             {modified && (
                 <div className="themeacts">

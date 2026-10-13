@@ -8,9 +8,9 @@ import { ThemeThumb } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 import { THEME_FONTS, TEXT_SIZES, defaultTheme, defaultChanges, themeForKind, THEME_KINDS, KIND_FIELD } from "@/lib/console/themes";
-import { useThemeEditor } from "../themes/ThemeStudio";
 import { useLibraryPicker } from "../library/libraryContext";
 import { usePrefs, updateUser } from "@/hooks/useUser";
+import { openEditor } from "@/lib/editorWindow";
 
 const SIZE = Object.fromEntries(TEXT_SIZES);
 const FONT = Object.fromEntries(THEME_FONTS);
@@ -58,20 +58,23 @@ function KindThemes({ c, themes, setDefault }) {
     );
 }
 
-// Temas: the projection presets as small screens — each one text +
-// background. A click (or Novo tema) opens the theme editor, a window of its
-// own (themes/ThemeStudio.jsx; owner's request 2026-10-13). Camadas' "Salvar
-// como novo" still works. The backgrounds are managed in the library.
+// Configurações › Temas: the LIST of the projection presets — the default
+// one per kind (KindThemes), the themes as small screens, Tornar padrão and
+// Excluir. Editing happens in ONE place, the Editor de temas e layouts (its
+// own window, src/pages/Editor.jsx): a click on a theme, the context menu's
+// Editar and "Novo tema…" open it. Camadas adjusts what is on air and
+// captures a theme with "Salvar como novo"; the console's Temas card
+// applies them.
 export default function TemasSection({ c }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["settings", "themes"] })), [client]);
-    const openTheme = useThemeEditor();
     const reload = () => client.invalidateQueries({ queryKey: ["settings", "themes"] });
     const run = async (p, message) => {
         try { await p; if (message) c.say(message); } catch (err) { c.say(err?.message || "Não foi possível."); }
         reload();
     };
+    const edit = (id) => { const r = openEditor({ theme: id || "new" }); if (r?.error) c.say(r.error); };
     // One transaction: never two defaults, never none in between.
     const setDefault = (id) => {
         const rows = defaultChanges(themes, id);
@@ -83,12 +86,12 @@ export default function TemasSection({ c }) {
     // Excluir asks first (ConfirmDialog.jsx), as in the console's menus.
     const confirm = useConfirm();
     const remove = async (t) => {
-        if (!(await confirm(deleteQuestion("o tema", t.name, "Músicas e saídas que usam este tema voltam ao padrão.")))) return;
+        if (!(await confirm(deleteQuestion("o tema", t.name, "Músicas, cultos e saídas que usam este tema voltam ao padrão.")))) return;
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
     const menu = useContextMenu();
     const themeMenu = (e, t) => menu(e, { title: t.name, items: [
-        { label: "Editar", icon: "edit", onSelect: () => openTheme(t.id) },
+        { label: "Editar", icon: "edit", onSelect: () => edit(t.id) },
         { label: t.is_default ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: Boolean(t.is_default), onSelect: () => makeDefault(t) },
         { label: "Excluir…", icon: "trash", onSelect: () => remove(t) },
     ] });
@@ -96,22 +99,23 @@ export default function TemasSection({ c }) {
     return (
         <>
             <KindThemes c={c} themes={themes} setDefault={setDefault} />
-            <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· clique para editar · botão direito: mais opções</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => openTheme("new")}>Novo tema…</Btn></CfgKey>
-            {/* The themes as small screens, as in the library; a click opens the editor. */}
+            <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· clique para editar (abre o Editor, na janela dele) · botão direito: mais opções</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => edit("new")}>Novo tema…</Btn></CfgKey>
+            {/* The themes as small screens, as in the library (owner's request
+                2026-10-13); a click edits in the Editor de temas e layouts. */}
             <div className="tmg" role="list" aria-label="Temas">
                 {themes.map((t) => (
                     <button type="button" key={t.id} role="listitem" className="kx-t fg-tile tmg-tile" aria-label={t.name}
-                        title={`${t.name} · clique para editar · botão direito: mais opções`} onClick={() => openTheme(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
+                        title={`${t.name} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                         <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
                         <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{t.name}</span>
                         <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G", t.is_default ? "padrão" : ""].filter(Boolean).join(" · ")}</span>
                     </button>
                 ))}
-                <button type="button" className="kx-t fg-tile tmg-tile tmg-new" onClick={() => openTheme("new")} aria-label="Novo tema">
+                <button type="button" className="kx-t fg-tile tmg-tile tmg-new" onClick={() => edit("new")} aria-label="Novo tema">
                     <span className="fg-img"><span className="tmg-plus"><Icon name="plus" />Novo tema</span></span>
                 </button>
             </div>
-            {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Crie um em "Novo tema…", ou ajuste o texto em Camadas e use "Salvar como novo".</Empty>}
+            {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Crie um em "Novo tema…" (abre o Editor de temas e layouts), ou ajuste o texto em Camadas e use "Salvar como novo".</Empty>}
         </>
     );
 }

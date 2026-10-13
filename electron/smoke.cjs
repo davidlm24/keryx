@@ -1755,33 +1755,38 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent === 'Restaurar mesmo'); if (b) b.click(); return Boolean(b); })()"), 3000);
         await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs .np-side'))"), 5000);
 
-        // Temas (a section of its own): the editor creates a theme with a live
-        // sample; the backgrounds are managed in the library, opened from
-        // Aparência › Fundos. Element clicks (not coordinates): the dialog
-        // relayouts while it opens.
+        // Temas: Configurações keeps only the list; "Novo tema…" opens the
+        // Editor de temas e layouts in its own window (/Editor), where the
+        // theme gets a name and a font with a live sample, Salvar writes the
+        // row, and the window closes. Element clicks (not coordinates): the
+        // dialog relayouts while it opens.
         const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .cfg-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
         const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
         await waitFor(() => section("Temas"), 4000);
         await waitFor(() => press2("Novo tema…"), 4000);
-        // The theme editor is a window of its own (themes/ThemeStudio.jsx):
-        // the name in its header, the settings beside a big sample.
-        result.themeWindow = await waitFor(() => js("Boolean(document.querySelector('.console .te-dialog input.te-name'))"), 4000);
-        await js(`(() => {
-            const name = document.querySelector(".te-dialog input.te-name");
+        const editorWin = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/Editor"));
+        result.themeWindow = await waitFor(() => Boolean(editorWin()), 8000);
+        const ew = editorWin();
+        const ejs = (code) => ew.webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← editor ← ${String(code).replace(/\s+/g, " ").slice(0, 120)}`); });
+        await waitFor(() => ejs("Boolean(document.querySelector('.nv-frm input.pl-input'))"), 8000);
+        await ejs(`(() => {
+            const name = document.querySelector(".nv-frm input.pl-input");
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(name, "Tema Smoke");
             name.dispatchEvent(new Event("input", { bubbles: true }));
-            const font = document.querySelector(".te-dialog select[aria-label=\\"Fonte do tema\\"]");
+            const font = document.querySelector(".nv-frm select");
             font.value = "serif"; font.dispatchEvent(new Event("change", { bubbles: true }));
             return true;
         })()`);
-        result.themeSample = await waitFor(() => js("(getComputedStyle(document.querySelector('.te-dialog .te-screen .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
-        await js("(() => { const b = [...document.querySelectorAll('.te-dialog button')].find((x) => x.textContent.trim() === 'Salvar tema'); if (b) b.click(); return Boolean(b); })()");
-        result.themeWindowClosed = await waitFor(() => js("!document.querySelector('.console .te-dialog')"), 4000);
+        result.themeSample = await waitFor(() => ejs("(getComputedStyle(document.querySelector('.le-screen .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
+        await ejs("(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Salvar tema'); if (b) b.click(); return Boolean(b); })()");
         result.themeSaved = await waitFor(async () => {
             const rows = (await js('window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])')).data || [];
             return rows.length === 1 && rows[0].font_family === "serif";
         }, 6000);
-        if (!result.themeSaved) result.themeDiag = await js("(document.querySelector('.toast') || {}).textContent || document.querySelector('.console .cfg').innerText.slice(0, 300)");
+        if (!result.themeSaved) result.themeDiag = await ejs("(document.querySelector('.toast') || {}).textContent || document.body.innerText.slice(0, 300)");
+        // Saved: the window closes clean (the dirty guard has nothing to ask).
+        { const w = editorWin(); if (w) w.close(); }
+        result.themeWindowClosed = await waitFor(() => !editorWin(), 5000);
         // Aparência has no tabs; its Fundos row opens the library to manage
         // the backgrounds (Fechar, no Usar), over Configurações.
         await section("Aparência");

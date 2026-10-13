@@ -25,6 +25,8 @@
     "text_align": { "type": "string", "enum": ["", "left", "center", "right"], "description": "Alinhamento do texto do tema; vazio = centro" },
     "text_position": { "type": "string", "enum": ["", "top", "middle", "bottom"], "description": "Posição do texto na tela; vazio = meio" },
     "text_nudge": { "type": "number", "description": "Ajuste fino vertical do texto (-20 a 20 % da altura)" },
+    "text_align": { "type": "string", "enum": ["left", "center", "right"], "description": "Alinhamento do texto na tela; vazio é centro (Editor de temas)" },
+    "text_position": { "type": "string", "enum": ["top", "middle", "bottom"], "description": "Posição vertical do texto na tela; vazio é o meio (Editor de temas)" },
     "background_fit": { "type": "string", "enum": ["cover", "contain"], "description": "Ajuste da imagem de fundo" },
     "background_dim": { "type": "number", "description": "Escurecer o fundo (0 a 0.9)" },
     "background_blur": { "type": "number", "description": "Desfoque do fundo (px numa tela de 1920)" },

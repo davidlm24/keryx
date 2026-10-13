@@ -14,6 +14,21 @@ export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 // A theme's text look: the five classic keys, plus the extras it was saved
 // with (absent ones apply as "", so a theme without a box removes one; a
 // theme without a transition falls back to Aparência's default).
+//
+// Where the text lands is decided in this order (ScreenRenderer draws
+// content.style, slide.style over it):
+//   1. slide.style — a song part's theme (songTheme.js); a per-output theme
+//      drops it (outputPrefs.js).
+//   2. the output's own theme (OutputPref.theme_id), for the keys it sets.
+//   3. the item's explicit style (Camadas, a song's "Próprio" look) — extras
+//      the item sets survive the default theme (withThemeDefaults fills only
+//      what is empty).
+//   4. the default (or Bíblia's) theme, stamped when the item is sent.
+//   5. the renderer's factory look (center/middle, large, sans, shadow).
+// text_align and text_position ride as extras, so the Editor de temas moves
+// the box per theme and Camadas still wins on air. Applying a theme on air
+// (Temas card) spreads the whole themeStyle: it resets them too — a theme is
+// a complete look.
 export const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position", "transition", "transition_ms"];
 const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""]));
 export const themeStyle = (t) => ({ font_size: t?.font_size || "large", font_family: t?.font_family || "sans", text_effect: t?.text_effect || "shadow", text_color: t?.text_color || "#ffffff", text_color_2: t?.text_color_2 || "", ...extra(t) });
