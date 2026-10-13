@@ -18,7 +18,7 @@ import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import Library from "@/components/console/Library";
 import SlidesPanel, { handTitle } from "@/components/console/SlidesPanel";
-import CenterPanel, { PreviewBand, captionOf, ProgramaCaption } from "@/components/console/CenterPanel";
+import CenterPanel, { PreviewBand, PreviaPanel, PlayerSlot, captionOf, ProgramaCaption } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
@@ -771,7 +771,6 @@ export default function Console() {
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
     );
-    const cardPanel = { lib: libraryPanel, slides: slidesPanel, camadas: camadasPanel };
     const splitFor = (key, sign = 1, horizontal = false, id = key) => (
         <Split key={`split-${id}`} horizontal={horizontal} size={layout[key]} sign={sign} onSize={(v) => setLayout({ ...layout, [key]: v })} onReset={() => setLayout({ ...layout, [key]: DEFAULT_LAYOUT[key] })} clamp={(v) => clampSize(key, v)} />
     );
@@ -787,6 +786,11 @@ export default function Console() {
     ] });
     const multiview = layout.multiview ? { tiles: layout.mvTiles, rows: health.rows, onPick: pickQuadrant } : null;
 
+    // The player (always visible; under the Programa).
+    const playerSlot = (
+        <PlayerSlot c={c} picked={playerPick} setPicked={setPlayerPick} projectorOpen={Boolean(projector?.open)}
+            videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
+    );
     // The Programa column: its caption, Camadas (when it is a drawer), Voltar
     // ao anterior, Multiview, and the live column (CenterPanel).
     const livePanel = (
@@ -799,7 +803,7 @@ export default function Console() {
                 <button type="button" className={`kx-btn kx-t mx-toggle ${layout.multiview ? "is-on" : ""}`} style={{ height: 24 }} onClick={toggleMultiview} aria-pressed={layout.multiview} title={layout.multiview ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar"} aria-label="Multiview"><Icon name="grid" /><span className="hist-lbl">Multiview</span></button>
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick}
+            <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} player={playerSlot}
                 items={playable} multiview={multiview}
                 onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
                 onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
@@ -809,18 +813,26 @@ export default function Console() {
                     { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
                     { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
                     { label: "Encerrar…", icon: "stop", air: true, onSelect: () => setOpen("encerrar") },
-                ] })} videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
+                ] })} />
         </Panel>
     );
-    // The bottom band: the Prévia (Enviar ao ar under it) and the Setlist,
-    // one full row under Programa and Camadas (owner's decision 2026-10-13).
-    const previewBand = (
-        <PreviewBand c={c} logoUrl={logoUrl} prevPct={layout.prevPct} onPrevPct={(v) => setLayout({ ...layout, prevPct: v })} setlist={setlistArea}
+    // The Prévia, Enviar ao ar under its monitor.
+    const previaPanel = (
+        <PreviaPanel c={c} logoUrl={logoUrl} className="bb-prev"
             onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
             onPrevMenu={(e) => openMenu(e, { title: "Prévia", items: [
                 { label: "Limpar a prévia", icon: "x", disabled: !c.prev, onSelect: () => c.setPrev(null) },
                 { label: "Enviar ao ar", icon: "play", kbd: "Enter", air: true, disabled: !c.prev || c.locked, onSelect: () => sendStage() },
             ] })} />
+    );
+    // Every module of the culto environment, each built apart from where it
+    // goes (the ids are src/lib/console/dock.js's MODULES). Today's
+    // arrangement places them below; the player rides inside the Programa.
+    const modulePanels = { lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, setlist: setlistArea, camadas: camadasPanel, player: playerSlot };
+    // The bottom band: the Prévia and the Setlist, one full row under
+    // Programa and Camadas (owner's decision 2026-10-13).
+    const previewBand = (
+        <PreviewBand previa={modulePanels.previa} setlist={modulePanels.setlist} prevPct={layout.prevPct} onPrevPct={(v) => setLayout({ ...layout, prevPct: v })} />
     );
 
     // One column on screen. While editing, a bar on top moves it.
@@ -835,8 +847,8 @@ export default function Console() {
                 <div key="live" data-col="live" className={`col center ${moving}`} ref={centerRef}>
                     {bar}
                     <div className="band-top">
-                        {livePanel}
-                        {camadasRight && <>{splitFor("rightW", -1)}{camadasPanel}</>}
+                        {modulePanels.programa}
+                        {camadasRight && <>{splitFor("rightW", -1)}{modulePanels.camadas}</>}
                     </div>
                     {previewBand}
                 </div>
@@ -844,10 +856,10 @@ export default function Console() {
         }
         // A stack (narrow: Biblioteca and Slides): the cards in their order.
         if (col.id === "source") {
-            const cards = col.cards.map((id) => React.cloneElement(cardPanel[id], { key: id, className: `arr-card arr-card-${id}` }));
+            const cards = col.cards.map((id) => React.cloneElement(modulePanels[id], { key: id, className: `arr-card arr-card-${id}` }));
             return <div key={col.id} data-col={col.id} className={`col source ${moving}`} style={{ ...sideCol(col.widthKey, layout[col.widthKey]), gap: "var(--gutter)" }}>{bar}{cards}</div>;
         }
-        return <div key={col.id} data-col={col.id} className={`col ${moving}`} style={sideCol(col.widthKey, layout[col.widthKey])}>{bar}{cardPanel[col.id]}</div>;
+        return <div key={col.id} data-col={col.id} className={`col ${moving}`} style={sideCol(col.widthKey, layout[col.widthKey])}>{bar}{modulePanels[col.id]}</div>;
     };
 
     // The service clock in the top bar, and how late the item on air runs.

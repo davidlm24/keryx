@@ -108,6 +108,7 @@
    Prévia lives in the band below since 2026-10-13), K = the player slot 36
    + gap 8. */
 .console .mons { --live-k: 44px; display: flex; flex-direction: column; align-items: center; padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; container-type: size; }
+.console .mons.no-player { --live-k: 0px; } /* the player placed elsewhere: the Programa takes its slot */
 .console .liveblock { width: min(100cqw, calc((100cqh - var(--live-k)) / 0.5625)); flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .console .liveblock > * { flex: none; }
 .console .prog-where { flex: none; white-space: nowrap; margin-right: var(--space-2); }

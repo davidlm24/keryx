@@ -191,7 +191,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   operator's (Ver › Editar layout): `layout.order`/`layout.stacks`, turned
   into columns and splitters by `src/lib/console/arrange.js` (tested) —
   render from `cultoColumns`/`bibleColumns` + `withSplits`, never place a
-  column by hand in `Console.jsx`. **The centre is two bands**
+  column by hand in `Console.jsx`. In progress (owner 2026-10-13): the culto
+  environment moves to a free arrangement, a tree of splits and tab groups
+  in `src/lib/console/dock.js` (tested; `fromArrangement` migrates the old
+  layout); every module is built apart from where it goes (`modulePanels`
+  in Console.jsx: Programa, `PreviaPanel`, Setlist, Camadas, `PlayerSlot`,
+  Biblioteca, Slides). **The centre is two bands**
   (owner's decision 2026-10-13: left = content, middle = order and
   projection/media control, right = the projection's look): Biblioteca and
   Slides are whole columns; the rest, to the screen's right edge, is the
