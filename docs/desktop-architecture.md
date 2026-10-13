@@ -221,6 +221,13 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
    screens show, and Encerrar/Esc leave it playing (the player's Parar stops
    it). Only the desktop's own `/Projection` window plays it, so a TV on
    the network showing that page stays silent. Media rows may be `audio`.
+   **Tirar o vídeo · o som continua (2026-10-13, as in Holyrics):** the
+   player's eye button moves a video file on the projector into the audio
+   channel (`media.toAudio`: same second, volume and pause; a list goes
+   along, only what can be heard; allowed while locked) and "Mostrar o
+   vídeo" moves it back (`audio.toMedia`). YouTube cannot play hidden, so
+   it is refused. The sound has a short cut at the switch (another element
+   loads the same file and seeks).
    **Level meters:** where sound plays (`LiveVideo` with a `meter` layer:
    the projector's media and audio, the video screens), `useAudioMeter`
    routes the element through Web Audio (element to the speakers and to two
