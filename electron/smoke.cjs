@@ -1355,7 +1355,8 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-layer", "Fundo");
         result.dayLookButton = await waitFor(() => js("[...document.querySelectorAll('.tm-acts button')].some((b) => b.textContent.includes('Visual de hoje'))"), 4000);
         if (dayLookDrawer) await js("(() => { const b = [...document.querySelectorAll('.center .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return true; })()");
-        // No service yet: dropping a song on the Setlist starts today's setlist.
+        // No service yet: dropping a song on the Setlist (the right column,
+        // under Camadas, in the wide tier) starts today's setlist.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(400);
         await click(".kx-tabs button", "Letras");
@@ -1366,7 +1367,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(600);
         await js(`(() => {
             const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
-            const to = document.querySelector(".rund-tail");
+            const to = document.querySelector('[data-col="side"] .rund-tail');
             if (!from || !to) return false;
             const dt = new DataTransfer();
             from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
@@ -1409,7 +1410,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await js(`window.keryxDesktop.db.call("Service", "update", ["${svc.id}", { startTime: null }])`);
 
         // Drag from the Biblioteca (synthetic DragEvents drive the handlers).
-        // The Setlist sits beside the Prévia at every width.
+        // Wide: the Setlist is the right column's, under Camadas, full
+        // height; the panel beside the Prévia holds the tabs (the console
+        // audit, 2026-10-13).
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(400);
         await click(".kx-tabs button", "Letras");
@@ -1430,7 +1433,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.dragDidNotSend = !live.get().content;
         result.dragSetlist = await js(`(() => {
             const from = [...document.querySelectorAll(".kx-row")].find((n) => n.textContent.includes("Canto do console"));
-            const to = document.querySelector(".rund-tail");
+            const to = document.querySelector('[data-col="side"] .rund-tail');
             if (!from || !to) return "faltou " + (from ? "cauda" : "origem");
             const dt = new DataTransfer();
             from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
@@ -1443,6 +1446,46 @@ async function checkConsole(webContents, { live, outputs }) {
             const rows = (await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}" }])`)).data || [];
             return rows.length === 4 && rows.filter((r) => r.title === "Canto do console" && r.type === "SONG").length === 2;
         }, 8000);
+        // The right column: Camadas over the Setlist with the splitter between
+        // them; the band under the Programa ends at the centre's edge and
+        // holds the Prévia and the tabs panel.
+        result.setlistRight = await js(`(() => {
+            const side = document.querySelector('[data-col="side"]');
+            const center = document.querySelector('[data-col="live"]');
+            if (!side || !center || !side.querySelector('.rund') || document.querySelector('.band-bottom .rund')) return false;
+            const cards = [...side.children].filter((n) => !n.classList.contains('arr-bar')).map((n) => (n.classList.contains('kx-split') ? '|' : (n.className.match(/arr-card-(\\w+)/) || [])[1])).join(',');
+            const band = document.querySelector('.band-bottom').getBoundingClientRect();
+            return cards === 'camadas,|,roteiro' && band.right <= center.getBoundingClientRect().right + 1 && Boolean(document.querySelector('.band-bottom .tabs-panel'));
+        })()`);
+        // Notas: the item prepared from the Setlist shows its notes in the
+        // panel beside the Prévia (ServiceItem.notes, never on a screen).
+        const tabIn = (label) => js(`(() => { const t = [...document.querySelectorAll(".tabs-panel [role=tab]")].find((x) => x.textContent === ${JSON.stringify(label)}); if (t) t.click(); return Boolean(t); })()`);
+        const notedRow = ((await js(`window.keryxDesktop.db.call("ServiceItem", "filter", [{ serviceId: "${svc.id}", type: "SONG" }])`)).data || [])[0];
+        if (notedRow) await js(`window.keryxDesktop.db.call("ServiceItem", "update", [${JSON.stringify(notedRow.id)}, { notes: "Nota do smoke: entrar no segundo refrão" }])`);
+        await sleep(600);
+        await tabIn("Notas");
+        await click('[data-col="side"] .rund .kx-row', "Canto do console");
+        result.notesPanel = Boolean(notedRow) && await waitFor(() => js(`(document.querySelector(".tabs-panel .kx-panel-b") || {}).textContent.includes("Nota do smoke: entrar no segundo refrão")`), 5000);
+        if (notedRow) await js(`window.keryxDesktop.db.call("ServiceItem", "update", [${JSON.stringify(notedRow.id)}, { notes: "" }])`);
+        // The panel's (+): unchecking a tab hides it; the last one stays;
+        // Restaurar abas padrão; Esc closes the list (and ends nothing).
+        const panelTabs = () => js(`[...document.querySelectorAll(".tabs-panel [role=tab]")].map((x) => x.textContent).join(",")`);
+        const menuItem = (label) => js(`(() => { const b = [...document.querySelectorAll(".tabs-menu .kx-menu-item")].find((x) => x.textContent.startsWith(${JSON.stringify(label)})); if (b) b.click(); return Boolean(b); })()`);
+        await click('[data-tabs-plus="panel"]');
+        const tabsMenuOpen = await waitFor(() => js(`Boolean(document.querySelector(".tabs-menu"))`), 3000);
+        await menuItem("Aviso rápido");
+        const tabsHidden = await waitFor(async () => (await panelTabs()) === "Notas,Timers", 3000);
+        await menuItem("Timers");
+        await sleep(200);
+        await menuItem("Notas");
+        await sleep(300);
+        const tabsLastStays = (await panelTabs()) === "Notas";
+        await menuItem("Restaurar abas padrão");
+        const tabsRestored = await waitFor(async () => (await panelTabs()) === "Notas,Aviso rápido,Timers", 3000);
+        await press("Escape");
+        const tabsClosed = await waitFor(() => js(`!document.querySelector(".tabs-menu")`), 3000);
+        result.tabsMenu = tabsMenuOpen && tabsHidden && tabsLastStays && tabsRestored && tabsClosed;
+        if (!result.tabsMenu) result.tabsMenuDiag = { tabsMenuOpen, tabsHidden, tabsLastStays, tabsRestored, tabsClosed, now: await panelTabs() };
         result.layersBefore = (live.get().layerOrder || []).join(",");
         // Camadas: a section above the Setlist in the wide tier, else a drawer
         // opened from the Programa's header.
@@ -1599,7 +1642,7 @@ async function checkConsole(webContents, { live, outputs }) {
             if (!panel) { st.remove(); return { error: "sem Biblioteca" }; }
             const box = panel.parentElement;
             const keep = box.getAttribute("style") || "";
-            const tabs = [...panel.querySelectorAll(".kx-tabs button")];
+            const tabs = [...panel.querySelectorAll(".kx-tabs button[role=tab]")];
             const out = {};
             for (const width of [0, 200]) {
                 if (width) box.setAttribute("style", keep + ";flex:0 0 " + width + "px !important;width:" + width + "px !important;min-width:" + width + "px !important;max-width:" + width + "px !important");
@@ -2119,7 +2162,11 @@ async function checkConsole(webContents, { live, outputs }) {
         // Mensagens prontas do Aviso rápido (AlertPreset): Guardar keeps the
         // field's text as a row (and refuses it twice); a click puts it back
         // in the field without touching the screens; a double click shows it
-        // at once; the cross deletes it.
+        // at once; the cross deletes it. Wide, the Aviso rápido is a tab of
+        // the panel beside the Prévia (and leaves Biblioteca › Avisos).
+        const quickTab = (label) => js(`(() => { const t = [...document.querySelectorAll(".tabs-panel [role=tab]")].find((x) => x.textContent === ${JSON.stringify(label)}); if (t) t.click(); return Boolean(t); })()`);
+        await quickTab("Aviso rápido");
+        result.quickAlertOnce = await waitFor(() => js(`document.querySelectorAll('.console input[placeholder="Aviso para as telas"]').length === 1 && Boolean(document.querySelector('.tabs-panel input[placeholder="Aviso para as telas"]'))`), 3000);
         const presetRows = async () => ((await js(`window.keryxDesktop.db.call("AlertPreset", "list", [])`)).data || []);
         const presetChips = () => js(`[...document.querySelectorAll(".kx-preset-t")].map((b) => b.textContent)`);
         await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); if (!el) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "Kids: chamar os pais da sala 2"); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
@@ -2143,7 +2190,9 @@ async function checkConsole(webContents, { live, outputs }) {
         // Timers prontos (TimerPreset): the star keeps the minutes (the five
         // built-in ones are not rows); a click prepares the timer, a double
         // click sends it, +5 min moves its end, the cross deletes the time.
+        // Wide, they are the panel's Timers tab, beside the Prévia.
         const timerRows = async () => ((await js(`window.keryxDesktop.db.call("TimerPreset", "list", [])`)).data || []);
+        await quickTab("Timers");
         if (!(await js(`Boolean(document.querySelector(".kx-timer-chip"))`))) await click(".kx-tool", "Timer");
         result.timerChips = await waitFor(() => js(`[...document.querySelectorAll(".kx-timer-chip .kx-preset-t")].map((b) => b.textContent).join(",") === "5 min,10 min,15 min,30 min,1 h"`));
         await js(`(() => { const el = document.querySelector('input[aria-label="Minutos"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "7"); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
@@ -2152,8 +2201,10 @@ async function checkConsole(webContents, { live, outputs }) {
         result.timerListed = await waitFor(() => js(`[...document.querySelectorAll(".kx-timer-chip .kx-preset-t")].map((b) => b.textContent).join(",") === "5 min,7 min,10 min,15 min,30 min,1 h"`));
         await click(".kx-timer-chip .kx-preset-t", "7 min");
         result.timerPrepared = await waitCap(PREV, "Timer 7 min") && !live.get().tool;
-        await dblclick(".kx-timer-chip .kx-preset-t", "7 min");
+        await dblclick(".tabs-panel .kx-timer-chip .kx-preset-t", "7 min");
         result.timerOn = await waitFor(() => live.get().tool && live.get().tool.mode === "timer" && Math.abs(live.get().tool.endsAt - live.get().tool.startedAt - 7 * 60000) < 1500);
+        // A ready timer from the panel beside the Prévia went on air.
+        result.quickTools = result.timerOn && await js(`Boolean(document.querySelector(".tabs-panel .kx-timer-air"))`);
         const endBefore = live.get().tool && live.get().tool.endsAt;
         await click(".kx-timer-air button", "+5 min");
         result.timerAdjusted = await waitFor(() => live.get().tool && live.get().tool.endsAt - endBefore === 300000);
@@ -2388,7 +2439,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped && result.playerAlwaysThere
         && result.tlGone && result.forecastOff && result.forecastOn
-        && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
+        && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded && result.setlistRight === true && result.notesPanel && result.tabsMenu && result.quickTools && result.quickAlertOnce
         && result.colsFit && result.editBanner && result.editMove === true && result.editEsc && result.editRestore
         && (result.bibleSplit === true || typeof result.bibleSplit === "string")
         && result.noGoldRing === true && result.bibleOneMonitor && (result.bibleVerseRow === true || result.bibleVerseRow === "dobrada") && result.bibleNames && result.bibleNamesBack && result.bibleBandFits && result.bibleShort &&result.chapterSent && result.chapterRef === "João 3:16 · NVI"

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf, loadLayout, restoreArrangement } from "./layout.js";
 import { DEFAULT_ORDER, DEFAULT_STACKS } from "./arrange.js";
 import { DEFAULT_TILES } from "./multiview.js";
+import { DEFAULT_TABS } from "./panelTabs.js";
 
 // localStorage stand-in for loadLayout.
 const withStore = (saved, fn) => {
@@ -19,7 +20,7 @@ test("the column order is part of the layout; an old save gets the default order
     assert.deepEqual(old.order, DEFAULT_ORDER);
     assert.deepEqual(old.stacks, DEFAULT_STACKS);
     const odd = withStore({ order: { culto: ["side", "side", "live", "zz"] } }, () => loadLayout("x"));
-    assert.deepEqual(odd.order.culto, ["live", "lib", "slides"], "the old side column id is dropped");
+    assert.deepEqual(odd.order.culto, ["side", "live", "lib", "slides"]);
     assert.deepEqual(odd.order.biblia, DEFAULT_ORDER.biblia);
 });
 
@@ -31,10 +32,11 @@ test("the Bíblia's two side columns are resizable, with limits", () => {
 });
 
 test("Restaurar posições: order, stacks and sizes back; shown modules and density kept", () => {
-    const mine = { ...DEFAULT_LAYOUT, hidden: { tl: true }, density: "compact", libW: 400, bibleAirW: 500, order: { ...DEFAULT_ORDER, culto: ["live", "lib", "slides", "side"] } };
+    const mine = { ...DEFAULT_LAYOUT, hidden: { tl: true }, density: "compact", libW: 400, camadasH: 500, bibleAirW: 500, order: { ...DEFAULT_ORDER, culto: ["live", "lib", "slides", "side"] } };
     const back = restoreArrangement(mine);
     assert.deepEqual(back.order, DEFAULT_ORDER);
     assert.equal(back.libW, DEFAULT_LAYOUT.libW);
+    assert.equal(back.camadasH, DEFAULT_LAYOUT.camadasH);
     assert.equal(back.bibleAirW, DEFAULT_LAYOUT.bibleAirW);
     assert.deepEqual(back.hidden, { tl: true });
     assert.equal(back.density, "compact");
@@ -63,10 +65,20 @@ test("the default Electron window (1440) is wide, not compact", () => {
     assert.equal(tierFor(1440 - 12), "wide");
 });
 
-test("Camadas is a module in Ver; its band width is rightW", () => {
+test("Camadas is a module in Ver (the Setlist never hides); the right column is rightW wide, Camadas camadasH tall", () => {
     assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "camadas"]);
     assert.deepEqual(LIMITS.rightW, [280, 520]);
-    assert.equal("camadasH" in DEFAULT_LAYOUT, false, "the stacked-card height died with the side column");
+    assert.deepEqual(LIMITS.camadasH, [120, 640]);
+    assert.ok(DEFAULT_LAYOUT.camadasH < 400, "the Setlist gets most of the column");
+    const old = withStore({ libW: 300 }, () => loadLayout("x")); // a save from the two-band console
+    assert.equal(old.camadasH, DEFAULT_LAYOUT.camadasH);
+});
+
+test("the tab rows are part of the layout; an old or broken save gets the defaults", () => {
+    assert.deepEqual(DEFAULT_LAYOUT.tabs, DEFAULT_TABS);
+    assert.deepEqual(withStore({ libW: 300 }, () => loadLayout("x")).tabs, DEFAULT_TABS);
+    const mine = withStore({ tabs: { panel: ["historico", "notas", "zz"], lib: [] } }, () => loadLayout("x"));
+    assert.deepEqual(mine.tabs, { panel: ["notas", "historico"], lib: DEFAULT_TABS.lib });
 });
 
 test("the multiview is off by default; a saved one keeps its outputs, cleaned", () => {
