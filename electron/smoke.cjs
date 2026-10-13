@@ -1340,6 +1340,9 @@ async function checkConsole(webContents, { live, outputs }) {
         result.audioSurvivesEnd = Boolean(live.get().audio);
         await click(".player button", "Parar e tirar do ar");
         result.audioStopped = await waitFor(() => !live.get().audio);
+        // The player is always visible under the Programa (owner's decision
+        // 2026-10-13): idle it dims, it never disappears.
+        result.playerAlwaysThere = await js("(() => { const pl = document.querySelector('.pslot .player'); return Boolean(pl) && pl.className.includes('is-idle') && getComputedStyle(pl).visibility === 'visible'; })()");
 
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
@@ -2367,7 +2370,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
-        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped
+        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped && result.playerAlwaysThere
         && result.tlGone && result.forecastOff && result.forecastOn
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded
         && result.colsFit && result.editBanner && result.editMove === true && result.editEsc && result.editRestore

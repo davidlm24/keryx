@@ -176,13 +176,21 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   operator's (Ver › Editar layout): `layout.order`/`layout.stacks`, turned
   into columns and splitters by `src/lib/console/arrange.js` (tested) —
   render from `cultoColumns`/`bibleColumns` + `withSplits`, never place a
-  column by hand in `Console.jsx`. **The Setlist lives beside the Prévia**
-  (owner's decision 2026-10-13, at every width): Console.jsx builds the
-  header + `Rundown` (`setlistArea`) and CenterPanel slots it into the
-  Prévia's row (`setlist`; `.side-sl` scrolls, the list follows the item on
-  air). The old Próximo/Depois lines, the Setlist side card and the
-  Biblioteca's compact Setlist tab went with it; the side column is Camadas
-  alone, full height. Setlist sections are ServiceItems of type `SECTION`: headers that
+  column by hand in `Console.jsx`. **The centre is two bands**
+  (owner's decision 2026-10-13: left = content, middle = order and
+  projection/media control, right = the projection's look): Biblioteca and
+  Slides are whole columns; the rest, to the screen's right edge, is the
+  `live` column — on top the Programa (CenterPanel: the monitor or the
+  Multiview, and the player **always visible**, dimmed while idle) beside
+  the Camadas panel (width `rightW`, wide tier only; else the drawer);
+  below, **one full row** (`PreviewBand`): the Prévia (width `prevPct` of
+  the band, default 30, limits 18–45) with **Enviar ao ar right under it**
+  and the teacher notes, then the Setlist in the rest (Console.jsx builds
+  `setlistArea`; `.side-sl` scrolls, the list follows the item on air).
+  There is no `side` column or `camadasH` any more (arrange.js: culto =
+  lib, slides, live; an old save normalizes in silence). The old
+  Próximo/Depois lines, the Setlist side card and the Biblioteca's compact
+  Setlist tab are gone. Setlist sections are ServiceItems of type `SECTION`: headers that
   take no time and never go on air — use `playableItems`/`plan` from
   `src/lib/console/setlist.js`. A click prepares a *stage* in the Prévia;
   Enter, a **double click** or "Enviar ao ar" sends it (user decision
