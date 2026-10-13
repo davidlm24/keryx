@@ -157,23 +157,10 @@
 .console .mx-lbl.is-idle .mx-st { color: var(--fg-3); }
 .console .mx-lbl.is-warn .mx-st { color: var(--warn-fg); }
 @container (max-width: 200px) { .console .mx-st { display: none; } }
-/* The centre (the console audit, 2026-10-13): the Programa on top, then a
-   row for the Prévia (Enviar ao ar under it) and the panel beside it — the
-   tabs panel, or the Setlist where there is no right column — ending at the
-   centre's edge. The row is as tall as the Prévia's column (contain: size
-   on .bb-side); only the side's body scrolls. */
+/* Views that take the grid (planner, media, reports, Escola) stack their
+   panels one gutter apart. The tabs panel (.bb-side) scrolls inside itself. */
 .console .col.center { gap: var(--gutter); }
-.console .band-top { flex: 1 1 auto; min-height: 140px; display: flex; min-width: 0; }
-.console .band-top > .kx-panel { flex: 1; min-width: 0; }
-.console .band-bottom { flex: none; display: flex; gap: 0; align-items: stretch; min-width: 0; }
-.console .bb-prev { width: calc(var(--prev) * 100%); min-width: 220px; flex: none; }
-.console .bb-prev > .kx-panel-b { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; }
-.console .bb-prev .kx-btn-send { width: 100%; }
-.console .band-bottom > .kx-split { flex: none; align-self: stretch; }
 .console .bb-side { flex: 1; align-self: stretch; min-width: 180px; min-height: 0; contain: size; }
-/* The right column (wide): Camadas (camadasH, inline) over the Setlist,
-   which takes the rest; the splitter between them is the gutter. */
-.console .col.side > .arr-card-roteiro { flex: 1 1 0; min-height: 160px; }
 /* A row of tabs the operator trims (TabsPanel.jsx, the Biblioteca): the
    (+) at its end opens the list with check marks. */
 .console .tabrow > .tabs-plus { margin-left: auto; align-self: center; flex: none; width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border-radius: var(--radius-control); color: var(--fg-3); }
@@ -256,6 +243,40 @@
 .console .col.is-moving { opacity: .55; }
 .console.is-editing .main .kx-panel-b { pointer-events: none; opacity: .5; transition: opacity var(--duration-fast) var(--ease-out); }
 .console.is-editing .main .kx-split { pointer-events: auto; }
+/* The culto environment's dock (Dock.jsx, src/lib/console/dock.js): splits
+   and tab groups. Sizes come from fitDock (fixed cells get their pixels, the
+   flexible one the rest); the splitter is the gap, as everywhere. */
+.console .dock { flex: 1; display: flex; min-width: 0; min-height: 0; }
+.console .dock-split { flex: 1; display: flex; min-width: 0; min-height: 0; }
+.console .dock-split.is-col { flex-direction: column; }
+.console .dock-cell { display: flex; min-width: 0; min-height: 0; }
+.console .dock-group { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; outline: 0; }
+.console .dock-group > .kx-panel { flex: 1 1 0; min-width: 0; min-height: 0; }
+.console .dock-group > .kx-panel.bb-side { contain: size; }
+.console .dock-tabs { flex: none; display: flex; gap: 2px; height: 30px; align-items: center; padding: 0 var(--space-1); margin-bottom: 2px; overflow: hidden; }
+.console .dock-tab { flex: none; height: 24px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-3); font: 500 12px/16px var(--font-sans); cursor: pointer; white-space: nowrap; }
+.console .dock-tab:hover { color: var(--fg-1); background: var(--bg-2); }
+.console .dock-tab.is-on { color: var(--fg-1); background: var(--bg-3); }
+/* The Prévia anywhere: its monitor as big as the cell allows, Enviar ao ar under it. */
+.console .dock .prev-panel > .kx-panel-b { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; container-type: size; padding-bottom: var(--space-2); }
+.console .dock .prev-panel > .kx-panel-b > .kx-mon { flex: none; align-self: center; width: min(100%, calc((100cqh - 44px) / 0.5625)); }
+.console .dock .prev-panel .kx-btn-send { width: 100%; flex: none; }
+.console .dock .player-panel > .kx-panel-b { display: flex; align-items: center; overflow: hidden; }
+.console .dock .player-panel .pslot { flex: 1; min-width: 0; }
+/* Editing: a bar on each group (grip, one chip per module, ×). */
+.console .dock-bar { flex: none; height: 32px; display: flex; align-items: center; gap: 2px; margin-bottom: 2px; padding: 0 var(--space-1); border-radius: var(--radius-control); background: var(--brand-tint); box-shadow: inset 0 0 0 1px var(--brand); overflow: hidden; }
+.console .dock-chipwrap { display: inline-flex; align-items: center; flex: none; }
+.console .dock-chip { display: inline-flex; align-items: center; gap: var(--space-1); height: 24px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-1); font: 500 12px/16px var(--font-sans); cursor: grab; touch-action: none; white-space: nowrap; }
+.console .dock-chip:hover { background: var(--bg-3); }
+.console .dock-chip:active { cursor: grabbing; }
+.console .dock-x { display: inline-grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-3); cursor: pointer; }
+.console .dock-x:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .dock-tray { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); min-height: 32px; padding: 2px var(--space-2); border: 1px dashed var(--brand); border-radius: var(--radius-control); }
+.console .dock-tray .kx-meta { margin-right: var(--space-1); }
+.console .dock-hint { position: fixed; z-index: 45; pointer-events: none; border: 2px solid var(--brand); border-radius: var(--radius-panel); background: color-mix(in srgb, var(--brand) 18%, transparent); }
+.console .dock-hint > span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 11px/16px var(--font-sans); white-space: nowrap; }
+.console .dock-ghost { position: fixed; z-index: 46; pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font: 500 12px/16px var(--font-sans); }
+@media (prefers-reduced-motion: no-preference) { .console .dock-hint { transition: left 70ms, top 70ms, width 70ms, height 70ms; } }
 .console .arr-line { position: fixed; z-index: 40; border-radius: 1px; background: var(--brand); pointer-events: none; }
 /* The Bíblia in three columns (owner layout 2026-10-12): Livro, Capítulo
    and Versículo stacked, the chosen text, what is on air. Their order and the

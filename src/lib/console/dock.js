@@ -17,8 +17,8 @@
 //   - hidden: the modules in the tray (Ver › Editar disposição), in order.
 // The player is the one module with a home: while it is not in the tree it
 // rides under the Programa (owner's decision 2026-10-13, always visible), so
-// it is never in the tray. The Programa and the Prévia are never in the
-// tray either: without them the culto cannot run.
+// it is never in the tray. The Programa, the Prévia and the Setlist are
+// never in the tray either: without them the culto cannot run.
 import { DEFAULT_ORDER, normalizeOrder } from "./arrange.js";
 
 // The gutter between two children: the splitter is the gap (console.css).
@@ -39,7 +39,8 @@ export const MODULES = {
     programa: { name: "Programa", minW: 320, minH: 200, required: true },
     previa: { name: "Prévia", minW: 220, minH: 200, required: true },
     abas: { name: "Painel de abas", minW: 220, minH: 140 },
-    setlist: { name: "Setlist", minW: 220, minH: 120 },
+    // Never out of reach (the console audit, 2026-10-13).
+    setlist: { name: "Setlist", minW: 220, minH: 120, required: true },
     camadas: { name: "Camadas", minW: 280, minH: 120 },
     player: { name: "Player", minW: 280, minH: 36, home: "programa" },
 };
@@ -204,12 +205,13 @@ function strip(node, mods) {
 //   { kind: "group", path, zone }  zone "center": as tabs of that group;
 //                                  "left"/"right"/"top"/"bottom": a new group
 //                                  on that side, splitting the space;
-//   { kind: "tray" }               out of the console (never the Programa or
-//                                  the Prévia; the player goes home instead);
+//   { kind: "tray" }               out of the console (never a required
+//                                  module; the player goes home instead);
 //   { kind: "home" }               the player back under the Programa.
-// `px`: the new group's size when it cannot take half of its neighbour's
-// (the neighbour is the flexible one, or a new split is made).
-export function moveModules(dock, mods, target, { px = NEW_PX } = {}) {
+// Beside a fixed neighbour the new group takes half of its size (each kept
+// at its minimum at least); beside the flexible one, or when a new split is
+// made, it gets `px`. share: false gives it `px` and leaves the neighbour be.
+export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = {}) {
     const d = normalizeDock(dock);
     const list = (mods || []).filter((m, i, a) => MODULES[m] && a.indexOf(m) === i);
     if (!list.length || !target) return d;
@@ -243,7 +245,12 @@ export function moveModules(dock, mods, target, { px = NEW_PX } = {}) {
         if (parent && parent.dir === axis) {
             const s = parent.sizes[i];
             let mine = size;
-            if (s !== null) { mine = Math.max(PX_MIN, Math.round((s - G) / 2)); parent.sizes[i] = mine; }
+            if (s !== null && share) {
+                const row = axis === "row";
+                const ctx = contextOf(tree);
+                mine = Math.max(minSize(fresh, row, ctx, false), Math.round((s - G) / 2));
+                parent.sizes[i] = Math.max(minSize(node, row, ctx, false), s - G - mine);
+            }
             const at = before ? i : i + 1;
             parent.children.splice(at, 0, fresh);
             parent.sizes.splice(at, 0, mine);
@@ -257,6 +264,66 @@ export function moveModules(dock, mods, target, { px = NEW_PX } = {}) {
 }
 
 export const hideModule = (dock, id) => moveModules(dock, [id], { kind: "tray" });
+
+// A module back from the tray to where the default console has it: beside
+// the first module after it in its default split that is on screen now (or
+// the last one before it), with its default size; failing that, one level
+// up. `opts`: as defaultDock's.
+export function returnModule(dock, id, opts) {
+    const d = normalizeDock(dock);
+    if (!d.hidden.includes(id)) return d;
+    const def = defaultDock(opts).tree;
+    const onScreen = (m) => m !== id && pathOf(d.tree, m);
+    let p = pathOf(def, id);
+    while (p && p.length) {
+        const parent = nodeAt(def, p.slice(0, -1));
+        const i = p[p.length - 1];
+        const row = parent.dir === "row";
+        const px = parent.sizes[i] ?? NEW_PX;
+        const after = parent.children.slice(i + 1).flatMap(leaves).find(onScreen);
+        if (after) return moveModules(d, [id], { kind: "group", path: pathOf(d.tree, after), zone: row ? "left" : "top" }, { px, share: false });
+        const before = parent.children.slice(0, i).flatMap(leaves).reverse().find(onScreen);
+        if (before) return moveModules(d, [id], { kind: "group", path: pathOf(d.tree, before), zone: row ? "right" : "bottom" }, { px, share: false });
+        p = p.slice(0, -1);
+    }
+    return moveModules(d, [id], { kind: "group", path: firstGroupPath(d.tree), zone: "left" }, { share: false });
+}
+
+// The dock with the tray following a list kept elsewhere (Ver › the
+// modules, a preference of the church in the database): each of `ids`
+// hidden there goes to the tray, each shown there comes back to its place.
+export function syncHidden(dock, hidden = {}, ids = [], opts) {
+    let d = normalizeDock(dock);
+    for (const id of ids) {
+        const inTray = d.hidden.includes(id);
+        if (hidden[id] && !inTray) d = hideModule(d, id);
+        else if (!hidden[id] && inTray) d = returnModule(d, id, opts);
+    }
+    return d;
+}
+
+// A fixed child's size in the default console, for a splitter's "restore":
+// the slot there that holds the same modules; null when there is none.
+export function defaultSize(dock, path, index, opts) {
+    const sp = nodeAt(dock?.tree, path);
+    if (!isSplit(sp) || !sp.children[index]) return null;
+    const want = leaves(sp.children[index]).join();
+    const find = (n) => {
+        if (!isSplit(n)) return null;
+        for (let i = 0; i < n.children.length; i++) {
+            if (n.dir === sp.dir && leaves(n.children[i]).join() === want) return n.sizes[i];
+            const r = find(n.children[i]);
+            if (r !== null) return r;
+        }
+        return null;
+    };
+    return find(defaultDock(opts).tree);
+}
+
+// Every module's place on screen, for "Mover para…" and the tray:
+// [{ id, path }] in the tree's order.
+export const placed = (dock) => leaves(dock?.tree).map((id) => ({ id, path: pathOf(dock.tree, id) }));
+export const canTray = (id) => Boolean(MODULES[id]) && !MODULES[id].required;
 
 export function setActive(dock, path, id) {
     const d = normalizeDock(dock);
@@ -324,35 +391,65 @@ export function allocate(sizes, mins, avail) {
 }
 
 // What goes on screen in a box of w × h pixels: the tree with each node's
-// size, where a split whose children cannot all fit side by side (or one
-// over the other) at their minimums becomes one group holding all of its
-// modules as tabs. Nothing in the dock changes: a bigger screen splits them
-// again. -> a frame:
+// size. When the children of a split cannot all fit side by side (or one
+// over the other) at their minimums, neighbours join as the tabs of one
+// group, a pair at a time, until they fit: first the pair that gives back
+// the most room without touching the Programa, the Programa's last. Nothing
+// in the dock changes: a bigger screen splits them again. -> a frame:
 //   { kind: "group", path, tabs, active, w, h }
 //   { kind: "group", path, tabs, active, w, h, collapsed: true, target }
 //       (target: the first real group inside, where a drop lands)
-//   { kind: "split", path, dir, w, h, children: [{ size, fixed, frame }] }
+//   { kind: "split", path, dir, w, h, children: [{ index, size, fixed, frame }] }
+//       (index: the child of the dock's split a splitter resizes)
 export function fitDock(dock, w, h) {
     if (!dock?.tree) return null;
     return fitNode(dock.tree, [], w, h, contextOf(dock.tree));
 }
 
+// Several nodes shown as the tabs of one group (the first one's tab in front).
+function tabsFrame(nodes, path, w, h, target) {
+    const tabs = nodes.flatMap(leaves);
+    const first = nodeAt(nodes[0], target.slice(path.length));
+    return { kind: "group", path, tabs, active: first?.active || tabs[0], w, h, collapsed: true, target };
+}
+
 function fitNode(node, path, w, h, ctx) {
     if (isGroup(node)) return { kind: "group", path, tabs: node.tabs, active: node.active, w, h };
     const row = node.dir === "row";
-    const avail = (row ? w : h) - G * (node.children.length - 1);
-    const mins = node.children.map((c) => minSize(c, row, ctx));
-    if (mins.reduce((a, b) => a + b, 0) > avail + 0.5) {
-        const target = firstGroupPath(node, path);
-        return { kind: "group", path, tabs: leaves(node), active: nodeAt(node, target.slice(path.length)).active, w, h, collapsed: true, target };
+    let items = node.children.map((c, i) => ({ at: [i], min: minSize(c, row, ctx), size: node.sizes[i] }));
+    const need = () => items.reduce((a, it) => a + it.min, 0) + G * (items.length - 1);
+    const avail = row ? w : h;
+    while (items.length > 1 && need() > avail + 0.5) {
+        let best = -1;
+        let bestGain = -Infinity;
+        let bestProg = true;
+        for (let k = 0; k < items.length - 1; k++) {
+            const mods = [...items[k].at, ...items[k + 1].at].flatMap((i) => leaves(node.children[i]));
+            const prog = mods.includes("programa");
+            const gain = items[k].min + items[k + 1].min + G - groupMin(mods, row, ctx);
+            if ((bestProg && !prog) || (prog === bestProg && gain > bestGain)) { best = k; bestGain = gain; bestProg = prog; }
+        }
+        const a = items[best];
+        const b = items[best + 1];
+        const at = [...a.at, ...b.at];
+        const size = a.size === null || b.size === null ? null : Math.max(a.size, b.size);
+        items.splice(best, 2, { at, min: groupMin(at.flatMap((i) => leaves(node.children[i])), row, ctx), size });
     }
-    const dims = allocate(node.sizes, mins, avail);
+    if (items.length === 1 && node.children.length > 1) {
+        const target = firstGroupPath(node, path);
+        return tabsFrame([node], path, w, h, target);
+    }
+    const dims = allocate(items.map((it) => it.size), items.map((it) => it.min), avail - G * (items.length - 1));
     return {
         kind: "split", path, dir: node.dir, w, h,
-        children: node.children.map((c, i) => ({
-            size: dims[i],
-            fixed: node.sizes[i] !== null,
-            frame: fitNode(c, [...path, i], row ? dims[i] : w, row ? h : dims[i], ctx),
-        })),
+        children: items.map((it, k) => {
+            const cw = row ? dims[k] : w;
+            const ch = row ? h : dims[k];
+            const first = [...path, it.at[0]];
+            const frame = it.at.length === 1
+                ? fitNode(node.children[it.at[0]], first, cw, ch, ctx)
+                : tabsFrame(it.at.map((i) => node.children[i]), first, cw, ch, firstGroupPath(node.children[it.at[0]], first));
+            return { index: it.at[0], size: dims[k], fixed: it.size !== null, frame };
+        }),
     };
 }

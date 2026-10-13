@@ -84,11 +84,17 @@ export function StackLead({ name, index, count, onMove, handle }) {
 }
 
 // Under the top bar while editing. Never over a monitor (banners never are).
-export function EditBanner({ onRestore, onDone }) {
+// The culto environment's modules go anywhere (Dock.jsx; `children`: its
+// tray); the Bíblia's columns and cards move as before.
+export function EditBanner({ env = "culto", onRestore, onDone, children = null }) {
+    const hint = env === "culto"
+        ? "Arraste um módulo pelo nome até a borda de outro para dividir o espaço, ou até o meio para juntar como aba. Um clique no nome abre Mover para…; o × guarda na bandeja. Esc conclui."
+        : "Arraste pelo topo da coluna ou use as setas; os cards empilhados sobem e descem. Esc conclui.";
     return (
         <div className="kx-banner arr-banner" role="status">
-            <span className="kx-alert-title">Editando o layout</span>
-            <span className="kx-sub">Arraste pelo topo da coluna ou use as setas; os cards empilhados sobem e descem. Esc conclui.</span>
+            <span className="kx-alert-title">Editando a disposição</span>
+            <span className="kx-sub">{hint}</span>
+            {children}
             <span className="kx-spacer" />
             <button type="button" className="kx-btn kx-t" onClick={onRestore} title="Volta a ordem, as pilhas e as larguras ao padrão">Restaurar posições</button>
             <button type="button" className="kx-btn kx-btn-outline kx-t" onClick={onDone}>Concluir</button>

@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Icon from "./Icon";
-import { Monitor, Btn, Split, Panel } from "./kx";
-import { DEFAULT_LAYOUT, clampSize } from "@/lib/console/layout";
+import { Monitor, Btn, Panel } from "./kx";
 import PlayerBar from "./PlayerBar";
 import MultiView from "./MultiView";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
@@ -109,7 +108,7 @@ export function PlayerSlot({ c, picked, setPicked, videoScreens, projectorOpen }
 // once, { tiles, rows, onPick }) and, right under it, `player` (PlayerSlot)
 // when the player rides with the Programa. Sized by console.css
 // (.liveblock): as wide as its panel allows, limited by the 16:9 of its
-// height. The Prévia is its own module (PreviaPanel).
+// height. The Prévia is its own module (PreviaPanel); the dock places both.
 export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, onProgMenu, items = [], multiview = null, player = null }) {
     const { cur, now, locked } = c;
     const [dropOn, setDropOn] = useState(null);
@@ -142,39 +141,10 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
     );
 }
 
-// The centre's bottom band, under the Programa and no wider than it (the
-// console audit, 2026-10-13): `previa` (PreviaPanel), then `side` in the
-// rest — the tabs panel (TabsPanel) in the wide tier, the Setlist where
-// there is no right column (Console.jsx builds both). The band is as tall
-// as the Prévia's column; only the side's body scrolls. The Prévia's width
-// is the operator's (the splitter, % of the band, saved with the layout; it
-// works in pixels, so the band's width is kept here). Only the arrangement:
-// what each module shows is its own.
-export function PreviewBand({ previa = null, side = null, prevPct = DEFAULT_LAYOUT.prevPct, onPrevPct = null }) {
-    const bandRef = useRef(null);
-    const [bandW, setBandW] = useState(0);
-    useEffect(() => {
-        const el = bandRef.current;
-        if (!el || typeof ResizeObserver === "undefined") return undefined;
-        const ro = new ResizeObserver(([e]) => setBandW(e.contentRect.width));
-        ro.observe(el);
-        return () => ro.disconnect();
-    }, []);
-    const pct = clampSize("prevPct", prevPct);
-    const prevPx = (bandW * pct) / 100;
-    return (
-        <div className="band-bottom" data-live-keys="" tabIndex={-1} ref={bandRef} style={{ "--prev": pct / 100 }}>
-            {previa}
-            {previa && onPrevPct && bandW > 0 && <Split size={prevPx} sign={1} onSize={(px) => onPrevPct(clampSize("prevPct", (px / bandW) * 100))} onReset={() => onPrevPct(DEFAULT_LAYOUT.prevPct)} clamp={(px) => px} />}
-            {side}
-        </div>
-    );
-}
-
 // The Prévia module: the prepared stage as Projeção will show it, with
 // Enviar ao ar right under the monitor, what sending will do when it is not
 // obvious, and the teacher notes — unless the Notas tab is on screen
-// (`notesInTab`). `className` places it (PreviewBand's bb-prev today).
+// (`notesInTab`). Where it goes is the dock's (Dock.jsx).
 export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notesInTab = false, className = "" }) {
     const { cur, prev, now, locked, stamp } = c;
     // Built with a time fixed per prepared stage, never the ticking clock:

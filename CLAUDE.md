@@ -191,28 +191,37 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   operator's (Ver › Editar layout): `layout.order`/`layout.stacks`, turned
   into columns and splitters by `src/lib/console/arrange.js` (tested) —
   render from `cultoColumns`/`bibleColumns` + `withSplits`, never place a
-  column by hand in `Console.jsx`. In progress (owner 2026-10-13): the culto
-  environment moves to a free arrangement, a tree of splits and tab groups
-  in `src/lib/console/dock.js` (tested; `fromArrangement` migrates the old
-  layout); every module is built apart from where it goes (`modulePanels`
-  in Console.jsx: Programa, `PreviaPanel`, the tabs panel, Setlist,
-  Camadas, `PlayerSlot`, Biblioteca, Slides). **Four columns** (the console audit,
+  column by hand in `Console.jsx` (the Bíblia still does). **The culto
+  environment is a dock** (owner 2026-10-13, the "Disposição do console"
+  prototype, model Livre): a tree of splits and tab groups,
+  `src/lib/console/dock.js` (tested), drawn by `Dock.jsx`, saved as
+  `layout.dock` (per computer; null = the one the old columns make,
+  `fromArrangement`, so an old save keeps its look). Every module is built
+  apart from where it goes (`modulePanels` in Console.jsx: Biblioteca,
+  Slides, Programa, `PreviaPanel`, the Painel de abas, Setlist, Camadas,
+  `PlayerSlot`). Ver › Editar disposição: drag a module by its name to a
+  side of another (splits) or its middle (tabs), a click on the name opens
+  "Mover para…", × puts it in the tray (the edit banner). The Programa, the
+  Prévia and the Setlist never go to the tray; the player rides under the
+  Programa until it is placed (× sends it home). The tray follows Ver's
+  module switches (a church preference, `syncHidden`). Splits have one
+  flexible child and fixed pixel sizes (`allocate`); what cannot fit side
+  by side joins as tabs, a pair at a time, the Programa last (`fitDock`) —
+  that replaced the width tiers' arrangements. A new module is an entry in
+  dock.js `MODULES` and in `modulePanels`. **Four columns** are the
+  default dock (the console audit,
   owner 2026-10-13, which replaced the two-band centre of #136/#138):
   Biblioteca and Slides are whole columns; the **centre** (`live`) is the
   Programa on top (CenterPanel: the monitor or the Multiview, and the
-  player **always visible**, dimmed while idle) and below it one row
-  (`PreviewBand`) that **ends at the centre's edge**: the Prévia panel
-  (caption in its header like the Programa's; width `prevPct` of the row,
-  default 44, limits 18–45) with **Enviar ao ar inside it, right under the
-  monitor**, then the **tabs panel** (`TabsPanel.jsx`); the **right
-  column** (`side`, width `rightW`, wide tier only) is **Camadas over the
-  Setlist, full height**, with a height splitter between them (`camadasH`,
-  default 360: the Setlist gets most of the column; `stackSplit`; Camadas
-  collapses, and Ver can hide it — never the Setlist). Medium and narrow
-  tiers have no right column: Camadas is a drawer and the **Setlist sits
-  beside the Prévia in place of the tabs panel** (never out of reach).
-  Old saves normalize in silence (culto order lib, slides, live, side;
-  stack side = camadas, roteiro). **The tabs panel and the Biblioteca end
+  player **always visible**, dimmed while idle) and below it one row that
+  **ends at the centre's edge**: the Prévia panel (caption in its header
+  like the Programa's; 44 % of the centre at first) with **Enviar ao ar
+  inside it, right under the monitor**, then the **tabs panel**
+  (`TabsPanel.jsx`); the **right column** (`rightW`) is **Camadas over the
+  Setlist, full height** (Camadas 360 px high: the Setlist gets most of the
+  column). Camadas in the tray is a drawer opened from the Programa's
+  header. The old `order`/`stacks`/widths are only read to build the first
+  dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca end
   their tab row in a (+)** that lists every tab with a check mark
   (`TabsMenu` in Popovers.jsx, as Ver lists the modules): checked = shown,
   in the list's order, at least one always, "Restaurar abas padrão" at the

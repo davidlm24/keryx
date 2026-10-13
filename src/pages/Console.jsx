@@ -13,12 +13,12 @@ import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
-import { Panel, Split, IconBtn } from "@/components/console/kx";
+import { Panel, IconBtn } from "@/components/console/kx";
 import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import Library from "@/components/console/Library";
 import SlidesPanel, { handTitle } from "@/components/console/SlidesPanel";
-import CenterPanel, { PreviewBand, PreviaPanel, PlayerSlot, captionOf, ProgramaCaption } from "@/components/console/CenterPanel";
+import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaCaption } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
@@ -48,11 +48,12 @@ import TabsPanel from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
-import { loadLayout, saveLayout, clampSize, DEFAULT_LAYOUT, sideCol, tierFor, densityOf, restoreArrangement } from "@/lib/console/layout";
-import { cultoColumns, withSplits, stackSplit, moveColumn, moveTo, CARD_NAMES } from "@/lib/console/arrange";
+import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreArrangement } from "@/lib/console/layout";
+import { MODULES as DOCK_MODULES, fromArrangement, syncHidden, fitDock, moveModules, hideModule, canTray, leaves, pathOf } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
-import { ColumnBar, StackLead, EditBanner, DropLine, usePointerReorder } from "@/components/console/Arrange";
+import { EditBanner } from "@/components/console/Arrange";
+import DockView, { useDockDrag, DockHint, DockTray, ZONE_LABEL } from "@/components/console/Dock";
 import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
@@ -62,6 +63,10 @@ import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { readChapter } from "@/lib/bibleText";
 import { formatReference, parseReference } from "@/lib/bibleBooks";
 import { remoteState, remoteSay, passagePreview } from "@/lib/console/remote";
+
+// The modules Ver (and Configurações › Console) show or hide: the church's
+// preference; in the dock, their place in or out of the tray.
+const VER_MODULES = VER_LIST.map(([id]) => id);
 
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
 const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LOG_KEY(serviceId)) || "{}"); } catch { return {}; } };
@@ -195,16 +200,21 @@ export default function Console() {
     // medium or narrow. Measured on .main, so banners and the window frame
     // count, not the window.
     const mainRef = useRef(null);
-    const centerRef = useRef(null);
-    const [tier, setTier] = useState(() => tierFor(window.innerWidth - 12));
+    // The grid's size too: the dock (Editar disposição) fits the culto
+    // environment's modules into it.
+    const [mainSize, setMainSize] = useState(() => ({ w: window.innerWidth - 12, h: window.innerHeight - 64 }));
+    const tier = tierFor(mainSize.w);
 
     useEffect(() => {
         keryx.auth.me().then((u) => { const p = u?.email || u?.full_name || ""; setProfile(p); setLayoutState(loadLayout(p)); }).catch(() => {});
     }, []);
     useEffect(() => {
         const el = mainRef.current;
-        if (!el || typeof ResizeObserver === "undefined") return undefined;
-        const ro = new ResizeObserver(([entry]) => setTier(tierFor(entry.contentRect.width)));
+        if (!el) return undefined;
+        const measure = (w, h) => setMainSize((s) => (Math.abs(s.w - w) < 1 && Math.abs(s.h - h) < 1 ? s : { w, h }));
+        measure(el.clientWidth, el.clientHeight);
+        if (typeof ResizeObserver === "undefined") return undefined;
+        const ro = new ResizeObserver(([entry]) => measure(entry.contentRect.width, entry.contentRect.height));
         ro.observe(el);
         return () => ro.disconnect();
     }, []);
@@ -736,60 +746,66 @@ export default function Console() {
         if (t && !t.closest(".dialog, .palette, .qj, .lyr, .addmenu")) setTimeout(() => t.blur?.(), 0);
     };
 
-    // "Voltar ao anterior" opens over the Programa, wherever its column is.
-    const histLeft = open === "hist" ? Math.round(centerRef.current?.getBoundingClientRect().left ?? 6) : 0;
-    // The columns on screen come from the layout's order (Ver › Editar
-    // layout; src/lib/console/arrange.js): wide, a right column with Camadas
-    // over the Setlist, full height (the console audit, 2026-10-13; Camadas
-    // can be hidden in Ver, the Setlist never); narrower, Camadas is a
-    // drawer opened from the Programa and the Setlist sits beside the
-    // Prévia; narrow, Biblioteca and Slides share one column.
-    const cols = cultoColumns({ tier, hidden: layout.hidden, order: layout.order.culto, stacks: layout.stacks });
-    const sideCards = cols.find((col) => col.id === "side")?.cards || [];
-    const setlistRight = sideCards.includes("roteiro");
-    const camadasRight = sideCards.includes("camadas");
-    const sideSplit = stackSplit(sideCards, "camadas", layout.collapsed);
-    // Camadas on screen: no drawer left open behind it (Esc would close that first).
-    useEffect(() => { if (camadasRight) setDrawer(false); }, [camadasRight]);
-    // Editing: each column's bar moves it (◀ ▶ or a drag); stacked cards
-    // move up and down from their header.
-    const moveCol = (id, to) => setLayout({ ...layout, order: { ...layout.order, culto: moveColumn(layout.order.culto, cols, id, to) } });
-    const colDrag = usePointerReorder({ axis: "x", ids: cols.map((col) => col.id), find: (id) => mainRef.current?.querySelector(`:scope > [data-col="${id}"]`), onDrop: moveCol });
-    const moveCard = (stack, id, to) => setLayout({ ...layout, stacks: { ...layout.stacks, [stack]: moveTo(layout.stacks[stack], id, to) } });
-    const stackCards = { side: sideCards, source: cols.find((col) => col.id === "source")?.cards || [] };
-    const sideDrag = usePointerReorder({ axis: "y", ids: stackCards.side, find: (id) => mainRef.current?.querySelector(`[data-col="side"] > .arr-card-${id}`), onDrop: (id, at) => moveCard("side", id, at) });
-    const sourceDrag = usePointerReorder({ axis: "y", ids: stackCards.source, find: (id) => mainRef.current?.querySelector(`[data-col="source"] > .arr-card-${id}`), onDrop: (id, at) => moveCard("source", id, at) });
-    const stackDrag = { side: sideDrag, source: sourceDrag };
-    // The grip and ▲ ▼ of a card stacked with others, while editing.
-    const leadOf = (stack, id) => {
-        const list = stackCards[stack] || [];
-        if (!editing || !list.includes(id) || list.length < 2) return null;
-        const i = list.indexOf(id);
-        return <StackLead name={CARD_NAMES[id]} index={i} count={list.length} onMove={(d) => moveCard(stack, id, i + d)} handle={stackDrag[stack].handleProps(id)} />;
+    // Where the culto environment's modules go (Ver › Editar disposição;
+    // src/lib/console/dock.js): the operator's tree, or, until they change
+    // it, the one the old columns make (fromArrangement); the tray follows
+    // the modules hidden in Ver (a church preference, in the database).
+    const dockOpts = { width: mainSize.w };
+    const dock = useMemo(() => syncHidden(layout.dock || fromArrangement(layout, dockOpts), layout.hidden, VER_MODULES, dockOpts),
+        [layout.dock, layout.order, layout.stacks, layout.libW, layout.slidesW, layout.rightW, layout.camadasH, layout.prevPct, layout.hidden, mainSize.w]); // eslint-disable-line react-hooks/exhaustive-deps
+    const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h), [dock, mainSize.w, mainSize.h]);
+    const onScreen = (id) => Boolean(pathOf(dock.tree, id));
+    const playerDocked = !onScreen("player");
+    // A change to the dock; a module of Ver that went in or out of the tray
+    // is written there too.
+    const setDock = (next) => {
+        const hidden = { ...layout.hidden };
+        for (const id of VER_MODULES) hidden[id] = next.hidden.includes(id);
+        setLayout({ ...layout, dock: next, hidden });
     };
-    const stackOf = (id) => (stackCards.side.includes(id) ? "side" : stackCards.source.includes(id) ? "source" : null);
-    // The Setlist: under Camadas in the right column (wide), else beside the
-    // Prévia in place of the tabs panel — never out of reach. Its header
-    // (title, count, Planejar, +) and the whole rundown, scrolled to the
-    // item in hand (Rundown).
+    const dockDrag = useDockDrag({ dock, onDock: setDock });
+    // "Mover para…" (a click on a module's name while editing, or on it in
+    // the tray): which module to go beside, then on which side or as a tab.
+    const moveMenu = (e, id) => {
+        const r = e.currentTarget?.getBoundingClientRect?.();
+        const at = { clientX: e.clientX || r?.left || 0, clientY: e.clientY || r?.bottom || 0, preventDefault() {}, stopPropagation() {} };
+        const name = DOCK_MODULES[id].name;
+        const others = leaves(dock.tree).filter((m) => m !== id);
+        const besideOf = (other) => openMenu(at, { title: `${name} · em relação a ${DOCK_MODULES[other].name}`, items: Object.entries(ZONE_LABEL).map(([zone, label]) => ({
+            label, icon: zone === "center" ? "layers" : "grip",
+            onSelect: () => setDock(moveModules(dock, [id], { kind: "group", path: pathOf(dock.tree, other), zone })),
+        })) });
+        openMenu(e, { title: `Mover ${name} para perto de…`, items: [
+            ...others.map((other) => ({ label: DOCK_MODULES[other].name, onSelect: () => besideOf(other) })),
+            ...(id === "player" && !playerDocked ? ["sep", { label: "Voltar para baixo do Programa", icon: "undo", onSelect: () => setDock(moveModules(dock, ["player"], { kind: "home" })) }] : []),
+            ...(canTray(id) && onScreen(id) ? ["sep", { label: "Guardar na bandeja", icon: "x", onSelect: () => setDock(hideModule(dock, id)) }] : []),
+        ] });
+    };
+    // The Programa's box on screen: "Voltar ao anterior" and the Camadas
+    // drawer open beside it, wherever the dock puts it.
+    const programaBox = () => mainRef.current?.querySelector('[data-dock-mods~="programa"]')?.getBoundingClientRect() || null;
+    // "Voltar ao anterior" opens over the Programa, wherever it is.
+    const histLeft = open === "hist" ? Math.round(programaBox()?.left ?? 6) : 0;
+    const camadasOn = onScreen("camadas");
+    // Camadas on screen: no drawer left open behind it (Esc would close that first).
+    useEffect(() => { if (camadasOn) setDrawer(false); }, [camadasOn]);
+    // The Setlist: its header (title, count, Planejar, +) and the whole
+    // rundown, scrolled to the item in hand (Rundown).
     const setlistPanel = (
-        <Panel className={setlistRight ? "" : "bb-side"} title="Setlist" lead={leadOf("side", "roteiro")} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
+        <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
             actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} /></>}>
             <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
         </Panel>
     );
-    // Camadas over the Setlist: its own height (camadasH, the splitter
-    // between them); collapsed, the Setlist takes the column.
     const camadasPanel = (
-        <Panel title="Camadas" lead={leadOf("side", "camadas")} count="o que está no ar" collapsed={layout.collapsed.camadas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })}
-            style={sideSplit ? { flex: `0 1 ${layout.camadasH}px` } : undefined}>
+        <Panel title="Camadas" count="o que está no ar">
             <Layers c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} />
         </Panel>
     );
-    // The panel beside the Prévia, wide tier: the tabs the operator checked
-    // in its (+) (Notas, Aviso rápido, Timers, Ferramentas, Esteve no ar).
+    // The tabs panel: the tabs the operator checked in its (+) (Notas, Aviso
+    // rápido, Timers, Ferramentas, Esteve no ar).
     const panelTabsShown = shownTabs("panel", tabLists.panel);
-    const panelOnScreen = setlistRight;
+    const panelOnScreen = onScreen("abas");
     const panelHas = panelOnScreen ? Object.fromEntries(tabLists.panel.map((id) => [id, true])) : {};
     const prepare = (s) => c.setPrev(s);
     const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
@@ -798,19 +814,15 @@ export default function Console() {
             items={items} prevItemId={prevItemId} airItemId={airItemId} onPrepare={prepare} onGo={prepareAndSend} />
     );
     const libraryPanel = (
-        <Panel title="Biblioteca" lead={leadOf(stackOf("lib"), "lib")} collapsed={layout.collapsed.lib} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, lib: !layout.collapsed.lib } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="Biblioteca" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <Library c={c} data={data} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} onTabsMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} tabsMenuOpen={open === "tabs:lib"} elsewhere={panelHas}
                 onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
         </Panel>
     );
     const slidesPanel = (
-        <Panel title="Slides" lead={leadOf(stackOf("slides"), "slides")} count={handTitle(c) || "—"} collapsed={layout.collapsed.slides} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, slides: !layout.collapsed.slides } })} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="Slides" count={handTitle(c) || "—"} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
-    );
-    const cardPanel = { lib: libraryPanel, slides: slidesPanel, camadas: camadasPanel, roteiro: setlistPanel };
-    const splitFor = (key, sign = 1, horizontal = false, id = key) => (
-        <Split key={`split-${id}`} horizontal={horizontal} size={layout[key]} sign={sign} onSize={(v) => setLayout({ ...layout, [key]: v })} onReset={() => setLayout({ ...layout, [key]: DEFAULT_LAYOUT[key] })} clamp={(v) => clampSize(key, v)} />
     );
 
     // Multiview (Programa › Multiview; src/lib/console/multiview.js): the
@@ -824,24 +836,24 @@ export default function Console() {
     ] });
     const multiview = layout.multiview ? { tiles: layout.mvTiles, rows: health.rows, onPick: pickQuadrant } : null;
 
-    // The player (always visible; under the Programa).
+    // The player (always visible): under the Programa until the dock places it.
     const playerSlot = (
         <PlayerSlot c={c} picked={playerPick} setPicked={setPlayerPick} projectorOpen={Boolean(projector?.open)}
             videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
     );
-    // The Programa column: its caption, Camadas (when it is a drawer), Voltar
-    // ao anterior, Multiview, and the live column (CenterPanel).
+    // The Programa: its caption, Camadas (when it is in the tray: a drawer),
+    // Voltar ao anterior, Multiview, and the monitor (CenterPanel).
     const livePanel = (
         <Panel className="prog-panel" caption={<ProgramaCaption c={c} projectorDown={projectorDown} />} actions={
             <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 2 }}>
                 {health.onAir && <span className={`kx-meta prog-where ${health.onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{health.onAir.text}</span>}
-                {!camadasRight && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
+                {!camadasOn && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
                 <button type="button" className="kx-btn kx-t" style={{ height: 24 }} onClick={pickServiceFundo} title="O fundo do culto: o que as telas mostram quando nada está no ar (e a cada Esc)" aria-label={service ? "Fundo do culto" : "Fundo de hoje"}><Icon name="image" /><span className="hist-lbl">{service ? "Fundo do culto" : "Fundo de hoje"}</span></button>
                 <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco" aria-label="Voltar ao anterior"><Icon name="undo" /><span className="hist-lbl">Voltar ao anterior</span></button>
                 <button type="button" className={`kx-btn kx-t mx-toggle ${layout.multiview ? "is-on" : ""}`} style={{ height: 24 }} onClick={toggleMultiview} aria-pressed={layout.multiview} title={layout.multiview ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar"} aria-label="Multiview"><Icon name="grid" /><span className="hist-lbl">Multiview</span></button>
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} player={playerSlot}
+            <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} player={playerDocked ? playerSlot : null}
                 items={playable} multiview={multiview}
                 onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
                 onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
@@ -857,7 +869,7 @@ export default function Console() {
     // The Prévia, Enviar ao ar under its monitor (the teacher notes too,
     // unless the Notas tab is on screen).
     const previaPanel = (
-        <PreviaPanel c={c} logoUrl={logoUrl} className="bb-prev" notesInTab={panelOnScreen && tabLists.panel.includes("notas")}
+        <PreviaPanel c={c} logoUrl={logoUrl} notesInTab={panelOnScreen && tabLists.panel.includes("notas")}
             onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
             onPrevMenu={(e) => openMenu(e, { title: "Prévia", items: [
                 { label: "Limpar a prévia", icon: "x", disabled: !c.prev, onSelect: () => c.setPrev(null) },
@@ -865,42 +877,13 @@ export default function Console() {
             ] })} />
     );
     // Every module of the culto environment, each built apart from where it
-    // goes (the ids are src/lib/console/dock.js's MODULES). Today's
-    // arrangement places them below; the player rides inside the Programa.
-    const modulePanels = { lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, abas: tabsPanel, setlist: setlistPanel, camadas: camadasPanel, player: playerSlot };
-    // The centre's bottom band: the Prévia and, beside it, the tabs panel —
-    // or the Setlist where there is no right column.
-    const previewBand = (
-        <PreviewBand previa={modulePanels.previa} side={panelOnScreen ? modulePanels.abas : modulePanels.setlist} prevPct={layout.prevPct} onPrevPct={(v) => setLayout({ ...layout, prevPct: v })} />
-    );
-
-    // One column on screen. While editing, a bar on top moves it.
-    const renderCol = (col) => {
-        const i = cols.indexOf(col);
-        const bar = editing ? <ColumnBar name={col.name} index={i} count={cols.length} onMove={(d) => moveCol(col.id, i + d)} handle={colDrag.handleProps(col.id)} moving={colDrag.drag?.id === col.id} /> : null;
-        const moving = colDrag.drag?.id === col.id ? "is-moving" : "";
-        if (col.id === "live") {
-            // The centre: the Programa on top, then the Prévia and the panel
-            // beside it (the band ends at the centre's edge).
-            return (
-                <div key="live" data-col="live" className={`col center ${moving}`} ref={centerRef}>
-                    {bar}
-                    <div className="band-top">{modulePanels.programa}</div>
-                    {previewBand}
-                </div>
-            );
-        }
-        // A stack (wide: Camadas and the Setlist; narrow: Biblioteca and
-        // Slides): the cards in their order. One gutter between them: the
-        // splitter, else the cards' own margin (console.css).
-        if (col.id === "side" || col.id === "source") {
-            const cards = col.cards.map((id) => React.cloneElement(cardPanel[id], { key: id, className: `arr-card arr-card-${id}` }));
-            // The splitter beside Camadas: below it when it is on top, else above it.
-            if (col.id === "side" && sideSplit) { const at = col.cards.indexOf("camadas"); cards.splice(sideSplit.sign === 1 ? at + 1 : at, 0, splitFor("camadasH", sideSplit.sign, true)); }
-            return <div key={col.id} data-col={col.id} className={`col ${col.id} ${moving}`} style={sideCol(col.widthKey, layout[col.widthKey])}>{bar}{cards}</div>;
-        }
-        return <div key={col.id} data-col={col.id} className={`col ${moving}`} style={sideCol(col.widthKey, layout[col.widthKey])}>{bar}{modulePanels[col.id]}</div>;
+    // goes (the ids are src/lib/console/dock.js's MODULES); the dock places
+    // them. The player rides inside the Programa until it is placed.
+    const modulePanels = {
+        lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, abas: tabsPanel, setlist: setlistPanel, camadas: camadasPanel,
+        player: <Panel title="Player" className="player-panel">{playerSlot}</Panel>,
     };
+    const renderModule = (id) => (modulePanels[id] ? React.cloneElement(modulePanels[id], { key: id }) : null);
 
     // The service clock in the top bar, and how late the item on air runs.
     const playAirIdx = playable.findIndex((i) => i.id === airItemId);
@@ -944,7 +927,11 @@ export default function Console() {
                 </div>
             )}
             {/* Travar telas: the console prepares, the screens keep what they show. */}
-            {editing && <EditBanner onRestore={() => { setLayout(restoreArrangement(layout)); c.say("Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)} />}
+            {editing && (
+                <EditBanner env={env} onRestore={() => { setLayout(restoreArrangement(layout)); c.say("Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
+                    {env === "culto" && !view && <DockTray dock={dock} dnd={dockDrag} onChipMenu={moveMenu} />}
+                </EditBanner>
+            )}
             {c.locked && (
                 <div className="kx-banner is-rh" role="status"><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
@@ -956,11 +943,9 @@ export default function Console() {
                 {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}
                 {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} />}
                 {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} layout={layout} setLayout={setLayout} editing={editing} />}
-                {!view && env === "culto" && withSplits(cols).map((it) => (it.type === "split" ? splitFor(it.key, it.sign, false, it.col) : renderCol(it.col)))}
+                {!view && env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
             </div>
-            {editing && <DropLine drag={colDrag.drag} axis="x" />}
-            {editing && <DropLine drag={sideDrag.drag} axis="y" />}
-            {editing && <DropLine drag={sourceDrag.drag} axis="y" />}
+            {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
 
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
@@ -989,11 +974,10 @@ export default function Console() {
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
-            {drawer && !camadasRight && !view && env === "culto" && (() => {
-                // Over the source columns, never over the Programa: on the side
-                // of the live column with more room (it can be anywhere since
-                // Editar layout), up to its edge.
-                const r = centerRef.current?.getBoundingClientRect();
+            {drawer && !camadasOn && !view && env === "culto" && (() => {
+                // Never over the Programa: on the side of it with more room
+                // (the dock can put it anywhere), up to its edge.
+                const r = programaBox();
                 const roomL = r ? r.left - 12 : 360;
                 const roomR = r ? window.innerWidth - r.right - 12 : 0;
                 const right = roomR > roomL;
