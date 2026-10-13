@@ -167,6 +167,7 @@
 .console .subrow .side { flex: 1; align-self: stretch; min-width: 180px; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); padding-top: 28px; overflow: hidden; }
 .console .side-sl-h { display: flex; align-items: center; gap: var(--space-1); min-width: 0; padding-top: var(--space-2); border-top: 1px solid var(--line); }
 .console .side-sl-h .kx-section { flex: none; }
+.console .side-sl-h .kx-btn { flex: none; }
 .console .side-sl-h .kx-count { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .side-sl { flex: 1; min-height: 0; overflow: auto; }
 /* The player's slot is always there; the player shows only while something plays. */
