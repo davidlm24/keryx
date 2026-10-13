@@ -6,12 +6,12 @@ import { Switch } from "../console/settings/parts";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { mainLayer } from "@shared/live-state.mjs";
 import {
-    ELEMENT_TYPES, LAYOUT_CATEGORIES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
+    ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, LAYOUT_CATEGORIES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
     normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, reorderElement,
 } from "@/lib/layouts";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
-import { PREF_OUTPUTS, outputLook } from "@/lib/outputPrefs";
+import { PREF_OUTPUTS, outputLook, normalizePref, prefState, prefVars } from "@/lib/outputPrefs";
 import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, SAMPLE_ITEMS } from "../console/settings/sample";
 
@@ -34,7 +34,7 @@ const USE_ON = [...PREF_OUTPUTS, "/StageView", "/PastorView"];
 // (OutputPref.layout_id), and a `forPath` (the output whose tab opened the
 // editor, ?for=) is bound on the first save. Switching to another layout
 // happens in the header select, without leaving the window (`onSwitch`).
-export default function LayoutEditor({ say, live: liveState, now, layoutId, forPath = "", media = [], onClose, onSaved, onSwitch }) {
+export default function LayoutEditor({ say, live: liveState, now, layoutId, forPath = "", media = [], themes = [], onClose, onSaved, onSwitch }) {
     const rows = useLayoutRows();
     const prefRows = useOutputPrefRows();
     const church = useChurch();
@@ -47,6 +47,11 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
     const [confirm, setConfirm] = useState(null); // "delete" | "discard"
     const [busy, setBusy] = useState(false);
     const [source, setSource] = useState("auto"); // "auto" | "sample"
+    // Ver como: which output's real context the canvas previews with — its
+    // Mostrar, theme, Escala e Margens (renderer outputs, via prefState and
+    // the kp-out vars), or its Escala (Palco and Pastor). "" is the bare
+    // canvas, as before.
+    const [viewAs, setViewAs] = useState(() => (USE_ON.includes(forPath) ? forPath : ""));
     const [guides, setGuides] = useState([]);
     const [pickImage, setPickImage] = useState(false);
     const fileRef = useRef(null);
@@ -229,6 +234,14 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
     const liveOn = liveState && mainLayer(liveState) !== "none" ? liveState : null;
     const live = source === "sample" || !liveOn ? sample : { ...liveOn, session: liveOn.session || sample.session };
 
+    // The Ver como context: the chosen output's OutputPref (and its theme),
+    // applied the way the real page applies them — prefState + the kp-out
+    // vars for renderer outputs (as OutputScreen), only the Escala for Palco
+    // and Pastor (their pages pass scale to LayoutRenderer).
+    const ctxPref = viewAs ? normalizePref(prefRows.find((r) => r.screen_path === viewAs) || null) : null;
+    const ctxRenderer = Boolean(ctxPref) && PREF_OUTPUTS.includes(viewAs);
+    const ctxTheme = ctxRenderer && ctxPref.themeId ? themes.find((t) => t.id === ctxPref.themeId) || null : null;
+
     const upload = async (file, apply) => {
         if (!file) return;
         try { const { file_url } = await keryx.integrations.Core.UploadFile({ file }); apply(file_url); } catch (err) { say(err?.message || "Não foi possível copiar o arquivo."); }
@@ -272,7 +285,13 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
                         <div className="listhead"><span className="kx-section">Elementos <span className="kx-count">· {draft.elements.length}</span></span><span style={{ flex: 1 }} /><Btn small on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn></div>
                         {adding && (
                             <div className="nv-pick le-types">
-                                {ELEMENT_TYPES.map((t) => <Row key={t.id} icon={t.icon} title={t.name} meta={t.hint} onClick={() => add(t.id)} />)}
+                                {/* By what the element is about (layouts.js ELEMENT_GROUPS). */}
+                                {ELEMENT_GROUPS.map(([g, label]) => (
+                                    <React.Fragment key={g}>
+                                        <div className="kx-menu-h"><span className="kx-section">{label}</span></div>
+                                        {ELEMENT_TYPES.filter((t) => t.group === g).map((t) => <Row key={t.id} icon={t.icon} title={t.name} meta={t.hint} onClick={() => add(t.id)} />)}
+                                    </React.Fragment>
+                                ))}
                             </div>
                         )}
                         {!draft.elements.length && !adding && <div className="listhead"><span className="kx-meta">Nenhum elemento ainda · Adicionar põe um no meio da tela; arraste-o para onde quiser.</span></div>}
@@ -307,7 +326,10 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
                                     <select className="pl-input" value={selected.when} onChange={(e) => setEl(selected.id, { when: e.target.value })} aria-label="Quando aparece">
                                         {WHEN.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                                     </select>
-                                    {selected.type !== "monitor" && selected.type !== "progress" && selected.type !== "logo" && selected.type !== "image" && <>
+                                    {/* The text look, only for the elements that draw text
+                                        (layouts.js LOOK_TYPES): Projeção, monitor, logo,
+                                        imagem e progresso take none of these fields. */}
+                                    {LOOK_TYPES.has(selected.type) && <>
                                         <span className="k">Rótulo</span><Field icon={null} value={selected.label} onChange={(v) => setEl(selected.id, { label: v.slice(0, 24) })} placeholder="Ex.: Próximo (opcional)" />
                                         <span className="k">Texto</span>
                                         <span className="nv-inline">
@@ -364,11 +386,18 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
             <div className="kx-gap" />
             <div className="col center">
                 <Panel title={<>Tela <span className="kx-count">· {liveOn && source !== "sample" ? "no ar agora" : "exemplo"} · 16:9</span></>} actions={<>
+                    {/* Which output's real settings dress the preview. */}
+                    <select className="pl-input le-use" value={viewAs} onChange={(e) => setViewAs(e.target.value)} aria-label="Ver como a saída" title="Pré-visualizar com os ajustes reais de uma saída (Mostrar, tema, escala, margens)">
+                        <option value="">Ver como: tela pura</option>
+                        {USE_ON.map((p) => <option key={p} value={p}>Ver como: {nameOfOutput(p)}</option>)}
+                    </select>
                     <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="le-stage">
                         <div ref={screenRef} className="le-screen" onPointerDown={() => setSel(null)}>
-                            <LayoutRenderer layout={draft} live={live} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed ghost />
+                            <div className={`le-fill ${ctxRenderer ? "kp-out" : ""}`} style={ctxRenderer ? prefVars(ctxPref) || undefined : undefined}>
+                                <LayoutRenderer layout={draft} live={live} screenState={ctxRenderer ? prefState(viewAs, live, ctxPref, ctxTheme) : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} scale={!ctxRenderer && ctxPref ? ctxPref.scale : undefined} embed ghost />
+                            </div>
                             <div className="le-over" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
                                 {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}
                                 {draft.elements.map((el) => (
@@ -381,7 +410,7 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
                         </div>
                     </div>
                     <div className="listhead nv-note">
-                        <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã. Elementos escondidos agora aparecem esmaecidos.</span>
+                        <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã. Elementos escondidos agora aparecem esmaecidos.{viewAs === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o layout." : ""}</span>
                         <span style={{ flex: 1 }} />
                         {usedOn.length > 0 && <span className="kx-meta">Em uso: {usedOn.map(nameOfOutput).join(", ")}</span>}
                         <select className="pl-input le-use" value="" disabled={busy} onChange={(e) => { if (e.target.value) putOn(e.target.value); }} aria-label="Usar este layout numa saída" title="Salva e põe este layout na saída escolhida">

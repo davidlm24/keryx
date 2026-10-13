@@ -876,7 +876,9 @@
    inside the canvas, as .cfg-prev does for the settings previews. */
 .console .le-screen { position: relative; width: min(100%, 1100px, calc((100cqh - 2 * var(--space-3)) * 16 / 9)); aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; box-shadow: 0 0 0 1px var(--line); isolation: isolate; background: var(--bg-0); contain: layout paint; container-type: size; }
 .console .le-use { width: auto; flex: none; }
-.console .le-screen > .kl { pointer-events: none; }
+.console .le-screen .kl { pointer-events: none; }
+/* Ver como: the output-context wrapper between the canvas and the renderer. */
+.console .le-fill { position: absolute; inset: 0; pointer-events: none; }
 .console .le-over { position: absolute; inset: 0; z-index: 5; }
 .console .le-hit { position: absolute; cursor: move; touch-action: none; user-select: none; }
 .console .le-hit:hover { outline: 1px solid color-mix(in srgb, var(--brand) 60%, transparent); outline-offset: -1px; }

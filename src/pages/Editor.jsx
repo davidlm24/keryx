@@ -37,7 +37,7 @@ export default function Editor() {
     const [docKey, setDocKey] = useState(0);
     const live = useLiveState();
     const now = useLiveNow();
-    const { media } = useLibrary();
+    const { media, themes } = useLibrary();
 
     // The console's one-line toast, local to this window.
     const [toast, setToast] = useState(null);
@@ -77,7 +77,7 @@ export default function Editor() {
 
     const editor = doc.kind === "theme"
         ? <ThemeEditor key={`${docKey}:theme:${doc.id}`} themeId={doc.id} say={say} now={now} onClose={close} onSaved={onSaved} onSwitch={onSwitch} />
-        : <LayoutEditor key={`${docKey}:layout:${doc.id}`} layoutId={doc.id} forPath={doc.for} media={media} say={say} live={live} now={now} onClose={close} onSaved={onSaved} onSwitch={onSwitch} />;
+        : <LayoutEditor key={`${docKey}:layout:${doc.id}`} layoutId={doc.id} forPath={doc.for} media={media} themes={themes} say={say} live={live} now={now} onClose={close} onSaved={onSaved} onSwitch={onSwitch} />;
 
     return (
         <LibraryContext.Provider value={pickFromLibrary}>
