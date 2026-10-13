@@ -1,6 +1,6 @@
 // Output health: what the Saídas status, its popover, the Programa caption
 // and the warning banner say. Three questions kept apart
-// (docs/presenter-layout-proposal-2026-10-09.md, "Output state"):
+// (the 2026-10-09 presenter proposal, "Output state"):
 //   1. are the screens following? (Travar telas: the status says so)
 //   2. are the destinations there?   the status and the rows
 //   3. what is each one showing?     the rows' "Mostra" line

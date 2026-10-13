@@ -95,7 +95,7 @@ export function ProgramaCaption({ c, projectorDown }) {
 }
 
 // The live column, one block the same at every width
-// (docs/presenter-layout-proposal-2026-10-09.md, P0): the Programa (what is
+// (the 2026-10-09 presenter proposal, P0): the Programa (what is
 // on air, or the local copy with the real screen in a PiP; an output failure
 // is the banner under the top bar, never here), right under it a reserved
 // slot where the player shows while something plays (it drives what is on

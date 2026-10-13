@@ -1,5 +1,5 @@
 // Words the console says in more than one place, so they stay the same.
-// (docs/presenter-layout-proposal-2026-10-09.md, "Copy"; the README keeps
+// (the 2026-10-09 presenter proposal, "Copy"; the README keeps
 // shortcuts in tooltips, never printed on buttons.)
 
 export const SEND_LABEL = "Enviar ao ar";
