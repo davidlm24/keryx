@@ -5,7 +5,7 @@ import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import { Btn, Field, Seg } from "../kx";
 import { FormRow } from "./parts";
 
-const CORNERS = [["bottom-right", "Embaixo à direita"], ["bottom-left", "Embaixo à esquerda"], ["top-right", "Em cima à direita"], ["top-left", "Em cima à esquerda"]];
+const CORNERS = [["bottom-right", "Baixo dir."], ["bottom-left", "Baixo esq."], ["top-right", "Alto dir."], ["top-left", "Alto esq."]];
 
 // Igreja: the name, the city and the logo (the corner of the screens, the
 // idle screen and Mostrar logo). On the local profile (User).
@@ -55,7 +55,7 @@ export default function IgrejaSection({ c }) {
         setBusy(true);
         try {
             const { file_url } = await keryx.integrations.Core.UploadFile({ file });
-            await save({ logo_url: file_url }, "Logo trocado. Todas as telas já usam o novo.");
+            await save({ logo_url: file_url }, "Logo das telas atualizado.");
         } catch (err) { c.say(err?.message || "Não foi possível trocar o logo."); }
         setBusy(false);
     };
@@ -66,7 +66,7 @@ export default function IgrejaSection({ c }) {
                 <Field icon={null} value={name} onChange={setName} placeholder="Nome da igreja" onBlur={() => commit("church_name", name)} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} style={{ maxWidth: 420 }} />
             </FormRow>
             <FormRow k="Cidade">
-                <Field icon={null} value={city} onChange={setCity} placeholder="Cidade" onBlur={() => commit("church_city", city)} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} style={{ maxWidth: 420 }} />
+                <Field icon={null} value={city} onChange={setCity} placeholder="" onBlur={() => commit("church_city", city)} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} style={{ maxWidth: 420 }} />
             </FormRow>
             <FormRow k="Logo">
                 <img src={logo} alt="" className="cfg-logo" />
@@ -81,7 +81,7 @@ export default function IgrejaSection({ c }) {
                 </select>
                 <Seg small label="Tamanho do logo" value={prefs.logo_size} options={[["small", "P"], ["medium", "M"], ["large", "G"]]} onChange={(v) => setLogo({ logo_size: v }, { size: v })} />
                 <Seg small label="Opacidade do logo" value={String(prefs.logo_opacity)} options={[["1", "100%"], ["0.7", "70%"], ["0.4", "40%"]]} onChange={(v) => setLogo({ logo_opacity: Number(v) }, { opacity: Number(v) === 1 ? null : Number(v) })} />
-                <span className="kx-meta">o canto, o tamanho e a opacidade do Mostrar logo; vale já nas telas (Camadas muda só por agora)</span>
+                <span className="kx-meta">vale já nas telas; Camadas muda só por agora</span>
             </FormRow>
         </div>
     );

@@ -22,7 +22,7 @@ test("everything there: the count, and what each one shows", () => {
     assert.equal(h.status.state, "");
     assert.deepEqual(h.onAir, { text: "em 2 telas", warn: false });
     assert.equal(h.rows.find((r) => r.key === "/Projection").shows, "Canto · 2/6");
-    assert.equal(h.rows.find((r) => !r.local).shows, "Letras · Canto · 2/6");
+    assert.equal(h.rows.find((r) => !r.local).shows, "Canto · 2/6");
     assert.equal(h.rows.find((r) => !r.local).ip, "192.168.0.24");
 });
 
@@ -121,9 +121,9 @@ test("a removed output is no row, no count, no banner; its network screen still 
 
 test("rowStatus: one switch and one text per row", () => {
     const local = (state, droppedAt = null) => ({ local: true, state, droppedAt });
-    assert.deepEqual(rowStatus(local("connected")), { switchOn: true, text: "Conectada", tone: "ok", hint: null });
-    assert.deepEqual(rowStatus(local("connected"), { locked: true }), { switchOn: true, text: "Conectada · travada", tone: "rh", hint: null });
-    assert.deepEqual(rowStatus(local("reconnecting")), { switchOn: true, text: "Monitor desligado", tone: "warn", hint: "mostrando numa janela até ele ligar" });
+    assert.deepEqual(rowStatus(local("connected")), { switchOn: true, text: "Aberta", tone: "ok", hint: null });
+    assert.deepEqual(rowStatus(local("connected"), { locked: true }), { switchOn: true, text: "Aberta · travada", tone: "rh", hint: null });
+    assert.deepEqual(rowStatus(local("reconnecting")), { switchOn: true, text: "Tela desligada", tone: "warn", hint: "mostrando numa janela até ela ligar" });
     assert.deepEqual(rowStatus(local("unused")), { switchOn: false, text: "Fechada", tone: "off", hint: null });
     const closed = rowStatus(local("closed", at(19, 42)));
     assert.equal(closed.switchOn, false);
@@ -138,7 +138,7 @@ test("rowStatus: one switch and one text per row", () => {
 
 test("what a page shows", () => {
     assert.equal(showsOn("/Projection", "Tela preta"), "Tela preta");
-    assert.equal(showsOn("/StageView", "x"), "Palco · atual, próximo e relógio");
+    assert.equal(showsOn("/StageView", "x"), "atual, próximo e relógio");
     assert.equal(showsOn("/VideoProjection", "x"), "Só os vídeos enviados");
     assert.equal(showsOn("/Desconhecida", ""), "nada");
 });
@@ -153,7 +153,7 @@ test("outputs group by what they are for: Público, Palco, Transmissão", () => 
         ["Palco", ["Palco"]],
         ["Transmissão", ["Transmissão"]],
     ]);
-    assert.equal(h.rows.find((r) => r.screen === "/StreamView").shows, "Transmissão · só o texto, em legenda");
+    assert.equal(h.rows.find((r) => r.screen === "/StreamView").shows, "só o texto, em legenda");
     // Empty groups are left out; an unknown page counts as Público.
     assert.deepEqual(byGroup([{ p: "/Nova" }], (x) => x.p).map((g) => g.key), ["publico"]);
     assert.equal(groupOf("/PastorView"), "palco");

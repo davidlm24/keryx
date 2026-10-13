@@ -40,7 +40,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService })
             if (!sid) return;
             await keryx.entities.Service.update(sid, { kind_themes: cleanKindThemes({ ...(service?.kind_themes || {}), lyrics: t.id }) });
             c.setThemeId(t.id);
-            c.say(`${t.name} gravado no visual ${service ? "do culto" : "de hoje"}.`);
+            c.say(`${t.name} salvo no Visual ${service ? "do culto" : "de hoje"}.`);
         } catch (err) { c.say(err?.message || "Não foi possível gravar no visual do culto."); }
     };
     const edit = (id) => { const r = openEditor({ theme: id }); if (r?.error) c.say(r.error); };
@@ -60,7 +60,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService })
     const run = (p, message) => p.then(() => c.say(message)).catch((err) => c.say(err?.message || "Não foi possível."));
     const confirm = useConfirm();
     const removeTheme = async (t) => {
-        if (!(await confirm(deleteQuestion("o tema", t.name, "Músicas e saídas que usam este tema voltam ao padrão.")))) return;
+        if (!(await confirm(deleteQuestion("o tema", t.name, "Quem usa este tema volta ao padrão.")))) return;
         if (c.themeId === t.id) c.setThemeId(null);
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
@@ -69,11 +69,11 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService })
         { label: "Editar tema…", icon: "edit", onSelect: () => edit(t.id) },
         ...(song ? [song.theme_id === t.id
             ? { label: "Tirar tema da música", onSelect: () => saveForSong("") }
-            : { label: `Salvar para "${song.title}"`, onSelect: () => saveForSong(t.id) }] : []),
+            : { label: "Salvar tema para a música", onSelect: () => saveForSong(t.id) }] : []),
         { label: t.id === def?.id ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: t.id === def?.id, onSelect: () => run(keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, t.id)), `${t.name} é o tema padrão.`) },
         { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), `As passagens vão ao ar com o tema ${t.name}.`) },
-        { label: service ? "Salvar no visual do culto" : "Salvar no visual de hoje", disabled: cultoLyrics === t.id, onSelect: () => saveToCulto(t) },
-        { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${t.name} saiu da camada Fundo.` : `${t.name} fixado na camada Fundo.`) },
+        { label: service ? "Salvar no Visual do culto" : "Salvar no Visual de hoje", disabled: cultoLyrics === t.id, onSelect: () => saveToCulto(t) },
+        { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${t.name} saiu do console.` : `${t.name} fixado no console.`) },
         { label: "Excluir…", icon: "trash", onSelect: () => removeTheme(t) },
     ] });
     return (
@@ -84,7 +84,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService })
                     <div className="tm-grid" role="list" aria-label="Temas">
                         {shown.map((t) => (
                             <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={t.name}
-                                title={`${t.name}${t.id === def?.id ? " · tema padrão" : ""} · clique: fica em uso (veste o ar e tudo que for enviado) · duplo clique ou botão direito: editar`}
+                                title={`${t.name}${t.id === def?.id ? " · tema padrão" : ""} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
                                 onClick={() => inUse(t)} onDoubleClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                                 <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
                                 <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{t.name}</span>

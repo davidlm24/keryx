@@ -385,7 +385,7 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
             </div>
             <div className="kx-gap" />
             <div className="col center">
-                <Panel title={<>Tela <span className="kx-count">· {liveOn && source !== "sample" ? "no ar agora" : "exemplo"} · 16:9</span></>} actions={<>
+                <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={<>
                     {/* Which output's real settings dress the preview. */}
                     <select className="pl-input le-use" value={viewAs} onChange={(e) => setViewAs(e.target.value)} aria-label="Ver como a saída" title="Pré-visualizar com os ajustes reais de uma saída (Mostrar, tema, escala, margens)">
                         <option value="">Ver como: tela pura</option>

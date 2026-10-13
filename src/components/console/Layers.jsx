@@ -95,7 +95,7 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
         // Texto principal and Fundo: hidden on every screen, still on air
         // (the arrows walk the text; a new item shows its text again).
         if (id === "text") {
-            if (!content) c.say("Nenhum texto no ar.");
+            if (!content) c.say("Nada no ar.");
             else op(layerHidden(cur, "content") ? "layers.show" : "layers.hide", { layer: "content" });
         }
         if (id === "bg") {
@@ -143,7 +143,7 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
                     onClick={() => setSel(L.id)} role="button" tabIndex={0}
                     onContextMenu={(e) => menu(e, { title: L.name, items: [
                         { label: visible[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] ? "eye-off" : "eye", onSelect: () => toggleEye(L.id) },
-                        { label: locked[L.id] ? "Desbloquear" : "Bloquear", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => toggleLock(L.id) },
+                        { label: locked[L.id] ? "Destravar" : "Travar", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => toggleLock(L.id) },
                         { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
                         { label: "Descer", disabled: i === rows.length - 1, onSelect: () => moveLayer(L.key, i + 2) },
                     ] })}
@@ -155,12 +155,12 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
                     title="Arraste para mudar a ordem das camadas">
                     <span className="kx-glyph" style={{ cursor: "grab" }}><Icon name="grip" /></span>
                     <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>
-                    <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={locked[L.id] ? "Desbloquear" : "Bloquear"} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Desbloquear" : "Bloquear"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
+                    <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={locked[L.id] ? "Destravar" : "Travar"} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Destravar" : "Travar"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
                     <span className="kx-layer-name">{L.name}</span>
                 </div>
             ))}
             <div className="layerprops">
-                <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{LAYERS.find((l) => l.id === sel)?.name}{disabled ? " · bloqueada" : ""}</span>
+                <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{LAYERS.find((l) => l.id === sel)?.name}{disabled ? " · travada" : ""}</span>
                 {sel === "text" && (!content ? <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Nada no ar.</span> : <>
                     <span className="k">Fonte</span>
                     <select value={style.font_family || "sans"} disabled={disabled} onChange={(e) => setStyle({ font_family: e.target.value })} aria-label="Fonte">{FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
@@ -194,10 +194,10 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
                         {cur?.background?.kind === "generator" && <Btn small disabled={disabled} onClick={() => openLibrary(true)} title="Abre o fundo gerado grande, numa janela; cada ajuste vai às telas na hora">Editar fundo…</Btn>}
                         <Btn small disabled={disabled} onClick={() => openLibrary(false)} title="Temas, imagens, vídeos, fundos gerados e cores · abre no fundo no ar, com os ajustes dele (escurecer, desfoque, ajuste, posição)">Biblioteca…</Btn>
                     </span>
-                    {disabled && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Travado: nada que vai ao ar troca o fundo, e o fundo próprio das músicas não aparece.</span>}
+                    {disabled && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Travado: o fundo próprio das músicas não aparece.</span>}
                     {/* The themes as presets (owner's decision 2026-10-13):
                         text look + background in one click, Holyrics-style. */}
-                    <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 6 }}>Temas <span className="kx-count">· o culto segue o escolhido</span></span>
+                    <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 6 }}>Temas</span>
                     <ThemeStrip c={c} themes={themes} songs={songs} service={service} ensureService={ensureService} />
                 </>)}
                 {sel === "logo" && (<>

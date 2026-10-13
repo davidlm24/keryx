@@ -85,7 +85,6 @@ export default function Editor() {
             <div className="main">{editor}</div>
             <div className="edw-foot">
                 <Seg small label="O que editar" value={doc.kind} options={[["theme", "Temas"], ["layout", "Layouts"]]} onChange={onKind} />
-                <span className="kx-meta">as mudanças salvas valem na hora no console e nas telas</span>
                 <span style={{ flex: 1 }} />
                 <button type="button" className="kx-btn kx-t" onClick={close}>Fechar janela</button>
             </div>

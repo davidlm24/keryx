@@ -9,7 +9,8 @@ import { WEEKDAYS, TEAM_ROLES, teamRole } from "@/lib/console/serviceDefaults";
 import { parseDuration, formatDuration } from "@/lib/songImport";
 import { BgThumb } from "../library/BgChip";
 import { useLookEditor } from "../library/LookDialog";
-import { lookOf, hasLook } from "@/lib/console/serviceLook";
+import { lookOf } from "@/lib/console/serviceLook";
+import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 
 // The two lists this section edits, with the planner's query keys: a change
 // here reaches the planner (and back) through each table's realtime.
@@ -43,13 +44,8 @@ export default function CultoSection({ c }) {
     const run = async (p, message) => { try { await p; if (message) c.say(message); } catch (err) { c.say(err?.message || "Não foi possível salvar."); } };
     const templates = useRows("ServiceTemplate", "serviceTemplates", "name");
     const team = useRows("WorshipTeam", "worshipTeam", "name");
-    const [confirm, setConfirm] = useState(null);
     const [newMember, setNewMember] = useState({ name: "", role: "vocalist" });
-    const twoStep = (key, message, go) => {
-        if (confirm !== key) { setConfirm(key); c.say(message); return; }
-        setConfirm(null);
-        go();
-    };
+    const confirmAsk = useConfirm();
     const setDuration = (key, text, label) => {
         const s = parseDuration(text);
         if (s === null || s < 10) { c.say("Use minutos:segundos, como 4:00."); return; }
@@ -74,8 +70,8 @@ export default function CultoSection({ c }) {
                 </FormRow>
                 <FormRow k="Horário padrão">
                     <input type="time" className="cfg-inline" style={{ maxWidth: 120 }} value={prefs.service_start_time} aria-label="Horário padrão do culto"
-                        onChange={(e) => { if (e.target.value) save({ service_start_time: e.target.value }); }} onBlur={(e) => { if (e.target.value) c.say(`Horário de sempre: ${e.target.value}.`); }} />
-                    {prefs.service_start_time && <Btn small onClick={() => save({ service_start_time: null }, "Sem horário de sempre: cada culto recebe o seu.")}>Sem horário</Btn>}
+                        onChange={(e) => { if (e.target.value) save({ service_start_time: e.target.value }); }} onBlur={(e) => { if (e.target.value) c.say(`Horário padrão: ${e.target.value}.`); }} />
+                    {prefs.service_start_time && <Btn small onClick={() => save({ service_start_time: null }, "Sem horário padrão: cada culto recebe o seu.")}>Sem horário</Btn>}
                     <span className="kx-meta">o Novo culto e a setlist do dia já vêm com ele; sem horário, nada é inventado</span>
                 </FormRow>
                 <FormRow k="Duração padrão">
@@ -87,20 +83,20 @@ export default function CultoSection({ c }) {
                 </FormRow>
                 <FormRow k="Previsão do culto">
                     <Switch on={forecast} onChange={(on) => save({ show_forecast: on }, on ? "Previsão do fim e atraso ligados." : "Previsão desligada.")} label="Mostrar a previsão do fim do culto e o atraso" />
-                    <span className="kx-meta">mostra "termina ~" e "passou N min" na barra do topo; só faz sentido se o culto é planejado com durações</span>
+                    <span className="kx-meta">"termina ~" e o atraso na barra do topo</span>
                 </FormRow>
             </div>
 
-            <CfgKey k="Modelos de culto" className="listhead"><span className="kx-section">Modelos de culto <span className="kx-count">· {templates.length} · salve uma setlist como modelo em Planejar o culto</span></span></CfgKey>
-            {!templates.length && <div className="listhead"><span className="kx-meta">Nenhum modelo ainda.</span></div>}
+            <CfgKey k="Modelos de culto" className="listhead"><span className="kx-section">Modelos de culto <span className="kx-count">· {templates.length}</span></span></CfgKey>
+            {!templates.length && <div className="listhead"><span className="kx-meta">Nenhum ainda · salve uma setlist como modelo em Planejar o culto.</span></div>}
             {templates.map((t) => (
                 <div key={t.id} className="kx-row cfg-edit-row">
                     <span className="kx-glyph"><Icon name="list" /></span>
                     <Inline value={t.name} label={`Nome do modelo ${t.name}`} onCommit={(name) => { if (name) run(keryx.entities.ServiceTemplate.update(t.id, { name }), "Modelo renomeado."); }} />
-                    <span className="kx-meta">{(t.items || []).length} {(t.items || []).length === 1 ? "item" : "itens"}{t.isDefault ? " · modelo do KERYX" : ""}{hasLook(t) ? " · com visual" : ""}</span>
+                    <span className="kx-meta">{(t.items || []).length} {(t.items || []).length === 1 ? "item" : "itens"}{t.isDefault ? " · modelo do KERYX" : ""}</span>
                     <span style={{ flex: 1 }} />
                     {!t.isDefault && <><BgThumb spec={lookOf(t).background} /><Btn small onClick={() => openLook({ kind: "template", id: t.id })} title="O fundo e os temas que este modelo traz ao culto">Visual…</Btn></>}
-                    {!t.isDefault && <Btn small kind={confirm === `tpl:${t.id}` ? "air" : ""} onClick={() => twoStep(`tpl:${t.id}`, `Clique de novo para excluir o modelo "${t.name}".`, () => run(keryx.entities.ServiceTemplate.delete(t.id), "Modelo excluído."))}>{confirm === `tpl:${t.id}` ? "Excluir mesmo" : "Excluir"}</Btn>}
+                    {!t.isDefault && <Btn small onClick={async () => { if (await confirmAsk(deleteQuestion("o modelo", t.name))) run(keryx.entities.ServiceTemplate.delete(t.id), "Modelo excluído."); }}>Excluir…</Btn>}
                 </div>
             ))}
 
@@ -115,7 +111,7 @@ export default function CultoSection({ c }) {
                     <Inline value={m.phone} label={`WhatsApp de ${m.name}`} placeholder="WhatsApp" width={140} type="tel" onCommit={(phone) => run(keryx.entities.WorshipTeam.update(m.id, { phone }))} />
                     <span className="cfg-launch"><Switch on={m.active !== false} onChange={(on) => run(keryx.entities.WorshipTeam.update(m.id, { active: on }), on ? `${m.name} ativo.` : `${m.name} fora da lista de escala.`)} label={`${m.name} ativo`} /><span className="kx-meta">Ativo</span></span>
                     <span style={{ flex: 1 }} />
-                    <Btn small kind={confirm === `m:${m.id}` ? "air" : ""} onClick={() => twoStep(`m:${m.id}`, `Clique de novo para tirar ${m.name} da equipe (os cultos já escalados não mudam).`, () => run(keryx.entities.WorshipTeam.delete(m.id), `${m.name} saiu da equipe.`))}>{confirm === `m:${m.id}` ? "Excluir mesmo" : "Excluir"}</Btn>
+                    <Btn small onClick={async () => { if (await confirmAsk(deleteQuestion("da equipe", m.name, "Os cultos já escalados não mudam."))) run(keryx.entities.WorshipTeam.delete(m.id), `${m.name} saiu da equipe.`); }}>Excluir…</Btn>
                 </div>
             ))}
             <div className="kx-row cfg-edit-row">

@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from "react";
 import Icon from "../Icon";
-import { Btn, IconBtn } from "../kx";
+import { IconBtn } from "../kx";
 import BgChip from "./BgChip";
 import { ThemeThumb } from "./BackgroundLibrary";
 import { useLibraryPicker } from "./libraryContext";
@@ -49,7 +49,7 @@ export function LookTiles({ c, look, onChange, what = "do culto" }) {
                     return (
                         <button type="button" key={kind} className={`kx-t fg-tile tmg-tile ${mine ? "is-on" : ""}`} onClick={() => choose(kind, name)} aria-label={`Tema de ${name} ${what}: ${t ? t.name : "estilo de fábrica"}`} title={`${name} · clique para escolher`}>
                             <span className="tmg-kind">{name}</span>
-                            <span className="fg-img">{t ? <ThemeThumb theme={t} now={c.now} /> : <span className="tmg-plus">Estilo de fábrica</span>}</span>
+                            <span className="fg-img">{t ? <ThemeThumb theme={t} now={c.now} /> : <span className="tmg-plus" />}</span>
                             <span className="fg-name">{t ? t.name : "Estilo de fábrica"}</span>
                             <span className="kx-meta tmg-meta">{mine ? `próprio ${what}` : "o padrão da igreja"}</span>
                         </button>
@@ -74,9 +74,9 @@ export default function LookDialog({ c, title, row, save, onClose, note, what = 
                 <div className="look-body">
                     {note && <div className="kx-meta look-note"><Icon name="clock" size={12} />{note}</div>}
                     <LookTiles c={c} look={lookOf(row)} onChange={save} what={what} />
-                    <span className="kx-meta">Os itens com tema próprio (uma música com o seu tema) continuam com ele. O que já está no ar não muda.</span>
+                    <span className="kx-meta">Uma música com tema próprio continua com ele.</span>
                 </div>
-                <div className="lib-foot"><span style={{ flex: 1 }} /><Btn small onClick={onClose}>Fechar</Btn></div>
+                
             </div>
         </>
     );

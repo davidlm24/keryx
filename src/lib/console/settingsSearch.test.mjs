@@ -68,7 +68,7 @@ test("search: keywords and a card's rows find their place", () => {
     assert.equal(first("exportar saídas").label, "Exportar ajustes das saídas");
     assert.equal(first("exportar tudo").label, "Outro computador");
     assert.equal(first("NVI").section, "biblia");
-    const tema = searchSettings("tema padrão").find((h) => h.label === "Temas");
+    const tema = searchSettings("tema padrão").find((h) => h.label === "Todos os temas");
     assert.equal(tema.section, "temas", "Temas is a section of its own");
     assert.equal(placeOf(tema), "Temas");
     const layouts = searchSettings("canvas").find((h) => h.label === "Layouts das telas");

@@ -8,7 +8,7 @@ import { themeBackgroundArgs } from "./console/themes.js";
 
 // Conteúdo: which view of the live state the output draws (views.js).
 export const PREF_CONTENTS = [
-    { id: "", name: "Padrão da saída" },
+    { id: "", name: "Padrão da página" },
     { id: "all", name: "Tudo (como a projeção)", view: "/Projection" },
     { id: "lyrics", name: "Só letras", view: "/LyricProjection" },
     { id: "video", name: "Só vídeo", view: "/VideoProjection" },

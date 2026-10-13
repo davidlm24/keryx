@@ -166,7 +166,7 @@ export default function Library({ c, data, tab, setTab, compact, onPrepare, onGo
                 </div>
             )}
             <div className="searchrow">
-                <Field value={q} onChange={setQ} placeholder={tab === "letras" ? "Letras" : tab === "imagens" ? "Imagens" : tab === "videos" ? "Vídeos e áudios" : "Avisos"} />
+                <Field value={q} onChange={setQ} placeholder="Buscar…" />
                 {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} onClick={() => setFavOnly((f) => !f)} />}
                 <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
             </div>
@@ -175,7 +175,7 @@ export default function Library({ c, data, tab, setTab, compact, onPrepare, onGo
                 const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, stripChords(s.lyrics || "")));
                 return (
                     <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
-                        {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma música"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
+                        {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
                         {songs.map((s) => (
                             <Row
                                 key={s.id}
@@ -249,9 +249,9 @@ export default function Library({ c, data, tab, setTab, compact, onPrepare, onGo
                             <Btn onClick={saveYt} title="Guardar o link na lista de Vídeos, para a setlist e os cultos">Guardar</Btn>
                         </div>
                         </>}
-                        <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a biblioteca de mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir biblioteca</Btn>}</div>
+                        <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a biblioteca de mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir a Mídia…</Btn>}</div>
                         {audios.length > 1 && (
-                            <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar em sequência</Btn></div>
+                            <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}
                         <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
                             {!media.length && <Empty icon={tab === "imagens" ? "image" : "film"} title={ql ? `Nada com "${q}"` : tab === "imagens" ? "Nenhuma imagem" : "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
@@ -265,7 +265,7 @@ export default function Library({ c, data, tab, setTab, compact, onPrepare, onGo
                 const pieces = data.pieces.filter((p) => match(ql, p.title, p.text, p.subtext));
                 return (
                     <>
-                        <div className="listhead"><span className="kx-section">Alerta rápido <span className="kx-count">· vai direto às telas</span></span></div>
+                        <div className="listhead"><span className="kx-section">Aviso rápido <span className="kx-count">· vai direto às telas</span></span></div>
                         <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-2) var(--space-1)" }}>
                             <Field icon={null} value={alertText} onChange={setAlertText} placeholder="Aviso para as telas" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") showAlert(); }} />
                             <Btn onClick={showAlert} title="Mostrar nas telas agora · Enter">Mostrar</Btn>
@@ -330,7 +330,7 @@ Clique coloca no campo · dois cliques mostram nas telas`} onClick={() => setAle
                                 <Btn onClick={() => { if (freeText.trim()) { onPrepare(stageFromTool("freetext", { text: freeText.trim() })); setTool(null); } }}>Pôr na prévia</Btn>
                             </div>
                         )}
-                        <div className="listhead"><span className="kx-section">Avisos <span className="kx-count">· {pieces.length}</span></span><span style={{ flex: 1 }} />{pieces.length > 1 && <Btn small onClick={() => onPrepare(stageFromPieceList(pieces))} title="Pôr na prévia todos os avisos desta lista, um depois do outro, em loop">Tocar todos</Btn>}</div>
+                        <div className="listhead"><span className="kx-section">Todos os avisos <span className="kx-count">· {pieces.length}</span></span><span style={{ flex: 1 }} />{pieces.length > 1 && <Btn small onClick={() => onPrepare(stageFromPieceList(pieces))} title="Pôr na prévia todos os avisos desta lista, um depois do outro, em loop">Tocar todos</Btn>}</div>
                         <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
                             {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (

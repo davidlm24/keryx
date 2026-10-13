@@ -18,7 +18,7 @@ export default function IdleBlock({ c }) {
     return (
         <FormRow k="Tela ociosa">
             <Seg small value={idle} onChange={setIdle} options={[["logo", "Logo da igreja"], ["black", "Preto"]]} />
-            <span className="kx-meta">quando nada está no ar e não há fundo · para uma imagem, use o Fundo padrão</span>
+            <span className="kx-meta">quando nada está no ar e não há Fundo padrão</span>
         </FormRow>
     );
 }

@@ -35,7 +35,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                     <MenuItem key={key} checked={densityOf(layout) === key} onClick={() => setLayout({ ...layout, density: key })} title={key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item"}>{name}</MenuItem>
                 ))}
                 <div className="kx-menu-sep" />
-                <MenuItem icon="grip" checked={editing} onClick={onEditLayout} title="Mudar as colunas e os cards de lugar (arrastar ou setas) · Esc conclui">{editing ? "Concluir a edição" : "Editar layout"}</MenuItem>
+                <MenuItem icon="grip" checked={editing} onClick={onEditLayout} title="Mudar as colunas e os cards de lugar (arrastar ou setas) · Esc conclui">{editing ? "Concluir a edição" : "Editar disposição"}</MenuItem>
                 <MenuItem onClick={() => { restoreLayout(); setOpen(null); }}>Restaurar layout</MenuItem>
                 <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos do teclado</MenuItem>
             </div>
@@ -53,7 +53,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                     </MenuItem>
                 ))}
                 <div className="kx-menu-sep" />
-                <MenuItem icon="list" onClick={() => { setOpen(null); onPlanner?.(serviceId); }}>Planejar o culto…</MenuItem>
+                <MenuItem icon="list" onClick={() => { setOpen(null); onPlanner?.(serviceId); }}>Planejar o culto</MenuItem>
                 <MenuItem icon="plus" onClick={() => { setOpen(null); onPlanner?.("new"); }}>Novo culto</MenuItem>
             </div>
         );
@@ -68,7 +68,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <MenuItem icon="book" onClick={() => { setOpen(null); onSchool?.(); }}>Escola bíblica</MenuItem>
             <MenuItem icon="history" onClick={() => { setOpen(null); onReports?.(); }}>Relatórios</MenuItem>
             <div className="kx-menu-sep" />
-            <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Telas e saídas</MenuItem>
+            <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Saídas</MenuItem>
             <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>
             <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>
             <MenuItem icon="star" onClick={() => onWhatsNew?.()}>Novidades</MenuItem>
@@ -206,7 +206,7 @@ export function History({ open, setOpen, history, onPick, left }) {
     if (open !== "hist") return null;
     return (
         <div className="pop kx-pop" style={{ left, top: 72, width: 300 }}>
-            <div className="kx-menu-h"><span className="kx-section">Esteve no ar</span><span style={{ flex: 1 }} /><span className="kx-meta">escolha para pôr na prévia</span></div>
+            <div className="kx-menu-h"><span className="kx-section">Voltar ao anterior</span><span style={{ flex: 1 }} /><span className="kx-meta">escolha para pôr na prévia</span></div>
             {!history.length && <div className="kx-menu-h"><span className="kx-meta">Nada ainda.</span></div>}
             {history.map((h) => (
                 <MenuItem key={h.at} onClick={() => { onPick(stageFromHistory(h, restoreArgs)); setOpen(null); }}>
@@ -374,7 +374,7 @@ export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
             <div className="upd-line"><span>{installing ? "As telas voltam sozinhas quando ele abrir." : line}</span>{update.status === "downloading" && <span className="kx-meta">{pct}%</span>}</div>
             {update.notes && !installing && (
                 <div className="upd-notes">
-                    <div className="kx-section">O que há de novo</div>
+                    <div className="kx-section">Novidades</div>
                     <div className="upd-notes-t">{update.notes}</div>
                 </div>
             )}

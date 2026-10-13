@@ -89,12 +89,12 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                         onClick={() => onPrepare(it, i)}
                         onDoubleClick={() => onGo(it, i)}
                         onContextMenu={(e) => menu(e, { title: it.title || typeLabel(it.type), items: [
-                            { label: "Preparar", icon: "eye", onSelect: () => onPrepare(it, i) },
+                            { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(it, i) },
                             onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
-                            { label: "Ir para o item", icon: "play", air: true, onSelect: () => onGo(it, i) },
+                            { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(it, i) },
                         ] })}
                         dragProps={dragProps}
-                        actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Ir para o item · 2 cliques" aria-label="Ir"><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Ir</span></Btn>{onPlan && <IconBtn name="more" title="Editar no planejador" onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}
+                        actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Enviar ao ar · 2 cliques" aria-label="Ir"><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Ir</span></Btn>{onPlan && <IconBtn name="more" title="Editar no planejador" onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}
                     />
                 );
             })}

@@ -25,7 +25,7 @@ const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().inc
 // category; send several at once ("Enviar arquivos"), add a YouTube link,
 // rename, recategorise, find a lost file again ("Localizar…"), take rows
 // out (the files stay in the media folder). A click selects (Ctrl/Shift
-// for more), a double click or Enter sends to air, "Tocar em sequência"
+// for more), a double click or Enter sends to air, "Tocar todos"
 // plays the selection (or everything shown) one after the other.
 export default function MediaView({ c, media, onSend, onClose }) {
     const [cat, setCat] = useState("todas");
@@ -173,7 +173,7 @@ export default function MediaView({ c, media, onSend, onClose }) {
                 <div className="kx-tabs mv-cats" role="tablist">
                     {CATS.filter(([k]) => k !== "doc" || hasDocs).map(([k, label]) => <button type="button" role="tab" aria-selected={cat === k} key={k} className={`kx-t ${cat === k ? "is-on" : ""}`} onClick={() => setCat(k)}>{label}</button>)}
                 </div>
-                <Btn small onClick={sequence} title="Toca os selecionados (ou todos os mostrados) um após o outro">Tocar em sequência</Btn>
+                <Btn small onClick={sequence} title="Toca os selecionados (ou todos os mostrados) um após o outro">Tocar todos</Btn>
                 <Btn small kind="outline" onClick={() => fileRef.current?.click()}><Icon name="plus" />Enviar arquivos</Btn>
                 <IconBtn name="layers" small on={view === "grid"} title="Grade" onClick={() => setView("grid")} />
                 <IconBtn name="list" small on={view === "list"} title="Lista" onClick={() => setView("list")} />
@@ -213,7 +213,7 @@ export default function MediaView({ c, media, onSend, onClose }) {
                             <option value="">Categoria…</option>
                             {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                         </select>
-                        <Btn small kind={confirmDel ? "air" : ""} onClick={remove} title="Tirar da biblioteca · Delete">{confirmDel ? "Tirar mesmo" : "Tirar da biblioteca"}</Btn>
+                        <Btn small kind={confirmDel ? "air" : ""} onClick={remove} title="Excluir da Mídia · Delete">{confirmDel ? "Excluir mesmo" : "Excluir…"}</Btn>
                         <IconBtn name="x" small title="Limpar seleção · Esc" onClick={() => setSel([])} />
                     </div>
                 )}

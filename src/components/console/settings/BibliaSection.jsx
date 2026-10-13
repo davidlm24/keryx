@@ -7,8 +7,7 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { groupVerses } from "@/lib/console/bibleVerses";
 import BibliasSection from "./BibliasSection";
-import { useThemes } from "../useConsoleData";
-import { defaultTheme } from "@/lib/console/themes";
+import {} from "../useConsoleData";
 
 // The sample passage the preview shows (two verses, so the grouping shows).
 const SAMPLE_VERSES = [
@@ -26,8 +25,6 @@ const PER_SLIDE = [["auto", "Automático"], ["1", "1"], ["2", "2"], ["3", "3"]];
 export default function BibliaSection({ c }) {
     const prefs = usePrefs();
     const user = useUser();
-    const themes = useThemes();
-    const def = defaultTheme(themes);
     const save = (patch, message) => updateUser(patch).then(() => message && c.say(message)).catch(() => c.say("Não foi possível salvar."));
     const doc = useMemo(() => {
         try {
@@ -40,20 +37,10 @@ export default function BibliaSection({ c }) {
         <>
             <div className="cfg-outprefs cfg-bible">
                 <div className="frm cfg-outprefs-form">
-                    <FormRow k="Tema da Bíblia">
-                        <select className="cfg-select" aria-label="Tema da Bíblia" value={prefs.bible_theme_id}
-                            onChange={(e) => { const v = e.target.value; const t = themes.find((x) => x.id === v); save({ bible_theme_id: v }, v === "none" ? "As passagens vão ao ar com o estilo de fábrica." : t ? `As passagens vão ao ar com o tema ${t.name}.` : "A Bíblia segue o tema das músicas."); }}>
-                            <option value="">O mesmo das músicas{def ? ` (${def.name})` : " (estilo de fábrica)"}</option>
-                            <option value="none">Estilo de fábrica</option>
-                            {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                            {prefs.bible_theme_id && prefs.bible_theme_id !== "none" && !themes.some((t) => t.id === prefs.bible_theme_id) && <option value={prefs.bible_theme_id} disabled>(tema excluído · segue o das músicas)</option>}
-                        </select>
-                        <span className="kx-meta">veste as passagens sem estilo próprio quando vão ao ar; o botão Tema da Bíblia faz o mesmo</span>
-                    </FormRow>
                     <FormRow k="Versículos por slide">
                         <Seg small label="Versículos por slide" value={prefs.bible_verses_per_slide} options={PER_SLIDE}
                             onChange={(v) => save({ bible_verses_per_slide: v }, v === "auto" ? "Versículos por slide: pelo tamanho do texto." : `${v} ${v === "1" ? "versículo" : "versículos"} por slide.`)} />
-                        <span className="kx-meta">num trecho escolhido (João 3:16-18); um versículo só vai com o capítulo inteiro, um por slide</span>
+                        <span className="kx-meta">um versículo só vai com o capítulo inteiro, um por slide</span>
                     </FormRow>
                     <FormRow k="Referência">
                         <Switch on={prefs.bible_show_reference} onChange={(on) => save({ bible_show_reference: on }, on ? "A referência aparece nas telas." : "Sem referência nas telas.")} label="Mostrar a referência" />
@@ -67,26 +54,23 @@ export default function BibliaSection({ c }) {
                         <Seg small label="Números dos versículos" value={prefs.bible_verse_numbers} options={[["sup", "Pequenos"], ["hide", "Ocultos"]]}
                             onChange={(v) => save({ bible_verse_numbers: v }, v === "hide" ? "Números dos versículos ocultos." : "Números dos versículos no texto.")} />
                     </FormRow>
-                    <FormRow k="">
-                        <span className="kx-meta">vale para o que for ao ar daqui em diante; a Transmissão segue a mesma referência</span>
-                    </FormRow>
                 </div>
                 <div className="cfg-prevcol">
                     <div className="cfg-prev"><div className="cfg-prev-fill">{doc && <ScreenRenderer fill state={doc} now={c.now} preview audio={false} />}</div></div>
-                    <span className="kx-meta">Exemplo · a amostra segue cada ajuste</span>
+                    <span className="kx-meta">Exemplo</span>
                 </div>
             </div>
+            <CfgKey k="Livros e importação" className="listhead"><span className="kx-section">Livros e importação</span></CfgKey>
             <div className="frm">
                 <FormRow k="Livros da Bíblia">
                     <Seg small value={prefs.bible_book_names} onChange={(v) => save({ bible_book_names: v }, v === "full" ? "Livros com o nome inteiro." : "Livros abreviados.")}
                         options={[["short", "Abreviados"], ["full", "Nome inteiro"]]} />
-                    <span className="kx-meta">como os livros aparecem no seletor da Bíblia (Gn ou Gênesis)</span>
+                    <span className="kx-meta">no seletor da Bíblia</span>
                 </FormRow>
                 <FormRow k="Ao importar letras">
                     <Seg small value={String(prefs.import_lines)} onChange={(v) => save({ import_lines: Number(v) }, "Corte das letras importadas salvo.")}
                         options={[["0", "Estrofe"], ["2", "2 linhas"], ["4", "4 linhas"]]} />
-                    <span className="kx-meta">cada slide de uma letra importada (arquivo ou internet) tem uma estrofe, ou 2 ou 4 linhas</span>
-                </FormRow>
+                                    </FormRow>
             </div>
             <CfgKey k="Bíblias instaladas" className="listhead"><span className="kx-section">Bíblias instaladas</span></CfgKey>
             <BibliasSection c={c} />

@@ -87,7 +87,7 @@ export default function RedeSection({ c }) {
     return (
         <>
             <div className="frm">
-                <CfgKey as="span" k="Telas na rede" className="k">Telas na rede</CfgKey>
+                <CfgKey as="span" k="Ligar telas na rede" className="k">Ligado</CfgKey>
                 <div className="frm-v">
                     <Switch on={info.enabled} disabled={busy} onChange={(on) => run("setEnabled", on)} label="Ligar telas na rede" />
                     <span className={info.running ? "kx-prev" : info.enabled ? "kx-warn" : "kx-meta"}>
@@ -112,7 +112,7 @@ export default function RedeSection({ c }) {
                 <div className="cfg-qr">
                     {main && <div className="cfg-qr-box"><QRCode value={main.url} size={132} /></div>}
                     <div className="cfg-qr-list">
-                        <span className="kx-meta">No navegador do tablet ou da TV, abra:</span>
+                        <span className="kx-meta">No navegador do tablet ou da TV (mesmo Wi-Fi), abra:</span>
                         {(info.urls || []).length === 0 && <span className="kx-warn">Este computador não está ligado a nenhuma rede local.</span>}
                         {(info.urls || []).map((u, i) => (
                             <div key={u.url} className="cfg-url">
@@ -150,10 +150,9 @@ export default function RedeSection({ c }) {
                 <div key={`${cl.ip}-${cl.since}`} className="kx-row">
                     <span className="kx-glyph"><Icon name="tv" /></span>
                     <div className="kx-row-main"><div className="kx-row-title">{cl.label || "Página inicial"}</div><div className="kx-row-meta">{cl.ip} · conectada desde {new Date(cl.since).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div></div>
-                    <span className="kx-prev" style={{ fontSize: 11 }}>Conectada</span>
-                </div>
+                                    </div>
             ))}
-            <div className="listhead"><span className="kx-meta">Na primeira vez o Windows pergunta se o KERYX pode usar a rede: permita em redes privadas. Os aparelhos precisam estar no mesmo Wi-Fi.</span></div>
+            <div className="listhead"><span className="kx-meta">Na primeira vez o Windows pergunta se o KERYX pode usar a rede: permita em redes privadas.</span></div>
         </>
     );
 }

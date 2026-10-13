@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import Icon from "../Icon";
+import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 import { Btn, Empty, Seg } from "../kx";
 import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading, FormRow } from "./parts";
 import { useLibrary } from "../useConsoleData";
 import OutputPrefCard from "./OutputPrefCard";
-import { PREF_OUTPUTS, normalizePref, isDefaultPref, outputLook } from "@/lib/outputPrefs";
+import { normalizePref, isDefaultPref, outputLook } from "@/lib/outputPrefs";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { ringBell } from "@/lib/bell";
@@ -45,18 +46,17 @@ const CAT_ICON = { palco: "monitor", pastor: "tablet", publico: "projector", out
 // `onOpenLayout`), Duplicar and Excluir (an output using a deleted layout
 // goes back to its page's own screen).
 function LayoutsBlock({ c, rows, prefRows, onOpenLayout }) {
-    const [confirm, setConfirm] = useState(null);
+    const confirmAsk = useConfirm();
     const layouts = rows.map(normalizeLayout).filter((l) => l.id).sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name, "pt-BR"));
     const usedBy = (id) => prefRows.filter((r) => r.layout_id === id).map((r) => outputLook(r.screen_path, r).name);
     const duplicate = (l) => keryx.entities.ScreenLayout.create(layoutFields(duplicateLayout(l))).then((row) => { c.say(`Layout "${row.name}" criado.`); onOpenLayout?.(row.id); }).catch((err) => c.say(err?.message || "Não foi possível duplicar o layout."));
-    const remove = (l) => {
-        if (confirm !== l.id) { setConfirm(l.id); c.say(`Clique de novo para excluir "${l.name}".`); return; }
-        setConfirm(null);
+    const remove = async (l) => {
+        if (!(await confirmAsk(deleteQuestion("o layout", l.name, "As saídas que o usavam voltam ao padrão.")))) return;
         keryx.entities.ScreenLayout.delete(l.id).then(() => c.say(`Layout "${l.name}" excluído.${usedBy(l.id).length ? " As saídas que o usavam voltaram ao padrão." : ""}`)).catch((err) => c.say(err?.message || "Não foi possível excluir o layout."));
     };
     return (
         <>
-            <CfgKey k="Layouts das telas" className="listhead"><span className="kx-section">Layouts das telas <span className="kx-count">· o desenho de cada saída</span></span>
+            <CfgKey k="Layouts das telas" className="listhead"><span className="kx-section">O desenho de cada saída</span>
                 <span style={{ flex: 1 }} />
                 <Btn small onClick={() => onOpenLayout?.("new")} title="Desenhar uma tela: onde ficam o relógio, o timer, a letra, a próxima…"><Icon name="plus" />Novo layout</Btn>
             </CfgKey>
@@ -69,7 +69,7 @@ function LayoutsBlock({ c, rows, prefRows, onOpenLayout }) {
                         <div className="kx-row-main"><div className="kx-row-title">{l.name}</div><div className="kx-row-meta">{CATEGORY[l.category]} · {l.elements.length} {l.elements.length === 1 ? "elemento" : "elementos"}{uses.length ? ` · em ${uses.join(", ")}` : ""}</div></div>
                         <Btn small onClick={() => onOpenLayout?.(l.id)}><Icon name="edit" />Editar</Btn>
                         <Btn small onClick={() => duplicate(l)}><Icon name="copy" />Duplicar</Btn>
-                        <Btn small kind={confirm === l.id ? "air" : ""} onClick={() => remove(l)}>{confirm === l.id ? "Excluir mesmo" : "Excluir"}</Btn>
+                        <Btn small onClick={() => remove(l)}>Excluir…</Btn>
                     </div>
                 );
             })}
@@ -165,14 +165,14 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
     };
     const status = (o) => {
         const p = o.placement || {};
-        if (p.missing) return "A tela escolhida não está ligada · abre numa janela até ligar";
+        if (p.missing) return "A tela escolhida está desligada · abre numa janela até ligar";
         if (p.mode === "fullscreen") return number(p.displayId) ? `Tela cheia na Tela ${number(p.displayId)}` : "Tela cheia";
         return "Abre numa janela";
     };
     const removeOutput = (o) => {
         if (removeConfirm !== o.key) { setRemoveConfirm(o.key); c.say(`Clique de novo para remover ${o.label}. Os ajustes ficam guardados.`); return; }
         setRemoveConfirm(null);
-        apply(displays.set(o.key, { removed: true }).then((res) => { c.say(`${o.label} removida. Adicionar saída traz de volta com os mesmos ajustes.`); return res; }));
+        apply(displays.set(o.key, { removed: true }).then((res) => { c.say(`${o.label} removida.`); return res; }));
     };
     // The tabs: one per output, then Layouts and Som e arquivo. A removed
     // output leaves the tabs (and Saídas, and Verificar); its entry and
@@ -199,7 +199,7 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
                                 <span>Tela {i + 1}{d.primary ? " · Operador" : ""}</span>
                                 {shows.length > 0 && <span className="kx-meta">{shows.join(", ")}</span>}
                             </div>
-                            <span className="kx-meta">{d.bounds?.width || d.width}×{d.bounds?.height || d.height}{d.primary ? " · principal" : ""}</span>
+                            <span className="kx-meta">{d.bounds?.width || d.width}×{d.bounds?.height || d.height}</span>
                         </div>
                     );
                 })}
@@ -242,7 +242,7 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
                         <>
                             <div className={`kx-row cfg-out ${output.placement?.missing ? "is-warn" : ""}`}>
                                 <span className="kx-glyph"><Icon name={output.look.icon} /></span>
-                                <div className="kx-row-main"><div className="kx-row-title">{output.label}</div><div className={`kx-row-meta ${output.placement?.missing ? "kx-warn" : ""}`}>{status(output)}{output.open ? " · aberta" : ""}{!isDefaultPref(normalizePref(prefRow(output.key))) ? " · com ajustes" : ""}</div></div>
+                                <div className="kx-row-main"><div className="kx-row-title">{output.label}</div><div className={`kx-row-meta ${output.placement?.missing ? "kx-warn" : ""}`}>{status(output)}{!isDefaultPref(normalizePref(prefRow(output.key))) ? " · com ajustes" : ""}</div></div>
                                 <select className="cfg-select" value={valueOf(output.assignment)} onChange={(e) => choose(output, e.target.value)} aria-label={`Tela de ${output.label}`}>
                                     <option value="auto">Automático</option>
                                     <option value="window">Sempre numa janela</option>
@@ -262,14 +262,14 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
                                     </CfgKey>
                                 )}
                             </div>
-                            <CfgKey k="Ajustes" className="listhead"><span className="kx-section">Ajustes de {output.label} <span className="kx-count">· {PREF_OUTPUTS.includes(output.key) ? "layout, conteúdo, texto, margens, logo e tema" : "layout e texto"}; vale também para as telas na rede que mostram esta página</span></span></CfgKey>
+                            <CfgKey k="Ajustes" className="listhead"><span className="kx-section">Ajustes <span className="kx-count">· valem também para as telas na rede desta página</span></span></CfgKey>
                             <OutputPrefCard key={output.key} output={output} row={prefRow(output.key)} themes={themes} c={c} onOpenLayout={onOpenLayout} />
                         </>
                     )}
                     {selKey === "layouts" && <LayoutsBlock c={c} rows={layoutRows} prefRows={prefRows} onOpenLayout={onOpenLayout} />}
                     {selKey === "geral" && (
                         <>
-                            <div className="listhead"><span className="kx-section">Arquivo de ajustes <span className="kx-count">· a tela e os ajustes de cada saída</span></span>
+                            <div className="listhead"><span className="kx-section">Arquivo de ajustes</span>
                                 <span style={{ flex: 1 }} />
                                 <CfgKey as="span" k="Exportar ajustes das saídas"><Btn small onClick={exportPrefs} title="Salva num arquivo a tela e os ajustes de cada saída, para restaurar depois ou levar para outro computador">Exportar ajustes…</Btn></CfgKey>
                                 <CfgKey as="span" k="Importar ajustes das saídas"><Btn small onClick={importPrefs} title="Abre um arquivo exportado e mostra o que muda antes de aplicar">Importar ajustes…</Btn></CfgKey>
@@ -287,7 +287,7 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
                     )}
                 </div>
             </div>
-            <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas: use Trazer para a frente para ver uma de novo. Em tela cheia a saída não tem botão de fechar: use Ctrl+W nela, ou Fechar aqui. Fechar o KERYX fecha todas. Ligar um monitor aparece aqui em poucos segundos.</span></div>
+            <div className="listhead"><span className="kx-meta">As saídas não aparecem na barra de tarefas; fechar o KERYX fecha todas.</span></div>
         </>
     );
 }

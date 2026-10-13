@@ -8,7 +8,7 @@ const KEEPS = [["7", "7"], ["14", "14"], ["30", "30"], ["60", "60"]];
 // What restarts the KERYX (and so blanks every screen) asks twice while
 // something is on air.
 const RESTARTS = {
-    updateInstall: "Reiniciar e instalar fecha o KERYX e apaga as telas",
+    updateInstall: "Instalar e reiniciar fecha o KERYX e apaga as telas",
     restoreBackup: "Restaurar reinicia o KERYX e apaga as telas",
     importAll: "Importar reinicia o KERYX e apaga as telas",
 };
@@ -79,7 +79,7 @@ export default function DadosSection({ c }) {
                             const n = Number(v);
                             if (n < backup.keep && backup.count > n && confirm !== `keep:${n}`) { setConfirm(`keep:${n}`); c.say(`Com ${n}, os backups mais antigos que ${n} dias são apagados no próximo backup. Escolha ${n} de novo para confirmar.`); return; }
                             setConfirm(null);
-                            run("backupSet", "Backup", () => `Ficam os últimos ${n} backups.`, { keep: n });
+                            run("backupSet", "Backup", () => `Ficam os últimos ${n} dias com backup.`, { keep: n });
                         }} />
                     <span className="kx-meta">dias com backup · o mais antigo sai quando chega um novo</span>
                 </FormRow>
@@ -137,7 +137,7 @@ export default function DadosSection({ c }) {
                     <span className="kx-content">KERYX {info.version}</span>
                     {update.status !== "disabled" && <Btn disabled={any || update.status === "checking" || update.status === "downloading"} onClick={() => run("updateCheck", "Atualizações")}>Verificar atualização</Btn>}
                     {update.status === "available" && <Btn kind="outline" disabled={any} onClick={() => run("updateDownload", "Atualizações")}>Baixar a versão {update.version}</Btn>}
-                    {update.status === "downloaded" && <Btn kind={confirm === "updateInstall" ? "air" : "outline"} disabled={any} onClick={() => run("updateInstall", "Atualizações")}>{confirm === "updateInstall" ? "Reiniciar mesmo" : "Reiniciar e instalar"}</Btn>}
+                    {update.status === "downloaded" && <Btn kind={confirm === "updateInstall" ? "air" : "outline"} disabled={any} onClick={() => run("updateInstall", "Atualizações")}>{confirm === "updateInstall" ? "Reiniciar mesmo" : "Instalar e reiniciar"}</Btn>}
                     <span className="kx-meta">{update.message || "instale fora do horário do culto: o KERYX fecha para atualizar"}</span>
                 </FormRow>
                 <FormRow k="Atualizar automaticamente">
