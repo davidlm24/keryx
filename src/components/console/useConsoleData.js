@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
-import { remember, forget } from "@/lib/console/outputs";
+import { remember, forget, localId } from "@/lib/console/outputs";
 import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { backgroundList } from "@/lib/console/backgroundPrefs";
@@ -127,7 +127,14 @@ export function useOutputs() {
             const data = d?.data ? { ...d.data, outputs: (d.data.outputs || []).map((o) => ({ ...o, label: name(o.key, o.label) })) } : null;
             if (data) setLocal(data);
             const clients = n?.data ? (n.data.clients || []).map((cl) => ({ ...cl, label: name(cl.screen, cl.label) })) : null;
-            setSeen((prev) => remember(prev, { outputs: data ? data.outputs : [], clients }, Date.now()));
+            // A removed output leaves the session memory too: a window closed
+            // by removal is no "Fechada" nag, and re-adding starts clean.
+            setSeen((prev) => {
+                const outs = data ? data.outputs : [];
+                let next = remember(prev, { outputs: outs.filter((o) => !o.removed), clients }, Date.now());
+                for (const o of outs) if (o.removed) next = forget(next, localId(o.key));
+                return next;
+            });
         };
         read();
         const id = setInterval(read, 5000);

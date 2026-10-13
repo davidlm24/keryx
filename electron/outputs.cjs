@@ -81,11 +81,16 @@ function windowedBounds(displays) {
 
 // Accept only shapes the app writes; anything else means "auto", closed at launch.
 // openAtLaunch: the main process opens this output when KERYX starts.
+// removed: the operator took this output off the list (Saídas, the settings
+// tabs, Verificar); the window never opens, not even at launch. The entry —
+// screen, openAtLaunch, the OutputPref row — is kept, so "Adicionar saída"
+// brings it back exactly as it was.
 function normalizeAssignment(value) {
-    if (!value || typeof value !== "object") return { target: "auto", openAtLaunch: false };
+    if (!value || typeof value !== "object") return { target: "auto", openAtLaunch: false, removed: false };
     const { target } = value;
     const openAtLaunch = value.openAtLaunch === true;
-    if (target === "auto" || target === "window") return { target, openAtLaunch };
+    const removed = value.removed === true;
+    if (target === "auto" || target === "window") return { target, openAtLaunch, removed };
     if (target && typeof target === "object" && Number.isFinite(target.id)) {
         return {
             target: {
@@ -95,10 +100,16 @@ function normalizeAssignment(value) {
                 height: Number(target.height) || 0,
             },
             openAtLaunch,
+            removed,
         };
     }
-    return { target: "auto", openAtLaunch };
+    return { target: "auto", openAtLaunch, removed };
 }
+
+// The main projection is the output the console mirrors (the Prévia) and
+// auto-opens on send: KERYX without it is not a use case, so it cannot be
+// removed from the list.
+const canRemove = (key) => key !== "/Projection";
 
 module.exports = {
     OUTPUTS,
@@ -109,4 +120,5 @@ module.exports = {
     resolvePlacement,
     windowedBounds,
     normalizeAssignment,
+    canRemove,
 };

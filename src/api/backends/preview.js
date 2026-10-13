@@ -50,6 +50,9 @@ export function createPreviewBridge() {
 
     // Output pages open as browser tabs; the console sees which are open.
     const windows = new Map();
+    // Remover saída, the preview's way: in memory, so the flows can be tried
+    // in the browser; it resets on reload (the app keeps it in its settings).
+    const removedKeys = new Set();
     const display = { id: 1, label: "Navegador (prévia)", primary: true, width: 1920, height: 1080, bounds: { x: 0, y: 0, width: 1920, height: 1080 }, scaleFactor: 1 };
     const displays = {
         async list() {
@@ -57,14 +60,24 @@ export function createPreviewBridge() {
             if (res.error) return res;
             const outputs = res.data.map((o) => ({
                 ...o,
-                assignment: { target: "auto", openAtLaunch: false },
+                assignment: { target: "auto", openAtLaunch: false, removed: removedKeys.has(o.key) },
+                removed: removedKeys.has(o.key),
                 placement: { mode: "window", displayId: display.id, missing: false },
                 open: Boolean(windows.get(o.key) && !windows.get(o.key).closed),
             }));
             return { data: { displays: [display], outputs } };
         },
-        set: async () => ({ data: true }),
+        async set(key, a) {
+            if (a && a.removed === true) {
+                if (key === "/Projection") return { error: { message: "A Projeção principal não pode ser removida.", status: 400 } };
+                removedKeys.add(key);
+                windows.get(key)?.close();
+                windows.delete(key);
+            } else if (a && a.removed === false) removedKeys.delete(key);
+            return displays.list();
+        },
         async open(key) {
+            if (removedKeys.has(key)) return { error: { message: "Saída removida. Adicione-a de novo em Telas e saídas.", status: 400 } };
             const name = `keryx-preview-${String(key).replace(/\W/g, "")}`;
             const win = window.open(key, name);
             if (win) windows.set(key, win);

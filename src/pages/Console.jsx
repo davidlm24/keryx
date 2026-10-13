@@ -436,6 +436,10 @@ export default function Console() {
     const openOutput = (key) => window.keryxDesktop?.displays.open(key).catch(() => {});
     // Closed here on purpose: forgotten, so it is not reported as a problem.
     const closeOutput = (key) => window.keryxDesktop?.displays.close(key).then(() => forgetOutput(localId(key))).catch(() => {});
+    // Adicionar saída (the Saídas popover): back on the list with the same
+    // screen, "Abrir ao iniciar" and Ajustes it had.
+    const restoreOutput = (key) => window.keryxDesktop?.displays.set(key, { removed: false }).catch((err) => c.say(err?.message || "Não foi possível adicionar a saída."));
+    const removedOutputs = useMemo(() => outputs.filter((o) => o.removed), [outputs]);
 
     // ↑/↓ in the KERYX environment: the selection walks the slides of the
     // item in hand (the Prévia's own, else the ones on air); Enter sends it.
@@ -860,7 +864,7 @@ export default function Console() {
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
-                    <VerifyView c={c} items={playable} data={data} outputs={outputs} network={network}
+                    <VerifyView c={c} items={playable} data={data} outputs={outputs.filter((o) => !o.removed)} network={network}
                         onIdentify={() => window.keryxDesktop?.displays.identify().catch(() => {})}
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} onOpenMedia={openMedia} />
                 </div>
@@ -870,7 +874,7 @@ export default function Console() {
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} tries={tries} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."))} onSettings={openSettings} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."))} onSettings={openSettings} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />

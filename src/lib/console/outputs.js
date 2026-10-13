@@ -98,11 +98,31 @@ export function byGroup(items, pageOf) {
 
 const isTablet = (agent) => /iPad|Tablet|Android(?!.*Mobile)/i.test(agent || "");
 
+// What the Saídas popover draws for one row: the switch (local rows only;
+// on = the window exists) and one status text, replacing the five state
+// shapes it used to have. The dropped time is a hint, not an alarm — the
+// banner is the active alert; here the switch simply reads "off".
+//   -> { switchOn, text, tone: "ok" | "rh" | "warn" | "off", hint }
+export function rowStatus(row, { locked = false } = {}) {
+    if (!row.local) {
+        if (row.state === "disconnected") return { switchOn: null, text: `Desconectada às ${hhmm(row.droppedAt)}`, tone: "warn", hint: "A tela volta sozinha quando a rede voltar." };
+        return { switchOn: null, text: "Conectada", tone: locked ? "rh" : "ok", hint: null };
+    }
+    if (row.state === "reconnecting") return { switchOn: true, text: "Monitor desligado", tone: "warn", hint: "mostrando numa janela até ele ligar" };
+    if (row.state === "connected") return { switchOn: true, text: locked ? "Conectada · travada" : "Conectada", tone: locked ? "rh" : "ok", hint: null };
+    if (row.state === "closed") return { switchOn: false, text: "Fechada", tone: "off", hint: `caiu às ${hhmm(row.droppedAt)}` };
+    return { switchOn: false, text: "Fechada", tone: "off", hint: null };
+}
+
 // Everything the UI says about the outputs, from the main process's list,
-// the session memory, the lock and what is on air.
+// the session memory, the lock and what is on air. An output the operator
+// removed (Telas e saídas › Remover saída) is no row, no count and no
+// banner — but a network screen showing that page still is: removal is
+// about this computer's window and the lists, never the church network.
 export function outputHealth({ outputs = [], seen = {}, locked = false, air = "", tries = 1 }) {
     const rows = [];
     for (const o of outputs) {
+        if (o.removed) continue;
         const id = localId(o.key);
         const mem = seen[id];
         let state;

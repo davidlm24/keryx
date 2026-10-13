@@ -95,6 +95,8 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
     // Importar ajustes: the file read and checked (outputsFile.js), waiting
     // for the operator to confirm what changes.
     const [pending, setPending] = useState(null);
+    // Remover saída asks twice (like excluir um layout).
+    const [removeConfirm, setRemoveConfirm] = useState(null);
     if (!displays) return <Empty icon="monitor" title="Telas e saídas">{desktopOnly}</Empty>;
     if (!state) return <Reading what="as telas" error={readError} />;
 
@@ -167,13 +169,22 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
         if (p.mode === "fullscreen") return number(p.displayId) ? `Tela cheia na Tela ${number(p.displayId)}` : "Tela cheia";
         return "Abre numa janela";
     };
-    // The tabs: one per output, then Layouts and Som e arquivo.
+    const removeOutput = (o) => {
+        if (removeConfirm !== o.key) { setRemoveConfirm(o.key); c.say(`Clique de novo para remover ${o.label}. Os ajustes ficam guardados.`); return; }
+        setRemoveConfirm(null);
+        apply(displays.set(o.key, { removed: true }).then((res) => { c.say(`${o.label} removida. Adicionar saída traz de volta com os mesmos ajustes.`); return res; }));
+    };
+    // The tabs: one per output, then Layouts and Som e arquivo. A removed
+    // output leaves the tabs (and Saídas, and Verificar); its entry and
+    // OutputPref row stay, so Adicionar saída brings it back as it was.
     const outs = outputs.map((raw) => {
         const look = outputLook(raw.key, prefRow(raw.key));
         return { ...raw, look, label: look.custom || raw.label };
     });
+    const active = outs.filter((o) => !o.removed);
+    const removedOuts = outs.filter((o) => o.removed);
     const fixed = TABS.some(([k]) => k === tab) ? tab : null;
-    const output = fixed ? null : outs.find((o) => outputTab(o.key) === tab) || outs[0] || null;
+    const output = fixed ? null : active.find((o) => outputTab(o.key) === tab) || active[0] || null;
     const selKey = fixed || output?.key || null;
 
     return (
@@ -197,7 +208,7 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
             </CfgKey>
             <div className="cfg-outs">
                 <CfgKey as="nav" k="Saídas" className="cfg-outs-nav" role="tablist" aria-label="Saídas" aria-orientation="vertical">
-                    {outs.map((o) => {
+                    {active.map((o) => {
                         const on = selKey === o.key;
                         return (
                             <button type="button" key={o.key} role="tab" aria-selected={on} className={`kx-t cfg-outtab ${on ? "is-on" : ""} ${o.placement?.missing ? "is-warn" : ""}`} onClick={() => setTab(outputTab(o.key))} title={status(o)}>
@@ -213,6 +224,18 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
                             <Icon name={icon} /><span className="cfg-outtab-t">{name}</span>
                         </button>
                     ))}
+                    {/* Adicionar saída: the removed ones, back with one click
+                        (the entry and the Ajustes were kept). */}
+                    {removedOuts.length > 0 && (
+                        <CfgKey k="Adicionar saída" className="cfg-outs-add">
+                            <span className="cfg-outs-sep" />
+                            {removedOuts.map((o) => (
+                                <button type="button" key={o.key} className="kx-t cfg-outtab is-add" title={`Adicionar ${o.label} de volta · os ajustes ficaram guardados`} onClick={() => apply(displays.set(o.key, { removed: false }).then((res) => { c.say(`${o.label} adicionada de volta.`); return res; }))}>
+                                    <Icon name="plus" /><span className="cfg-outtab-t">{o.label}</span>
+                                </button>
+                            ))}
+                        </CfgKey>
+                    )}
                 </CfgKey>
                 <div className="cfg-outs-detail" role="tabpanel">
                     {output && (
@@ -230,6 +253,14 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
                                 {output.open
                                     ? <><Btn onClick={() => apply(displays.open(output.key))} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn onClick={() => apply(displays.close(output.key))}>Fechar</Btn></>
                                     : <Btn onClick={() => apply(displays.open(output.key))}>Abrir</Btn>}
+                                {/* Off the list (Saídas, these tabs, Verificar); the entry and
+                                    the Ajustes stay, so Adicionar saída restores everything.
+                                    The main projection is the one the console mirrors: it stays. */}
+                                {output.key !== "/Projection" && (
+                                    <CfgKey as="span" k="Remover saída">
+                                        <Btn kind={removeConfirm === output.key ? "air" : ""} onClick={() => removeOutput(output)}>{removeConfirm === output.key ? "Remover mesmo" : "Remover saída"}</Btn>
+                                    </CfgKey>
+                                )}
                             </div>
                             <CfgKey k="Ajustes" className="listhead"><span className="kx-section">Ajustes de {output.label} <span className="kx-count">· {PREF_OUTPUTS.includes(output.key) ? "layout, conteúdo, texto, margens, logo e tema" : "layout e texto"}; vale também para as telas na rede que mostram esta página</span></span></CfgKey>
                             <OutputPrefCard key={output.key} output={output} row={prefRow(output.key)} themes={themes} c={c} onOpenLayout={onOpenLayout} />

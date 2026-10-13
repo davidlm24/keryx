@@ -11,8 +11,9 @@ import { materialIcon, materialMeta } from "@/lib/console/school";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { readQuickRef } from "@/lib/console/quickRef";
 import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
-import { byGroup } from "@/lib/console/outputs";
+import { byGroup, rowStatus } from "@/lib/console/outputs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
+import { Switch } from "./settings/parts";
 
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
@@ -93,8 +94,6 @@ export function Shortcuts({ open, setOpen }) {
     );
 }
 
-const atTime = (t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
 // Saídas: the windows the main process places and the screens on the
 // network, grouped by what they are for (Público, Palco, Transmissão), each
 // with its state, what it shows and the way to fix it
@@ -120,18 +119,13 @@ function useAnchor(selector, width, active) {
     return box;
 }
 
-export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, tries, idle, onIdle, onSettings }) {
+const TONE_DOT = { ok: "var(--prev)", rh: "var(--rh)", warn: "var(--warn)", off: "var(--fg-3)" };
+const TONE_CLS = { ok: "", rh: "is-rh", warn: "is-warn", off: "is-off" };
+
+export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, idle, onIdle, onSettings }) {
     const look = useOutputLooks();
     const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
     if (open !== "outs") return null;
-    const view = (r) => {
-        const icon = r.local ? look(r.key).icon : r.screen ? look(r.screen).icon : DEVICE_ICON[r.kind] || "tv";
-        if (r.state === "reconnecting") return { icon, cls: "is-warn", state: `Reconectando… tentativa ${tries}`, dot: "var(--warn)" };
-        if (r.state === "closed") return { icon, cls: "is-warn", state: `Fechada às ${atTime(r.droppedAt)}`, dot: "var(--warn)" };
-        if (r.state === "disconnected") return { icon, cls: "is-warn", state: `Desconectada às ${atTime(r.droppedAt)}`, dot: "var(--warn)" };
-        if (r.state === "unused") return { icon, cls: "is-off", state: "Fechada", dot: "var(--fg-3)" };
-        return locked ? { icon, cls: "is-rh", state: "Conectada · travada", dot: "var(--rh)" } : { icon, cls: "", state: "Conectada", dot: "var(--prev)" };
-    };
     const rows = health.rows;
     const summary = health.total ? `${health.connected} de ${health.total} conectadas${locked ? " · travadas" : ""}` : "nenhuma aberta";
     return (
@@ -141,22 +135,26 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                 <React.Fragment key={g.key}>
                 <div className="kx-menu-h out-group"><span className="kx-section">{g.label}</span></div>
                 {g.items.map((r) => {
-                const v = view(r);
+                const st = rowStatus(r, { locked });
+                const icon = r.local ? look(r.key).icon : r.screen ? look(r.screen).icon : DEVICE_ICON[r.kind] || "tv";
                 return (
-                    <div key={r.id} className={`kx-out is-tall ${v.cls}`}>
-                        <span className="kx-glyph"><Icon name={v.icon} /></span>
+                    // One switch per local row: ligado = a janela existe. The
+                    // name of an open output brings it forward (outputs have
+                    // no taskbar button). Network rows have no switch: the
+                    // console cannot reopen a tablet.
+                    <div key={r.id} className={`kx-out is-tall ${r.local ? "has-sw" : ""} ${TONE_CLS[st.tone]}`}>
+                        {r.local && <Switch on={Boolean(st.switchOn)} onChange={(on) => (on ? onOpen(r.key) : onClose(r.key))} label={`${st.switchOn ? "Fechar" : "Abrir"} ${r.name}`} />}
+                        <span className="kx-glyph"><Icon name={icon} /></span>
                         <div style={{ minWidth: 0 }}>
-                            <div className="kx-out-name">{r.name}</div>
+                            {r.local && st.switchOn
+                                ? <button type="button" className="kx-t kx-out-name kx-out-front" title={`Mostrar ${r.name} por cima das outras janelas`} onClick={() => onOpen(r.key)}>{r.name}</button>
+                                : <div className="kx-out-name">{r.name}</div>}
                             <div className="kx-out-meta">{r.meta}</div>
                             {r.shows && <div className="kx-out-meta" style={{ color: "var(--fg-2)" }}>Mostra: {r.shows}</div>}
-                            {r.state === "disconnected" && <div className="kx-out-meta">A tela volta sozinha quando a rede voltar.</div>}
+                            {st.hint && <div className="kx-out-meta">{st.hint}</div>}
                         </div>
                         <span className="kx-out-st" style={{ gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                            <i className="kx-dot" style={{ background: v.dot }} />{v.state}
-                            {/* Outputs have no taskbar button: "Trazer para a frente" is how to see one again. */}
-                            {r.local && (r.state === "connected" || r.state === "reconnecting") && <><Btn small onClick={() => onOpen(r.key)} title="Mostrar esta saída por cima das outras janelas">Trazer para a frente</Btn><Btn small onClick={() => onClose(r.key)}>Fechar</Btn></>}
-                            {r.local && r.state === "closed" && <><Btn small kind="outline" onClick={() => onOpen(r.key)}>Reabrir</Btn><Btn small onClick={() => onForget(r.id)} title="Fechada de propósito: não avisar mais">Esquecer</Btn></>}
-                            {r.local && r.state === "unused" && <Btn small onClick={() => onOpen(r.key)}>Abrir</Btn>}
+                            <i className="kx-dot" style={{ background: TONE_DOT[st.tone] }} />{st.text}
                             {!r.local && r.state === "disconnected" && <Btn small onClick={() => onForget(r.id)} title="Não avisar mais sobre esta tela nesta sessão">Esquecer</Btn>}
                         </span>
                     </div>
@@ -164,6 +162,16 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                 })}
                 </React.Fragment>
             ))}
+            {/* Outputs the operator removed: one click brings one back, with
+                the same screen and Ajustes it had (Telas e saídas keeps them). */}
+            {removed.length > 0 && (
+                <>
+                    <div className="kx-menu-h out-group"><span className="kx-section">Adicionar saída</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· volta com os mesmos ajustes</span></div>
+                    {removed.map((o) => (
+                        <MenuItem key={o.key} icon={look(o.key).icon} onClick={() => onRestore?.(o.key)}>{o.label}<span className="kx-kbd">Adicionar</span></MenuItem>
+                    ))}
+                </>
+            )}
             {/* Transmissão is an OBS Browser Source: until OBS connects, say where its address is. */}
             {!rows.some((r) => r.group === "transmissao") && (
                 <div className="kx-menu-h out-group" title="No OBS: Fonte de navegador com o endereço da Transmissão, 1920 × 1080">

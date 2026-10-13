@@ -80,6 +80,29 @@ test("a window made by a page's window.open is taken off the taskbar by track", 
     assert.equal(outputs.track(fakeWindow(), `${ORIGIN}/Console`), null, "the console is not an output");
 });
 
+test("removing an output closes its window, blocks open and skips the launch; re-adding restores it", () => {
+    const { outputs, opened } = manager({ monitors: [display(1, 0, true), display(2, 1920, false)], settings: { outputs: { "/StageView": { target: "window", openAtLaunch: true } } } });
+    outputs.open("/StageView");
+    assert.equal(opened.length, 1);
+    const after = outputs.setAssignment("/StageView", { removed: true });
+    assert.equal(opened[0].win.destroyed, true, "the open window closes");
+    const row = after.outputs.find((o) => o.key === "/StageView");
+    assert.equal(row.removed, true);
+    assert.equal(row.assignment.removed, true);
+    assert.throws(() => outputs.open("/StageView"), /removida/i, "open refuses a removed output");
+    assert.deepEqual(outputs.openAtLaunch(), [], "openAtLaunch skips it");
+    // Re-add: the same screen and Abrir ao iniciar come back.
+    const back = outputs.setAssignment("/StageView", { removed: false }).outputs.find((o) => o.key === "/StageView");
+    assert.deepEqual(back.assignment, { target: "window", openAtLaunch: true, removed: false });
+    assert.deepEqual(outputs.openAtLaunch(), ["/StageView"]);
+});
+
+test("the main projection cannot be removed", () => {
+    const { outputs } = manager({ monitors: [display(1, 0, true)] });
+    assert.throws(() => outputs.setAssignment("/Projection", { removed: true }), /não pode ser removida/);
+    assert.equal(outputs.list().outputs.find((o) => o.key === "/Projection").removed, false);
+});
+
 test("reassigning keeps it off the taskbar; opening again brings it forward", () => {
     const { outputs, opened } = manager({ monitors: [display(1, 0, true), display(2, 1920, false)] });
     outputs.open("/Projection");

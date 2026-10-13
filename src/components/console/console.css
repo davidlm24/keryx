@@ -476,6 +476,12 @@
 .console .sw2.is-on { background: var(--prev-fill); }
 .console .sw2.is-on::after { left: 14px; background: var(--on-state); }
 .console .sw2:disabled { opacity: var(--dim); }
+/* Saídas: a switch per local row (ligado = a janela existe); the name of an
+   open output is a button that brings it forward. */
+.console .pop-outs .kx-out.has-sw { grid-template-columns: 28px 16px 1fr auto; }
+.console .pop-outs .kx-out.has-sw .sw2 { margin-top: 2px; }
+.console .pop-outs .kx-out-front { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; cursor: pointer; }
+.console .pop-outs .kx-out-front:hover { text-decoration: underline; text-underline-offset: 2px; }
 .console .cfg .diagram { display: flex; gap: var(--space-3); align-items: flex-end; padding: var(--space-3); flex-wrap: wrap; }
 .console .cfg .dmon { display: flex; flex-direction: column; gap: var(--space-1); align-items: center; }
 .console .cfg .dmon .box { border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--fg-2); text-align: center; padding: 4px; }
@@ -954,6 +960,11 @@
 .console .cfg-outtab-dot { flex: none; width: 7px; height: 7px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--fg-3); }
 .console .cfg-outtab-dot.is-open { background: var(--air); box-shadow: none; }
 .console .cfg-outs-sep { height: 1px; background: var(--line); margin: var(--space-1) 0; }
+/* Adicionar saída: the removed outputs come back from here. The wrapper is a
+   search target (CfgKey), laid out like the tab column it sits in. */
+.console .cfg-outs-add { display: flex; flex-direction: column; gap: 2px; }
+.console .cfg-outtab.is-add { color: var(--fg-3); }
+.console .cfg-outtab.is-add:hover { color: var(--fg-1); }
 .console .cfg-outs-detail { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .console .cfg .cfg-outs-detail > .cfg-out { padding-inline: 0; }
 @media (max-width: 900px) { .console .cfg-outs { flex-direction: column; } .console .cfg-outs-nav { position: static; flex-basis: auto; width: 100%; flex-direction: row; flex-wrap: wrap; } }
