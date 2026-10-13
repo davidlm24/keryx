@@ -22,7 +22,6 @@ import CenterPanel, { captionOf, ProgramaCaption } from "@/components/console/Ce
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
-import ThemesCard from "@/components/console/ThemesCard";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
@@ -756,7 +755,7 @@ export default function Console() {
     const camadasPanel = (
         <Panel title="Camadas" lead={leadOf("side", "camadas")} count="o que está no ar" collapsed={layout.collapsed.camadas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })}
             style={sideSplit ? { flex: `0 0 ${layout.camadasH}px` } : undefined}>
-            <Layers c={c} themes={data.themes} />
+            <Layers c={c} themes={data.themes} songs={data.songs} />
         </Panel>
     );
     const libraryPanel = (
@@ -769,17 +768,7 @@ export default function Console() {
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
     );
-    // Temas: a double click (or the menu's Editar) opens the theme in the
-    // Editor de temas e layouts (its own window).
-    const editTheme = (id) => { const r = openEditor({ theme: id || "new" }); if (r?.error) c.say(r.error); };
-    const themesCard = <ThemesCard c={c} themes={data.themes} songs={data.songs} onEdit={editTheme} onNew={() => editTheme("new")} />;
-    const temasPanel = (
-        <Panel title="Temas" lead={leadOf("side", "temas")} count="clique aplica no ar" collapsed={layout.collapsed.temas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, temas: !layout.collapsed.temas } })}
-            actions={<IconBtn name="plus" title="Novo tema" small onClick={() => editTheme("new")} />}>
-            {themesCard}
-        </Panel>
-    );
-    const cardPanel = { lib: libraryPanel, slides: slidesPanel, camadas: camadasPanel, temas: temasPanel, roteiro: setlistPanel };
+    const cardPanel = { lib: libraryPanel, slides: slidesPanel, camadas: camadasPanel, roteiro: setlistPanel };
     const splitFor = (key, sign = 1, horizontal = false, id = key) => (
         <Split key={`split-${id}`} horizontal={horizontal} size={layout[key]} sign={sign} onSize={(v) => setLayout({ ...layout, [key]: v })} onReset={() => setLayout({ ...layout, [key]: DEFAULT_LAYOUT[key] })} clamp={(v) => clampSize(key, v)} />
     );
@@ -940,8 +929,7 @@ export default function Console() {
                 return (
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
                     <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
-                        <Layers c={c} themes={data.themes} />
-                        {!layout.hidden.temas && <><div className="listhead"><span className="kx-section">Temas</span></div>{themesCard}</>}
+                        <Layers c={c} themes={data.themes} songs={data.songs} />
                     </Panel>
                 </div>
                 );

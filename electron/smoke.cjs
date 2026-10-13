@@ -1847,9 +1847,12 @@ async function checkConsole(webContents, { live, outputs }) {
         result.libClosed = await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 4000);
         result.bgVideoSet = await waitFor(() => { const b = live.get().background; return Boolean(b && b.kind === "video" && String(b.value).endsWith("smoke-fundo.mp4")); }, 5000);
         result.bgVideoDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("Boolean(document.querySelector('video.ks-bg-video'))").catch(() => false), 4000);
-        // Temas (the console's card): a click on a thumbnail dresses what is
-        // on air; "Salvar tema para a música" ties the song on air to it and
-        // "Tirar tema da música" lets it go.
+        // Temas na camada Fundo (presets, ThemeStrip): a pinned theme shows
+        // as a tile; a click dresses what is on air; "Salvar tema para a
+        // música" ties the song on air to it and "Tirar tema da música" lets
+        // it go.
+        await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "update", [r.id, { pinned: true }]); return rows.length; })()');
+        await click(".kx-layer", "Fundo");
         await waitFor(() => js("Boolean(document.querySelector('.tm-tile[aria-label=\"Tema Smoke\"]'))"), 5000);
         await click(".tm-tile", "Tema Smoke");
         result.themeApplied = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000);

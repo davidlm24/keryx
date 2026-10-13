@@ -124,7 +124,7 @@ export function useConsole() {
         if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
-        // A theme's example (the Temas card, nothing on air): sending it uses
+        // A theme's example (the Fundo layer strip, nothing on air): sending it uses
         // the theme — its background on the Fundo (not past the padlock) —
         // never the example text.
         if (stage.theme) {

@@ -27,7 +27,7 @@ export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 //   5. the renderer's factory look (center/middle, large, sans, shadow).
 // text_align and text_position ride as extras, so the Editor de temas moves
 // the box per theme and Camadas still wins on air. Applying a theme on air
-// (Temas card) spreads the whole themeStyle: it resets them too — a theme is
+// (the Fundo layer strip) spreads the whole themeStyle: it resets them too — a theme is
 // a complete look.
 export const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position", "transition", "transition_ms"];
 const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""]));
@@ -48,6 +48,19 @@ export function defaultTheme(themes) {
     return [...marked].sort((a, b) => String(b.updated_date || "").localeCompare(String(a.updated_date || "")))[0];
 }
 export const isDefaultTheme = (themes, t) => Boolean(t) && defaultTheme(themes)?.id === t.id;
+
+// The themes the Fundo layer offers as presets (owner's decision 2026-10-13,
+// as Holyrics' theme column): the pinned ones (ProjectionTheme.pinned), by
+// name; with none pinned, the default theme first and then the most recently
+// changed, so a new church sees something useful. At most `max` (6 tiles).
+export function consoleThemes(themes, max = 6) {
+    const all = themes || [];
+    const pinned = all.filter((t) => t?.pinned);
+    if (pinned.length) return pinned.slice(0, max);
+    const rest = all.filter((t) => !t?.is_default).sort((a, b) => String(b?.updated_date || "").localeCompare(String(a?.updated_date || "")));
+    const first = defaultTheme(all);
+    return [...(first ? [first] : []), ...rest].slice(0, max);
+}
 
 // A default theme per kind of content (owner's decision 2026-10-13, as in
 // SPresenter): Música is the theme marked padrão (ProjectionTheme.is_default);

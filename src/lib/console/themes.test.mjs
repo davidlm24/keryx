@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeGenerator } from "../../../shared/generators.mjs";
-import { themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
+import { consoleThemes, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
 
 test("themeStyle: classics defaulted, extras empty unless saved", () => {
     const t = { font_family: "serif", text_box: "band", transition: "slide", transition_ms: 300 };
@@ -135,4 +135,14 @@ test("a default theme per kind: Música, Bíblia, Texto, Timer", () => {
     assert.equal(tool.fundo.value, "#101820");
     const own = { mode: "clock", style: { text_color: "#ffffff" } };
     assert.equal(withThemeDefaults("tool.show", own, themes[3]), own, "its own look stays");
+});
+
+test("the Fundo layer's presets: pinned themes, else default + recent", () => {
+    const t = (id, extra = {}) => ({ id, name: id, ...extra });
+    const many = [t("a"), t("b", { is_default: true }), t("c", { pinned: true }), t("d", { pinned: true }), t("e", { updated_date: "2026-10-12" }), t("f", { updated_date: "2026-10-13" })];
+    assert.deepEqual(consoleThemes(many).map((x) => x.id), ["c", "d"], "pinned only, in list order");
+    const none = many.map(({ pinned: _p, ...x }) => x);
+    assert.deepEqual(consoleThemes(none).map((x) => x.id), ["b", "f", "e", "a", "c", "d"], "default first, then the most recent");
+    assert.deepEqual(consoleThemes(none, 2).map((x) => x.id), ["b", "f"], "capped at max");
+    assert.deepEqual(consoleThemes([]), []);
 });
