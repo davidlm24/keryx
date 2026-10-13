@@ -61,6 +61,7 @@ export const DEFAULT_LAYOUT = {
     // use (null = Padrão).
     dockPresets: [],
     dockPreset: null,
+    bibleDockPreset: null,
     // The Programa as four outputs at once (multiview.js), and which.
     multiview: false,
     mvTiles: DEFAULT_TILES,
@@ -68,8 +69,24 @@ export const DEFAULT_LAYOUT = {
 
 // What "Restaurar posições" (the edit mode's banner) puts back: the order,
 // the stacks and the sizes; which modules are shown and the density stay.
-export const ARRANGEMENT_KEYS = ["dock", "bibleDock", "dockPreset", "order", "stacks", "libW", "slidesW", "rightW", "camadasH", "bibleSelW", "bibleAirW", "prevPct"];
+export const ARRANGEMENT_KEYS = ["dock", "bibleDock", "dockPreset", "bibleDockPreset", "order", "stacks", "libW", "slidesW", "rightW", "camadasH", "bibleSelW", "bibleAirW", "prevPct"];
 export const restoreArrangement = (layout) => ({ ...layout, ...Object.fromEntries(ARRANGEMENT_KEYS.map((k) => [k, DEFAULT_LAYOUT[k]])) });
+
+// One environment's arrangement back to the console's own (Padrão, the edit
+// banner's Restaurar posições), the other's left as it is.
+const ENV_KEYS = {
+    culto: { keys: ["dock", "dockPreset", "libW", "slidesW", "rightW", "camadasH", "prevPct"], order: "culto", stacks: ["side", "source"] },
+    biblia: { keys: ["bibleDock", "bibleDockPreset", "bibleSelW", "bibleAirW"], order: "biblia", stacks: ["picker"] },
+};
+export function restoreEnv(layout, env) {
+    const k = ENV_KEYS[env] || ENV_KEYS.culto;
+    return {
+        ...layout,
+        ...Object.fromEntries(k.keys.map((key) => [key, DEFAULT_LAYOUT[key]])),
+        order: { ...layout.order, [k.order]: DEFAULT_LAYOUT.order[k.order] },
+        stacks: { ...layout.stacks, ...Object.fromEntries(k.stacks.map((s) => [s, DEFAULT_LAYOUT.stacks[s]])) },
+    };
+}
 
 export const densityOf = (layout) => (DENSITIES.some(([k]) => k === layout?.density) ? layout.density : DEFAULT_LAYOUT.density);
 
@@ -92,7 +109,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const saved = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }

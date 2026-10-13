@@ -214,9 +214,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`src/lib/console/dockPresets.js`, tested): the edit banner saves the dock
   as it is ("Salvar como…", "Salvar" over the one in use, "Excluir…" via
   useConfirm), Ver › Disposição switches (Padrão = the console's own, never
-  in the list; "· alterada" when the dock differs from it); kept with the
-  layout per computer (`dockPresets`, `dockPreset`), and "Restaurar
-  disposição" keeps the list. **Four columns** are the
+  in the list; "· alterada" when the dock differs from it), each
+  environment its own (names unique within one; `presetsFor`); kept with
+  the layout per computer (`dockPresets`; in use: `dockPreset`,
+  `bibleDockPreset`). Padrão and the banner's Restaurar posições restore
+  only the environment on screen (`restoreEnv`); "Restaurar disposição"
+  keeps the list. **Four columns** are the
   default dock (the console audit,
   owner 2026-10-13, which replaced the two-band centre of #136/#138):
   Biblioteca and Slides are whole columns; the **centre** (`live`) is the

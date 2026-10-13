@@ -57,7 +57,7 @@ export const MODULES = {
 export const ENVS = ["culto", "biblia"];
 const envOf = (id) => MODULES[id]?.env || "culto";
 export const envModules = (env) => Object.keys(MODULES).filter((id) => envOf(id) === env);
-const dockEnv = (d) => (d?.env === "biblia" ? "biblia" : "culto");
+export const dockEnv = (d) => (d?.env === "biblia" ? "biblia" : "culto");
 // A dock object for an environment (the culto's carries no env).
 const make = (env, tree, hidden) => (env === "culto" ? { tree, hidden } : { env, tree, hidden });
 export const MODULE_IDS = envModules("culto");

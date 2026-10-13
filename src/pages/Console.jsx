@@ -48,13 +48,13 @@ import TabsPanel from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
-import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreArrangement } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, normalizeDock, syncHidden, fitDock, moveModules, hideModule, canTray, leaves, pathOf } from "@/lib/console/dock";
+import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreEnv } from "@/lib/console/layout";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, syncHidden, fitDock, moveModules, hideModule, canTray, leaves, pathOf } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
 import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, ZONE_LABEL } from "@/components/console/Dock";
-import { addPreset, updatePreset, removePreset, presetOf, presetChanged, nameProblem } from "@/lib/console/dockPresets";
+import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, nameProblem } from "@/lib/console/dockPresets";
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
@@ -775,36 +775,46 @@ export default function Console() {
     const envDock = env === "biblia" ? bibleDock : dock;
     const setEnvDock = env === "biblia" ? setBibleDock : setDock;
     const dockDrag = useDockDrag({ dock: envDock, onDock: setEnvDock });
-    // Named arrangements (Ver › Disposição; src/lib/console/dockPresets.js).
-    const presets = layout.dockPresets || [];
-    const preset = presetOf(presets, layout.dockPreset);
-    // Changed: from its preset, or (Padrão) from the console's own with Ver's modules.
+    // Named arrangements (Ver › Disposição; src/lib/console/dockPresets.js),
+    // each environment its own: the list, the one in use, Padrão.
+    const allPresets = layout.dockPresets || [];
+    const presetKey = env === "biblia" ? "bibleDockPreset" : "dockPreset";
+    const dockKey = env === "biblia" ? "bibleDock" : "dock";
+    const presets = presetsFor(allPresets, env);
+    const preset = presetOf(presets, layout[presetKey]);
+    // Changed: from its preset, or (Padrão) from the environment's own (the
+    // culto's with Ver's modules).
     const padraoDock = useMemo(() => syncHidden(fromArrangement({ hidden: layout.hidden }, dockOpts), layout.hidden, VER_MODULES, dockOpts),
         [layout.hidden, mainSize.w]); // eslint-disable-line react-hooks/exhaustive-deps
-    const presetDirty = presetChanged(preset || { dock: padraoDock }, dock);
+    const biblePadrao = useMemo(() => defaultDock({ env: "biblia" }), []);
+    const presetDirty = presetChanged(preset || { dock: env === "biblia" ? biblePadrao : padraoDock }, envDock);
     const pickPreset = (id) => {
         const p = presetOf(presets, id);
-        if (!p) { setLayout({ ...restoreArrangement(layout), dockPreset: null }); c.say("Disposição padrão."); return; }
-        const hidden = { ...layout.hidden };
-        for (const m of VER_MODULES) hidden[m] = p.dock.hidden.includes(m);
-        setLayout({ ...layout, dock: p.dock, dockPreset: p.id, hidden });
+        if (!p) { setLayout(restoreEnv(layout, env)); c.say("Disposição padrão."); return; }
+        const next = { ...layout, [dockKey]: p.dock, [presetKey]: p.id };
+        // The culto's tray is also Ver's modules (a church preference).
+        if (env !== "biblia") {
+            next.hidden = { ...layout.hidden };
+            for (const m of VER_MODULES) next.hidden[m] = p.dock.hidden.includes(m);
+        }
+        setLayout(next);
         c.say(`Disposição “${p.name}”.`);
     };
     const savePresetAs = (name) => {
         const id = globalThis.crypto?.randomUUID?.() || `d${Date.now()}`;
-        const r = addPreset(presets, name, dock, id);
+        const r = addPreset(allPresets, name, envDock, id);
         if (!r.id) return;
-        setLayout({ ...layout, dock, dockPresets: r.list, dockPreset: r.id });
+        setLayout({ ...layout, [dockKey]: envDock, dockPresets: r.list, [presetKey]: r.id });
         c.say(`Disposição “${r.list.at(-1).name}” salva. Troque em Ver.`);
     };
     const savePreset = () => {
         if (!preset) return;
-        setLayout({ ...layout, dockPresets: updatePreset(presets, preset.id, dock) });
+        setLayout({ ...layout, dockPresets: updatePreset(allPresets, preset.id, envDock) });
         c.say(`“${preset.name}” salva.`);
     };
     const deletePreset = async () => {
         if (!preset || !(await askConfirm(deleteQuestion("a disposição", preset.name, "O console fica como está agora.")))) return;
-        setLayout({ ...layout, dock, dockPresets: removePreset(presets, preset.id), dockPreset: null });
+        setLayout({ ...layout, [dockKey]: envDock, dockPresets: removePreset(allPresets, preset.id), [presetKey]: null });
     };
     // "Mover para…" (a click on a module's name while editing, or on it in
     // the tray): which module to go beside, then on which side or as a tab.
@@ -971,9 +981,9 @@ export default function Console() {
             )}
             {/* Travar telas: the console prepares, the screens keep what they show. */}
             {editing && (
-                <EditBanner onRestore={() => { setLayout(restoreArrangement(layout)); c.say("Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
+                <EditBanner onRestore={() => { setLayout(restoreEnv(layout, env)); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {!view && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
-                    {env === "culto" && !view && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
+                    {!view && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
                 </EditBanner>
             )}
             {c.locked && (

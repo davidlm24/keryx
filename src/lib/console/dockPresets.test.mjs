@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePresets, nameProblem, addPreset, updatePreset, renamePreset, removePreset, presetOf, presetChanged, cleanName, MAX_PRESETS } from "./dockPresets.js";
+import { normalizePresets, nameProblem, addPreset, updatePreset, renamePreset, removePreset, presetOf, presetChanged, presetsFor, cleanName, MAX_PRESETS } from "./dockPresets.js";
 import { defaultDock, moveModules, setActive } from "./dock.js";
 
 const dock = defaultDock();
@@ -59,4 +59,24 @@ test("changed: the dock differs from its preset; the tab in front does not count
     const q = { id: "b", name: "Abas", dock: tabs };
     assert.equal(presetChanged(q, setActive(tabs, [0], "lib")), false);
     assert.equal(presetChanged(null, dock), false, "Padrão: nothing to compare");
+});
+
+test("each environment has its own arrangements: the same name in both, each counted apart", () => {
+    const bible = defaultDock({ env: "biblia" });
+    const a = addPreset([], "Estudo", dock, "c1");
+    const b = addPreset(a.list, "Estudo", bible, "b1");
+    assert.equal(b.id, "b1", "a culto name does not block the Bíblia's");
+    assert.deepEqual(presetsFor(b.list, "culto").map((p) => p.id), ["c1"]);
+    assert.deepEqual(presetsFor(b.list, "biblia").map((p) => p.id), ["b1"]);
+    assert.equal(presetsFor(b.list, "biblia")[0].dock.env, "biblia");
+    assert.equal(addPreset(b.list, "estudo", bible, "b2").id, null, "but twice in the Bíblia, no");
+    assert.equal(renamePreset(b.list, "b1", "Culto").find((p) => p.id === "b1").name, "Culto");
+    // A saved list keeps both, and twelve per environment.
+    const many = [
+        ...Array.from({ length: 13 }, (_, i) => ({ id: `c${i}`, name: `D${i}`, dock })),
+        ...Array.from({ length: 13 }, (_, i) => ({ id: `b${i}`, name: `D${i}`, dock: bible })),
+    ];
+    const list = normalizePresets(many);
+    assert.equal(presetsFor(list, "culto").length, MAX_PRESETS);
+    assert.equal(presetsFor(list, "biblia").length, MAX_PRESETS);
 });
