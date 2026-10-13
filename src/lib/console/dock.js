@@ -344,9 +344,9 @@ export function resizeChild(dock, path, index, px) {
     if (!isSplit(sp) || !(index in sp.sizes) || sp.sizes[index] === null) return d;
     const ctx = contextOf(tree);
     const min = minSize(sp.children[index], sp.dir === "row", ctx, false);
-    const v = pxOrNull(px);
-    if (v === null) return d;
-    sp.sizes[index] = Math.max(min, v);
+    if (!Number.isFinite(px)) return d;
+    // A drag far past the edge (even below zero) stops at the minimum.
+    sp.sizes[index] = Math.min(PX_MAX, Math.max(min, Math.round(px)));
     return { tree, hidden: d.hidden };
 }
 

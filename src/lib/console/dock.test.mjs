@@ -156,6 +156,7 @@ test("switching tabs and resizing", () => {
     assert.deepEqual(setActive(tabs, [2, 0], "lib"), tabs, "not a tab of that group");
     assert.equal(resizeChild(defaultDock(), [], 0, 400).tree.sizes[0], 400);
     assert.equal(resizeChild(defaultDock(), [], 0, 50).tree.sizes[0], 200, "never under the module's minimum");
+    assert.equal(resizeChild(defaultDock(), [], 1, -350).tree.sizes[1], 300, "a drag past the edge stops at the minimum");
     assert.deepEqual(resizeChild(defaultDock(), [], 2, 900), defaultDock(), "the flexible one takes the rest");
 });
 
