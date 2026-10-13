@@ -1763,17 +1763,20 @@ async function checkConsole(webContents, { live, outputs }) {
         const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
         await waitFor(() => section("Temas"), 4000);
         await waitFor(() => press2("Novo tema…"), 4000);
-        await waitFor(() => js("Boolean(document.querySelector('.cfg-outprefs input.fg-input'))"));
+        // The theme editor is a window of its own (themes/ThemeStudio.jsx):
+        // the name in its header, the settings beside a big sample.
+        result.themeWindow = await waitFor(() => js("Boolean(document.querySelector('.console .te-dialog input.te-name'))"), 4000);
         await js(`(() => {
-            const name = document.querySelector(".cfg-outprefs input.fg-input");
+            const name = document.querySelector(".te-dialog input.te-name");
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(name, "Tema Smoke");
             name.dispatchEvent(new Event("input", { bubbles: true }));
-            const font = document.querySelector(".cfg-outprefs select");
+            const font = document.querySelector(".te-dialog select[aria-label=\\"Fonte do tema\\"]");
             font.value = "serif"; font.dispatchEvent(new Event("change", { bubbles: true }));
             return true;
         })()`);
-        result.themeSample = await waitFor(() => js("(getComputedStyle(document.querySelector('.cfg-prev .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
-        await press2("Salvar tema");
+        result.themeSample = await waitFor(() => js("(getComputedStyle(document.querySelector('.te-dialog .te-screen .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
+        await js("(() => { const b = [...document.querySelectorAll('.te-dialog button')].find((x) => x.textContent.trim() === 'Salvar tema'); if (b) b.click(); return Boolean(b); })()");
+        result.themeWindowClosed = await waitFor(() => js("!document.querySelector('.console .te-dialog')"), 4000);
         result.themeSaved = await waitFor(async () => {
             const rows = (await js('window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])')).data || [];
             return rows.length === 1 && rows[0].font_family === "serif";
@@ -2345,7 +2348,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutTabs && result.cfgLayoutFirst && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeSample && result.themeSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutTabs && result.cfgLayoutFirst && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeWindow && result.themeSample && result.themeSaved && result.themeWindowClosed && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
