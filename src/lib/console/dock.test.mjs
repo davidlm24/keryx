@@ -235,3 +235,33 @@ test("the Bíblia fits the smallest window side by side", () => {
     // 948 px: the side columns give way in proportion to their room (60 and 100 px).
     assert.deepEqual(f.children.map((c) => Math.round(c.size)), [258, 360, 330]);
 });
+
+test("a console never edited opens as it looked at its width: medium and narrow", () => {
+    // A 1366 screen (grid 1354): no right column; Camadas is a drawer, the
+    // Setlist beside the Prévia. centre = 1354 − 266 − 306 = 782; 44 % = 344.
+    const medium = fromArrangement({}, { width: 1354, height: 768, tier: "medium" });
+    assert.deepEqual(medium.tree, split("row", [
+        g("lib"), g("slides"),
+        split("col", [g("programa"), split("row", [g("previa"), g("setlist")], [344, null])], [null, 278]),
+    ], [260, 300, null]));
+    assert.deepEqual(medium.hidden, ["camadas", "abas"]);
+    // The Programa keeps its room, the Prévia and the Setlist side by side.
+    const fit = fitDock(medium, 1354, 768);
+    assert.equal(Math.round(fit.children[2].size), 782);
+    assert.equal(fit.children[2].frame.children[1].frame.kind, "split", "no tabs at 1366");
+    // Narrow: the Biblioteca over the Slides in one column, as wide as the Slides.
+    const narrow = fromArrangement({ stacks: { source: ["slides", "lib"] } }, { width: 1000, height: 700, tier: "narrow" });
+    assert.deepEqual(narrow.tree, split("row", [
+        split("col", [g("slides"), g("lib")], [347, null]),
+        split("col", [g("programa"), split("row", [g("previa"), g("setlist")], [305, null])], [null, 256]),
+    ], [300, null]));
+    // Padrão follows the width too.
+    assert.deepEqual(defaultDock({ width: 1354, height: 768, tier: "medium" }), medium);
+});
+
+test("back from the tray at medium width: Camadas over the Setlist, as in the wide console", () => {
+    const medium = fromArrangement({}, { width: 1354, height: 768, tier: "medium" });
+    const back = returnModule(medium, "camadas", { width: 1354, height: 768, tier: "medium" });
+    assert.deepEqual(nodeAt(back.tree, [2, 1, 1]), split("col", [g("camadas"), g("setlist")], [360, null]));
+    assert.deepEqual(back.hidden, ["abas"]);
+});

@@ -56,6 +56,13 @@ export const isDefaultTheme = (themes, t) => Boolean(t) && defaultTheme(themes)?
 // Here: it rides as the service's Música theme into themeForKind.
 export const withThemeInUse = (serviceThemes, themeId) => (themeId ? { ...(serviceThemes || {}), lyrics: themeId } : serviceThemes);
 
+// What the theme in use becomes when the service, or its Música theme,
+// changes (choosing a culto seeds it): the service's Música theme, null for
+// the default — or undefined, "it stays", for the day's draft that an action
+// of the operator just started (the first item added, Fundo de hoje): that is
+// not a choice of culto, and the draft has no Música theme of its own.
+export const themeInUseSeed = ({ serviceId = null, draftId = null, lyrics = "" } = {}) => (serviceId && serviceId === draftId && !lyrics ? undefined : lyrics || null);
+
 // The themes the Fundo layer offers as presets (owner's decision 2026-10-13,
 // as Holyrics' theme column): the pinned ones (ProjectionTheme.pinned), by
 // name; with none pinned, the default theme first and then the most recently

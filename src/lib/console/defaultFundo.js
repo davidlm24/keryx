@@ -11,6 +11,7 @@
 // service and its template took its place; User.weekday_backgrounds is no
 // longer read.) Pure: tested in defaultFundo.test.mjs.
 import { cleanSpec, bgArgs } from "./backgroundSpec.js";
+import { layerLocked } from "../../../shared/live-state.mjs";
 
 const picture = (url) => (typeof url === "string" && url.trim() ? { kind: "image", value: url.trim() } : null);
 
@@ -28,3 +29,14 @@ export function defaultFundo({ service = null, user = null } = {}) {
 
 // background.default's argument for it (null: none).
 export const defaultFundoArgs = (d) => (d ? bgArgs(d.spec, d.title) : null);
+
+// Whether a new Fundo padrão (KERYX opens, a service is chosen, the church
+// changes it) goes on the Fundo right away: when nothing the screens show is
+// on air. Under Tela preta or the logo too — KERYX reopens with the screens
+// black, and the Fundo must be the service's when they come back — but never
+// while the screens are locked (Travar telas refuses it) or past Camadas'
+// padlock.
+export function fundoGoesOnNow(live) {
+    if (!live || live.locked || layerLocked(live, "background")) return false;
+    return !["content", "media", "video", "tool", "communication"].some((layer) => live[layer]);
+}

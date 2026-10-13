@@ -6,9 +6,9 @@ import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
-import { defaultFundo, defaultFundoArgs, serviceFundo } from "@/lib/console/defaultFundo";
+import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
 import { cleanKindThemes } from "@/lib/console/serviceLook";
-import { mainLayer, layerLocked } from "@shared/live-state.mjs";
+import { themeInUseSeed } from "@/lib/console/themes";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
@@ -232,10 +232,10 @@ export default function Console() {
         if (hidden.join() !== hiddenList(hiddenMap(prefs.console_hidden_modules)).join()) patch.console_hidden_modules = hidden;
         if (Object.keys(patch).length) updateUser(patch).catch(() => say("Não foi possível salvar o layout."));
     }, [profile, prefs.console_density, prefs.console_hidden_modules, say]);
-    // Everything back to the console's own, but the named arrangements stay.
-    // Everything back to the console's own (every module on screen), but the
-    // named arrangements stay; the church's preferences are not touched.
-    const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT, hidden: layout.hidden, dock: defaultDock({ width: mainSize.w }), dockPresets: layout.dockPresets || [] }); c.say("Layout padrão restaurado."); };
+    // Everything back to the console's own (the density too; every module on
+    // screen), but the named arrangements stay and the church's old hidden
+    // modules are not rewritten.
+    const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT, hidden: layout.hidden, trayFromChurch: false, dockPresets: layout.dockPresets || [] }); c.say("Layout padrão restaurado."); };
     // The trimmable tab rows (panelTabs.js): what each shows, the (+) list.
     const tabLists = layout.tabs || DEFAULT_TABS;
     const setTabList = (row, list) => setLayout({ ...layout, tabs: { ...tabLists, [row]: list } });
@@ -260,7 +260,8 @@ export default function Console() {
     // the service's background, else the day's, else the church's. The live
     // state keeps it (background.default) so Esc puts it back, whoever sends;
     // and when it changes (KERYX opens, a service is chosen, the church edits
-    // it) with nothing on air it goes on the Fundo now — never past the padlock.
+    // it) with nothing on air (under Tela preta too) it goes on the Fundo now —
+    // never past Travar telas or the padlock (fundoGoesOnNow).
     // The service's own themes per kind go to the console's stamp (serviceLook.js).
     const serviceThemesKey = JSON.stringify(cleanKindThemes(service?.kind_themes));
     useEffect(() => { c.setServiceThemes(JSON.parse(serviceThemesKey)); }, [serviceThemesKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -268,8 +269,15 @@ export default function Console() {
     // choosing a culto seeds it, and editing the preset's Música theme
     // (Visual do culto, "Salvar no visual…") makes it follow — a deliberate
     // choice. Clicking the strip still overrides freely, without writing.
+    // The day's draft an action of the operator starts (ensureService) is not
+    // a choice of culto: the theme in use stays (themeInUseSeed).
     const cultoLyricsKey = cleanKindThemes(service?.kind_themes).lyrics || "";
-    useEffect(() => { c.setThemeId(cultoLyricsKey || null); }, [serviceId, cultoLyricsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    const draftStarted = useRef(null);
+    useEffect(() => {
+        if (serviceId !== draftStarted.current) draftStarted.current = null;
+        const seed = themeInUseSeed({ serviceId, draftId: draftStarted.current, lyrics: cultoLyricsKey });
+        if (seed !== undefined) c.setThemeId(seed);
+    }, [serviceId, cultoLyricsKey]); // eslint-disable-line react-hooks/exhaustive-deps
     const churchRow = useUser();
     const fundoPadrao = useMemo(() => defaultFundoArgs(defaultFundo({ service, user: churchRow })), [service, churchRow]);
     const padraoKey = JSON.stringify(fundoPadrao);
@@ -280,7 +288,7 @@ export default function Console() {
         padraoSent.current = padraoKey;
         c.liveOp("background.default", { background: fundoPadrao }).catch(() => {});
         const live = c.live;
-        if (fundoPadrao && mainLayer(live) === "none" && !layerLocked(live, "background")) c.liveOp("background.set", fundoPadrao).catch(() => {});
+        if (fundoPadrao && fundoGoesOnNow(live)) c.liveOp("background.set", fundoPadrao).catch(() => {});
     }, [liveReady, padraoKey]); // eslint-disable-line react-hooks/exhaustive-deps
     const { outputs, network, seen, forgetOutput } = useOutputs();
     // Outputs: the projector window missing its display, or closed, is the warning.
@@ -369,6 +377,7 @@ export default function Console() {
         const start = getPrefs().service_start_time;
         const at = start ? { startTime: start } : {};
         const row = await keryx.entities.Service.create({ title: `Setlist de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, status: "DRAFT", ...at });
+        draftStarted.current = row.id;
         setServiceId(row.id);
         c.say("Criada a setlist de hoje · renomeie em Planejar o culto.");
         return row.id;
@@ -757,9 +766,11 @@ export default function Console() {
     // src/lib/console/dock.js): the operator's tree, or, until they change
     // it, the one the old columns make (fromArrangement; the modules the
     // church's old preference hid start in the tray).
-    const dockOpts = { width: mainSize.w };
-    const dock = useMemo(() => (layout.dock ? normalizeDock(layout.dock) : fromArrangement(layout, dockOpts)),
-        [layout.dock, layout.order, layout.stacks, layout.libW, layout.slidesW, layout.rightW, layout.camadasH, layout.prevPct, layout.hidden, mainSize.w]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Until then it follows the width, as the console's tiers did (wide,
+    // medium, narrow: fromArrangement).
+    const dockOpts = { width: mainSize.w, height: mainSize.h, tier };
+    const dock = useMemo(() => (layout.dock ? normalizeDock(layout.dock) : fromArrangement(layout.trayFromChurch === false ? { ...layout, hidden: {} } : layout, dockOpts)),
+        [layout.dock, layout.order, layout.stacks, layout.libW, layout.slidesW, layout.rightW, layout.camadasH, layout.prevPct, layout.hidden, layout.trayFromChurch, mainSize.w, mainSize.h]); // eslint-disable-line react-hooks/exhaustive-deps
     const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h), [dock, mainSize.w, mainSize.h]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
     const playerDocked = !onScreen("player");
@@ -794,12 +805,12 @@ export default function Console() {
     const presets = presetsFor(allPresets, env);
     const preset = presetOf(presets, layout[presetKey]);
     // Changed: from its preset, or (Padrão) from the environment's own.
-    const padraoDock = useMemo(() => defaultDock(dockOpts), [mainSize.w]); // eslint-disable-line react-hooks/exhaustive-deps
+    const padraoDock = useMemo(() => defaultDock(dockOpts), [mainSize.w, mainSize.h]); // eslint-disable-line react-hooks/exhaustive-deps
     const biblePadrao = useMemo(() => defaultDock({ env: "biblia" }), []);
     const presetDirty = presetChanged(preset || { dock: env === "biblia" ? biblePadrao : padraoDock }, envDock);
     // The environment on screen back to its own (Padrão, Restaurar posições):
-    // the culto with every module on screen.
-    const restoreHere = () => (env === "biblia" ? restoreEnv(layout, "biblia") : { ...restoreEnv(layout, "culto"), dock: padraoDock });
+    // the culto follows the width again, with every module it has there.
+    const restoreHere = () => restoreEnv(layout, env);
     const pickPreset = (id) => {
         const p = presetOf(presets, id);
         if (!p) { setLayout(restoreHere()); c.say("Disposição padrão."); return; }
@@ -837,7 +848,7 @@ export default function Console() {
         openMenu(e, { title: `Mover ${name} para perto de…`, items: [
             ...others.map((other) => ({ label: DOCK_MODULES[other].name, onSelect: () => besideOf(other) })),
             ...(id === "player" && !playerDocked ? ["sep", { label: "Voltar para baixo do Programa", icon: "undo", onSelect: () => setEnvDock(moveModules(d, ["player"], { kind: "home" })) }] : []),
-            ...(canTray(id) && pathOf(d.tree, id) ? ["sep", { label: "Guardar na bandeja", icon: "x", onSelect: () => setEnvDock(hideModule(d, id)) }] : []),
+            ...(canTray(id) && pathOf(d.tree, id) ? ["sep", { label: "Tirar para a bandeja", icon: "x", onSelect: () => setEnvDock(hideModule(d, id)) }] : []),
         ] });
     };
     // The Programa's box on screen: "Voltar ao anterior" and the Camadas

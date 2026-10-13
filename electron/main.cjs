@@ -156,6 +156,16 @@ function guardWindow(win) {
         if (outputs) outputs.track(child, details.url);
     });
 
+    // A page with unsaved changes (the Editor) holds its window with
+    // beforeunload, and Electron would then keep it without a word: ask
+    // (closeGuard.askLeave). A quit already decided (the updater, an import)
+    // is never held up; the console's X closes such windows first
+    // (closeGuard.closeAll), so the question comes while the console is up.
+    webContents.on("will-prevent-unload", (event) => {
+        if (quitting || closeGuard.askLeave(dialog, win)) event.preventDefault();
+        else win.emit(closeGuard.KEPT_OPEN);
+    });
+
     // Right click: in a text field, the system's own Recortar / Copiar /
     // Colar; everywhere else the console draws its own menus
     // (src/components/console/ContextMenu.jsx), and a page that shows none
@@ -225,12 +235,17 @@ function createMainWindow() {
     // without it, so that restart is untouched; the updater's quitAndInstall
     // is already quitting, and app.quit() then does nothing more.
     // The X always asks first (closeGuard.cjs): staying open is the default; the smoke answers through setAsk.
+    // Then the windows that are neither the console nor an output (the Editor)
+    // close before the quit: one with unsaved changes asks, and "Continuar
+    // editando" keeps KERYX open, console and all.
     mainWindow.on("close", (event) => {
+        if (quitting) return; // a quit already decided closes every window
+        event.preventDefault();
         const enabled = closeGuard.machinePrefs(appSettings?.get(closeGuard.MACHINE_KEY, {})).confirmClose;
         const onAir = Boolean(liveRules?.isOnAir && live && liveRules.isOnAir(live.get()));
-        if (!closeGuard.shouldConfirmClose({ enabled, quitting })) { app.quit(); return; }
-        event.preventDefault();
-        closeGuard.askClose(dialog, mainWindow, onAir).then((close) => { if (close) app.quit(); }, () => {});
+        const asked = closeGuard.shouldConfirmClose({ enabled, quitting }) ? closeGuard.askClose(dialog, mainWindow, onAir) : Promise.resolve(true);
+        const others = () => BrowserWindow.getAllWindows().filter((w) => w !== mainWindow && !w.isDestroyed() && !outputKeyForUrl(w.webContents.getURL(), appOrigin));
+        asked.then((close) => (close ? closeGuard.closeAll(others()) : false)).then((closed) => { if (closed) app.quit(); }, () => {});
     });
     mainWindow.on("closed", () => { mainWindow = null; });
     mainWindow.loadURL(appUrl + START_PATH).catch((err) => {

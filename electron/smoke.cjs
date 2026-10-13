@@ -455,6 +455,13 @@ async function checkLayers(webContents, { live, outputs }) {
         live.call("communication.show", { item: { type: "announcement", text: "Aviso de teste", duration: 30, text_color: "#ffffff", font_size: "large" } });
         result.communication = await waitText(main, "Aviso de teste") && await waitText(comm, "Aviso de teste");
         await shot(main, "comunicacao");
+        // Camadas' eye on the Fundo leaves an aviso its own background (the
+        // aviso's, not the Fundo's): hidden, the aviso still has its colour.
+        live.call("layers.hide", { layer: "background" });
+        live.call("communication.show", { item: { type: "announcement", text: "Aviso com fundo", duration: 30, text_color: "#ffffff", background_color: "#123456" } });
+        result.hiddenFundoAviso = await waitText(main, "Aviso com fundo")
+            && await main.webContents.executeJavaScript('[...document.querySelectorAll(".ks-layer")].some((n) => getComputedStyle(n).backgroundColor === "rgb(18, 52, 86)")').catch(() => false);
+        live.call("layers.show", { layer: "background" });
         live.call("communication.show", { playlist: [
             { type: "countdown", text: "Primeiro aviso", duration: 1, text_color: "#ffffff", font_size: "large" },
             { type: "announcement", text: "Segundo aviso", duration: 30, text_color: "#ffffff", font_size: "large" },
@@ -573,7 +580,7 @@ async function checkLayers(webContents, { live, outputs }) {
             if (w) w.close();
         }
     }
-    result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.sequence && result.sequenceIndex === 1
+    result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.hiddenFundoAviso && result.sequence && result.sequenceIndex === 1
         && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.partThemeOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
     return result;
 }
@@ -1849,6 +1856,20 @@ async function checkConsole(webContents, { live, outputs }) {
             return true;
         })()`);
         result.themeSample = await waitFor(() => ejs("(getComputedStyle(document.querySelector('.le-screen .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
+        // Unsaved: the Editor's own X asks (closeGuard.askLeave; Electron
+        // alone kept the window without a word), and "Continuar editando"
+        // keeps it, changes and all.
+        {
+            const guard = require("./closeGuard.cjs");
+            let asked = false;
+            // As an operator would have: a gesture in the Editor first.
+            await ew.webContents.executeJavaScript("true", true).catch(() => {});
+            guard.setAskLeave(() => { asked = true; return false; });
+            ew.close();
+            await sleep(1000);
+            result.editorLeaveAsks = asked && Boolean(editorWin()) && await ejs("document.querySelector('.nv-frm input.pl-input').value === 'Tema Smoke'").catch(() => false);
+            guard.setAskLeave(null);
+        }
         await ejs("(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Salvar tema'); if (b) b.click(); return Boolean(b); })()");
         result.themeSaved = await waitFor(async () => {
             const rows = (await js('window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])')).data || [];
@@ -2495,7 +2516,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
@@ -2886,7 +2907,7 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
         const report = (quit) => {
             if (reported) return;
             reported = true;
-            const passed = ok && quit.quits && quit.outputOpen && quit.guardAsked && quit.guardKept;
+            const passed = ok && quit.quits && quit.outputOpen && quit.guardAsked && quit.guardKept && quit.editorAsked && quit.editorKept;
             console.log(`SMOKE ${passed ? "OK" : "FAIL"} ${JSON.stringify({ ...details, quit, errors })}`);
             app.exit(passed ? 0 : 1);
         };
@@ -2911,11 +2932,32 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
                 guardKept = !win.isDestroyed();
             } catch { /* reported as guardKept: false */ }
             guard.setAsk(async () => true);
+            // Unsaved changes in the Editor: closing KERYX asks about them
+            // first, with the console still up (the Editor closes before the
+            // quit); "Continuar editando" keeps everything open, and then
+            // "Descartar as mudanças" lets it quit.
+            let editorAsked = false;
+            let editorKept = false;
+            try {
+                const editor = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/Editor"));
+                await webContents.executeJavaScript('window.open(location.origin + "/Editor?theme=new", "keryx-editor"); true');
+                for (let i = 0; i < 40 && !editor(); i += 1) await sleep(200);
+                // userGesture: the typing comes as an operator's would.
+                const ejs = (code) => editor().webContents.executeJavaScript(code, true);
+                for (let i = 0; i < 40 && !(await ejs("Boolean(document.querySelector('.nv-frm input.pl-input'))").catch(() => false)); i += 1) await sleep(200);
+                await ejs(`(() => { const n = document.querySelector(".nv-frm input.pl-input"); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(n, "Não salvo"); n.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
+                await sleep(400);
+                guard.setAskLeave(() => { editorAsked = true; return false; });
+                if (!win.isDestroyed()) win.close();
+                await sleep(1500);
+                editorKept = !win.isDestroyed() && Boolean(editor());
+            } catch { /* reported as editorAsked/editorKept: false */ }
+            guard.setAskLeave(() => true);
             app.once("will-quit", (event) => {
                 event.preventDefault();
-                report({ quits: true, outputOpen, guardAsked, guardKept });
+                report({ quits: true, outputOpen, guardAsked, guardKept, editorAsked, editorKept });
             });
-            setTimeout(() => report({ quits: false, outputOpen, guardAsked, guardKept, note: "o KERYX continuou aberto depois de fechar o console" }), 10000);
+            setTimeout(() => report({ quits: false, outputOpen, guardAsked, guardKept, editorAsked, editorKept, note: "o KERYX continuou aberto depois de fechar o console" }), 10000);
             if (!win.isDestroyed()) win.close();
         }, 1500);
     };

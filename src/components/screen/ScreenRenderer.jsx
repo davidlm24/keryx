@@ -109,8 +109,12 @@ const slideStyle = (content) => {
 };
 
 function Background({ state, layer, preview, motion }) {
-    // Camadas' eye on the Fundo: no picture at all, the item's own included.
-    if (layerHidden(state, "background") && layer !== "media") return <div className="ks-black" />;
+    if (layer === "media") return <div className="ks-black" />;
+    // Camadas' eye on the Fundo: no Fundo, and no picture of a song's own
+    // either; an aviso's or a tool's own look stays (it is theirs, not the
+    // Fundo's), and without one the screen is black.
+    const hidden = layerHidden(state, "background");
+    if (hidden && layer !== "tool" && layer !== "communication") return <div className="ks-black" />;
     const cs = layer === "content" ? slideStyle(state.content) : null;
     // The Fundo held by Camadas' padlock: a song's (or a part's) own
     // picture is not drawn over it. Avisos and tools keep their own look.
@@ -119,8 +123,7 @@ function Background({ state, layer, preview, motion }) {
         : layer === "communication" ? (state.communication.item.background_image || cssBackground(state.communication.item.background_color))
         : null;
     const bg = own || null;
-    const liveBg = !bg && state.background ? state.background : null;
-    if (layer === "media") return <div className="ks-black" />;
+    const liveBg = !bg && !hidden && state.background ? state.background : null;
     if (bg) {
         if (isUrl(bg)) {
             // The item's own picture, with the dim and blur its background
@@ -140,7 +143,7 @@ function Background({ state, layer, preview, motion }) {
         if (liveBg.kind === "video") return <><video className="ks-bg-video" style={look.media} src={liveBg.value} autoPlay loop muted playsInline />{look.dim}</>;
         return <><div className="ks-bg-img" style={{ backgroundImage: `url(${liveBg.value})`, ...look.image }} />{look.dim}</>;
     }
-    return <div className="ks-bg-default" />;
+    return hidden ? <div className="ks-black" /> : <div className="ks-bg-default" />;
 }
 
 // The Fundo layer's own look (Camadas): fit, which part shows, blur (px at
