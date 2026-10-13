@@ -1040,6 +1040,12 @@ async function checkConsole(webContents, { live, outputs }) {
         await dblclick(".kx-row", "Canto do console");
         result.bgPrefStamped = await waitFor(() => { const b = live.get().background; const st = live.get().content && live.get().content.style; return Boolean(b && String(b.value).includes(BG) && b.dim === 0.7 && b.blur === 6 && st && !st.background_image); }, 5000);
         result.bgPrefDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("(() => { const d = document.querySelector('.ks-bg-dim'); const i = document.querySelector('.ks-bg-img'); return Boolean(d && i && getComputedStyle(d).backgroundColor === 'rgba(0, 0, 0, 0.7)' && getComputedStyle(i).filter.startsWith('blur(')); })()").catch(() => false), 3000);
+        // The Fundo on air follows its picture's settings (the library is the
+        // one place for them): changing the dim there changes the screen now.
+        await js(`window.keryxDesktop.db.call("BackgroundPref", "update", [${JSON.stringify(bgPref.id)}, { dim_pct: 30, fit: "contain" }])`);
+        result.bgPrefFollows = await waitFor(() => { const b = live.get().background; return Boolean(b && b.dim === 0.3 && b.fit === "contain"); }, 5000);
+        await js(`window.keryxDesktop.db.call("BackgroundPref", "update", [${JSON.stringify(bgPref.id)}, { dim_pct: 70, fit: "" }])`);
+        await waitFor(() => (live.get().background || {}).dim === 0.7, 5000);
         live.call("clear", {});
         await waitFor(() => !live.get().content);
         result.bgSongStays = Boolean(live.get().background && String(live.get().background.value).includes(BG));
@@ -2323,7 +2329,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
-        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.dayLookButton && result.serviceThemeSent
+        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.dayLookButton && result.serviceThemeSent && result.bgPrefFollows
         && result.libBig && result.libLive && result.libLiveBack && result.padraoKept && result.padraoAfterEsc && result.padraoService
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc

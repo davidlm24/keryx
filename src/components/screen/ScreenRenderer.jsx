@@ -42,7 +42,7 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
             <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>
             <div className="ks-z" style={{ zIndex: z("content") }}>
                 {layer === "none" && !fundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
-                {layer === "content" && !layerHidden(state, "content") && <Content content={state.content} showTitle={showTitle} />}
+                {layer === "content" && !layerHidden(state, "content") && <Content content={state.content} showTitle={showTitle} still={preview && !motion} />}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
                 {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={audio} />}
                 {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} />)}
@@ -202,7 +202,9 @@ function verseNodes(text, numbers = "sup") {
     return segs.flatMap((x, i) => (x.n === null ? [x.text] : [<sup key={i}>{x.n}</sup>, x.text]));
 }
 
-function Content({ content, showTitle = true }) {
+// still: a preview that does not move (the Prévia, thumbnails, samples) —
+// the text without its transition; the Programa and the outputs keep it.
+function Content({ content, showTitle = true, still = false }) {
     const style = slideStyle(content);
     // The item's own choice (Camadas) wins over the church's (showTitle).
     const titled = style.title === "hide" ? false : style.title === "show" ? true : showTitle;
@@ -210,7 +212,7 @@ function Content({ content, showTitle = true }) {
     const size = SIZES.includes(style.font_size) ? style.font_size : "large";
     const align = style.text_align || "center";
     const pos = style.text_position || "middle";
-    const anim = ANIM[style.transition ?? "fade"] ?? "ks-anim-fade";
+    const anim = still ? "" : ANIM[style.transition ?? "fade"] ?? "ks-anim-fade";
     const bible = content.kind === "bible";
     const reference = slide.ref || content.ref?.reference || content.title;
     const key = `${content.startedAt}:${content.index}`;
