@@ -1344,10 +1344,13 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
         result.tlGone = await js("!document.querySelector('.tl-panel') && !document.querySelector('.kx-tl')");
-        // No service yet: the Setlist (beside the Prévia, at every tier)
-        // offers the day's look (Visual de hoje…, which would start today's
-        // setlist, as adding an item does).
-        result.dayLookButton = await waitFor(() => js("[...document.querySelectorAll('.rund-look button')].some((b) => b.textContent.includes('Visual de hoje'))"), 4000);
+        // No service yet: the Fundo layer's strip offers the day's look
+        // (Visual de hoje…, which would start today's setlist, as adding an
+        // item does). Camadas may be a card or the drawer at this width.
+        const dayLookDrawer = await js("(() => { const b = [...document.querySelectorAll('.center .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return Boolean(b); })()");
+        await click(".kx-layer", "Fundo");
+        result.dayLookButton = await waitFor(() => js("[...document.querySelectorAll('.tm-acts button')].some((b) => b.textContent.includes('Visual de hoje'))"), 4000);
+        if (dayLookDrawer) await js("(() => { const b = [...document.querySelectorAll('.center .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return true; })()");
         // No service yet: dropping a song on the Setlist starts today's setlist.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(400);
@@ -1856,6 +1859,11 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => js("Boolean(document.querySelector('.tm-tile[aria-label=\"Tema Smoke\"]'))"), 5000);
         await click(".tm-tile", "Tema Smoke");
         result.themeApplied = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000);
+        // The hybrid (2026-10-13): the clicked theme is the one in use — the
+        // next send keeps it, without writing the service's preset.
+        await dblclick(".kx-row", "Canto do console");
+        result.themeSticky = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000)
+            && !(((await js(`window.keryxDesktop.db.call("Service", "get", [${JSON.stringify(svc.id)}])`)).data || {}).kind_themes || {}).lyrics;
         const songThemeId = async () => ((await js(`window.keryxDesktop.db.call("Song", "get", [${JSON.stringify(song.id)}])`)).data || {}).theme_id || "";
         await click(".tm-song button", "Salvar tema para a música");
         result.songThemeSaved = await waitFor(async () => Boolean(await songThemeId()), 4000);
@@ -2369,7 +2377,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutTabs && result.cfgLayoutFirst && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeWindow && result.themeSample && result.themeSaved && result.themeWindowClosed && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutTabs && result.cfgLayoutFirst && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.pastorNext0 && result.themeWindow && result.themeSample && result.themeSaved && result.themeWindowClosed && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeGenerator } from "../../../shared/generators.mjs";
-import { consoleThemes, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
+import { consoleThemes, withThemeInUse, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
 
 test("themeStyle: classics defaulted, extras empty unless saved", () => {
     const t = { font_family: "serif", text_box: "band", transition: "slide", transition_ms: 300 };
@@ -145,4 +145,13 @@ test("the Fundo layer's presets: pinned themes, else default + recent", () => {
     assert.deepEqual(consoleThemes(none).map((x) => x.id), ["b", "f", "e", "a", "c", "d"], "default first, then the most recent");
     assert.deepEqual(consoleThemes(none, 2).map((x) => x.id), ["b", "f"], "capped at max");
     assert.deepEqual(consoleThemes([]), []);
+});
+
+test("the theme in use rides as the service's Música theme", () => {
+    assert.deepEqual(withThemeInUse({ bible: "b" }, "vinho"), { bible: "b", lyrics: "vinho" }, "it wins over the culto's");
+    assert.deepEqual(withThemeInUse(null, "vinho"), { lyrics: "vinho" });
+    assert.equal(withThemeInUse({ lyrics: "culto" }, null)?.lyrics, "culto", "none in use: the culto's stands");
+    const themes = [{ id: "padrao", is_default: true }, { id: "vinho" }];
+    assert.equal(themeForKind(themes, "lyrics", {}, withThemeInUse({ lyrics: "padrao" }, "vinho")).id, "vinho");
+    assert.equal(themeForKind(themes, "lyrics", {}, withThemeInUse(null, null)).id, "padrao");
 });

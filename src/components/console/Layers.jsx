@@ -4,7 +4,6 @@ import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
 import { Btn, IconBtn, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
-import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
 import { THEME_FONTS, FAMILY_SET, themeStyle, sameLook, themeBackgroundArgs, defaultTheme } from "@/lib/console/themes";
 import { applyThemeOnAir } from "./themeActions";
 import ThemeStrip from "./ThemeStrip";
@@ -39,7 +38,7 @@ const FONTS = THEME_FONTS;
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));
 
-export default function Layers({ c, themes, songs }) {
+export default function Layers({ c, themes, songs, service, ensureService }) {
     // The item's title: its own choice (style.title), else the church's.
     const showTitle = usePrefs().show_item_title;
     const backgrounds = useBackgrounds();
@@ -122,9 +121,6 @@ export default function Layers({ c, themes, songs }) {
     };
 
     const disabled = locked[sel];
-    // A short strip of pictures (favourites first) for one click; the whole
-    // library is one button away.
-    const quickBgs = visibleBackgrounds(backgrounds).filter((b) => b.kind === "image").slice(0, 8);
 
     return (
         <>
@@ -196,11 +192,6 @@ export default function Layers({ c, themes, songs }) {
                         <Btn small disabled={disabled} onClick={() => openLibrary(false)} title="Temas, imagens, vídeos, fundos gerados e cores">Biblioteca…</Btn>
                     </span>
                     {disabled && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Travado: nada que vai ao ar troca o fundo, e o fundo próprio das músicas não aparece.</span>}
-                    <div className="lyr-quick" style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4 }}>
-                        {quickBgs.map((b) => (
-                            <button type="button" key={b.source} disabled={disabled} onClick={() => op("background.set", { kind: "image", value: b.url, title: b.name, ...(b.dim !== null ? { dim: b.dim } : {}), ...(b.blur !== null ? { blur: b.blur } : {}) })} style={{ aspectRatio: "16/10", borderRadius: 3, backgroundImage: `url(${b.url})`, backgroundSize: "cover", backgroundPosition: "center", outline: cur?.background?.value === b.url ? "2px solid var(--brand)" : "none", outlineOffset: -2 }} aria-label={b.name} title={b.name} />
-                        ))}
-                    </div>
                     {/* Ajuste, posição, escurecer e desfoque are the picture's own (the
                         library; the Fundo on air follows them), and a generated
                         one is edited big in Editar fundo… — one place each. */}
@@ -212,8 +203,8 @@ export default function Layers({ c, themes, songs }) {
                     )}
                     {/* The themes as presets (owner's decision 2026-10-13):
                         text look + background in one click, Holyrics-style. */}
-                    <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 6 }}>Temas</span>
-                    <ThemeStrip c={c} themes={themes} songs={songs} />
+                    <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 6 }}>Temas <span className="kx-count">· o culto segue o escolhido</span></span>
+                    <ThemeStrip c={c} themes={themes} songs={songs} service={service} ensureService={ensureService} />
                 </>)}
                 {sel === "logo" && (<>
                     <span className="k">Canto</span>

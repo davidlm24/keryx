@@ -49,6 +49,13 @@ export function defaultTheme(themes) {
 }
 export const isDefaultTheme = (themes, t) => Boolean(t) && defaultTheme(themes)?.id === t.id;
 
+// The theme in use (owner's decision 2026-10-13, the hybrid): the one the
+// operator last clicked in the Fundo layer's strip (c.themeId). It dresses
+// everything sent until someone changes it, without writing the service's
+// preset — the Visual do culto only seeds it when the service is chosen.
+// Here: it rides as the service's Música theme into themeForKind.
+export const withThemeInUse = (serviceThemes, themeId) => (themeId ? { ...(serviceThemes || {}), lyrics: themeId } : serviceThemes);
+
 // The themes the Fundo layer offers as presets (owner's decision 2026-10-13,
 // as Holyrics' theme column): the pinned ones (ProjectionTheme.pinned), by
 // name; with none pinned, the default theme first and then the most recently

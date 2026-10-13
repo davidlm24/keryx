@@ -1004,4 +1004,3 @@
 .console .look-note { display: flex; align-items: center; gap: var(--space-1); color: var(--warn); }
 .console .pl-look { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 760px) { .console .look .tmg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.console .rund-look { display: flex; justify-content: flex-end; padding: var(--space-1) var(--space-2) 0; }

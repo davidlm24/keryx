@@ -98,10 +98,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   back): Camadas › Fundo shows up to 6 pinned themes as small screens
   (`ThemeStrip.jsx`, `consoleThemes` in themes.js; `ProjectionTheme.pinned`,
   toggled by "Fixar no console" in the strip's menu, the library's Temas tab
-  and Configurações › Temas; none pinned = the default + most recent). A
-  click dresses the text on air (`applyThemeOnAir` in `themeActions.js`:
-  text look + Fundo, padlock respected; `c.themeId` is what Camadas calls
-  "Tema: …") — with nothing on air it puts an example in the Prévia instead
+  and Configurações › Temas; none pinned = the default + most recent).
+  **A click makes it the theme in use** (the hybrid, 2026-10-13): it
+  dresses the text on air (`applyThemeOnAir` in `themeActions.js`: text
+  look + Fundo, padlock respected) AND everything sent afterwards
+  (`withThemeInUse` in stamp; `c.themeId` is what Camadas calls "Tema: …"),
+  until someone changes it — without writing the service's preset. The
+  Visual do culto only seeds it (choosing the culto, or its Música theme
+  changing); the menu's "Salvar no visual do culto" records it, "Seguir o
+  culto" goes back, and the Fundo section has no quick-picture strip (the
+  library is one button away). With nothing on air a click puts an example
+  in the Prévia instead
   (`themeSampleStage`, `stage.theme`: sending it only applies the theme's
   background, never the example text), a double click
   (or the menu's Editar, or Configurações › Temas) edits it in the Editor
@@ -123,9 +130,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (2026-10-13, `src/lib/console/serviceLook.js`): its background and its
   own theme per kind (`Service.kind_themes` { lyrics, bible, text, tool }),
   which `themeForKind` puts before the church's Temas padrão; edited in
-  "Visual do culto…" (`library/LookDialog.jsx`, `useLookEditor()`: the top of
-  the Setlist, Planejar o culto, a template's "Visual…" in Configurações ›
-  Culto). With no service it is "Visual de hoje…" and the first choice
+  "Visual do culto…" (`library/LookDialog.jsx`, `useLookEditor()`: the Fundo
+  layer's strip in Camadas — the right side owns the projection's look,
+  2026-10-13; it left the Setlist's header — plus Planejar o culto and a
+  template's "Visual…" in Configurações › Culto). With no service it is "Visual de hoje…" and the first choice
   starts the day's draft (`ensureService`), as in Holyrics. A template
   (`ServiceTemplate.background`/`kind_themes`) keeps the look: "Salvar como
   modelo" saves it, applying one fills what the service has not chosen

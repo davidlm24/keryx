@@ -5,7 +5,6 @@ import { Row, Btn, IconBtn, Empty } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import Icon from "./Icon";
 import { plan, clockAt, span, total, isSection, typeIcon, typeLabel } from "@/lib/console/setlist";
-import { useLookEditor } from "./library/LookDialog";
 
 // The planned clock time of each item ("HH:MM"; "" for a section): the
 // service's start plus the durations before it (src/lib/console/setlist.js).
@@ -54,17 +53,8 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
     };
 
 
-    // Visual do culto (library/LookDialog.jsx): the service's background and
-    // themes; with no service yet, the day's (it starts the draft setlist).
-    const openLook = useLookEditor();
-
     return (
         <div className="rund kx-acts-list" ref={listRef}>
-            <div className="rund-look">
-                <Btn small onClick={() => openLook({ kind: "service", id: service?.id || null })} title={service ? "O fundo e os temas deste culto (Música, Bíblia, Texto, Timer)" : "O fundo e os temas de hoje · cria a setlist de hoje"}>
-                    <Icon name="palette" />{service ? "Visual do culto…" : "Visual de hoje…"}
-                </Btn>
-            </div>
             {!items.length && (
                 <Empty icon="list" title={service ? "Setlist vazia" : "Setlist de hoje"}>
                     {service ? "Arraste da Biblioteca, busque (/) ou use +." : "Arraste da Biblioteca ou use + para começar a setlist de hoje. Ou escolha um culto no menu KERYX."}

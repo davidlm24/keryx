@@ -7,7 +7,7 @@ import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
-import { themeForKind, withThemeDefaults, themeBackgroundArgs } from "@/lib/console/themes";
+import { themeForKind, withThemeDefaults, withThemeInUse, themeBackgroundArgs } from "@/lib/console/themes";
 import { layerLocked } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { useUser, usePrefs } from "@/hooks/useUser";
@@ -51,10 +51,13 @@ export function useConsole() {
     // The service in hand may have its own theme per kind (Visual do culto,
     // serviceLook.js): they come before the church's. Console.jsx sets them.
     const [serviceThemes, setServiceThemes] = useState(null);
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, serviceThemes)), look), bgPrefs), [themes, kindIds, serviceThemes, look, bgPrefs]);
-    // The theme the operator last applied to what is on air (the Temas
-    // card), shown in Camadas as "Tema: …"; null = the default theme.
+    // The theme in use (owner's decision 2026-10-13, the hybrid): the one
+    // last clicked in the Fundo layer's strip. It dresses everything sent
+    // until someone changes it (withThemeInUse in stamp); the Visual do
+    // culto only seeds it when the service is chosen (Console.jsx). Shown
+    // in Camadas as "Tema: …"; null = the culto's, else the church's.
     const [themeId, setThemeId] = useState(null);
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, withThemeInUse(serviceThemes, themeId))), look), bgPrefs), [themes, kindIds, serviceThemes, themeId, look, bgPrefs]);
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 

@@ -241,6 +241,12 @@ export default function Console() {
     // The service's own themes per kind go to the console's stamp (serviceLook.js).
     const serviceThemesKey = JSON.stringify(cleanKindThemes(service?.kind_themes));
     useEffect(() => { c.setServiceThemes(JSON.parse(serviceThemesKey)); }, [serviceThemesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    // The theme in use starts at the service's (the hybrid, 2026-10-13):
+    // choosing a culto seeds it, and editing the preset's Música theme
+    // (Visual do culto, "Salvar no visual…") makes it follow — a deliberate
+    // choice. Clicking the strip still overrides freely, without writing.
+    const cultoLyricsKey = cleanKindThemes(service?.kind_themes).lyrics || "";
+    useEffect(() => { c.setThemeId(cultoLyricsKey || null); }, [serviceId, cultoLyricsKey]); // eslint-disable-line react-hooks/exhaustive-deps
     const churchRow = useUser();
     const fundoPadrao = useMemo(() => defaultFundoArgs(defaultFundo({ service, user: churchRow })), [service, churchRow]);
     const padraoKey = JSON.stringify(fundoPadrao);
@@ -774,7 +780,7 @@ export default function Console() {
     const camadasPanel = (
         <Panel title="Camadas" lead={leadOf("side", "camadas")} count="o que está no ar" collapsed={layout.collapsed.camadas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })}
             style={sideSplit ? { flex: `0 0 ${layout.camadasH}px` } : undefined}>
-            <Layers c={c} themes={data.themes} songs={data.songs} />
+            <Layers c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} />
         </Panel>
     );
     const libraryPanel = (
@@ -948,7 +954,7 @@ export default function Console() {
                 return (
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
                     <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
-                        <Layers c={c} themes={data.themes} songs={data.songs} />
+                        <Layers c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} />
                     </Panel>
                 </div>
                 );
