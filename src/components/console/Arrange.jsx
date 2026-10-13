@@ -88,7 +88,7 @@ export function StackLead({ name, index, count, onMove, handle }) {
 // tray); the Bíblia's columns and cards move as before.
 export function EditBanner({ env = "culto", onRestore, onDone, children = null }) {
     const hint = env === "culto"
-        ? "Arraste um módulo pelo nome até a borda de outro para dividir o espaço, ou até o meio para juntar como aba. Um clique no nome abre Mover para…; o × guarda na bandeja. Esc conclui."
+        ? "Arraste pelo nome: na borda de outro módulo divide, no meio vira aba. Clique no nome: Mover para…; × guarda na bandeja. Esc conclui."
         : "Arraste pelo topo da coluna ou use as setas; os cards empilhados sobem e descem. Esc conclui.";
     return (
         <div className="kx-banner arr-banner" role="status">

@@ -273,6 +273,10 @@
 .console .dock-x:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .dock-tray { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); min-height: 32px; padding: 2px var(--space-2); border: 1px dashed var(--brand); border-radius: var(--radius-control); }
 .console .dock-tray .kx-meta { margin-right: var(--space-1); }
+.console .dock-presets { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); }
+.console .dock-presets .dock-preset-name { color: var(--fg-1); font-weight: 600; }
+.console .dock-presets .dock-name { width: 200px; height: 26px; }
+.console .arr-banner { height: auto; min-height: var(--row); flex-wrap: wrap; row-gap: var(--space-1); padding-block: var(--space-1); }
 .console .dock-hint { position: fixed; z-index: 45; pointer-events: none; border: 2px solid var(--brand); border-radius: var(--radius-panel); background: color-mix(in srgb, var(--brand) 18%, transparent); }
 .console .dock-hint > span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 11px/16px var(--font-sans); white-space: nowrap; }
 .console .dock-ghost { position: fixed; z-index: 46; pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font: 500 12px/16px var(--font-sans); }

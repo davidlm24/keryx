@@ -150,6 +150,38 @@ export function DockTray({ dock, dnd, onChipMenu }) {
     );
 }
 
+// The named arrangement being edited, in the edit banner (dockPresets.js):
+// its name (and whether it changed), Salvar over it, Salvar como… a new
+// one, Excluir. Switching between them is in Ver.
+export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, problemOf }) {
+    const [naming, setNaming] = useState(null);
+    const problem = naming === null ? null : problemOf(naming);
+    const done = () => { if (!problem) { onSaveAs(naming); setNaming(null); } };
+    if (naming !== null) {
+        return (
+            <span className="dock-presets">
+                <span className="kx-field dock-name"><input autoFocus value={naming} maxLength={40} placeholder="Nome da disposição" aria-label="Nome da disposição"
+                    onChange={(e) => setNaming(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); done(); }
+                        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setNaming(null); }
+                    }} /></span>
+                <button type="button" className="kx-btn kx-btn-outline kx-t" disabled={Boolean(problem)} title={problem || "Salvar a disposição como está"} onClick={done}>Salvar</button>
+                <button type="button" className="kx-btn kx-t" onClick={() => setNaming(null)}>Cancelar</button>
+                {problem && naming.trim() && <span className="kx-meta kx-warn">{problem}</span>}
+            </span>
+        );
+    }
+    return (
+        <span className="dock-presets">
+            <span className="kx-meta">Disposição: <b className="dock-preset-name">{preset ? preset.name : "Padrão"}</b>{changed ? " · alterada" : ""}</span>
+            {preset && changed && <button type="button" className="kx-btn kx-t" onClick={onSave} title={`Gravar as mudanças em “${preset.name}”`}>Salvar</button>}
+            <button type="button" className="kx-btn kx-t" onClick={() => setNaming("")} title="Guardar a disposição como está, com um nome, para trocar depois em Ver">Salvar como…</button>
+            {preset && <button type="button" className="kx-btn kx-t" onClick={onDelete} title={`Excluir a disposição “${preset.name}”`}>Excluir…</button>}
+        </span>
+    );
+}
+
 // The console's modules where the dock puts them. `render(id)`: the module's
 // panel; `playerDocked`: the player rides the Programa (a chip of its own
 // while editing).

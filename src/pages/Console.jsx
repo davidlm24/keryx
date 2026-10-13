@@ -53,7 +53,9 @@ import { MODULES as DOCK_MODULES, fromArrangement, syncHidden, fitDock, moveModu
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
-import DockView, { useDockDrag, DockHint, DockTray, ZONE_LABEL } from "@/components/console/Dock";
+import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, ZONE_LABEL } from "@/components/console/Dock";
+import { addPreset, updatePreset, removePreset, presetOf, presetChanged, nameProblem } from "@/lib/console/dockPresets";
+import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
@@ -228,7 +230,8 @@ export default function Console() {
         if (hidden.join() !== hiddenList(hiddenMap(prefs.console_hidden_modules)).join()) patch.console_hidden_modules = hidden;
         if (Object.keys(patch).length) updateUser(patch).catch(() => say("Não foi possível salvar o layout."));
     }, [profile, prefs.console_density, prefs.console_hidden_modules, say]);
-    const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT }); c.say("Layout padrão restaurado."); };
+    // Everything back to the console's own, but the named arrangements stay.
+    const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT, dockPresets: layout.dockPresets || [] }); c.say("Layout padrão restaurado."); };
     // The trimmable tab rows (panelTabs.js): what each shows, the (+) list.
     const tabLists = layout.tabs || DEFAULT_TABS;
     const setTabList = (row, list) => setLayout({ ...layout, tabs: { ...tabLists, [row]: list } });
@@ -764,6 +767,37 @@ export default function Console() {
         setLayout({ ...layout, dock: next, hidden });
     };
     const dockDrag = useDockDrag({ dock, onDock: setDock });
+    // Named arrangements (Ver › Disposição; src/lib/console/dockPresets.js).
+    const presets = layout.dockPresets || [];
+    const preset = presetOf(presets, layout.dockPreset);
+    // Changed: from its preset, or (Padrão) from the console's own with Ver's modules.
+    const padraoDock = useMemo(() => syncHidden(fromArrangement({ hidden: layout.hidden }, dockOpts), layout.hidden, VER_MODULES, dockOpts),
+        [layout.hidden, mainSize.w]); // eslint-disable-line react-hooks/exhaustive-deps
+    const presetDirty = presetChanged(preset || { dock: padraoDock }, dock);
+    const pickPreset = (id) => {
+        const p = presetOf(presets, id);
+        if (!p) { setLayout({ ...restoreArrangement(layout), dockPreset: null }); c.say("Disposição padrão."); return; }
+        const hidden = { ...layout.hidden };
+        for (const m of VER_MODULES) hidden[m] = p.dock.hidden.includes(m);
+        setLayout({ ...layout, dock: p.dock, dockPreset: p.id, hidden });
+        c.say(`Disposição “${p.name}”.`);
+    };
+    const savePresetAs = (name) => {
+        const id = globalThis.crypto?.randomUUID?.() || `d${Date.now()}`;
+        const r = addPreset(presets, name, dock, id);
+        if (!r.id) return;
+        setLayout({ ...layout, dock, dockPresets: r.list, dockPreset: r.id });
+        c.say(`Disposição “${r.list.at(-1).name}” salva. Troque em Ver.`);
+    };
+    const savePreset = () => {
+        if (!preset) return;
+        setLayout({ ...layout, dockPresets: updatePreset(presets, preset.id, dock) });
+        c.say(`“${preset.name}” salva.`);
+    };
+    const deletePreset = async () => {
+        if (!preset || !(await askConfirm(deleteQuestion("a disposição", preset.name, "O console fica como está agora.")))) return;
+        setLayout({ ...layout, dock, dockPresets: removePreset(presets, preset.id), dockPreset: null });
+    };
     // "Mover para…" (a click on a module's name while editing, or on it in
     // the tray): which module to go beside, then on which side or as a tab.
     const moveMenu = (e, id) => {
@@ -930,6 +964,7 @@ export default function Console() {
             {editing && (
                 <EditBanner env={env} onRestore={() => { setLayout(restoreArrangement(layout)); c.say("Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {env === "culto" && !view && <DockTray dock={dock} dnd={dockDrag} onChipMenu={moveMenu} />}
+                    {env === "culto" && !view && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
                 </EditBanner>
             )}
             {c.locked && (
@@ -964,7 +999,7 @@ export default function Console() {
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} onOpenMedia={openMedia} />
                 </div>
             )}
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} onWhatsNew={openWhatsNew} />
+            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} onWhatsNew={openWhatsNew} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
