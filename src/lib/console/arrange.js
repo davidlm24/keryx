@@ -12,8 +12,9 @@ export const COLUMNS = {
         lib: { name: "Biblioteca", widthKey: "libW" },
         slides: { name: "Slides", widthKey: "slidesW" },
         live: { name: "Programa", flex: true },
-        // Narrow tier only: Biblioteca over Slides in one column.
-        source: { name: "Biblioteca e Slides", widthKey: "libW" },
+        // Narrow tier only: Biblioteca over Slides in one column, as wide as
+        // the Slides (its minimum keeps a slide's lines whole).
+        source: { name: "Biblioteca e Slides", widthKey: "slidesW" },
     },
     biblia: {
         picker: { name: "Livro · Capítulo · Versículo", widthKey: "bibleSelW" },

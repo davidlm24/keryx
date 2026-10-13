@@ -53,7 +53,12 @@ export const restoreArrangement = (layout) => ({ ...layout, ...Object.fromEntrie
 
 export const densityOf = (layout) => (DENSITIES.some(([k]) => k === layout?.density) ? layout.density : DEFAULT_LAYOUT.density);
 
-export const LIMITS = { libW: [200, 480], slidesW: [200, 520], rightW: [280, 520], bibleSelW: [240, 520], bibleAirW: [300, 560], prevPct: [18, 45] };
+// The Slides' minimum keeps a slide's lines as written: squeezed, a 2-line
+// verse showed as 3 and looked split wrong. "Uma estrofe de exemplo" wraps
+// below 220 px (measured in the preview, Geist 14 px); 300 leaves room for
+// ~33 letters a line. Longer lines still wrap, never cut with an ellipsis.
+// The narrow tier's source column (Biblioteca over Slides) uses it too.
+export const LIMITS = { libW: [200, 480], slidesW: [300, 520], rightW: [280, 520], bibleSelW: [240, 520], bibleAirW: [300, 560], prevPct: [18, 45] };
 
 // A side column: its saved width is the flex basis, and it may shrink down
 // to its minimum when the window narrows, so it never spills over the center

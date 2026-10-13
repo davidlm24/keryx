@@ -645,6 +645,11 @@
 
 /* Editor de aviso (canvas artboard "Editor de aviso") */
 .console .nv-scroll { flex: 1; min-height: 0; overflow: auto; }
+/* The screen editor's left column is a .cfg (the OutputPrefCard's styles
+   live there): its forms take the design form's narrower label column, and
+   the card sits flush, not indented under a row as in Configurações. */
+.console .nv-scroll.cfg .frm { grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-1) var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .nv-scroll.cfg .cfg-outprefs { margin: 0; border-left: 0; background: none; border-radius: 0; }
 .console .nv-frm { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2) var(--space-2); }
 .console .nv-frm .k { font-size: 11px; color: var(--fg-3); }
 .console .nv-frm .kx-field { height: 26px; min-width: 0; }
@@ -797,7 +802,6 @@
 /* contain: layout makes this box the containing block of the renderer's fixed
    root (.ks-fill): without it the sample escaped to the dialog (its transform). */
 .console .cfg .cfg-prev .cfg-prev-fill { position: absolute; inset: 0; }
-.console .cfg .cfg-prev-pastor { aspect-ratio: 3 / 4; width: 210px; margin-inline: auto; }
 @media (max-width: 1280px) { .console .cfg .cfg-outprefs { flex-wrap: wrap; } }
 
 /* Telas e saídas › Ajustes: the output's icon picker. */
