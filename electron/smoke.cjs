@@ -1338,6 +1338,10 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
         result.tlGone = await js("!document.querySelector('.tl-panel') && !document.querySelector('.kx-tl')");
+        // No service yet: the Setlist offers the day's look (Visual de hoje…,
+        // which would start today's setlist, as adding an item does).
+        await click(".kx-tabs button", "Setlist"); // narrower: the Setlist is a Biblioteca tab
+        result.dayLookButton = await waitFor(() => js("[...document.querySelectorAll('.rund-look button')].some((b) => b.textContent.includes('Visual de hoje'))"), 4000);
         // No service yet: dropping a song on the Setlist starts today's setlist.
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(400);
@@ -1640,6 +1644,30 @@ async function checkConsole(webContents, { live, outputs }) {
         const ctxLabels = (ctxShape && ctxShape.labels) || [];
         result.ctxMenuOk = Boolean(ctxOpened && ctxShape && ctxShape.inside && ctxLabels[0] === "Pôr na prévia" && ctxLabels[ctxLabels.length - 1] === "Enviar ao ar" && ctxLabels[ctxLabels.length - 2] === "|" && ctxUntouched && ctxClosed && ctxAfterEsc);
 
+        // Excluir… in the menu asks first (ConfirmDialog.jsx): Esc keeps the
+        // song, Excluir deletes it.
+        const doomed = (await js('window.keryxDesktop.db.call("Song", "create", [{ title: "Apagar smoke", lyrics: "um" }])')).data;
+        await waitFor(() => js("[...document.querySelectorAll('.console .kx-row')].some((n) => n.textContent.includes('Apagar smoke'))"), 5000);
+        const rightClick = async (text) => {
+            const at = await js(`(() => { const row = [...document.querySelectorAll(".console .kx-row")].find((n) => n.textContent.includes(${JSON.stringify(text)})); if (!row) return null; row.scrollIntoView({ block: "nearest" }); const r = row.getBoundingClientRect(); return { x: Math.round(r.left + 24), y: Math.round(r.top + r.height / 2) }; })()`);
+            if (!at) return false;
+            webContents.sendInputEvent({ type: "mouseMove", x: at.x, y: at.y });
+            webContents.sendInputEvent({ type: "mouseDown", x: at.x, y: at.y, button: "right", clickCount: 1 });
+            webContents.sendInputEvent({ type: "mouseUp", x: at.x, y: at.y, button: "right", clickCount: 1 });
+            return waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
+        };
+        const songLeft = async () => Boolean((await js(`window.keryxDesktop.db.call("Song", "get", [${JSON.stringify(doomed.id)}])`)).data);
+        await rightClick("Apagar smoke");
+        await click(".console .ctx-menu button", "Excluir…");
+        result.deleteAsks = await waitFor(() => js("Boolean(document.querySelector('.console .confirm-dialog'))"), 3000);
+        await press("Escape");
+        result.deleteKept = await waitFor(() => js("!document.querySelector('.console .confirm-dialog')"), 3000) && await songLeft();
+        await rightClick("Apagar smoke");
+        await click(".console .ctx-menu button", "Excluir…");
+        await waitFor(() => js("Boolean(document.querySelector('.console .confirm-dialog'))"), 3000);
+        await click(".console .confirm-dialog button", "Excluir");
+        result.deleteDone = await waitFor(async () => !(await songLeft()), 4000);
+
         // Configurações, a window over the console: from the KERYX menu, every
         // section renders, Tela ociosa and Igreja save, Esc closes it, the X too.
         await click(".topbar .markbtn", "");
@@ -1790,7 +1818,14 @@ async function checkConsole(webContents, { live, outputs }) {
         // the theme select applies a preset to what is on air, at once.
         const vidFile = require("node:path").join(process.env.KERYX_DATA_DIR || "", "media", "smoke-fundo.mp4");
         require("node:fs").writeFileSync(vidFile, Buffer.from("smoke-video"));
-        const vidRow = (await js('window.keryxDesktop.db.call("Media", "create", [{ title: "Clipe de fundo", type: "video", file_url: "keryx-media://smoke-fundo.mp4", category: "other", duration: 0 }])')).data;
+        const vidRow = (await js('window.keryxDesktop.db.call("Media", "create", [{ title: "Clipe de fundo", type: "video", file_url: "keryx-media://smoke-fundo.mp4", category: "background", duration: 0 }])')).data;
+        // A background clip is the background library's, not the Biblioteca's
+        // Vídeos (the libraries are separate, owner's decision 2026-10-13).
+        await click(".kx-tabs button", "Vídeos");
+        await sleep(600);
+        result.bgNotInMedia = await js("Boolean(document.querySelector('.console .kx-tabs button.is-on')) && ![...document.querySelectorAll('.console .kx-row')].some((n) => n.textContent.includes('Clipe de fundo'))");
+        await click(".kx-tabs button", "Letras");
+        await waitText(webContents, "Canto do console");
         await dblclick(".kx-row", "Canto do console");
         await waitFor(() => Boolean(live.get().content));
         const styleBefore = JSON.stringify(live.get().content.style || {});
@@ -1874,6 +1909,17 @@ async function checkConsole(webContents, { live, outputs }) {
         await js('window.keryxDesktop.db.call("User", "update", ["local", { default_background: null }])');
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background: null }])`);
         await waitFor(() => !live.get().defaultBackground, 5000);
+        // Visual do culto: the service's own theme for songs comes before the
+        // church's Temas padrão (Service.kind_themes, serviceLook.js).
+        const svcTheme = (await js('window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Tema do culto smoke", font_family: "mono", text_color: "#abcdef" }])')).data;
+        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { kind_themes: { lyrics: ${JSON.stringify(svcTheme.id)} } }])`);
+        await sleep(1200);
+        await dblclick(".kx-row", "Canto do console");
+        result.serviceThemeSent = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "mono" && st.text_color === "#abcdef"); }, 5000);
+        if (!result.serviceThemeSent) result.serviceThemeDiag = JSON.stringify((live.get().content || {}).style || null);
+        live.call("clear", {});
+        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { kind_themes: null }])`);
+        await js(`window.keryxDesktop.db.call("ProjectionTheme", "delete", [${JSON.stringify(svcTheme.id)}])`);
         live.call("background.clear", {});
         await js(`window.keryxDesktop.db.call("Media", "delete", [${JSON.stringify(vidRow.id)}])`);
         await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "delete", [r.id]); return true; })()');
@@ -2285,6 +2331,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
+        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.dayLookButton && result.serviceThemeSent
         && result.libBig && result.libLive && result.libLiveBack && result.padraoKept && result.padraoAfterEsc && result.padraoService
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc

@@ -108,8 +108,8 @@
    0.46 × 9/16 for the Prévia, K = the fixed rows (the Programa has no
    caption row: it is the panel's header; Prévia caption 24 + 4, gaps 3 × 8, player slot 36, Próximo 28). Spare
    height goes below the block ("Depois"), never between the monitors. */
-.console .mons { --live-k: 116px; display: flex; flex-direction: column; align-items: center; padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; container-type: size; }
-.console .liveblock { width: min(100cqw, calc((100cqh - var(--live-k)) / 0.82125)); flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.console .mons { --live-k: 80px; --prev: 0.55; display: flex; flex-direction: column; align-items: center; padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; container-type: size; }
+.console .liveblock { width: min(100cqw, calc((100cqh - var(--live-k)) / (0.5625 * (1 + var(--prev))))); flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .console .liveblock > * { flex: none; }
 .console .prog-where { flex: none; white-space: nowrap; margin-right: var(--space-2); }
 /* The Programa's caption is its panel's header: word, title, position on one line.
@@ -160,8 +160,9 @@
 /* The Prévia docked under the Programa, its output picker on the left; the
    side (send, note, teacher notes) never makes the row taller than the
    Prévia (contain: size), it scrolls. */
-.console .subrow { display: flex; gap: var(--space-3); align-items: stretch; container: subrow / inline-size; }
-.console .subrow .kx-mon { width: 46%; flex: none; }
+.console .subrow { display: flex; gap: var(--space-1); align-items: stretch; container: subrow / inline-size; }
+.console .subrow .kx-mon { width: calc(var(--prev) * 100%); flex: none; }
+.console .subrow > .kx-split { flex: none; }
 .console .subrow .side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding-top: 28px; contain: size; overflow: auto; }
 /* The player's slot is always there; the player shows only while something plays. */
 .console .pslot { height: 36px; }
@@ -195,10 +196,12 @@
 .console .kx-warnbar .spacer { flex: 1; }
 .console .kx-warnbar .kx-btn { color: var(--fg-1); }
 .console .mons:focus { outline: none; }
-.console .nextline { height: var(--row); display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; min-width: 0; border-top: 1px solid var(--line); }
+/* Próximo, in the column beside the Prévia: the label, the title, Pôr na prévia. */
+.console .nextline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-width: 0; padding-top: var(--space-2); border-top: 1px solid var(--line); }
 .console .nextline .kx-section { flex: none; }
-.console .nextline .kx-btn { margin-left: auto; flex: none; }
-.console .nextline .t { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; }
+.console .nextline .kx-btn { flex: none; }
+.console .nextline .t { flex: 1 1 100%; order: 1; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .nextline .kx-btn { order: 2; }
 .console .layerprops { padding: var(--space-1) var(--space-2) var(--space-2); display: grid; grid-template-columns: 80px 1fr; gap: var(--space-1) var(--space-2); align-items: center; border-top: 1px solid var(--line); }
 .console .layerprops .k { font-size: 11px; color: var(--fg-3); }
 /* Camadas is on screen in the wide tier: its choices are 24 px targets like every control (the Seg "small" inline sizes are overridden). */
@@ -940,11 +943,6 @@
 .console .tm-song { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; border-top: 1px solid var(--line); padding-top: var(--space-2); }
 .console .tm-song .kx-meta { flex: 1 1 120px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .tm-empty { padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
-/* Aparência › Fundo por dia da semana: one small tile per day. */
-.console .ap-days { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-.console .ap-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px; border-radius: var(--radius-control); font-size: 11px; color: var(--fg-3); }
-.console .ap-day.is-on { color: var(--fg-1); }
-.console .ap-day .bgchip-t { width: 40px; }
 /* The library's Gerados: the background alone, big and moving, while it is edited. */
 .console .lib-big { display: flex; flex-direction: column; gap: var(--space-1); }
 .console .lib-big-screen { width: 100%; max-width: 760px; display: grid; place-items: center; }
@@ -980,3 +978,32 @@
    miniature) and the settings below it, full width. */
 .console .cfg .cfg-outs-detail .cfg-outprefs { flex-direction: column-reverse; align-items: stretch; margin: 0; border-left: 0; flex-wrap: nowrap; }
 .console .cfg .cfg-outs-detail .cfg-prevcol { width: min(520px, 100%); padding: var(--space-2) 0 0; }
+/* Two cards stacked with no splitter between them (Temas over the Setlist)
+   keep the gutter a splitter would. */
+.console .col > .kx-panel + .kx-panel { margin-top: var(--gutter); }
+/* The "Excluir?" question (ConfirmDialog.jsx): over everything but the right-click menu. */
+.console .confirm-scrim { z-index: 43; }
+.console .dialog.confirm-dialog { z-index: 44; }
+/* Configurações › Temas: the themes as small screens (as in the library). */
+.console .cfg .tmg { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); }
+.console .cfg .tmg-meta { font-size: 11px; }
+.console .cfg .tmg-new .fg-img { display: grid; place-items: center; box-shadow: inset 0 0 0 1px var(--line-strong); background: transparent; }
+.console .cfg .tmg-plus { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--fg-2); font-size: 12px; }
+.console .cfg .tmg-edit-h { gap: var(--space-2); border-top: 1px solid var(--line); }
+.console .cfg .tmg-kinds { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.console .cfg .tmg-kind { font-size: 11px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .06em; }
+@media (max-width: 900px) { .console .cfg .tmg-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Visual do culto (library/LookDialog.jsx): over Configurações and the views,
+   under the library that picks a theme for it. */
+.console .look-scrim { z-index: 34; }
+.console .look-dialog { position: absolute; z-index: 35; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(820px, calc(100% - 48px)); max-height: calc(100% - var(--pop-top) - 24px); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
+.console .look-body { flex: 1; min-height: 0; overflow: auto; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.console .look-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.console .look .tmg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); padding: 0; }
+.console .look .tmg-kind { font-size: 11px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .06em; }
+.console .look .tmg-meta { font-size: 11px; }
+.console .look-note { display: flex; align-items: center; gap: var(--space-1); color: var(--warn); }
+.console .pl-look { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) { .console .look .tmg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.console .rund-look { display: flex; justify-content: flex-end; padding: var(--space-1) var(--space-2) 0; }

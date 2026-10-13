@@ -11,9 +11,12 @@ import { readChapter } from "@/lib/bibleText";
 import { bibleVersionWanted } from "./BibleEnv";
 import { parseDuration, formatDuration } from "@/lib/songImport";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
-import BgChip from "./library/BgChip";
-import { serviceFundo } from "@/lib/console/defaultFundo";
+import { BgThumb } from "./library/BgChip";
+import { useLookEditor } from "./library/LookDialog";
+import { lookOf, lookForService, templateLookFields } from "@/lib/console/serviceLook";
+import { THEME_KINDS } from "@/lib/console/themes";
 import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
+import { useThemes } from "./useConsoleData";
 
 const ADD = [
     ["SONG", "music", "Música"], ["BIBLE", "book", "Bíblia"], ["VIDEO", "film", "Vídeo"], ["AUDIO", "volume", "Áudio"],
@@ -38,6 +41,12 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const items = (useQuery({ queryKey: itemsKey, queryFn: () => keryx.entities.ServiceItem.filter({ serviceId }, "order"), enabled: Boolean(serviceId) }).data || [])
         .slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const templates = useQuery({ queryKey: ["console", "serviceTemplates"], queryFn: () => keryx.entities.ServiceTemplate.list("name") }).data || [];
+    // Visual do culto (serviceLook.js): its background and themes per kind.
+    const openLook = useLookEditor();
+    const themeRows = useThemes();
+    const look = lookOf(svc);
+    const named = THEME_KINDS.map(([k, name]) => { const t = look.kind_themes[k] && themeRows.find((x) => x.id === look.kind_themes[k]); return t ? `${name}: ${t.name}` : null; }).filter(Boolean);
+    const lookSummary = named.length ? named.join(" · ") : look.background ? "fundo próprio · temas da igreja" : "o padrão da igreja";
     const team = useQuery({ queryKey: ["console", "worshipTeam"], queryFn: () => keryx.entities.WorshipTeam.list("name") }).data || [];
     // Configurações › Culto edits both lists while the planner stays open.
     useEffect(() => keryx.entities.ServiceTemplate.subscribe(() => client.invalidateQueries({ queryKey: ["console", "serviceTemplates"] })), [client]);
@@ -125,12 +134,14 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const fromTemplate = async (t) => {
         setPop(null);
         await run(keryx.entities.ServiceItem.bulkCreate(itemsFor(serviceId, t.items || [], items.length)), `Modelo "${t.name}" aplicado.`);
-        if (!svc.templateId) saveSvc({ templateId: t.id });
+        // The template's look fills what the service has not chosen.
+        const lookPatch = lookForService(svc, t);
+        saveSvc({ ...(svc.templateId ? {} : { templateId: t.id }), ...(lookPatch || {}) });
     };
     const saveTemplate = async () => {
         const name = tplName.trim() || svc.title;
         setPop(null);
-        await run(keryx.entities.ServiceTemplate.create({ name, items: templateItems(items) }), `Setlist salva como modelo "${name}".`);
+        await run(keryx.entities.ServiceTemplate.create({ name, items: templateItems(items), ...templateLookFields(lookOf(svc)) }), `Setlist salva como modelo "${name}".`);
     };
     const previous = services.filter((s) => s.id !== serviceId && (s.date || "") <= (svc?.date || "9999")).sort((a, b) => String(b.date).localeCompare(String(a.date)))[0] || null;
     const duplicatePrevious = async () => {
@@ -225,11 +236,11 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         {form.service_type === "evento" && <><span className="k">Evento</span><Field icon={null} {...f("event_description")} placeholder="Descrição do evento" /></>}
                         <span className="k">Status</span><Seg small value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
                         <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
-                        <span className="k">Fundo do culto</span>
+                        <span className="k">Visual do culto</span>
                         <div className="pl-wall">
-                            <BgChip title="Fundo do culto" empty="nenhum · usa o do dia ou o da igreja" value={serviceFundo(svc)}
-                                noneLabel={serviceFundo(svc) ? "Sem fundo próprio (usa o do dia ou o da igreja)" : undefined}
-                                onPick={(spec) => saveSvc({ background: spec || null, standby_background: spec?.kind === "image" ? spec.value : "" }, spec ? "Fundo do culto salvo." : "Fundo do culto removido.")} />
+                            <BgThumb spec={look.background} />
+                            <span className="kx-meta pl-look">{lookSummary}</span>
+                            <Btn small onClick={() => openLook({ kind: "service", id: serviceId })} title="O fundo e os temas deste culto (Música, Bíblia, Texto, Timer)">Visual do culto…</Btn>
                         </div>
                     </div>
                     <div className="pl-danger"><Btn small kind={confirm === "svc" ? "air" : ""} onClick={deleteService}>{confirm === "svc" ? "Excluir mesmo" : "Excluir culto"}</Btn></div>

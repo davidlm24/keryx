@@ -70,12 +70,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`library/BackgroundLibrary.jsx`: Temas · Imagens · Vídeos · Gerados ·
   Cor; awaited with `useLibraryPicker()`, the chip `library/BgChip.jsx`);
   don't add a gallery of thumbnails to a form.
+  **The background library is separate from the Mídia** (2026-10-13): files
+  sent there are Media rows of category "background" (`isBackgroundMedia`),
+  left out of `useLibrary().media` (Biblioteca, media library, editors) and
+  listed by `useBackgrounds()` (plus Mídia pictures that already have a
+  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. **A default
+  theme per kind** (`themeForKind`, `THEME_KINDS`): Música (the theme marked
+  padrão), Bíblia, Texto and Timer (`User.bible_theme_id`, `text_theme_id`,
+  `timer_theme_id`; "" = Música's, "none" = factory), chosen in Temas ›
+  Temas padrão; a timer takes its theme's font, colour and background
+  (`withThemeDefaults` on `tool.show`, `fundoOps`), text items and Escola
+  materials `inherit` like songs.
+  Deleting from a right-click menu ("Excluir…": songs, media, avisos,
+  themes) always asks first through `useConfirm()` (`ConfirmDialog.jsx`;
+  Esc answers no, before anything else). The Prévia's width is the
+  operator's (`layout.prevPct`, the splitter beside it; the Programa gives
+  way, `--prev` in console.css); the Próximo sits beside it.
   **Temas** is a console card (module `temas`, between Camadas and the
   Setlist; in the Camadas drawer on narrower screens; `ThemesCard.jsx`):
-  the themes as small screens, a click dresses what is on air
+  the themes as small screens, a click dresses the text on air
   (`applyThemeOnAir`: text look + Fundo, padlock respected; `c.themeId` is
-  what Camadas calls "Tema: …"), a double click edits it in the Editor de
-  temas e layouts (its own window, `openEditor({ theme })`),
+  what Camadas calls "Tema: …") — with nothing on air it puts an example in
+  the Prévia instead (`themeSampleStage`, `stage.theme`: sending it only
+  applies the theme's background, never the example text), a double click
+  edits it in the Editor de temas e layouts (its own window,
+  `openEditor({ theme })`),
   and "Salvar tema para a música" writes `Song.theme_id` for the song on air
   or in the Prévia. A Bible passage takes **the Bíblia's own theme**
   (`User.bible_theme_id`: "" = the songs' default, "none" = factory;
@@ -85,9 +104,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   unset, Aparência's `show_item_title` decides.
   **Fundo padrão** (owner's decision 2026-10-12): with nothing on air the
   screen shows the service's background (`Service.background`), else the
-  church's for that weekday (`User.weekday_backgrounds`), else the church's
-  (`User.default_background`; the old `standby_background` still counts) —
-  `defaultFundo` in `src/lib/console/defaultFundo.js`. The console keeps it
+  church's (`User.default_background`; the old `standby_background` still
+  counts; `User.weekday_backgrounds` is no longer read) — `defaultFundo` in
+  `src/lib/console/defaultFundo.js`. **The look is the service's**
+  (2026-10-13, `src/lib/console/serviceLook.js`): its background and its
+  own theme per kind (`Service.kind_themes` { lyrics, bible, text, tool }),
+  which `themeForKind` puts before the church's Temas padrão; edited in
+  "Visual do culto…" (`library/LookDialog.jsx`, `useLookEditor()`: the top of
+  the Setlist, Planejar o culto, a template's "Visual…" in Configurações ›
+  Culto). With no service it is "Visual de hoje…" and the first choice
+  starts the day's draft (`ensureService`), as in Holyrics. A template
+  (`ServiceTemplate.background`/`kind_themes`) keeps the look: "Salvar como
+  modelo" saves it, applying one fills what the service has not chosen
+  (`lookForService`). The console keeps it
   in the live state (`background.default`, `defaultBackground`) and `clear`
   (Esc, from anyone) puts it on the Fundo unless the padlock holds it;
   Desfazer puts back the Fundo there was. It also goes on the Fundo when it

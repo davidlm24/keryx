@@ -7,7 +7,8 @@ import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
-import { themeForKind, withThemeDefaults } from "@/lib/console/themes";
+import { themeForKind, withThemeDefaults, themeBackgroundArgs } from "@/lib/console/themes";
+import { layerLocked } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { useUser, usePrefs } from "@/hooks/useUser";
 
@@ -43,8 +44,14 @@ export function useConsole() {
     // A Bible passage takes the Bíblia's own theme (Configurações › Bíblia
     // e músicas, or the Bíblia's Tema button); everything else the default.
     const themes = useThemes();
-    const bibleThemeId = usePrefs().bible_theme_id;
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, args?.kind, bibleThemeId)), look), bgPrefs), [themes, bibleThemeId, look, bgPrefs]);
+    // One default theme per kind (themes.js themeForKind): Música, Bíblia,
+    // Texto and Timer (a tool.show).
+    const prefs = usePrefs();
+    const kindIds = useMemo(() => ({ bible: prefs.bible_theme_id, text: prefs.text_theme_id, tool: prefs.timer_theme_id }), [prefs.bible_theme_id, prefs.text_theme_id, prefs.timer_theme_id]);
+    // The service in hand may have its own theme per kind (Visual do culto,
+    // serviceLook.js): they come before the church's. Console.jsx sets them.
+    const [serviceThemes, setServiceThemes] = useState(null);
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, serviceThemes)), look), bgPrefs), [themes, kindIds, serviceThemes, look, bgPrefs]);
     // The theme the operator last applied to what is on air (the Temas
     // card), shown in Camadas as "Tema: …"; null = the default theme.
     const [themeId, setThemeId] = useState(null);
@@ -97,6 +104,17 @@ export function useConsole() {
         if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
+        // A theme's example (the Temas card, nothing on air): sending it uses
+        // the theme — its background on the Fundo (not past the padlock) —
+        // never the example text.
+        if (stage.theme) {
+            const bg = themeBackgroundArgs(stage.theme);
+            try { if (bg && !layerLocked(live, "background")) await callOp("background.set", bg); } catch { return false; }
+            setThemeId(stage.theme.id);
+            setPrevState(null);
+            say(`Tema ${stage.theme.name} em uso.`);
+            return true;
+        }
         const [op, stageArgs] = stageOp(stage);
         const args = stamp(op, stageArgs);
         const ref = stage.args?.ref || {};
@@ -166,5 +184,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
+    return { live, now, cur: live, bgPrefs, themeId, setThemeId, setServiceThemes, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
 }

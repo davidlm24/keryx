@@ -1434,6 +1434,9 @@
         "standby_background": {
           "type": "text"
         },
+        "kind_themes": {
+          "type": "json"
+        },
         "background": {
           "type": "json"
         },
@@ -1545,6 +1548,12 @@
         },
         "description": {
           "type": "text"
+        },
+        "background": {
+          "type": "json"
+        },
+        "kind_themes": {
+          "type": "json"
         },
         "items": {
           "type": "json"
@@ -1828,6 +1837,12 @@
           "type": "boolean"
         },
         "bible_theme_id": {
+          "type": "text"
+        },
+        "text_theme_id": {
+          "type": "text"
+        },
+        "timer_theme_id": {
           "type": "text"
         },
         "youtube_hide_title": {

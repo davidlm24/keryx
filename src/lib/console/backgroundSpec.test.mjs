@@ -71,3 +71,11 @@ test("the rule of the Fundo: an item's background goes to the Fundo layer, so it
     const other = { index: 2 };
     assert.deepEqual(fundoOps("content.goTo", other), [["content.goTo", other]]);
 });
+
+test("a timer dressed by its theme brings the theme's background to the Fundo", () => {
+    const ops = fundoOps("tool.show", { mode: "clock", style: { text_color: "#fff" }, fundo: { kind: "color", value: "#101820", title: "Timer" } }, null);
+    assert.deepEqual(ops.map(([op]) => op), ["background.set", "tool.show"]);
+    assert.equal(ops[1][1].fundo, undefined);
+    const locked = applyOp(emptyState(T), "layers.lock", { layer: "background", locked: true }, T);
+    assert.deepEqual(fundoOps("tool.show", { mode: "clock", fundo: { kind: "color", value: "#101820" } }, locked).map(([op]) => op), ["tool.show"]);
+});

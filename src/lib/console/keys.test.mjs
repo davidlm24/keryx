@@ -112,7 +112,10 @@ test("Esc closes the topmost thing open, one per press; with nothing open it end
     assert.equal(escapeTarget({ edit: true }), "edit");
     assert.equal(escapeTarget({ drawer: true, edit: true }), "drawer");
     // The order is the visual stacking: a context menu over the background library over a popover over Configurações over Camadas over the edit mode.
-    assert.deepEqual(ESC_ORDER, ["menu", "library", "popover", "settings", "drawer", "edit"]);
+    assert.deepEqual(ESC_ORDER, ["menu", "confirm", "library", "look", "popover", "settings", "drawer", "edit"]);
+    assert.equal(escapeTarget({ look: true, settings: true }), "look", "Visual do culto over Configurações");
+    assert.equal(escapeTarget({ library: true, look: true }), "library", "the library picks a theme over it");
+    assert.equal(escapeTarget({ confirm: true, library: true, settings: true }), "confirm", "the Excluir? question first");
 });
 
 test("the shortcut list and the keys never drift apart", () => {

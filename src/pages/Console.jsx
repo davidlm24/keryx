@@ -7,6 +7,7 @@ import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs } from "@/lib/console/defaultFundo";
+import { cleanKindThemes } from "@/lib/console/serviceLook";
 import { mainLayer, layerLocked } from "@shared/live-state.mjs";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
@@ -39,6 +40,10 @@ import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaul
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
+import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
+import LookDialog, { LookContext } from "@/components/console/library/LookDialog";
+import { lookFields, templateLookFields } from "@/lib/console/serviceLook";
+import { useServiceTemplates } from "@/components/console/useConsoleData";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
@@ -132,6 +137,13 @@ export default function Console() {
         setLibReq((prev) => { prev?.resolve(null); return { ...opts, resolve }; });
     }), []);
     const closeLibrary = useCallback((result = null) => setLibReq((prev) => { prev?.resolve(result); return null; }), []);
+    // "Excluir…" asks first (ConfirmDialog.jsx): one question at a time.
+    const [confirmReq, setConfirmReq] = useState(null);
+    const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
+    const answerConfirm = useCallback((yes) => setConfirmReq((prev) => { prev?.resolve(Boolean(yes)); return null; }), []);
+    // Visual do culto (library/LookDialog.jsx): { kind: "service" | "template", id }.
+    const [lookReq, setLookReq] = useState(null);
+    const openLook = useCallback((req) => setLookReq(req || { kind: "service", id: null }), []);
     // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
@@ -227,6 +239,9 @@ export default function Console() {
     // state keeps it (background.default) so Esc puts it back, whoever sends;
     // and when it changes (KERYX opens, a service is chosen, the church edits
     // it) with nothing on air it goes on the Fundo now — never past the padlock.
+    // The service's own themes per kind go to the console's stamp (serviceLook.js).
+    const serviceThemesKey = JSON.stringify(cleanKindThemes(service?.kind_themes));
+    useEffect(() => { c.setServiceThemes(JSON.parse(serviceThemesKey)); }, [serviceThemesKey]); // eslint-disable-line react-hooks/exhaustive-deps
     const churchRow = useUser();
     const fundoPadrao = useMemo(() => defaultFundoArgs(defaultFundo({ service, user: churchRow })), [service, churchRow]);
     const padraoKey = JSON.stringify(fundoPadrao);
@@ -336,6 +351,21 @@ export default function Console() {
         c.say("Criada a setlist de hoje · renomeie em Planejar o culto.");
         return row.id;
     }, [serviceId, c]);
+
+    // Visual do culto: the row it edits (the service in hand, or a template)
+    // and its save. With no service yet, the first choice starts the day's
+    // draft, as adding the first item does.
+    const templateRows = useServiceTemplates();
+    const lookRow = !lookReq ? null : lookReq.kind === "template" ? templateRows.find((t) => t.id === lookReq.id) || null
+        : services.find((s) => s.id === (lookReq.id || serviceId)) || null;
+    const saveLook = useCallback(async (look) => {
+        try {
+            if (lookReq?.kind === "template") { await keryx.entities.ServiceTemplate.update(lookReq.id, templateLookFields(look)); return; }
+            const sid = lookReq?.id || serviceId || await ensureService();
+            await keryx.entities.Service.update(sid, lookFields(look));
+            if (!lookReq?.id) setLookReq({ kind: "service", id: sid });
+        } catch (err) { c.say(err?.message || "Não foi possível salvar o visual."); }
+    }, [lookReq, serviceId, ensureService, c]);
 
     // A library item dropped on the Setlist: a ServiceItem at that position.
     const addStageToSetlist = useCallback(async (stage, index) => {
@@ -619,11 +649,13 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                const top = escapeTarget({ menu: ctxMenu, library: libReq, popover: open, settings: cfg, drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq, library: libReq, look: lookReq, popover: open, settings: cfg, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
+                    else if (top === "confirm") answerConfirm(false);
                     else if (top === "library") closeLibrary(null);
+                    else if (top === "look") setLookReq(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "settings") setCfgAt(null);
                     else if (top === "drawer") setDrawer(false);
@@ -635,7 +667,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if (libReq && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq || lookReq) && !["black", "logo"].includes(action)) return;
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
             // So do the planner, the media library, the aviso editor and the
@@ -670,7 +702,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm, lookReq]);
     useEffect(() => { if (view) setEditing(false); }, [view]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -724,7 +756,7 @@ export default function Console() {
     const camadasPanel = (
         <Panel title="Camadas" lead={leadOf("side", "camadas")} count="o que está no ar" collapsed={layout.collapsed.camadas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })}
             style={sideSplit ? { flex: `0 0 ${layout.camadasH}px` } : undefined}>
-            <Layers c={c} themes={data.themes} media={data.media} />
+            <Layers c={c} themes={data.themes} />
         </Panel>
     );
     const libraryPanel = (
@@ -774,7 +806,7 @@ export default function Console() {
                 <button type="button" className={`kx-btn kx-t mx-toggle ${layout.multiview ? "is-on" : ""}`} style={{ height: 24 }} onClick={toggleMultiview} aria-pressed={layout.multiview} title={layout.multiview ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar"} aria-label="Multiview"><Icon name="grid" /><span className="hist-lbl">Multiview</span></button>
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
+            <CenterPanel c={c} prevPct={layout.prevPct} onPrevPct={(v) => setLayout({ ...layout, prevPct: v })} logoUrl={logoUrl} projectorDown={projectorDown} projectorOpen={Boolean(projector?.open)} playerPick={playerPick} setPlayerPick={setPlayerPick} onAir={health.onAir}
                 nextItem={nextItem} onPrepNext={() => nextItem && prepareItem(nextItem, items.indexOf(nextItem))}
                 later={setlistRight ? [] : laterItems} items={playable} multiview={multiview} onPrepareItem={prepareItem} onGoItem={goItem}
                 onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
@@ -825,6 +857,8 @@ export default function Console() {
     return (
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
+        <ConfirmContext.Provider value={askConfirm}>
+        <LookContext.Provider value={openLook}>
         <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
@@ -872,6 +906,10 @@ export default function Console() {
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
+            {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
+            {lookReq && <LookDialog c={c} row={lookRow} save={saveLook} onClose={() => setLookReq(null)} what={lookReq.kind === "template" ? "do modelo" : "do culto"}
+                title={lookReq.kind === "template" ? `Visual do modelo · ${lookRow?.name || ""}` : `Visual do culto · ${lookRow?.title || "hoje"}`}
+                note={lookReq.kind === "service" && !lookRow ? "Nenhum culto escolhido: a primeira escolha cria a setlist de hoje." : null} />}
             {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} onOpenLayout={openLayout} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
@@ -902,7 +940,7 @@ export default function Console() {
                 return (
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
                     <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
-                        <Layers c={c} themes={data.themes} media={data.media} />
+                        <Layers c={c} themes={data.themes} />
                         {!layout.hidden.temas && <><div className="listhead"><span className="kx-section">Temas</span></div>{themesCard}</>}
                     </Panel>
                 </div>
@@ -920,6 +958,8 @@ export default function Console() {
             )}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
+        </LookContext.Provider>
+        </ConfirmContext.Provider>
         </LibraryContext.Provider>
         </ContextMenuProvider>
     );

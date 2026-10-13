@@ -4,7 +4,7 @@ import { keryx } from "@/api/keryxClient";
 import { remember, forget, localId } from "@/lib/console/outputs";
 import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
 import { useOutputLooks } from "@/hooks/useOutputPref";
-import { backgroundList } from "@/lib/console/backgroundPrefs";
+import { backgroundList, sourceOf } from "@/lib/console/backgroundPrefs";
 import { useUser } from "@/hooks/useUser";
 
 // What the console reads: the library (songs, media, communication pieces),
@@ -37,21 +37,33 @@ function useMediaFiles(rows) {
 
 // The projection themes (the same list and cache as useLibrary's).
 export const useThemes = () => useList("ProjectionTheme", ["name"]).data;
+// The service templates (their look: Visual do culto, serviceLook.js).
+export const useServiceTemplates = () => useList("ServiceTemplate", ["name"]).data;
+
+// Mídia and the background library are separate (owner's decision
+// 2026-10-13): files sent as backgrounds are Media rows of category
+// "background", listed only in the background library (useBackgrounds);
+// `media` is everything else — the Biblioteca's Imagens and Vídeos, the
+// media library, the aviso and layout editors.
+export const isBackgroundMedia = (m) => m?.category === "background";
 
 export function useLibrary() {
     const songs = useList("Song", ["title"]).data;
-    const media = useMediaFiles(useList("Media", ["-created_date"]).data);
+    const allMedia = useMediaFiles(useList("Media", ["-created_date"]).data);
+    const media = useMemo(() => allMedia.filter((m) => !isBackgroundMedia(m)), [allMedia]);
+    const backgroundMedia = useMemo(() => allMedia.filter(isBackgroundMedia), [allMedia]);
     const pieces = useList("CommunicationVideo", ["title"]).data;
     const themes = useList("ProjectionTheme", ["name"]).data;
     const materials = useList("BibleMaterial", ["-created_date"]).data;
     const alertPresets = useList("AlertPreset", ["created_date"]).data;
     const timerPresets = useList("TimerPreset", ["minutes"]).data;
-    return { songs, media, pieces, themes, materials, alertPresets, timerPresets };
+    return { songs, media, backgroundMedia, pieces, themes, materials, alertPresets, timerPresets };
 }
 
 // Every background the galleries can offer, with the church's settings
 // (BackgroundPref, src/lib/console/backgroundPrefs.js): the ones that ship
-// with KERYX by factory category, then the church's images from Mídia.
+// with KERYX by factory category, then the church's own backgrounds (Media
+// rows of category "background": sent or brought in through the library).
 const BUNDLED = [...new Set(Object.values(BACKGROUNDS).flat())]
     .map((id) => ({ id, url: backgroundUrl(id), category: Object.keys(BACKGROUNDS).find((k) => BACKGROUNDS[k].includes(id)) }));
 // Whether the church wants the forecast of the service's end and the delay
@@ -63,8 +75,16 @@ export function useShowForecast() {
 export function useBackgroundPrefs() {
     return useList("BackgroundPref", []).data;
 }
-export function useBackgrounds(media) {
+export function useBackgrounds() {
+    const lib = useLibrary();
     const prefs = useBackgroundPrefs();
+    // Before the libraries were separate, the Mídia's pictures were the
+    // backgrounds: one the church set up as a background (it has a
+    // BackgroundPref row) stays in the background library too.
+    const media = useMemo(() => {
+        const set = new Set(prefs.map((p) => p?.source).filter(Boolean));
+        return [...lib.backgroundMedia, ...lib.media.filter((m) => set.has(sourceOf(m.file_url)))];
+    }, [lib.backgroundMedia, lib.media, prefs]);
     return useMemo(() => backgroundList({
         bundled: BUNDLED,
         images: (media || []).filter((m) => m.type === "image" && m.file_url && !m.missing).map((m) => ({ id: m.id, url: m.file_url, title: m.title })),
