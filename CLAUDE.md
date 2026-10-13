@@ -163,7 +163,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   operator's (Ver › Editar layout): `layout.order`/`layout.stacks`, turned
   into columns and splitters by `src/lib/console/arrange.js` (tested) —
   render from `cultoColumns`/`bibleColumns` + `withSplits`, never place a
-  column by hand in `Console.jsx`. Setlist sections are ServiceItems of type `SECTION`: headers that
+  column by hand in `Console.jsx`. **The Setlist lives beside the Prévia**
+  (owner's decision 2026-10-13, at every width): Console.jsx builds the
+  header + `Rundown` (`setlistArea`) and CenterPanel slots it into the
+  Prévia's row (`setlist`; `.side-sl` scrolls, the list follows the item on
+  air). The old Próximo/Depois lines, the Setlist side card and the
+  Biblioteca's compact Setlist tab went with it; the side column is Camadas
+  alone, full height. Setlist sections are ServiceItems of type `SECTION`: headers that
   take no time and never go on air — use `playableItems`/`plan` from
   `src/lib/console/setlist.js`. A click prepares a *stage* in the Prévia;
   Enter, a **double click** or "Enviar ao ar" sends it (user decision

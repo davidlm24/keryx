@@ -4,7 +4,6 @@ import Icon from "./Icon";
 import { Row, Btn, IconBtn, Field, Empty, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
-import Rundown from "./Rundown";
 import AddMenu from "./AddMenu";
 import { songsFromFile } from "@/lib/songImport";
 import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
@@ -34,7 +33,7 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // The library: Letras, Mídia and Avisos (and the Setlist on narrow screens).
 // A click prepares the item in the Prévia; a double click sends it to air
 // (onGo). The quick alert is the one control that bypasses the Prévia.
-export default function Library({ c, data, rundown, tab, setTab, compact, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, hideTabs = false }) {
+export default function Library({ c, data, tab, setTab, compact, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, hideTabs = false }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [alertText, setAlertText] = useState("");
@@ -50,7 +49,7 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
     // Mídia split into Imagens (what projects as a still: fotos, GIF, PDF,
     // apresentações) and Vídeos (what plays: clipes, YouTube, áudios) —
     // owner request 2026-10-11.
-    const tabs = [...(compact ? [["roteiro", "Setlist"]] : []), ["letras", "Letras"], ["imagens", "Imagens"], ["videos", "Vídeos"], ["avisos", "Avisos"]];
+    const tabs = [["letras", "Letras"], ["imagens", "Imagens"], ["videos", "Vídeos"], ["avisos", "Avisos"]];
 
     const showAlert = () => {
         const text = alertText.trim();
@@ -166,18 +165,11 @@ export default function Library({ c, data, rundown, tab, setTab, compact, onPrep
                     {tabs.map(([k, label]) => <button type="button" role="tab" aria-selected={tab === k} key={k} className={`kx-t ${tab === k ? "is-on" : ""}`} onClick={() => setTab(k)}>{label}</button>)}
                 </div>
             )}
-            {tab === "roteiro" && rundown && (
-                <div style={{ overflow: "auto", flex: 1 }}>
-                    <Rundown service={rundown.service} items={rundown.items} airItemId={rundown.airItemId} prevItemId={rundown.prevItemId} onPrepare={rundown.prepare} onGo={rundown.go} onAddStage={rundown.addStage} />
-                </div>
-            )}
-            {tab !== "roteiro" && (
-                <div className="searchrow">
-                    <Field value={q} onChange={setQ} placeholder={tab === "letras" ? "Letras" : tab === "imagens" ? "Imagens" : tab === "videos" ? "Vídeos e áudios" : "Avisos"} />
-                    {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} onClick={() => setFavOnly((f) => !f)} />}
-                    <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
-                </div>
-            )}
+            <div className="searchrow">
+                <Field value={q} onChange={setQ} placeholder={tab === "letras" ? "Letras" : tab === "imagens" ? "Imagens" : tab === "videos" ? "Vídeos e áudios" : "Avisos"} />
+                {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} onClick={() => setFavOnly((f) => !f)} />}
+                <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
+            </div>
 
             {tab === "letras" && (() => {
                 const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, stripChords(s.lyrics || "")));

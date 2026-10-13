@@ -12,7 +12,6 @@ export const MODULES = [
     ["lib", "Biblioteca"],
     ["slides", "Slides"],
     ["camadas", "Camadas"],
-    ["roteiro", "Setlist"],
 ];
 
 // The console's width tiers, measured on its grid (.main), not the window:

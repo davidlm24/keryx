@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { Row, Btn, IconBtn, Empty } from "./kx";
@@ -18,6 +18,13 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
     const menu = useContextMenu();
     const [drag, setDrag] = useState(null);
     const [over, setOver] = useState(null);
+    // The list follows the service: when the item on air (or in the Prévia)
+    // changes, it is scrolled into view, so the next rows stay in sight.
+    const listRef = useRef(null);
+    useEffect(() => {
+        const row = listRef.current?.querySelector(".is-air") || listRef.current?.querySelector(".is-prev");
+        row?.scrollIntoView({ block: "nearest" });
+    }, [airItemId, prevItemId]);
     // However a drag ends (dropped here, elsewhere or cancelled), no row
     // stays highlighted.
     useEffect(() => {
@@ -52,7 +59,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
     const openLook = useLookEditor();
 
     return (
-        <div className="rund kx-acts-list">
+        <div className="rund kx-acts-list" ref={listRef}>
             <div className="rund-look">
                 <Btn small onClick={() => openLook({ kind: "service", id: service?.id || null })} title={service ? "O fundo e os temas deste culto (Música, Bíblia, Texto, Timer)" : "O fundo e os temas de hoje · cria a setlist de hoje"}>
                     <Icon name="palette" />{service ? "Visual do culto…" : "Visual de hoje…"}
