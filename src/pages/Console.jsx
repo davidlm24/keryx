@@ -925,7 +925,6 @@ export default function Console() {
                 {!view && env === "culto" && withSplits(cols).map((it) => (it.type === "split" ? splitFor(it.key, it.sign, false, it.col) : renderCol(it.col)))}
             </div>
             {editing && <DropLine drag={colDrag.drag} axis="x" />}
-            {editing && <DropLine drag={sideDrag.drag} axis="y" />}
             {editing && <DropLine drag={sourceDrag.drag} axis="y" />}
 
             {/* Configurações: a window over the console or the view behind it. */}
