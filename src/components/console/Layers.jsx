@@ -6,7 +6,8 @@ import { Btn, IconBtn, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { visibleBackgrounds } from "@/lib/console/backgroundPrefs";
 import { THEME_FONTS, FAMILY_SET, themeStyle, sameLook, themeBackgroundArgs, defaultTheme } from "@/lib/console/themes";
-import { applyThemeOnAir } from "./ThemesCard";
+import { applyThemeOnAir } from "./themeActions";
+import ThemeStrip from "./ThemeStrip";
 import { useBackgrounds } from "./useConsoleData";
 import { STYLE_KEYS, LAYER_ORDER, layerHidden, layerLocked } from "@shared/live-state.mjs";
 import { useLibraryPicker } from "./library/libraryContext";
@@ -38,7 +39,7 @@ const FONTS = THEME_FONTS;
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));
 
-export default function Layers({ c, themes }) {
+export default function Layers({ c, themes, songs }) {
     // The item's title: its own choice (style.title), else the church's.
     const showTitle = usePrefs().show_item_title;
     const backgrounds = useBackgrounds();
@@ -65,7 +66,7 @@ export default function Layers({ c, themes }) {
     const logo = cur?.logo || { visible: false, corner: "bottom-right", size: "medium" };
     const overlays = cur?.overlays || [];
     const textOverlay = overlays.find((o) => o.type === "text" || o.type === "announcement") || null;
-    // The theme last applied from the Temas card (c.themeId), else the default.
+    // The theme last applied from the Fundo layer strip (c.themeId), else the default.
     const theme = themes.find((t) => t.id === c.themeId) || defaultTheme(themes);
     const modified = Boolean(theme && content && !sameLook(style, theme));
     const fontMissing = style.font_family && !FAMILY_SET.has(style.font_family) ? style.font_family : null;
@@ -128,7 +129,7 @@ export default function Layers({ c, themes }) {
     return (
         <>
             <div className="themerow">
-                <span className="t" title="Escolha o tema no card Temas">Tema: {theme ? theme.name : "nenhum"}{modified && <span> · Modificado</span>}</span>
+                <span className="t" title="Escolha o tema na camada Fundo">Tema: {theme ? theme.name : "nenhum"}{modified && <span> · Modificado</span>}</span>
                 <span style={{ flex: 1 }} />
                 {/* Editing lives in the Editor de temas e layouts (its window);
                     here the operator only adjusts what is on air. */}
@@ -209,6 +210,10 @@ export default function Layers({ c, themes }) {
                             <span className="kx-meta">{[cur.background.dim != null ? `escurecer ${Math.round(cur.background.dim * 100)}%` : "", cur.background.blur ? "desfoque" : "", cur.background.fit === "contain" ? "conter" : ""].filter(Boolean).join(" · ")}</span>
                         </span>
                     )}
+                    {/* The themes as presets (owner's decision 2026-10-13):
+                        text look + background in one click, Holyrics-style. */}
+                    <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 6 }}>Temas</span>
+                    <ThemeStrip c={c} themes={themes} songs={songs} />
                 </>)}
                 {sel === "logo" && (<>
                     <span className="k">Canto</span>

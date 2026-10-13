@@ -93,6 +93,7 @@ export default function TemasSection({ c }) {
     const themeMenu = (e, t) => menu(e, { title: t.name, items: [
         { label: "Editar", icon: "edit", onSelect: () => edit(t.id) },
         { label: t.is_default ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: Boolean(t.is_default), onSelect: () => makeDefault(t) },
+        { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${t.name} saiu da camada Fundo.` : `${t.name} fixado na camada Fundo.`) },
         { label: "Excluir…", icon: "trash", onSelect: () => remove(t) },
     ] });
 

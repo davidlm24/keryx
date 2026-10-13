@@ -1239,12 +1239,6 @@
         "text_nudge": {
           "type": "real"
         },
-        "text_align": {
-          "type": "text"
-        },
-        "text_position": {
-          "type": "text"
-        },
         "background_fit": {
           "type": "text"
         },
@@ -1286,6 +1280,10 @@
           "type": "json"
         },
         "is_default": {
+          "type": "boolean",
+          "default": false
+        },
+        "pinned": {
           "type": "boolean",
           "default": false
         }

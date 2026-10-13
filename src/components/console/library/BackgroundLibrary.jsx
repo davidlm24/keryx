@@ -199,10 +199,13 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                 {(themeMode ? themes : withBg).map((t) => {
                                     const on = themeMode ? selTheme?.id === t.id : sameBg(sel, bgSpec(t));
                                     return (
-                                        <button type="button" key={t.id} className={`kx-t fg-tile ${on ? "is-on" : ""}`} aria-pressed={on} title={t.name}
-                                            onClick={() => (themeMode ? setSelTheme(t) : setSel(bgSpec(t)))} onDoubleClick={() => (themeMode ? takeTheme(t) : take(bgSpec(t)))}>
+                                        <button type="button" key={t.id} className={`kx-t fg-tile ${on ? "is-on" : ""}`} aria-pressed={on} title={`${t.name}${t.pinned ? " · fixado na camada Fundo" : ""}`}
+                                            onClick={() => (themeMode ? setSelTheme(t) : setSel(bgSpec(t)))} onDoubleClick={() => (themeMode ? takeTheme(t) : take(bgSpec(t)))}
+                                            onContextMenu={(e) => menu(e, { title: t.name, items: [
+                                                { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }).catch(() => {}) },
+                                            ] })}>
                                             <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
-                                            <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{t.name}</span>
+                                            <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{t.pinned && <Icon name="pin" size={12} />}{t.name}</span>
                                         </button>
                                     );
                                 })}

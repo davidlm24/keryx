@@ -64,7 +64,7 @@ test("the default Electron window (1440) is wide, not compact", () => {
 });
 
 test("Camadas is a module in Ver again, above the Setlist", () => {
-    assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "camadas", "temas", "roteiro"]);
+    assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "camadas", "roteiro"]);
     assert.deepEqual(LIMITS.camadasH, [120, 600]);
     assert.equal(DEFAULT_LAYOUT.camadasH, 300);
 });

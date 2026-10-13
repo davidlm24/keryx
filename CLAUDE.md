@@ -93,13 +93,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Esc answers no, before anything else). The Prévia's width is the
   operator's (`layout.prevPct`, the splitter beside it; the Programa gives
   way, `--prev` in console.css); the Próximo sits beside it.
-  **Temas** is a console card (module `temas`, between Camadas and the
-  Setlist; in the Camadas drawer on narrower screens; `ThemesCard.jsx`):
-  the themes as small screens, a click dresses the text on air
-  (`applyThemeOnAir`: text look + Fundo, padlock respected; `c.themeId` is
-  what Camadas calls "Tema: …") — with nothing on air it puts an example in
-  the Prévia instead (`themeSampleStage`, `stage.theme`: sending it only
-  applies the theme's background, never the example text), a double click
+  **Temas are presets of the Fundo layer** (owner's decision 2026-10-13, as
+  Holyrics' theme column; the Temas console card is gone — don't bring it
+  back): Camadas › Fundo shows up to 6 pinned themes as small screens
+  (`ThemeStrip.jsx`, `consoleThemes` in themes.js; `ProjectionTheme.pinned`,
+  toggled by "Fixar no console" in the strip's menu, the library's Temas tab
+  and Configurações › Temas; none pinned = the default + most recent). A
+  click dresses the text on air (`applyThemeOnAir` in `themeActions.js`:
+  text look + Fundo, padlock respected; `c.themeId` is what Camadas calls
+  "Tema: …") — with nothing on air it puts an example in the Prévia instead
+  (`themeSampleStage`, `stage.theme`: sending it only applies the theme's
+  background, never the example text), a double click
   (or the menu's Editar, or Configurações › Temas) edits it in the Editor
   de temas e layouts (its own window, `openEditor({ theme })`; the one-off
   ThemeStudio overlay from 2026-10-13 was folded into it — don't bring a
