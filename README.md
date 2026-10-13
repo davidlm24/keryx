@@ -98,17 +98,43 @@ npm run desktop:smoke
 #    packs the main process's dependencies from ./node_modules, which a git
 #    worktree sharing the main folder's node_modules does not have
 npm ci
-# 3. build and publish, with a token of the account that owns keryx-releases
-#    (GH_TOKEN; never commit it). In Git Bash, from the GitHub CLI:
-GH_TOKEN="$(gh auth token --user comunidadegerar)" npx vite build
-GH_TOKEN="$(gh auth token --user comunidadegerar)" npx electron-builder --win --publish always -c.releaseInfo.releaseNotesFile=docs/release-notes/<version>.md
+# 3. build WITHOUT publishing: release/ gets the installer, its .blockmap and
+#    latest.yml (with the notes, which the updater shows)
+npx vite build
+npx electron-builder --win --publish never -c.releaseInfo.releaseNotesFile=docs/release-notes/<version>.md
+# 4. upload them as one draft, with a token of the account that owns
+#    keryx-releases (GH_TOKEN; never commit it). In Git Bash, from the GitHub
+#    CLI; --dry-run first does every check and writes nothing:
+GH_TOKEN="$(gh auth token --user comunidadegerar)" node scripts/release-upload.cjs <version> --dry-run
+GH_TOKEN="$(gh auth token --user comunidadegerar)" node scripts/release-upload.cjs <version>
 ```
 
-The publish creates a **draft** (`releaseType: "draft"` in `package.json`),
-which the updater cannot see: installed copies keep the version they have
-until the draft is made public, by hand, after the check below. Nothing
-half-published is ever "Latest". To build an installer without publishing,
-`npm run dist` (`release/KERYX-Setup-<version>.exe`).
+**Never `electron-builder --publish always`.** Its GitHub publisher is
+created once per artifact, and the installer's and the blockmap's arrive
+together, so each one created the release: 0.2.15 and 0.2.16 came out as two
+drafts of one tag, the files split between them (and 0.2.11 and 0.2.14, back
+when releases were public at once, as `422 Published releases must have a
+valid tag`). `scripts/release-upload.cjs` does the upload itself, in order:
+
+- it checks `release/` with the release check's own rules: the installer, its
+  `.blockmap` and `latest.yml` are there, `latest.yml` names this version
+  and this installer, with its sha512 and size; and the notes:
+  `docs/release-notes/<version>.md` exists and `latest.yml` carries them;
+- it stops if `keryx-releases` already has `v<version>`, draft or public;
+- it creates **one draft** (tag `v<version>`, name `<version>`, the notes as
+  its text, as electron-builder did) and uploads one file at a time: the
+  installer, the blockmap, `latest.yml` last;
+- it ends with `release-check.cjs <version>` on the draft.
+
+On anything wrong before the draft it exits 1 and has sent nothing. A
+draft is invisible to the updater (`releaseType: "draft"` stays in
+`package.json` too, in case someone publishes with electron-builder by
+habit): installed copies keep the version they have until the draft is made
+public, by hand, after the check below. Nothing half-published is ever
+"Latest". To build an installer without publishing anything, `npm run dist`
+(`release/KERYX-Setup-<version>.exe`). `KERYX_RELEASES_REPO=owner/name`
+points both scripts at a throwaway repository, to try them without a real
+version.
 
 **One releaser at a time.** Before bumping the version, look for a claim on it:
 
@@ -124,8 +150,8 @@ those shows it (or a newer one). Push `release/<version>` with the bump
 first: that branch on origin is the claim. If it already exists, stop and ask
 which session releases.
 
-**After every publish, check the draft, then make it public** (`V` is the
-version):
+**After every upload, check the draft, then make it public** (`V` is the
+version; `release-upload.cjs` already ran the first line):
 
 ```bash
 GH_TOKEN="$(gh auth token --user comunidadegerar)" node scripts/release-check.cjs $V            # check only
@@ -141,16 +167,9 @@ public `latest.yml` back. On any mismatch it exits 1 and publishes nothing.
 Run it without `--publish` on a release that is already public to verify it
 after the fact.
 
-electron-builder uploads the installer and its blockmap in parallel; as a
-public release this once failed with `422 Published releases must have a
-valid tag` (0.2.11, 0.2.14) and left a "Latest" with only the blockmap, so
-the updater errored. As a draft there is no tag to create and nobody sees a
-partial release, but a publish can still die half-way. The parallel uploads can also make **two drafts** of the
-same version (0.2.15): one with only the blockmap, one with the installer
-and `latest.yml`. Then upload the blockmap of that same build to the
-installer's draft, delete the blockmap-only draft (never public), and run the
-check. If the check lists
-missing files, do not re-run the publish: upload what is missing to the draft
+An upload can still die half-way (the network, GitHub): the script says
+which files the draft got. Do not re-run it (it stops at the draft it made
+anyway): upload what is missing to the draft
 with `gh release upload v$V <file> --repo $R` in this order: the installer,
 the blockmap (`--clobber` if it came from another build), and `latest.yml`
 last. Rebuilding changes the installer's hash, so after any rebuild
