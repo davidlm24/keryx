@@ -47,8 +47,8 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                     <span className="kx-meta">volta os módulos, a densidade, os tamanhos e a ordem das colunas ao padrão</span>
                 </FormRow>
                 <FormRow k="Ao fechar">
-                    <Switch on={machine ? machine.confirmClose : true} disabled={!system || !machine} label="Perguntar antes de fechar com algo no ar"
-                        onChange={(on) => change("machineSet", { confirmClose: on }, on ? "O KERYX pergunta antes de fechar com algo no ar." : "Fechar o KERYX não pergunta mais.")} />
+                    <Switch on={machine ? machine.confirmClose : true} disabled={!system || !machine} label="Perguntar antes de fechar o KERYX"
+                        onChange={(on) => change("machineSet", { confirmClose: on }, on ? "O KERYX pergunta antes de fechar." : "Fechar o KERYX não pergunta mais.")} />
                     <span className="kx-meta">com algo no ar, o X do console pergunta antes de fechar (fechar tira tudo das telas)</span>
                 </FormRow>
                 <FormRow k="Iniciar com o Windows">

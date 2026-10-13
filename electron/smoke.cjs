@@ -2753,8 +2753,8 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
         } catch { /* reported as outputOpen: false */ }
         setTimeout(async () => {
             const outputOpen = outputs.trackedWindows().some((w) => !w.destroyed);
-            // With something on air the X asks first (closeGuard.cjs):
-            // "Continuar projetando" keeps the KERYX open; then it closes.
+            // The X always asks first (closeGuard.cjs):
+            // answering no keeps the KERYX open; then it closes.
             const guard = require("./closeGuard.cjs");
             let guardAsked = false;
             let guardKept = false;
