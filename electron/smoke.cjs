@@ -1799,7 +1799,8 @@ async function checkConsole(webContents, { live, outputs }) {
         // Salvar writes OutputPref.design and the vertical menu lists the
         // screens.
         await section("Telas e saídas");
-        await tuneOf("Palco");
+        await waitFor(() => tuneOf("Palco"), 5000);
+        await waitFor(() => js("(() => { const t = document.querySelector('.cfg-outtab.is-on .cfg-outtab-t'); return Boolean(t && t.textContent === 'Palco'); })()"), 5000);
         await waitFor(() => js("(() => { const b = [...document.querySelectorAll('.cfg-outprefs button')].find((x) => x.textContent.includes('Editar a tela')); if (b) b.click(); return Boolean(b); })()"), 5000);
         result.screenEditor = await waitFor(() => Boolean(editorWin()), 8000);
         const sw = editorWin();
@@ -1814,7 +1815,7 @@ async function checkConsole(webContents, { live, outputs }) {
             return Boolean(rows[0] && rows[0].design && Array.isArray(rows[0].design.elements) && rows[0].design.elements.length > 0 && !rows[0].layout_id);
         }, 6000);
         if (!result.screenSaved) result.screenDiag = await sjs("(document.querySelector('.toast') || {}).textContent || document.body.innerText.slice(0, 300)").catch(() => "");
-        await js('(async () => { const rows = (await window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: "/StageView" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("OutputPref", "update", [r.id, { design: null }]); return true; })()');
+        await js('(async () => { for (const path of ["/StageView", "/Projection"]) { const rows = (await window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: path }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("OutputPref", "update", [r.id, { design: null }]); } return true; })()');
         { const w = editorWin(); if (w) w.close(); }
         await waitFor(() => !editorWin(), 5000);
         // Aparência has no tabs; its Fundos row opens the library to manage
