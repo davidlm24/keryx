@@ -3,10 +3,9 @@ const assert = require("node:assert/strict");
 const { machinePrefs, shouldConfirmClose, setAsk, askClose } = require("./closeGuard.cjs");
 
 test("closing asks only with something on air, the option on, and no quit decided", () => {
-    assert.equal(shouldConfirmClose({ enabled: true, onAir: true, quitting: false }), true);
-    assert.equal(shouldConfirmClose({ enabled: true, onAir: false, quitting: false }), false, "nothing on air");
-    assert.equal(shouldConfirmClose({ enabled: false, onAir: true, quitting: false }), false, "turned off");
-    assert.equal(shouldConfirmClose({ enabled: true, onAir: true, quitting: true }), false, "updater, import or restore");
+    assert.equal(shouldConfirmClose({ enabled: true, quitting: false }), true);
+    assert.equal(shouldConfirmClose({ enabled: false, quitting: false }), false, "turned off");
+    assert.equal(shouldConfirmClose({ enabled: true, quitting: true }), false, "updater, import or restore");
 });
 
 test("the option is on unless turned off", () => {

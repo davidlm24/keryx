@@ -223,14 +223,13 @@ function createMainWindow() {
     // "close" (not "closed"): the import restart's app.exit() destroys windows
     // without it, so that restart is untouched; the updater's quitAndInstall
     // is already quitting, and app.quit() then does nothing more.
-    // With something on air the X asks first (closeGuard.cjs): "Continuar
-    // projetando" is the default; the smoke answers through setAsk.
+    // The X always asks first (closeGuard.cjs): staying open is the default; the smoke answers through setAsk.
     mainWindow.on("close", (event) => {
         const enabled = closeGuard.machinePrefs(appSettings?.get(closeGuard.MACHINE_KEY, {})).confirmClose;
         const onAir = Boolean(liveRules?.isOnAir && live && liveRules.isOnAir(live.get()));
-        if (!closeGuard.shouldConfirmClose({ enabled, onAir, quitting })) { app.quit(); return; }
+        if (!closeGuard.shouldConfirmClose({ enabled, quitting })) { app.quit(); return; }
         event.preventDefault();
-        closeGuard.askClose(dialog, mainWindow).then((close) => { if (close) app.quit(); }, () => {});
+        closeGuard.askClose(dialog, mainWindow, onAir).then((close) => { if (close) app.quit(); }, () => {});
     });
     mainWindow.on("closed", () => { mainWindow = null; });
     mainWindow.loadURL(appUrl + START_PATH).catch((err) => {
