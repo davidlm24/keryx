@@ -1,7 +1,7 @@
 /* The console's layout: modules on a grid with splitters, the top bar, the
    monitors. Everything else (rows, buttons, fields, monitors' look) comes
    from the design system: docs/design-system/components/bundle.css. */
-.console { position: fixed; inset: 0; display: flex; flex-direction: column; gap: var(--gutter); padding: var(--gutter); background: var(--bg-0); color: var(--fg-2); user-select: none; outline: 0; }
+.console { --gutter: 6px; position: fixed; inset: 0; display: flex; flex-direction: column; gap: var(--gutter); padding: var(--gutter); background: var(--bg-0); color: var(--fg-2); user-select: none; outline: 0; } /* one gutter between every container (owner: use the narrowest everywhere) */
 /* Windows draws the window buttons over the page (titleBarOverlay in
    electron/main.cjs) and reports the strip they occupy: that strip is the
    window's drag handle and the console starts below it. Anywhere else the
@@ -161,20 +161,17 @@
    edge to edge under both. The band is as tall as the Prévia's column
    (contain: size on .bb-side); only the Setlist's list scrolls. */
 .console .col.center { gap: var(--gutter); }
-.console .band-top { flex: 1 1 auto; min-height: 140px; display: flex; gap: var(--gutter); min-width: 0; }
+.console .band-top { flex: 1 1 auto; min-height: 140px; display: flex; gap: 0; min-width: 0; } /* the splitter IS the gutter, as in .main */
 .console .band-top > .kx-panel { flex: 1; min-width: 0; }
 .console .band-top > .kx-panel + .kx-panel, .console .band-top > .kx-split + .kx-panel { margin-top: 0; }
 .console .band-top > .kx-panel:last-child:not(:first-child) { flex: none; }
-.console .band-bottom { flex: none; display: flex; gap: var(--space-1); align-items: stretch; min-width: 0; }
-.console .bb-prev { width: calc(var(--prev) * 100%); min-width: 220px; flex: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.console .band-bottom { flex: none; display: flex; gap: 0; align-items: stretch; min-width: 0; }
+.console .bb-prev { width: calc(var(--prev) * 100%); min-width: 220px; flex: none; }
+.console .bb-prev > .kx-panel-b { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; }
 .console .bb-prev .kx-btn-send { width: 100%; }
 .console .band-bottom > .kx-split { flex: none; align-self: stretch; }
-.console .bb-side { flex: 1; align-self: stretch; min-width: 180px; min-height: 0; contain: size; display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; }
-.console .side-sl-h { display: flex; align-items: center; gap: var(--space-1); min-width: 0; padding-top: var(--space-2); border-top: 1px solid var(--line); }
-.console .side-sl-h .kx-section { flex: none; }
-.console .side-sl-h .kx-btn { flex: none; }
-.console .side-sl-h .kx-count { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.console .side-sl { flex: 1; min-height: 0; overflow: auto; }
+.console .bb-side { flex: 1; align-self: stretch; min-width: 180px; min-height: 0; contain: size; }
+
 /* The player's slot is always there; the player shows only while something plays. */
 .console .pslot { height: 36px; }
 .console .pslot .player.is-idle { opacity: .55; }
@@ -862,6 +859,10 @@
 .console .wn-p { margin: 0; font-size: 12px; line-height: 18px; color: var(--fg-2); }
 /* "no ar há m:ss" in the Programa's caption: digits that do not jump. */
 .console .kx-prog-cap .kx-since { font-variant-numeric: tabular-nums; flex: none; }
+/* The Prévia panel: its caption mirrors the Programa (green word while
+   something is prepared; 14px title, one size under the Programa). */
+.console .kx-prog-cap.is-prevcap .kx-live-cap { color: var(--prev-fg); }
+.console .prev-panel .kx-prog-cap .kx-mon-t { font-size: 14px; color: var(--fg-1); }
 
 /* ---- Camadas › Fundo › Gerado (GeneratorPanel.jsx) ---- */
 .console .lyr-gens { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }

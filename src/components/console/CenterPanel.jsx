@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Monitor, Btn, Split } from "./kx";
+import { Monitor, Btn, Split, Panel } from "./kx";
 import { DEFAULT_LAYOUT, clampSize } from "@/lib/console/layout";
 import PlayerBar from "./PlayerBar";
 import MultiView from "./MultiView";
@@ -167,8 +167,16 @@ export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, setli
     const { pref: railPref, theme: railTheme } = useOutputPref(railOut);
     const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
     const railVars = prefVars(railPref);
-    const prevCap = dropOn ? { word: "Prévia", title: "solte para preparar", pos: "", size: "next" }
-        : { word: "Prévia", title: prev ? prev.title : "", pos: prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "", size: "next" };
+    // The caption lives in the panel's header, like the Programa's.
+    const capTitle = dropOn ? "solte para preparar" : prev ? prev.title : "";
+    const capPos = !dropOn && prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "";
+    const prevCap = (
+        <span className={`kx-prog-cap ${prev ? "is-prevcap" : "is-idle"}`}>
+            <span className="kx-live-cap">Prévia</span>
+            <span className="kx-mon-t" title={capTitle}>{capTitle}</span>
+            {capPos && <span className="kx-meta">{capPos}</span>}
+        </span>
+    );
     const note = sendNote(prev, locked);
     // A drop from the Biblioteca on the Prévia prepares.
     const dropProps = {
@@ -178,8 +186,8 @@ export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, setli
     };
     return (
         <div className="band-bottom" data-live-keys="" tabIndex={-1} ref={bandRef} style={{ "--prev": pct / 100 }}>
-            <div className="bb-prev">
-                <Monitor className={`${dropOn ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} cap={prevCap} live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu }}>
+            <Panel className="prev-panel bb-prev" caption={prevCap}>
+                <Monitor className={`${dropOn ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} noCap live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu }}>
                     {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                     {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
                     {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Ajustes da saída › Mostrar)</div>}
@@ -191,9 +199,9 @@ export function PreviewBand({ c, logoUrl, onSend, onDropStage, onPrevMenu, setli
                 </Btn>
                 {note && <div className="kx-meta sendnote">{note}</div>}
                 <TeacherNotes prev={prev} cur={cur} />
-            </div>
+            </Panel>
             {onPrevPct && bandW > 0 && <Split size={prevPx} sign={1} onSize={(px) => onPrevPct(clampSize("prevPct", (px / bandW) * 100))} onReset={() => onPrevPct(DEFAULT_LAYOUT.prevPct)} clamp={(px) => px} />}
-            <div className="bb-side">{setlist}</div>
+            {setlist}
         </div>
     );
 }
