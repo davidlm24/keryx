@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, defaultSize, setActive, resizeChild, fitDock, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, PLAYER_SLOT } from "./dock.js";
+import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, PLAYER_SLOT } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The console of the 2026-10-13 audit: Biblioteca | Slides | Programa over
@@ -118,8 +118,12 @@ test("the tray: modules leave the console; the Programa, the Prévia and the Set
 });
 
 test("the player rides the Programa until it is placed, and goes home instead of the tray", () => {
-    const placed = moveModules(defaultDock(), ["player"], { kind: "group", path: [3, 1], zone: "top" }, { px: 60 });
-    assert.deepEqual(nodeAt(placed.tree, [3]), split("col", [g("camadas"), g("player"), g("setlist")], [360, 60, null]));
+    // In a column the player comes in at its own height (80), whatever was asked.
+    const placed = moveModules(defaultDock(), ["player"], { kind: "group", path: [3, 1], zone: "top" }, { px: 300 });
+    assert.deepEqual(nodeAt(placed.tree, [3]), split("col", [g("camadas"), g("player"), g("setlist")], [360, 80, null]));
+    const underCamadas = moveModules(defaultDock(), ["player"], { kind: "group", path: [3, 0], zone: "bottom" });
+    assert.deepEqual(nodeAt(underCamadas.tree, [3]).sizes, [274, 80, null], "a fixed neighbour gives up just that");
+    assert.equal(minSize(g("player"), false, { playerDocked: false }), 76, "its panel header counts");
     assert.deepEqual(pathOf(placed.tree, "player"), [3, 1]);
     const hidden = hideModule(placed, "player");
     assert.equal(pathOf(hidden.tree, "player"), null);
@@ -183,6 +187,7 @@ test("fitting: what does not fit side by side becomes tabs, the dock itself unch
     const small = fitDock(d, 1000, 700);
     assert.deepEqual(small.children.map((c) => [c.index, Math.round(c.size), c.frame.tabs || c.frame.dir]), [[0, 300, ["lib", "slides"]], [2, 368, "col"], [3, 320, "col"]]);
     assert.deepEqual(small.children[0].frame.target, [0]);
+    assert.deepEqual(small.children.map((c) => c.at), [[0, 1], [2], [3]], "a splitter of the tabs resizes both");
     // 700 px: the Programa's column joins them too; Camadas and the Setlist stay apart.
     const narrow = fitDock(d, 700, 500);
     assert.deepEqual(narrow.children.map((c) => c.frame.tabs || c.frame.dir), [["lib", "slides", "programa", "previa", "abas"], "col"]);
@@ -264,4 +269,18 @@ test("back from the tray at medium width: Camadas over the Setlist, as in the wi
     const back = returnModule(medium, "camadas", { width: 1354, height: 768, tier: "medium" });
     assert.deepEqual(nodeAt(back.tree, [2, 1, 1]), split("col", [g("camadas"), g("setlist")], [360, null]));
     assert.deepEqual(back.hidden, ["abas"]);
+});
+
+test("Ver's module switches over the tray: off goes to the tray, on comes back to its place", () => {
+    const ids = ["lib", "slides", "camadas"];
+    const d = defaultDock();
+    assert.deepEqual(trayFlags(d, ids), { lib: false, slides: false, camadas: false });
+    const off = applyTrayFlags(d, { camadas: true }, ids);
+    assert.deepEqual(off.hidden, ["camadas"]);
+    assert.deepEqual(trayFlags(off, ids), { lib: false, slides: false, camadas: true });
+    assert.deepEqual(applyTrayFlags(off, {}, ids), d, "back over the Setlist");
+    assert.equal(applyTrayFlags(d, { lib: false }, ids), d, "nothing changed: the same dock");
+    // The Painel de abas is not one of Ver's switches: its tray stays.
+    const abas = hideModule(d, "abas");
+    assert.deepEqual(applyTrayFlags(abas, {}, ids).hidden, ["abas"]);
 });

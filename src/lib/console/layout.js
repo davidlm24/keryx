@@ -1,7 +1,8 @@
-// The console's layout: which modules are shown, which are collapsed, the
-// splitter sizes and where the columns go (order/stacks, arrange.js; Ver ›
-// Editar layout). Saved per operator profile in localStorage; "Restaurar
-// layout" returns to DEFAULT_LAYOUT.
+// The console's layout: where the modules go (the docks, dock.js; Ver ›
+// Editar disposição), the sizes and order the old columns had (read once to
+// build the first dock), the named arrangements, the tab rows and the
+// multiview. Saved per operator profile in localStorage; "Restaurar
+// disposição" returns to DEFAULT_LAYOUT.
 import { DEFAULT_ORDER, DEFAULT_STACKS, normalizeArrangement } from "./arrange.js";
 import { DEFAULT_TILES, normalizeTiles } from "./multiview.js";
 import { DEFAULT_TABS, normalizeTabs } from "./panelTabs.js";
@@ -33,7 +34,6 @@ export const DENSITIES = [["comfortable", "Confortável"], ["compact", "Compacta
 
 export const DEFAULT_LAYOUT = {
     hidden: {},
-    collapsed: {},
     libW: 260,
     slidesW: 300,
     rightW: 320,
@@ -71,11 +71,6 @@ export const DEFAULT_LAYOUT = {
     mvTiles: DEFAULT_TILES,
 };
 
-// What "Restaurar posições" (the edit mode's banner) puts back: the order,
-// the stacks and the sizes; which modules are shown and the density stay.
-export const ARRANGEMENT_KEYS = ["dock", "bibleDock", "dockPreset", "bibleDockPreset", "order", "stacks", "libW", "slidesW", "rightW", "camadasH", "bibleSelW", "bibleAirW", "prevPct"];
-export const restoreArrangement = (layout) => ({ ...layout, ...Object.fromEntries(ARRANGEMENT_KEYS.map((k) => [k, DEFAULT_LAYOUT[k]])) });
-
 // One environment's arrangement back to the console's own (Padrão, the edit
 // banner's Restaurar posições), the other's left as it is.
 const ENV_KEYS = {
@@ -95,18 +90,6 @@ export function restoreEnv(layout, env) {
 
 export const densityOf = (layout) => (DENSITIES.some(([k]) => k === layout?.density) ? layout.density : DEFAULT_LAYOUT.density);
 
-// The Slides' minimum keeps a slide's lines as written: squeezed, a 2-line
-// verse showed as 3 and looked split wrong. "Uma estrofe de exemplo" wraps
-// below 220 px (measured in the preview, Geist 14 px); 300 leaves room for
-// ~33 letters a line. Longer lines still wrap, never cut with an ellipsis.
-// The narrow tier's source column (Biblioteca over Slides) uses it too.
-export const LIMITS = { libW: [200, 480], slidesW: [300, 520], rightW: [280, 520], camadasH: [120, 640], bibleSelW: [240, 520], bibleAirW: [300, 560], prevPct: [18, 45] };
-
-// A side column: its saved width is the flex basis, and it may shrink down
-// to its minimum when the window narrows, so it never spills over the center
-// or out of the window.
-export const sideCol = (key, width) => ({ flex: `0 1 ${width}px`, minWidth: LIMITS[key][0] });
-
 const KEY = (profile) => `keryx.console.layout.${profile || "default"}`;
 
 export function loadLayout(profile) {
@@ -114,7 +97,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const saved = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, collapsed: { ...(saved.collapsed || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }
@@ -125,8 +108,3 @@ export function saveLayout(profile, layout) {
         localStorage.setItem(KEY(profile), JSON.stringify(layout));
     } catch { /* private mode or quota: the layout just isn't remembered */ }
 }
-
-export const clampSize = (key, value) => {
-    const [min, max] = LIMITS[key];
-    return Math.max(min, Math.min(max, Math.round(value)));
-};

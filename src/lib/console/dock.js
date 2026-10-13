@@ -34,7 +34,8 @@ export const NEW_PX = 320;
 
 // The smallest size each module is usable at, its panel's header included,
 // and its environment (env; absent: the culto). The Slides keep a slide's
-// lines whole down to 300 px (layout.js LIMITS).
+// lines whole down to 300 px ("Uma estrofe de exemplo" wraps below 220 px;
+// 300 leaves room for ~33 letters a line).
 export const MODULES = {
     lib: { name: "Biblioteca", minW: 200, minH: 160 },
     slides: { name: "Slides", minW: 300, minH: 140 },
@@ -44,7 +45,10 @@ export const MODULES = {
     // Never out of reach (the console audit, 2026-10-13).
     setlist: { name: "Setlist", minW: 220, minH: 120, required: true },
     camadas: { name: "Camadas", minW: 280, minH: 120 },
-    player: { name: "Player", minW: 280, minH: 36, home: "programa" },
+    // As a module of its own: the panel's header (32) over the slot (36); in
+    // a column it comes in at its own height (`size.col`), not half of its
+    // neighbour's.
+    player: { name: "Player", minW: 280, minH: 76, home: "programa", size: { col: 80 } },
     // The Bíblia (BibleEnv.jsx): the version, theme and search; the three
     // pickers; the text; what is on air with Enviar ao ar.
     bhead: { name: "Versão e busca", minW: 240, minH: 100, required: true, env: "biblia" },
@@ -299,11 +303,14 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
         const before = zone === "left" || zone === "top";
         const i = target.path[target.path.length - 1];
         const parent = target.path.length ? nodeAt(tree, target.path.slice(0, -1)) : null;
-        const size = pxOrNull(px) ?? NEW_PX;
+        // A module with a size of its own along this axis (the player in a column) takes it.
+        const own = list.length === 1 ? MODULES[list[0]].size?.[axis] ?? null : null;
+        const size = own ?? pxOrNull(px) ?? NEW_PX;
         if (parent && parent.dir === axis) {
             const s = parent.sizes[i];
             let mine = size;
-            if (s !== null && share) {
+            if (s !== null && own !== null) parent.sizes[i] = Math.max(minSize(node, axis === "row", contextOf(tree), false), s - G - own);
+            else if (s !== null && share) {
                 const row = axis === "row";
                 const ctx = contextOf(tree);
                 mine = Math.max(minSize(fresh, row, ctx, false), Math.round((s - G) / 2));
@@ -346,6 +353,21 @@ export function returnModule(dock, id, opts) {
         p = p.slice(0, -1);
     }
     return moveModules(d, [id], { kind: "group", path: firstGroupPath(d.tree), zone: "left" }, { share: false });
+}
+
+// Ver's module switches over the tray: { id: true } = hidden. -> the modules
+// of `ids` as they are in the dock, and the dock after a switch: each one
+// switched off goes to the tray, each switched on comes back to its place
+// (the same dock when nothing changed).
+export const trayFlags = (dock, ids) => Object.fromEntries(ids.map((id) => [id, Boolean(dock?.hidden?.includes(id))]));
+export function applyTrayFlags(dock, flags = {}, ids = [], opts) {
+    const now = trayFlags(dock, ids);
+    let d = dock;
+    for (const id of ids) {
+        const want = Boolean(flags[id]);
+        if (want !== now[id]) d = want ? hideModule(d, id) : returnModule(d, id, opts);
+    }
+    return d;
 }
 
 // A fixed child's size in the default console, for a splitter's "restore":
@@ -445,8 +467,9 @@ export function allocate(sizes, mins, avail) {
 //   { kind: "group", path, tabs, active, w, h }
 //   { kind: "group", path, tabs, active, w, h, collapsed: true, target }
 //       (target: the first real group inside, where a drop lands)
-//   { kind: "split", path, dir, w, h, children: [{ index, size, fixed, frame }] }
-//       (index: the child of the dock's split a splitter resizes)
+//   { kind: "split", path, dir, w, h, children: [{ index, at, size, fixed, frame }] }
+//       (at: the children of the dock's split this one stands for — several
+//       when they joined as tabs — and index the first of them)
 export function fitDock(dock, w, h) {
     if (!dock?.tree) return null;
     return fitNode(dock.tree, [], w, h, contextOf(dock.tree));
@@ -495,7 +518,7 @@ function fitNode(node, path, w, h, ctx) {
             const frame = it.at.length === 1
                 ? fitNode(node.children[it.at[0]], first, cw, ch, ctx)
                 : tabsFrame(it.at.map((i) => node.children[i]), first, cw, ch, firstGroupPath(node.children[it.at[0]], first));
-            return { index: it.at[0], size: dims[k], fixed: it.size !== null, frame };
+            return { index: it.at[0], at: it.at, size: dims[k], fixed: it.size !== null, frame };
         }),
     };
 }

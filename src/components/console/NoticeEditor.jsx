@@ -9,6 +9,7 @@ import { parseDuration, formatDuration } from "@/lib/songImport";
 import BgChip from "./library/BgChip";
 import { FONT_MAP } from "@/lib/deviceStyles";
 import { stageFromPiece } from "@/lib/console/stage";
+import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "XG"]];
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["georgia", "Georgia"], ["times", "Times"], ["arial", "Arial"], ["verdana", "Verdana"], ["mono", "Monoespaçada"], ["cursive", "Cursiva"]];
@@ -32,7 +33,8 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
     const [durText, setDurText] = useState(isNew ? formatDuration(300) : "");
     const [startedAt, setStartedAt] = useState(() => keryx.live.now());
     const [pick, setPick] = useState(null); // "video" | "audio" | "files"
-    const [confirm, setConfirm] = useState(null); // "delete" | "discard"
+    const [confirm, setConfirm] = useState(null); // "discard"
+    const ask = useConfirm();
     const [busy, setBusy] = useState(false);
     const fileRef = useRef(null);
     const fileKind = useRef(null);
@@ -74,7 +76,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         setBusy(false);
     };
     const remove = async () => {
-        if (confirm !== "delete") { setConfirm("delete"); c.say(`Clique de novo para excluir "${draft.title}".`); return; }
+        if (!(await ask(deleteQuestion("o aviso", draft.title)))) return;
         try { await keryx.entities.CommunicationVideo.delete(noticeId); c.say("Aviso excluído."); onClose(); } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
     };
     const leave = () => {
@@ -142,7 +144,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         <>
             <div className="col nv-l" style={{ flex: "0 1 420px", minWidth: 340 }}>
                 <Panel lead={<BackBtn onClick={leave} />} title={<>Aviso <span className="kx-count">· {isNew ? "Novo aviso" : draft.title}{dirty ? " · não salvo" : ""}</span></>} actions={<>
-                    {!isNew && <Btn small kind={confirm === "delete" ? "air" : ""} onClick={remove}>{confirm === "delete" ? "Excluir mesmo" : "Excluir"}</Btn>}
+                    {!isNew && <Btn small onClick={remove}>Excluir…</Btn>}
                                     </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden onChange={(e) => { fileChosen(e.target.files?.[0]); e.target.value = ""; }} />
                     <div className="nv-scroll">

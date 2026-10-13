@@ -7,7 +7,7 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import { mainLayer } from "@shared/live-state.mjs";
-import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, showKindsFor, streamOptions, designOf } from "@/lib/outputPrefs";
+import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultSettings, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, showKindsFor, streamOptions, designOf } from "@/lib/outputPrefs";
 import StreamBand from "@/components/network/StreamBand";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { useLayoutRows } from "@/hooks/useLayout";
@@ -17,7 +17,9 @@ import { openEditor } from "@/lib/editorWindow";
 
 const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], ["125", "125%"], ["140", "140%"]];
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
-const DEFAULTS = { content: "", hidden_kinds: [], text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", layout_id: "", name: "", icon: "", options: {} };
+// What "Restaurar padrão" writes: the settings, never the drawing (design,
+// or an old layout_id: the Editor's "Voltar à página padrão" is for that).
+const DEFAULTS = { content: "", hidden_kinds: [], text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", name: "", icon: "", options: {} };
 const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
 // The icons' names, for screen readers and the tooltip.
 const ICON_NAMES = { projector: "Projetor", tv: "TV", monitor: "Monitor", tablet: "Tablet", film: "Filme", megaphone: "Megafone", book: "Livro", image: "Imagem", text: "Texto", star: "Estrela", layers: "Camadas", external: "Janela" };
@@ -89,7 +91,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
     };
     const [confirmReset, setConfirmReset] = useState(false);
     const reset = () => {
-        if (!confirmReset) { setConfirmReset(true); say(`Clique de novo para voltar ${output.label} ao padrão.`); return; }
+        if (!confirmReset) { setConfirmReset(true); say(`Clique de novo para voltar os ajustes de ${output.label} ao padrão (o desenho fica).`); return; }
         setConfirmReset(false);
         sentOpts.current = null;
         save(DEFAULTS);
@@ -224,7 +226,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
             </FormRow>
             </>}
             <FormRow k="">
-                <Btn small kind={confirmReset ? "air" : ""} disabled={isDefaultPref(pref)} onClick={reset}>{confirmReset ? "Restaurar mesmo" : "Restaurar padrão"}</Btn>
+                <Btn small kind={confirmReset ? "air" : ""} disabled={isDefaultSettings(pref)} onClick={reset} title="Volta os ajustes desta tela ao padrão; o desenho fica">{confirmReset ? "Restaurar mesmo" : "Restaurar padrão"}</Btn>
             </FormRow>
         </div>
         {!inEditor && <div className="cfg-prevcol">

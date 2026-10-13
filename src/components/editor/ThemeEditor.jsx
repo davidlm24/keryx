@@ -286,9 +286,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                     {/* The sample: a song, a passage or a text, with its slides. */}
                     <Seg small label="Exemplo" value={sample} options={Object.entries(SAMPLES).map(([k, s]) => [k, s.label])} onChange={(v) => { setSample(v); setSlide(0); }} />
                     {slides > 1 && <>
-                        <IconBtn name="chevron-left" small title="Slide anterior da amostra" disabled={slide === 0} onClick={() => setSlide((n) => Math.max(0, n - 1))} />
+                        <IconBtn name="chevron-left" small title="Slide anterior do exemplo" disabled={slide === 0} onClick={() => setSlide((n) => Math.max(0, n - 1))} />
                         <span className="kx-meta">{slide + 1}/{slides}</span>
-                        <IconBtn name="chevron-right" small title="Próximo slide da amostra" disabled={slide >= slides - 1} onClick={() => setSlide((n) => Math.min(slides - 1, n + 1))} />
+                        <IconBtn name="chevron-right" small title="Próximo slide do exemplo" disabled={slide >= slides - 1} onClick={() => setSlide((n) => Math.min(slides - 1, n + 1))} />
                     </>}
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="le-stage">

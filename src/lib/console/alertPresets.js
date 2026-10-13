@@ -15,8 +15,8 @@ const same = (a, b) => cleanPreset(a).toLocaleLowerCase("pt-BR") === cleanPreset
 // (ignoring case and spacing).
 export function canKeep(text, presets = []) {
     const t = cleanPreset(text);
-    if (!t) return { ok: false, why: "Escreva a mensagem antes de guardar." };
-    if (presets.some((p) => same(p.message, t))) return { ok: false, why: "Esta mensagem já está guardada." };
+    if (!t) return { ok: false, why: "Escreva a mensagem antes de salvar." };
+    if (presets.some((p) => same(p.message, t))) return { ok: false, why: "Esta mensagem já está salva." };
     return { ok: true, why: "" };
 }
 

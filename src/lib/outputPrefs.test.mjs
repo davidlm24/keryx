@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf } from "./outputPrefs.js";
+import { normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -165,4 +165,12 @@ test("designOf: the screen's own design, else the old layout_id, else null", () 
     assert.equal(designOf(normalizePref({ layout_id: "factory:palco" }), []).factory, true);
     assert.equal(designOf(normalizePref({ layout_id: "gone" }), rows), null, "a deleted layout falls back to the page");
     assert.equal(designOf(normalizePref({}), rows), null);
+});
+
+test("Restaurar padrão: the settings alone, the drawing aside", () => {
+    const drawn = normalizePref({ design: { elements: [{ id: "a", type: "clock" }] } });
+    assert.equal(isDefaultPref(drawn), false, "a drawing counts as an adjustment of the screen");
+    assert.equal(isDefaultSettings(drawn), true, "but not of its settings: Restaurar padrão has nothing to put back");
+    assert.equal(isDefaultSettings(normalizePref({ layout_id: "old" })), true, "an old layout pointer is the drawing too");
+    assert.equal(isDefaultSettings(normalizePref({ text_scale: 120, design: { elements: [] } })), false);
 });

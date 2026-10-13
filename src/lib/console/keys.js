@@ -98,7 +98,7 @@ export const SHORTCUTS = [
 // before it would end the projection. The background library opens from a
 // popover, Configurações or a view, always on top: it closes right after a
 // right-click menu (and the "Excluir?" question, which is over everything).
-export const ESC_ORDER = ["menu", "confirm", "library", "theme", "look", "popover", "settings", "drawer", "edit"];
+export const ESC_ORDER = ["menu", "confirm", "library", "look", "popover", "settings", "drawer", "edit"];
 export function escapeTarget(layers = {}) {
     return ESC_ORDER.find((k) => Boolean(layers[k])) || "end";
 }

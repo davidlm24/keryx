@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, LIMITS, densityOf, loadLayout, restoreArrangement, restoreEnv, clampSize, sideCol } from "./layout.js";
+import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, densityOf, loadLayout, restoreEnv } from "./layout.js";
 import { DEFAULT_ORDER, DEFAULT_STACKS } from "./arrange.js";
 import { DEFAULT_TILES } from "./multiview.js";
 import { DEFAULT_TABS } from "./panelTabs.js";
@@ -24,20 +24,17 @@ test("the column order is part of the layout; an old save gets the default order
     assert.deepEqual(odd.order.biblia, DEFAULT_ORDER.biblia);
 });
 
-test("the Bíblia's two side columns are resizable, with limits", () => {
-    assert.deepEqual(LIMITS.bibleSelW, [240, 520]);
-    assert.deepEqual(LIMITS.bibleAirW, [300, 560]);
+test("the Bíblia's two side columns have their default widths (the first dock reads them)", () => {
     assert.equal(DEFAULT_LAYOUT.bibleSelW, 300);
     assert.equal(DEFAULT_LAYOUT.bibleAirW, 400);
 });
 
 test("Restaurar posições: order, stacks and sizes back; shown modules and density kept", () => {
-    const mine = { ...DEFAULT_LAYOUT, hidden: { tl: true }, density: "compact", libW: 400, camadasH: 500, bibleAirW: 500, order: { ...DEFAULT_ORDER, culto: ["live", "lib", "slides", "side"] } };
-    const back = restoreArrangement(mine);
+    const mine = { ...DEFAULT_LAYOUT, hidden: { tl: true }, density: "compact", libW: 400, camadasH: 500, order: { ...DEFAULT_ORDER, culto: ["live", "lib", "slides", "side"] } };
+    const back = restoreEnv(mine, "culto");
     assert.deepEqual(back.order, DEFAULT_ORDER);
     assert.equal(back.libW, DEFAULT_LAYOUT.libW);
     assert.equal(back.camadasH, DEFAULT_LAYOUT.camadasH);
-    assert.equal(back.bibleAirW, DEFAULT_LAYOUT.bibleAirW);
     assert.deepEqual(back.hidden, { tl: true });
     assert.equal(back.density, "compact");
 });
@@ -67,8 +64,6 @@ test("the default Electron window (1440) is wide, not compact", () => {
 
 test("Camadas is a module in Ver (the Setlist never hides); the right column is rightW wide, Camadas camadasH tall", () => {
     assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "camadas"]);
-    assert.deepEqual(LIMITS.rightW, [280, 520]);
-    assert.deepEqual(LIMITS.camadasH, [120, 640]);
     assert.ok(DEFAULT_LAYOUT.camadasH < 400, "the Setlist gets most of the column");
     const old = withStore({ libW: 300 }, () => loadLayout("x")); // a save from the two-band console
     assert.equal(old.camadasH, DEFAULT_LAYOUT.camadasH);
@@ -91,14 +86,6 @@ test("the multiview is off by default; a saved one keeps its outputs, cleaned", 
     assert.equal(mine.multiview, true);
     assert.deepEqual(mine.mvTiles, ["/PastorView", "/Projection", "/LyricProjection", "/StageView"]);
     assert.equal(withStore({ multiview: "yes" }, () => loadLayout("x")).multiview, false);
-});
-
-test("the Slides never get narrower than a slide's line: 300 px, the splitter's limit", () => {
-    assert.deepEqual(LIMITS.slidesW, [300, 520]);
-    assert.ok(DEFAULT_LAYOUT.slidesW >= LIMITS.slidesW[0]);
-    assert.equal(clampSize("slidesW", 120), 300, "the splitter dragged below the minimum stops there");
-    assert.equal(clampSize("slidesW", 410), 410);
-    assert.equal(sideCol("slidesW", 250).minWidth, 300, "an old save below the minimum still renders at it");
 });
 
 test("restoring one environment leaves the other's arrangement as it is", () => {

@@ -167,8 +167,8 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
                     try {
                         const row = await mediaFromYouTube(yt.trim());
                         setYt("");
-                        c.say(`Guardado em Vídeos: "${row.title}" · arraste para a setlist, ou dois cliques tocam.`);
-                    } catch (err) { c.say(err?.message || "Não foi possível guardar."); }
+                        c.say(`Salvo em Vídeos: "${row.title}" · arraste para a setlist, ou dois cliques tocam.`);
+                    } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
                 };
                 const mediaRow = (m) => (
                     <Row
@@ -198,7 +198,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
                         <div style={{ padding: "0 var(--space-2) var(--space-1)", display: "flex", gap: "var(--space-1)" }} {...(ytStage ? dragProps(ytStage) : {})} title={ytStage ? "Arraste para a Prévia, o Programa ou a Setlist" : undefined}>
                             <Field icon={null} className="kx-field kx-t yt-field" value={yt} onChange={setYt} placeholder="https://youtube.com/watch?v=…" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter" && /youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } }} />
                             <Btn onClick={() => { if (/youtu/.test(yt)) { onPrepare(stageFromYouTube(yt.trim())); setYt(""); } else c.say("Cole um link do YouTube."); }} title="Pôr na prévia · toca nas telas de vídeo">Tocar</Btn>
-                            <Btn onClick={saveYt} title="Guardar o link na lista de Vídeos, para a setlist e os cultos">Guardar</Btn>
+                            <Btn onClick={saveYt} title="Salvar o link na lista de Vídeos, para a setlist e os cultos">Salvar</Btn>
                         </div>
                         </>}
                         <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a biblioteca de mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir a Mídia…</Btn>}</div>

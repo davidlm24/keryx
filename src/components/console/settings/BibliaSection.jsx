@@ -7,7 +7,6 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { groupVerses } from "@/lib/console/bibleVerses";
 import BibliasSection from "./BibliasSection";
-import {} from "../useConsoleData";
 
 // The sample passage the preview shows (two verses, so the grouping shows).
 const SAMPLE_VERSES = [
