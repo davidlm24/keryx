@@ -1914,6 +1914,19 @@ async function checkConsole(webContents, { live, outputs }) {
         await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { background: { kind: "color", value: "#405060" } }])`);
         result.padraoService = await waitFor(() => { const d = live.get().defaultBackground || {}; return d.value === "#405060" && d.title === "Fundo do culto"; }, 5000)
             && await waitFor(() => (live.get().background || {}).value === "#405060", 4000);
+        // Fundo do culto, one click from the Programa's header (owner's
+        // request 2026-10-13): the button opens the library, the choice is
+        // saved on the service and the Fundo padrão follows at once.
+        await js("(() => { const b = [...document.querySelectorAll('.prog-panel .kx-panel-h button')].find((x) => (x.getAttribute('aria-label') || '').startsWith('Fundo do')); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog'))"), 4000);
+        await click(".lib-tabs button", "Cor");
+        await js("(() => { const b = document.querySelector('.lib-dialog .lib-colors button'); if (b) b.click(); return Boolean(b); })()");
+        await click(".lib-foot button", "Usar");
+        result.serviceFundoButton = await waitFor(async () => {
+            const d = live.get().defaultBackground || {};
+            const row = (await js(`window.keryxDesktop.db.call("Service", "get", [${JSON.stringify(svc.id)}])`)).data || {};
+            return d.kind === "color" && d.title === "Fundo do culto" && (row.background || {}).kind === "color";
+        }, 6000);
         await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { background: null }])`);
         await js('window.keryxDesktop.db.call("User", "update", ["local", { default_background: null }])');
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background: null }])`);
@@ -2341,7 +2354,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
         && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.dayLookButton && result.serviceThemeSent && result.bgPrefFollows
-        && result.libBig && result.libLive && result.libLiveBack && result.padraoKept && result.padraoAfterEsc && result.padraoService
+        && result.libBig && result.libLive && result.libLiveBack && result.padraoKept && result.padraoAfterEsc && result.padraoService && result.serviceFundoButton
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
