@@ -23,7 +23,6 @@ import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
 import ThemesCard from "@/components/console/ThemesCard";
-import { requestThemeEdit } from "@/components/console/settings/TemasSection";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
@@ -43,6 +42,7 @@ import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
 import LookDialog, { LookContext } from "@/components/console/library/LookDialog";
+import ThemeStudio, { ThemeEditorContext } from "@/components/console/themes/ThemeStudio";
 import { lookFields, templateLookFields } from "@/lib/console/serviceLook";
 import { useServiceTemplates } from "@/components/console/useConsoleData";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew } from "@/components/console/Popovers";
@@ -147,6 +147,9 @@ export default function Console() {
     // Visual do culto (library/LookDialog.jsx): { kind: "service" | "template", id }.
     const [lookReq, setLookReq] = useState(null);
     const openLook = useCallback((req) => setLookReq(req || { kind: "service", id: null }), []);
+    // The theme editor (themes/ThemeStudio.jsx): a theme id or "new".
+    const [themeEdit, setThemeEdit] = useState(null);
+    const openTheme = useCallback((id) => setThemeEdit(id || "new"), []);
     // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
@@ -632,12 +635,13 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq, library: libReq, look: lookReq, popover: open, settings: cfg, drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq, library: libReq, theme: themeEdit, look: lookReq, popover: open, settings: cfg, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
                     else if (top === "confirm") answerConfirm(false);
                     else if (top === "library") closeLibrary(null);
+                    else if (top === "theme") setThemeEdit(null);
                     else if (top === "look") setLookReq(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "settings") setCfgAt(null);
@@ -650,7 +654,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if ((libReq || confirmReq || lookReq) && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq || lookReq || themeEdit) && !["black", "logo"].includes(action)) return;
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
             // So do the planner, the media library, the aviso editor and the
@@ -685,7 +689,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm, lookReq]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm, lookReq, themeEdit]);
     useEffect(() => { if (view) setEditing(false); }, [view]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -752,8 +756,8 @@ export default function Console() {
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
     );
-    // Temas: a double click opens the theme in Configurações › Temas.
-    const editTheme = (id) => { requestThemeEdit(id); openSettings("temas"); };
+    // Temas: a double click (or the menu's Editar) opens the theme editor.
+    const editTheme = (id) => openTheme(id);
     const themesCard = <ThemesCard c={c} themes={data.themes} songs={data.songs} onEdit={editTheme} onNew={() => editTheme("new")} />;
     const temasPanel = (
         <Panel title="Temas" lead={leadOf("side", "temas")} count="clique aplica no ar" collapsed={layout.collapsed.temas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, temas: !layout.collapsed.temas } })}
@@ -841,6 +845,7 @@ export default function Console() {
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
         <LookContext.Provider value={openLook}>
+        <ThemeEditorContext.Provider value={openTheme}>
         <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
@@ -890,6 +895,7 @@ export default function Console() {
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
+            {themeEdit && <ThemeStudio key={themeEdit} c={c} id={themeEdit} themes={data.themes} onClose={() => setThemeEdit(null)} />}
             {lookReq && <LookDialog c={c} row={lookRow} save={saveLook} onClose={() => setLookReq(null)} what={lookReq.kind === "template" ? "do modelo" : "do culto"}
                 title={lookReq.kind === "template" ? `Visual do modelo · ${lookRow?.name || ""}` : `Visual do culto · ${lookRow?.title || "hoje"}`}
                 note={lookReq.kind === "service" && !lookRow ? "Nenhum culto escolhido: a primeira escolha cria a setlist de hoje." : null} />}
@@ -941,6 +947,7 @@ export default function Console() {
             )}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
+        </ThemeEditorContext.Provider>
         </LookContext.Provider>
         </ConfirmContext.Provider>
         </LibraryContext.Provider>

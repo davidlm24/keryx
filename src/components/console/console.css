@@ -970,7 +970,6 @@
 .console .cfg .tmg-meta { font-size: 11px; }
 .console .cfg .tmg-new .fg-img { display: grid; place-items: center; box-shadow: inset 0 0 0 1px var(--line-strong); background: transparent; }
 .console .cfg .tmg-plus { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--fg-2); font-size: 12px; }
-.console .cfg .tmg-edit-h { gap: var(--space-2); border-top: 1px solid var(--line); }
 .console .cfg .tmg-kinds { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .console .cfg .tmg-kind { font-size: 11px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .06em; }
 @media (max-width: 900px) { .console .cfg .tmg-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -988,3 +987,22 @@
 .console .pl-look { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 760px) { .console .look .tmg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .console .rund-look { display: flex; justify-content: flex-end; padding: var(--space-1) var(--space-2) 0; }
+/* The theme editor (themes/ThemeStudio.jsx): a window of its own — the theme
+   big on the left on a sample, its settings grouped on the right. Over
+   Configurações and the console, under the library that picks its background. */
+.console .te-scrim { z-index: 35; }
+.console .te-dialog { position: absolute; z-index: 35; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1180px, calc(100% - 48px)); height: min(760px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
+.console .te-dialog .te-name { flex: 0 1 320px; min-width: 140px; height: 28px; margin-left: var(--space-3); background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 var(--space-2); font: inherit; font-size: 13px; }
+.console .te-default { display: inline-flex; align-items: center; gap: 4px; margin-left: var(--space-2); }
+.console .te-body { flex: 1; min-height: 0; display: flex; }
+.console .te-stage { flex: 1; min-width: 0; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); overflow: auto; }
+.console .te-samples { display: flex; align-items: center; gap: var(--space-2); }
+.console .te-screen { width: 100%; }
+.console .te-panel { flex: 0 0 380px; min-width: 0; overflow: auto; border-left: 1px solid var(--line); padding: var(--space-2) var(--space-3) var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.console .te-group-h { padding: var(--space-1) 0; border-bottom: 1px solid var(--line); margin-bottom: var(--space-2); color: var(--fg-1); }
+.console .te-rows { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--space-2); align-items: center; }
+.console .te-rows .k { font-size: 11px; color: var(--fg-3); }
+.console .te-v { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
+.console .te-v .cfg-select { min-width: 0; max-width: 100%; }
+.console .te-note { display: block; grid-column: 1 / -1; }
+@media (max-width: 960px) { .console .te-body { flex-direction: column; overflow: auto; } .console .te-panel { flex: none; border-left: 0; border-top: 1px solid var(--line); overflow: visible; } .console .te-stage { overflow: visible; } }

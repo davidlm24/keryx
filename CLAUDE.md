@@ -92,7 +92,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`applyThemeOnAir`: text look + Fundo, padlock respected; `c.themeId` is
   what Camadas calls "Tema: …") — with nothing on air it puts an example in
   the Prévia instead (`themeSampleStage`, `stage.theme`: sending it only
-  applies the theme's background, never the example text), a double click edits it in Configurações,
+  applies the theme's background, never the example text), a double click (or the menu's Editar, or Configurações › Temas) opens the
+  theme editor, a window of its own (`themes/ThemeStudio.jsx`,
+  `useThemeEditor()`: the theme big on a Música/Bíblia/Texto sample, its
+  settings grouped — Texto, Caixa, Fundo, Transição; themes also keep
+  `text_align`/`text_position`),
   and "Salvar tema para a música" writes `Song.theme_id` for the song on air
   or in the Prévia. A Bible passage takes **the Bíblia's own theme**
   (`User.bible_theme_id`: "" = the songs' default, "none" = factory;
