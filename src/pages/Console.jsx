@@ -6,7 +6,7 @@ import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
-import { defaultFundo, defaultFundoArgs } from "@/lib/console/defaultFundo";
+import { defaultFundo, defaultFundoArgs, serviceFundo } from "@/lib/console/defaultFundo";
 import { cleanKindThemes } from "@/lib/console/serviceLook";
 import { mainLayer, layerLocked } from "@shared/live-state.mjs";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
@@ -41,7 +41,7 @@ import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
 import LookDialog, { LookContext } from "@/components/console/library/LookDialog";
-import { lookFields, templateLookFields } from "@/lib/console/serviceLook";
+import { lookFields, lookOf, templateLookFields } from "@/lib/console/serviceLook";
 import { useServiceTemplates } from "@/components/console/useConsoleData";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew } from "@/components/console/Popovers";
 import { useUpdates } from "@/components/console/useUpdates";
@@ -359,6 +359,23 @@ export default function Console() {
             if (!lookReq?.id) setLookReq({ kind: "service", id: sid });
         } catch (err) { c.say(err?.message || "Não foi possível salvar o visual."); }
     }, [lookReq, serviceId, ensureService, c]);
+    // The service's wallpaper, one click from the Programa's header (owner's
+    // request 2026-10-13): the library picks it, saved as the Visual do
+    // culto's background (with no service, today's draft starts). The Fundo
+    // padrão effect below then sends background.default — and background.set
+    // with nothing on air — so the screen follows at once; Esc keeps showing
+    // it after a song with a background of its own.
+    const pickServiceFundo = useCallback(async () => {
+        const before = serviceFundo(service);
+        const r = await pickFromLibrary({ accept: ["image", "video", "generator", "color"], title: service ? "Fundo do culto" : "Fundo de hoje", value: before || null, allowNone: Boolean(before), noneLabel: "Sem fundo próprio (usa o da igreja)" });
+        if (!r || (!r.spec && !r.none)) return;
+        try {
+            const sid = serviceId || await ensureService();
+            const row = services.find((x) => x.id === sid) || {};
+            await keryx.entities.Service.update(sid, lookFields({ ...lookOf(row), background: r.none ? null : r.spec }));
+            c.say(r.none ? "O culto volta ao fundo da igreja." : service ? "Fundo do culto salvo." : "Fundo de hoje salvo.");
+        } catch (err) { c.say(err?.message || "Não foi possível salvar o fundo."); }
+    }, [service, services, serviceId, ensureService, pickFromLibrary, c]);
 
     // A library item dropped on the Setlist: a ServiceItem at that position.
     const addStageToSetlist = useCallback(async (stage, index) => {
@@ -793,6 +810,7 @@ export default function Console() {
             <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 2 }}>
                 {health.onAir && <span className={`kx-meta prog-where ${health.onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{health.onAir.text}</span>}
                 {!camadasRight && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
+                <button type="button" className="kx-btn kx-t" style={{ height: 24 }} onClick={pickServiceFundo} title="O wallpaper do culto: o que as telas mostram quando nada está no ar (e a cada Esc)" aria-label={service ? "Fundo do culto" : "Fundo de hoje"}><Icon name="image" /><span className="hist-lbl">{service ? "Fundo do culto" : "Fundo de hoje"}</span></button>
                 <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco" aria-label="Voltar ao anterior"><Icon name="undo" /><span className="hist-lbl">Voltar ao anterior</span></button>
                 <button type="button" className={`kx-btn kx-t mx-toggle ${layout.multiview ? "is-on" : ""}`} style={{ height: 24 }} onClick={toggleMultiview} aria-pressed={layout.multiview} title={layout.multiview ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar"} aria-label="Multiview"><Icon name="grid" /><span className="hist-lbl">Multiview</span></button>
             </div>

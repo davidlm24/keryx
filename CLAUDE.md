@@ -129,7 +129,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   starts the day's draft (`ensureService`), as in Holyrics. A template
   (`ServiceTemplate.background`/`kind_themes`) keeps the look: "Salvar como
   modelo" saves it, applying one fills what the service has not chosen
-  (`lookForService`). The console keeps it
+  (`lookForService`).
+  The Programa's header has **Fundo do culto** (Fundo de hoje with no
+  service; `pickServiceFundo` in Console.jsx): the library picks the
+  service's wallpaper, saved as the Visual do culto's background (the
+  day's draft starts if need be), and the Fundo padrão follows at once.
+  The console keeps it
   in the live state (`background.default`, `defaultBackground`) and `clear`
   (Esc, from anyone) puts it on the Fundo unless the padlock holds it;
   Desfazer puts back the Fundo there was. It also goes on the Fundo when it
