@@ -31,7 +31,7 @@ import SongEditor from "@/components/console/SongEditor";
 import ServicePlanner from "@/components/console/ServicePlanner";
 import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
-import LayoutEditor from "@/components/console/LayoutEditor";
+import { openEditor } from "@/lib/editorWindow";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView from "@/components/console/settings/SettingsView";
@@ -101,7 +101,6 @@ export default function Console() {
             if (p.get("planner")) return { planner: true };
             if (p.get("media")) return { media: true };
             if (p.get("notice")) return { notice: p.get("notice") };
-            if (p.get("layout")) return { layout: p.get("layout") };
             if (p.get("school")) return { school: true };
             if (p.get("reports")) return { reports: true };
         } catch { /* no query */ }
@@ -111,7 +110,6 @@ export default function Console() {
     const planner = Boolean(view?.planner);
     const mediaView = Boolean(view?.media);
     const notice = view?.notice || null;
-    const layoutView = view?.layout || null;
     const school = Boolean(view?.school);
     const reports = Boolean(view?.reports);
     const closeView = useCallback(() => setView(null), []);
@@ -143,9 +141,25 @@ export default function Console() {
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
-    // The layout editor (Telas e saídas › Layouts das telas): a view, so
-    // Configurações closes to show it.
-    const openLayout = useCallback((id) => { setOpen(null); setCfgAt(null); setView({ layout: id || "new" }); }, []);
+    // The Editor de temas e layouts: its own window (src/lib/editorWindow.js)
+    // — the console stays exactly where it is; closing the window is the way
+    // back. `opts.for` binds a new layout to the output whose tab opened it.
+    const openLayout = useCallback((id, opts = {}) => {
+        const r = openEditor({ layout: id || "new", for: opts.for || "" });
+        if (r?.error) c.say(r.error);
+    }, [c]);
+    // ?layout= used to be a console view: an old link opens the window once
+    // and leaves the console's URL clean.
+    useEffect(() => {
+        try {
+            const p = new URLSearchParams(window.location.search);
+            const id = p.get("layout");
+            if (!id) return;
+            p.delete("layout");
+            window.history.replaceState(null, "", `/Console${p.toString() ? `?${p}` : ""}`);
+            openLayout(id);
+        } catch { /* no query */ }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
     // The Escola bíblica sends through the KERYX environment's Prévia.
     const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setView({ school: true }); }, []);
     const openReports = useCallback(() => { setOpen(null); setView({ reports: true }); }, []);
@@ -848,7 +862,6 @@ export default function Console() {
                 {reports && <ReportsView c={c} onClose={closeView} />}
                 {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}
                 {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} />}
-                {layoutView && <LayoutEditor key={layoutView} c={c} layoutId={layoutView} media={data.media} onClose={closeView} onSaved={(row) => { if (row?.id && layoutView !== row.id) setView({ layout: row.id }); }} />}
                 {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} layout={layout} setLayout={setLayout} editing={editing} />}
                 {!view && env === "culto" && withSplits(cols).map((it) => (it.type === "split" ? splitFor(it.key, it.sign, false, it.col) : renderCol(it.col)))}
             </div>
