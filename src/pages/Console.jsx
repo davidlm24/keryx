@@ -713,7 +713,7 @@ export default function Console() {
     const camadasPanel = (
         <Panel title="Camadas" lead={leadOf("side", "camadas")} count="o que está no ar" collapsed={layout.collapsed.camadas} onToggle={() => setLayout({ ...layout, collapsed: { ...layout.collapsed, camadas: !layout.collapsed.camadas } })}
             style={sideSplit ? { flex: `0 0 ${layout.camadasH}px` } : undefined}>
-            <Layers c={c} themes={data.themes} media={data.media} />
+            <Layers c={c} themes={data.themes} />
         </Panel>
     );
     const libraryPanel = (
@@ -893,7 +893,7 @@ export default function Console() {
                 return (
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
                     <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
-                        <Layers c={c} themes={data.themes} media={data.media} />
+                        <Layers c={c} themes={data.themes} />
                         {!layout.hidden.temas && <><div className="listhead"><span className="kx-section">Temas</span></div>{themesCard}</>}
                     </Panel>
                 </div>

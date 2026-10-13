@@ -44,8 +44,11 @@ export function useConsole() {
     // A Bible passage takes the Bíblia's own theme (Configurações › Bíblia
     // e músicas, or the Bíblia's Tema button); everything else the default.
     const themes = useThemes();
-    const bibleThemeId = usePrefs().bible_theme_id;
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, args?.kind, bibleThemeId)), look), bgPrefs), [themes, bibleThemeId, look, bgPrefs]);
+    // One default theme per kind (themes.js themeForKind): Música, Bíblia,
+    // Texto and Timer (a tool.show).
+    const prefs = usePrefs();
+    const kindIds = useMemo(() => ({ bible: prefs.bible_theme_id, text: prefs.text_theme_id, tool: prefs.timer_theme_id }), [prefs.bible_theme_id, prefs.text_theme_id, prefs.timer_theme_id]);
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds)), look), bgPrefs), [themes, kindIds, look, bgPrefs]);
     // The theme the operator last applied to what is on air (the Temas
     // card), shown in Camadas as "Tema: …"; null = the default theme.
     const [themeId, setThemeId] = useState(null);

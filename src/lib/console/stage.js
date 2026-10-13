@@ -35,7 +35,8 @@ export function stageFromVerses({ verses, nums, how = "auto", version, book, cha
 }
 
 export function stageFromText(title, text) {
-    return { kind: "text", id: `text:${title}`, title, meta: "Texto", slides: [{ text }], index: 0, op: "content.show", args: { kind: "text", title, slides: [{ text }] } };
+    // With no look of its own: the Texto theme dresses it when sent (themes.js).
+    return { kind: "text", id: `text:${title}`, title, meta: "Texto", slides: [{ text }], index: 0, op: "content.show", args: { kind: "text", title, slides: [{ text }], inherit: { look: true, background: true } } };
 }
 
 // A Media row: videos, images, PDFs and the like go to the main projector's
@@ -102,7 +103,9 @@ export function stageFromMaterial(m) {
     }
     const slides = materialSlides(m);
     const style = { text_color: m.text_color || "", background_image: m.background_image || "", background_color: m.background_image ? "" : (m.background_color || "") };
-    const args = { kind: "text", ref: { materialId: m.id }, title: m.title || "", slides: slides.length ? slides : [{ text: m.title || "" }], style, stage: notes ? { notes, musician_notes: notes, material: m.title || "" } : {} };
+    // The Texto theme fills what the material leaves at the factory look.
+    const ownBg = Boolean(m.background_image || m.background_color);
+    const args = { kind: "text", ref: { materialId: m.id }, title: m.title || "", slides: slides.length ? slides : [{ text: m.title || "" }], style, stage: notes ? { notes, musician_notes: notes, material: m.title || "" } : {}, inherit: { look: !m.text_color || m.text_color.toLowerCase() === "#ffffff", background: !ownBg } };
     return { kind: "text", lesson: true, id: `material:${m.id}`, title: m.title || "", meta, slides: args.slides, index: 0, op: "content.show", args, notes };
 }
 

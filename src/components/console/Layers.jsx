@@ -38,10 +38,10 @@ const FONTS = THEME_FONTS;
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));
 
-export default function Layers({ c, themes, media = null }) {
+export default function Layers({ c, themes }) {
     // The item's title: its own choice (style.title), else the church's.
     const showTitle = usePrefs().show_item_title;
-    const backgrounds = useBackgrounds(media);
+    const backgrounds = useBackgrounds();
     const { cur } = c;
     const [sel, setSel] = useState("text");
     // The padlock: the Fundo's is the live state's (layers.lock: nothing

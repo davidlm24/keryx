@@ -10,7 +10,9 @@ import { ThemeThumb } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
+import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeForKind, THEME_KINDS, KIND_FIELD } from "@/lib/console/themes";
+import { useLibraryPicker } from "../library/libraryContext";
+import { usePrefs, updateUser } from "@/hooks/useUser";
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 import { SAMPLE_SLIDES } from "./sample";
@@ -21,6 +23,49 @@ const SIZES = TEXT_SIZES;
 const SIZE = Object.fromEntries(TEXT_SIZES);
 const FONT = Object.fromEntries(THEME_FONTS);
 const BLANK = { name: "", font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff", text_color_2: "", text_box: "", text_box_color: "", text_box_opacity: "", transition: "", transition_ms: "", background_image: "", background_fit: "", background_dim: "", background_blur: "" };
+
+// Temas padrão (owner's decision 2026-10-13, as in SPresenter): one theme per
+// kind of content — Música (the theme marked padrão), Bíblia, Texto and
+// Timer (on the profile; empty = the same as Música) — each a small screen;
+// a click chooses it in the library, in theme mode. What is on air does not
+// change: the theme dresses what is sent from then on.
+function KindThemes({ c, themes, setDefault }) {
+    const prefs = usePrefs();
+    const pick = useLibraryPicker();
+    const ids = { bible: prefs.bible_theme_id, text: prefs.text_theme_id, tool: prefs.timer_theme_id };
+    const def = defaultTheme(themes);
+    const choose = async (kind, name) => {
+        const field = KIND_FIELD[kind];
+        const own = field ? ids[kind] : def?.id || "";
+        const r = await pick({ accept: "theme", title: `Tema padrão · ${name}`, value: own && own !== "none" ? own : null, allowNone: true, noneLabel: field ? "O mesmo das músicas" : "Estilo de fábrica (sem tema)" });
+        if (!r || (!r.theme && !r.none)) return;
+        if (!field) { setDefault(r.theme ? r.theme.id : null); return; }
+        updateUser({ [field]: r.theme ? r.theme.id : "" })
+            .then(() => c.say(r.theme ? `${name}: tema ${r.theme.name}.` : `${name}: o mesmo tema das músicas.`))
+            .catch(() => c.say("Não foi possível salvar o tema."));
+    };
+    return (
+        <>
+            <CfgKey k="Temas padrão" className="listhead"><span className="kx-section">Temas padrão <span className="kx-count">· o tema com que cada tipo de conteúdo sem estilo próprio vai ao ar · o que já está no ar não muda</span></span></CfgKey>
+            <div className="tmg tmg-kinds">
+                {THEME_KINDS.map(([kind, name]) => {
+                    const field = KIND_FIELD[kind];
+                    const t = themeForKind(themes, kind, ids);
+                    const same = field && !ids[kind];
+                    const what = t ? t.name : "Estilo de fábrica";
+                    return (
+                        <button type="button" key={kind} className="kx-t fg-tile tmg-tile" onClick={() => choose(kind, name)} aria-label={`Tema padrão de ${name}: ${what}`} title={`${name} · clique para escolher o tema`}>
+                            <span className="tmg-kind">{name}</span>
+                            <span className="fg-img">{t ? <ThemeThumb theme={t} now={c.now} /> : <span className="tmg-plus">Estilo de fábrica</span>}</span>
+                            <span className="fg-name">{what}</span>
+                            <span className="kx-meta tmg-meta">{same ? "o mesmo das músicas" : kind === "lyrics" ? "o tema padrão" : "próprio"}</span>
+                        </button>
+                    );
+                })}
+            </div>
+        </>
+    );
+}
 
 // Unsaved edits, by theme ("new" for one being created): switching tabs or
 // sections (the editor unmounts) keeps them until Salvar or Cancelar.
@@ -132,7 +177,6 @@ export default function TemasSection({ c }) {
         reload();
     };
     // One transaction: never two defaults, never none in between.
-    const def = defaultTheme(themes);
     const setDefault = (id) => {
         const rows = defaultChanges(themes, id);
         if (!rows.length) return;
@@ -157,15 +201,7 @@ export default function TemasSection({ c }) {
 
     return (
         <>
-            <div className="frm">
-                <FormRow k="Estilo padrão do texto">
-                    <select className="cfg-select" value={def?.id || ""} onChange={(e) => setDefault(e.target.value || null)} aria-label="Tema padrão">
-                        <option value="">Estilo de fábrica (sem tema)</option>
-                        {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                    <span className="kx-meta">músicas e passagens sem estilo próprio vão ao ar com ele · o que já está no ar não muda</span>
-                </FormRow>
-            </div>
+            <KindThemes c={c} themes={themes} setDefault={setDefault} />
             <CfgKey k="Temas" className="listhead"><span className="kx-section">Temas <span className="kx-count">· clique para editar · botão direito: mais opções</span></span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => setEditing("new")}>Novo tema…</Btn></CfgKey>
             {/* The themes as small screens, as in the library (owner's request
                 2026-10-13); the one being edited opens below the grid. */}

@@ -70,6 +70,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`library/BackgroundLibrary.jsx`: Temas · Imagens · Vídeos · Gerados ·
   Cor; awaited with `useLibraryPicker()`, the chip `library/BgChip.jsx`);
   don't add a gallery of thumbnails to a form.
+  **The background library is separate from the Mídia** (2026-10-13): files
+  sent there are Media rows of category "background" (`isBackgroundMedia`),
+  left out of `useLibrary().media` (Biblioteca, media library, editors) and
+  listed by `useBackgrounds()` (plus Mídia pictures that already have a
+  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. **A default
+  theme per kind** (`themeForKind`, `THEME_KINDS`): Música (the theme marked
+  padrão), Bíblia, Texto and Timer (`User.bible_theme_id`, `text_theme_id`,
+  `timer_theme_id`; "" = Música's, "none" = factory), chosen in Temas ›
+  Temas padrão; a timer takes its theme's font, colour and background
+  (`withThemeDefaults` on `tool.show`, `fundoOps`), text items and Escola
+  materials `inherit` like songs.
   Deleting from a right-click menu ("Excluir…": songs, media, avisos,
   themes) always asks first through `useConfirm()` (`ConfirmDialog.jsx`;
   Esc answers no, before anything else). The Prévia's width is the

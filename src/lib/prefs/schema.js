@@ -35,6 +35,9 @@ export const PREF_FIELDS = {
     // The Bíblia's own theme: "" = the default theme (the songs'), "none"
     // = the factory look, else a ProjectionTheme id (themes.js themeForKind).
     bible_theme_id: { default: "", normalize: (v) => (typeof v === "string" && v.length <= 200 ? v.trim() : "") },
+    // The Texto and Timer themes, the same way (themes.js KIND_FIELD).
+    text_theme_id: { default: "", normalize: (v) => (typeof v === "string" && v.length <= 200 ? v.trim() : "") },
+    timer_theme_id: { default: "", normalize: (v) => (typeof v === "string" && v.length <= 200 ? v.trim() : "") },
     import_lines: {
         default: 0,
         normalize: (v) => { const n = Number(v); return v !== null && v !== "" && Number.isInteger(n) && n >= 0 && n <= 12 ? n : 0; },

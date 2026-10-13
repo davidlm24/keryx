@@ -98,3 +98,21 @@ test("the Bíblia has its own theme; songs keep the default one", () => {
     assert.equal(themeForKind(themes, "bible", "apagado").id, "letras", "a deleted theme falls back");
     assert.equal(themeForKind([], "bible", "biblia"), null);
 });
+
+test("a default theme per kind: Música, Bíblia, Texto, Timer", () => {
+    const themes = [{ id: "musica", is_default: true }, { id: "biblia" }, { id: "texto" }, { id: "timer", font_family: "mono", text_color: "#ffcc00", background: { kind: "color", value: "#101820" } }];
+    const ids = { bible: "biblia", text: "texto", tool: "timer" };
+    assert.equal(themeForKind(themes, "lyrics", ids).id, "musica");
+    assert.equal(themeForKind(themes, "bible", ids).id, "biblia");
+    assert.equal(themeForKind(themes, "text", ids).id, "texto");
+    assert.equal(themeForKind(themes, "tool", ids).id, "timer");
+    assert.equal(themeForKind(themes, "text", {}).id, "musica", "unset: the same as Música");
+    assert.equal(themeForKind(themes, "tool", { tool: "none" }), null, "the factory look");
+    assert.equal(themeForKind(themes, "bible", "biblia").id, "biblia", "the Bíblia's id alone still works");
+    // A timer with no look of its own takes the theme's font, colour and background.
+    const tool = withThemeDefaults("tool.show", { mode: "timer", durationMs: 60000 }, themes[3]);
+    assert.deepEqual(tool.style, { font_family: "mono", text_color: "#ffcc00" });
+    assert.equal(tool.fundo.value, "#101820");
+    const own = { mode: "clock", style: { text_color: "#ffffff" } };
+    assert.equal(withThemeDefaults("tool.show", own, themes[3]), own, "its own look stays");
+});

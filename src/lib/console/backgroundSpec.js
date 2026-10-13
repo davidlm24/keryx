@@ -101,6 +101,12 @@ export function bgLabel(spec, names = {}) {
 // to the Fundo layer first; the content goes without it. Other ops pass
 // through. `state` is the live state (its padlock); -> [[op, args], ...].
 export function fundoOps(op, args, state = null) {
+    // A timer dressed by its theme brings the theme's background too.
+    if (op === "tool.show" && args?.fundo) {
+        const { fundo, ...rest } = args;
+        const set = !layerLocked(state, "background") ? bgArgs(fundo, fundo.title || "") : null;
+        return set ? [["background.set", set], ["tool.show", rest]] : [["tool.show", rest]];
+    }
     if (op !== "content.show" || !args) return [[op, args]];
     const { fundo = null, ...rest } = args;
     const style = rest.style || {};

@@ -131,6 +131,14 @@
       "type": "string",
       "description": "Tema da Biblia: o tema (ProjectionTheme) que veste as passagens sem estilo proprio. Vazio = o mesmo das letras (o tema padrao); \"none\" = estilo de fabrica"
     },
+    "text_theme_id": {
+      "type": "string",
+      "description": "Tema padrao do Texto (itens de texto, Escola biblica): vazio = o mesmo das musicas; \"none\" = estilo de fabrica"
+    },
+    "timer_theme_id": {
+      "type": "string",
+      "description": "Tema padrao do Timer (relogio, cronometro, timers): vazio = o mesmo das musicas; \"none\" = estilo de fabrica"
+    },
     "youtube_hide_title": {
       "type": "boolean",
       "description": "Telas: esconder a faixa de titulo e canal que o YouTube poe sobre o video (o player fica mais alto que a tela e as faixas ficam fora dela). Nulo = sim"
