@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { keryx } from "@/api/keryxClient";
-import { findLayout } from "@/lib/layouts";
+import { designOf } from "@/lib/outputPrefs";
 
-// The operator's layouts (ScreenLayout rows, src/lib/layouts.js), kept
-// current: list + subscribe. A network screen reads them too.
+// The ScreenLayout rows, kept current: only for designOf's lazy migration
+// (an old save whose layout_id still names a row). Nothing writes them.
 export function useLayoutRows() {
     const [rows, setRows] = useState([]);
     useEffect(() => {
@@ -18,16 +18,10 @@ export function useLayoutRows() {
     return rows;
 }
 
-// The layout an id names (a factory one, or a row), normalized and kept
-// current; null for "" or an id that names nothing (the page then draws its
-// own screen).
-export function useLayout(id) {
+// The drawing a screen uses (owner 2026-10-13: each screen owns its design;
+// OutputPref.design, with the old layout_id read as a fallback). Null = the
+// page as before.
+export function useDesign(pref) {
     const rows = useLayoutRows();
-    return useMemo(() => findLayout(id, rows), [id, rows]);
-}
-
-// A network screen may ask for a layout of its own (?layout=<id>), over the
-// page's OutputPref: two tablets on the same page with different layouts.
-export function urlLayoutId() {
-    try { return new URLSearchParams(window.location.search).get("layout") || ""; } catch { return ""; }
+    return useMemo(() => designOf(pref, rows), [pref, rows]);
 }

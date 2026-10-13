@@ -969,6 +969,9 @@
         "layout_id": {
           "type": "text",
           "default": ""
+        },
+        "design": {
+          "type": "json"
         }
       }
     },

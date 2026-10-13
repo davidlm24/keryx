@@ -5,6 +5,7 @@
 // or a row with nothing set, is the output exactly as before.
 import { outputView, RAIL_VIEWS } from "./network/views.js";
 import { themeBackgroundArgs } from "./console/themes.js";
+import { normalizeLayout, findLayout } from "./layouts.js";
 
 // Conteúdo: which view of the live state the output draws (views.js).
 export const PREF_CONTENTS = [
@@ -121,8 +122,10 @@ export function normalizePref(row) {
         margin: clamp(num(row?.margin_pct, 0), MARGIN_RANGE),
         showLogo: row?.show_logo !== false,
         themeId: typeof row?.theme_id === "string" ? row.theme_id : "",
-        // Palco and Pastor: a layout the operator drew (src/lib/layouts.js);
-        // "" is the page's own screen.
+        // The screen's own drawing (owner 2026-10-13: each screen owns its
+        // design; the layout catalog died). layoutId is only the old field,
+        // read by designOf when design is empty.
+        design: row?.design && typeof row.design === "object" && !Array.isArray(row.design) ? normalizeLayout({ ...row.design, id: "design", name: "" }) : null,
         layoutId: typeof row?.layout_id === "string" ? row.layout_id.slice(0, 80) : "",
         name: typeof row?.name === "string" ? row.name.trim().slice(0, 40) : "",
         icon: typeof row?.icon === "string" && ICON_RE.test(row.icon) ? row.icon : "",
@@ -130,7 +133,16 @@ export function normalizePref(row) {
     };
 }
 
-export const isDefaultPref = (p) => !p.content && !p.hidden?.length && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.layoutId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
+export const isDefaultPref = (p) => !p.content && !p.hidden?.length && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.design && !p.layoutId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
+
+// The drawing this screen uses: its own design; else (an old save) the
+// ScreenLayout row or factory layout its layout_id still names — the lazy
+// migration, nothing written. Null = the page as before.
+export function designOf(pref, layoutRows) {
+    if (pref?.design) return pref.design;
+    if (pref?.layoutId) return findLayout(pref.layoutId, layoutRows) || null;
+    return null;
+}
 
 // Palco and Pastor draw their own layouts; OutputPref.options says which
 // parts (Configurações › Telas e saídas › Ajustes). Missing keys are the

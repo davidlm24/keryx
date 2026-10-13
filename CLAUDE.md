@@ -339,50 +339,39 @@ Smoke runs use a free port and a temp data folder, so they never collide with a 
 
 The smoke's audio-meter check (`metersFollowVolume`) hears every sound of the computer, and the focus checks (`focusKept`, `autoFocusKept`, `outputKeys.focus`, and `splitterKeys` when its arrow never arrived) need KERYX to be the program in front. When someone uses the PC during a run they do not fail: another program in front (no KERYX window focused) or another program playing (meters up, no KERYX window audible) marks them inconclusive, listed in `console.inconclusive`, and the run can still pass. An output holding the focus, or a KERYX window still audible after the mute, fails. The console page itself is told it has focus (CDP focus emulation), so fields that save on blur work regardless.
 
-Outputs (projector, stage, ...) render the live state, so either the console (`window.open`) or the main process (`outputs.open`, `keryx:displays:open`, "Abrir ao iniciar") can open them; `electron/outputs*.cjs` places and tracks them. **The Saídas popover is one switch per local row** (2026-10-13): ligado = the window exists, the name of an open output brings it forward, states are plain text (`rowStatus` in `src/lib/console/outputs.js`, tested) and the banner stays the active alert; network rows keep Esquecer. **Remover saída** (Telas e saídas; also "Adicionar saída" there and in the popover) hides an output from the popover, the tabs and Verificar and never opens it at launch: the flag is `removed` on the electron settings `"outputs"` entry (per computer, carried by Exportar/Importar ajustes), the OutputPref row stays, so re-adding restores everything; `/Projection` is not removable (the Prévia mirrors it and send auto-opens it), and a network screen showing a removed page keeps working and keeps its row. Each renderer output (Projeção, Letras, Vídeo, Comunicação) has its own settings, one `OutputPref` row per page path shared by the window and network screens showing that page (Configurações › Telas e saídas, the output's tab: a vertical tab per output with its settings always open, Layout first; `telas/<tab>` in settings.js): pages draw through `OutputScreen` (`src/lib/outputPrefs.js`, tested); no row means the output exactly as before. **Mostrar** (`hidden_kinds`) leaves kinds out of one output (Letras, Bíblia, Texto, Imagens e vídeos, Relógio e timer, Avisos, Aviso rápido; `hideKinds`): the layer goes, the output shows what is under it or its idle look, and a song's playback track keeps playing (`track`); the console's Prévia says when the output it previews hides the prepared kind (`stageHidden`). A new kind of content gets its entry in `SHOW_KINDS`. **Exportar / Importar ajustes das saídas** (Telas e saídas) is one JSON file with every output's placement and every page's `OutputPref` settings (`src/lib/outputsFile.js`, tested; the theme travels by name): the main process only saves and reads the file (`keryx:displays:export-file` / `import-file`, 1 MB at most); the console checks it, says what will not come out the same on this computer, and applies it through `displays.set` and `OutputPref` (rows updated or created, never deleted). A new setting on `OutputPref` goes in that file too. **Layouts das telas** (2026-10-12,
-user decision: outputs stay the fixed physical roles; what the operator creates,
-categorizes and assigns is the *layout*): a `ScreenLayout` row is a 16:9 canvas
-of elements (relógio, timer no ar, letra atual, próximo slide, próximos da
-Setlist, tom, BPM, cifra, notas, monitor da projeção, logo, texto, imagem…)
-placed in % of the screen, each with a rule for when it shows (`when`) and a
-text look; the pure module is `src/lib/layouts.js` (types, factory layouts
-`factory:palco` / `factory:pastor`, visibility, text, snapping; tested) and
-`LayoutRenderer` draws one on the output, the network screen, the Multiview
-quadrant and the editor alike. Every output but Transmissão picks one with
-`OutputPref.layout_id` (`""` = the page exactly as before: StageScreen /
-PastorScreen, or the bare renderer; a deleted layout falls back to it); a
-network screen may override it with `?layout=<id>`. On a renderer output
-(`OutputScreen`) the **Projeção** element draws the output's view
-(`prefState`: Mostrar, theme, scale still apply) and a layout with a *timer*
-element takes the `tool` layer out of it (`layoutHasTimer`), so a clock or
-timer on air sits in its element instead of filling the screen.
-**The Editor de temas e layouts is its own window** (2026-10-13, user
-decision: edit, close the window, done — the console never swaps views):
-`/Editor` in App.jsx (`src/pages/Editor.jsx`, pieces in
-`src/components/editor/`), opened by `openEditor` in
-`src/lib/editorWindow.js` (named window `keryx-editor`: opening again
-navigates the one there is; a tab in the preview; never in
-NETWORK_SCREENS). One window, two documents, switched in the footer
-(Temas | Layouts) and in the header select without closing:
-  - a LAYOUT (`LayoutEditor.jsx`): the canvas as before, the Adicionar
-    picker grouped by `ELEMENT_GROUPS`, text-look fields only on
-    `LOOK_TYPES` (Projeção/monitor/logo/imagem/progresso take none), and
-    **"Ver como"** previews with a real output's Mostrar/tema/escala/
-    margens (`prefState` + kp-out vars; Palco/Pastor only Escala —
-    `outputView` falls back to the projection view for their routes, so
-    never call `prefState` with them expecting their page). `save()`
-    returns the row and "Usar em…" assigns in the same flow (no remount);
-    `?for=<path>` (the output tab's "Novo layout no canvas" / "Duplicar e
-    editar") binds the first save to that output.
-  - a THEME (`ThemeEditor.jsx`): the ONE place a theme is edited —
-    Configurações › Temas is just the list (Editar/Novo tema… open the
-    window); Camadas adjusts the air and captures with "Salvar como novo"
-    (plus an "Editar tema…" shortcut). A theme now places its text:
-    `text_align`/`text_position` ride in `EXTRA_KEYS` (item's explicit
-    style still wins; applying a theme on air resets them — a theme is a
-    complete look), and the canvas box maps to
-    align/position/`text_max_width`/`text_nudge` via
-    `src/lib/console/themeBox.js` (tested; "" = factory).
+Outputs (projector, stage, ...) render the live state, so either the console (`window.open`) or the main process (`outputs.open`, `keryx:displays:open`, "Abrir ao iniciar") can open them; `electron/outputs*.cjs` places and tracks them. **The Saídas popover is one switch per local row** (2026-10-13): ligado = the window exists, the name of an open output brings it forward, states are plain text (`rowStatus` in `src/lib/console/outputs.js`, tested) and the banner stays the active alert; network rows keep Esquecer. **Remover saída** (Telas e saídas; also "Adicionar saída" there and in the popover) hides an output from the popover, the tabs and Verificar and never opens it at launch: the flag is `removed` on the electron settings `"outputs"` entry (per computer, carried by Exportar/Importar ajustes), the OutputPref row stays, so re-adding restores everything; `/Projection` is not removable (the Prévia mirrors it and send auto-opens it), and a network screen showing a removed page keeps working and keeps its row. Each renderer output (Projeção, Letras, Vídeo, Comunicação) has its own settings, one `OutputPref` row per page path shared by the window and network screens showing that page (Configurações › Telas e saídas, the output's tab: a vertical tab per output with its settings always open, Layout first; `telas/<tab>` in settings.js): pages draw through `OutputScreen` (`src/lib/outputPrefs.js`, tested); no row means the output exactly as before. **Mostrar** (`hidden_kinds`) leaves kinds out of one output (Letras, Bíblia, Texto, Imagens e vídeos, Relógio e timer, Avisos, Aviso rápido; `hideKinds`): the layer goes, the output shows what is under it or its idle look, and a song's playback track keeps playing (`track`); the console's Prévia says when the output it previews hides the prepared kind (`stageHidden`). A new kind of content gets its entry in `SHOW_KINDS`. **Exportar / Importar ajustes das saídas** (Telas e saídas) is one JSON file with every output's placement and every page's `OutputPref` settings (`src/lib/outputsFile.js`, tested; the theme travels by name): the main process only saves and reads the file (`keryx:displays:export-file` / `import-file`, 1 MB at most); the console checks it, says what will not come out the same on this computer, and applies it through `displays.set` and `OutputPref` (rows updated or created, never deleted). A new setting on `OutputPref` goes in that file too. **Cada tela é dona do seu desenho** (owner 2026-10-13; reverte a decisão
+de 2026-10-12 dos layouts avulsos): o desenho mora em **`OutputPref.design`**
+({ elements, background } no formato de `normalizeLayout`) — `designOf(pref,
+layoutRows)` em `src/lib/outputPrefs.js` (testado) resolve: o design da
+tela; senão o antigo `layout_id` (migração preguiçosa, nada é gravado — a
+primeira salvada no Editor grava o design e zera o layout_id); senão null =
+a página padrão (StageScreen / PastorScreen / renderer puro). O catálogo
+"Layouts das telas", o select de Layout, "Usar em…", "Ver como", `?for=` e
+o `?layout=` da rede **morreram**; as linhas ScreenLayout ficam no banco
+(dado do usuário), nada escreve nelas. As páginas leem com `useDesign(pref)`
+(`src/hooks/useLayout.js`); o arquivo de Exportar/Importar **embute o
+design** por saída (arquivo antigo ainda casa o layout por nome). O módulo
+puro continua `src/lib/layouts.js` (tipos, elementos, factory, snapping):
+um elemento novo é um entry em `ELEMENT_TYPES` + seu caso em `elementText`
+ou no `Body` do renderer; num renderer output o elemento **Projeção**
+desenha a vista da saída (`prefState`) e um desenho com *timer* tira a
+camada `tool` dela (`layoutHasTimer`).
+**O Editor é a janela das telas e dos temas** (2026-10-13): `/Editor`
+(`src/pages/Editor.jsx`; `openEditor({ screen|theme })` em
+`src/lib/editorWindow.js`, janela nomeada `keryx-editor`; aba no preview;
+nunca em NETWORK_SCREENS). O rodapé alterna **Temas | Telas**:
+  - uma TELA (`ScreenEditor.jsx`): menu vertical com as telas
+    (`EDITOR_SCREENS`), o canvas edita o design DELA com os ajustes reais
+    da própria tela vestindo a prévia (prefState + kp-out, ou só a Escala
+    no Palco/Pastor), e os ajustes visuais moram na mesma janela
+    (`OutputPrefCard inEditor`). Sem design: "Desenhar esta tela" parte do
+    desenho pronto (`factory:palco`/`pastor`/`projecao`); "Voltar à página
+    padrão" zera. A Transmissão não tem canvas, só os ajustes.
+  - um TEMA (`ThemeEditor.jsx`): o ÚNICO lugar em que um tema se edita —
+    Configurações › Temas é só a lista; Camadas ajusta o ar e captura com
+    "Salvar como novo". `text_align`/`text_position` em `EXTRA_KEYS`
+    (o estilo explícito do item vence; aplicar um tema no ar os reseta), e
+    a caixa do canvas mapeia por `src/lib/console/themeBox.js` (testado).
 A ScreenRenderer `fill` is `position: fixed`: inside a canvas or preview
 its wrapper needs `contain: layout paint` (`.le-screen`, `.cfg-prev`).
 Every screen is landscape. A new kind of element is an entry in

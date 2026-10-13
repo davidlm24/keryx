@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir } from "./outputPrefs.js";
+import { normalizePref, isDefaultPref, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -14,7 +14,7 @@ const live = {
 test("no row, or an empty one, is the default: the output as before", () => {
     for (const row of [null, undefined, {}, { screen_path: "/Projection" }, { text_scale: "", margin_pct: null, show_logo: true, theme_id: "" }]) {
         const p = normalizePref(row);
-        assert.deepEqual(p, { content: "", hidden: [], scale: 1, margin: 0, showLogo: true, themeId: "", layoutId: "", name: "", icon: "", options: {} });
+        assert.deepEqual(p, { content: "", hidden: [], scale: 1, margin: 0, showLogo: true, themeId: "", design: null, layoutId: "", name: "", icon: "", options: {} });
         assert.ok(isDefaultPref(p));
         assert.equal(prefVars(p), null);
         assert.deepEqual(prefState("/LyricProjection", live, p), prefState("/LyricProjection", live, null));
@@ -23,8 +23,8 @@ test("no row, or an empty one, is the default: the output as before", () => {
 });
 
 test("normalizePref clamps scale and margins and drops unknown content", () => {
-    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", hidden: [], scale: 1.4, margin: 0, showLogo: true, themeId: "", layoutId: "", name: "", icon: "", options: {} });
-    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", hidden: [], scale: 0.8, margin: 10, showLogo: false, themeId: "t1", layoutId: "", name: "", icon: "", options: {} });
+    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", hidden: [], scale: 1.4, margin: 0, showLogo: true, themeId: "", design: null, layoutId: "", name: "", icon: "", options: {} });
+    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", hidden: [], scale: 0.8, margin: 10, showLogo: false, themeId: "t1", design: null, layoutId: "", name: "", icon: "", options: {} });
     assert.equal(normalizePref({ text_scale: 112.4 }).scale, 1.12);
 });
 
@@ -154,4 +154,15 @@ test("an output with a theme of its own ignores the song parts' themes", () => {
     assert.equal(s.content.style.font_family, "mono");
     // Without an output theme the part keeps its look.
     assert.equal(prefState("/Projection", withParts, normalizePref({})).content.slides[0].style.font_family, "serif");
+});
+
+test("designOf: the screen's own design, else the old layout_id, else null", () => {
+    const rows = [{ id: "L1", name: "Palco da sala", elements: [{ id: "e1", type: "clock", x: 1, y: 1, w: 20, h: 10 }] }];
+    const own = normalizePref({ design: { elements: [{ id: "e2", type: "clock", x: 2, y: 2, w: 20, h: 10 }] } });
+    assert.equal(designOf(own, rows).elements[0].id, "e2", "its own design wins");
+    const old = normalizePref({ layout_id: "L1" });
+    assert.equal(designOf(old, rows).name, "Palco da sala", "an old save reads its ScreenLayout, nothing written");
+    assert.equal(designOf(normalizePref({ layout_id: "factory:palco" }), []).factory, true);
+    assert.equal(designOf(normalizePref({ layout_id: "gone" }), rows), null, "a deleted layout falls back to the page");
+    assert.equal(designOf(normalizePref({}), rows), null);
 });

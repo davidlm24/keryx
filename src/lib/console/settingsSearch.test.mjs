@@ -71,8 +71,6 @@ test("search: keywords and a card's rows find their place", () => {
     const tema = searchSettings("tema padrão").find((h) => h.label === "Todos os temas");
     assert.equal(tema.section, "temas", "Temas is a section of its own");
     assert.equal(placeOf(tema), "Temas");
-    const layouts = searchSettings("canvas").find((h) => h.label === "Layouts das telas");
-    assert.equal(placeOf(layouts), "Telas e saídas › Layouts das telas", "Telas e saídas opens on the tab");
 });
 
 test("search: results come in the order of the sections, label hits first", () => {

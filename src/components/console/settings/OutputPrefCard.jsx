@@ -7,10 +7,9 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import { mainLayer } from "@shared/live-state.mjs";
-import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, showKindsFor, streamOptions } from "@/lib/outputPrefs";
+import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultPref, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, showKindsFor, streamOptions, designOf } from "@/lib/outputPrefs";
 import StreamBand from "@/components/network/StreamBand";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
-import { layoutChoices, findLayout } from "@/lib/layouts";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 import { useChurch } from "@/hooks/useChurch";
@@ -27,14 +26,14 @@ const sameJson = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
 // One output's own settings (OutputPref, src/lib/outputPrefs.js), under its
 // row in Telas e saídas. Each change is saved at once; the output (and any
 // network screen showing the same page) follows it live. Palco and Pastor
-// also pick a Layout (src/lib/layouts.js); `onOpenLayout` opens the editor.
-export default function OutputPrefCard({ output, row, themes, c, onOpenLayout }) {
+// also own a design (owner 2026-10-13: each screen owns its drawing);
+// `onOpenScreen` opens the Editor on this screen.
+export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, inEditor = false }) {
     const say = c.say;
     const church = useChurch();
     const pref = normalizePref(row);
     const layoutRows = useLayoutRows();
-    const layout = findLayout(pref.layoutId, layoutRows);
-    const layoutGone = Boolean(pref.layoutId) && !layout;
+    const design = designOf(pref, layoutRows);
     // The first change creates the row; changes made before it comes back
     // update that one instead of creating another. A failed create is
     // forgotten, so the next change tries again.
@@ -100,8 +99,8 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
     const rendererState = renderer ? prefState(output.key, prevLive, pref, themeGone ? null : themes.find((t) => t.id === pref.themeId) || null) : null;
     const preview = isStream
         ? <div className="cfg-prev cfg-prev-stream"><div className="cfg-prev-fill" style={{ containerType: "size" }}><StreamBand caption={streamSample} opts={stream} scale={pref.scale} /></div></div>
-        : layout
-        ? <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><LayoutRenderer layout={layout} live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} screenState={renderer ? rendererState : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed /></div></div>
+        : design
+        ? <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><LayoutRenderer layout={design} live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} screenState={renderer ? rendererState : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed /></div></div>
         : isStage && !pref.content
         ? <div className="cfg-prev"><StageScreen content={prevLive.content} nowMs={now} embed opts={pref.options} scale={pref.scale} /></div>
         : isPastor && !pref.content
@@ -111,15 +110,11 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
     return (
         <div className="cfg-outprefs" role="group" aria-label={`Ajustes de ${output.label}`}>
         <div className="frm cfg-outprefs-form">
-            {/* The Layout first: the drawing of the screen, edited on the canvas. */}
-            {!isStream && <FormRow k="Layout">
-                <select className="cfg-select" value={layoutGone ? "" : pref.layoutId} onChange={(e) => save({ layout_id: e.target.value })} aria-label={`Layout de ${output.label}`}>
-                    {layoutChoices(layoutRows).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                </select>
-                {layout && !layout.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id, { for: output.key })} title="Abre o layout no canvas para mover e redimensionar cada elemento"><Icon name="edit" />Editar</Btn>}
-                {layout?.factory && <Btn small kind="brand" onClick={() => onOpenLayout?.(layout.id, { for: output.key })} title="Um modelo não se edita: abre uma cópia sua no canvas; salvar já a põe nesta saída"><Icon name="copy" />Duplicar e editar</Btn>}
-                <Btn small onClick={() => onOpenLayout?.("new", { for: output.key })} title="Desenhar uma tela do zero no canvas; salvar já a põe nesta saída"><Icon name="plus" />Novo layout</Btn>
-                <span className="kx-meta">{layoutGone ? "o layout escolhido foi excluído: a tela está no padrão" : renderer ? "o desenho da tela: a projeção inteira ou numa parte, o timer num canto…" : "o desenho da tela: onde ficam o relógio, o timer, a letra, a próxima…"}</span>
+            {/* The design first: this screen's own drawing (the Editor's canvas). */}
+            {!isStream && !inEditor && <FormRow k="Desenho">
+                <Btn small kind="brand" onClick={() => onOpenScreen?.(output.key)} title="Abre esta tela no Editor, na janela dele: mover e redimensionar cada elemento"><Icon name="edit" />Editar a tela…</Btn>
+                {design && <Btn small onClick={() => save({ design: null, layout_id: "" })} title="A tela volta ao desenho padrão da página">Voltar à página padrão</Btn>}
+                <span className="kx-meta">{design ? (pref.design ? "desenho próprio desta tela" : "do antigo layout; é salvo na tela ao editar") : "a página padrão"}</span>
             </FormRow>}
             <FormRow k="Nome">
                 <input key={pref.name} className="fg-input" defaultValue={pref.name} placeholder={meta.name} maxLength={40}
@@ -139,7 +134,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                 <select className="cfg-select" value={pref.content} onChange={(e) => save({ content: e.target.value })} aria-label={`Conteúdo de ${output.label}`}>
                     {PREF_CONTENTS.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
-                {(isStage || isPastor) && <span className="kx-meta">outro conteúdo troca o layout próprio pela tela escolhida</span>}
+                {(isStage || isPastor) && <span className="kx-meta">outro conteúdo troca o desenho próprio pela tela escolhida</span>}
             </FormRow>}
             {kinds.length > 0 && (
                 <FormRow k="Mostrar">
@@ -161,7 +156,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
             {!isStream && <FormRow k="Escala do texto">
                 <Seg small value={String(Math.round(pref.scale * 100))} options={SCALES} onChange={(v) => save({ text_scale: Number(v) })} />
             </FormRow>}
-            {isStage && !pref.content && !layout && <>
+            {isStage && !pref.content && !design && <>
             <FormRow k="Cifra">
                 <Switch on={stage.chords} onChange={(on) => saveOpt("chords", on)} label="Cifra no Palco" />
                 <span className="kx-meta">o painel de acordes ao lado da letra</span>
@@ -194,7 +189,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                 <span className="kx-meta">João 3:16 embaixo do texto</span>
             </FormRow>
             </>}
-            {isPastor && !pref.content && !layout && <>
+            {isPastor && !pref.content && !design && <>
             <FormRow k="Relógio">
                 <Switch on={pastor.clock} onChange={(on) => saveOpt("clock", on)} label="Relógio na Tela do pastor" />
                 <span className="kx-meta">a hora e o tempo de culto</span>
@@ -226,10 +221,10 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenLayout })
                 <Btn small kind={confirmReset ? "air" : ""} disabled={isDefaultPref(pref)} onClick={reset}>{confirmReset ? "Restaurar mesmo" : "Restaurar padrão"}</Btn>
             </FormRow>
         </div>
-        <div className="cfg-prevcol">
+        {!inEditor && <div className="cfg-prevcol">
             {preview}
             <span className="kx-meta">{liveOn ? "No ar agora" : "Exemplo"}</span>
-        </div>
+        </div>}
         </div>
     );
 }

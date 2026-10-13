@@ -46,7 +46,7 @@ const FLASH_MS = 1600;
 // without accents (src/lib/console/settingsSearch.js): the results replace
 // the section, the left column counts them, and Enter or a click opens the
 // section and lights the row up.
-export default function SettingsView({ c, section, tab, setSection, onClose, layout, setLayout, restoreLayout, onOpenLayout }) {
+export default function SettingsView({ c, section, tab, setSection, onClose, layout, setLayout, restoreLayout, onOpenScreen }) {
     const current = sectionOf(section);
     const [q, setQ] = useState("");
     const [active, setActive] = useState(0);
@@ -140,9 +140,9 @@ export default function SettingsView({ c, section, tab, setSection, onClose, lay
                 ))}
             </div>
         ) : <Empty icon="search" title={`Nada encontrado para “${q.trim()}”`}>Tente outra palavra: PIN, fundo, backup, transição, logo…</Empty>;
-    } else if (current.id === "telas") body = <TelasSection c={c} tab={tab} setTab={(t) => setSection("telas", t)} onOpenLayout={onOpenLayout} />;
+    } else if (current.id === "telas") body = <TelasSection c={c} tab={tab} setTab={(t) => setSection("telas", t)} onOpenScreen={onOpenScreen} />;
     else if (current.id === "console") body = <ConsoleSection c={c} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
-    else { const Body = BODIES[current.id]; body = <Body c={c} onOpenLayout={onOpenLayout} />; }
+    else { const Body = BODIES[current.id]; body = <Body c={c} onOpenScreen={onOpenScreen} />; }
 
     return (
         <CfgFlash.Provider value={flash}>

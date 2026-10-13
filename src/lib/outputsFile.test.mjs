@@ -119,21 +119,29 @@ test("the file knows the same outputs as the main process (electron/outputs.cjs)
     assert.deepEqual([...OUTPUTS.map((o) => o.key)].sort(), [...OUTPUT_KEYS].sort());
 });
 
-test("the layout travels by id and name; found by name elsewhere, else said", () => {
-    const layouts = [{ id: "L1", name: "Palco banda", category: "palco", elements: [] }];
-    const rows = [{ id: "r3", screen_path: "/StageView", layout_id: "L1" }, { id: "r4", screen_path: "/PastorView", layout_id: "factory:pastor" }];
+test("the design travels whole; an old file still matches its layout by name", () => {
+    const el = { id: "e1", type: "clock", x: 1, y: 1, w: 20, h: 10 };
+    const layouts = [{ id: "L1", name: "Palco banda", category: "palco", elements: [el] }];
+    const rows = [
+        { id: "r2", screen_path: "/Projection", design: { elements: [el], background: {} } },
+        { id: "r3", screen_path: "/StageView", layout_id: "L1" },
+    ];
     const f = buildOutputsFile({ outputs, prefRows: rows, themes, layouts, displays });
-    assert.equal(f.prefs["/StageView"].layout_id, "L1");
-    assert.equal(f.prefs["/StageView"].layout_name, "Palco banda");
-    assert.equal(f.prefs["/PastorView"].layout_name, "Pastor (modelo)");
+    assert.equal(f.prefs["/Projection"].design.elements[0].id, "e1", "the screen's own design is in the file");
+    assert.equal(f.prefs["/StageView"].design.elements[0].id, "e1", "an old layout_id exports as the design it named");
+    assert.equal(f.prefs["/StageView"].layout_name, "Palco banda", "the old fields ride along for old apps");
     const text = JSON.stringify(f);
-    const same = readOutputsFile(text, { themes, layouts, displays });
-    assert.equal(same.prefs.find((p) => p.path === "/StageView").fields.layout_id, "L1");
-    assert.ok(!same.notes.some((n) => /layout/.test(n)));
-    const other = readOutputsFile(text, { themes, layouts: [{ id: "X9", name: "palco BANDA" }], displays });
-    assert.equal(other.prefs.find((p) => p.path === "/StageView").fields.layout_id, "X9");
-    assert.equal(other.prefs.find((p) => p.path === "/PastorView").fields.layout_id, "factory:pastor", "a factory layout exists everywhere");
-    const none = readOutputsFile(text, { themes, layouts: [], displays });
-    assert.equal(none.prefs.find((p) => p.path === "/StageView").fields.layout_id, "");
-    assert.ok(none.notes.some((n) => /Palco: o layout “Palco banda” não existe/.test(n)));
+    // On another computer with no layouts at all, the design still lands.
+    const other = readOutputsFile(text, { themes, layouts: [], displays });
+    assert.equal(other.prefs.find((p) => p.path === "/Projection").fields.design.elements[0].id, "e1");
+    assert.equal(other.prefs.find((p) => p.path === "/StageView").fields.design.elements[0].id, "e1");
+    assert.ok(!other.notes.some((n) => /desenho/.test(n)));
+    // An OLD file (no design): the layout matches by name, else it is said.
+    const old = JSON.parse(text);
+    delete old.prefs["/StageView"].design;
+    const named = readOutputsFile(JSON.stringify(old), { themes, layouts: [{ id: "X9", name: "palco BANDA", elements: [el] }], displays });
+    assert.equal(named.prefs.find((p) => p.path === "/StageView").fields.design.elements[0].id, "e1", "matched by name, embedded as design");
+    const none = readOutputsFile(JSON.stringify(old), { themes, layouts: [], displays });
+    assert.equal(none.prefs.find((p) => p.path === "/StageView").fields.design, null);
+    assert.ok(none.notes.some((n) => /Palco: o desenho “Palco banda”/.test(n)));
 });

@@ -3,7 +3,7 @@ import ScreenRenderer from "./ScreenRenderer";
 import LayoutRenderer from "./LayoutRenderer";
 import "./output-prefs.css";
 import { useOutputPref } from "@/hooks/useOutputPref";
-import { useLayout, urlLayoutId } from "@/hooks/useLayout";
+import { useDesign } from "@/hooks/useLayout";
 import { useUpcoming } from "@/hooks/useUpcoming";
 import { useChurch } from "@/hooks/useChurch";
 import { prefState, prefVars } from "@/lib/outputPrefs";
@@ -18,7 +18,7 @@ import { prefState, prefVars } from "@/lib/outputPrefs";
 export default function OutputScreen({ page, live, prefs, now, logoUrl, audio }) {
     const own = useOutputPref(prefs ? null : page);
     const { pref, theme } = prefs || own;
-    const layout = useLayout(urlLayoutId() || pref.layoutId);
+    const layout = useDesign(pref);
     const { upcoming, hasService } = useUpcoming(layout ? live : null);
     const church = useChurch();
     const state = prefState(page, live, pref, theme);

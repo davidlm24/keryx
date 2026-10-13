@@ -4,14 +4,14 @@ import Icon from "../console/Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty } from "../console/kx";
 import { Switch } from "../console/settings/parts";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
+import OutputPrefCard from "../console/settings/OutputPrefCard";
 import { mainLayer } from "@shared/live-state.mjs";
 import {
-    ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, LAYOUT_CATEGORIES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
+    ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
     normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, reorderElement,
 } from "@/lib/layouts";
-import { useLayoutRows } from "@/hooks/useLayout";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
-import { PREF_OUTPUTS, outputLook, normalizePref, prefState, prefVars } from "@/lib/outputPrefs";
+import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars } from "@/lib/outputPrefs";
 import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, SAMPLE_ITEMS } from "../console/settings/sample";
 
@@ -19,39 +19,39 @@ const DIMS = [["0.5", "Pouco"], ["0.72", "Médio"], ["0.9", "Muito"]];
 const COUNTS = [["1", "1"], ["2", "2"], ["3", "3"], ["5", "5"], ["8", "8"]];
 const HANDLES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-// The outputs a layout can be put on, from here (every page with settings
-// but Transmissão), with their names (the operator's, else the factory's).
-const USE_ON = [...PREF_OUTPUTS, "/StageView", "/PastorView"];
+// The screens the Editor edits (every page with settings; Transmissão has
+// no canvas, only its settings) and the ready design each one starts from.
+export const EDITOR_SCREENS = [...PREF_OUTPUTS, "/StageView", "/PastorView", "/StreamView"];
+const SEED = { "/StageView": "factory:palco", "/PastorView": "factory:pastor" };
+// What a design keeps on the row: the drawing alone (no name or category —
+// the screen itself is the identity; owner 2026-10-13).
+const designFields = (d) => { if (!d) return null; const f = layoutFields(normalizeLayout(d)); return { elements: f.elements, background: f.background }; };
 
-// The layout half of the Editor de temas e layouts (its own window,
-// src/pages/Editor.jsx): a 16:9 canvas where the operator places the
-// elements of a stage monitor or the pastor's tablet (src/lib/layouts.js)
-// — drag to move, handles to resize, a magnet to the edges, the centre and
-// the other elements (Alt ignores it), arrows nudge 1 % (Shift 5 %) — the
-// elements and the selected one's look on the left, the canvas drawn by
-// LayoutRenderer itself on the right, with what is on air or a sample.
-// Saving changes the library only; "Usar em…" puts the layout on an output
-// (OutputPref.layout_id), and a `forPath` (the output whose tab opened the
-// editor, ?for=) is bound on the first save. Switching to another layout
-// happens in the header select, without leaving the window (`onSwitch`).
-export default function LayoutEditor({ say, live: liveState, now, layoutId, forPath = "", media = [], themes = [], onClose, onSaved, onSwitch }) {
-    const rows = useLayoutRows();
+// The screens half of the Editor (its own window, src/pages/Editor.jsx;
+// owner's decision 2026-10-13: each screen owns its design — the layout
+// catalog died). A vertical menu switches between the screens; the 16:9
+// canvas edits THIS screen's drawing (OutputPref.design) with the screen's
+// real settings dressing the preview, and the screen's visual settings
+// (content, Mostrar, theme, margins…) live in the same window
+// (OutputPrefCard, inEditor). A screen with no design follows its page
+// ("Desenhar esta tela" starts from the ready design, or from zero).
+export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch }) {
     const prefRows = useOutputPrefRows();
     const church = useChurch();
-    const isNew = layoutId === "new" || String(layoutId).startsWith("factory:");
-    const [draft, setDraft] = useState(() => (layoutId === "new" ? newLayout("palco") : null));
+    const path = EDITOR_SCREENS.includes(screenPath) ? screenPath : "/Projection";
+    const row = prefRows.find((r) => r.screen_path === path) || null;
+    const pref = useMemo(() => normalizePref(row), [row]);
+    const name = outputLook(path, row).name;
+    const renderer = PREF_OUTPUTS.includes(path);
+    const isStream = path === "/StreamView";
+
+    const [draft, setDraft] = useState(null);
     const [saved, setSaved] = useState(null);
-    const [error, setError] = useState("");
     const [sel, setSel] = useState(null);
     const [adding, setAdding] = useState(false);
-    const [confirm, setConfirm] = useState(null); // "delete" | "discard"
+    const [confirm, setConfirm] = useState(null); // "reset" | "discard"
     const [busy, setBusy] = useState(false);
     const [source, setSource] = useState("auto"); // "auto" | "sample"
-    // Ver como: which output's real context the canvas previews with — its
-    // Mostrar, theme, Escala e Margens (renderer outputs, via prefState and
-    // the kp-out vars), or its Escala (Palco and Pastor). "" is the bare
-    // canvas, as before.
-    const [viewAs, setViewAs] = useState(() => (USE_ON.includes(forPath) ? forPath : ""));
     const [guides, setGuides] = useState([]);
     const [pickImage, setPickImage] = useState(false);
     const fileRef = useRef(null);
@@ -59,31 +59,31 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
     const drag = useRef(null);
     const loaded = useRef(false);
 
-    // The row (or the factory layout, which opens as a copy of its own).
+    // The screen's design (its own, or the old layout_id's — designOf),
+    // fetched once per screen: editing never fights the subscription.
     useEffect(() => {
-        if (layoutId === "new" || loaded.current) return undefined;
-        if (String(layoutId).startsWith("factory:")) {
-            const f = findLayout(layoutId, []);
-            if (!f) { setError("Modelo não encontrado."); return undefined; }
-            loaded.current = true;
-            setDraft(duplicateLayout(f));
-            return undefined;
-        }
+        if (isStream || loaded.current) return undefined;
         let alive = true;
-        keryx.entities.ScreenLayout.get(layoutId)
-            .then((row) => { if (!alive) return; loaded.current = true; const l = normalizeLayout(row); setDraft(l); setSaved(l); })
-            .catch((err) => { if (alive) setError(err?.message || "Layout não encontrado."); });
+        keryx.entities.OutputPref.filter({ screen_path: path }).then(async (rows) => {
+            if (!alive) return;
+            const r = rows?.[0] || null;
+            const legacy = r && !r.design && r.layout_id ? await keryx.entities.ScreenLayout.list().catch(() => []) : [];
+            const base = designOf(normalizePref(r), legacy);
+            loaded.current = true;
+            setDraft(base ? normalizeLayout({ ...base, factory: false }) : null);
+            setSaved(base ? normalizeLayout(base) : null);
+        }).catch(() => { loaded.current = true; });
         return () => { alive = false; };
-    }, [layoutId]);
+    }, [path, isStream]);
 
-    const dirty = useMemo(() => draft && !sameJson(layoutFields(draft), saved ? layoutFields(saved) : null), [draft, saved]);
+    const dirty = useMemo(() => !sameJson(designFields(draft), designFields(saved)), [draft, saved]);
     const set = (patch) => { setConfirm(null); setDraft((d) => ({ ...d, ...patch })); };
     const setEl = (id, patch) => setDraft((d) => ({ ...d, elements: d.elements.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
     const setProp = (id, k, v) => setDraft((d) => ({ ...d, elements: d.elements.map((e) => (e.id === id ? { ...e, props: { ...e.props, [k]: v } } : e)) }));
     const selected = draft?.elements.find((e) => e.id === sel) || null;
 
     const add = (type) => {
-        if (draft.elements.length >= MAX_ELEMENTS) { say(`Um layout tem no máximo ${MAX_ELEMENTS} elementos.`); return; }
+        if (draft.elements.length >= MAX_ELEMENTS) { say(`Uma tela tem no máximo ${MAX_ELEMENTS} elementos.`); return; }
         const e = newElement(type);
         set({ elements: [...draft.elements, e] });
         setSel(e.id);
@@ -98,75 +98,56 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
         setSel(e.id);
     };
 
-    // Saves and returns the saved row (null when it could not), so Usar em…
-    // and the ?for= binding work in the same breath — no remount, no stale
-    // closure (the old console view remounted on save and silently lost the
-    // assignment).
+    // Save: the design on THIS screen's OutputPref (layout_id cleared — the
+    // old pointer migrates into the row the first time it is saved).
     const save = async () => {
-        if (!draft.name.trim()) { say("Dê um nome ao layout."); return null; }
+        if (!draft) return null;
         setBusy(true);
         try {
-            const first = isNew && !saved;
-            const fields = layoutFields(normalizeLayout(draft));
-            const row = first ? await keryx.entities.ScreenLayout.create(fields) : await keryx.entities.ScreenLayout.update(saved.id, fields);
-            const l = normalizeLayout(row);
-            setSaved(l);
-            setDraft((d) => ({ ...d, id: l.id }));
-            // Opened from an output's tab ("Novo layout no canvas", ?for=):
-            // the first save puts the new layout on that output.
-            if (first && forPath && USE_ON.includes(forPath)) await assignTo(forPath, l.id, l.name);
-            else say("Layout salvo. As saídas que o usam já mudaram.");
-            onSaved?.(row);
+            const fields = { design: designFields(draft), layout_id: "" };
+            const next = row ? await keryx.entities.OutputPref.update(row.id, fields) : await keryx.entities.OutputPref.create({ screen_path: path, ...fields });
+            setSaved(normalizeLayout({ ...draft }));
+            say(`${name} salva. A janela e as telas na rede já mudaram.`);
             setBusy(false);
-            return row;
+            return next;
         } catch (err) { say(err?.message || "Não foi possível salvar."); }
         setBusy(false);
         return null;
     };
-    const removeLayout = async () => {
-        if (confirm !== "delete") { setConfirm("delete"); say(`Clique de novo para excluir "${draft.name}".`); return; }
-        // The window stays open on a fresh document: deleting is not leaving.
-        try { await keryx.entities.ScreenLayout.delete(saved.id); say("Layout excluído. As saídas que o usavam voltaram ao padrão."); (onSwitch || onClose)("new"); } catch (err) { say(err?.message || "Não foi possível excluir."); }
+    // Voltar à página padrão: the design goes; the page draws itself again.
+    const resetToPage = async () => {
+        if (confirm !== "reset") { setConfirm("reset"); say(`Clique de novo: ${name} volta ao desenho padrão da página.`); return; }
+        setConfirm(null);
+        try {
+            if (row) await keryx.entities.OutputPref.update(row.id, { design: null, layout_id: "" });
+            setDraft(null); setSaved(null); setSel(null);
+            say(`${name} voltou à página padrão.`);
+        } catch (err) { say(err?.message || "Não foi possível."); }
+    };
+    const startFrom = (kind) => {
+        const cat = path === "/StageView" ? "palco" : path === "/PastorView" ? "pastor" : "publico";
+        if (kind === "seed") {
+            const f = findLayout(SEED[path] || "factory:projecao", []);
+            setDraft(f ? { ...duplicateLayout(f), name: "", category: cat } : newLayout(cat));
+        } else setDraft(newLayout(cat));
+        setSel(null);
     };
     const leave = () => {
         if (dirty && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · clique de novo (ou Esc) para descartar."); return; }
         onClose();
     };
-    // Usar em…: this layout on that output (the row updated or created),
-    // saving first when needed.
-    const nameOfOutput = (path) => outputLook(path, prefRows.find((r) => r.screen_path === path) || null).name;
-    const assignTo = async (path, id, name) => {
-        try {
-            const row = prefRows.find((r) => r.screen_path === path);
-            if (row) await keryx.entities.OutputPref.update(row.id, { layout_id: id });
-            else await keryx.entities.OutputPref.create({ screen_path: path, layout_id: id });
-            say(`${nameOfOutput(path)} agora desenha "${name}".`);
-        } catch (err) { say(err?.message || "Não foi possível mudar a saída."); }
+    // The vertical menu: another screen, the dirty guard asking first.
+    const switchTo = (p) => {
+        if (p === path) return;
+        if (dirty && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · escolha de novo para descartar."); return; }
+        onSwitch?.(p);
     };
-    const putOn = async (path) => {
-        const row = !saved || dirty ? await save() : saved;
-        const id = row?.id || saved?.id;
-        if (!id) return; // save already said why
-        await assignTo(path, id, draft.name);
-    };
-    const usedOn = USE_ON.filter((p) => saved && prefRows.some((r) => r.screen_path === p && r.layout_id === saved.id));
-    // Closing the window (or navigating it to another document from outside)
-    // with unsaved changes: the browser asks; in the app the first try is
-    // blocked — Cancelar/Esc inside says the same thing.
     useEffect(() => {
         if (!dirty) return undefined;
         const guard = (e) => { e.preventDefault(); e.returnValue = ""; };
         window.addEventListener("beforeunload", guard);
         return () => window.removeEventListener("beforeunload", guard);
     }, [dirty]);
-    // The header's document select: another layout, or a fresh one, without
-    // leaving the window (the dirty guard asks first).
-    const switchTo = (id) => {
-        if (id === (saved?.id || layoutId)) return;
-        if (dirty && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · escolha de novo para descartar."); return; }
-        onSwitch?.(id);
-    };
-    const others = rows.map(normalizeLayout).filter((l) => l.id).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 
     // ---- The canvas: pointer moves in % of the screen box ----
     const pct = (e) => {
@@ -188,17 +169,15 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
         if (!d.moved && Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) return;
         d.moved = true;
         const raw = d.handle ? resizeRect(d.rect0, d.handle, dx, dy) : moveRect(d.rect0, dx, dy);
-        const others = draft.elements.filter((x) => x.id !== d.id);
-        const snapped = e.altKey ? { rect: raw, guides: [] } : snapRect(raw, others, { resize: d.handle });
+        const rest = draft.elements.filter((x) => x.id !== d.id);
+        const snapped = e.altKey ? { rect: raw, guides: [] } : snapRect(raw, rest, { resize: d.handle });
         setGuides(snapped.guides);
         setEl(d.id, snapped.rect);
     };
     const endDrag = () => { if (drag.current?.moved) setConfirm(null); drag.current = null; setGuides([]); };
 
-    // Keys: arrows nudge the selected element, Delete removes it, Ctrl+D
-    // duplicates it; Esc leaves a field, closes a picker, drops the
-    // selection, then leaves the editor (asking once if there are changes);
-    // Ctrl+S saves.
+    // Keys: arrows nudge, Delete removes, Ctrl+D duplicates, Ctrl+S saves;
+    // Esc steps out (field, picker, selection, then the window).
     const keysRef = useRef(null);
     keysRef.current = (e) => {
         if (document.querySelector(".console .scrim")) return;
@@ -226,21 +205,15 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
         return () => window.removeEventListener("keydown", onKey, true);
     }, []);
 
-    // What the canvas shows: what is on air when something is (and the
-    // operator did not ask for the sample), else a sample song with a
-    // service 42 minutes in and a Setlist.
+    // What the canvas shows: what is on air when something is, else a sample
+    // song 42 minutes into a service with a Setlist.
     const madeAt = useRef(now);
-    const sample = useMemo(() => ({ ...sampleLive(madeAt.current), session: { startedAt: madeAt.current - 42 * 60000 } }), []);
+    const sampleDoc = useMemo(() => ({ ...sampleLive(madeAt.current), session: { startedAt: madeAt.current - 42 * 60000 } }), []);
     const liveOn = liveState && mainLayer(liveState) !== "none" ? liveState : null;
-    const live = source === "sample" || !liveOn ? sample : { ...liveOn, session: liveOn.session || sample.session };
-
-    // The Ver como context: the chosen output's OutputPref (and its theme),
-    // applied the way the real page applies them — prefState + the kp-out
-    // vars for renderer outputs (as OutputScreen), only the Escala for Palco
-    // and Pastor (their pages pass scale to LayoutRenderer).
-    const ctxPref = viewAs ? normalizePref(prefRows.find((r) => r.screen_path === viewAs) || null) : null;
-    const ctxRenderer = Boolean(ctxPref) && PREF_OUTPUTS.includes(viewAs);
-    const ctxTheme = ctxRenderer && ctxPref.themeId ? themes.find((t) => t.id === ctxPref.themeId) || null : null;
+    const live = source === "sample" || !liveOn ? sampleDoc : { ...liveOn, session: liveOn.session || sampleDoc.session };
+    // The preview is always THIS screen, with its real settings: prefState +
+    // the kp-out vars (renderer pages), the Escala alone (Palco e Pastor).
+    const ctxTheme = renderer && pref.themeId ? themes.find((t) => t.id === pref.themeId) || null : null;
 
     const upload = async (file, apply) => {
         if (!file) return;
@@ -249,35 +222,47 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
     const pictures = media.filter((m) => (m.type === "image" || m.type === "gif") && !m.missing);
     const nameOf = (url) => media.find((m) => m.file_url === url)?.title || decodeURIComponent(String(url).split("/").pop() || "imagem");
 
-    if (error) return <div className="col center"><Panel title="Editor de layout"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div className="pl-pad"><Btn onClick={onClose}>Fechar</Btn></div></Panel></div>;
-    if (!draft) return <div className="col center"><Panel title="Editor de layout"><Empty title="Abrindo…" /></Panel></div>;
-
     const type = selected ? typeOf(selected.type) : null;
     const num = (el, k, v, lo, hi) => { const n = Number(v); if (Number.isFinite(n)) setEl(el.id, { [k]: Math.min(hi, Math.max(lo, n)) }); };
+    const cLike = { say, now, live: liveState };
+
+    const screensMenu = (
+        <div className="col" style={{ flex: "0 0 190px", minWidth: 170 }}>
+            <Panel title="Telas" bodyStyle={{ overflow: "auto" }}>
+                {EDITOR_SCREENS.map((p) => {
+                    const r = prefRows.find((x) => x.screen_path === p) || null;
+                    const look = outputLook(p, r);
+                    return <Row key={p} single icon={look.icon} title={look.name} className={p === path ? "is-selected" : ""} onClick={() => switchTo(p)} />;
+                })}
+            </Panel>
+        </div>
+    );
 
     return (
         <>
+            {screensMenu}
+            <div className="kx-gap" />
             <div className="col nv-l" style={{ flex: "0 1 400px", minWidth: 340 }}>
-                <Panel title={<>Layout <span className="kx-count">· {draft.name || "Novo layout"}{dirty ? " · não salvo" : ""}</span></>} actions={<>
-                    {/* Another layout, or a fresh one, without leaving the window. */}
-                    <select className="pl-input le-use" value={saved?.id || ""} onChange={(e) => switchTo(e.target.value || "new")} aria-label="Trocar de layout" title="Editar outro layout">
-                        {!saved && <option value="">{draft.name || "Novo layout"}</option>}
-                        <option value="new">Novo layout…</option>
-                        {others.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                    </select>
-                    {saved && <Btn small kind={confirm === "delete" ? "air" : ""} onClick={removeLayout}>{confirm === "delete" ? "Excluir mesmo" : "Excluir"}</Btn>}
+                <Panel title={<>Tela <span className="kx-count">· {name}{dirty ? " · não salvo" : ""}</span></>} actions={<>
+                    {draft && <Btn small kind={confirm === "reset" ? "air" : ""} onClick={resetToPage}>{confirm === "reset" ? "Voltar mesmo" : "Voltar à página padrão"}</Btn>}
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
                     <div className="nv-scroll">
+                        {isStream && <div className="listhead"><span className="kx-meta">A Transmissão é uma legenda sobre a live, sem canvas: só os ajustes abaixo.</span></div>}
+                        {!isStream && !draft && (
+                            <div className="listhead" style={{ flexWrap: "wrap", gap: 6 }}>
+                                <span className="kx-meta">{name} usa a página padrão. Desenhe para mover e redimensionar cada elemento.</span>
+                                <Btn small kind="brand" onClick={() => startFrom("seed")}><Icon name="edit" />Desenhar esta tela</Btn>
+                                <Btn small onClick={() => startFrom("zero")}>Começar do zero</Btn>
+                            </div>
+                        )}
+                        {draft && <>
                         <div className="frm nv-frm">
-                            <span className="k">Nome</span><Field icon={null} value={draft.name} onChange={(v) => set({ name: v.slice(0, 60) })} placeholder="Ex.: Palco · banda" />
-                            <span className="k">Categoria</span><Seg small value={draft.category} options={LAYOUT_CATEGORIES} onChange={(v) => set({ category: v })} />
                             <span className="k">Fundo</span>
                             <span className="nv-inline">
                                 <input type="color" className="ed-color" value={draft.background.color || "#101014"} onChange={(e) => set({ background: { ...draft.background, color: e.target.value } })} aria-label="Cor de fundo" title="Cor de fundo" />
                                 {draft.background.color && <Btn small onClick={() => set({ background: { ...draft.background, color: "" } })}>Cor padrão</Btn>}
                                 <Switch on={draft.background.song_image} onChange={(on) => set({ background: { ...draft.background, song_image: on } })} label="Imagem da música no fundo" />
-                                <span className="kx-meta">imagem da música</span>
                             </span>
                             {draft.background.song_image && <><span className="k">Escurecer</span><Seg small value={String(draft.background.dim)} options={DIMS} onChange={(v) => set({ background: { ...draft.background, dim: Number(v) } })} /></>}
                         </div>
@@ -285,7 +270,6 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
                         <div className="listhead"><span className="kx-section">Elementos <span className="kx-count">· {draft.elements.length}</span></span><span style={{ flex: 1 }} /><Btn small on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn></div>
                         {adding && (
                             <div className="nv-pick le-types">
-                                {/* By what the element is about (layouts.js ELEMENT_GROUPS). */}
                                 {ELEMENT_GROUPS.map(([g, label]) => (
                                     <React.Fragment key={g}>
                                         <div className="kx-menu-h"><span className="kx-section">{label}</span></div>
@@ -302,7 +286,7 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
                                     actions={<>
                                         <IconBtn name="chevron-up" small title="Trazer para a frente" onClick={(e) => { e.stopPropagation(); set({ elements: reorderElement(draft.elements, el.id, 1) }); }} />
                                         <IconBtn name="chevron-down" small title="Enviar para trás" onClick={(e) => { e.stopPropagation(); set({ elements: reorderElement(draft.elements, el.id, -1) }); }} />
-                                        <IconBtn name="x" small title="Tirar do layout" onClick={(e) => { e.stopPropagation(); remove(el.id); }} />
+                                        <IconBtn name="x" small title="Tirar da tela" onClick={(e) => { e.stopPropagation(); remove(el.id); }} />
                                     </>} />
                             );
                         })}
@@ -326,9 +310,6 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
                                     <select className="pl-input" value={selected.when} onChange={(e) => setEl(selected.id, { when: e.target.value })} aria-label="Quando aparece">
                                         {WHEN.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                                     </select>
-                                    {/* The text look, only for the elements that draw text
-                                        (layouts.js LOOK_TYPES): Projeção, monitor, logo,
-                                        imagem e progresso take none of these fields. */}
                                     {LOOK_TYPES.has(selected.type) && <>
                                         <span className="k">Rótulo</span><Field icon={null} value={selected.label} onChange={(v) => setEl(selected.id, { label: v.slice(0, 24) })} placeholder="Ex.: Próximo (opcional)" />
                                         <span className="k">Texto</span>
@@ -376,48 +357,52 @@ export default function LayoutEditor({ say, live: liveState, now, layoutId, forP
                                 )}
                             </>
                         )}
+                        </>}
+                        {/* The screen's visual settings, in the same window
+                            (content, Mostrar, theme, margins…). */}
+                        <div className="listhead"><span className="kx-section">Ajustes <span className="kx-count">· valem também para as telas na rede desta página</span></span></div>
+                        <OutputPrefCard inEditor output={{ key: path, label: name }} row={row} themes={themes} c={cLike} />
                     </div>
-                    <div className="nv-foot">
-                        <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
-                        <Btn kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar layout</Btn>
-                    </div>
+                    {draft && !isStream && (
+                        <div className="nv-foot">
+                            <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
+                            <Btn kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar a tela</Btn>
+                        </div>
+                    )}
                 </Panel>
             </div>
             <div className="kx-gap" />
             <div className="col center">
                 <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={<>
-                    {/* Which output's real settings dress the preview. */}
-                    <select className="pl-input le-use" value={viewAs} onChange={(e) => setViewAs(e.target.value)} aria-label="Ver como a saída" title="Pré-visualizar com os ajustes reais de uma saída (Mostrar, tema, escala, margens)">
-                        <option value="">Ver como: tela pura</option>
-                        {USE_ON.map((p) => <option key={p} value={p}>Ver como: {nameOfOutput(p)}</option>)}
-                    </select>
                     <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                    <div className="le-stage">
-                        <div ref={screenRef} className="le-screen" onPointerDown={() => setSel(null)}>
-                            <div className={`le-fill ${ctxRenderer ? "kp-out" : ""}`} style={ctxRenderer ? prefVars(ctxPref) || undefined : undefined}>
-                                <LayoutRenderer layout={draft} live={live} screenState={ctxRenderer ? prefState(viewAs, live, ctxPref, ctxTheme) : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} scale={!ctxRenderer && ctxPref ? ctxPref.scale : undefined} embed ghost />
-                            </div>
-                            <div className="le-over" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
-                                {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}
-                                {draft.elements.map((el) => (
-                                    <div key={el.id} className={`le-hit ${sel === el.id ? "is-sel" : ""}`} style={{ left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%` }}
-                                        title={typeOf(el.type)?.name} onPointerDown={(e) => startDrag(e, el)} onDoubleClick={() => setSel(el.id)}>
-                                        {sel === el.id && HANDLES.map((h) => <i key={h} className={`le-h ${h}`} onPointerDown={(e) => startDrag(e, el, h)} />)}
-                                    </div>
-                                ))}
+                    {isStream || !draft ? (
+                        <Empty icon={isStream ? "text" : "monitor"} title={isStream ? "Sem canvas" : "A página padrão"}>
+                            {isStream ? "A legenda da Transmissão segue os ajustes ao lado." : "Esta tela desenha a própria página. Use \"Desenhar esta tela\" para um desenho próprio."}
+                        </Empty>
+                    ) : (
+                        <div className="le-stage">
+                            <div ref={screenRef} className="le-screen" onPointerDown={() => setSel(null)}>
+                                <div className={`le-fill ${renderer ? "kp-out" : ""}`} style={renderer ? prefVars(pref) || undefined : undefined}>
+                                    <LayoutRenderer layout={draft} live={live} screenState={renderer ? prefState(path, live, pref, ctxTheme) : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} scale={!renderer ? pref.scale : undefined} embed ghost />
+                                </div>
+                                <div className="le-over" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
+                                    {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}
+                                    {draft.elements.map((el) => (
+                                        <div key={el.id} className={`le-hit ${sel === el.id ? "is-sel" : ""}`} style={{ left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%` }}
+                                            title={typeOf(el.type)?.name} onPointerDown={(e) => startDrag(e, el)} onDoubleClick={() => setSel(el.id)}>
+                                            {sel === el.id && HANDLES.map((h) => <i key={h} className={`le-h ${h}`} onPointerDown={(e) => startDrag(e, el, h)} />)}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div className="listhead nv-note">
-                        <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã. Elementos escondidos agora aparecem esmaecidos.{viewAs === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o layout." : ""}</span>
-                        <span style={{ flex: 1 }} />
-                        {usedOn.length > 0 && <span className="kx-meta">Em uso: {usedOn.map(nameOfOutput).join(", ")}</span>}
-                        <select className="pl-input le-use" value="" disabled={busy} onChange={(e) => { if (e.target.value) putOn(e.target.value); }} aria-label="Usar este layout numa saída" title="Salva e põe este layout na saída escolhida">
-                            <option value="">Usar em…</option>
-                            {USE_ON.filter((p) => !usedOn.includes(p)).map((p) => <option key={p} value={p}>{nameOfOutput(p)}</option>)}
-                        </select>
-                    </div>
+                    )}
+                    {draft && !isStream && (
+                        <div className="listhead nv-note">
+                            <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã. Elementos escondidos agora aparecem esmaecidos.{path === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o desenho." : ""}</span>
+                        </div>
+                    )}
                 </Panel>
             </div>
         </>

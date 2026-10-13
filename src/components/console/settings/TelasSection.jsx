@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import Icon from "../Icon";
-import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 import { Btn, Empty, Seg } from "../kx";
 import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading, FormRow } from "./parts";
 import { useLibrary } from "../useConsoleData";
@@ -12,11 +11,10 @@ import { ringBell } from "@/lib/bell";
 import { keryx } from "@/api/keryxClient";
 import { buildOutputsFile, readOutputsFile, prefWrites, fileName } from "@/lib/outputsFile";
 import { useLayoutRows } from "@/hooks/useLayout";
-import { normalizeLayout, LAYOUT_CATEGORIES, duplicateLayout, layoutFields } from "@/lib/layouts";
 import { outputTab } from "@/lib/console/settings";
 
 // Telas e saídas' tabs after the outputs (settings.js TELAS_TABS, with icons).
-const TABS = [["layouts", "Layouts das telas", "layers"], ["geral", "Som e arquivo", "volume"]];
+const TABS = [["geral", "Som e arquivo", "volume"]];
 
 const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
 
@@ -38,44 +36,6 @@ function SomBlock({ c }) {
     );
 }
 
-const CATEGORY = Object.fromEntries(LAYOUT_CATEGORIES);
-const CAT_ICON = { palco: "monitor", pastor: "tablet", publico: "projector", outro: "layers" };
-
-// Layouts das telas: the operator's layouts (src/lib/layouts.js), each
-// with the outputs using it; Novo, Editar (the LayoutEditor view, through
-// `onOpenLayout`), Duplicar and Excluir (an output using a deleted layout
-// goes back to its page's own screen).
-function LayoutsBlock({ c, rows, prefRows, onOpenLayout }) {
-    const confirmAsk = useConfirm();
-    const layouts = rows.map(normalizeLayout).filter((l) => l.id).sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name, "pt-BR"));
-    const usedBy = (id) => prefRows.filter((r) => r.layout_id === id).map((r) => outputLook(r.screen_path, r).name);
-    const duplicate = (l) => keryx.entities.ScreenLayout.create(layoutFields(duplicateLayout(l))).then((row) => { c.say(`Layout "${row.name}" criado.`); onOpenLayout?.(row.id); }).catch((err) => c.say(err?.message || "Não foi possível duplicar o layout."));
-    const remove = async (l) => {
-        if (!(await confirmAsk(deleteQuestion("o layout", l.name, "As saídas que o usavam voltam ao padrão.")))) return;
-        keryx.entities.ScreenLayout.delete(l.id).then(() => c.say(`Layout "${l.name}" excluído.${usedBy(l.id).length ? " As saídas que o usavam voltaram ao padrão." : ""}`)).catch((err) => c.say(err?.message || "Não foi possível excluir o layout."));
-    };
-    return (
-        <>
-            <CfgKey k="Layouts das telas" className="listhead"><span className="kx-section">O desenho de cada saída</span>
-                <span style={{ flex: 1 }} />
-                <Btn small onClick={() => onOpenLayout?.("new")} title="Desenhar uma tela: onde ficam o relógio, o timer, a letra, a próxima…"><Icon name="plus" />Novo layout</Btn>
-            </CfgKey>
-            {!layouts.length && <div className="listhead"><span className="kx-meta">Nenhum layout seu ainda. Cada saída tem a tela padrão e os modelos (Palco, Pastor, Projeção com timer no canto); Novo layout desenha uma tela do zero, e Ajustes › Layout, numa saída, duplica um modelo para editar.</span></div>}
-            {layouts.map((l) => {
-                const uses = usedBy(l.id);
-                return (
-                    <div key={l.id} className="kx-row cfg-out">
-                        <span className="kx-glyph"><Icon name={CAT_ICON[l.category] || "layers"} /></span>
-                        <div className="kx-row-main"><div className="kx-row-title">{l.name}</div><div className="kx-row-meta">{CATEGORY[l.category]} · {l.elements.length} {l.elements.length === 1 ? "elemento" : "elementos"}{uses.length ? ` · em ${uses.join(", ")}` : ""}</div></div>
-                        <Btn small onClick={() => onOpenLayout?.(l.id)}><Icon name="edit" />Editar</Btn>
-                        <Btn small onClick={() => duplicate(l)}><Icon name="copy" />Duplicar</Btn>
-                        <Btn small onClick={() => remove(l)}>Excluir…</Btn>
-                    </div>
-                );
-            })}
-        </>
-    );
-}
 
 // Telas e saídas (owner's request 2026-10-12: shorter, one tab per output):
 // the monitors as a diagram on top; then a vertical tab per output (its
@@ -85,7 +45,7 @@ function LayoutsBlock({ c, rows, prefRows, onOpenLayout }) {
 // the chime with the settings file. The tab is Configurações' (?config=
 // telas/<tab>, settings.js) so the search lands on it. The idle look of the
 // screens is in Aparência. The placement rules live in electron/outputs.cjs.
-export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenLayout }) {
+export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenScreen }) {
     const displays = useBridge("displays");
     const [state, , setState, readError] = usePoll(() => displays?.list(), 3000);
     const { themes } = useLibrary();
@@ -263,11 +223,10 @@ export default function TelasSection({ c, tab = null, setTab = () => {}, onOpenL
                                 )}
                             </div>
                             <CfgKey k="Ajustes" className="listhead"><span className="kx-section">Ajustes <span className="kx-count">· valem também para as telas na rede desta página</span></span></CfgKey>
-                            <OutputPrefCard key={output.key} output={output} row={prefRow(output.key)} themes={themes} c={c} onOpenLayout={onOpenLayout} />
+                            <OutputPrefCard key={output.key} output={output} row={prefRow(output.key)} themes={themes} c={c} onOpenScreen={onOpenScreen} />
                         </>
                     )}
-                    {selKey === "layouts" && <LayoutsBlock c={c} rows={layoutRows} prefRows={prefRows} onOpenLayout={onOpenLayout} />}
-                    {selKey === "geral" && (
+                                        {selKey === "geral" && (
                         <>
                             <div className="listhead"><span className="kx-section">Arquivo de ajustes</span>
                                 <span style={{ flex: 1 }} />
