@@ -231,6 +231,12 @@ button:focus-visible {
   }
 }
 
+/* Scrollbars follow the console theme: thin, quiet track, warm thumb. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong, #4a4840) transparent;
+}
+
 /* Auto-hide scrollbars on scrollable containers for native mobile feel */
 .overflow-y-auto,
 .overflow-auto,
