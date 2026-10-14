@@ -888,10 +888,10 @@
    the card sits flush, not indented under a row as in Configurações. */
 .console .nv-scroll.cfg .frm { grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-1) var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); }
 .console .nv-scroll.cfg .cfg-outprefs { margin: 0; border-left: 0; background: none; border-radius: 0; }
-.console .nv-frm { display: grid; grid-template-columns: var(--win-label, 96px) 1fr; gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .nv-frm { display: grid; grid-template-columns: var(--win-label, 96px) minmax(0, 1fr); gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2) var(--space-2); }
 .console .nv-frm .k { font-size: 11px; color: var(--fg-3); }
 .console .nv-frm .kx-field { height: 26px; min-width: 0; }
-.console .nv-frm .kx-seg { justify-self: start; max-width: 100%; }
+.console .nv-frm .kx-seg { justify-self: start; max-width: 100%; height: auto; flex-wrap: wrap; row-gap: 2px; }
 .console .nv-frm .kx-seg > button { white-space: nowrap; padding: 0 6px !important; }
 .console .nv-color { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); }
 .console .nv-sub { height: auto; min-height: 44px; }

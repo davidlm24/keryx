@@ -1201,14 +1201,7 @@ export default function Console() {
                             onEditMaterial={(id, kid) => setWin((s) => winPush(s, { page: "material", props: { id: id || null, classId: kid || "" } }, "Escola bíblica"))} />;
                         else if (entry.page === "material") page = <MaterialView c={c} materialId={entry.props.id} classId={entry.props.classId} media={data.media} onClose={onClose} escRef={escRef} active={active} />;
                         else if (entry.page === "reports") page = <ReportsView c={c} onClose={onClose} escRef={escRef} />;
-                        else if (entry.page === "theme") page = (
-                            <>
-                                <WinBar title={PAGE_TITLES.theme} detach={() => detachEditor(entry)} />
-                                <div className="win-body is-ed">
-                                    <ThemeEditor themeId={entry.props.id} say={c.say} now={c.now} onClose={onClose} onSaved={(row) => { if (row?.id && entry.props.id !== row.id) setWin((s) => winReplaceTop(s, { id: row.id }, { keep: true })); }} onSwitch={(id) => setWin((s) => winReplaceTop(s, { id: id || "new" }))} escRef={escRef} active={active} />
-                                </div>
-                            </>
-                        );
+                        else if (entry.page === "theme") page = <ThemeEditor hosted themeId={entry.props.id} say={c.say} now={c.now} onClose={onClose} onSaved={(row) => { if (row?.id && entry.props.id !== row.id) setWin((s) => winReplaceTop(s, { id: row.id }, { keep: true })); }} onSwitch={(id) => setWin((s) => winReplaceTop(s, { id: id || "new" }))} escRef={escRef} active={active} onDetach={() => detachEditor(entry)} />;
                         else if (entry.page === "screen") page = (
                             <>
                                 <WinBar title={PAGE_TITLES.screen} detach={() => detachEditor(entry)} />
