@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useChurch } from "@/hooks/useChurch";
 import { useQuery } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
@@ -34,7 +34,7 @@ function Bars({ rows, empty }) {
 // the console: what was sent live (SongHistory, written by the console's
 // send), by period — the songs most projected, by category, cultos per
 // month, the recent plays, and the CCLI report to copy or save.
-export default function ReportsView({ c, onClose }) {
+export default function ReportsView({ c, onClose, escRef }) {
     const church = useChurch();
     const [period, setPeriod] = useState("90");
     const [q, setQ] = useState("");
@@ -65,18 +65,9 @@ export default function ReportsView({ c, onClose }) {
     };
 
     // Esc goes back to the console (never ends the projection from here).
-    const closeRef = useRef(onClose);
-    closeRef.current = onClose;
-    useEffect(() => {
-        const onKey = (e) => {
-            if (e.key !== "Escape" || document.querySelector(".console .scrim")) return;
-            if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) return;
-            e.preventDefault(); e.stopPropagation();
-            closeRef.current();
-        };
-        window.addEventListener("keydown", onKey, true);
-        return () => window.removeEventListener("keydown", onKey, true);
-    }, []);
+    // Esc comes routed from the console (keys.js ESC_ORDER "view"): it
+    // just closes the view.
+    if (escRef) escRef.current = () => onClose();
 
     return (
         <div className="col center rp">

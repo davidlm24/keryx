@@ -139,7 +139,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   principal says so and offers Restaurar (`applyThemeOnAir`) and Salvar
   como novo (an unnamed theme). Camadas' header **+** is a menu (owner 2026-10-14, the "Menus (+)"
   proposal): Sobreposição de texto, Logo da igreja, Relógio, Cronômetro,
-  Timer… (the Timers prontos), Texto livre… and Aviso rápido… — the tools
+  Timer… (the Timers prontos), Texto livre… and Aviso rápido… —
+  **Sobreposição de texto always makes a NEW
+  overlay** (owner 2026-10-14, "adicionar camadas a mais"), up to 5
+  (`OVERLAY_LIMIT` in `src/lib/console/overlays.js`, tested; the menu item
+  disables at the limit). Each overlay is its own row named by its text
+  ("Sobreposição", muted, while empty), with eye, local padlock, pencil
+  (Texto, Posição) and Excluir… via `useConfirm`; with 2+ the rows join
+  under a thin "Sobreposições · n" heading (`.kx-ovhead`) — the group's one
+  handle in `live.layerOrder` (the "overlays" key stays one entry; never
+  put single overlays in the order) — and dragging a row inside the group
+  only changes who draws on top among them (the top row is the END of
+  `live.overlays`: the renderer draws the list in order). Esc and Limpar
+  leave overlays alone (their own controls, like the Logo). The tools
   are prepared in the Prévia (`stageFromTool`), the aviso goes to the
   screens at once (`alert.show`); a text is asked with `askText`
   (PromptDialog.jsx; Esc closes it first). The Setlist's **+** is a menu
@@ -178,9 +190,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`themeSampleStage`, `stage.theme`: sending it only applies the theme's
   background, never the example text), a double click
   (or the menu's Editar, or Configurações › Temas) edits it in the Editor
-  de temas e layouts (its own window, `openEditor({ theme })`; the one-off
-  ThemeStudio overlay from 2026-10-13 was folded into it — don't bring a
-  second theme editor back),
+  de temas e telas (the console's floating dialog, `openEditor({ theme })`;
+  the one-off ThemeStudio overlay from 2026-10-13 was folded into it —
+  don't bring a second theme editor back),
   and "Salvar tema para a música" writes `Song.theme_id` for the song on air
   or in the Prévia. A Bible passage takes **the Bíblia's own theme**
   (`User.bible_theme_id`: "" = whatever the songs get now — the theme in
@@ -256,7 +268,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   planner (`ServicePlanner.jsx`), the media library (`MediaView.jsx`), the
   aviso editor (`NoticeEditor.jsx`), the Escola bíblica (`SchoolView.jsx`;
   it projects through the console's Prévia/Programa and every live key
-  works there) and Relatórios (`ReportsView.jsx`). The Bíblia is the
+  works there) and Relatórios (`ReportsView.jsx`). **Every view floats**
+  (owner 2026-10-14, "janelas flutuantes"): it opens as a dialog over the
+  live console (`.view-dialog` + `.view-scrim` in console.css, under
+  Configurações and the library; sizes `vd-media`/`vd-wide`/`vd-reports`),
+  never as a page replacing the dock — the view registers its close
+  request on Console's `viewEscRef` (prop `escRef`), Esc reaches it
+  through keys.js (`ESC_ORDER` "view", tested; an unsaved guard may ask
+  instead of closing, and the scrim click asks the same way) and the view
+  keeps no Esc listener of its own (its other keys — Ctrl+S, Mídia's
+  Enter/Delete — stay its listeners, deferring to
+  `.scrim:not(.view-scrim)`); while any view is open the Programa monitor
+  and the Multiview draw one still frame (`still` on CenterPanel — the
+  air itself never pauses). The Bíblia is the
   console's second environment (`BibleEnv.jsx`: Ler, Comparar, the Buscar field,
   notes). Where the modules go is the operator's: **each environment is a
   dock** (owner 2026-10-13, the "Disposição do console" prototype, model
@@ -435,8 +459,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background library, a popover, then
-  Configurações, then the Camadas drawer; views defer while a `.scrim` is
-  up) and with nothing
+  Configurações, then the floating view (routed to its close request),
+  then the Camadas drawer) and with nothing
   open ends at once (music on the audio channel keeps playing; the Fundo
   stays on screen, and the idle look shows only with no Fundo); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
@@ -565,10 +589,21 @@ um elemento novo é um entry em `ELEMENT_TYPES` + seu caso em `elementText`
 ou no `Body` do renderer; num renderer output o elemento **Projeção**
 desenha a vista da saída (`prefState`) e um desenho com *timer* tira a
 camada `tool` dela (`layoutHasTimer`).
-**O Editor é a janela das telas e dos temas** (2026-10-13): `/Editor`
-(`src/pages/Editor.jsx`; `openEditor({ screen|theme })` em
-`src/lib/editorWindow.js`, janela nomeada `keryx-editor`; aba no preview;
-nunca em NETWORK_SCREENS). O rodapé alterna **Temas | Telas**:
+**O Editor das telas e dos temas flutua na console** (owner 2026-10-14,
+"janelas flutuantes"; reverte a janela própria de 2026-10-13): todo
+`openEditor({ screen|theme })` (`src/lib/editorWindow.js`) cai no host que
+a console registra (`setEditorHost`) e abre o diálogo `.vd-editor` —
+quase tela cheia, camada própria do Esc (`ESC_ORDER` "editor", roteado ao
+guarda de não salvo do editor como as views), POR CIMA de Configurações
+(que fica aberta atrás e reaparece ao fechar) e por baixo da biblioteca,
+que ele mesmo abre; a biblioteca de onde se veio dá lugar. O corpo é um
+só, `EditorHost.jsx` (troca Temas | Telas, rodapé) — nunca um segundo
+editor. **"Destacar em janela"** (rodapé do diálogo; para quem edita
+vendo outro monitor) abre o mesmo EditorHost na janela de sempre:
+`/Editor` (`src/pages/Editor.jsx`; `openEditor({ …, detached: true })`,
+janela nomeada `keryx-editor`; aba no preview; nunca em NETWORK_SCREENS),
+com o guarda de fechar do Electron (closeGuard). O rodapé alterna
+**Temas | Telas**:
   - uma TELA (`ScreenEditor.jsx`): menu vertical com as telas
     (`EDITOR_SCREENS`), o canvas edita o design DELA com os ajustes reais
     da própria tela vestindo a prévia (prefState + kp-out, ou só a Escala

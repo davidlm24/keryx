@@ -49,7 +49,7 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
 // The Programa as four outputs at once (src/lib/console/multiview.js;
 // Programa › Multiview): in the Programa's place and size, a drop target and
 // a right-click menu like it. `rows` are the output health rows (Saídas).
-export default function MultiView({ live, now, logoUrl, tiles, rows = [], items = [], state, className = "", onPick, dropProps, children }) {
+export default function MultiView({ live, now, logoUrl, tiles, rows = [], items = [], state, className = "", onPick, dropProps, children, still = false }) {
     const looks = useRailViews();
     const church = useChurch();
     const moving = motionTile(tiles);
@@ -57,7 +57,7 @@ export default function MultiView({ live, now, logoUrl, tiles, rows = [], items 
         <div className={`kx-mon prog mx ${state ? `is-${state}` : ""} ${className}`} {...dropProps}>
             <div className="kx-mon-screen mx-grid" role="group" aria-label="Multiview: quatro saídas com o que está no ar">
                 {tiles.map((page, i) => (
-                    <Tile key={page} page={page} index={i} live={live} now={now} logoUrl={logoUrl} items={items} motion={i === moving}
+                    <Tile key={page} page={page} index={i} live={live} now={now} logoUrl={logoUrl} items={items} motion={!still && i === moving}
                         look={looks.find((l) => l.key === page) || { name: page, icon: "monitor" }} status={tileStatus(page, rows)} onPick={onPick} church={church} />
                 ))}
                 {children}

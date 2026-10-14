@@ -35,7 +35,8 @@ import SongEditor from "@/components/console/SongEditor";
 import ServicePlanner from "@/components/console/ServicePlanner";
 import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
-import { openEditor } from "@/lib/editorWindow";
+import { openEditor, setEditorHost } from "@/lib/editorWindow";
+import EditorHost from "@/components/editor/EditorHost";
 import { setIdleMode } from "@/lib/console/idle";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
@@ -61,6 +62,7 @@ import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presets
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
+import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
@@ -100,7 +102,8 @@ export default function Console() {
     const [playerPick, setPlayerPick] = useState(null);
     // The Bible environment's selection, as a stage: what Enter sends there.
     const bibleStageRef = useRef(null);
-    // Camadas' + (its panel header): adds the text overlay (Layers.jsx).
+    // Camadas' + (its panel header): adds a NEW text overlay, up to
+    // OVERLAY_LIMIT (Layers.jsx; owner 2026-10-14).
     const addOverlayRef = useRef(null);
     // Temas' + and library (its panel header): the strip's own menu (ThemeStrip.jsx).
     const themeMenuRef = useRef(null);
@@ -136,7 +139,24 @@ export default function Console() {
     const notice = view?.notice || null;
     const school = Boolean(view?.school);
     const reports = Boolean(view?.reports);
+    // Every view is a floating dialog over the live console (owner
+    // 2026-10-14, "janelas flutuantes"); none replaces the dock any more.
+    const dlgView = Boolean(view);
     const closeView = useCallback(() => setView(null), []);
+    // Floating views (owner 2026-10-14, "janelas flutuantes"): the planner,
+    // Mídia and the aviso editor open as dialogs over the live console
+    // (.view-dialog); the song editor, the Escola bíblica and Relatórios are
+    // still pages that replace the dock. The mounted floating view registers
+    // its close request here: Esc (keys.js ESC_ORDER "view") and the scrim
+    // click go through it, so an unsaved guard can ask instead of closing.
+    const viewEscRef = useRef(null);
+    useEffect(() => { if (!view) viewEscRef.current = null; }, [view]);
+    // The Editor de temas e telas: a floating dialog of its own layer
+    // (ESC_ORDER "editor"), over whatever opened it — Configurações stays
+    // open behind and is there again on close. { kind: "theme"|"screen", id }.
+    const [edDoc, setEdDoc] = useState(null);
+    const editorEscRef = useRef(null);
+    useEffect(() => { if (!edDoc) editorEscRef.current = null; }, [edDoc]);
     const setEnv = useCallback((v) => { setView(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
     // Configurações: a window over whatever is on screen (the console or a
     // view), with its section (and Aparência's tab); ?config=<section> opens
@@ -173,14 +193,22 @@ export default function Console() {
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
-    // The Editor de temas e layouts: its own window (src/lib/editorWindow.js)
-    // — the console stays exactly where it is; closing the window is the way
-    // back. Each screen owns its design (2026-10-13), so the Editor opens on
-    // a screen, never a catalog layout.
+    // The Editor de temas e telas: every openEditor call lands in this
+    // console's floating dialog (the host below; owner 2026-10-14), over
+    // whatever opened it — the library it may have come from gives way,
+    // Configurações stays behind. "Destacar em janela" goes back through
+    // openEditor with detached: true. Each screen owns its design
+    // (2026-10-13), so the Editor opens on a screen, never a catalog layout.
     const openScreen = useCallback((path) => {
         const r = openEditor({ screen: path || "/Projection" });
         if (r?.error) c.say(r.error);
     }, [c]);
+    useEffect(() => setEditorHost(({ theme, screen }) => {
+        setEdDoc(theme ? { kind: "theme", id: theme } : { kind: "screen", id: screen || "/Projection" });
+        setOpen(null);
+        closeLibrary(null);
+        return true;
+    }), [closeLibrary]);
     // The Escola bíblica sends through the KERYX environment's Prévia.
     const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setView({ school: true }); }, []);
     const openReports = useCallback(() => { setOpen(null); setView({ reports: true }); }, []);
@@ -719,7 +747,7 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && !cfg && quick === null && !view) {
+            if (env === "biblia" && !open && !cfg && quick === null && !view && !edDoc) {
                 const ch = quickJumpKey(e);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
@@ -729,14 +757,18 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, settings: cfg, drawer, edit: editing });
+                // "view" only when a floating view registered its close
+                // request; the page views still handle their own Esc.
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, editor: edDoc && editorEscRef.current, settings: cfg, view: view && viewEscRef.current, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
                     else if (top === "confirm") { if (ask) answerAsk(null); else answerConfirm(false); }
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
+                    else if (top === "editor") editorEscRef.current?.();
                     else if (top === "settings") setCfgAt(null);
+                    else if (top === "view") viewEscRef.current?.();
                     else if (top === "drawer") setDrawer(false);
                     else if (top === "edit") setEditing(false);
                     return;
@@ -747,14 +779,12 @@ export default function Console() {
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
             if ((libReq || confirmReq) && !["black", "logo"].includes(action)) return;
-            // The song editor handles its own keys (Esc, Space while marking);
-            // only the emergency keys reach the screens from there.
-            // So do the planner, the media library, the aviso editor and the
-            // reports (each closes itself on Esc). The Escola bíblica is a
-            // projecting view: every live key works there.
-            // Configurações is a window over the console: behind it, as behind
-            // the views, only the emergency keys (Tela preta, Logo) act.
-            if ((cfg || (view && !school)) && !["black", "logo"].includes(action)) return;
+            // Behind a floating view (and Configurações) only the emergency
+            // keys (Tela preta, Logo) act; a view's own keys (Mídia's Enter
+            // and Delete, the editors' Ctrl+S, Space while marking timings)
+            // are its own listeners. The Escola bíblica is the projecting
+            // view: every live key works there.
+            if ((cfg || edDoc || (view && !school)) && !["black", "logo"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -781,7 +811,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, edDoc, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm]);
     useEffect(() => { if (view) setEditing(false); }, [view]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -978,8 +1008,9 @@ export default function Console() {
         const at = menuAt(e);
         const tool = (mode, opts) => { const st = stageFromTool(mode, opts); c.setPrev(st); c.say(`${st.title} na Prévia · Enter envia (no lugar da letra no ar).`); };
         const logoOn = Boolean(c.cur?.logo?.visible);
+        const ovFull = (c.cur?.overlays?.length || 0) >= OVERLAY_LIMIT;
         openMenu(e, { title: "Adicionar camada", items: [
-            { label: "Sobreposição de texto", icon: "text", onSelect: () => addOverlayRef.current?.() },
+            { label: ovFull ? `Sobreposição de texto · máx. ${OVERLAY_LIMIT}` : "Sobreposição de texto", icon: "text", disabled: ovFull, onSelect: () => addOverlayRef.current?.() },
             { label: logoOn ? "Logo da igreja · no ar" : "Logo da igreja", icon: "logo", disabled: logoOn, onSelect: () => c.callOp("logo.set", { visible: true }).catch((err) => c.say(err?.message || "Não foi possível mostrar o logo.")) },
             "sep",
             { label: "Relógio", icon: "clock", onSelect: () => tool("clock") },
@@ -1054,7 +1085,7 @@ export default function Console() {
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} player={playerDocked ? playerSlot : null}
-                items={playable} multiview={multiview}
+                items={playable} multiview={multiview} still={Boolean(view || edDoc)}
                 onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
                 onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
                     { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
@@ -1137,25 +1168,45 @@ export default function Console() {
                 <div className="kx-banner is-rh" role="status"><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             <div className="main" ref={mainRef}>
-                {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} />}
-                {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { songSaved(row); if (editSong === "new" && row?.id) setView({ song: row.id }); }} />}
-                {school && <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={closeView} />}
-                {reports && <ReportsView c={c} onClose={closeView} />}
-                {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}
-                {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} />}
-                {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)}
+                {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu }} />}
-                {!view && env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
+                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
             </div>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
+
+            {/* The floating views: a dialog over the live console; the scrim
+                click asks the view to close, exactly as Esc does. */}
+            {dlgView && <div className="scrim is-dim view-scrim" onClick={() => viewEscRef.current?.()} />}
+            {dlgView && (
+                <div className={`view-dialog ${mediaView ? "vd-media" : ""} ${editSong || school ? "vd-wide" : ""} ${reports ? "vd-reports" : ""}`} role="dialog" aria-modal="true"
+                    aria-label={planner ? "Planejar o culto" : mediaView ? "Mídia" : notice ? "Aviso" : editSong ? "Editor de música" : school ? "Escola bíblica" : "Relatórios"}>
+                    {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} escRef={viewEscRef} />}
+                    {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} escRef={viewEscRef} />}
+                    {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} escRef={viewEscRef} />}
+                    {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { songSaved(row); if (editSong === "new" && row?.id) setView({ song: row.id }); }} escRef={viewEscRef} />}
+                    {school && <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={closeView} escRef={viewEscRef} />}
+                    {reports && <ReportsView c={c} onClose={closeView} escRef={viewEscRef} />}
+                </div>
+            )}
 
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} onWhatsNew={openWhatsNew} />}
-            {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {/* The Editor de temas e telas: a floating dialog over whatever
+                opened it (Configurações stays behind); the scrim click asks
+                the editor to close, exactly as Esc does. */}
+            {edDoc && <div className="scrim is-dim ed-scrim" onClick={() => editorEscRef.current?.()} />}
+            {edDoc && (
+                <div className="view-dialog vd-editor" role="dialog" aria-modal="true" aria-label="Editor de temas e telas">
+                    <EditorHost key={`${edDoc.kind}:${edDoc.id}`} initial={edDoc} say={c.say} live={c.cur} now={c.now} media={data.media} themes={data.themes}
+                        onClose={() => setEdDoc(null)} escRef={editorEscRef} closeLabel="Fechar"
+                        onDetach={(doc) => { setEdDoc(null); const r = openEditor({ [doc.kind === "theme" ? "theme" : "screen"]: doc.id, detached: true }); if (r?.error) c.say(r.error); }} />
+                </div>
+            )}
+            {open && <div className={`scrim ${cfg ? "over-cfg" : dlgView ? "over-view" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
@@ -1184,7 +1235,7 @@ export default function Console() {
                 const right = roomR > roomL;
                 return (
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
-                    <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
+                    <Panel title="Camadas" actions={<><IconBtn name="plus" title="Adicionar: sobreposição, logo, relógio, timer, texto livre, aviso rápido" small onClick={camadasMenu} /><IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} /></>}>
                         {layers}
                     </Panel>
                 </div>

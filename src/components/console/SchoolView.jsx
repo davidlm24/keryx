@@ -21,7 +21,7 @@ const blankMaterial = (classRow) => ({ title: "", type: "slides", subject: "", c
 // click prepares a material, Enter or a double click sends it, a quiz's
 // answer is the next slide (→). Materials are edited here; they also go
 // into the Setlist (planner, "Setlist" here) and the palette.
-export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, onClose }) {
+export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, onClose, escRef }) {
     const client = useQueryClient();
     useEffect(() => keryx.entities.BibleSchoolClass.subscribe(() => client.invalidateQueries({ queryKey: CLASSES })), [client]);
     useEffect(() => keryx.entities.BibleMaterial.subscribe(() => client.invalidateQueries({ queryKey: MATERIALS })), [client]);
@@ -95,18 +95,19 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         try { await keryx.entities.BibleMaterial.delete(editing.id); setEditing(null); refresh(); c.say("Material excluído."); } catch (err) { fail(err); }
     };
 
-    // Esc: leaves a field, then the editor, then the view. Ctrl+S saves the
-    // material being edited. Every other key is the console's (Enter sends,
-    // ←/→ walk the slides, B, L, C).
+    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
+    // whatever is open over the view closes first, and a field's Esc
+    // already blurred): close the material editor, then the view. Ctrl+S
+    // saves the material being edited — the view's own key; it defers only
+    // to a dialog over the view (its own scrim does not count). Every other
+    // key is the console's (Enter sends, ←/→ walk the slides, B, L, C).
+    if (escRef) escRef.current = () => { if (editing) setEditing(null); else onClose(); };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        if (document.querySelector(".console .scrim")) return;
-        if (editing && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); saveMaterial(); return; }
-        if (e.key !== "Escape") return;
-        const field = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
-        if (field) return; // the console's Esc leaves the field
+        if (!(editing && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
+        if (document.querySelector(".console .scrim:not(.view-scrim)")) return;
         e.preventDefault(); e.stopPropagation();
-        if (editing) setEditing(null); else onClose();
+        saveMaterial();
     };
     useEffect(() => {
         const onKey = (e) => keysRef.current(e);

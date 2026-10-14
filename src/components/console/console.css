@@ -99,10 +99,13 @@
 .console .ctx-menu .kx-menu-item:disabled:hover { background: none; }
 .console .scrim { position: absolute; inset: 0; z-index: 25; }
 .console .scrim.is-dim { background: #0d0d0c99; }
-.console .dialog { position: absolute; z-index: 40; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 460px; max-width: calc(100vw - 24px); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); color: var(--fg-1); font-size: 13px; line-height: 18px; }
+/* Every floating dialog (Configurações, the background library, the internet
+   lyrics, confirm/prompt, the palette) wears --dialog: the menus' ring at 60%
+   — visible but quieter — with a lighter shadow (owner 2026-10-14). */
+.console .dialog { position: absolute; z-index: 40; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 460px; max-width: calc(100vw - 24px); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); color: var(--fg-1); font-size: 13px; line-height: 18px; }
 .console .dialog .acts { display: flex; justify-content: flex-end; gap: var(--space-2); }
 /* The command palette: left-anchored over the source columns, never over the Programa (its width comes from Console). */
-.console .palette { position: absolute; z-index: 40; left: 50%; transform: translateX(-50%); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 620px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); display: flex; flex-direction: column; max-height: min(640px, calc(100% - var(--topbar) - 64px)); }
+.console .palette { position: absolute; z-index: 40; left: 50%; transform: translateX(-50%); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 620px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); display: flex; flex-direction: column; max-height: min(640px, calc(100% - var(--topbar) - 64px)); }
 .console .palette .kx-field { height: 40px; margin: var(--space-1); background: var(--bg-3); }
 .console .palette .kx-field input { font-size: 13px; }
 .console .palette .res { overflow: auto; padding: 0 var(--space-1) var(--space-1); }
@@ -306,6 +309,17 @@
 .console .temas-panel .tm { padding: 0 var(--space-2) var(--space-2); }
 /* The pencil on a layer: where it is edited; shown on hover or focus. */
 .console .kx-layer { grid-template-columns: 16px 20px 20px minmax(0, 1fr) 24px; }
+/* Camadas › Sobreposições (owner 2026-10-14): one row per overlay, its text
+   as the name; with 2+ they join under a thin heading — the group's handle in
+   the layer order — behind an inset bar. The top row draws on top on screen. */
+.console .kx-ovhead { display: flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 var(--space-3) 0 var(--space-2); cursor: grab; }
+.console .kx-ovhead .kx-glyph { color: var(--fg-3); display: inline-flex; justify-content: center; width: 16px; }
+.console .kx-ovhead .kx-section { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .kx-ovhead .kx-count { font-weight: 400; color: var(--fg-3); }
+.console .kx-ovhead.is-dragging { opacity: .4; }
+.console .kx-ovhead.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
+.console .kx-layer.is-ov { grid-template-columns: 10px 20px 20px minmax(0, 1fr) 24px; width: auto; margin-left: 14px; padding-left: 6px; border-left: 2px solid var(--line-strong); }
+.console .kx-layer .kx-layer-name.is-ph { color: var(--fg-3); }
 .console .kx-layer .layer-edit { opacity: 0; transition: opacity .12s; }
 .console .kx-layer:hover .layer-edit, .console .kx-layer .layer-edit:focus-visible { opacity: 1; }
 /* Its settings open under the list: the pencil stays, marked. */
@@ -597,7 +611,7 @@
 .console .addmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 45; width: 230px; }
 
 /* Lyrics from the web (LyricsSearch): the Holyrics-style search dialog. */
-.console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); color: var(--fg-1); }
+.console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); color: var(--fg-1); }
 .console .lyr-h { display: flex; align-items: center; gap: var(--space-2); height: 40px; padding: 0 var(--space-2) 0 var(--space-3); border-bottom: 1px solid var(--line); flex: none; }
 .console .lyr-q { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); flex: none; }
 .console .lyr-q .kx-field { flex: 1; height: 36px; background: var(--bg-3); }
@@ -614,13 +628,34 @@
 .console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line); flex: none; font-size: 12px; }
 .console .lyr-legal { max-width: 360px; }
 
+/* ---------- Floating views (owner 2026-10-14, "janelas flutuantes") ---------- */
+/* The planner, Mídia and the aviso editor open as dialogs over the live
+   console, their own columns inside on the console's ground (--bg-0), so
+   their panels read as panels. Under Configurações (33), the library (37)
+   and the confirm question (44); Esc reaches them through the console
+   (keys.js ESC_ORDER "view"), never a listener of their own. */
+.console .view-scrim { z-index: 29; }
+.console .scrim.over-view { z-index: 31; } /* a popover opened over a floating view backdrops above it, as over-cfg does */
+.console .view-dialog { position: absolute; z-index: 30; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; align-items: stretch; gap: var(--gutter); padding: var(--gutter); background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
+.console .view-dialog > .col.center { min-width: 0; }
+.console .view-dialog.vd-media { width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); }
+.console .view-dialog.vd-wide { width: min(1240px, calc(100% - 32px)); height: min(800px, calc(100% - var(--pop-top) - 16px)); } /* the song editor's columns, the Escola */
+.console .view-dialog.vd-reports { width: min(1000px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); }
+/* The floating Editor de temas e telas: near full screen, a layer of its
+   own — over Configurações (33), which may have opened it and stays
+   behind, under the library (37) it opens. A column: the editor body
+   (.main) and the edw footer. */
+.console .ed-scrim { z-index: 35; }
+.console .view-dialog.vd-editor { z-index: 35; flex-direction: column; gap: 0; padding: 0; width: min(1360px, calc(100% - 24px)); height: min(860px, calc(100% - var(--pop-top) - 12px)); }
+.console .view-dialog.vd-editor > .main { padding: var(--gutter); }
+
 /* ---------- Configurações (canvas artboard 20) ---------- */
 /* A window over the console: above the Camadas drawer (32), under Verificar
    (35) and the dialogs (40); a popover opened from inside it gets its
    backdrop above it (.scrim.over-cfg). */
 .console .cfg-scrim { z-index: 33; }
 .console .scrim.over-cfg { z-index: 34; }
-.console .cfg-dialog { position: absolute; z-index: 33; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
+.console .cfg-dialog { position: absolute; z-index: 33; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
 .console .cfg-dialog-h { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
 .console .cfg-dialog-h .kx-section { flex: none; color: var(--fg-1); font-size: 12px; }
 /* The search beside the title: results replace the section; the left column
@@ -1091,15 +1126,15 @@
 .console .le-range { flex: 1 1 80px; min-width: 60px; accent-color: var(--brand); }
 /* The Editor de temas e layouts window (/Editor, src/pages/Editor.jsx):
    the console's shell without its top bar; a one-line footer instead. */
-.console.edw .edw-foot { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); font-size: 11px; color: var(--fg-3); }
-.console.edw .kx-gap { flex: none; width: var(--gutter); }
+.console .edw-foot { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); font-size: 11px; color: var(--fg-3); }
+.console.edw .kx-gap, .console .vd-editor .kx-gap { flex: none; width: var(--gutter); }
 
 /* Biblioteca de temas e fundos (library/BackgroundLibrary.jsx): one window
    for every picker, above Configurações (it opens from there too), below the
    right-click menu. Tabs in the header, the tiles on the left, the sample
    and the chosen background's settings on the right. */
 .console .lib-scrim { z-index: 36; }
-.console .lib-dialog { position: absolute; z-index: 37; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
+.console .lib-dialog { position: absolute; z-index: 37; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
 .console .lib-tabs { height: 40px; border-bottom: 0; margin-left: var(--space-3); }
 .console .lib-body { flex: 1; min-height: 0; display: flex; }
 .console .lib-main { flex: 1; min-width: 0; overflow: auto; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
