@@ -65,11 +65,12 @@
 @keyframes ks-pulse { 50% { transform: scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { .ks-comm-big.ks-urgent { animation: none; } }
 
-/* Media in a preview: a poster, never a playing video */
+/* Media in a preview: a still (a video's poster, else its kind and title), never a playing video */
 .ks-media { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; background: #000; }
 .ks-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .ks-media-kind { font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; opacity: .6; font-weight: 500; }
 .ks-media-t { font-size: 3.2cqw; font-weight: 500; max-width: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks-media-chip { position: absolute; left: 2cqw; bottom: 2cqw; font-size: 1.8cqw; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; background: rgba(0, 0, 0, .6); padding: .4cqw 1.2cqw; border-radius: .6cqw; }
 .ks-media-count { position: absolute; top: 2cqw; right: 2cqw; font-size: 2cqw; background: rgba(0, 0, 0, .55); padding: .4cqw 1.2cqw; border-radius: .6cqw; }
 
 /* Corner logo and the idle/logo screens */

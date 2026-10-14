@@ -257,6 +257,8 @@ function mediaItem(value) {
     };
     if (value.duration !== undefined && value.duration !== null) out.duration = count(value.duration, "Duração");
     if (value.id !== undefined && value.id !== null) out.id = text(value.id, "Id", { max: 200 });
+    // A still of a video (Media.thumbnail_url), for previews that do not play it.
+    if (value.poster) out.poster = text(value.poster, "Miniatura", { max: MAX_URL });
     return out;
 }
 
@@ -277,6 +279,7 @@ function carried(item, now) {
     const out = { kind: item.kind, url: item.url, title: item.title || "" };
     if (item.duration != null) out.duration = item.duration;
     if (item.id != null) out.id = item.id;
+    if (item.poster) out.poster = item.poster;
     const pb = item.playback;
     out.playback = { paused: Boolean(pb?.paused), position: livePosition(pb, now), at: now, volume: pb?.volume ?? 1 };
     out.shownAt = now;
