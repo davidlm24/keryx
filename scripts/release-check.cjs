@@ -4,16 +4,17 @@
 //
 //   GH_TOKEN="$(gh auth token --user comunidadegerar)" node scripts/release-check.cjs 0.2.15 [--publish]
 //
-// electron-builder publishes as a draft (package.json, build.publish), which
-// the updater cannot see. The checks: the release has the installer, its
-// blockmap and latest.yml; latest.yml names this version; the installer's
-// sha512 and size are the ones latest.yml says. Only then, with --publish,
-// the draft goes public, and the public latest.yml is read back. Exit 1 on
-// anything wrong; the token is never printed.
+// release-upload.cjs makes the release a draft, which the updater cannot
+// see. The checks: the release has the installer, its blockmap and
+// latest.yml; latest.yml names this version; the installer's sha512 and size
+// are the ones latest.yml says. Only then, with --publish, the draft goes
+// public, and the public latest.yml is read back. Exit 1 on anything wrong;
+// the token is never printed. KERYX_RELEASES_REPO=owner/name points it (and
+// release-upload.cjs) at a throwaway repository instead.
 
 const crypto = require("node:crypto");
 
-const REPO = "comunidadegerar/keryx-releases";
+const REPO = process.env.KERYX_RELEASES_REPO || "comunidadegerar/keryx-releases";
 
 // What is wrong with a release, from what was read of it: [] when sound.
 function problems({ version, assets, yml, installer }) {
@@ -84,5 +85,5 @@ async function main() {
     console.log("  ✓ o latest.yml público já é desta versão");
 }
 
-if (require.main === module) main().catch((err) => { console.error(`✗ ${err.message}`); process.exit(1); });
-module.exports = { problems };
+if (require.main === module) main().catch((err) => { console.error(`✗ ${err.message}`); process.exitCode = 1; });
+module.exports = { problems, api, headers, REPO };

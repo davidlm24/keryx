@@ -498,7 +498,7 @@ so a release follows these rules. The steps and commands are in README ›
   version's note (`docs/release-notes/<version>.md`) before the build. Every other session
   ships features as normal PRs but never changes `version` in
   `package.json`, never opens a `release/<version>` branch or PR, and never
-  runs `electron-builder --publish`. A session that sees a claim by another
+  runs `scripts/release-upload.cjs` (or `electron-builder --publish`). A session that sees a claim by another
   one (below) does not release: it tells the user. The rules below are the
   release session's.
 - **Claim the version first.** The next patch after the latest published
@@ -510,7 +510,13 @@ so a release follows these rules. The steps and commands are in README ›
 - **Publish only when the user asks, once, from the release branch.** A publish
   that fails or is interrupted is never re-run blindly: look at the release
   first.
-- **A publish makes a draft, never a public release** (`releaseType: draft`).
+- **The build never publishes** (`electron-builder --publish never`):
+  `node scripts/release-upload.cjs <version>` checks `release/`, refuses if
+  `v<version>` exists in any state, and uploads it as **one draft**, the
+  installer first and `latest.yml` last. `--publish always` is out: its
+  parallel uploads each created the release (two drafts in 0.2.15 and
+  0.2.16).
+- **An upload makes a draft, never a public release.**
   `node scripts/release-check.cjs <version> --publish` checks it (the
   installer, its `.blockmap` and `latest.yml` are there, `latest.yml` names
   this version, the installer has the sha512 and size it names) and only then
