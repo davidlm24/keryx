@@ -491,14 +491,17 @@
 .console .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
 .console .kx-row.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
 .console .kx-row.is-dragging { opacity: .4; }
-/* The dock's lists (Biblioteca, Setlist, the tabs panel, the Bíblia's) are
-   rounded cards set in from the column's edges, like the verses: the hover
-   and the states fill a card, not the column edge to edge. The Slides
-   column and No ar keep their edge-to-edge rows (owner 2026-10-14). The
-   2 px between cards keeps two highlighted rows apart; the card's inset
-   comes off its left padding, so the text stays in line with the
-   listheads (12 px). */
-.console .dock .kx-row { width: auto; margin: 1px var(--space-1); padding-left: var(--space-2); border-radius: var(--radius-control); overflow: clip; }
+/* UI rule (owner 2026-10-14): every list row in the console — Biblioteca,
+   Setlist, the tabs panel, Camadas, Configurações' menu, the views — is a
+   rounded card set in from its column, like the verses: the hover and the
+   states fill a card, never the column edge to edge. Only a list the owner
+   asked to keep edge to edge (the Slides column and No ar, to gain room)
+   differs, and those are .kx-slide/.onair-card, not these. The 2 px
+   between cards keeps two highlighted rows apart; the inset comes off the
+   left padding, so the text stays where it was (in line with listheads). */
+.console :is(.kx-row, .kx-layer) { width: auto; margin: 1px var(--space-1); border-radius: var(--radius-control); overflow: clip; }
+.console .kx-row { padding-left: var(--space-2); }
+.console .kx-layer { padding-left: var(--space-1); }
 .console .kx-layer.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
 .console .kx-layer.is-dragging { opacity: .4; }
 .console .kx-transport .toca { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }

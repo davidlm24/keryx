@@ -36,6 +36,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **`src/components/ui/` is generated shadcn/ui.** It is excluded from lint and
   from editor type checking. Don't hand-edit it; add components with the
   shadcn CLI (`components.json` is configured) or wrap them instead.
+- **List rows are inset rounded cards** (UI rule, owner 2026-10-14): every
+  `kx-row`/`kx-layer` in the console (Biblioteca, Setlist, the tabs panel,
+  Camadas, Configurações' menu, the views) sits `--space-1` in from its
+  column with `--radius-control`, 2 px apart, like the verses — the hover
+  and the states never run edge to edge. One rule in `console.css`; don't
+  override it per list. Edge to edge only where the owner asks (the Slides
+  column and No ar, to gain room). docs/design-system.md has it too.
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).

@@ -370,6 +370,14 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
   default (user decision 2026-10-09): 32 px list rows (`row-comfortable`),
   14 px titles up to two lines, 14 px slide text. **Compacta** keeps 28 px
   single lines. Headers, controls and the live column do not change.
+- **List rows are inset cards** (UI rule, owner 2026-10-14): every
+  `kx-row` and `kx-layer` in the console (Biblioteca, Setlist, the tabs
+  panel, Camadas, Configurações' menu, the views) sits 4 px in from its
+  column with `radius-control` and 2 px between rows, so the hover and the
+  states fill a card, never the column edge to edge; the inset comes off
+  the left padding, so the text keeps its place. One rule in
+  `console.css`. A list goes edge to edge only when the owner asks for it
+  (the Slides column and No ar, to gain room).
 - Slides and verses are **cards** in the console (owner 2026-10-14;
   `console.css` over `bundle.css`'s `kx-slide` and `kx-verse` rows): a
   `bg-2` card with `radius-control`, 4 px apart, and the state is the
