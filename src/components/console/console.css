@@ -107,7 +107,7 @@
    min(band, (height − K) / 0.5625): 9/16 for the Programa alone (the
    Prévia lives in the band below since 2026-10-13), K = the player slot 36
    + gap 8. */
-.console .mons { --live-k: 44px; display: flex; flex-direction: column; align-items: center; padding: 0 var(--space-2) var(--space-2); min-height: 0; flex: 1; container-type: size; }
+.console .mons { --live-k: 44px; display: flex; flex-direction: column; align-items: center; padding: 0; min-height: 0; flex: 1; container-type: size; }
 .console .mons.no-player { --live-k: 0px; } /* the player placed elsewhere: the Programa takes its slot */
 .console .liveblock { width: min(100cqw, calc((100cqh - var(--live-k)) / 0.5625)); flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .console .liveblock > * { flex: none; }
@@ -116,8 +116,8 @@
    The header gives way before the title does: first the names of the secondary
    controls (Voltar ao anterior becomes its glyph), then the screen count's words. */
 .console .prog-panel > .kx-panel-h { container: prog-h / inline-size; }
-@container prog-h (max-width: 700px) { .console .hist-lbl { display: none; } }
-@container prog-h (max-width: 560px) { .console .prog-where { display: none; } }
+@container prog-h (max-width: 716px) { .console .hist-lbl { display: none; } } /* 700 + the 16 px of card padding the bare header gave back */
+@container prog-h (max-width: 576px) { .console .prog-where { display: none; } }
 .console .kx-panel-h .kx-panel-cap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-2); }
 .kx-prog-cap { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .kx-prog-cap .kx-live-cap { flex: none; color: var(--fg-3); }
@@ -172,6 +172,12 @@
 .console .tabs-pad { padding-top: var(--space-2); }
 .console .tabs-notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); }
 .console .tabs-notes .tnotes { max-height: none; }
+/* Notas do operador (the Notas tab's free field, Service.operator_notes). */
+.console .op-notes { display: flex; flex-direction: column; gap: var(--space-1); }
+.console .op-notes .kx-section { padding: 0 2px; }
+.console .op-notes-f { min-height: 96px; resize: vertical; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 6px var(--space-2); font: inherit; font-size: 12px; line-height: 18px; color-scheme: dark; outline: none; }
+.console .op-notes-f::placeholder { color: var(--fg-3); }
+.console .op-notes-f:focus { box-shadow: inset 0 0 0 1px var(--line-strong); }
 .console .tabs-menu .tabs-menu-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .tabs-menu [aria-disabled="true"] { color: var(--fg-3); }
 /* Aviso rápido and the timer minutes (QuickTools.jsx). */
@@ -253,10 +259,13 @@
 .console .dock-tab { flex: none; height: 24px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-3); font: 500 12px/16px var(--font-sans); cursor: pointer; white-space: nowrap; }
 .console .dock-tab:hover { color: var(--fg-1); background: var(--bg-2); }
 .console .dock-tab.is-on { color: var(--fg-1); background: var(--bg-3); }
-/* The Prévia anywhere: its monitor as big as the cell allows, Enviar ao ar under it. */
-.console .dock .prev-panel > .kx-panel-b { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; container-type: size; padding-bottom: var(--space-2); }
-.console .dock .prev-panel > .kx-panel-b > .kx-mon { flex: none; align-self: center; width: min(100%, calc((100cqh - 44px) / 0.5625)); }
-.console .dock .prev-panel .kx-btn-send { width: 100%; flex: none; }
+/* The Prévia anywhere: its screen (the box itself, no card) as big as the cell allows; the
+   "Ao enviar" line and the teacher notes under it, when there are any. */
+.console .dock .prev-panel > .kx-panel-b { display: flex; flex-direction: column; gap: var(--space-2); overflow: hidden; container-type: size; }
+.console .dock .prev-panel > .kx-panel-b > .kx-mon { flex: none; align-self: center; width: min(100%, calc(100cqh / 0.5625)); }
+.console .dock .prev-panel > .kx-panel-b:has(> .sendnote) > .kx-mon { width: min(100%, calc((100cqh - 24px) / 0.5625)); }
+.console .dock .prev-panel > .kx-panel-b:has(> .tnotes) > .kx-mon { width: min(100%, calc((100cqh - 72px) / 0.5625)); }
+.console .dock .prev-panel > .kx-panel-b > .tnotes { flex: 0 1 auto; min-height: 0; }
 .console .dock .player-panel > .kx-panel-b { display: flex; align-items: center; overflow: hidden; }
 .console .dock .player-panel .pslot { flex: 1; min-width: 0; }
 /* Editing: a bar on each group (grip, one chip per module, ×). */
@@ -900,10 +909,9 @@
 .console .wn-p { margin: 0; font-size: 12px; line-height: 18px; color: var(--fg-2); }
 /* "no ar há m:ss" in the Programa's caption: digits that do not jump. */
 .console .kx-prog-cap .kx-since { font-variant-numeric: tabular-nums; flex: none; }
-/* The Prévia panel: its caption mirrors the Programa (green word while
-   something is prepared; 14px title, one size under the Programa). */
+/* The Prévia's badge: its caption mirrors the Programa's (green word while
+   something is prepared, blue while the screens are locked). */
 .console .kx-prog-cap.is-prevcap .kx-live-cap { color: var(--prev-fg); }
-.console .prev-panel .kx-prog-cap .kx-mon-t { font-size: 14px; color: var(--fg-1); }
 
 /* ---- Camadas › Fundo › Gerado (GeneratorPanel.jsx) ---- */
 .console .lyr-gens { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }

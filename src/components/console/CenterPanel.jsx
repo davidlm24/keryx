@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from "react";
 import Icon from "./Icon";
-import { Monitor, Btn, Panel } from "./kx";
+import { Monitor, Panel } from "./kx";
 import PlayerBar from "./PlayerBar";
 import MultiView from "./MultiView";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
-import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { captionParts, airFor } from "@/lib/console/caption";
 import { OUTPUT_VIEWS } from "@/lib/network/views";
 import { prefState, prefVars, stageHidden } from "@/lib/outputPrefs";
@@ -141,10 +140,12 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
     );
 }
 
-// The Prévia module: the prepared stage as Projeção will show it, with
-// Enviar ao ar right under the monitor, what sending will do when it is not
-// obvious, and the teacher notes — unless the Notas tab is on screen
-// (`notesInTab`). Where it goes is the dock's (Dock.jsx).
+// The Prévia module: the prepared stage as Projeção will show it, the
+// screen itself the box (no card, owner 2026-10-14) with its caption as a
+// badge inside it; under it, what sending will do when it is not obvious and
+// the teacher notes — unless the Notas tab is on screen (`notesInTab`).
+// Enter, a double click on it or its right-click menu send (no button, owner
+// 2026-10-14). Where it goes is the dock's (Dock.jsx).
 export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notesInTab = false, className = "" }) {
     const { cur, prev, now, locked, stamp } = c;
     // Built with a time fixed per prepared stage, never the ticking clock:
@@ -160,12 +161,12 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
     const { pref: railPref, theme: railTheme } = useOutputPref(railOut);
     const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
     const railVars = prefVars(railPref);
-    // The caption lives in the panel's header, like the Programa's.
+    // The caption is a badge in the screen's top-left corner.
     const capTitle = dropOn ? "Solte para preparar" : prev ? prev.title : "";
     const capPos = !dropOn && prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "";
     const prevCap = (
-        <span className={`kx-prog-cap ${prev ? "is-prevcap" : "is-idle"}`}>
-            <span className="kx-live-cap">Prévia</span>
+        <span className={`kx-mon-badge kx-prog-cap ${locked ? "is-rh" : prev ? "is-prevcap" : "is-idle"}`}>
+            <span className="kx-live-cap">{locked ? "Prévia · travado" : "Prévia"}</span>
             <span className="kx-mon-t" title={capTitle}>{capTitle}</span>
             {capPos && <span className="kx-meta">{capPos}</span>}
         </span>
@@ -178,17 +179,15 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
         onDrop: (e) => { const st = getDragStage(); setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "prev"); },
     };
     return (
-        <Panel className={`prev-panel ${className}`} caption={prevCap}>
-            <Monitor className={`${dropOn ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={prev ? "prev" : ""} noCap live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu }}>
+        <Panel bare className={`prev-panel ${className}`}>
+            <Monitor className={`${dropOn ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={locked ? "rh" : prev ? "prev" : ""} noCap live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu, onDoubleClick: () => { if (prev && !locked) onSend?.(); } }}>
+                {prevCap}
                 {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                 {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
                 {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Telas e saídas › Mostrar)</div>}
                 {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"}</div>}
                 {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
             </Monitor>
-            <Btn kind="prev" className="kx-btn-send" onClick={() => onSend()} disabled={!prev || locked} title={sendTip(locked)}>
-                {SEND_LABEL}
-            </Btn>
             {note && <div className="kx-meta sendnote">{note}</div>}
             {!notesInTab && <TeacherNotes prev={prev} cur={cur} />}
         </Panel>
