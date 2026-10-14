@@ -2231,7 +2231,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await setVal(".pl-pad .kx-field input[list=pl-team]", "Ana Souza · Ministra");
         await press("Enter");
         result.plTeam = await waitFor(async () => { const t = ((await js(`window.keryxDesktop.db.call("Service", "get", ["${svc.id}"])`)).data || {}).worship_team || []; return t.some((m) => m.member_name === "Ana Souza" && m.role === "Ministra"); }, 6000);
-        await click(".pl-acts button", "Salvar como modelo");
+        // The template actions live in the bar's Modelos menu (Rodada C, fase b).
+        await click(".win-bar button", "Modelos");
+        await click(".pl-pop .kx-row", "Salvar como modelo…");
         await setVal(".pl-pop .kx-field input", "Modelo do smoke");
         await click(".pl-pop button", "Salvar modelo");
         result.plTemplate = await waitFor(async () => {
@@ -2265,8 +2267,13 @@ async function checkConsole(webContents, { live, outputs }) {
             await sleep(200);
             return true;
         };
-        await setVal(".mv-bar .kx-field:nth-of-type(2) input", "https://youtu.be/dQw4w9WgXcQ");
-        await click(".mv-bar button", "Adicionar link");
+        // The YouTube link comes from the bar's Enviar menu + one question
+        // (PromptDialog), not a field always on screen (Rodada C, fase b).
+        await click(".win-bar button", "Enviar");
+        await click(".pl-pop .kx-row", "Link do YouTube…");
+        await waitFor(() => js("Boolean(document.querySelector('.confirm-dialog .kx-field input'))"), 4000);
+        await setVal(".confirm-dialog .kx-field input", "https://youtu.be/dQw4w9WgXcQ");
+        await click(".confirm-dialog button", "Adicionar");
         await waitFor(() => js("Boolean(document.querySelector('.mv-rename'))"));
         await setVal(".mv-rename", "Vídeo do smoke");
         await press("Enter");
@@ -2280,7 +2287,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await thumb("Foto um");
         await thumb("Foto dois", ["control"]);
         result.mvSelected = await waitFor(() => js("document.querySelectorAll('.mv-th.is-sel').length === 2"));
-        await click(".mv-acts button", "Tocar todos");
+        await click(".mv-bar button", "Tocar todos");
         result.mvSequence = await waitFor(() => (live.get().media?.playlist || []).length === 2);
         live.call("clear");
         await click(".mv-cats button", "Todas");

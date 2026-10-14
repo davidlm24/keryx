@@ -71,7 +71,10 @@ export default function ReportsView({ c, onClose, escRef }) {
     return (
         <>
         <WinBar title="Relatórios" sub={`${church.line ? `${church.line} · ` : ""}${periodLabel} · ${plays.length} ${plays.length === 1 ? "projeção" : "projeções"} de músicas`}
-            tools={<Seg small value={period} onChange={setPeriod} options={PERIODS} label="Período" />} />
+            tools={<>
+                <Seg small value={period} onChange={setPeriod} options={PERIODS} label="Período" />
+                <Field value={q} onChange={setQ} placeholder="Música, artista ou culto" style={{ flex: "0 1 240px", minWidth: 150 }} />
+            </>} />
         <div className="win-body">
         <div className="col center rp">
             <Panel noHead bodyStyle={{ overflow: "auto" }}>
@@ -106,9 +109,7 @@ export default function ReportsView({ c, onClose, escRef }) {
                         )}
                     </section>
                     <section className="rp-card rp-wide">
-                        <div className="listhead"><span className="kx-section">Histórico <span className="kx-count">· {recent.length}{plays.length > recent.length && !ql ? ` de ${plays.length}` : ""}</span></span><span style={{ flex: 1 }} />
-                            <Field value={q} onChange={setQ} placeholder="Música, artista ou culto" style={{ width: 260 }} />
-                        </div>
+                        <div className="listhead"><span className="kx-section">Histórico <span className="kx-count">· {recent.length}{plays.length > recent.length && !ql ? ` de ${plays.length}` : ""}{ql ? ` · "${q.trim()}"` : ""}</span></span></div>
                         {!recent.length && <div className="rp-empty kx-meta">{ql ? `Nada com "${q}".` : "Nada enviado ao ar neste período."}</div>}
                         {recent.length > 0 && (
                             <table className="rp-table">
