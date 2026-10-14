@@ -112,9 +112,6 @@ export default function TemasSection({ c }) {
                         <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G"].filter(Boolean).join(" · ")}</span>
                     </button>
                 ))}
-                <button type="button" className="kx-t fg-tile tmg-tile tmg-new" onClick={() => edit("new")} aria-label="Novo tema">
-                    <span className="fg-img"><span className="tmg-plus"><Icon name="plus" />Novo tema</span></span>
-                </button>
             </div>
             {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Use "Novo tema…", ou ajuste o texto em Camadas e salve como novo.</Empty>}
         </>
