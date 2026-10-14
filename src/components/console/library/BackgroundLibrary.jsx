@@ -140,12 +140,12 @@ export default function BackgroundLibrary({ c, request, onDone }) {
         <>
             <div className="scrim is-dim lib-scrim" onClick={() => done(null)} />
             <div className="lib-dialog" role="dialog" aria-label={title}>
-                <div className="cfg-dialog-h">
-                    <span className="kx-section">{title}</span>
+                <div className="win-bar">
+                    <span className="kx-section win-title">{title}</span>
                     <div className="kx-tabs lib-tabs" role="tablist">
                         {tabs.map(([k, name]) => <button type="button" key={k} role="tab" aria-selected={tab === k} className={`kx-t ${tab === k ? "is-on" : ""}`} onClick={() => setTab(k)}>{name}</button>)}
                     </div>
-                    <span className="cfg-h-gap" />
+                    <span className="win-gap" />
                     {(kinds.includes("image") || kinds.includes("video")) && <>
                         {(tab === "image" || tab === "video") && <Btn small on={fromMedia} onClick={() => setFromMedia(!fromMedia)} title="Usar como fundo uma imagem ou vídeo que já está na Mídia">Trazer da Mídia…</Btn>}
                         <Btn small disabled={uploading} onClick={() => fileRef.current?.click()}><Icon name="download" />{uploading ? "Enviando…" : "Do computador…"}</Btn>

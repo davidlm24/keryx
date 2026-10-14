@@ -143,7 +143,7 @@ export default function RedeSection({ c }) {
                             <div className="kx-row-main"><div className="kx-row-title">{s.label}</div><div className="kx-row-meta">{s.hint}</div></div>
                             <code className="cfg-screen-url">{`${main.url}${s.path}`}</code>
                             <button type="button" className="kx-btn kx-btn-icon kx-t" onClick={() => copy(`${main.url}${s.path}`)} aria-label={`Copiar o endereço de ${s.label}`} title="Copiar o endereço"><Icon name="copy" /></button>
-                            {s.path === "/StreamView" && <Btn onClick={() => { const r = openEditor({ screen: s.path }); if (r?.error) c.say(r.error); }} title="Cor, tamanho e posição da faixa da legenda, no Editor"><Icon name="sliders" />Ajustes</Btn>}
+                            {s.path === "/StreamView" && <Btn onClick={() => { const r = openEditor({ screen: s.path, from: "Telas na rede" }); if (r?.error) c.say(r.error); }} title="Cor, tamanho e posição da faixa da legenda, no Editor"><Icon name="sliders" />Ajustes</Btn>}
                         </div>
                         </React.Fragment>
                     ))}

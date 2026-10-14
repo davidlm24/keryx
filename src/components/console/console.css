@@ -629,49 +629,51 @@
 .console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line); flex: none; font-size: 12px; }
 .console .lyr-legal { max-width: 360px; }
 
-/* ---------- Floating views (owner 2026-10-14, "janelas flutuantes") ---------- */
-/* The planner, Mídia and the aviso editor open as dialogs over the live
-   console, their own columns inside on the console's ground (--bg-0), so
-   their panels read as panels. Under Configurações (33), the library (37)
-   and the confirm question (44); Esc reaches them through the console
-   (keys.js ESC_ORDER "view"), never a listener of their own. */
-.console .view-scrim { z-index: 29; }
-.console .scrim.over-view { z-index: 31; } /* a popover opened over a floating view backdrops above it, as over-cfg does */
-.console .view-dialog { position: absolute; z-index: 30; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; align-items: stretch; gap: var(--gutter); padding: var(--gutter); background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
-.console .view-dialog > .col.center { min-width: 0; }
-.console .view-dialog.vd-media { width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); }
-.console .view-dialog.vd-wide { width: min(1240px, calc(100% - 32px)); height: min(800px, calc(100% - var(--pop-top) - 16px)); } /* the song editor's columns, the Escola */
-.console .view-dialog.vd-reports { width: min(1000px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); }
-/* The floating Editor de temas e telas: near full screen, a layer of its
-   own — over Configurações (33), which may have opened it and stays
-   behind, under the library (37) it opens. A column: the editor body
-   (.main) and the edw footer. */
-.console .ed-scrim { z-index: 35; }
-.console .view-dialog.vd-editor { z-index: 35; flex-direction: column; gap: 0; padding: 0; width: min(1360px, calc(100% - 24px)); height: min(860px, calc(100% - var(--pop-top) - 12px)); }
-.console .view-dialog.vd-editor > .main { padding: var(--gutter); }
+/* ---------- A janela (Rodada C, owner 2026-10-14: "uma janela, com Voltar") ---------- */
+/* Configurações, the six views and the two editors are pages of ONE
+   floating window with the Configurações frame (src/lib/console/nav.js):
+   the bar — ← Voltar from level 2 (the title of where it came from), the
+   page's title, its tools and actions, the (x) "Fechar · Esc" — then the
+   page's body on the console's ground (--bg-0), so its panels read as
+   panels. Two sizes, Padrão and Editor (.is-editor, the theme and screen
+   editors), and moving between pages animates the frame between them.
+   Under the library (37) and the confirm question (44); Esc reaches the
+   TOP page through the console (keys.js ESC_ORDER "window"), never a
+   listener of its own. Pages under the top stay mounted, hidden, so
+   Voltar finds them as they were (scroll, search, section). */
+.console .win-scrim { z-index: 29; }
+.console .scrim.over-win { z-index: 31; } /* a popover opened over the window backdrops above it */
+.console .win-dialog { position: absolute; z-index: 30; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1240px, calc(100% - 32px)); height: min(800px, calc(100% - var(--pop-top) - 16px)); display: flex; flex-direction: column; background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; transition: width .2s var(--ease-out), height .2s var(--ease-out); }
+.console .win-dialog.is-editor { width: min(1360px, calc(100% - 24px)); height: min(860px, calc(100% - var(--pop-top) - 12px)); }
+.console .win-page { flex: 1; min-height: 0; display: flex; flex-direction: column; animation: win-page-in .12s var(--ease-out); }
+.console .win-page[hidden] { display: none; }
+@keyframes win-page-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .console .win-dialog { transition: none; } .console .win-page { animation: none; } }
+/* The bar: the Configurações header, now every page's. */
+.console .win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
+.console .win-bar .win-title { flex: none; color: var(--fg-1); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .win-bar .kx-btn-back { height: 26px; margin-left: -6px; flex: none; }
+.console .win-bar .win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
+.console .win-bar .win-gap { flex: 1; }
+/* The page's body: its columns, as the floating views always drew them. */
+.console .win-body { flex: 1; min-height: 0; display: flex; align-items: stretch; gap: var(--gutter); padding: var(--gutter); }
+.console .win-body > .col.center { min-width: 0; }
+/* The editors keep their kx-gap spacing (no flex gap), as in /Editor. */
+.console .win-body.is-ed { gap: 0; }
 
 /* ---------- Configurações (canvas artboard 20) ---------- */
-/* A window over the console: above the Camadas drawer (32), under Verificar
-   (35) and the dialogs (40); a popover opened from inside it gets its
-   backdrop above it (.scrim.over-cfg). */
-.console .cfg-scrim { z-index: 33; }
-.console .scrim.over-cfg { z-index: 34; }
-.console .cfg-dialog { position: absolute; z-index: 33; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
-.console .cfg-dialog-h { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
-.console .cfg-dialog-h .kx-section { flex: none; color: var(--fg-1); font-size: 12px; }
-/* The search beside the title: results replace the section; the left column
-   counts them; a jump lights the row it lands on (.is-flash). */
-.console .cfg-dialog-h .cfg-search { flex: 0 1 340px; min-width: 160px; margin-left: var(--space-3); }
-.console .cfg-dialog-h .cfg-search .kx-field { width: 100%; }
-.console .cfg-dialog-h .cfg-h-gap { flex: 1; }
+/* The config page: nav left, the section right, on bg-1 as its window
+   always was; its search rides the win-bar's tools. */
+.console .win-bar .cfg-search { flex: 0 1 340px; min-width: 160px; }
+.console .win-bar .cfg-search .kx-field { width: 100%; }
 .console .cfg-nav .kx-row.is-dim { opacity: .45; }
 .console .cfg-nav .cfg-hitcount { flex: none; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--fg-1); background: var(--bg-3); }
 .console .cfg-results mark { background: color-mix(in srgb, var(--warn) 32%, transparent); color: var(--fg-1); border-radius: 2px; padding: 0 1px; }
 .console .cfg .is-flash { background: color-mix(in srgb, var(--warn) 16%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 16%, transparent); border-radius: var(--radius-control); transition: background .4s, box-shadow .4s; }
-.console .cfg-dialog-b { flex: 1; min-height: 0; display: flex; }
+.console .cfg-dialog-b { flex: 1; min-height: 0; display: flex; background: var(--bg-1); }
 .console .cfg-nav { flex: 0 0 240px; min-width: 0; padding: var(--space-1) 0; border-right: 1px solid var(--line); overflow: auto; }
-.console .cfg-dialog .cfg { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.console .cfg-dialog .cfg > .kx-panel { flex: 1; border-radius: 0; }
+.console .cfg-dialog-b .cfg { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.console .cfg-dialog-b .cfg > .kx-panel { flex: 1; border-radius: 0; }
 @media (max-width: 760px) { .console .cfg-nav { flex-basis: 180px; } }
 .console .cfg .frm { display: grid; grid-template-columns: 140px 1fr; gap: var(--space-2) var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); }
 .console .cfg .frm .k { font-size: 11px; color: var(--fg-3); }
@@ -1128,7 +1130,7 @@
 /* The Editor de temas e layouts window (/Editor, src/pages/Editor.jsx):
    the console's shell without its top bar; a one-line footer instead. */
 .console .edw-foot { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); font-size: 11px; color: var(--fg-3); }
-.console.edw .kx-gap, .console .vd-editor .kx-gap { flex: none; width: var(--gutter); }
+.console.edw .kx-gap, .console .win-body.is-ed .kx-gap { flex: none; width: var(--gutter); }
 
 /* Biblioteca de temas e fundos (library/BackgroundLibrary.jsx): one window
    for every picker, above Configurações (it opens from there too), below the

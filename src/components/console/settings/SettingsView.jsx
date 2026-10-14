@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Panel, Row, IconBtn, Field, Empty } from "../kx";
+import { Panel, Row, Field, Empty, WinBar } from "../kx";
 import { SECTIONS, SECTION_SCOPE, SCOPE_LABEL, sectionOf } from "@/lib/console/settings";
 import { searchSettings, groupHits, countBySection } from "@/lib/console/settingsSearch";
 import { searchTerms, highlightParts } from "@/lib/bibleSearch";
@@ -35,20 +35,22 @@ function Marked({ text, terms }) {
 // How long a row the search jumped to stays lit.
 const FLASH_MS = 1600;
 
-// Configurações: a window over the console (or the view behind it), closed
-// with its X, Esc or a click outside; the sections on the left
+// Configurações: a page of THE window (Rodada C, src/lib/console/nav.js),
+// with the frame bar it always had — the title, the search, the (x) —
+// now drawn by WinBar; the sections on the left
 // (src/lib/console/settings.js), the chosen one on the right. What is behind
 // stays as it was: nothing here changes what is on air (Tela ociosa only
 // changes an idle screen), and behind it only the emergency keys act
-// (Console.jsx).
-// The search beside the title (/ goes there) finds a setting by any word,
+// (Console.jsx). Opening a screen or a theme from here pushes the editor
+// onto the same window ("← Temas", "← Telas e saídas").
+// The search in the bar (/ goes there) finds a setting by any word,
 // without accents (src/lib/console/settingsSearch.js): the results replace
 // the section, the left column counts them, and Enter or a click opens the
 // section and lights the row up.
-export default function SettingsView({ c, section, setSection, onClose, layout, setLayout, restoreLayout, onOpenScreen, onWhatsNew }) {
+export default function SettingsView({ c, section, setSection, onClose, escRef, active = true, layout, setLayout, restoreLayout, onOpenScreen, onWhatsNew }) {
     const current = sectionOf(section);
     const [q, setQ] = useState("");
-    const [active, setActive] = useState(0);
+    const [activeHit, setActiveHit] = useState(0);
     const [pending, setPending] = useState(null);
     const [flash, setFlash] = useState(null);
     const inputRef = useRef(null);
@@ -59,11 +61,13 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
     const terms = useMemo(() => searchTerms(q), [q]);
     const searching = terms.length > 0;
     const counts = countBySection(hits);
-    useEffect(() => setActive(0), [q]);
-    useEffect(() => { document.querySelector(".cfg-results .is-selected")?.scrollIntoView({ block: "nearest" }); }, [active]);
+    useEffect(() => setActiveHit(0), [q]);
+    useEffect(() => { document.querySelector(".cfg-results .is-selected")?.scrollIntoView({ block: "nearest" }); }, [activeHit]);
 
-    // "/" goes to the search, as on the console (not while typing elsewhere).
+    // "/" goes to the search, as on the console (not while typing elsewhere,
+    // and not while another page of the window covers this one).
     useEffect(() => {
+        if (!active) return undefined;
         const onKey = (e) => {
             if (e.key !== "/" || e.ctrlKey || e.metaKey || focusKind(e.target) === "text") return;
             e.preventDefault();
@@ -71,7 +75,7 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, []);
+    }, [active]);
 
     // After a jump: wait for the section to draw the row (some read the
     // computer first), bring it into view and light it up.
@@ -80,7 +84,7 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
         let tries = 0;
         let timer = null;
         const find = () => {
-            const el = [...document.querySelectorAll(".cfg-dialog .cfg [data-cfg-k]")].find((n) => n.getAttribute("data-cfg-k") === pending);
+            const el = [...document.querySelectorAll(".win-dialog .cfg [data-cfg-k]")].find((n) => n.getAttribute("data-cfg-k") === pending);
             if (el) { el.scrollIntoView({ block: "center" }); setFlash(pending); setPending(null); return; }
             tries += 1;
             if (tries < 60) timer = setTimeout(find, 50);
@@ -106,10 +110,10 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
             if (!hits.length) return;
             e.preventDefault();
-            setActive((i) => (i + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % hits.length);
+            setActiveHit((i) => (i + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % hits.length);
         } else if (e.key === "Enter") {
             e.preventDefault();
-            if (hits[active]) jump(hits[active]);
+            if (hits[activeHit]) jump(hits[activeHit]);
         } else if (e.key === "Escape") {
             // A search to clear first; then Esc closes the window, as anywhere.
             e.preventDefault();
@@ -129,7 +133,7 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
                         {g.hits.map((h) => {
                             const i = hits.indexOf(h);
                             return (
-                                <Row key={`${h.section}:${h.tab}:${h.label}:${i}`} icon={ICON[h.section]} state={i === active ? "is-selected" : ""}
+                                <Row key={`${h.section}:${h.tab}:${h.label}:${i}`} icon={ICON[h.section]} state={i === activeHit ? "is-selected" : ""}
                                     title={<Marked text={h.label} terms={terms} />} meta={<Marked text={h.hint} terms={terms} />}
                                     onClick={() => jump(h)} />
                             );
@@ -142,18 +146,18 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
     else if (current.id === "console") body = <ConsoleSection c={c} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
     else { const Body = BODIES[current.id]; body = <Body c={c} onOpenScreen={onOpenScreen} onWhatsNew={onWhatsNew} onSection={(id) => setSection(id)} />; }
 
+    // Esc, the scrim and the (x) ask here; nothing to guard — everything
+    // in Configurações saves as changed.
+    if (escRef) escRef.current = (mode) => onClose(mode === "all");
+
     return (
         <CfgFlash.Provider value={flash}>
-            <div className="cfg-dialog" role="dialog" aria-modal="true" aria-label="Configurações">
-                <div className="cfg-dialog-h">
-                    <span className="kx-section">Configurações</span>
-                    <span className="cfg-search">
-                        <Field value={q} onChange={setQ} placeholder="Buscar nas configurações" inputRef={inputRef} onKeyDown={onSearchKey} kbd={q ? null : "/"} />
-                    </span>
-                    <span className="cfg-h-gap" />
-                    <IconBtn name="x" title="Fechar · Esc" onClick={onClose} />
-                </div>
-                <div className="cfg-dialog-b">
+            <WinBar title="Configurações" tools={
+                <span className="cfg-search">
+                    <Field value={q} onChange={setQ} placeholder="Buscar nas configurações" inputRef={inputRef} onKeyDown={onSearchKey} kbd={q ? null : "/"} />
+                </span>
+            } />
+            <div className="cfg-dialog-b">
                     <nav className="cfg-nav" aria-label="Seções">
                         {SECTIONS.map(({ id, icon, name }) => (
                             <Row key={id} single icon={icon} title={name} current={!searching && id === current.id ? "page" : undefined} state={`${!searching && id === current.id ? "is-selected" : ""} ${searching && !counts[id] ? "is-dim" : ""}`}
@@ -169,7 +173,6 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
                         </Panel>
                     </div>
                 </div>
-            </div>
         </CfgFlash.Provider>
     );
 }

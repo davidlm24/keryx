@@ -241,7 +241,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
                     {themes.map((t) => <option key={t.id} value={t.id}>{themeName(t)}</option>)}
                     {themeGone && <option value={pref.themeId} disabled>(tema excluído)</option>}
                 </select>
-                {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor"><Icon name="edit" />Editar tema…</Btn>}
+                {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId, from: inEditor ? "Editor da tela" : "Telas e saídas" }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor"><Icon name="edit" />Editar tema…</Btn>}
             </FormRow>}
             </>}
             <FormRow k="">

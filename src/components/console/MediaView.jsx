@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Empty, BackBtn } from "./kx";
+import { Panel, Btn, IconBtn, Field, Empty, WinBar } from "./kx";
 import { importMediaFiles, mediaFromYouTube } from "@/lib/mediaImport";
 import { stageFromMedia, stageFromMediaList, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
@@ -28,7 +28,7 @@ const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().inc
 // out (the files stay in the media folder). A click selects (Ctrl/Shift
 // for more), a double click or Enter sends to air, "Tocar todos"
 // plays the selection (or everything shown) one after the other.
-export default function MediaView({ c, media, onSend, onClose, escRef }) {
+export default function MediaView({ c, media, onSend, onClose, escRef, active = true }) {
     const [cat, setCat] = useState("todas");
     const [category, setCategory] = useState("");
     const [view, setView] = useState(() => { try { return localStorage.getItem("keryx.media.view") || "grid"; } catch { return "grid"; } });
@@ -137,18 +137,21 @@ export default function MediaView({ c, media, onSend, onClose, escRef }) {
     // A file's length, read once from the file itself when the row has none.
     const learn = (m, seconds) => { if (!m.duration && Number.isFinite(seconds) && seconds > 0) keryx.entities.Media.update(m.id, { duration: Math.round(seconds) }).catch(() => {}); };
 
-    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
-    // whatever is open over the view closes first, and a field's Esc
-    // already blurred): close renaming, then the selection, then the view.
-    // The other keys stay the view's own: Enter sends one selected file;
+    // Esc comes routed from the console (keys.js ESC_ORDER "window", so
+    // whatever is open over the page closes first, and a field's Esc
+    // already blurred): close renaming, then the selection, then leave.
+    // The Voltar chip ("back") and the (x) ("all") leave at once — nothing
+    // to guard, the Mídia saves as it goes.
+    // The other keys stay the page's own: Enter sends one selected file;
     // Delete asks to take it out; Ctrl+A selects what is shown. They defer
-    // only to a dialog over the view (its own scrim does not count); the
-    // console's B and L still reach the screens.
-    if (escRef) escRef.current = () => { if (renaming) setRenaming(null); else if (sel.length) setSel([]); else onClose(); };
+    // to a dialog over the page (its own scrim does not count) and sleep
+    // while another page covers this one; the console's B and L still
+    // reach the screens.
+    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (renaming) setRenaming(null); else if (sel.length) setSel([]); else onClose(); };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        if (e.key === "Escape") return;
-        if (document.querySelector(".console .scrim:not(.view-scrim)")) return;
+        if (e.key === "Escape" || !active) return;
+        if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
         const field = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if (field) return;
         if (e.key === "Enter" && picked.length === 1) { e.preventDefault(); e.stopPropagation(); send(picked[0]); }
@@ -174,16 +177,20 @@ export default function MediaView({ c, media, onSend, onClose, escRef }) {
     );
 
     return (
-        <div className="col center mv">
-            <Panel lead={<BackBtn onClick={onClose} />} title={<>Mídia <span className="kx-count">· {media.length} {media.length === 1 ? "arquivo" : "arquivos"}{totalSize ? ` · ${bytes(totalSize)}` : ""}</span></>} actions={<span className="mv-acts">
-                <div className="kx-tabs mv-cats" role="tablist">
-                    {CATS.filter(([k]) => k !== "doc" || hasDocs).map(([k, label]) => <button type="button" role="tab" aria-selected={cat === k} key={k} className={`kx-t ${cat === k ? "is-on" : ""}`} onClick={() => setCat(k)}>{label}</button>)}
-                </div>
+        <>
+        <WinBar title="Mídia" sub={`${media.length} ${media.length === 1 ? "arquivo" : "arquivos"}${totalSize ? ` · ${bytes(totalSize)}` : ""}`}
+            tools={<div className="kx-tabs mv-cats" role="tablist">
+                {CATS.filter(([k]) => k !== "doc" || hasDocs).map(([k, label]) => <button type="button" role="tab" aria-selected={cat === k} key={k} className={`kx-t ${cat === k ? "is-on" : ""}`} onClick={() => setCat(k)}>{label}</button>)}
+            </div>}
+            actions={<>
                 <Btn small onClick={sequence} title="Toca os selecionados (ou todos os mostrados) um após o outro">Tocar todos</Btn>
                 <Btn small kind="outline" onClick={() => fileRef.current?.click()}><Icon name="plus" />Enviar arquivos</Btn>
                 <IconBtn name="layers" small on={view === "grid"} title="Grade" onClick={() => setView("grid")} />
                 <IconBtn name="list" small on={view === "list"} title="Lista" onClick={() => setView("list")} />
-                            </span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+            </>} />
+        <div className="win-body">
+        <div className="col center mv">
+            <Panel noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
                 <input ref={fileRef} type="file" multiple hidden accept="video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
                 <input ref={locateRef} type="file" hidden onChange={(e) => { located(e.target.files?.[0]); e.target.value = ""; }} />
                 <div className="mv-bar">
@@ -266,5 +273,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef }) {
                 </div>
             </Panel>
         </div>
+        </div>
+        </>
     );
 }
