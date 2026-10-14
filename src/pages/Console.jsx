@@ -49,7 +49,7 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreEnv } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, trayFlags, applyTrayFlags, canTray, leaves, pathOf } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
@@ -864,7 +864,14 @@ export default function Console() {
         const at = { clientX: e.clientX || r?.left || 0, clientY: e.clientY || r?.bottom || 0, preventDefault() {}, stopPropagation() {} };
         const name = DOCK_MODULES[id].name;
         const d = envDock;
-        const others = leaves(d.tree).filter((m) => m !== id);
+        // The No ar strip never moves (dock.js `pinned`): only the tray and back.
+        if (isPinned(id)) {
+            openMenu(e, { title: `${name} · fica sempre embaixo`, items: [pathOf(d.tree, id)
+                ? { label: "Tirar para a bandeja", icon: "x", onSelect: () => setEnvDock(hideModule(d, id)) }
+                : { label: "Voltar para a faixa embaixo", icon: "undo", onSelect: () => setEnvDock(returnModule(d, id)) }] });
+            return;
+        }
+        const others = leaves(d.tree).filter((m) => m !== id && !isPinned(m));
         const besideOf = (other) => openMenu(at, { title: `${name} · em relação a ${DOCK_MODULES[other].name}`, items: Object.entries(ZONE_LABEL).map(([zone, label]) => ({
             label, icon: zone === "center" ? "layers" : "grip",
             onSelect: () => setEnvDock(moveModules(d, [id], { kind: "group", path: pathOf(d.tree, other), zone })),
