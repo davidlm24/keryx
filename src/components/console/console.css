@@ -491,6 +491,25 @@
 .console .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
 .console .kx-row.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
 .console .kx-row.is-dragging { opacity: .4; }
+/* UI rule (owner 2026-10-14): every list row in the console — Biblioteca,
+   Setlist, the tabs panel, Camadas, Configurações' menu, the views — is a
+   rounded card set in from its column, like the verses: the hover and the
+   states fill a card, never the column edge to edge. Only a list the owner
+   asked to keep edge to edge (the Slides column and No ar, to gain room)
+   differs, and those are .kx-slide/.onair-card, not these. The 2 px
+   between cards keeps two highlighted rows apart; the inset comes off the
+   left padding, so the text stays where it was (in line with listheads). */
+.console :is(.kx-row, .kx-layer) { width: auto; margin: 1px var(--space-1); border-radius: var(--radius-control); overflow: clip; }
+.console .kx-row { padding-left: var(--space-2); }
+.console .kx-layer { padding-left: var(--space-1); height: calc(var(--row) - 2px); }
+/* A measured module (Camadas, Temas) counts its cards' margins: without
+   this the first and last card's margin collapse out of the box, the
+   height comes out 2 px short and the panel scrolls. The layer cards give
+   those 2 px back above, so Camadas keeps its height. */
+.console .kx-measure { display: flow-root; }
+/* Camadas' last card ends 4 px from the panel's bottom, as its sides do
+   (the card's own 1 px margin plus this). */
+.console .kx-measure:has(> .kx-layer) { padding-bottom: calc(var(--space-1) - 1px); }
 .console .kx-layer.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
 .console .kx-layer.is-dragging { opacity: .4; }
 .console .kx-transport .toca { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
@@ -607,6 +626,9 @@
 .console .bible-air .kx-mon { width: min(100%, calc(35cqh * 16 / 9)); }
 
 /* "+" beside a search field: the menu of what can be added there. */
+/* The Biblioteca's search field with its ☆ and "+" on one line. */
+.console .searchrow { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
+.console .searchrow > .kx-field { flex: 1; }
 .console .addmenu { position: relative; flex: none; }
 .console .addmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 45; width: 230px; }
 .console .addmenu-pop.is-flip { left: 0; right: auto; }
