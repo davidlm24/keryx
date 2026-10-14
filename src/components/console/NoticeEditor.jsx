@@ -24,7 +24,7 @@ const pickFields = (row) => Object.fromEntries(FIELDS.filter((k) => row[k] !== u
 // (a bundled photo, a colour, an image, a video, audio, or a loop of files)
 // and a live 16:9 preview drawn by ScreenRenderer, so it is the screen.
 // Saving changes the library only; "Pôr na prévia do console" prepares it.
-export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved }) {
+export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved, escRef }) {
     const chimeOn = usePrefs().chime_on;
     const isNew = noticeId === "new";
     const [draft, setDraft] = useState(() => (isNew ? newNotice("countdown") : null));
@@ -105,17 +105,18 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         });
     };
 
-    // Esc: leaves a field, closes a picker, then leaves the editor (asking
-    // once if there are changes); Ctrl+S saves.
+    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
+    // whatever is open over the editor closes first, and a field's Esc
+    // already blurred): close a picker, then leave (asking once if there
+    // are changes). Ctrl+S saves — the editor's own key; it defers only to
+    // a dialog over the editor (its own scrim does not count).
+    if (escRef) escRef.current = () => { if (pick) setPick(null); else leave(); };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        if (document.querySelector(".console .scrim")) return;
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft) save(); return; }
-        if (e.key !== "Escape") return;
+        if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
+        if (document.querySelector(".console .scrim:not(.view-scrim)")) return;
         e.preventDefault(); e.stopPropagation();
-        if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) { e.target.blur(); return; }
-        if (pick) { setPick(null); return; }
-        leave();
+        if (draft) save();
     };
     useEffect(() => {
         const onKey = (e) => keysRef.current(e);

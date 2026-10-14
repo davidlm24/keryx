@@ -135,7 +135,20 @@ export default function Console() {
     const notice = view?.notice || null;
     const school = Boolean(view?.school);
     const reports = Boolean(view?.reports);
+    // Which kind the open view is: a floating dialog over the console, or a
+    // page that replaces the dock (the remaining ones of the 2026-10-14
+    // "janelas flutuantes" review).
+    const dlgView = Boolean(view?.planner || view?.media || view?.notice);
+    const pageView = Boolean(view?.song || view?.school || view?.reports);
     const closeView = useCallback(() => setView(null), []);
+    // Floating views (owner 2026-10-14, "janelas flutuantes"): the planner,
+    // Mídia and the aviso editor open as dialogs over the live console
+    // (.view-dialog); the song editor, the Escola bíblica and Relatórios are
+    // still pages that replace the dock. The mounted floating view registers
+    // its close request here: Esc (keys.js ESC_ORDER "view") and the scrim
+    // click go through it, so an unsaved guard can ask instead of closing.
+    const viewEscRef = useRef(null);
+    useEffect(() => { if (!view) viewEscRef.current = null; }, [view]);
     const setEnv = useCallback((v) => { setView(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
     // Configurações: a window over whatever is on screen (the console or a
     // view), with its section (and Aparência's tab); ?config=<section> opens
@@ -728,7 +741,9 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, settings: cfg, drawer, edit: editing });
+                // "view" only when a floating view registered its close
+                // request; the page views still handle their own Esc.
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, settings: cfg, view: view && viewEscRef.current, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
@@ -736,6 +751,7 @@ export default function Console() {
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "settings") setCfgAt(null);
+                    else if (top === "view") viewEscRef.current?.();
                     else if (top === "drawer") setDrawer(false);
                     else if (top === "edit") setEditing(false);
                     return;
@@ -1053,7 +1069,7 @@ export default function Console() {
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} player={playerDocked ? playerSlot : null}
-                items={playable} multiview={multiview}
+                items={playable} multiview={multiview} still={Boolean(view)}
                 onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
                 onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
                     { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
@@ -1136,25 +1152,33 @@ export default function Console() {
                 <div className="kx-banner is-rh" role="status"><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             <div className="main" ref={mainRef}>
-                {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} />}
                 {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { songSaved(row); if (editSong === "new" && row?.id) setView({ song: row.id }); }} />}
                 {school && <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={closeView} />}
                 {reports && <ReportsView c={c} onClose={closeView} />}
-                {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}
-                {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} />}
-                {!view && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)}
+                {!pageView && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu }} />}
-                {!view && env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
+                {!pageView && env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
             </div>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
+
+            {/* The floating views: a dialog over the live console; the scrim
+                click asks the view to close, exactly as Esc does. */}
+            {dlgView && <div className="scrim is-dim view-scrim" onClick={() => viewEscRef.current?.()} />}
+            {dlgView && (
+                <div className={`view-dialog ${mediaView ? "vd-media" : ""}`} role="dialog" aria-modal="true" aria-label={planner ? "Planejar o culto" : mediaView ? "Mídia" : "Aviso"}>
+                    {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} escRef={viewEscRef} />}
+                    {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} escRef={viewEscRef} />}
+                    {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} escRef={viewEscRef} />}
+                </div>
+            )}
 
             {/* Configurações: a window over the console or the view behind it. */}
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} />}
-            {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open && <div className={`scrim ${cfg ? "over-cfg" : dlgView ? "over-view" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">

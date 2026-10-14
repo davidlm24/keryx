@@ -28,7 +28,7 @@ const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().inc
 // out (the files stay in the media folder). A click selects (Ctrl/Shift
 // for more), a double click or Enter sends to air, "Tocar todos"
 // plays the selection (or everything shown) one after the other.
-export default function MediaView({ c, media, onSend, onClose }) {
+export default function MediaView({ c, media, onSend, onClose, escRef }) {
     const [cat, setCat] = useState("todas");
     const [category, setCategory] = useState("");
     const [view, setView] = useState(() => { try { return localStorage.getItem("keryx.media.view") || "grid"; } catch { return "grid"; } });
@@ -137,21 +137,19 @@ export default function MediaView({ c, media, onSend, onClose }) {
     // A file's length, read once from the file itself when the row has none.
     const learn = (m, seconds) => { if (!m.duration && Number.isFinite(seconds) && seconds > 0) keryx.entities.Media.update(m.id, { duration: Math.round(seconds) }).catch(() => {}); };
 
-    // Keys inside the view: Esc closes renaming, then the selection, then the
-    // view; Enter sends one selected file; Delete asks to take it out; Ctrl+A
-    // selects what is shown. The console's B and L still reach the screens.
+    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
+    // whatever is open over the view closes first, and a field's Esc
+    // already blurred): close renaming, then the selection, then the view.
+    // The other keys stay the view's own: Enter sends one selected file;
+    // Delete asks to take it out; Ctrl+A selects what is shown. They defer
+    // only to a dialog over the view (its own scrim does not count); the
+    // console's B and L still reach the screens.
+    if (escRef) escRef.current = () => { if (renaming) setRenaming(null); else if (sel.length) setSel([]); else onClose(); };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        if (document.querySelector(".console .scrim")) return;
+        if (e.key === "Escape") return;
+        if (document.querySelector(".console .scrim:not(.view-scrim)")) return;
         const field = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
-        if (e.key === "Escape") {
-            e.preventDefault(); e.stopPropagation();
-            if (field) { e.target.blur(); return; }
-            if (renaming) setRenaming(null);
-            else if (sel.length) setSel([]);
-            else onClose();
-            return;
-        }
         if (field) return;
         if (e.key === "Enter" && picked.length === 1) { e.preventDefault(); e.stopPropagation(); send(picked[0]); }
         else if ((e.key === "Delete" || e.key === "Backspace") && picked.length) { e.preventDefault(); e.stopPropagation(); remove(); }

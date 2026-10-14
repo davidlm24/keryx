@@ -617,6 +617,18 @@
 .console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line); flex: none; font-size: 12px; }
 .console .lyr-legal { max-width: 360px; }
 
+/* ---------- Floating views (owner 2026-10-14, "janelas flutuantes") ---------- */
+/* The planner, Mídia and the aviso editor open as dialogs over the live
+   console, their own columns inside on the console's ground (--bg-0), so
+   their panels read as panels. Under Configurações (33), the library (37)
+   and the confirm question (44); Esc reaches them through the console
+   (keys.js ESC_ORDER "view"), never a listener of their own. */
+.console .view-scrim { z-index: 29; }
+.console .scrim.over-view { z-index: 31; } /* a popover opened over a floating view backdrops above it, as over-cfg does */
+.console .view-dialog { position: absolute; z-index: 30; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; align-items: stretch; gap: var(--gutter); padding: var(--gutter); background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
+.console .view-dialog > .col.center { min-width: 0; }
+.console .view-dialog.vd-media { width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); }
+
 /* ---------- Configurações (canvas artboard 20) ---------- */
 /* A window over the console: above the Camadas drawer (32), under Verificar
    (35) and the dialogs (40); a popover opened from inside it gets its
