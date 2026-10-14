@@ -43,7 +43,9 @@ export const TEMAS_H = 220;
 // lines whole down to 300 px (~33 letters a line); a longer line ends in
 // "…" there and never wraps (owner 2026-10-14: the editor's lines stay lines).
 export const MODULES = {
-    lib: { name: "Biblioteca", minW: 200, minH: 160 },
+    // 260: the default four tabs and the (+) are 218 px wide, and a wider row
+    // breaks into two lines, so no title is ever cut (owner 2026-10-14).
+    lib: { name: "Biblioteca", minW: 260, minH: 160 },
     slides: { name: "Slides", minW: 300, minH: 140 },
     programa: { name: "Programa", minW: 320, minH: 200, required: true },
     previa: { name: "Prévia", minW: 220, minH: 200, required: true },
