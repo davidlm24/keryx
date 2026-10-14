@@ -252,7 +252,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   player **always visible**, dimmed while idle) and below it one row that
   **ends at the centre's edge**: the Prévia (44 % of the centre at first),
   then the **tabs panel**
-  (`TabsPanel.jsx`), and under that row the **No ar** strip (`ONAIR_H`;
+  (`TabsPanel.jsx`); under **all** the columns, edge to edge, the **No ar**
+  strip (owner 2026-10-14: the dock's root is a column, the four columns
+  over `onair` at `ONAIR_H`, 104 px — its header and one row of cards;
   medium and narrow start with it in the tray); the **right column** (`rightW`) is **Camadas over the
   Setlist, full height** (Camadas 360 px high: the Setlist gets most of the
   column). **The Programa and the Prévia have no card** (owner 2026-10-14,
@@ -292,8 +294,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   item, even a single slide (`handIsPrev` in SlidesPanel.jsx; a theme's
   example is not an item), else what is on air; No ar (`OnAirPanel.jsx`,
   dock id `onair`, in Ver's module switches) always shows the item on air
-  and never follows a click elsewhere — a strip of cards while it is low,
-  a list in a column. In both a click prepares that slide, a double click
+  and never follows a click elsewhere — one row of cards while it is low
+  (scrolling sideways, the card on air kept in view), a list in a column.
+  **No ar exists only while lyrics are on air** (owner 2026-10-14):
+  text slides on the projector (a song, a passage, free text, an Escola
+  material; `lyricsOnAir` in dock.js, tested) not covered by Tela preta,
+  the Logo, a timer, an aviso, a picture or a video. Otherwise — and
+  after Esc — it folds away: `fitDock(…, { gone: goneModules(c.cur) })`
+  gives a child made only of folding modules (`MODULES.onair.fold`) size
+  0 and no gutter, and the rest takes its room; its place in the dock,
+  the tray and the named arrangements are untouched, so it comes back
+  where it was. It folds wherever it is placed alone (not as a tab beside
+  another module), never while editing the arrangement, and eases in and
+  out in 180 ms (`.dock-fold`, off with reduced motion). The Bíblia's
+  No ar is another module (`air`) and never folds. In both a click prepares that slide, a double click
   sends it; ↑/↓ walk the Slides column, ←/→ move what is on air. **Slides
   and verses are cards** (owner 2026-10-14; console.css, over the design
   system's rows): the state is the card's background, never a border or a

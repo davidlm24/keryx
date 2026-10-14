@@ -4,7 +4,7 @@ import { normalizePresets, nameProblem, addPreset, updatePreset, removePreset, p
 import { defaultDock, moveModules, setActive } from "./dock.js";
 
 const dock = defaultDock();
-const moved = moveModules(dock, ["camadas"], { kind: "group", path: [0], zone: "left" });
+const moved = moveModules(dock, ["camadas"], { kind: "group", path: [0, 0], zone: "left" });
 
 test("a saved list is made safe: an id, a name that is not Padrão, a dock; no repeats", () => {
     const list = normalizePresets([
@@ -52,9 +52,9 @@ test("changed: the dock differs from its preset; the tab in front does not count
     const p = { id: "a", name: "Culto", dock: moved };
     assert.equal(presetChanged(p, moved), false);
     assert.equal(presetChanged(p, dock), true);
-    const tabs = moveModules(dock, ["slides"], { kind: "group", path: [0], zone: "center" });
+    const tabs = moveModules(dock, ["slides"], { kind: "group", path: [0, 0], zone: "center" });
     const q = { id: "b", name: "Abas", dock: tabs };
-    assert.equal(presetChanged(q, setActive(tabs, [0], "lib")), false);
+    assert.equal(presetChanged(q, setActive(tabs, [0, 0], "lib")), false);
     assert.equal(presetChanged(null, dock), false, "Padrão: nothing to compare");
 });
 

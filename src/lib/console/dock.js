@@ -31,8 +31,9 @@ const PX_MIN = 40;
 const PX_MAX = 4000;
 // A new group's size along its split when nothing better is known.
 export const NEW_PX = 320;
-// The No ar strip's height in the default dock: its header and one row of cards.
-export const ONAIR_H = 132;
+// The No ar strip's height in the default dock: its header and one row of
+// cards (2026-10-14: one row, ~104 px, across the whole window).
+export const ONAIR_H = 104;
 
 // The smallest size each module is usable at, its panel's header included,
 // and its environment (env; absent: the culto). The Slides keep a slide's
@@ -48,8 +49,10 @@ export const MODULES = {
     setlist: { name: "Setlist", minW: 220, minH: 120, required: true },
     camadas: { name: "Camadas", minW: 280, minH: 120 },
     // The slides of what is on air, whatever the Slides column holds (the
-    // Holyrics strip, owner 2026-10-14): a strip under the Prévia at first.
-    onair: { name: "No ar", minW: 220, minH: 110 },
+    // Holyrics strip, owner 2026-10-14): a band across the bottom of the
+    // window at first. `fold`: while nothing with lyrics is on air it takes
+    // no room wherever it is placed alone (fitDock's `gone`).
+    onair: { name: "No ar", minW: 220, minH: 96, fold: true },
     // As a module of its own: the panel's header (32) over the slot (36); in
     // a column it comes in at its own height (`size.col`), not half of its
     // neighbour's.
@@ -189,7 +192,7 @@ export function normalizeDock(saved) {
 // cards, the hidden modules, the sizes) and, as the console did then, the
 // width it is shown at (`tier`, layout.js tierFor):
 //   wide    the four columns of the 2026-10-13 console audit, the No ar
-//           strip under the Prévia (2026-10-14);
+//           strip under all of them, edge to edge (2026-10-14);
 //   medium  no right column: Camadas is a drawer (in the tray, with No ar) and the
 //           Setlist sits beside the Prévia, where the Painel de abas was;
 //   narrow  the same, and the Biblioteca over the Slides in one column.
@@ -218,10 +221,7 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     // Enviar ao ar and the panel's header and padding.
     const bottomH = Math.round((prevW * 9) / 16 + 84);
     const band = split("row", [group(["previa"]), group([wide ? "abas" : "setlist"])], [prevW, null]);
-    // Wide: the No ar strip under that row, as wide as the centre.
-    const live = wide && !hidden.onair
-        ? split("col", [group(["programa"]), band, group(["onair"])], [null, bottomH, ONAIR_H])
-        : split("col", [group(["programa"]), band], [null, bottomH]);
+    const live = split("col", [group(["programa"]), band], [null, bottomH]);
     // Camadas over the Setlist (or under it), Camadas with its own height.
     const stack = normalizeOrder(layout?.stacks?.side, ["camadas", "roteiro"]).filter((id) => id !== "camadas" || !hidden.camadas);
     const side = split("col", stack.map((id) => group([id === "roteiro" ? "setlist" : id])), stack.map((id) => (id === "camadas" ? camadasH : null)));
@@ -241,7 +241,10 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     }
     const tray = ["lib", "slides", "camadas", "onair"].filter((id) => hidden[id]);
     if (!wide) tray.push("camadas", "abas", "onair");
-    return normalizeDock({ tree: split("row", cols, sizes), hidden: tray });
+    const row = split("row", cols, sizes);
+    // Wide: the No ar strip under every column, edge to edge.
+    const tree = wide && !hidden.onair ? split("col", [row, group(["onair"])], [null, ONAIR_H]) : row;
+    return normalizeDock({ tree, hidden: tray });
 }
 
 // The Bíblia's dock from the columns it had before (2026-10-12: Livro ·
@@ -277,6 +280,8 @@ function strip(node, mods) {
 //   { kind: "group", path, zone }  zone "center": as tabs of that group;
 //                                  "left"/"right"/"top"/"bottom": a new group
 //                                  on that side, splitting the space;
+//   { kind: "edge", zone }         a band along that side of the whole
+//                                  console ("left"/"right"/"top"/"bottom");
 //   { kind: "tray" }               out of the console (never a required
 //                                  module; the player goes home instead);
 //   { kind: "home" }               the player back under the Programa.
@@ -293,6 +298,17 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
         const tree = clone(d.tree);
         strip(tree, list);
         return normalizeDock(make(dockEnv(d), tree, [...d.hidden, ...list.filter((m) => !MODULES[m].home)]));
+    }
+    if (target.kind === "edge") {
+        const zone = ZONES.includes(target.zone) && target.zone !== "center" ? target.zone : "bottom";
+        const axis = zone === "left" || zone === "right" ? "row" : "col";
+        const before = zone === "left" || zone === "top";
+        const tree = clone(d.tree);
+        strip(tree, list);
+        const fresh = group(list);
+        const size = pxOrNull(px) ?? NEW_PX;
+        const next = split(axis, before ? [fresh, tree] : [tree, fresh], before ? [size, null] : [null, size]);
+        return normalizeDock(make(dockEnv(d), next, d.hidden.filter((m) => !list.includes(m))));
     }
     if (target.kind !== "group") return d;
     const tg = nodeAt(d.tree, target.path);
@@ -356,6 +372,12 @@ export function returnModule(dock, id, opts) {
         const i = p[p.length - 1];
         const row = parent.dir === "row";
         const px = parent.sizes[i] ?? NEW_PX;
+        // A band across the whole default console (the No ar strip): across
+        // the whole console now too.
+        if (p.length === 1 && parent.children.length === 2 && isSplit(parent.children[1 - i])) {
+            const zone = row ? (i === 0 ? "left" : "right") : (i === 0 ? "top" : "bottom");
+            return moveModules(d, [id], { kind: "edge", zone }, { px });
+        }
         const after = parent.children.slice(i + 1).flatMap(leaves).find(onScreen);
         if (after) return moveModules(d, [id], { kind: "group", path: pathOf(d.tree, after), zone: row ? "left" : "top" }, { px, share: false });
         const before = parent.children.slice(0, i).flatMap(leaves).reverse().find(onScreen);
@@ -480,10 +502,33 @@ export function allocate(sizes, mins, avail) {
 //   { kind: "split", path, dir, w, h, children: [{ index, at, size, fixed, frame }] }
 //       (at: the children of the dock's split this one stands for — several
 //       when they joined as tabs — and index the first of them)
-export function fitDock(dock, w, h) {
+// `gone`: folding modules (MODULES[id].fold) with nothing to show now (the
+// No ar strip while no lyrics are on air). A child of a split made only of
+// them takes no room: size 0, `gone: true`, and the others are laid out as
+// if it were not there (no gutter, no joining as tabs). Its path stays, so
+// the dock, its drops and its splitters are untouched. In a group with
+// other modules (No ar as a tab beside Camadas) it stays as it is. Every
+// child made only of folding modules carries `fold: true` (the Dock
+// animates its size).
+export function fitDock(dock, w, h, { gone = [] } = {}) {
     if (!dock?.tree) return null;
-    return fitNode(dock.tree, [], w, h, contextOf(dock.tree));
+    const folding = new Set(gone.filter((id) => MODULES[id]?.fold));
+    return fitNode(dock.tree, [], w, h, { ...contextOf(dock.tree), folding });
 }
+
+const folds = (node) => leaves(node).every((id) => MODULES[id]?.fold);
+
+// Lyrics on air, so the No ar strip has something to show: text slides on
+// the projector (a song, a passage, free text, an Escola material) not
+// covered by Tela preta, the Logo, a timer, an aviso, a picture or a video.
+export function lyricsOnAir(live) {
+    if (!live?.content?.slides?.length) return false;
+    if (live.screen && live.screen !== "show") return false;
+    return !(live.tool || live.communication || live.media);
+}
+
+// The folding modules with nothing to show for this live state (fitDock's gone).
+export const goneModules = (live) => (lyricsOnAir(live) ? [] : ["onair"]);
 
 // Several nodes shown as the tabs of one group (the first one's tab in front).
 function tabsFrame(nodes, path, w, h, target) {
@@ -495,7 +540,12 @@ function tabsFrame(nodes, path, w, h, target) {
 function fitNode(node, path, w, h, ctx) {
     if (isGroup(node)) return { kind: "group", path, tabs: node.tabs, active: node.active, w, h };
     const row = node.dir === "row";
-    let items = node.children.map((c, i) => ({ at: [i], min: minSize(c, row, ctx), size: node.sizes[i] }));
+    const out = node.children.map((c, i) => (folds(c) && leaves(c).every((id) => ctx.folding?.has(id)) ? i : -1)).filter((i) => i >= 0);
+    let items = node.children.map((c, i) => ({ at: [i], min: minSize(c, row, ctx), size: node.sizes[i] })).filter((it) => !out.includes(it.at[0]));
+    // The flexible child gone: the largest one left takes the rest.
+    if (out.length && items.length && !items.some((it) => it.size === null)) {
+        items.reduce((a, it) => (it.size > a.size ? it : a), items[0]).size = null;
+    }
     const need = () => items.reduce((a, it) => a + it.min, 0) + G * (items.length - 1);
     const avail = row ? w : h;
     while (items.length > 1 && need() > avail + 0.5) {
@@ -514,21 +564,25 @@ function fitNode(node, path, w, h, ctx) {
         const size = a.size === null || b.size === null ? null : Math.max(a.size, b.size);
         items.splice(best, 2, { at, min: groupMin(at.flatMap((i) => leaves(node.children[i])), row, ctx), size });
     }
-    if (items.length === 1 && node.children.length > 1) {
+    if (items.length === 1 && node.children.length - out.length > 1) {
         const target = firstGroupPath(node, path);
         return tabsFrame([node], path, w, h, target);
     }
     const dims = allocate(items.map((it) => it.size), items.map((it) => it.min), avail - G * (items.length - 1));
-    return {
-        kind: "split", path, dir: node.dir, w, h,
-        children: items.map((it, k) => {
-            const cw = row ? dims[k] : w;
-            const ch = row ? h : dims[k];
-            const first = [...path, it.at[0]];
-            const frame = it.at.length === 1
-                ? fitNode(node.children[it.at[0]], first, cw, ch, ctx)
-                : tabsFrame(it.at.map((i) => node.children[i]), first, cw, ch, firstGroupPath(node.children[it.at[0]], first));
-            return { index: it.at[0], at: it.at, size: dims[k], fixed: it.size !== null, frame };
-        }),
-    };
+    const children = items.map((it, k) => {
+        const cw = row ? dims[k] : w;
+        const ch = row ? h : dims[k];
+        const first = [...path, it.at[0]];
+        const frame = it.at.length === 1
+            ? fitNode(node.children[it.at[0]], first, cw, ch, ctx)
+            : tabsFrame(it.at.map((i) => node.children[i]), first, cw, ch, firstGroupPath(node.children[it.at[0]], first));
+        const child = { index: it.at[0], at: it.at, size: dims[k], fixed: it.size !== null, frame };
+        return it.at.length === 1 && folds(node.children[it.at[0]]) ? { ...child, fold: true, gone: false } : child;
+    });
+    // The gone ones in their places, at no size.
+    for (const i of out) {
+        const frame = fitNode(node.children[i], [...path, i], row ? 0 : w, row ? h : 0, ctx);
+        children.splice(children.filter((c) => c.index < i).length, 0, { index: i, at: [i], size: 0, fixed: true, fold: true, gone: true, frame });
+    }
+    return { kind: "split", path, dir: node.dir, w, h, children };
 }

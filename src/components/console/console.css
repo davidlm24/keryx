@@ -232,8 +232,8 @@
 .console .is-air > .kx-slide-n, .console .is-air > .kx-verse-n, .console .is-air .kx-slide-lab { color: var(--live-fg); }
 .console .kx-slide.is-air.is-prev, .console .kx-verse.is-air.is-prev { background: var(--prev-bg); }
 .console .is-air.is-prev > .kx-slide-n, .console .is-air.is-prev > .kx-verse-n { align-self: start; height: 16px; line-height: 16px; border-radius: 4px; background: var(--live); color: var(--on-brand); text-align: center; font-weight: 500; }
-/* The No ar module: a strip of cards while it is low (its place under the
-   Prévia), a list in a column. */
+/* The No ar module: one row of cards while it is low (its band across the
+   bottom of the window, only while lyrics are on air), a list in a column. */
 .console .onair-panel > .kx-panel-b { container-type: size; }
 .console .onair-b { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .console .onair-list { flex: 1; min-height: 0; overflow: auto; }
@@ -286,6 +286,11 @@
 .console .dock-split { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .console .dock-split.is-col { flex-direction: column; }
 .console .dock-cell { display: flex; min-width: 0; min-height: 0; }
+/* A folding module (the No ar strip, only while lyrics are on air): it eases
+   in and out of its place so the columns do not jump; gone, it takes no room. */
+.console .dock-cell.dock-fold { overflow: hidden; transition: flex-basis 180ms var(--ease-out); }
+.console .dock-cell.dock-fold.is-gone { visibility: hidden; transition: flex-basis 180ms var(--ease-out), visibility 0s 180ms; }
+@media (prefers-reduced-motion: reduce) { .console .dock-cell.dock-fold, .console .dock-cell.dock-fold.is-gone { transition: none; } }
 .console .dock-group { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; outline: 0; }
 .console .dock-group > .kx-panel { flex: 1 1 0; min-width: 0; min-height: 0; }
 .console .dock-group > .kx-panel.bb-side { contain: size; }
@@ -840,7 +845,7 @@
 /* Updates: the popup's progress bar and the bell's list. */
 .console .dialog.upd { width: 440px; }
 .console .upd-bar { position: relative; height: 8px; border-radius: 4px; background: var(--bg-3); overflow: hidden; }
-.console .upd-bar > b { position: absolute; inset: 0; border-radius: 4px; background: var(--prev); transform-origin: left center; transition: transform .3s var(--ease-out, ease-out); }
+.console .upd-bar > b { position: absolute; inset: 0; border-radius: 4px; background: var(--prev); transform-origin: left center; transition: transform .3s var(--ease-out); }
 .console .upd-bar.is-error > b { background: var(--warn); }
 .console .upd-bar.is-busy > b { right: auto; width: 30%; animation: upd-busy 1.2s ease-in-out infinite; }
 @keyframes upd-busy { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
