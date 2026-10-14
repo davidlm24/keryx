@@ -513,7 +513,24 @@ Biblioteca-over-Slides column takes `slidesW` too. A slide keeps the
 editor's lines (owner 2026-10-14, replacing "never an ellipsis"): each line
 stays one line and a line too long for the column ends in "…" (`SlideText`
 in SlidesPanel.jsx, `.kx-ln`); the whole text is the card's tooltip and the
-Prévia. Verses (prose) still wrap. A new kind of element is an entry in
+Prévia. Verses (prose) still wrap. **Lines per slide** (owner 2026-10-14):
+the song editor's Estrofe / 2 / 4 / Outro (1–12, `LinesPicker`; also the
+import preference) is `Song.lines_per_slide` (`linesLimit`), a setting —
+it never rewrites the lyrics (the old `reflowLyrics` did, one way, and is
+gone), so any choice in any order works. Saving rebuilds the Prévia and
+`content.update`s the song on air (`songSaved` in Console.jsx). On every
+screen one line of the lyrics is one line: ScreenRenderer shrinks a song
+slide's font so its longest line fits (`useFitWidth`, a hidden probe,
+`fitScale` in lyricFit.js, down to 45 %; only past that it wraps).
+**Chords and part names are each screen's choice** (owner 2026-10-14):
+`lyricsOptions(page, pref)` in outputPrefs.js (`OutputPref.options.chords`
+/ `.labels`; on for the Palco, off for every other output and the Pastor)
+rides to the renderer as `content.show` via `prefState`; the old "Refrão"
+heading over chorus slides is now `show.labels` with the part's own name.
+Saved slides keep their `chorded` twin (before, saving lost the Palco's
+chords; `withChordedTwins` fills old saves from the lyrics). The editor
+inserts chords at the cursor (Acorde, the Tom's chips from `keyChords`) and
+transposes the whole song (Tom − / +). A new kind of element is an entry in
 `ELEMENT_TYPES` (with its `group`) plus its case in `elementText` or the
 renderer's `Body`. Generated backgrounds are the next step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa header, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 

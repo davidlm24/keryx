@@ -84,6 +84,22 @@ export function transposeChords(chordsText, semitones) {
     return String(chordsText).split("\n").map((l) => transposeLine(l, semitones)).join("\n");
 }
 
+// The chords of a key, for the song editor's chips: a major key's I ii iii
+// IV V vi ("D" -> D Em F#m G A Bm), a minor key's i III iv v VI VII
+// ("Am" -> Am C Dm Em F G). Flats where the key is written in flats (F, Bb,
+// Dm, Gm…). [] when the key is not one ("", "x", "Verso").
+const FLAT_MAJORS = new Set([5, 10, 3, 8, 1, 6]); // F Bb Eb Ab Db Gb
+export function keyChords(key) {
+    const m = /^([A-G])([#b]?)(m(?!aj))?/.exec(String(key || "").trim());
+    if (!m) return [];
+    const root = noteIndex(m[1], m[2]);
+    const minor = Boolean(m[3]);
+    const major = minor ? (root + 3) % 12 : root;
+    const flats = m[2] === "b" || (m[2] !== "#" && FLAT_MAJORS.has(major));
+    const steps = minor ? [[0, "m"], [3, ""], [5, "m"], [7, "m"], [8, ""], [10, ""]] : [[0, ""], [2, "m"], [4, "m"], [5, ""], [7, ""], [9, "m"]];
+    return steps.map(([s, q]) => indexToNote(root + s, flats) + q);
+}
+
 export function semitoneLabel(semitones) {
     if (semitones === 0) return "Original";
     return (semitones > 0 ? "+" : "") + semitones;

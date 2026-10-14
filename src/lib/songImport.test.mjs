@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, reflowLyrics, songSlidesFor } from "./songImport.js";
+import { parseChords, songFromText, songsFromFile, songsFromJson, isChordLine, slidesFromLyrics, songSlidesFor, linesLimit } from "./songImport.js";
 
 test("ChordPro: directives give title/artist, sections and no inline chords", () => {
     const raw = "{title: Algo Novo}\n{artist: Kemuel}\n{sov 1}\n[G]Vem me visitar [D]hoje aqui\n{eov}\n{soc}\nEspírito, [C]vem\n{eoc}";
@@ -43,7 +43,10 @@ test("Ao importar: long stanzas cut into slides of n lines; the lyrics stay whol
     assert.equal(s.lyrics, "um\ndois\ntrês\nquatro\ncinco\n\nseis");
     assert.equal(s.lines_per_slide, 2, "the song keeps the split it was imported with");
     assert.equal(songFromText(raw, { name: "x.txt" }).lines_per_slide, 0);
-    assert.equal(songFromText(raw, { name: "x.txt", lines: 3 }).lines_per_slide, 0, "only 0, 2 or 4 are kept");
+    const three = songFromText(raw, { name: "x.txt", lines: 3 });
+    assert.equal(three.lines_per_slide, 3, "any limit from 1 to 12 is kept");
+    assert.deepEqual(three.slides.map((x) => x.text), ["um\ndois\ntrês", "quatro\ncinco", "seis"]);
+    assert.equal(songFromText(raw, { name: "x.txt", lines: 40 }).lines_per_slide, 12);
 });
 
 test("editor: live split with [labels], chorus, line cuts", async () => {
@@ -68,20 +71,6 @@ test("editor: timings from the marked starts; durations", async () => {
     assert.equal(parseDuration("90"), 90);
     assert.equal(parseDuration("x"), null);
     assert.equal(formatDuration(276), "4:36");
-});
-
-test("reflowLyrics: the text is rewritten as the slides read", () => {
-    const lyrics = "[Verso]\num\ndois\ntrês\nquatro\ncinco\n\n[Refrão]\nseis\nsete";
-    assert.equal(reflowLyrics(lyrics, 2), "[Verso]\num\ndois\n\ntrês\nquatro\n\ncinco\n\n[Refrão]\nseis\nsete");
-    assert.equal(reflowLyrics(lyrics, 4), "[Verso]\num\ndois\ntrês\nquatro\n\ncinco\n\n[Refrão]\nseis\nsete");
-    assert.equal(reflowLyrics(lyrics, 0), lyrics, "Estrofe: untouched");
-    assert.equal(reflowLyrics("[Instrumental]\n\nsolo um\nsolo dois\nsolo três", 2), "[Instrumental]\n\nsolo um\nsolo dois\n\nsolo três", "a marker alone stays its own block");
-    assert.equal(reflowLyrics("", 2), "");
-    const done = reflowLyrics(lyrics, 2);
-    assert.equal(reflowLyrics(done, 2), done, "stable: reflowing again changes nothing");
-    const s1 = slidesFromLyrics(lyrics, { lines: 2 }).map((s) => [s.text, s.label]);
-    const s2 = slidesFromLyrics(done, { lines: 2 }).map((s) => [s.text, s.label]);
-    assert.deepEqual(s2, s1, "same slides before and after the rewrite");
 });
 
 test("chorded lyrics: stripped slides, chorded twins aligned, same cuts", () => {
@@ -112,6 +101,31 @@ test("songSlidesFor: chordedSlides only when the lyrics carry chords; saved slid
     assert.deepEqual(split.chordedSlides, ["[G]a\n[D]b", "[Em]c\n[C]d"]);
 });
 
-test("reflowLyrics keeps a chords-only line with the row under it", () => {
-    assert.equal(reflowLyrics("[Verso]\n[G] [D]\num\ndois\ntrês", 2), "[Verso]\n[G] [D]\num\ndois\n\ntrês");
+
+test("lines per slide: any limit, the lyrics never rewritten", () => {
+    assert.deepEqual([0, -1, "x", null, 1, 3, 2.6, 12, 99].map(linesLimit), [0, 0, 0, 0, 1, 3, 3, 12, 12]);
+    const lyrics = "[Verso]\num\ndois\ntrês\nquatro\ncinco\n\n[Refrão]\nseis\nsete";
+    const texts = (lines) => slidesFromLyrics(lyrics, { lines }).map((s) => s.text);
+    assert.deepEqual(texts(3), ["um\ndois\ntrês", "quatro\ncinco", "seis\nsete"]);
+    assert.deepEqual(texts(2), ["um\ndois", "três\nquatro", "cinco", "seis\nsete"]);
+    assert.deepEqual(texts(0), ["um\ndois\ntrês\nquatro\ncinco", "seis\nsete"], "Estrofe after a smaller limit joins back: the split is a setting, not the text");
+    const three = songSlidesFor({ lyrics, lines_per_slide: 3 });
+    assert.deepEqual(three.slides.map((s) => s.text), texts(3));
+    assert.deepEqual(three.slides.map((s) => s.label), ["Verso", "Verso", "Refrão"]);
+});
+
+test("songSlidesFor: saved slides keep the chords the editor saved with them", () => {
+    const built = songSlidesFor({ lyrics: "x", slides: [{ text: "Deus é fiel", chorded: "[G]Deus é [D]fiel", label: "Verso" }, { text: "Santo" }] });
+    assert.deepEqual(built.slides.map((s) => s.text), ["Deus é fiel", "Santo"]);
+    assert.ok(built.slides.every((s) => !("chorded" in s)), "the twin rides apart, never in the slide");
+    assert.deepEqual(built.chordedSlides, ["[G]Deus é [D]fiel", "Santo"]);
+});
+
+test("songSlidesFor: slides saved before the twins were kept get them from the lyrics", () => {
+    const lyrics = "[Verso]\n[G]Deus é [D]fiel\nSanto é Ele\n\n[Refrão]\n[C]Glória";
+    const old = songSlidesFor({ lyrics, slides: [{ text: "Deus é fiel\nSanto é Ele", label: "Verso", start: 3 }, { text: "Glória", label: "Refrão" }] });
+    assert.deepEqual(old.chordedSlides, ["[G]Deus é [D]fiel\nSanto é Ele", "[C]Glória"]);
+    assert.equal(old.slides[0].start, 3, "the saved slide keeps its timing");
+    const apart = songSlidesFor({ lyrics, slides: [{ text: "outra coisa" }] });
+    assert.equal(apart.chordedSlides, null, "slides that no longer match the lyrics stay as saved");
 });

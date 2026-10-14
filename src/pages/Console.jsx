@@ -319,6 +319,22 @@ export default function Console() {
         return { ...s, args: { ...s.args, ref } };
     }, [serviceId, data.themes]);
 
+    // A song saved in the editor: the Prévia and the screens take its new
+    // slides at once (the split chosen there, everywhere), each where it was.
+    const songSaved = useCallback(async (row) => {
+        if (!row?.id) return;
+        const prev = c.prev;
+        if (prev?.id === `song:${row.id}`) {
+            const s = stageFromSong(row, prev.args?.ref || {}, data.themes);
+            c.setPrev({ ...s, index: Math.min(prev.index || 0, Math.max(0, s.slides.length - 1)) });
+        }
+        const on = c.cur?.content;
+        if (on?.kind !== "lyrics" || on.ref?.songId !== row.id) return;
+        if (c.locked) { c.say("Telas travadas · a música no ar muda quando for enviada de novo."); return; }
+        const s = stageFromSong(row, on.ref, data.themes);
+        try { await c.callOp("content.update", { slides: s.args.slides, stage: s.args.stage }); } catch { /* callOp said why */ }
+    }, [c, data.themes]);
+
     const prepareItem = useCallback(async (item, index) => {
         try { c.setPrev(await buildStage(item, index)); } catch (err) { c.say(err?.message || "Não foi possível abrir o item."); }
     }, [buildStage, c]);
@@ -1023,7 +1039,7 @@ export default function Console() {
             )}
             <div className="main" ref={mainRef}>
                 {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} />}
-                {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { if (editSong === "new" && row?.id) setView({ song: row.id }); }} />}
+                {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { songSaved(row); if (editSong === "new" && row?.id) setView({ song: row.id }); }} />}
                 {school && <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={closeView} />}
                 {reports && <ReportsView c={c} onClose={closeView} />}
                 {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} />}

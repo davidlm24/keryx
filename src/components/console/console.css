@@ -183,6 +183,8 @@
 /* Aviso rápido and the timer minutes (QuickTools.jsx). */
 .console .qt-row { display: flex; gap: var(--space-1); padding: 0 var(--space-2) var(--space-1); }
 .console .qt-min { width: 52px; height: 24px; background: var(--bg-2); border: 0; border-radius: 4px; color: var(--fg-1); padding: 0 6px; font: inherit; }
+.console .lines-pick { display: inline-flex; align-items: center; gap: 4px; }
+.console .lines-pick .qt-min { width: 46px; }
 
 /* The player's slot is always there; the player shows only while something plays. */
 .console .pslot { height: 36px; }
@@ -632,6 +634,10 @@
 .console .swatches button.is-on { box-shadow: 0 0 0 2px var(--fg-1); }
 .console .ed-color { width: 24px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
 .console .ed-tools { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; padding: 0 var(--space-2) var(--space-1); }
+.console .ed-chords { padding-top: 0; }
+.console .ed-chords .ed-chip { min-width: 30px; justify-content: center; font-variant-numeric: tabular-nums; }
+.console .ed-key { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.console .ed-key .kx-field { flex: 1; min-width: 0; }
 .console .ed-lyrics { flex: 1; min-height: 0; display: flex; padding: 0 var(--space-2) var(--space-2); }
 .console .ed-lyrics .ed-text { flex: 1; font-size: 14px; line-height: 21px; }
 .console .ed-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-2); }

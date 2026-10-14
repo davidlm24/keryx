@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Row, Btn, IconBtn, Field, Empty, Seg } from "./kx";
+import { Row, Btn, IconBtn, Field, Empty } from "./kx";
+import LinesPicker from "./LinesPicker";
 import { useContextMenu } from "./ContextMenu";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import AddMenu from "./AddMenu";
@@ -106,8 +107,8 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
 
     // How an imported lyric is cut into slides (a preference in the
     // database, the same one as Na internet's).
-    const importCut = String(usePrefs().import_lines);
-    const pickImportCut = (v) => { updateUser({ import_lines: Number(v) }).catch(() => c.say("Não foi possível salvar.")); };
+    const importCut = usePrefs().import_lines;
+    const pickImportCut = (v) => { updateUser({ import_lines: v }).catch(() => c.say("Não foi possível salvar.")); };
 
     // "+ › Do computador": song files (cifra, ChordPro, texto, JSON exportado).
     const importSongFiles = async (files) => {
@@ -156,7 +157,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
             {
                 label: "ao-importar",
                 node: <><span className="kx-meta">Ao importar</span><span style={{ flex: 1 }} />
-                    <Seg small value={importCut} onChange={pickImportCut} options={[["0", "Estrofe"], ["2", "2 linhas"], ["4", "4 linhas"]]} /></>,
+                    <LinesPicker value={importCut} onChange={pickImportCut} /></>,
             },
             { label: "Exportar todas…", icon: "save", onClick: exportSongs },
         ]

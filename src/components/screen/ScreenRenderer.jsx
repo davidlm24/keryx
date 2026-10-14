@@ -10,6 +10,8 @@ import { ringBell } from "@/lib/bell";
 import { usePrefs } from "@/hooks/useUser";
 import { verseSegments, withoutVerseMarks } from "@/lib/verseMarks";
 import { refLine } from "@/lib/bibleDisplay";
+import { fitScale } from "@/lib/console/lyricFit";
+import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
@@ -205,8 +207,48 @@ function verseNodes(text, numbers = "sup") {
     return segs.flatMap((x, i) => (x.n === null ? [x.text] : [<sup key={i}>{x.n}</sup>, x.text]));
 }
 
+// One line of the lyrics is one line on screen (owner 2026-10-14): a song's
+// lines never wrap; when the longest does not fit the text's box the
+// slide's font shrinks (fitScale, down to FIT_MIN). Only a line too long
+// even then wraps, rather than leave the screen. The natural width comes
+// from a hidden copy of the text (`probe`, one line per line at the text's
+// size); measured after layout and again when the screen is resized or the
+// fonts arrive.
+const FIT_MIN = 0.45;
+function useFitWidth(on, deps) {
+    const textRef = React.useRef(null);
+    const probeRef = React.useRef(null);
+    const [fit, setFit] = React.useState({ scale: 1, wrap: false });
+    const measure = React.useCallback(() => {
+        const text = textRef.current, probe = probeRef.current;
+        const box = text?.closest(".ks-content");
+        if (!on || !text || !probe || !box) return;
+        const bs = getComputedStyle(box), ts = getComputedStyle(text);
+        const contentW = box.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight);
+        const maxW = ts.maxWidth.endsWith("%") ? (contentW * parseFloat(ts.maxWidth)) / 100 : contentW;
+        const avail = Math.min(contentW, maxW) - parseFloat(ts.paddingLeft) - parseFloat(ts.paddingRight);
+        const natural = probe.offsetWidth;
+        const scale = fitScale(avail, natural, FIT_MIN);
+        const wrap = natural * scale > avail + 1;
+        setFit((f) => (Math.abs(f.scale - scale) > 0.004 || f.wrap !== wrap ? { scale, wrap } : f));
+    }, [on]);
+    React.useLayoutEffect(measure, [measure, ...deps]);
+    React.useEffect(() => {
+        if (!on) return undefined;
+        const box = textRef.current?.closest(".ks-content");
+        const ro = typeof ResizeObserver === "function" && box ? new ResizeObserver(() => measure()) : null;
+        ro?.observe(box);
+        let alive = true;
+        document.fonts?.ready?.then(() => { if (alive) measure(); });
+        return () => { alive = false; ro?.disconnect(); };
+    }, [on, measure]);
+    return { textRef, probeRef, fit: on ? fit : { scale: 1, wrap: false } };
+}
+
 // still: a preview that does not move (the Prévia, thumbnails, samples) —
 // the text without its transition; the Programa and the outputs keep it.
+// content.show (an output's own settings, prefState): `labels` draws the
+// part's name over the slide, `chords` the lyrics' chords over the syllables.
 function Content({ content, showTitle = true, still = false }) {
     const style = slideStyle(content);
     // The item's own choice (Camadas) wins over the church's (showTitle).
@@ -217,16 +259,28 @@ function Content({ content, showTitle = true, still = false }) {
     const pos = style.text_position || "middle";
     const anim = still ? "" : ANIM[style.transition ?? "fade"] ?? "ks-anim-fade";
     const bible = content.kind === "bible";
+    const lyrics = content.kind === "lyrics";
+    const show = content.show || {};
+    const chorded = lyrics && show.chords ? chordedOf(content.stage, content.index, slide.text) : null;
     const reference = slide.ref || content.ref?.reference || content.title;
     const key = `${content.startedAt}:${content.index}`;
+    const { textRef, probeRef, fit } = useFitWidth(lyrics, [key, slide.text, chorded, size, style.font_family, style.text_max_width, style.text_box, style.text_case]);
+    const body = bible ? verseNodes(slide.text, style.verse_numbers) : chorded ? <ChordedLines chorded={chorded} /> : slide.text;
     return (
         <>
             {!bible && titled && content.title && <div className="ks-title" style={{ fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }}>{content.title}</div>}
             <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": SIZE_CQW[size], ...(style.text_nudge ? { translate: `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` } : {}) }}>
                 <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
-                    {slide.is_chorus && !bible && <div className="ks-chorus">Refrão</div>}
+                    {show.labels && !bible && slide.label && <div className="ks-chorus">{slide.label}</div>}
                     {isUrl(slide.image_url) && <img className={`ks-slide-img ${slide.text ? "" : "is-alone"}`} src={slide.image_url} alt="" />}
-                    {(slide.text || !slide.image_url) && <div className={`ks-text ks-${size}`} style={{ ...textStyle(style), ...textExtra(style) }}>{bible ? verseNodes(slide.text, style.verse_numbers) : slide.text}</div>}
+                    {(slide.text || !slide.image_url) && (
+                        <div ref={textRef} className={`ks-text ks-${size} ${lyrics ? `ks-lines ${fit.wrap ? "is-wrap" : ""}` : ""}`} style={{ ...textStyle(style), ...textExtra(style) }}>
+                            {lyrics ? <>
+                                <span className="ks-fit" style={fit.scale < 1 ? { fontSize: `${fit.scale}em` } : undefined}>{body}</span>
+                                <span ref={probeRef} className="ks-fit-probe" aria-hidden="true">{body}</span>
+                            </> : body}
+                        </div>
+                    )}
                     {bible && refLine(reference, style.ref_line) && <div className="ks-ref" style={{ color: style.text_color || "#ffffff" }}>{refLine(reference, style.ref_line)}</div>}
                 </div>
             </div>

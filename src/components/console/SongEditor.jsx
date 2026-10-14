@@ -8,11 +8,12 @@ import { songContent, isVideoUrl } from "@/lib/console/content";
 import { songTheme, songParts, cleanPartThemes } from "@/lib/console/songTheme";
 import { applyWithFundo, bgSpec } from "@/lib/console/backgroundSpec";
 import BgChip from "./library/BgChip";
-import { parseChords, slidesFromLyrics, reflowLyrics, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
-import { chordLinesToInline, hasInlineChords, isChordLine } from "@/lib/chords";
+import { parseChords, slidesFromLyrics, linesLimit, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
+import { chordLinesToInline, hasInlineChords, isChordLine, keyChords, transposeInline, transposeChords, transposeChord } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
 import { useContextMenu } from "./ContextMenu";
+import LinesPicker from "./LinesPicker";
 import { TEXT_SIZES, defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
@@ -20,18 +21,17 @@ const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["
 const SIZES = TEXT_SIZES;
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const SWATCHES = [["#ffffff", "Branco"], ["#f3e6c9", "Creme"], ["#c9dcff", "Azul claro"], ["#ffe08a", "Amarelo"], ["#1a1a1a", "Preto"]];
-const SPLITS = [["0", "Estrofe", { title: "Uma estrofe por slide · não refaz blocos já divididos" }], ["2", "2 linhas", { title: "No máximo 2 linhas por slide · reescreve a letra nesses blocos" }], ["4", "4 linhas", { title: "No máximo 4 linhas por slide · reescreve a letra nesses blocos" }]];
 // The slide previews' size, remembered on this computer.
 const THUMBS = [["s", "P", { title: "Prévias pequenas" }], ["m", "M", { title: "Prévias médias" }], ["l", "G", { title: "Prévias grandes" }]];
 const THUMBS_KEY = "keryx.console.editor.thumbs";
 const readThumbs = () => { try { const v = localStorage.getItem(THUMBS_KEY); return ["s", "m", "l"].includes(v) ? v : "m"; } catch { return "m"; } };
-const splitOf = (n) => (Number(n) === 2 || Number(n) === 4 ? String(Number(n)) : "0");
 
 // A song's background fields for a spec (null: none of its own); the
 // picture stays in background_image too for whoever still reads only it.
 const songBg = (spec) => ({ background: spec || null, background_image: spec?.kind === "image" ? spec.value : "" });
 
 const NEW_SONG = { title: "", artist: "", lyrics: "", duration: null, category: "worship", audio_url: "", background_image: "", theme_id: "", part_themes: {}, slides: [], font_size: "large", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", bpm: null, song_key: "", chords: "", musician_notes: "", ccli_number: "", is_favorite: false };
+const unCR = (t) => String(t ?? "").replace(/\r\n?/g, "\n");
 const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
 // The song editor (canvas artboard 16), inside the console: song data and
@@ -42,7 +42,8 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 export default function SongEditor({ c, songId, themes = [], onClose, onSaved }) {
     const [song, setSong] = useState(null);
     const [error, setError] = useState("");
-    const [split, setSplit] = useState("0");
+    const [split, setSplit] = useState(0); // lines per slide, 0 = Estrofe
+    const [showChords, setShowChords] = useState(false); // the thumbs as the Palco reads them
     const [thumbs, setThumbsState] = useState(readThumbs);
     const setThumbs = (v) => { setThumbsState(v); try { localStorage.setItem(THUMBS_KEY, v); } catch { /* not remembered */ } };
     const [resplit, setResplit] = useState(false);
@@ -69,8 +70,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
         }
         keryx.entities.Song.get(songId).then((row) => {
             if (!alive) return;
-            setSong({ ...NEW_SONG, ...row });
-            setSplit(splitOf(row.lines_per_slide));
+            setSong({ ...NEW_SONG, ...row, lyrics: unCR(row.lyrics) });
+            setSplit(linesLimit(row.lines_per_slide));
             setDurationText(formatDuration(row.duration));
             setStarts((row.slides || []).map((s) => (Number.isFinite(s.start) ? s.start : null)));
             setResplit(!(row.slides || []).length);
@@ -79,31 +80,53 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
     }, [songId]);
 
     const set = (patch) => { setSong((s) => ({ ...s, ...patch })); setDirty(true); setConfirm(null); };
-    const setLyrics = (lyrics) => { set({ lyrics }); setResplit(true); };
+    // One kind of line break, so every offset (the cursor, slideSpan) means
+    // the same place in the text.
+    const setLyrics = (lyrics) => { set({ lyrics: unCR(lyrics) }); setResplit(true); };
 
     // The slides the song will have: its saved ones until the lyrics or the
-    // split change, then the live split of the lyrics.
+    // split change, then the live split of the lyrics (each with its chorded
+    // twin, saved for the screens that show chords).
     const slides = useMemo(() => {
         if (!song) return [];
-        const base = resplit ? slidesFromLyrics(song.lyrics, { lines: Number(split) }) : (song.slides || []);
+        const base = resplit ? slidesFromLyrics(song.lyrics, { lines: split, chorded: true }) : (song.slides || []);
         return withTimings(base.map(({ start: _start, ...rest }) => rest), starts, mediaRef.current?.duration || song.duration || null);
     }, [song, resplit, split, starts]);
 
-    // Choosing 2/4 linhas also rewrites the lyrics, so the text reads like
-    // the slides (owner request 2026-10-11); timings are by slide index, so
-    // when the count changes they are cleared rather than landing wrong.
-    const pickSplit = (v) => {
-        setSplit(v); setResplit(true); setDirty(true);
-        const n = Number(v);
-        if (!(n > 0)) return;
-        const next = reflowLyrics(song.lyrics || "", n);
-        if (next === (song.lyrics || "")) return;
-        const before = slides.length;
-        setLyrics(next);
-        if (starts.some((x) => Number.isFinite(x)) && slidesFromLyrics(next, { lines: n }).length !== before) {
+    // The split is the song's setting, never a rewrite of the lyrics (owner
+    // 2026-10-14; before, 2/4 linhas rewrote the text and could not be
+    // undone): any choice, any order, the slides follow. Timings are by
+    // slide index, so when the count changes they are cleared.
+    const pickSplit = (n) => {
+        const lines = linesLimit(n);
+        if (lines === split && resplit) return;
+        const count = slidesFromLyrics(song.lyrics, { lines }).length;
+        setSplit(lines); setResplit(true); setDirty(true); setConfirm(null);
+        if (starts.some((x) => Number.isFinite(x)) && count !== slides.length) {
             setStarts([]);
-            c.say(`Letra reescrita em blocos de ${n} linhas · marque os tempos de novo.`);
-        } else c.say(`Letra reescrita em blocos de ${n} linhas.`);
+            c.say(`${count} ${count === 1 ? "slide" : "slides"} · marque os tempos de novo.`);
+        }
+    };
+    // Chords at the cursor: "[]" with the caret inside, or one chord of the key.
+    const insertChord = (chord = "") => {
+        const el = lyricsRef.current;
+        const text = song.lyrics || "";
+        const a = el ? el.selectionStart : text.length;
+        const b = el ? el.selectionEnd : a;
+        const token = `[${chord}]`;
+        setLyrics(text.slice(0, a) + token + text.slice(b));
+        const p = a + (chord ? token.length : 1);
+        setTimeout(() => { if (el) { el.focus(); el.setSelectionRange(p, p); } }, 0);
+    };
+    // Tom − / +: the whole song a semitone down or up (the chords in the
+    // lyrics, the old chords block and the key).
+    const transpose = (steps) => {
+        const lyrics = transposeInline(song.lyrics || "", steps);
+        const chords = transposeChords(song.chords || "", steps);
+        const key = song.song_key ? transposeChord(song.song_key.trim(), steps) : "";
+        if (lyrics === (song.lyrics || "") && chords === (song.chords || "") && !key) { c.say("Sem acordes para transpor: escreva-os na letra, [G]Deus é fiel."); return; }
+        set({ lyrics, chords, song_key: key });
+        setResplit(true);
     };
 
     // One rendered state, every thumbnail points at its slide.
@@ -171,8 +194,11 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
             if (!el || !span) return;
             setTimeout(() => { el.focus(); el.setSelectionRange(span[0], span[1]); }, 0);
         };
+        // Cut at the line break after the first half: the blank line goes
+        // there, never in the middle of a line.
         const splitInTwo = () => {
             const at = span[0] + rows.slice(0, Math.ceil(rows.length / 2)).join("\n").length;
+            if (text[at] !== "\n") return;
             setLyrics(text.slice(0, at) + "\n\n" + text.slice(at + 1));
             c.say("Slide dividido em dois.");
         };
@@ -194,7 +220,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
         c.say(`${sections.length} ${sections.length === 1 ? "estrofe importada" : "estrofes importadas"} da cifra.`);
     };
     // Cifra-over-letra -> inline [G]Deus é [D]fiel: the chords land in the
-    // lyrics (only the Palco shows them); the legacy chords block empties.
+    // lyrics (the screens with Cifra on show them); the legacy chords block empties.
     const importCifraInline = () => {
         const raw = cifraText.trim();
         if (!raw) return;
@@ -204,7 +230,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
         setResplit(true);
         setCifraOpen(false);
         setCifraText("");
-        c.say("Letra montada com a cifra nas linhas · os acordes só aparecem no Palco.");
+        c.say("Letra montada com a cifra nas linhas · os acordes aparecem nas telas com cifra ligada.");
     };
     // The legacy chords block merged into the lyrics as inline chords.
     const chordsToInline = () => {
@@ -270,7 +296,9 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
             duration: parseDuration(durationText) ?? song.duration ?? null,
             bpm: song.bpm ? Number(song.bpm) || null : null,
             lines_per_slide: Number(split),
-            slides: slides.map(({ text, duration, is_chorus, start, label }) => ({ text, ...(label ? { label } : {}), ...(is_chorus ? { is_chorus } : {}), ...(Number.isFinite(start) ? { start } : {}), ...(Number.isFinite(duration) ? { duration } : {}) })),
+            // Each slide keeps its chorded twin (the lyrics' [G] chords) for
+            // the screens that show chords; before, saving lost them.
+            slides: slides.map(({ text, chorded, duration, is_chorus, start, label }) => ({ text, ...(chorded && chorded !== text && hasInlineChords(chorded) ? { chorded } : {}), ...(label ? { label } : {}), ...(is_chorus ? { is_chorus } : {}), ...(Number.isFinite(start) ? { start } : {}), ...(Number.isFinite(duration) ? { duration } : {}) })),
         };
         for (const k of ["id", "created_date", "updated_date", "created_by_id"]) delete data[k];
         try {
@@ -332,17 +360,22 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                         <select className="cfg-select" value={song.category || "worship"} onChange={(e) => set({ category: e.target.value })} aria-label="Categoria">{CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                         <span className="k">Duração</span><Field icon={null} value={durationText} onChange={(v) => { setDurationText(v); setDirty(true); }} placeholder="m:ss" />
                         <span className="k">BPM</span><Field icon={null} value={song.bpm ?? ""} onChange={(v) => set({ bpm: v.replace(/\D/g, "").slice(0, 3) })} placeholder="ex.: 72" />
-                        <span className="k">Tom</span><Field icon={null} value={song.song_key || ""} onChange={(v) => set({ song_key: v.slice(0, 8) })} placeholder="ex.: E, Am" />
+                        <span className="k">Tom</span>
+                        <div className="ed-key">
+                            <Field icon={null} value={song.song_key || ""} onChange={(v) => set({ song_key: v.slice(0, 8) })} placeholder="ex.: E, Am" />
+                            <IconBtn name="minus" small title="Transpor meio tom abaixo · os acordes da letra, a cifra e o tom" onClick={() => transpose(-1)} />
+                            <IconBtn name="plus" small title="Transpor meio tom acima · os acordes da letra, a cifra e o tom" onClick={() => transpose(1)} />
+                        </div>
                         <span className="k">CCLI</span><Field icon={null} value={song.ccli_number || ""} onChange={(v) => set({ ccli_number: v.slice(0, 20) })} placeholder="número da licença" />
                     </div>
                     <div className="listhead"><span className="kx-section">Notas para os músicos</span></div>
                     <div className="ed-pad"><textarea className="ed-text" style={{ height: 56 }} value={song.musician_notes || ""} onChange={(e) => set({ musician_notes: e.target.value })} aria-label="Notas para os músicos" placeholder="Intro, dinâmica, finais…" /></div>
-                    <div className="listhead"><span className="kx-section">Cifra <span className="kx-count">· aparece no Palco</span></span><span style={{ flex: 1 }} />{(song.chords || "").trim() && !hasInlineChords(song.lyrics || "") && <Btn small onClick={chordsToInline} title="Põe os acordes do bloco de cifra dentro da letra ([G]Deus é fiel); só o Palco os mostra">Colocar na letra</Btn>}
+                    <div className="listhead"><span className="kx-section">Cifra <span className="kx-count">· nas telas com cifra ligada</span></span><span style={{ flex: 1 }} />{(song.chords || "").trim() && !hasInlineChords(song.lyrics || "") && <Btn small onClick={chordsToInline} title="Põe os acordes do bloco de cifra dentro da letra ([G]Deus é fiel), sobre as sílabas">Colocar na letra</Btn>}
                         <Btn small onClick={() => setCifraOpen((o) => !o)} title="Colar uma cifra ou ChordPro: a letra é montada a partir dela">Importar cifra</Btn></div>
                     {cifraOpen && (
                         <div className="ed-pad ed-cifra">
                             <textarea className="ed-text ed-mono" style={{ height: 120 }} value={cifraText} onChange={(e) => setCifraText(e.target.value)} placeholder="Cole a cifra (acordes sobre a letra) ou ChordPro" aria-label="Cifra para importar" autoFocus />
-                            <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small disabled={!cifraText.trim()} onClick={importCifraInline} title="Os acordes entram na própria letra, entre colchetes; só o Palco os mostra">Montar com cifra na letra</Btn><Btn small kind="brand" disabled={!cifraText.trim()} onClick={importCifra}>Montar a letra</Btn></div>
+                            <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small disabled={!cifraText.trim()} onClick={importCifraInline} title="Os acordes entram na própria letra, entre colchetes, sobre as sílabas">Montar com cifra na letra</Btn><Btn small kind="brand" disabled={!cifraText.trim()} onClick={importCifra}>Montar a letra</Btn></div>
                         </div>
                     )}
                     <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => set({ chords: e.target.value })} aria-label="Cifra" placeholder="Acordes para o Palco (opcional)" /></div>
@@ -412,7 +445,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
             </div>
             <div className="kx-gap" />
             <div className="col" style={{ flex: "0 1 480px", minWidth: 300 }}>
-                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<Seg small value={split} onChange={pickSplit} options={SPLITS} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<LinesPicker value={split} onChange={pickSplit} titles={{ stanza: "Uma estrofe por slide · a letra não muda, só os slides" }} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="ed-tools">
                         <Btn small kind="outline" onClick={() => addMarker("Verso")}>[Verso]</Btn>
                         <Btn small kind="outline" onClick={() => addMarker("Refrão")}>[Refrão]</Btn>
@@ -424,26 +457,31 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                         <span style={{ flex: 1 }} />
                         <span className="kx-meta">{slides.length} {slides.length === 1 ? "slide" : "slides"}</span>
                     </div>
+                    <div className="ed-tools ed-chords">
+                        <Btn small onClick={() => insertChord()} title="Põe [ ] no cursor: escreva o acorde dentro, antes da sílaba em que ele entra">Acorde</Btn>
+                        {keyChords(song.song_key).map((ch) => <Btn key={ch} small kind="outline" className="ed-chip" onClick={() => insertChord(ch)} title={`Põe [${ch}] no cursor`}>{ch}</Btn>)}
+                        {!keyChords(song.song_key).length && <span className="kx-meta">Preencha o Tom para ter os acordes dele aqui.</span>}
+                    </div>
                     <div className="ed-lyrics"><textarea ref={lyricsRef} className="ed-text" value={song.lyrics || ""} onChange={(e) => setLyrics(e.target.value)} aria-label="Letra" placeholder={"[Verso 1]\nPrimeira linha\nsegunda linha\n\n[Refrão]\n…"} spellCheck={false} /></div>
-                    <div className="listhead"><span className="kx-meta">[G] dentro da linha é acorde — só o Palco mostra; [Refrão] sozinho na linha é o nome da seção.</span></div>
+                    <div className="listhead"><span className="kx-meta">[G] dentro da linha é acorde; [Refrão] sozinho na linha é o nome da parte. Cada tela mostra a cifra e o nome da parte se estiverem ligados nela (Configurações › Telas e saídas); o Palco já vem com os dois.</span></div>
                 </Panel>
             </div>
             <div className="kx-gap" />
             <div className="col center song-ed-r" style={{ gap: "var(--gutter)" }}>
-                <Panel title={<>Slides <span className="kx-count">· {resplit ? "divisão ao vivo" : "slides salvos · editar a letra refaz"}</span></>} style={{ flex: 1.3 }} actions={<Seg small value={thumbs} onChange={setThumbs} options={THUMBS} />} bodyStyle={{ overflow: "auto" }}>
+                <Panel title={<>Slides <span className="kx-count">· {resplit ? "divisão ao vivo" : "slides salvos · editar a letra refaz"}</span></>} style={{ flex: 1.3 }} actions={<><Btn small on={showChords} onClick={() => setShowChords((v) => !v)} title="Mostra nos slides abaixo a cifra e o nome da parte, como o Palco os mostra (só aqui; as telas seguem os ajustes de cada uma)">Cifra e partes</Btn><Seg small value={thumbs} onChange={setThumbs} options={THUMBS} /></>} bodyStyle={{ overflow: "auto" }}>
                     {!slides.length && <Empty icon="list" title="Nenhum slide">Escreva a letra; cada estrofe vira um slide.</Empty>}
                     <div className={"ed-thumbs is-" + thumbs}>
                         {doc && slides.map((s, i) => {
                             const fit = slideFit(s.text, song.font_size);
                             const fitTitle = fit.wraps.length
-                                ? (fit.wraps.length === 1 ? "A linha " + fit.wraps[0] + " quebra" : "As linhas " + fit.wraps.join(", ") + " quebram") + " na tela neste tamanho de letra (cabem uns " + fit.limit + " caracteres por linha; a mais longa tem " + fit.longest + ")"
+                                ? (fit.wraps.length === 1 ? "A linha " + fit.wraps[0] + " é longa" : "As linhas " + fit.wraps.join(", ") + " são longas") + " para este tamanho de letra (cabem uns " + fit.limit + " caracteres por linha; a mais longa tem " + fit.longest + "): a fonte deste slide diminui para cada linha caber numa linha da tela"
                                 : fit.lines + (fit.lines === 1 ? " linha, " : " linhas, ") + fit.chars + " caracteres · cabe na tela";
                             return (
                             <button type="button" key={i} className={`ed-th kx-t ${i === sel ? "is-sel" : ""} ${marking && i === nextMark ? "is-next" : ""}`} onClick={() => setSel(i)} onContextMenu={(e) => slideMenu(e, i)} title={s.label || `Slide ${i + 1}`}>
-                                <ScreenRenderer state={{ ...doc, content: { ...doc.content, index: i } }} now={c.now} preview />
+                                <ScreenRenderer state={{ ...doc, content: { ...doc.content, index: i, ...(showChords ? { show: { chords: true, labels: true } } : {}) } }} now={c.now} preview />
                                 <span className="n">{i + 1}{Number.isFinite(starts[i]) ? ` · ${mmss(starts[i])}` : ""}</span>
                                 {s.label && (i === 0 || slides[i - 1].label !== s.label) && <span className="lab">{s.label}</span>}
-                                <span className={"fit" + (fit.wraps.length ? " is-warn" : "")} title={fitTitle}>{fit.lines} l · {fit.chars} c{fit.wraps.length ? " · quebra" : ""}</span>
+                                <span className={"fit" + (fit.wraps.length ? " is-warn" : "")} title={fitTitle}>{fit.lines} l · {fit.chars} c{fit.wraps.length ? " · fonte menor" : ""}</span>
                             </button>
                             );
                         })}
