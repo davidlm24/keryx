@@ -154,7 +154,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   module would own is a `.dock-gap` without a handle (Dock.jsx), and a
   neighbour's splitter still resizes the neighbour, the locked one moving
   whole (owner 2026-10-14). **The No ar strip is pinned** (`MODULES.onair.pinned`):
-  always the band across the bottom — never dragged, no Mover para…,
+  always its band at the bottom (either span counts) — never dragged, no Mover para…,
   nothing dropped in or beside it; × and Ver send it to the tray and it
   comes back there (`returnModule`); a save with it elsewhere gets it back
   across the bottom (`normalizeDock`). **The +** of a
@@ -260,7 +260,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Slides, Programa, `PreviaPanel`, the Painel de abas, Setlist, Camadas,
   No ar, `PlayerSlot`). Ver › Editar disposição: drag a module by its name to a
   side of another (splits) or its middle (tabs), a click on the name opens
-  "Mover para…", × puts it in the tray (the edit banner). The Programa, the
+  "Mover para…", × puts it in the tray (the edit banner). While editing,
+  every splitter shows its side's size in % of the split and a click on
+  that badge lets one type it (`Split` label/onPercent in kx.jsx, Dock.jsx). The Programa, the
   Prévia and the Setlist never go to the tray; the player rides under the
   Programa until it is placed (× sends it home). The tray is this
   computer's (owner 2026-10-13): Ver's and Configurações › Console's module
@@ -299,10 +301,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   player **always visible**, dimmed while idle) and below it one row that
   **ends at the centre's edge**: the Prévia (44 % of the centre at first),
   then the **tabs panel**
-  (`TabsPanel.jsx`); under **all** the columns, edge to edge, the **No ar**
-  strip (owner 2026-10-14: the dock's root is a column, the four columns
-  over `onair`, at least `ONAIR_H` (104 px) and as tall as its slides'
-  lines (`onAirHeight`; the cards at 13 px, each line one line);
+  (`TabsPanel.jsx`); under the Biblioteca, the Slides and the centre the **No ar**
+  strip, the Setlist's column running to the bottom beside it (owner
+  2026-10-14, `layout.onairSpan` "columns", the default; "window" puts it
+  under every column, edge to edge — Editar disposição › No ar, dock.js
+  `withBand`/`moveBand`/`bandOf`; a structure with no Setlist column
+  falls back to the window band); the strip is at least `ONAIR_H` (104 px)
+  and as tall as its slides' lines (`onAirHeight`; the cards at 13 px,
+  each line one line);
   medium and narrow start with it in the tray); the **right column** (`rightW`) is **Camadas, Temas and the
   Setlist, full height** (Camadas as tall as its list, Temas `TEMAS_H`: the
   Setlist gets the rest of the column). **The Notas tab** is the setlist item's notes

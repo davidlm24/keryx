@@ -277,11 +277,17 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             // A group of tabs made of several children: they all take the size.
             const { index, at = [index] } = f.children[owner];
             const resizeAll = (v) => at.reduce((d, j) => resizeChild(d, f.path, j, v), dock);
+            // While editing, the splitter says the owner's size in % of the
+            // split, and a click lets one type it (owner 2026-10-14).
+            const total = f.dir === "row" ? f.w : f.h;
+            const pct = total > 0 ? Math.round((size / total) * 100) : null;
             out.push(
                 <Split key={`s${i}`} horizontal={f.dir === "col"} size={size} sign={sign}
                     onSize={(v) => onDock(resizeAll(v))}
                     onReset={() => { const d = defaultSize(dock, f.path, index); if (d !== null) onDock(resizeAll(d)); }}
-                    clamp={(v) => Math.round(v)} />,
+                    clamp={(v) => Math.round(v)}
+                    label={editing && pct !== null ? `${pct}%` : null}
+                    onPercent={(p) => { if (Number.isFinite(p) && total > 0) onDock(resizeAll(Math.round((Math.max(1, Math.min(99, p)) / 100) * total))); }} />,
             );
         });
         return <div className={`dock-split is-${f.dir}`}>{out}</div>;
