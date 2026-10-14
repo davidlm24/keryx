@@ -42,8 +42,9 @@
     },
     "lines_per_slide": {
       "type": "integer",
-      "enum": [0, 2, 4],
-      "description": "Como a letra vira slides: 0 = uma estrofe por slide, 2 ou 4 = no maximo tantas linhas por slide (editor de musica)"
+      "minimum": 0,
+      "maximum": 12,
+      "description": "Como a letra vira slides: 0 = uma estrofe por slide, 1 a 12 = no maximo tantas linhas por slide (editor de musica); a letra nunca e reescrita por isso"
     },
     "slides": {
       "type": "array",
@@ -52,6 +53,21 @@
         "properties": {
           "text": {
             "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "Nome da parte ([Verso], [Refr\u00e3o]...)"
+          },
+          "is_chorus": {
+            "type": "boolean"
+          },
+          "chorded": {
+            "type": "string",
+            "description": "O mesmo texto com os acordes [G] da letra, para as telas que mostram cifra"
+          },
+          "start": {
+            "type": "number",
+            "description": "In\u00edcio do slide no v\u00eddeo da m\u00fasica, em segundos"
           },
           "duration": {
             "type": "number",

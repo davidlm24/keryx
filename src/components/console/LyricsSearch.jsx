@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Btn, Field, Row, Empty, Seg } from "./kx";
+import { Btn, Field, Row, Empty } from "./kx";
+import LinesPicker from "./LinesPicker";
 import { songFromText } from "@/lib/songImport";
 import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 
@@ -63,8 +64,8 @@ export default function LyricsSearch({ c, onClose, onImported }) {
 
     const lyrics = hit?.hasLyrics ? preview.lyrics : pasted;
     // How the imported lyric is cut into slides (the preference also in Configurações › Bíblia e músicas).
-    const cut = String(usePrefs().import_lines);
-    const pickCut = (v) => { updateUser({ import_lines: Number(v) }).catch(() => c.say("Não foi possível salvar.")); };
+    const cut = usePrefs().import_lines;
+    const pickCut = (v) => { updateUser({ import_lines: v }).catch(() => c.say("Não foi possível salvar.")); };
     const importSong = async () => {
         if (!hit || !lyrics.trim()) return;
         try {
@@ -123,7 +124,7 @@ export default function LyricsSearch({ c, onClose, onImported }) {
                 <span style={{ flex: 1 }} />
                 <span className="kx-meta lyr-legal">Letras têm direitos autorais. Use conforme a licença da sua igreja (ex.: CCLI).</span>
                 <span className="kx-meta">Dividir em</span>
-                <Seg small value={cut} onChange={pickCut} options={[["0", "Estrofe"], ["2", "2 linhas"], ["4", "4 linhas"]]} />
+                <LinesPicker value={cut} onChange={pickCut} />
                 <Btn kind="brand" onClick={importSong} disabled={!hit || !lyrics.trim()}>Importar</Btn>
             </div>
         </div>

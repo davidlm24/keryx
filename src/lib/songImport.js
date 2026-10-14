@@ -111,7 +111,7 @@ export function songFromText(raw, { name = "", title = "", artist = "", lines = 
         lyrics,
         slides: sections.map((s) => ({ text: s.text, duration: 0, ...(CHORUS_RE.test(s.section) ? { is_chorus: true } : {}) })),
         // The editor redoes the slides with the same split when the lyrics change.
-        lines_per_slide: [2, 4].includes(lines) ? lines : 0,
+        lines_per_slide: linesLimit(lines),
     };
 }
 
@@ -132,6 +132,11 @@ export function songsFromFile(name, raw, { lines = 0 } = {}) {
 }
 
 // -- The song editor -------------------------------------------------------------
+
+// A song's limit of lines per slide (Song.lines_per_slide, the import
+// preference): 0 = one stanza per slide, else 1 to 12.
+export const MAX_LINES = 12;
+export const linesLimit = (n) => { const v = Math.round(Number(n)); return Number.isFinite(v) && v > 0 ? Math.min(MAX_LINES, v) : 0; };
 
 // The editor's live split of the lyrics into slides: stanzas are separated
 // by a blank line; a stanza that starts with "[Label]" names itself and the
@@ -164,14 +169,26 @@ export function slidesFromLyrics(lyrics, { lines = 0, chorded = false } = {}) {
     return out;
 }
 
+// Saved slides from before the editor kept their chorded twins (chords
+// in the lyrics, none in the slides): the twins from the lyrics, when the
+// lyrics still split into exactly those slides; else the slides as saved.
+function withChordedTwins(song) {
+    const saved = song.slides;
+    if (saved.some((s) => s?.chorded) || !hasInlineChords(song.lyrics || "")) return saved;
+    const live = slidesFromLyrics(song.lyrics, { lines: linesLimit(song.lines_per_slide), chorded: true });
+    const same = live.length === saved.length && live.every((s, i) => s.text === stripChords(String(saved[i]?.text || "")));
+    return same ? saved.map((s, i) => ({ ...s, chorded: live[i].chorded })) : saved;
+}
+
 // A song's slides as they go on air, with the Palco's chorded twins when the
-// lyrics carry inline chords: saved slides win; else the lyrics split as the
-// song asks (lines_per_slide); else one stanza per slide. Every slide text
+// lyrics carry inline chords: saved slides win (their `chorded` twin too,
+// saved by the editor); else the lyrics split as the song asks
+// (lines_per_slide); else one stanza per slide. Every slide text
 // is stripped here, whatever wrote it — the projector never shows a chord.
 export function songSlidesFor(song) {
     let base;
-    if (song.slides?.length) base = song.slides;
-    else if ([2, 4].includes(Number(song.lines_per_slide))) base = slidesFromLyrics(song.lyrics || "", { lines: Number(song.lines_per_slide), chorded: true });
+    if (song.slides?.length) base = withChordedTwins(song);
+    else if (linesLimit(song.lines_per_slide)) base = slidesFromLyrics(song.lyrics || "", { lines: linesLimit(song.lines_per_slide), chorded: true });
     else if (hasInlineChords(song.lyrics || "")) base = slidesFromLyrics(song.lyrics || "", { chorded: true });
     else base = generateSlides(song.lyrics || "");
     const texts = base.map((s) => String(s.chorded ?? s.text ?? ""));
@@ -180,38 +197,6 @@ export function songSlidesFor(song) {
         slides: base.map(({ chorded: _c, ...rest }) => ({ ...rest, text: stripChords(String(rest.text || "")) })),
         chordedSlides,
     };
-}
-
-// The lyrics rewritten so the text reads like the slides (owner request
-// 2026-10-11): each stanza cut into blocks of `lines` rows separated by a
-// blank line, a "[Label]" row kept on its first block. lines 0 returns the
-// text untouched: merged stanzas cannot be rebuilt.
-export function reflowLyrics(lyrics, lines = 0) {
-    if (!(lines > 0)) return String(lyrics || "");
-    const out = [];
-    String(lyrics || "").replace(/\r/g, "").split(/\n\s*\n/).forEach((block) => {
-        let rows = block.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
-        if (!rows.length) return;
-        let head = null;
-        if (/^\s*\[(.+?)\]\s*$/.test(rows[0]) && !hasInlineChords(rows[0])) { head = rows[0].trim(); rows = rows.slice(1); }
-        if (!rows.length) { out.push(head); return; }
-        // Only sung rows count toward the block size; a chords-only row
-        // ("[G] [D]") rides with the row after it, never a slide of its own.
-        const groups = [];
-        let lead = [];
-        for (const raw of rows) {
-            if (!stripLine(raw).trim()) { lead.push(raw); continue; }
-            groups.push([...lead, raw]);
-            lead = [];
-        }
-        if (lead.length) (groups[groups.length - 1] || groups[0] || (groups.push([]) && groups[0])).push(...lead);
-        if (!groups.length) { out.push([head, ...rows].filter(Boolean).join("\n")); return; }
-        for (let i = 0; i < groups.length; i += lines) {
-            const chunk = groups.slice(i, i + lines).flat().join("\n");
-            out.push(i === 0 && head ? head + "\n" + chunk : chunk);
-        }
-    });
-    return out.join("\n\n");
 }
 
 // Lyric timing (the song's video): each slide's start in seconds, the

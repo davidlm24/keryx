@@ -7,7 +7,7 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import { mainLayer } from "@shared/live-state.mjs";
-import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultSettings, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, showKindsFor, streamOptions, designOf } from "@/lib/outputPrefs";
+import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultSettings, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, lyricsOptions, showKindsFor, streamOptions, designOf } from "@/lib/outputPrefs";
 import StreamBand from "@/components/network/StreamBand";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { useLayoutRows } from "@/hooks/useLayout";
@@ -114,6 +114,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
     const liveOn = c?.live && mainLayer(c.live) !== "none" ? c.live : null;
     const stage = stageOptions(pref);
     const pastor = pastorOptions(pref);
+    const lyricsOpts = lyricsOptions(output.key, pref);
     const preview = <OutputPreview path={output.key} pref={pref} design={design} themes={themeGone ? [] : themes} live={c?.live} now={now} church={church} />;
 
     return (
@@ -165,10 +166,27 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
             {!isStream && <FormRow k="Escala do texto">
                 <Seg small value={String(Math.round(pref.scale * 100))} options={SCALES} onChange={(v) => save({ text_scale: Number(v) })} />
             </FormRow>}
+            {/* What this screen adds to a song's lyrics (lyricsOptions): the
+                chords over the syllables and the part's name. The Palco
+                shows both unless told otherwise; the others neither. */}
+            {((renderer && !isStream) || (isPastor && !pref.content && !design)) && <>
+            <FormRow k="Cifra">
+                <Switch on={lyricsOpts.chords} onChange={(on) => saveOpt("chords", on)} label={`Cifra em ${output.label}`} />
+                <span className="kx-meta">os acordes da letra ([G]) sobre as sílabas</span>
+            </FormRow>
+            <FormRow k="Nome da parte">
+                <Switch on={lyricsOpts.labels} onChange={(on) => saveOpt("labels", on)} label={`Nome da parte em ${output.label}`} />
+                <span className="kx-meta">Verso, Refrão, Ponte… sobre a letra</span>
+            </FormRow>
+            </>}
             {isStage && !pref.content && !design && <>
             <FormRow k="Cifra">
                 <Switch on={stage.chords} onChange={(on) => saveOpt("chords", on)} label="Cifra no Palco" />
-                <span className="kx-meta">o painel de acordes ao lado da letra</span>
+                <span className="kx-meta">os acordes sobre a letra (ou o bloco de cifra ao lado)</span>
+            </FormRow>
+            <FormRow k="Nome da parte">
+                <Switch on={stage.labels} onChange={(on) => saveOpt("labels", on)} label="Nome da parte no Palco" />
+                <span className="kx-meta">Verso, Refrão, Ponte… no alto</span>
             </FormRow>
             <FormRow k="Relógio e tempo">
                 <Switch on={stage.clock} onChange={(on) => saveOpt("clock", on)} label="Relógio e tempo no Palco" />

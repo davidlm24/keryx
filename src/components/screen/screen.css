@@ -28,6 +28,20 @@
 .ks-bible .ks-text { font-weight: 500; line-height: 1.3; font-size: calc(var(--ks-size, 4.8cqw) * .8); }
 .ks-text sup { font-size: .5em; opacity: .65; margin-right: .35em; vertical-align: .6em; font-weight: 500; }
 .ks-chorus { font-size: 1.6cqw; letter-spacing: .2em; text-transform: uppercase; opacity: .6; font-weight: 500; }
+/* A song: one line of the lyrics, one line on screen; the font shrinks
+   instead (ScreenRenderer useFitWidth: the probe measures, the span shrinks);
+   a line too long even at the smallest size wraps (is-wrap). */
+.ks-text.ks-lines { white-space: pre; position: relative; }
+.ks-text.ks-lines.is-wrap { white-space: pre-wrap; }
+.ks-fit { display: inline-block; max-width: none; }
+.is-wrap > .ks-fit { max-width: 100%; }
+.ks-fit-probe { position: absolute; left: 0; top: 0; width: max-content; white-space: pre; visibility: hidden; pointer-events: none; }
+/* Chords over the syllables, on the outputs that show them (content.show). */
+.ks .ns-chorded { display: block; }
+.ks .ns-line { display: block; }
+.ks .ns-seg { display: inline-block; vertical-align: bottom; white-space: pre; text-align: left; }
+.ks .ns-ch { display: block; min-height: 1.1em; font-size: .5em; line-height: 1.1; font-weight: 700; color: #f2c14e; -webkit-text-fill-color: #f2c14e; text-shadow: 0 .1em .4em #000000b3; }
+.ks .ns-tx { white-space: pre; }
 .ks-ref { font-size: 2.2cqw; letter-spacing: .12em; text-transform: uppercase; font-weight: 500; opacity: .8; }
 /* The slide change. The class sits on a display: contents wrapper (keyed by
    slide, so it remounts), which has no box of its own and animates nothing:

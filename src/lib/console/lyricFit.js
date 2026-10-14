@@ -31,17 +31,37 @@ export function slideFit(text, fontSize) {
     };
 }
 
-// The stanza (blank-line block) around a caret position in the lyrics, as
-// [start, end) offsets, for "Duplicar estrofe".
+// How much a slide's font shrinks so its longest line stays one line on
+// screen (ScreenRenderer measures; one line of the lyrics is one line on
+// the screens, owner 2026-10-14): 1 when it fits, never below `min`.
+export function fitScale(boxWidth, textWidth, min = 0.55) {
+    if (!(boxWidth > 0) || !(textWidth > 0) || textWidth <= boxWidth) return 1;
+    return Math.max(min, Math.floor((boxWidth / textWidth) * 1000) / 1000);
+}
+
+// The stanza (block between blank lines, as the slides split them: a line
+// of only spaces is blank too) around a caret position in the lyrics, as
+// [start, end) offsets of its first and last lines, for "Duplicar estrofe".
+// A caret on a blank line takes the stanza after it (else the one before).
 export function stanzaAt(text, at) {
     const s = String(text || "");
     const pos = Math.max(0, Math.min(at ?? s.length, s.length));
-    const before = s.lastIndexOf("\n\n", pos === 0 ? 0 : pos - 1);
-    let start = before < 0 ? 0 : before + 2;
-    while (start < s.length && s[start] === "\n") start += 1;
-    const after = s.indexOf("\n\n", pos);
-    const end = after < 0 ? s.length : after;
-    return [start, Math.max(start, end)];
+    const lines = [];
+    let off = 0;
+    for (const raw of s.split("\n")) { lines.push({ start: off, end: off + raw.length, blank: !raw.trim() }); off += raw.length + 1; }
+    let i = lines.findIndex((l) => pos <= l.end);
+    if (i < 0) i = lines.length - 1;
+    if (lines[i].blank) {
+        let j = i;
+        while (j < lines.length && lines[j].blank) j += 1;
+        if (j === lines.length) { j = i; while (j >= 0 && lines[j].blank) j -= 1; }
+        if (j < 0) return [pos, pos];
+        i = j;
+    }
+    let a = i, b = i;
+    while (a > 0 && !lines[a - 1].blank) a -= 1;
+    while (b < lines.length - 1 && !lines[b + 1].blank) b += 1;
+    return [lines[a].start, lines[b].end];
 }
 
 // Where slide `index` sits in the lyrics, as [start, end) offsets of its

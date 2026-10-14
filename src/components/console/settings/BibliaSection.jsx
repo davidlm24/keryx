@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { Seg } from "../kx";
+import LinesPicker from "../LinesPicker";
 import { FormRow, CfgKey, Switch } from "./parts";
 import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
@@ -67,9 +68,8 @@ export default function BibliaSection({ c }) {
                     <span className="kx-meta">no seletor da Bíblia</span>
                 </FormRow>
                 <FormRow k="Ao importar letras">
-                    <Seg small value={String(prefs.import_lines)} onChange={(v) => save({ import_lines: Number(v) }, "Corte das letras importadas salvo.")}
-                        options={[["0", "Estrofe"], ["2", "2 linhas"], ["4", "4 linhas"]]} />
-                                    </FormRow>
+                    <LinesPicker value={prefs.import_lines} onChange={(v) => save({ import_lines: v }, "Corte das letras importadas salvo.")} />
+                </FormRow>
             </div>
             <CfgKey k="Bíblias instaladas" className="listhead"><span className="kx-section">Bíblias instaladas</span></CfgKey>
             <BibliasSection c={c} />

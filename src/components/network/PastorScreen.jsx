@@ -20,6 +20,9 @@ export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasServ
     // Which parts this screen shows (Configurações › Telas e saídas ›
     // Ajustes); missing keys mean the screen as it always was.
     const show = { clock: opts.clock ?? true, next: (opts.next_count ?? 3) !== 0 };
+    // The monitor is the congregation's view, plus the chords and part names
+    // when this screen turns them on (Ajustes; off unless chosen).
+    const monitor = live?.content && (opts.chords || opts.labels) ? { ...live, content: { ...live.content, show: { chords: Boolean(opts.chords), labels: Boolean(opts.labels) } } } : live;
     const rootStyle = scale !== 1 ? { "--kp-text": scale } : undefined;
     const session = live?.session || null;
     const { title, pos } = captionParts(live);
@@ -51,7 +54,7 @@ export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasServ
                     {itemFor && <span className="np-since">há {itemFor}</span>}
                 </div>
                 <div className="np-mon">
-                    <ScreenRenderer state={live} now={nowMs} logoUrl={logo} preview audio={false} />
+                    <ScreenRenderer state={monitor} now={nowMs} logoUrl={logo} preview audio={false} />
                 </div>
                 {slides.length > 1 && (
                     <div className="np-prog" aria-label={`Slide ${index + 1} de ${slides.length}`}>
