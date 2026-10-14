@@ -1116,6 +1116,15 @@
 .console .bgchip-t img { width: 100%; height: 100%; object-fit: cover; }
 .console .bgchip-t.is-theme { position: relative; contain: layout paint; }
 .console .bgchip-t.is-none { background: repeating-linear-gradient(135deg, var(--bg-2) 0 4px, var(--bg-1) 4px 8px); }
+/* A background required and not chosen yet (a theme, owner 2026-10-14). */
+.console .bgchip.is-missing .bgchip-t { box-shadow: inset 0 0 0 1px var(--warn); }
+.console .bgchip.is-missing .bgchip-l { color: var(--warn-fg); }
+.console .kx-meta.is-warn { color: var(--warn-fg); }
+.console .nv-hint { margin-right: auto; align-self: center; display: inline-flex; align-items: center; gap: var(--space-1); }
+/* A theme saved without a background (from before the rule): its mark on
+   the thumbnail — a dot in the Temas panel, a label where thumbs are big. */
+.console .nobg-mark { position: absolute; top: 3px; right: 3px; z-index: 2; width: 14px; height: 14px; border-radius: 50%; background: var(--warn); color: var(--on-warn); display: grid; place-items: center; pointer-events: none; }
+.console .nobg-label { position: absolute; left: 4px; bottom: 4px; z-index: 2; padding: 0 5px; border-radius: 3px; background: #000000b3; color: var(--warn-fg); font-size: 10px; line-height: 16px; pointer-events: none; }
 .console .bgchip-l { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* Temas (ThemeStrip.jsx): the pinned themes as small screens inside
    Camadas › Fundo (presets, as in Holyrics). */
