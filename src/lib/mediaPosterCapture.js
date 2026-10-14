@@ -4,11 +4,15 @@ import { needsPoster, posterTime, posterSize } from "@/lib/mediaPoster";
 const TIMEOUT_MS = 15_000;
 
 // One frame of a video file as a JPEG blob, from an element that is never
-// on the page (muted, never played). Media comes from KERYX's own server,
-// so the canvas may be read. -> { blob, duration }
+// on the page (muted, never played). -> { blob, duration }
 export function capturePoster(url) {
     return new Promise((resolve, reject) => {
         const video = document.createElement("video");
+        // Asked for in CORS mode (the media server allows any origin): the
+        // console may be on another origin than the files (desktop:dev runs
+        // it on the Vite server), and a frame from another origin taints the
+        // canvas, so toBlob would refuse it.
+        video.crossOrigin = "anonymous";
         video.muted = true;
         video.preload = "auto";
         video.playsInline = true;
