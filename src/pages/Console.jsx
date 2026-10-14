@@ -1000,29 +1000,20 @@ export default function Console() {
             {!temasOn && <div className="layer-temas"><div className="listhead"><span className="kx-section">Temas{themeInUseName && <span className="kx-count"> · em uso: {themeInUseName}</span>}</span>{temasBtns}</div>{themeStrip}</div>}
         </>
     );
-    // Camadas' + (owner 2026-10-14, the "Menus (+)" proposal): the layers
-    // (the overlay, the logo) and the tools that go on air as the main text
-    // (prepared in the Prévia, as everything; Enter sends), and the Aviso
-    // rápido, which goes to the screens at once.
+    // Camadas' + (owner 2026-10-14, "Frente 2 = A"): only what goes over the
+    // projection and is in no theme, the text overlay and the logo. Clock,
+    // stopwatch, timer, free text and Aviso rápido live in the tabs panel
+    // (Ferramentas, Timers, Aviso rápido) and the Setlist's +.
     const camadasMenu = (e) => {
-        const at = menuAt(e);
-        const tool = (mode, opts) => { const st = stageFromTool(mode, opts); c.setPrev(st); c.say(`${st.title} na Prévia · Enter envia (no lugar da letra no ar).`); };
         const logoOn = Boolean(c.cur?.logo?.visible);
         const ovFull = (c.cur?.overlays?.length || 0) >= OVERLAY_LIMIT;
         openMenu(e, { title: "Adicionar camada", items: [
             { label: ovFull ? `Sobreposição de texto · máx. ${OVERLAY_LIMIT}` : "Sobreposição de texto", icon: "text", disabled: ovFull, onSelect: () => addOverlayRef.current?.() },
             { label: logoOn ? "Logo da igreja · no ar" : "Logo da igreja", icon: "logo", disabled: logoOn, onSelect: () => c.callOp("logo.set", { visible: true }).catch((err) => c.say(err?.message || "Não foi possível mostrar o logo.")) },
-            "sep",
-            { label: "Relógio", icon: "clock", onSelect: () => tool("clock") },
-            { label: "Cronômetro", icon: "clock", onSelect: () => tool("stopwatch") },
-            { label: "Timer…", icon: "clock", onSelect: () => timersMenu(at, "Timer", (m) => tool("timer", { minutes: m })) },
-            { label: "Texto livre…", icon: "text", onSelect: async () => { const t = await askText({ title: "Texto livre", placeholder: "O texto para as telas", ok: "Pôr na prévia", multiline: true, hint: "Ctrl+Enter põe na prévia" }); if (t) tool("freetext", { text: t }); } },
-            "sep",
-            { label: "Aviso rápido…", icon: "megaphone", onSelect: async () => { const m = await askText({ title: "Aviso rápido", placeholder: "Aviso para as telas", ok: "Mostrar", hint: "Vai às telas agora, sem passar pela Prévia." }); if (m) c.callOp("alert.show", { message: m, type: "message" }).catch((err) => c.say(err?.message || "Não foi possível mostrar o aviso.")); } },
         ] });
     };
     const camadasPanel = (
-        <Panel title="Camadas" count="o que está no ar" actions={<IconBtn name="plus" title="Adicionar: sobreposição, logo, relógio, timer, texto livre, aviso rápido" small onClick={camadasMenu} />}>
+        <Panel title="Camadas" count="o que está no ar" actions={<IconBtn name="plus" title="Adicionar: sobreposição de texto, logo da igreja" small onClick={camadasMenu} />}>
             <Measure onHeight={setCamadasFitH}>{layers}</Measure>
         </Panel>
     );
@@ -1235,7 +1226,7 @@ export default function Console() {
                 const right = roomR > roomL;
                 return (
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
-                    <Panel title="Camadas" actions={<><IconBtn name="plus" title="Adicionar: sobreposição, logo, relógio, timer, texto livre, aviso rápido" small onClick={camadasMenu} /><IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} /></>}>
+                    <Panel title="Camadas" actions={<><IconBtn name="plus" title="Adicionar: sobreposição de texto, logo da igreja" small onClick={camadasMenu} /><IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} /></>}>
                         {layers}
                     </Panel>
                 </div>

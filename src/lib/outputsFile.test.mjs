@@ -14,7 +14,7 @@ const outputs = [
 ];
 const prefRows = [
     { id: "r1", screen_path: "/Projection", hidden_kinds: ["alert"], text_scale: 110, theme_id: "t-azul", created_date: "x" },
-    { id: "r2", screen_path: "/LyricProjection", name: "TV do hall", icon: "tv", margin_pct: 5, show_logo: false },
+    { id: "r2", screen_path: "/LyricProjection", name: "TV do hall", icon: "tv", margin_pct: 5, show_logo: false, theme_id: "t-azul" },
 ];
 
 test("the file carries every output's placement and every page's settings, never ids", () => {
@@ -25,8 +25,9 @@ test("the file carries every output's placement and every page's settings, never
     assert.deepEqual(Object.keys(f.assignments), ["/Projection", "/StageView"]); // the unknown one is not written
     assert.deepEqual(f.assignments["/Projection"], { target: { id: 22, label: "EPSON PROJ", width: 1280, height: 800 }, openAtLaunch: true, removed: false });
     assert.deepEqual(Object.keys(f.prefs), PREF_PATHS); // every page, rows or not
-    assert.equal(f.prefs["/Projection"].theme_id, "t-azul");
-    assert.equal(f.prefs["/Projection"].theme_name, "Culto azul");
+    assert.equal(f.prefs["/Projection"].theme_id, "", "the main Projeção has no theme: the old theme_id is not exported");
+    assert.equal(f.prefs["/LyricProjection"].theme_id, "t-azul");
+    assert.equal(f.prefs["/LyricProjection"].theme_name, "Culto azul");
     assert.deepEqual(f.prefs["/Projection"].hidden_kinds, ["alert"]);
     assert.equal(f.prefs["/Projection"].text_scale, 110);
     assert.equal(f.prefs["/LyricProjection"].name, "TV do hall");
@@ -45,7 +46,7 @@ test("read back on the same computer: everything applies, nothing to note", () =
     assert.equal(r.outputs, 2);
     assert.equal(r.pages, PREF_PATHS.length);
     assert.deepEqual(r.assignments[0], { key: "/Projection", assignment: { target: { id: 22, label: "EPSON PROJ", width: 1280, height: 800 }, openAtLaunch: true, removed: false } });
-    const proj = r.prefs.find((p) => p.path === "/Projection").fields;
+    const proj = r.prefs.find((p) => p.path === "/LyricProjection").fields;
     assert.equal(proj.theme_id, "t-azul");
     assert.ok(!("theme_name" in proj)); // the name is only for finding the theme
 });
@@ -55,12 +56,12 @@ test("on another computer: a theme is found by its name; a missing screen or the
     const otherThemes = [{ id: "outro-id", name: "culto AZUL" }];
     const otherDisplays = [{ id: 5, label: "Notebook", bounds: { width: 1366, height: 768 }, primary: true }];
     const r = readOutputsFile(text, { themes: otherThemes, displays: otherDisplays });
-    assert.equal(r.prefs.find((p) => p.path === "/Projection").fields.theme_id, "outro-id");
+    assert.equal(r.prefs.find((p) => p.path === "/LyricProjection").fields.theme_id, "outro-id");
     assert.equal(r.notes.length, 1);
     assert.match(r.notes[0], /^Projeção: a tela “EPSON PROJ” 1280×800 não está ligada/);
     // No theme with that name here: the output follows the projection's.
     const r2 = readOutputsFile(text, { themes: [], displays });
-    assert.equal(r2.prefs.find((p) => p.path === "/Projection").fields.theme_id, "");
+    assert.equal(r2.prefs.find((p) => p.path === "/LyricProjection").fields.theme_id, "");
     assert.ok(r2.notes.some((n) => /o tema “Culto azul” não existe/.test(n)));
     // A screen found by its name and size (its id changed) is not a note.
     const sameScreen = [{ id: 99, label: "EPSON PROJ", bounds: { width: 1280, height: 800 } }];

@@ -7,7 +7,7 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import { mainLayer } from "@shared/live-state.mjs";
-import { PREF_CONTENTS, PREF_OUTPUTS, normalizePref, isDefaultSettings, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, lyricsOptions, showKindsFor, streamOptions, designOf } from "@/lib/outputPrefs";
+import { PREF_CONTENTS, PREF_OUTPUTS, ownsTheme, normalizePref, isDefaultSettings, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, lyricsOptions, showKindsFor, streamOptions, designOf } from "@/lib/outputPrefs";
 import StreamBand from "@/components/network/StreamBand";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { useLayoutRows } from "@/hooks/useLayout";
@@ -235,14 +235,14 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
                 <Switch on={pref.showLogo} onChange={(on) => save({ show_logo: on })} label={`Mostrar o logo em ${output.label}`} />
                 <span className="kx-meta">a camada Logo nesta saída</span>
             </FormRow>
-            <FormRow k="Tema">
+            {ownsTheme(output.key) && <FormRow k="Tema">
                 <select className="cfg-select" value={pref.themeId} onChange={(e) => save({ theme_id: e.target.value })} aria-label={`Tema de ${output.label}`}>
                     <option value="">O mesmo da Projeção</option>
                     {themes.map((t) => <option key={t.id} value={t.id}>{themeName(t)}</option>)}
                     {themeGone && <option value={pref.themeId} disabled>(tema excluído)</option>}
                 </select>
                 {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor"><Icon name="edit" />Editar tema…</Btn>}
-            </FormRow>
+            </FormRow>}
             </>}
             <FormRow k="">
                 <Btn small kind={confirmReset ? "air" : ""} disabled={isDefaultSettings(pref)} onClick={reset} title="Volta os ajustes desta tela ao padrão; o desenho fica">{confirmReset ? "Restaurar mesmo" : "Restaurar padrão"}</Btn>

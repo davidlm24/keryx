@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf } from "./outputPrefs.js";
+import { normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf, ownsTheme } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -45,12 +45,29 @@ test("Mostrar logo off hides the logo layer only on this output", () => {
 test("a theme sets its text look and background, leaving keys it does not set", () => {
     const theme = { name: "Noite", font_size: "xlarge", text_color: "#ffcc00", text_effect: "", background_image: "http://127.0.0.1:7700/media/x.webp", background_dim: 0.6 };
     assert.deepEqual(themeLook(theme), { font_size: "xlarge", text_color: "#ffcc00" });
-    const s = prefState("/Projection", live, normalizePref({ theme_id: "t1" }), theme);
+    const s = prefState("/LyricProjection", live, normalizePref({ theme_id: "t1" }), theme);
     assert.equal(s.content.style.font_size, "xlarge");
     assert.equal(s.content.style.text_color, "#ffcc00");
     assert.deepEqual(s.background, { kind: "image", value: theme.background_image, title: "Noite", dim: 0.6 });
     // The theme row not loaded yet: the live look.
-    assert.equal(prefState("/Projection", live, normalizePref({ theme_id: "t1" }), null).content.style.font_size, "large");
+    assert.equal(prefState("/LyricProjection", live, normalizePref({ theme_id: "t1" }), null).content.style.font_size, "large");
+});
+
+test("the main Projeção has no theme of its own: an old theme_id on its row is never read", () => {
+    const theme = { id: "t1", name: "Noite", font_size: "xlarge", text_color: "#ffcc00", background_image: "http://127.0.0.1:7700/media/x.webp" };
+    assert.equal(ownsTheme("/Projection"), false);
+    assert.equal(ownsTheme("/LyricProjection"), true);
+    // Read from the row: the field stays in the database, the settings drop it.
+    const p = normalizePref({ screen_path: "/Projection", theme_id: "t1", text_scale: 110 });
+    assert.equal(p.themeId, "");
+    assert.equal(p.scale, 1.1);
+    assert.equal(normalizePref({ screen_path: "/LyricProjection", theme_id: "t1" }).themeId, "t1");
+    // Even a pref that carries a themeId (no path on the row) cannot dress it.
+    const s = prefState("/Projection", live, { ...normalizePref({}), themeId: "t1" }, theme);
+    assert.equal(s.content.style.font_size, "large");
+    assert.deepEqual(s.background, live.background);
+    // A stale theme_id alone leaves the settings at their default ("Restaurar padrão" off).
+    assert.ok(isDefaultPref(normalizePref({ screen_path: "/Projection", theme_id: "t1" })));
 });
 
 test("prefVars carries scale and margins as CSS variables", () => {
@@ -149,11 +166,11 @@ test("the Prévia says when the output it previews hides the prepared kind", () 
 test("an output with a theme of its own ignores the song parts' themes", () => {
     const withParts = { ...live, content: { ...live.content, slides: [{ text: "Refrão", style: { font_family: "serif", background_image: "keryx-media://parte.webp" } }] } };
     const theme = { id: "t1", font_family: "mono", text_color: "#00ff00" };
-    const s = prefState("/Projection", withParts, normalizePref({ theme_id: "t1" }), theme);
+    const s = prefState("/LyricProjection", withParts, normalizePref({ theme_id: "t1" }), theme);
     assert.equal(s.content.slides[0].style, undefined);
     assert.equal(s.content.style.font_family, "mono");
     // Without an output theme the part keeps its look.
-    assert.equal(prefState("/Projection", withParts, normalizePref({})).content.slides[0].style.font_family, "serif");
+    assert.equal(prefState("/LyricProjection", withParts, normalizePref({})).content.slides[0].style.font_family, "serif");
 });
 
 test("designOf: the screen's own design, else the old layout_id, else null", () => {

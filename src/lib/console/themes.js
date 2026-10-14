@@ -20,7 +20,9 @@ export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 // content.style, slide.style over it):
 //   1. slide.style — a song part's theme (songTheme.js); a per-output theme
 //      drops it (outputPrefs.js).
-//   2. the output's own theme (OutputPref.theme_id), for the keys it sets.
+//   2. the output's own theme (OutputPref.theme_id), for the keys it sets —
+//      Letras, Vídeo and Comunicação only; the main Projeção always follows
+//      the console (ownsTheme, owner 2026-10-14).
 //   3. the item's explicit style (a song's "Próprio" look) — extras
 //      the item sets survive the default theme (withThemeDefaults fills only
 //      what is empty).

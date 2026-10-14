@@ -104,6 +104,10 @@ export function outputLook(path, row) {
     };
 }
 
+// Whether an output may pick a theme of its own. The main Projeção never
+// does (it always follows the console); Letras, Vídeo and Comunicação may.
+export const ownsTheme = (page) => page !== "/Projection";
+
 export const SCALE_RANGE = [80, 140];
 export const MARGIN_RANGE = [0, 10];
 
@@ -121,7 +125,9 @@ export function normalizePref(row) {
         scale: clamp(Math.round(num(row?.text_scale, 100)), SCALE_RANGE) / 100,
         margin: clamp(num(row?.margin_pct, 0), MARGIN_RANGE),
         showLogo: row?.show_logo !== false,
-        themeId: typeof row?.theme_id === "string" ? row.theme_id : "",
+        // The Projeção has no theme of its own (owner 2026-10-14): it follows
+        // the console. An old theme_id on its row stays in the database, unread.
+        themeId: ownsTheme(row?.screen_path) && typeof row?.theme_id === "string" ? row.theme_id : "",
         // The screen's own drawing (owner 2026-10-13: each screen owns its
         // design; the layout catalog died). layoutId is only the old field,
         // read by designOf when design is empty.
@@ -226,7 +232,7 @@ export function prefState(page, live, pref, theme = null) {
         if (show.chords || show.labels) state = { ...state, content: { ...state.content, show } };
     }
     if (!pref.showLogo && state.logo?.visible) state = { ...state, logo: { ...state.logo, visible: false } };
-    if (pref.themeId && theme) {
+    if (ownsTheme(page) && pref.themeId && theme) {
         // The output's theme wins over the song's parts too: their own looks go.
         if (state.content) state = { ...state, content: { ...state.content, style: { ...state.content.style, ...themeLook(theme) }, slides: (state.content.slides || []).map(({ style: _own, ...s }) => s) } };
         const bg = themeBackgroundArgs(theme);

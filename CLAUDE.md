@@ -71,6 +71,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the stage is built (`songTheme.js`, so `stageFromSong`/`songContent` take
   the themes); the part's look rides in `slide.style`, which the renderer
   lays over the content's, and an output with its own theme drops it.
+  **The main Projeção has no theme of its own** (owner 2026-10-14, "Frente
+  5 = A"): it always follows the console, so Telas e saídas has no Tema
+  row for it and `normalizePref`/`prefState` never read `theme_id` of
+  `/Projection` (`ownsTheme`, tested; an old value stays in the row,
+  unread). Letras, Vídeo and Comunicação keep an optional own theme ("O
+  mesmo da Projeção" is their default).
   **The Fundo layer is the screen's background** (2026-10-12): an item's
   own background (the song's, its theme's, the default theme's) rides in
   `args.fundo` and goes to the Fundo layer when it is sent —
@@ -142,10 +148,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   eye, padlock and place). The text look is edited only in the Editor de
   temas; when the text on air looks otherwise (a song's own look) Texto
   principal says so and offers Restaurar (`applyThemeOnAir`) and Salvar
-  como novo (an unnamed theme). Camadas' header **+** is a menu (owner 2026-10-14, the "Menus (+)"
-  proposal): Sobreposição de texto, Logo da igreja, Relógio, Cronômetro,
-  Timer… (the Timers prontos), Texto livre… and Aviso rápido… —
-  **Sobreposição de texto always makes a NEW
+  como novo (an unnamed theme). Camadas' header **+** is a menu with TWO items only
+  (owner 2026-10-14, "Frente 2 = A"): Sobreposição de texto and Logo da
+  igreja. Principle: *Camadas put or take elements over the projection
+  that are not in the themes; the Editor de telas is the permanent design
+  of one type of screen.* Relógio, Cronômetro, Timer, Texto livre and
+  Aviso rápido are not layers' business: they stay in the tabs panel
+  (Ferramentas, Timers, Aviso rápido) and the Setlist's + — don't put
+  them back in Camadas' +. **Sobreposição de texto always makes a NEW
   overlay** (owner 2026-10-14, "adicionar camadas a mais"), up to 5
   (`OVERLAY_LIMIT` in `src/lib/console/overlays.js`, tested; the menu item
   disables at the limit). Each overlay is its own row named by its text
@@ -157,9 +167,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   only changes who draws on top among them (the top row is the END of
   `live.overlays`: the renderer draws the list in order). Esc and Limpar
   leave overlays alone (their own controls, like the Logo). The tools
-  are prepared in the Prévia (`stageFromTool`), the aviso goes to the
-  screens at once (`alert.show`); a text is asked with `askText`
-  (PromptDialog.jsx; Esc closes it first). The Setlist's **+** is a menu
+  of the tabs panel are prepared in the Prévia (`stageFromTool`), the aviso
+  goes to the screens at once (`alert.show`); a text is asked with
+  `askText` (PromptDialog.jsx; Esc closes it first). The Setlist's **+** is a menu
   too: Buscar… (the palette), Seção…, Texto…, Timer… (a ServiceItem under
   the item in the Prévia, else at the end) and Planejar o culto…; the
   Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory). **Camadas is as tall as what it holds**
