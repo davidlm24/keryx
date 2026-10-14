@@ -1,0 +1,58 @@
+import React, { useEffect, useRef } from "react";
+import { Empty } from "./kx";
+import { useContextMenu } from "./ContextMenu";
+import { SlideText } from "./SlidesPanel";
+import { stageAirSlide, liveStageId } from "@/lib/console/stage";
+
+// The No ar module (owner 2026-10-14, the strip under Holyrics' console):
+// the slides of what is on air, whatever the Slides column holds, so the
+// operator never loses the place while preparing the next item. A strip of
+// cards when the module is wide and low, a list in a column (console.css).
+// A click prepares that slide (the Prévia), a double click puts it on air,
+// as everywhere; ←/→ move it.
+export default function OnAirPanel({ c }) {
+    const menu = useContextMenu();
+    const { cur, prev } = c;
+    const air = cur?.content;
+    const airId = liveStageId(cur);
+    const slides = air?.slides || [];
+    const index = air ? air.index : -1;
+    // A slide of this item waiting in the Prévia.
+    const prevIndex = air && prev && (prev.airSlide || prev.id === airId) ? prev.index : -1;
+    const listRef = useRef(null);
+
+    useEffect(() => {
+        const el = listRef.current?.querySelector(".is-air");
+        el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }, [index, slides]);
+
+    const pick = (i) => { if (air && i !== index) c.setPrev(stageAirSlide(air, i, airId)); };
+    const go = (i) => { if (air) c.goTo(i); };
+
+    if (!slides.length) return <Empty icon="list" title="Nenhum slide no ar">O que for ao ar aparece aqui, slide por slide.</Empty>;
+    return (
+        <div className="onair-b">
+            <div ref={listRef} className="kx-cards onair-list">
+                {slides.map((sl, i) => {
+                    const cls = [i === index && "is-air", i === index + 1 && i !== prevIndex && "is-next", i === prevIndex && "is-prev"].filter(Boolean).join(" ");
+                    return (
+                        <button type="button" key={i} className={`onair-card kx-t ${cls}`} onClick={() => pick(i)} onDoubleClick={() => go(i)}
+                            onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
+                                { label: "Pôr na prévia", icon: "eye", disabled: i === index, onSelect: () => pick(i) },
+                                { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
+                            ] })} title={`${i === index ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || ""}`}>
+                            <span className="kx-slide-n">{i + 1}</span>
+                            <SlideText slide={sl} />
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// The module's header: the item on air and the slide it is at.
+export function onAirCount(c) {
+    const air = c.cur?.content;
+    return air?.slides?.length ? `${air.title || "Sem título"} · ${air.index + 1}/${air.slides.length}` : "";
+}

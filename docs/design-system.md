@@ -370,6 +370,19 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
   default (user decision 2026-10-09): 32 px list rows (`row-comfortable`),
   14 px titles up to two lines, 14 px slide text. **Compacta** keeps 28 px
   single lines. Headers, controls and the live column do not change.
+- Slides and verses are **cards** in the console (owner 2026-10-14;
+  `console.css` over `bundle.css`'s `kx-slide` and `kx-verse` rows): a
+  `bg-2` card with `radius-control`, 4 px apart, and the state is the
+  card's background only, never a border or the 2 px side bar. On air:
+  the brand's gold (`--live` = `brand`, `--live-bg` = 24 % of it over
+  `bg-2`; the console's other "no ar" marks stay `air` red); Prévia or
+  selection: 24 % `prev` over `bg-2`; the next slide: `bg-3`; both on air
+  and in the Prévia: the Prévia's green with the number on a `brand` chip;
+  a note: its mark in the card's top-right corner. A slide keeps the
+  editor's lines, one line each, a line too long for the column ending in
+  "…" (whole text in the tooltip); verses wrap. The same card fills the
+  **No ar** module (a horizontal strip of 220 px cards while the module is
+  220 px high or less, a list otherwise).
 - Output health (`src/lib/console/outputs.js`, tested) decides the status in
   the top bar, the rows of Saídas, `em N telas` and the banner, from what the
   main process reports and a memory of the session: a screen that was there and

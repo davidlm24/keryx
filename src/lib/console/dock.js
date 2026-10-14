@@ -31,11 +31,13 @@ const PX_MIN = 40;
 const PX_MAX = 4000;
 // A new group's size along its split when nothing better is known.
 export const NEW_PX = 320;
+// The No ar strip's height in the default dock: its header and one row of cards.
+export const ONAIR_H = 132;
 
 // The smallest size each module is usable at, its panel's header included,
 // and its environment (env; absent: the culto). The Slides keep a slide's
-// lines whole down to 300 px ("Uma estrofe de exemplo" wraps below 220 px;
-// 300 leaves room for ~33 letters a line).
+// lines whole down to 300 px (~33 letters a line); a longer line ends in
+// "…" there and never wraps (owner 2026-10-14: the editor's lines stay lines).
 export const MODULES = {
     lib: { name: "Biblioteca", minW: 200, minH: 160 },
     slides: { name: "Slides", minW: 300, minH: 140 },
@@ -45,6 +47,9 @@ export const MODULES = {
     // Never out of reach (the console audit, 2026-10-13).
     setlist: { name: "Setlist", minW: 220, minH: 120, required: true },
     camadas: { name: "Camadas", minW: 280, minH: 120 },
+    // The slides of what is on air, whatever the Slides column holds (the
+    // Holyrics strip, owner 2026-10-14): a strip under the Prévia at first.
+    onair: { name: "No ar", minW: 220, minH: 110 },
     // As a module of its own: the panel's header (32) over the slot (36); in
     // a column it comes in at its own height (`size.col`), not half of its
     // neighbour's.
@@ -183,8 +188,9 @@ export function normalizeDock(saved) {
 // from the layout saved then (the column order, the order of the stacked
 // cards, the hidden modules, the sizes) and, as the console did then, the
 // width it is shown at (`tier`, layout.js tierFor):
-//   wide    the four columns of the 2026-10-13 console audit;
-//   medium  no right column: Camadas is a drawer (in the tray) and the
+//   wide    the four columns of the 2026-10-13 console audit, the No ar
+//           strip under the Prévia (2026-10-14);
+//   medium  no right column: Camadas is a drawer (in the tray, with No ar) and the
 //           Setlist sits beside the Prévia, where the Painel de abas was;
 //   narrow  the same, and the Biblioteca over the Slides in one column.
 // `width`, `height`: the console's grid, to turn the Prévia's percentage
@@ -211,7 +217,11 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     // The bottom band was as tall as the Prévia's column: its 16:9 monitor,
     // Enviar ao ar and the panel's header and padding.
     const bottomH = Math.round((prevW * 9) / 16 + 84);
-    const live = split("col", [group(["programa"]), split("row", [group(["previa"]), group([wide ? "abas" : "setlist"])], [prevW, null])], [null, bottomH]);
+    const band = split("row", [group(["previa"]), group([wide ? "abas" : "setlist"])], [prevW, null]);
+    // Wide: the No ar strip under that row, as wide as the centre.
+    const live = wide && !hidden.onair
+        ? split("col", [group(["programa"]), band, group(["onair"])], [null, bottomH, ONAIR_H])
+        : split("col", [group(["programa"]), band], [null, bottomH]);
     // Camadas over the Setlist (or under it), Camadas with its own height.
     const stack = normalizeOrder(layout?.stacks?.side, ["camadas", "roteiro"]).filter((id) => id !== "camadas" || !hidden.camadas);
     const side = split("col", stack.map((id) => group([id === "roteiro" ? "setlist" : id])), stack.map((id) => (id === "camadas" ? camadasH : null)));
@@ -229,8 +239,8 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
         }
         else if (!hidden[id]) { cols.push(group([id])); sizes.push(id === "lib" ? libW : slidesW); }
     }
-    const tray = ["lib", "slides", "camadas"].filter((id) => hidden[id]);
-    if (!wide) tray.push("camadas", "abas");
+    const tray = ["lib", "slides", "camadas", "onair"].filter((id) => hidden[id]);
+    if (!wide) tray.push("camadas", "abas", "onair");
     return normalizeDock({ tree: split("row", cols, sizes), hidden: tray });
 }
 

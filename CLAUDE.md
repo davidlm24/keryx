@@ -217,7 +217,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `fromArrangement`, so an old save keeps its look). Every module is built
   apart from where it goes (`modulePanels` in Console.jsx: Biblioteca,
   Slides, Programa, `PreviaPanel`, the Painel de abas, Setlist, Camadas,
-  `PlayerSlot`). Ver › Editar disposição: drag a module by its name to a
+  No ar, `PlayerSlot`). Ver › Editar disposição: drag a module by its name to a
   side of another (splits) or its middle (tabs), a click on the name opens
   "Mover para…", × puts it in the tray (the edit banner). The Programa, the
   Prévia and the Setlist never go to the tray; the player rides under the
@@ -252,7 +252,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   player **always visible**, dimmed while idle) and below it one row that
   **ends at the centre's edge**: the Prévia (44 % of the centre at first),
   then the **tabs panel**
-  (`TabsPanel.jsx`); the **right column** (`rightW`) is **Camadas over the
+  (`TabsPanel.jsx`), and under that row the **No ar** strip (`ONAIR_H`;
+  medium and narrow start with it in the tray); the **right column** (`rightW`) is **Camadas over the
   Setlist, full height** (Camadas 360 px high: the Setlist gets most of the
   column). **The Programa and the Prévia have no card** (owner 2026-10-14,
   `Panel bare`, `kx-panel-bare`): the Programa is its header line (caption,
@@ -285,7 +286,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   stacked without one keep the gutter as a margin); don't add a second gap
   beside a splitter. The old
   Próximo/Depois lines, the Setlist side card and the Biblioteca's compact
-  Setlist tab are gone. Setlist sections are ServiceItems of type `SECTION`: headers that
+  Setlist tab are gone. **The Slides column is the item in hand, the No ar
+  module is what is on air** (owner 2026-10-14, as Holyrics' slide column
+  and bottom strip): Slides shows the Prévia's slides whenever it holds an
+  item, even a single slide (`handIsPrev` in SlidesPanel.jsx; a theme's
+  example is not an item), else what is on air; No ar (`OnAirPanel.jsx`,
+  dock id `onair`, in Ver's module switches) always shows the item on air
+  and never follows a click elsewhere — a strip of cards while it is low,
+  a list in a column. In both a click prepares that slide, a double click
+  sends it; ↑/↓ walk the Slides column, ←/→ move what is on air. **Slides
+  and verses are cards** (owner 2026-10-14; console.css, over the design
+  system's rows): the state is the card's background, never a border or a
+  side bar — on air the brand's gold (`--live`; the rest of the console
+  keeps red for "no ar"), the Prévia green, the next slide `--bg-3`; on air
+  and in the Prévia at once, green with the number on a gold chip; a note
+  is a mark in the card's corner. The classes stay `.kx-slide`/`.kx-verse`
+  with `is-prev`/`is-air`/`has-note` (the smoke reads them); No ar's cards
+  are `.onair-card`, so `.kx-slide` is only the Slides column. Setlist sections are ServiceItems of type `SECTION`: headers that
   take no time and never go on air — use `playableItems`/`plan` from
   `src/lib/console/setlist.js`. A click prepares a *stage* in the Prévia;
   Enter, a **double click** or the Prévia's menu "Enviar ao ar" sends it
@@ -473,8 +490,11 @@ real /PastorView page turns with a tablet held upright (its container
 query). **The Slides column has a minimum width** (`LIMITS.slidesW`, 300
 px, `layout.js`, tested): squeezed, a 2-line verse wrapped into 3 and
 looked split wrong; the splitter clamps there and the narrow tier's
-Biblioteca-over-Slides column takes `slidesW` too. Long lines still wrap,
-never an ellipsis. A new kind of element is an entry in
+Biblioteca-over-Slides column takes `slidesW` too. A slide keeps the
+editor's lines (owner 2026-10-14, replacing "never an ellipsis"): each line
+stays one line and a line too long for the column ends in "…" (`SlideText`
+in SlidesPanel.jsx, `.kx-ln`); the whole text is the card's tooltip and the
+Prévia. Verses (prose) still wrap. A new kind of element is an entry in
 `ELEMENT_TYPES` (with its `group`) plus its case in `elementText` or the
 renderer's `Body`. Generated backgrounds are the next step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa header, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 
