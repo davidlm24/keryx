@@ -153,6 +153,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
         ? [
             { label: "Nova música…", icon: "plus", onClick: () => onEditSong?.("new") },
             { label: "Do computador…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", onFiles: importSongFiles },
+            { label: "Uma pasta inteira…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", directory: true, onFiles: (files) => importSongFiles(files.filter((f) => /\.(txt|chordpro|cho|crd|pro|json)$/i.test(f.name))) },
             { label: "Na internet…", icon: "external", onClick: () => onLyricsWeb?.() },
             {
                 label: "ao-importar",

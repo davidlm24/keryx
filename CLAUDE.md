@@ -137,8 +137,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   eye, padlock and place). The text look is edited only in the Editor de
   temas; when the text on air looks otherwise (a song's own look) Texto
   principal says so and offers Restaurar (`applyThemeOnAir`) and Salvar
-  como novo (an unnamed theme). Camadas' header **+** adds the text
-  overlay and opens its settings. **Camadas is as tall as what it holds**
+  como novo (an unnamed theme). Camadas' header **+** is a menu (owner 2026-10-14, the "Menus (+)"
+  proposal): Sobreposição de texto, Logo da igreja, Relógio, Cronômetro,
+  Timer… (the Timers prontos), Texto livre… and Aviso rápido… — the tools
+  are prepared in the Prévia (`stageFromTool`), the aviso goes to the
+  screens at once (`alert.show`); a text is asked with `askText`
+  (PromptDialog.jsx; Esc closes it first). The Setlist's **+** is a menu
+  too: Buscar… (the palette), Seção…, Texto…, Timer… (a ServiceItem under
+  the item in the Prévia, else at the end) and Planejar o culto…; the
+  Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory). **Camadas is as tall as what it holds**
   (its list, plus the settings a pencil opened; `Measure` in kx.jsx) and
   the No ar strip as tall as the slide on air with the most lines (the
   song's editor decides them; `onAirHeight`): heights the console passes
