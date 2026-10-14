@@ -24,6 +24,8 @@ import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaCaption } from
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
+import PromptDialog from "@/components/console/PromptDialog";
+import { timerChoices, minutesLabel } from "@/lib/console/timerPresets";
 import ThemeStrip from "@/components/console/ThemeStrip";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
@@ -156,6 +158,10 @@ export default function Console() {
     const closeLibrary = useCallback((result = null) => setLibReq((prev) => { prev?.resolve(result); return null; }), []);
     // "Excluir…" asks first (ConfirmDialog.jsx): one question at a time.
     const [confirmReq, setConfirmReq] = useState(null);
+    // A text question from a panel's + menu (PromptDialog): the text, or null.
+    const [ask, setAsk] = useState(null);
+    const askText = useCallback((spec) => new Promise((resolve) => setAsk({ ...spec, resolve })), []);
+    const answerAsk = useCallback((value) => setAsk((prev) => { prev?.resolve(value ?? null); return null; }), []);
     const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
     const answerConfirm = useCallback((yes) => setConfirmReq((prev) => { prev?.resolve(Boolean(yes)); return null; }), []);
     // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
@@ -722,11 +728,11 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq, library: libReq, popover: open, settings: cfg, drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, settings: cfg, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
-                    else if (top === "confirm") answerConfirm(false);
+                    else if (top === "confirm") { if (ask) answerAsk(null); else answerConfirm(false); }
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "settings") setCfgAt(null);
@@ -907,9 +913,37 @@ export default function Console() {
     useEffect(() => { if (camadasOn) setDrawer(false); }, [camadasOn]);
     // The Setlist: its header (title, count, Planejar, +) and the whole
     // rundown, scrolled to the item in hand (Rundown).
+    // A second menu where the first was (the timers): the first's place.
+    const menuAt = (e) => ({ clientX: e.clientX, clientY: e.clientY, preventDefault() {}, stopPropagation() {} });
+    const timersMenu = (at, title, onPick) => openMenu(at, { title, items: timerChoices(data.timerPresets).map((t) => ({ label: minutesLabel(t.minutes), icon: "clock", onSelect: () => onPick(t.minutes) })) });
+    // The Setlist's + (owner 2026-10-14, the "Menus (+)" proposal): the
+    // palette first, then what only Planejar made — a section, a text, a
+    // timer — right under the item in the Prévia (at the end with none).
+    const addRowToSetlist = async (row) => {
+        try {
+            const sid = await ensureService();
+            const sel = items.findIndex((x) => x.id === prevItemId);
+            const at = sel >= 0 ? sel + 1 : items.length;
+            for (let i = items.length - 1; i >= at; i--) await keryx.entities.ServiceItem.update(items[i].id, { order: i + 1 });
+            await keryx.entities.ServiceItem.create({ serviceId: sid, order: at, enabled: true, ...row });
+            c.say(`${row.title} na setlist.`);
+        } catch (err) { c.say(err?.message || "Não foi possível adicionar."); }
+    };
+    const setlistMenu = (e) => {
+        const at = menuAt(e);
+        openMenu(e, { title: "Adicionar à setlist", items: [
+            { label: "Buscar música, versículo, mídia…", icon: "search", kbd: "/", onSelect: () => setOpen("palette") },
+            "sep",
+            { label: "Seção…", icon: "list", onSelect: async () => { const t = await askText({ title: "Seção da setlist", placeholder: "Pré-culto, Louvor, Palavra…", ok: "Adicionar" }); if (t) addRowToSetlist({ type: "SECTION", title: t, duration: 0 }); } },
+            { label: "Texto…", icon: "text", onSelect: async () => { const t = await askText({ title: "Texto na setlist", placeholder: "O texto que vai às telas", ok: "Adicionar", multiline: true, hint: "Ctrl+Enter adiciona" }); if (t) addRowToSetlist({ type: "TEXT", title: t.split("\n")[0].slice(0, 60), notes: t, duration: 60 }); } },
+            { label: "Timer…", icon: "clock", onSelect: () => timersMenu(at, "Timer na setlist", (m) => addRowToSetlist({ type: "TIMER", title: `Timer ${m} min`, duration: m * 60 })) },
+            "sep",
+            { label: "Planejar o culto…", icon: "list", onSelect: () => openPlanner(serviceId) },
+        ] });
+    };
     const setlistPanel = (
         <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
-            actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist" small onClick={() => setOpen("palette")} /></>}>
+            actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
         </Panel>
     );
@@ -932,8 +966,28 @@ export default function Console() {
             {!temasOn && <div className="layer-temas"><div className="listhead"><span className="kx-section">Temas{themeInUseName && <span className="kx-count"> · em uso: {themeInUseName}</span>}</span>{temasBtns}</div>{themeStrip}</div>}
         </>
     );
+    // Camadas' + (owner 2026-10-14, the "Menus (+)" proposal): the layers
+    // (the overlay, the logo) and the tools that go on air as the main text
+    // (prepared in the Prévia, as everything; Enter sends), and the Aviso
+    // rápido, which goes to the screens at once.
+    const camadasMenu = (e) => {
+        const at = menuAt(e);
+        const tool = (mode, opts) => { const st = stageFromTool(mode, opts); c.setPrev(st); c.say(`${st.title} na Prévia · Enter envia (no lugar da letra no ar).`); };
+        const logoOn = Boolean(c.cur?.logo?.visible);
+        openMenu(e, { title: "Adicionar camada", items: [
+            { label: "Sobreposição de texto", icon: "text", onSelect: () => addOverlayRef.current?.() },
+            { label: logoOn ? "Logo da igreja · no ar" : "Logo da igreja", icon: "logo", disabled: logoOn, onSelect: () => c.callOp("logo.set", { visible: true }).catch((err) => c.say(err?.message || "Não foi possível mostrar o logo.")) },
+            "sep",
+            { label: "Relógio", icon: "clock", onSelect: () => tool("clock") },
+            { label: "Cronômetro", icon: "clock", onSelect: () => tool("stopwatch") },
+            { label: "Timer…", icon: "clock", onSelect: () => timersMenu(at, "Timer", (m) => tool("timer", { minutes: m })) },
+            { label: "Texto livre…", icon: "text", onSelect: async () => { const t = await askText({ title: "Texto livre", placeholder: "O texto para as telas", ok: "Pôr na prévia", multiline: true, hint: "Ctrl+Enter põe na prévia" }); if (t) tool("freetext", { text: t }); } },
+            "sep",
+            { label: "Aviso rápido…", icon: "megaphone", onSelect: async () => { const m = await askText({ title: "Aviso rápido", placeholder: "Aviso para as telas", ok: "Mostrar", hint: "Vai às telas agora, sem passar pela Prévia." }); if (m) c.callOp("alert.show", { message: m, type: "message" }).catch((err) => c.say(err?.message || "Não foi possível mostrar o aviso.")); } },
+        ] });
+    };
     const camadasPanel = (
-        <Panel title="Camadas" count="o que está no ar" actions={<IconBtn name="plus" title="Adicionar sobreposição de texto" small onClick={() => addOverlayRef.current?.()} />}>
+        <Panel title="Camadas" count="o que está no ar" actions={<IconBtn name="plus" title="Adicionar: sobreposição, logo, relógio, timer, texto livre, aviso rápido" small onClick={camadasMenu} />}>
             <Measure onHeight={setCamadasFitH}>{layers}</Measure>
         </Panel>
     );
@@ -1113,6 +1167,7 @@ export default function Console() {
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} top={histTop} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
+            <PromptDialog ask={ask} onAnswer={answerAsk} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasOn && !view && env === "culto" && (() => {
                 // Never over the Programa: on the side of it with more room

@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { IconBtn, MenuItem } from "./kx";
 
 // The "+" beside a search field: what can be added there. An item either
-// runs (onClick) or picks files (accept + onFiles; several at once).
+// runs (onClick) or picks files (accept + onFiles; several at once;
+// directory: a whole folder).
 // items: [{ label, icon, onClick } | { label, icon, accept, onFiles } |
 //         { label, node }] — node rows just hold a control (a setting).
 export default function AddMenu({ title = "Adicionar", items }) {
@@ -33,7 +34,7 @@ export default function AddMenu({ title = "Adicionar", items }) {
                 </div>
             )}
             {items.map((it, i) => it.onFiles && (
-                <input key={it.label} ref={(el) => { inputs.current[i] = el; }} type="file" multiple accept={it.accept} hidden
+                <input key={it.label} ref={(el) => { inputs.current[i] = el; }} type="file" multiple accept={it.accept} hidden {...(it.directory ? { webkitdirectory: "" } : {})}
                     onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; setOpen(false); if (files.length) it.onFiles(files); }} />
             ))}
         </span>
