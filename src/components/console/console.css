@@ -386,21 +386,18 @@
    scrolls on its own; Versículos takes what is left. */
 .console .bible-center { container: bible / inline-size; }
 .console .bpick-books .bsrc { display: flex; height: 20px; padding: 0 var(--space-2); }
-/* Livros, Capítulos and Versículos as compact cells glued with 1 px lines
-   (owner 2026-10-14, as Holyrics), or the large ones with gaps: Livros'
-   header menu, layout.bibleGrid. The state is the cell's background. */
-.console .bgrid.is-compact { gap: 0; padding: 0; }
-.console .bgrid.is-compact .kx-book { height: 28px; border-radius: 0; background: none; box-shadow: inset -1px -1px 0 var(--line); }
-.console .bgrid.is-compact .kx-book::before { border-radius: 0; }
-.console .bgrid.is-compact .kx-book:hover { background: var(--bg-2); }
-.console .bgrid.is-compact .kx-book.is-selected { background: var(--bg-3); outline: 0; }
-.console .bpick-chapters .bchap:has(.is-compact), .console .bpick-verses .bverses:has(.is-compact) { padding: 0; }
-.console .chapters.is-compact, .console .verse-cells.is-compact { gap: 0; }
-.console .chapters.is-compact button, .console .verse-cells.is-compact button { border-radius: 0; background: none; box-shadow: inset -1px -1px 0 var(--line); }
-.console .chapters.is-compact button:hover, .console .verse-cells.is-compact button:hover { background: var(--bg-2); }
-.console .chapters.is-compact button.is-on { background: var(--bg-3); outline: 0; }
-.console .verse-cells.is-compact button.is-prev { background: var(--prev-bg); color: var(--prev-fg); box-shadow: none; }
-.console .verse-cells.is-compact button.is-air { background: var(--live-bg); color: var(--live-fg); box-shadow: none; }
+/* Livros, Capítulos and Versículos in three cell sizes (owner 2026-10-14:
+   Livros' header menu, layout.bibleGrid — pequenas, médias as they were,
+   or grandes). */
+.console .bpick-books .bgrid.is-small { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 2px; }
+.console .bpick-books .bgrid.is-small .kx-book { height: 22px; font-size: 11px; }
+.console .bpick-books .bgrid.is-large { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 4px; }
+.console .bpick-books .bgrid.is-large .kx-book { height: 34px; font-size: 14px; }
+.console .bpick-books.names-full .bgrid.is-large { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+.console .chapters.is-small, .console .verse-cells.is-small { grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 2px; }
+.console .chapters.is-small button, .console .verse-cells.is-small button { height: 22px; font-size: 11px; }
+.console .chapters.is-large, .console .verse-cells.is-large { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+.console .chapters.is-large button, .console .verse-cells.is-large button { height: 34px; font-size: 14px; }
 /* The text panel's search field (Buscar; a reference opens the chapter). */
 .console .bread-search { flex: 0 1 240px; min-width: 140px; }
 .console .bread-search .kx-field { width: 100%; }

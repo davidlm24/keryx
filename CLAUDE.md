@@ -230,8 +230,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   The Bíblia's dock (`layout.bibleDock`, `env: "biblia"`; modules Livros, Capítulos, Versículos, Texto, No ar — the text and
   No ar never leave; the old "Versão e busca" module is gone, 2026-10-14:
   the version, Abrev | Nomes, the install + and a view menu (Tema da
-  Bíblia…, Células compactas/grandes — `layout.bibleGrid`, per computer,
-  cells glued with 1 px lines as Holyrics') are Livros' header, and Buscar
+  Bíblia…, Células pequenas/médias/grandes — `layout.bibleGrid`, per
+  computer) are Livros' header, and Buscar
   is the text panel's header field — a reference opens the chapter, a word
   searches, Esc or Ler goes back; its modes are Ler | Comparar) starts as its three columns
   (`fromBibleArrangement`); BibleEnv builds the modules, Console.jsx keeps
