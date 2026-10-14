@@ -36,6 +36,7 @@ import ServicePlanner from "@/components/console/ServicePlanner";
 import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
 import { openEditor } from "@/lib/editorWindow";
+import { setIdleMode } from "@/lib/console/idle";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView from "@/components/console/settings/SettingsView";
@@ -968,11 +969,11 @@ export default function Console() {
     // they are never out of reach.
     const themeInUse = data.themes.find((t) => t.id === c.themeId) || defaultTheme(data.themes);
     const themeInUseName = themeInUse ? themeName(themeInUse, "") : "";
-    const themeStrip = <ThemeStrip c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} menuRef={themeMenuRef} view={{ thumb: layout.temasThumb, names: layout.temasNames }} setView={(v) => setLayout({ ...layout, ...v })} />;
+    const themeStrip = <ThemeStrip c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} menuRef={themeMenuRef} view={{ thumb: layout.temasThumb, names: layout.temasNames }} setView={(v) => setLayout({ ...layout, ...v })} onSettings={openSettings} />;
     // The header: the library (where the 9 slots are pinned) and the + menu
     // (owner 2026-10-14: the body is only the thumbnails); as tall as its
     // slots (Measure → locked.temas), like Camadas.
-    const temasBtns = <><IconBtn name="grid" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
+    const temasBtns = <><IconBtn name="grid" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
     const temasPanel = <Panel title="Temas" count={themeInUseName ? `em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
     const temasOn = onScreen("temas");
     const layers = (
@@ -1174,7 +1175,7 @@ export default function Console() {
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
-            {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} />}
+            {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} onWhatsNew={openWhatsNew} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : dlgView ? "over-view" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
@@ -1189,7 +1190,7 @@ export default function Console() {
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
-            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."))} onSettings={openSettings} />
+            <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} />
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} top={histTop} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
