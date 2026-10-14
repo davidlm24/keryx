@@ -609,6 +609,7 @@
 /* "+" beside a search field: the menu of what can be added there. */
 .console .addmenu { position: relative; flex: none; }
 .console .addmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 45; width: 230px; }
+.console .addmenu-pop.is-flip { left: 0; right: auto; }
 
 /* Lyrics from the web (LyricsSearch): the Holyrics-style search dialog. */
 .console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); color: var(--fg-1); }

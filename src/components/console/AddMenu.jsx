@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { IconBtn, MenuItem } from "./kx";
 
 // The "+" beside a search field: what can be added there. An item either
@@ -9,7 +9,15 @@ import { IconBtn, MenuItem } from "./kx";
 export default function AddMenu({ title = "Adicionar", items }) {
     const [open, setOpen] = useState(false);
     const box = useRef(null);
+    const pop = useRef(null);
     const inputs = useRef([]);
+    // The pop hangs from the +'s right edge; with the + near the window's
+    // left (the Biblioteca's and Livros' place) that falls off screen, so
+    // it hangs from the left edge instead.
+    useLayoutEffect(() => {
+        if (!open || !pop.current) return;
+        pop.current.classList.toggle("is-flip", pop.current.getBoundingClientRect().left < 4);
+    }, [open]);
     useEffect(() => {
         if (!open) return undefined;
         const away = (e) => { if (!box.current?.contains(e.target)) setOpen(false); };
@@ -22,7 +30,7 @@ export default function AddMenu({ title = "Adicionar", items }) {
         <span className="addmenu" ref={box}>
             <IconBtn name="plus" title={title} on={open} onClick={() => setOpen((o) => !o)} />
             {open && (
-                <div className="kx-pop addmenu-pop" role="menu">
+                <div ref={pop} className="kx-pop addmenu-pop" role="menu">
                     {items.map((it, i) => (it.node ? (
                         <div key={it.label} className="kx-menu-h addmenu-row">{it.node}</div>
                     ) : (
