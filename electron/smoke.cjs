@@ -776,9 +776,10 @@ async function checkConsole(webContents, { live, outputs }) {
             })()`).catch((err) => String(err.message || err));
             if (result.prepDiag && typeof result.prepDiag === "object") result.prepDiag.clickedAt = click.last || null;
         }
-        // Live information has its own type steps: what is prepared at 14 px
-        // (next-title); the Programa's title is 16 px (live-title) once on air.
-        result.prevTitle14 = await js(`getComputedStyle(document.querySelector(${JSON.stringify(capSel(PREV))})).fontSize === "14px"`).catch(() => false);
+        // Live information has its own type steps: what is prepared is a small
+        // badge inside the Prévia's screen at 12 px (owner 2026-10-14); the
+        // Programa's title is 16 px (live-title) once on air.
+        result.prevTitle12 = await js(`getComputedStyle(document.querySelector(".prev-panel .kx-mon-badge .kx-mon-t")).fontSize === "12px"`).catch(() => false);
         result.airUntouched = !live.get().content;
         result.clickLeftNoFocus = (await active()) === "BODY";
         // A control focused from the keyboard keeps its own Enter.
@@ -2493,7 +2494,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.prevTitle14 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
+        && result.sent && result.projected && result.projectorFont && result.prevTitle12 && result.progTitle16 && result.progOneTitle && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
