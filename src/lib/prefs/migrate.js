@@ -8,11 +8,14 @@
 //     patch (useMigratePrefs, the console window only). 2 also moves the
 //     church's old Aparência transition into the default theme
 //     (migrateTransition below): the transition is the theme's alone since
-//     the audit 2026-10-14 (achado nº 4).
+//     the audit 2026-10-14 (achado nº 4). 3 moves the church's "Título do
+//     item nas telas" into every theme (migrateItemTitle below): the title
+//     is the theme's since the Rodada B 2026-10-14 ("Papel de parede ×
+//     Tema", Aparência dissolved).
 import { TRANSITIONS, TRANSITION_MS } from "../console/look.js";
 import { defaultTheme } from "../console/themes.js";
 
-export const PREFS_VERSION = 2;
+export const PREFS_VERSION = 3;
 export const LEGACY = {
     bible: "keryx.console.bible",
     importLines: "keryx.import.lines",
@@ -54,6 +57,9 @@ export function migrateLocalPrefs(user, storage) {
 }
 
 export const needsMigration = (user) => !(Number(user?.prefs_version) >= PREFS_VERSION);
+// Which steps a row still needs: a church already at 2 only takes 3's move,
+// so re-running never re-applies a transition the church has since changed.
+export const migrationFrom = (user) => Number(user?.prefs_version) || 0;
 
 // Version 2: the church's old default transition (Configurações › Aparência,
 // User.transition_type/transition_ms — nobody reads them any more) becomes
@@ -75,4 +81,18 @@ export function migrateTransition(user, themes) {
     const def = defaultTheme(themes);
     if (!def) return { create: { ...patch, is_default: true } };
     return def.transition ? null : { id: def.id, patch };
+}
+
+// Version 3: the church's "Título do item nas telas" (Configurações ›
+// Aparência, User.show_item_title — the section dissolved, Rodada B
+// 2026-10-14) becomes each theme's: every theme without a choice of its own
+// receives the church's effective value, so what the screens show does not
+// change. The field stays on the row (the renderer's fallback for content no
+// theme dressed) but has no UI any more.
+// -> the bulkUpdate rows ([] when every theme already chose).
+export function migrateItemTitle(user, themes) {
+    const show = user?.show_item_title !== false;
+    return (themes || [])
+        .filter((t) => t?.id && typeof t.show_item_title !== "boolean")
+        .map((t) => ({ id: t.id, show_item_title: show }));
 }

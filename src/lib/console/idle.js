@@ -1,7 +1,7 @@
 import { updateUser } from "@/hooks/useUser";
 
 // Tela ociosa: saved (so it survives a reopen, liveSeed reads idle_mode) and
-// put on air. Used by Aparência and by the Saídas popover, never one without
+// put on air. Used by Culto › Fora do ar and by the Saídas popover, never one without
 // the other. A failed save is silent; the live op's error is the one said.
 export function setIdleMode(c, mode) {
     updateUser({ idle_mode: mode }).catch(() => {});

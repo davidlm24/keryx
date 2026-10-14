@@ -75,7 +75,11 @@
     "transition": {
       "type": "string",
       "default": "",
-      "description": "Transição entre slides deste tema (fade, slide, cut); vazio herda a de Aparência"
+      "description": "Transição entre slides deste tema (fade, slide, cut); vazio = a de fábrica (a transição é só do tema desde 2026-10-14)"
+    },
+    "show_item_title": {
+      "type": "boolean",
+      "description": "Mostrar o título do item sobre o slide (do tema desde a Rodada B 2026-10-14; a migração prefs v3 copiou o valor da igreja; vazio = o campo legado User.show_item_title decide)"
     },
     "transition_ms": {
       "type": "integer",

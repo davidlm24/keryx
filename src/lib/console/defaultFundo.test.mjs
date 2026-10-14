@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { defaultFundo, defaultFundoArgs, fundoGoesOnNow, fundoNow } from "./defaultFundo.js";
+import { defaultFundo, defaultFundoArgs, defaultFundoFrom, fundoGoesOnNow, fundoNow, FUNDO_TITLES } from "./defaultFundo.js";
 import { applyOp, emptyState, restoreState, LIVE_VERSION } from "../../../shared/live-state.mjs";
 
 const T = new Date(2026, 9, 11, 19, 0).getTime();
@@ -12,7 +12,7 @@ const user = {
 
 test("the service's background first, then the church's", () => {
     const svc = defaultFundo({ service: { background: { kind: "video", value: "v.mp4" } }, user });
-    assert.deepEqual([svc.from, svc.title], ["culto", "Fundo do culto"]);
+    assert.deepEqual([svc.from, svc.title], ["culto", "Papel de parede do culto"]);
     const church = defaultFundo({ service: { date: "2026-10-11" }, user });
     assert.deepEqual([church.from, church.spec.value], ["igreja", "keryx-media://igreja.webp"], "a weekday background no longer counts");
     assert.equal(defaultFundo({ service: null, user: {} }), null);
@@ -28,7 +28,9 @@ test("background.default takes it", () => {
     const args = defaultFundoArgs(defaultFundo({ service: { background: { kind: "color", value: "#203040" } }, user }));
     const s = applyOp(emptyState(T), "background.default", { background: args }, T);
     assert.equal(s.defaultBackground.value, "#203040");
-    assert.equal(s.defaultBackground.title, "Fundo do culto");
+    assert.equal(s.defaultBackground.title, "Papel de parede do culto");
+    assert.equal(defaultFundoFrom(s), "culto", "the UI that warns on the fallback row reads whose it is");
+    assert.equal(defaultFundoFrom(emptyState(T)), null);
     assert.equal(defaultFundoArgs(null), null);
 });
 
@@ -38,13 +40,17 @@ test("fundoNow names whose background the Fundo holds (culto, igreja, the item's
     assert.equal(fundoNow(null), null);
     // The default-fundo plumbing titles what it sends (defaultFundoArgs).
     const culto = applyOp(applyOp(empty,
-        "background.default", { background: { kind: "color", value: "#405060", title: "Fundo do culto" } }, T),
-        "background.set", { kind: "color", value: "#405060", title: "Fundo do culto" }, T);
-    assert.deepEqual(fundoNow(culto), { from: "culto", title: "Fundo do culto" });
+        "background.default", { background: { kind: "color", value: "#405060", title: FUNDO_TITLES.culto } }, T),
+        "background.set", { kind: "color", value: "#405060", title: FUNDO_TITLES.culto }, T);
+    assert.deepEqual(fundoNow(culto), { from: "culto", title: "Papel de parede do culto" });
     const igreja = applyOp(applyOp(empty,
-        "background.default", { background: { kind: "image", value: "keryx-media://igreja.webp", title: "Fundo padrão" } }, T),
-        "background.set", { kind: "image", value: "keryx-media://igreja.webp", title: "Fundo padrão" }, T);
-    assert.deepEqual(fundoNow(igreja), { from: "igreja", title: "Fundo padrão" });
+        "background.default", { background: { kind: "image", value: "keryx-media://igreja.webp", title: FUNDO_TITLES.igreja } }, T),
+        "background.set", { kind: "image", value: "keryx-media://igreja.webp", title: FUNDO_TITLES.igreja }, T);
+    assert.deepEqual(fundoNow(igreja), { from: "igreja", title: "Papel de parede da igreja" });
+    // A live state from before the rename (the old titles) is still named.
+    const antigo = applyOp(empty, "background.set", { kind: "color", value: "#405060", title: "Fundo do culto" }, T);
+    assert.deepEqual(fundoNow(antigo), { from: "culto", title: "Papel de parede do culto" });
+    assert.equal(fundoNow(applyOp(empty, "background.set", { kind: "color", value: "#101010", title: "Fundo padrão" }, T)).from, "igreja");
     // An untitled Fundo that matches the Fundo padrão is still named by it.
     const untitled = applyOp(culto, "background.set", { kind: "color", value: "#405060" }, T);
     assert.equal(fundoNow(untitled).from, "culto");

@@ -1,5 +1,5 @@
 // The look of a service (owner's review 2026-10-14, as in Holyrics: no more
-// Visual do culto): its background — the Fundo do culto, the Fundo padrão
+// Visual do culto): its background — the papel de parede
 // while it is the service in hand — and one optional theme from the library
 // (theme_id), which becomes the theme in use when the culto is chosen. A
 // template (ServiceTemplate) keeps the same two and brings them with its

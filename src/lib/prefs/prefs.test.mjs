@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { prefsOf, PREF_FIELDS, hiddenList, hiddenMap } from "./schema.js";
-import { migrateLocalPrefs, migrateTransition, needsMigration, LEGACY } from "./migrate.js";
+import { migrateLocalPrefs, migrateTransition, migrateItemTitle, migrationFrom, needsMigration, LEGACY } from "./migrate.js";
 
 const storage = (entries) => ({ getItem: (k) => (k in entries ? entries[k] : null) });
 
@@ -59,11 +59,29 @@ test("migration: corrupt or missing storage moves nothing", () => {
     assert.deepEqual(migrateLocalPrefs({}, { getItem() { throw new Error("blocked"); } }), {});
 });
 
-test("migration: the marker says when it is done", () => {
+test("migration: the marker says when it is done, and which steps a row still takes", () => {
     assert.equal(needsMigration({}), true);
     assert.equal(needsMigration({ prefs_version: null }), true);
     assert.equal(needsMigration({ prefs_version: 1 }), true, "version 1 still moves the transition into the theme");
-    assert.equal(needsMigration({ prefs_version: 2 }), false);
+    assert.equal(needsMigration({ prefs_version: 2 }), true, "version 2 still moves the item title into the themes");
+    assert.equal(needsMigration({ prefs_version: 3 }), false);
+    // A church already at 2 must not get an old transition re-applied.
+    assert.equal(migrationFrom({ prefs_version: 2 }), 2);
+    assert.equal(migrationFrom({}), 0);
+    assert.equal(migrationFrom({ prefs_version: null }), 0);
+});
+
+// Version 3 (Rodada B 2026-10-14, Aparência dissolved): the church's "Título
+// do item nas telas" becomes each theme's, so the screens keep showing (or
+// hiding) the title exactly as before.
+test("migration: the church's item title moves into every theme without a choice", () => {
+    const themes = [{ id: "a" }, { id: "b", show_item_title: false }, { id: "c", show_item_title: true }, { name: "no id" }];
+    assert.deepEqual(migrateItemTitle({ show_item_title: false }, themes), [{ id: "a", show_item_title: false }]);
+    assert.deepEqual(migrateItemTitle({ show_item_title: true }, themes), [{ id: "a", show_item_title: true }]);
+    assert.deepEqual(migrateItemTitle({}, themes), [{ id: "a", show_item_title: true }], "never set means shown, the default");
+    assert.deepEqual(migrateItemTitle(null, [{ id: "a" }]), [{ id: "a", show_item_title: true }]);
+    assert.deepEqual(migrateItemTitle({ show_item_title: false }, []), []);
+    assert.deepEqual(migrateItemTitle({ show_item_title: false }, null), []);
 });
 
 // Version 2 (audit 2026-10-14, achado nº 4): the old Aparência transition

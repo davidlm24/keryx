@@ -70,8 +70,12 @@ export function withSongThemes(content, song, themes) {
     if (theme) {
         // The theme sets the whole look; the song's own fields are its
         // fallback for when the theme is deleted. Its background (any kind)
-        // goes to the Fundo layer when the song is sent (args.fundo).
+        // goes to the Fundo layer when the song is sent (args.fundo), and
+        // its title choice rides as style.title (themes.js withThemeDefaults
+        // skips a style.title already set, so the song's theme wins over the
+        // default one; Camadas' per-item choice still wins after the send).
         const { background_image: _i, background_dim: _d, background_blur: _b, ...look } = themeLookOf(theme);
+        if (typeof theme.show_item_title === "boolean") look.title = theme.show_item_title ? "show" : "hide";
         const { fundo: _f, ...rest } = out;
         const fundo = themeBackgroundArgs(theme);
         out = { ...rest, style: look, ...(fundo ? { fundo } : {}) };

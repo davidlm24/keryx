@@ -17,8 +17,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (ecrã, guardar, ficheiro, eliminar, telemóvel). Do not introduce English UI
   copy. Code identifiers and comments are English.
 - **Copy rules (owner 2026-10-13/14).** One word per concept, everywhere:
-  Fundo do culto (o fundo do culto) / Tema do culto (o tema que o culto usa)
-  / Fundo padrão (o da igreja) — there is no "Visual do culto" any more;
+  **Papel de parede** (o que as telas mostram sem nada no ar, depois do Esc
+  e entre os itens — do culto do dia, com o da igreja como "Qualquer outro
+  culto"; replaced "Fundo do culto", "Fundo padrão" and "Fundo de hoje",
+  Rodada B 2026-10-14) / Tema (tudo o que vai ao ar com o item: texto e
+  fundo) / Tema do culto (o tema que o culto usa) — there is no "Visual do
+  culto" any more; "Fundo" alone stays the LAYER's name (Camadas › Fundo);
   "Tema sem nome" only where a name is required (menus, tooltips, a select),
   never as a caption; "O mesmo das músicas" (herdar) e "Estilo de fábrica" (sem
   tema); Excluir = apaga (sempre via `useConfirm`/ConfirmDialog; the
@@ -139,13 +143,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (with "Logo da igreja…", Configurações › Igreja), Sobreposição (its text
   field), Texto principal (the item's Título and "Editar tema…", the theme
   in use in the Editor de temas); the Fundo's pencil (and the row's right
-  click) opens a menu, never the library blind (owner's OK 2026-10-14,
-  "Fundo em três vias"): its title names whose background the screen shows
-  now — Fundo do culto, Fundo padrão or the item's own (`fundoNow` in
-  defaultFundo.js, tested) — and its items are "Trocar o fundo do culto…"
-  (the Programa's same via) and "Fundo padrão da igreja…" (Configurações ›
-  Aparência); the Fundo layer still has no options (the row keeps its
-  eye, padlock and place). The text look is edited only in the Editor de
+  click) opens a menu, never the library blind: its title names whose
+  background the screen shows now — the culto's papel de parede, the
+  igreja's or the item's own (`fundoNow` in defaultFundo.js, tested; it
+  still reads the pre-rename titles) — and its items are "Trocar o papel
+  de parede…" (`pickServiceFundo`: **the one live door**, Rodada B
+  2026-10-14 — the Programa's header button is gone; in the medium/narrow
+  tiers the Programa header's Camadas drawer keeps the pencil reachable)
+  and "Qualquer outro culto…" (Configurações › Culto); the Fundo layer
+  still has no options (the row keeps its eye, padlock and place). The text look is edited only in the Editor de
   temas; when the text on air looks otherwise (a song's own look) Texto
   principal says so and offers Restaurar (`applyThemeOnAir`) and Salvar
   como novo (an unnamed theme). Camadas' header **+** is a menu with TWO items only
@@ -213,22 +219,34 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`User.bible_theme_id`: "" = whatever the songs get now — the theme in
   use, else the default; the same for Texto and Timer — "none" = factory;
   `themeForKind` in themes.js, used by `stamp`), chosen in the Bíblia's Tema
-  button or Configurações › Bíblia e músicas. The item's title over the
-  slide is `style.title` (show/hide, Camadas › Texto principal › Título);
-  unset, Aparência's `show_item_title` decides.
-  **Fundo padrão** (owner's decision 2026-10-12): with nothing on air the
-  screen shows the service's background (`Service.background`), else the
-  church's (`User.default_background`; the old `standby_background` still
-  counts; `User.weekday_backgrounds` is no longer read) — `defaultFundo` in
-  `src/lib/console/defaultFundo.js`. The culto's and the church's each keep
-  their own doors and say which is which (owner's OK 2026-10-14, "Fundo em
-  três vias"): Aparência › Fundo padrão warns while the culto on screen has
-  a fundo of its own (the live state's `defaultBackground.title`), and
-  Camadas' Fundo menu names what is on screen (`fundoNow`). **A service keeps a background and one
+  button or Configurações › Bíblia e músicas. **The item's title over the
+  slide is the theme's** (Rodada B 2026-10-14, `ProjectionTheme.show_item_title`,
+  the Editor de temas' "Título do item"; prefs v3 copied the church's value
+  into every theme): it is stamped as `style.title` at send
+  (`withThemeDefaults`, and `withSongThemes` for a song's own theme), so
+  Camadas › Texto principal › Título still chooses per item on air; with no
+  stamp (factory look, a theme from an old backup) the renderer falls back
+  to the legacy `User.show_item_title`, which has no UI any more.
+  **Papel de parede** (owner's decisions 2026-10-12/14, "Papel de parede ×
+  Tema"): with nothing on air the screen shows the culto's background
+  (`Service.background`), else the church's (`User.default_background`; the
+  old `standby_background` still counts; `User.weekday_backgrounds` is no
+  longer read) — `defaultFundo` in `src/lib/console/defaultFundo.js`. It is
+  configured in Configurações › Culto: the "Fora do ar" block holds the
+  fallback row **"Qualquer outro culto"** (`User.default_background`, which
+  warns while the culto on screen has a papel de parede of its own —
+  `defaultFundoFrom`) and the Tela ociosa; each template's row in Modelos de
+  culto keeps its own (`ServiceTemplate.background`), so choosing the day's
+  culto switches it. Live, the ONE door is Camadas › Fundo's pencil
+  (`pickServiceFundo`); Camadas' Fundo menu names what is on screen
+  (`fundoNow`). **Aparência is gone** (Rodada B, F3 = A): `resolveSection`
+  sends `?config=aparencia` to Culto and `fundos` to **Temas e fundos**,
+  which holds the library button; "Esconder o título do YouTube" lives in
+  Telas e saídas. **A service keeps a background and one
   theme** (owner's review 2026-10-14, as in Holyrics: the Visual do culto,
   its window `LookDialog` and the per-kind service themes are gone — don't
   bring them back; `src/lib/console/serviceLook.js`): `Service.background`
-  (the Fundo do culto) and `Service.theme_id` (optional, from the library;
+  (its papel de parede) and `Service.theme_id` (optional, from the library;
   `serviceTheme` reads the old `kind_themes.lyrics` when it is empty).
   `kind_themes` stays in the table (user data) and nothing writes or reads
   its other kinds. Planejar o culto edits both (`BgChip`,
@@ -248,10 +266,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   stays) and wear a mark (`NoBgMark`: a dot in Temas, "sem fundo" in the
   library and Configurações › Temas) with "Escolher fundo…" in their
   menus. Temas' + also has "Configurações › Temas…".
-  The Programa's header has **Fundo do culto** (Fundo de hoje with no
-  service; `pickServiceFundo` in Console.jsx): the library picks the
-  service's wallpaper, saved as `Service.background` (the day's draft
-  starts if need be), and the Fundo padrão follows at once.
+  `pickServiceFundo` (Console.jsx; Camadas › Fundo's pencil): the library
+  picks today's papel de parede, saved as `Service.background` (the day's
+  draft starts if need be), and the screens follow at once.
   The console keeps it
   in the live state (`background.default`, `defaultBackground`) and `clear`
   (Esc, from anyone) puts it on the Fundo unless the padlock holds it;
@@ -375,7 +392,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Setlist gets the rest of the column). **The Notas tab** is the setlist item's notes
   (only when it has some) over the operator's free field, nothing else. **The Programa and the Prévia have no card** (owner 2026-10-14,
   `Panel bare`, `kx-panel-bare`): the Programa is its header line (caption,
-  Fundo do culto, Voltar ao anterior, Multiview), the screen and the player;
+  the Camadas drawer button when that module is in the tray, Voltar ao
+  anterior, Multiview), the screen and the player;
   its caption has **no "Programa" word** (owner 2026-10-14): the title is
   in its state's colour (red on air, amber failure, blue locked, grey
   "Nada no ar") with a blue "Travado" chip while the screens are locked;

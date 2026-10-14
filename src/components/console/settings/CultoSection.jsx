@@ -10,6 +10,8 @@ import { parseDuration, formatDuration } from "@/lib/songImport";
 import BgChip from "../library/BgChip";
 import ThemeChip from "../library/ThemeChip";
 import { lookOf, templateLookFields } from "@/lib/console/serviceLook";
+import { churchFundo, defaultFundoFrom } from "@/lib/console/defaultFundo";
+import IdleBlock from "./IdleBlock";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 
 // The two lists this section edits, with the planner's query keys: a change
@@ -33,8 +35,10 @@ function Inline({ value, onCommit, placeholder, label, width = 220, type = "text
 
 // Culto: how the services are planned. The usual day and time (Novo culto
 // and the day's setlist), how long a song and anything else take when added
-// without a length, the forecast of the end, the setlist templates and the
-// worship team.
+// without a length, the forecast of the end, what the screens show off air
+// (the papel de parede's fallback and the Tela ociosa — Aparência dissolved
+// into here, Rodada B 2026-10-14), the setlist templates (each with its own
+// papel de parede and theme) and the worship team.
 export default function CultoSection({ c }) {
     const user = useUser();
     const prefs = usePrefs();
@@ -86,6 +90,24 @@ export default function CultoSection({ c }) {
                 </FormRow>
             </div>
 
+            {/* Fora do ar (Rodada B 2026-10-14, "Papel de parede × Tema"): the
+                papel de parede is the day's culto's (each template below has
+                its own); this row is the fallback — the church's, shown by
+                any culto with none — and the Tela ociosa is what remains with
+                no papel de parede at all. The row says so while the culto on
+                screen covers it (the live state's background.default). */}
+            <CfgKey k="Fora do ar" className="listhead"><span className="kx-section">Fora do ar <span className="kx-count">· o papel de parede: as telas sem nada no ar, depois do Esc</span></span></CfgKey>
+            <div className="frm">
+                <FormRow k="Qualquer outro culto">
+                    <BgChip title="Papel de parede · qualquer outro culto" empty="nenhum · as telas mostram a tela ociosa" value={churchFundo(user)}
+                        noneLabel={churchFundo(user) ? "Sem papel de parede (tela ociosa)" : undefined}
+                        onPick={(spec) => save({ default_background: spec || null, standby_background: spec?.kind === "image" ? spec.value : "" }, spec ? "Papel de parede salvo." : "Sem papel de parede: vale a tela ociosa.")} />
+                    <span className="kx-meta">o papel de parede dos cultos sem um próprio</span>
+                    {defaultFundoFrom(c.cur) === "culto" && <span className="kx-meta" style={{ color: "var(--warn-fg)" }}>Hoje o culto tem o seu papel de parede (Camadas › Fundo); este fica guardado.</span>}
+                </FormRow>
+                <IdleBlock c={c} />
+            </div>
+
             <CfgKey k="Modelos de culto" className="listhead"><span className="kx-section">Modelos de culto <span className="kx-count">· {templates.length}</span></span></CfgKey>
             {!templates.length && <div className="listhead"><span className="kx-meta">Nenhum ainda · salve uma setlist como modelo em Planejar o culto.</span></div>}
             {templates.map((t) => (
@@ -95,10 +117,10 @@ export default function CultoSection({ c }) {
                     <span className="kx-meta">{(t.items || []).length} {(t.items || []).length === 1 ? "item" : "itens"}{t.isDefault ? " · modelo do KERYX" : ""}</span>
                     <span style={{ flex: 1 }} />
                     {/* What the template brings to the culto (owner's review
-                        2026-10-14): its Fundo do culto and its theme. */}
+                        2026-10-14): its papel de parede and its theme. */}
                     {!t.isDefault && <>
-                        <BgChip value={lookOf(t).background} title={`Fundo do modelo ${t.name}`} empty="o da igreja" noneLabel={lookOf(t).background ? "Sem fundo próprio" : undefined}
-                            onPick={(spec) => run(keryx.entities.ServiceTemplate.update(t.id, templateLookFields({ ...lookOf(t), background: spec })), "Fundo do modelo salvo.")} />
+                        <BgChip value={lookOf(t).background} title={`Papel de parede · ${t.name}`} empty="o de qualquer outro culto" noneLabel={lookOf(t).background ? "Sem papel de parede próprio" : undefined}
+                            onPick={(spec) => run(keryx.entities.ServiceTemplate.update(t.id, templateLookFields({ ...lookOf(t), background: spec })), "Papel de parede do modelo salvo.")} />
                         <ThemeChip value={lookOf(t).theme_id} title={`Tema do modelo ${t.name}`} empty="sem tema" now={c.now}
                             onPick={(id) => run(keryx.entities.ServiceTemplate.update(t.id, { theme_id: id }), id ? "Tema do modelo salvo." : "O modelo fica sem tema.")} />
                     </>}

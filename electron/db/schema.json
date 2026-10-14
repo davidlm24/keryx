@@ -1273,6 +1273,9 @@
           "type": "text",
           "default": ""
         },
+        "show_item_title": {
+          "type": "boolean"
+        },
         "transition_ms": {
           "type": "integer"
         },

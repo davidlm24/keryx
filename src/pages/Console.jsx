@@ -301,9 +301,9 @@ export default function Console() {
     useEffect(() => { if (!serviceId && services.length) setServiceId(pickDefaultService(services)?.id || null); }, [services, serviceId]);
     useEffect(() => { if (serviceId) setLog(loadLog(serviceId)); }, [serviceId]);
     const service = services.find((s) => s.id === serviceId) || null;
-    // Fundo padrão (owner's decision 2026-10-12, src/lib/console/defaultFundo.js):
-    // the service's background, else the day's, else the church's. The live
-    // state keeps it (background.default) so Esc puts it back, whoever sends;
+    // Papel de parede (owner's decisions 2026-10-12/14, src/lib/console/defaultFundo.js):
+    // the service's background, else the church's ("Qualquer outro culto").
+    // The live state keeps it (background.default) so Esc puts it back, whoever sends;
     // and when it changes (KERYX opens, a service is chosen, the church edits
     // it) with nothing on air (under Tela preta too) it goes on the Fundo now —
     // never past Travar telas or the padlock (fundoGoesOnNow).
@@ -444,22 +444,24 @@ export default function Console() {
         return row.id;
     }, [serviceId, c]);
 
-    // The service's wallpaper, one click from the Programa's header (owner's
-    // request 2026-10-13): the library picks it, saved as the service's
-    // background (with no service, today's draft starts). The Fundo
-    // padrão effect below then sends background.default — and background.set
-    // with nothing on air — so the screen follows at once; Esc keeps showing
-    // it after a song with a background of its own.
+    // Today's papel de parede, the ONE live door (Rodada B 2026-10-14,
+    // "Papel de parede × Tema": the Programa's header button is gone):
+    // Camadas' Fundo pencil and Planejar o culto call this. The library
+    // picks it, saved as the service's background (with no service, today's
+    // draft starts). The papel de parede effect below then sends
+    // background.default — and background.set with nothing on air — so the
+    // screen follows at once; Esc keeps showing it after a song with a
+    // background of its own.
     const pickServiceFundo = useCallback(async () => {
         const before = serviceFundo(service);
-        const r = await pickFromLibrary({ accept: ["image", "video", "generator", "color"], title: service ? "Fundo do culto" : "Fundo de hoje", value: before || null, allowNone: Boolean(before), noneLabel: "Sem fundo próprio (usa o da igreja)" });
+        const r = await pickFromLibrary({ accept: ["image", "video", "generator", "color"], title: service ? "Papel de parede do culto" : "Papel de parede de hoje", value: before || null, allowNone: Boolean(before), noneLabel: "Sem papel de parede próprio (o de qualquer outro culto)" });
         if (!r || (!r.spec && !r.none)) return;
         try {
             const sid = serviceId || await ensureService();
             const row = services.find((x) => x.id === sid) || {};
             await keryx.entities.Service.update(sid, lookFields({ ...lookOf(row), background: r.none ? null : r.spec }));
-            c.say(r.none ? "O culto volta ao fundo da igreja." : service ? "Fundo do culto salvo." : "Fundo de hoje salvo.");
-        } catch (err) { c.say(err?.message || "Não foi possível salvar o fundo."); }
+            c.say(r.none ? "O culto volta ao papel de parede da igreja." : "Papel de parede do culto salvo.");
+        } catch (err) { c.say(err?.message || "Não foi possível salvar o papel de parede."); }
     }, [service, services, serviceId, ensureService, pickFromLibrary, c]);
 
     // The Notas tab's free notes (Service.operator_notes). With no service the
@@ -1069,8 +1071,11 @@ export default function Console() {
         <Panel bare className="prog-panel" caption={<ProgramaCaption c={c} projectorDown={projectorDown} />} actions={
             <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 2 }}>
                 {health.onAir && <span className={`kx-meta prog-where ${health.onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{health.onAir.text}</span>}
-                {!camadasOn && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
-                <button type="button" className="kx-btn kx-t" style={{ height: 24 }} onClick={pickServiceFundo} title="O fundo do culto: o que as telas mostram quando nada está no ar (e a cada Esc)" aria-label={service ? "Fundo do culto" : "Fundo de hoje"}><Icon name="image" /><span className="hist-lbl">{service ? "Fundo do culto" : "Fundo de hoje"}</span></button>
+                {/* The papel de parede's one live door is Camadas' Fundo
+                    pencil (Rodada B 2026-10-14): the header button it had is
+                    gone; with Camadas in the tray the drawer below keeps the
+                    pencil a click away. */}
+                {!camadasOn && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, papel de parede, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
                 <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco" aria-label="Voltar ao anterior"><Icon name="undo" /><span className="hist-lbl">Voltar ao anterior</span></button>
                 <button type="button" className={`kx-btn kx-t mx-toggle ${layout.multiview ? "is-on" : ""}`} style={{ height: 24 }} onClick={toggleMultiview} aria-pressed={layout.multiview} title={layout.multiview ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar"} aria-label="Multiview"><Icon name="grid" /><span className="hist-lbl">Multiview</span></button>
             </div>

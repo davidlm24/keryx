@@ -13,7 +13,7 @@ const IMAGE_SECONDS = 5;
  * reports that (media.advance, which ignores duplicate reports).
  */
 export default function LiveMediaView({ media }) {
-    // An image's name over it only when the church wants titles (Configurações › Aparência).
+    // An image's name over it only when the church wants titles (the legacy pref; the item title is the theme's since the Rodada B 2026-10-14).
     const showTitle = usePrefs().show_item_title;
     const inPlaylist = Boolean(media.playlist);
     const index = media.playlistIndex;

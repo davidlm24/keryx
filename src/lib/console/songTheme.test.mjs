@@ -63,6 +63,15 @@ test("a song following a theme takes its whole look; a deleted theme falls back 
     assert.equal(withSongThemes(content, { theme_id: "t-azul" }, []), content);
 });
 
+test("a song's own theme carries its item-title choice as style.title", () => {
+    const out = withSongThemes(content, { theme_id: "t-azul" }, [{ ...azul, show_item_title: false }]);
+    assert.equal(out.style.title, "hide");
+    assert.equal(withSongThemes(content, { theme_id: "t-azul" }, [{ ...azul, show_item_title: true }]).style.title, "show");
+    // A theme without the field stamps nothing (the kind theme or the legacy
+    // church pref then decides).
+    assert.equal(withSongThemes(content, { theme_id: "t-azul" }, THEMES).style.title, undefined);
+});
+
 test("each themed part's slides carry their theme's look; the rest are untouched", () => {
     const out = withSongThemes(content, { part_themes: { "Refrão": "t-azul", "verso 2": "t-sem" } }, THEMES);
     assert.equal(out.style, content.style); // the song's look stays

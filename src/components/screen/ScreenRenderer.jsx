@@ -23,7 +23,9 @@ import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
 // in step with the screens, so the monitor mirrors the projector.
 export default function ScreenRenderer({ state, now, logoUrl = "", preview = false, motion = false, fill = false, audio = !preview, className = "" }) {
     const cls = `ks ${fill ? "ks-fill" : "ks-box"} ${className}`;
-    // The item's title on top of the slide (Configurações › Aparência).
+    // The item's title on top of the slide: the item's choice (style.title),
+    // else the theme's, stamped at send; this legacy church pref is only the
+    // fallback for content no theme dressed (Rodada B 2026-10-14).
     const showTitle = usePrefs().show_item_title;
     if (!state) return <div className={cls}><Idle logoUrl={logoUrl} /></div>;
 

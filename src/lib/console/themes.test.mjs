@@ -82,6 +82,25 @@ test("default theme: filled in at send time, only where the item asks", () => {
     assert.equal(withThemeDefaults("content.show", plain, theme), plain);
 });
 
+// Rodada B 2026-10-14 ("Papel de parede × Tema", Aparência dissolved): the
+// item's title over the slide is the theme's choice, stamped as style.title
+// at send; Camadas' per-item choice (content.update) wins after the send.
+test("the theme's item title is stamped at send; an old theme stamps nothing", () => {
+    const args = { title: "X", slides: [], style: { font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff" }, inherit: { look: true, background: false } };
+    assert.equal(withThemeDefaults("content.show", args, { id: "t", show_item_title: false }).style.title, "hide");
+    assert.equal(withThemeDefaults("content.show", args, { id: "t", show_item_title: true }).style.title, "show");
+    // A theme without the field (a backup from an older KERYX): nothing is
+    // stamped and the renderer falls back to the legacy church pref.
+    assert.equal(withThemeDefaults("content.show", args, { id: "t" }).style.title, undefined);
+    // The title is no part of the text look: an item with its own look still
+    // follows the theme's title…
+    const own = withThemeDefaults("content.show", { ...args, style: { font_family: "mono" }, inherit: { look: false, background: false } }, { id: "t", show_item_title: false });
+    assert.equal(own.style.title, "hide");
+    // …but a style.title already set (a song's own theme, songTheme.js) wins.
+    const set = withThemeDefaults("content.show", { ...args, style: { ...args.style, title: "show" } }, { id: "t", show_item_title: false });
+    assert.equal(set.style.title, "show");
+});
+
 test("text placement rides as extras: the theme fills, the item wins", () => {
     const theme = { id: "t", text_align: "left", text_position: "bottom", text_max_width: 60 };
     assert.equal(themeStyle(theme).text_align, "left");

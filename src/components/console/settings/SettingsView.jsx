@@ -9,7 +9,6 @@ import { CfgFlash } from "./parts";
 import IgrejaSection from "./IgrejaSection";
 import TelasSection from "./TelasSection";
 import RedeSection from "./RedeSection";
-import AparenciaSection from "./AparenciaSection";
 import TemasSection from "./TemasSection";
 import BibliaSection from "./BibliaSection";
 import CultoSection from "./CultoSection";
@@ -21,7 +20,6 @@ const BODIES = {
     sobre: SobreSection,
     igreja: IgrejaSection,
     rede: RedeSection,
-    aparencia: AparenciaSection,
     temas: TemasSection,
     biblia: BibliaSection,
     culto: CultoSection,

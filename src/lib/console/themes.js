@@ -1,6 +1,6 @@
 // A projection theme (ProjectionTheme row) as the live state understands it:
 // the text style it applies, the Fundo layer it sets, which theme starts
-// selected. Shared by Camadas (apply/save) and Configurações › Aparência › Temas (the
+// selected. Shared by Camadas (apply/save) and Configurações › Temas e fundos (the
 // editor). Pure, so node --test checks it.
 import { bgSpec, bgArgs, cleanSpec } from "./backgroundSpec.js";
 
@@ -55,7 +55,7 @@ export const themeHasBackground = (t) => Boolean(bgSpec(t));
 // = there is none at hand and the library is asked for one.
 export const newThemeBackground = (onAir, inUse) => cleanSpec(onAir) || bgSpec(inUse);
 
-// The default theme (Configurações › Aparência › Temas, "Tornar padrão"):
+// The default theme (Configurações › Temas e fundos, "Tornar padrão"):
 // the one marked, the most recently changed if several are; none when none
 // is (then the factory look applies — never the first theme by surprise).
 export function defaultTheme(themes) {
@@ -173,6 +173,14 @@ export function withThemeDefaults(op, args, theme) {
         style.transition = t.transition;
         if (t.transition_ms !== "" && style.transition_ms == null) style.transition_ms = t.transition_ms;
     }
+    // Whether the item's title shows over the slide is the theme's (Rodada B
+    // 2026-10-14: show_item_title left the church's profile for the theme;
+    // prefs v3 gave every theme the church's value) — even for an item with
+    // its own look, since the title is no part of the text look. Stamped as
+    // style.title at send, so Camadas' per-item choice still wins afterwards
+    // (content.update); a theme without the field (an old backup) stamps
+    // nothing and the renderer falls back to the legacy church pref.
+    if (typeof theme.show_item_title === "boolean" && !style.title) style.title = theme.show_item_title ? "show" : "hide";
     const fundo = inherit.background && !style.background_image && !rest.fundo ? themeBackgroundArgs(theme) : null;
     return { ...rest, style, ...(fundo ? { fundo } : {}) };
 }
