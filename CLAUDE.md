@@ -252,7 +252,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   old tiers did (`fromArrangement` with `tier`: wide, the four columns;
   medium, no right column — Camadas a drawer, the Setlist beside the
   Prévia; narrow, also the Biblioteca over the Slides), and Padrão does
-  too. Splits have one
+  too. **One culto arrangement per width tier** (owner 2026-10-14, the
+  small-screen review): `layout.dock`/`dockPreset` are the tier's on
+  screen (`dockTier`); when the tier changes `switchTier` (layout.js,
+  tested) keeps them in `tierDocks` and brings the new tier's back (none =
+  that tier's own), so a dock arranged on the church's big monitor never
+  squeezes a notebook. A save from before had one dock: it is the wide
+  tier's. The Bíblia's dock stays one. Splits have one
   flexible child and fixed pixel sizes (`allocate`); what cannot fit side
   by side joins as tabs, a pair at a time, the Programa last (`fitDock`).
   A new module is an entry in
@@ -335,14 +341,27 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   out in 180 ms (`.dock-fold`, off with reduced motion). The Bíblia's
   No ar is another module (`air`) and never folds. In both a click prepares that slide, a double click
   sends it; ↑/↓ walk the Slides column, ←/→ move what is on air. **Slides
-  and verses are cards** (owner 2026-10-14; console.css, over the design
-  system's rows): the state is the card's background, never a border or a
-  side bar — on air the brand's gold (`--live`; the rest of the console
-  keeps red for "no ar"), the Prévia green, the next slide `--bg-3`; on air
-  and in the Prévia at once, green with the number on a gold chip; a note
-  is a mark in the card's corner. The classes stay `.kx-slide`/`.kx-verse`
-  with `is-prev`/`is-air`/`has-note` (the smoke reads them); No ar's cards
-  are `.onair-card`, so `.kx-slide` is only the Slides column. Setlist sections are ServiceItems of type `SECTION`: headers that
+  and verses are rows** (owner 2026-10-14, the small-screen review; they
+  were cards): in a list (the Slides column, No ar in a column, Ler,
+  Buscar) each is a row with a 1 px separator and no card, so a short
+  screen shows more; the state is still the row's background, never a
+  border or a side bar — on air the brand's gold (`--live`; the rest of the
+  console keeps red for "no ar"), the Prévia green, the next slide
+  `--bg-2`/`--bg-3`; on air and in the Prévia at once, green with the
+  number on a gold chip; a note is a mark in the corner. The No ar strip
+  (low, across the window) keeps its cards. The classes stay
+  `.kx-slide`/`.kx-verse` with `is-prev`/`is-air`/`has-note` (the smoke
+  reads them); No ar's are `.onair-card`, so `.kx-slide` is only the Slides
+  column. **With the No ar module off screen** (the medium and narrow
+  tiers, or the tray), while lyrics are on air and another item is in the
+  Prévia, the Slides column has two tabs, No ar · Prévia (`airTabs` in
+  SlidesPanel.jsx): the tab only changes what the column shows, the keys
+  do as always. The strip's header chevron minimizes it to its header
+  (`layout.onairMin`, per computer; its count adds the slide's part).
+  **Densidade Automática** is the default (`shownDensity`, layout.js):
+  Compacta when the console's grid is under `AUTO_COMPACT_H` (820 px; a
+  notebook), with 28 px panel headers (`panelHead`, which the locked
+  heights follow); a chosen density wins. Setlist sections are ServiceItems of type `SECTION`: headers that
   take no time and never go on air — use `playableItems`/`plan` from
   `src/lib/console/setlist.js`. A click prepares a *stage* in the Prévia;
   Enter, a **double click** or the Prévia's menu "Enviar ao ar" sends it

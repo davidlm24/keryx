@@ -623,9 +623,10 @@ export const ONAIR_LINE = 18;
 // The panel's header, the list's padding, a card's label (Verso, Refrão…)
 // and its padding.
 const ONAIR_CHROME = 32 + 12 + 16 + 12;
-export function onAirHeight(slides) {
+// `head`: the panel header at the density on screen (28 compact, else 32).
+export function onAirHeight(slides, head = 32) {
     const lines = Math.max(1, ...(slides || []).map((s) => String(s?.text ?? "").split("\n").length));
-    return Math.max(ONAIR_H, ONAIR_CHROME + lines * ONAIR_LINE);
+    return Math.max(ONAIR_H, ONAIR_CHROME + lines * ONAIR_LINE) - (32 - head);
 }
 
 const folds = (node) => leaves(node).every((id) => MODULES[id]?.fold);

@@ -33,7 +33,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                 <div className="kx-menu-sep" />
                 <div className="kx-menu-h"><span className="kx-section">Densidade</span></div>
                 {DENSITIES.map(([key, name]) => (
-                    <MenuItem key={key} checked={densityOf(layout) === key} onClick={() => setLayout({ ...layout, density: key })} title={key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item"}>{name}</MenuItem>
+                    <MenuItem key={key} checked={densityOf(layout) === key} onClick={() => setLayout({ ...layout, density: key })} title={key === "auto" ? "Compacta numa tela baixa (notebook), Confortável nas outras" : key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item"}>{name}</MenuItem>
                 ))}
                 <div className="kx-menu-sep" />
                 {/* Named arrangements (dockPresets.js): Padrão and the operator's. */}

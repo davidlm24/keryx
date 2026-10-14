@@ -201,7 +201,12 @@
 .console.is-comfortable .kx-row .kx-row-title { font-size: 14px; line-height: 20px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .console.is-comfortable .kx-row:not(.kx-row-1) .kx-row-main { padding: 6px 0; }
 .console.is-comfortable .kx-row.kx-row-1 .kx-row-title { font-size: 13px; line-height: 18px; -webkit-line-clamp: 1; }
-.console.is-comfortable .kx-slide { font-size: 14px; line-height: 20px; padding-top: 8px; padding-bottom: 8px; }
+.console.is-comfortable .kx-slide { font-size: 14px; line-height: 20px; padding-top: 6px; padding-bottom: 6px; }
+/* Compacta (chosen, or Automática on a short grid): panel headers of 28 px
+   (Console.jsx panelHead keeps the locked heights in step) and slide rows a
+   little tighter. */
+.console.is-compact .kx-panel-h { height: 28px; }
+.console.is-compact .kx-slide { padding-top: 3px; padding-bottom: 3px; }
 /* Live controls: bigger targets than the dense lists (an occasional
    volunteer under pressure). Rows stay 28 px; these are 36 px. */
 .console .kx-btn-live { height: 32px; padding: 0 var(--space-3); }
@@ -213,20 +218,28 @@
 .console .sendrow { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex-wrap: wrap; }
 .console .slidesnav { height: 40px; display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-3) 0 var(--space-1); border-top: 1px solid var(--line); flex: none; white-space: nowrap; min-width: 0; }
 .console .slidesnav > .kx-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-/* Cards (owner 2026-10-14): every slide (the Slides column, No ar) and every
-   verse (Ler, Buscar) is a card whose state is its background — no border,
-   no side bar. On air is the brand's gold here (the rest of the console keeps
-   red for "no ar": the Programa, Enviar ao ar), the Prévia green, the next
-   slide a step up. On air and in the Prévia at once: green, the number on a
-   gold chip. A slide keeps the editor's lines: one line each, "…" when too
-   long (the whole text is the tooltip and the Prévia); verses wrap (prose). */
+/* Rows (owner 2026-10-14, the small-screen review; they were cards): every
+   slide in a list (the Slides column, No ar in a column) and every verse
+   (Ler, Buscar) is a row with a 1 px separator, no card of its own, so a
+   short screen shows half as much again. The state is still the row's
+   background, never a border or a side bar: on air the brand's gold (the
+   rest of the console keeps red for "no ar": the Programa, Enviar ao ar),
+   the Prévia green, the next slide a step up. On air and in the Prévia at
+   once: green, the number on a gold chip. A slide keeps the editor's lines:
+   one line each, "…" when too long (the whole text is the tooltip and the
+   Prévia); verses wrap (prose). The No ar strip (low, across the window)
+   keeps its cards: there they run sideways and the card tells where a slide
+   ends. */
 .console { --live: var(--brand); --live-fg: var(--brand-hover); --live-bg: color-mix(in srgb, var(--brand) 24%, var(--bg-2)); --prev-bg: color-mix(in srgb, var(--prev) 24%, var(--bg-2)); }
-.console .kx-cards, .console .reading, .console .bs-list { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .kx-cards, .console .reading, .console .bs-list { display: flex; flex-direction: column; gap: 0; padding: 0 var(--space-1) var(--space-1); }
 .console .onair-card { position: relative; display: grid; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: 13px; line-height: 18px; }
 .console .kx-slide, .console .onair-card { grid-template-columns: 20px minmax(0, 1fr); white-space: normal; }
-.console .kx-slide, .console .kx-verse, .console .onair-card { flex: none; border-radius: var(--radius-control); background: var(--bg-2); }
+.console .kx-slide, .console .kx-verse, .console .onair-card { flex: none; border-radius: 4px; background: none; box-shadow: inset 0 -1px 0 var(--line); }
+.console .kx-slide, .console .onair-card { padding-top: 5px; padding-bottom: 5px; }
 .console .kx-slide::before, .console .kx-verse::before { content: none; }
-.console .kx-slide:hover, .console .kx-verse:hover, .console .onair-card:hover { background: var(--bg-3); }
+.console .kx-slide:hover, .console .kx-verse:hover, .console .onair-card:hover { background: var(--bg-2); }
+/* A row with a background (a state, the pointer) drops its separator. */
+.console :is(.kx-slide, .kx-verse, .onair-card):is(.is-air, .is-prev, .is-next, :hover) { box-shadow: none; }
 .console .kx-slide-body { display: flex; flex-direction: column; min-width: 0; }
 .console .kx-slide-body .kx-slide-lab { font-size: 11px; line-height: 14px; color: var(--fg-3); margin-bottom: 2px; }
 .console .kx-ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -238,16 +251,28 @@
 .console .is-air > .kx-slide-n, .console .is-air > .kx-verse-n, .console .is-air .kx-slide-lab { color: var(--live-fg); }
 .console .kx-slide.is-air.is-prev, .console .kx-verse.is-air.is-prev { background: var(--prev-bg); }
 .console .is-air.is-prev > .kx-slide-n, .console .is-air.is-prev > .kx-verse-n { align-self: start; height: 16px; line-height: 16px; border-radius: 4px; background: var(--live); color: var(--on-brand); text-align: center; font-weight: 500; }
+/* The Slides column's two tabs (No ar · Prévia) while the No ar module is
+   not on screen and another item is prepared (SlidesPanel airTabs). */
+.console .slides-tabs { padding: 0 var(--space-2); }
+.console .slides-tabs .dock-tab { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; }
+.console .slides-tabs .dock-tab.is-on { background: var(--bg-3); color: var(--fg-1); }
+.console .slides-dot { flex: none; width: 7px; height: 7px; border-radius: var(--radius-round); }
+.console .slides-dot.is-air { background: var(--live); }
+.console .slides-dot.is-prev { background: var(--prev); }
 /* The No ar module: one row of cards while it is low (its band across the
    bottom of the window, only while lyrics are on air), a list in a column. */
 .console .onair-panel > .kx-panel-b { container-type: size; }
 .console .onair-b { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .console .onair-list { flex: 1; min-height: 0; overflow: auto; }
 @container (max-height: 360px) {
-    .console .onair-list { flex-direction: row; overflow: auto hidden; }
+    .console .onair-list { flex-direction: row; gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-2); overflow: auto hidden; }
     /* The editor's lines, whole, at the Slides column's size: the strip is
        as tall as the slide with the most lines (dock.js onAirHeight). */
-    .console .onair-card { width: 260px; overflow: hidden; font-size: 13px; line-height: 18px; padding: 6px 10px; }
+    .console .onair-card { width: 260px; overflow: hidden; font-size: 13px; line-height: 18px; padding: 6px 10px; border-radius: var(--radius-control); background: var(--bg-2); box-shadow: none; }
+    .console .onair-card:hover { background: var(--bg-3); }
+    .console .onair-card.is-next { background: var(--bg-3); }
+    .console .onair-card.is-prev { background: var(--prev-bg); }
+    .console .onair-card.is-air { background: var(--live-bg); }
 }
 /* An output failure: one line above the monitors, never over them. */
 .console .kx-warnbar { flex: none; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 2px var(--space-1) 2px 10px; position: relative; background: var(--warn-tint); color: var(--warn-fg); border-radius: var(--radius-control); font-size: 12px; }

@@ -1,26 +1,40 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Btn, Empty } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { lyricsOnAir } from "@/lib/console/dock";
 
 // The item in hand (owner 2026-10-14, as in Holyrics): the Prévia's slides
 // whenever it holds an item, even one of a single slide; with nothing
 // prepared, what is on air. What is on air stays in view in the No ar module
 // (OnAirPanel). A click prepares (that slide goes to the Prévia); a double
 // click puts that slide on air, besides "Enviar ao ar" and the arrows.
+// `airTabs`: the No ar module is not on screen (the medium and narrow
+// consoles, or in the tray): while lyrics are on air and another item is in
+// the Prévia, the column has two tabs, No ar and Prévia (owner 2026-10-14,
+// the small-screen review), so what is on air is one click away instead of a
+// strip across the window. The tab only changes what the column shows; the
+// keys do as always (←/→ on air, ↑/↓ the Prévia).
 export const handIsPrev = (prev) => Boolean(prev && !prev.theme && prev.slides.length);
 
-export default function SlidesPanel({ c, onGo }) {
+export default function SlidesPanel({ c, onGo, airTabs = false }) {
     const menu = useContextMenu();
     const { cur, prev } = c;
     const air = cur?.content;
     const airId = liveStageId(cur);
     const fromPrev = handIsPrev(prev);
-    const slides = useMemo(() => (fromPrev ? prev.slides : air ? air.slides : []), [fromPrev, prev, air]);
-    const index = fromPrev ? prev.index : air ? air.index : -1;
+    // Another item in the Prévia while lyrics are on air: the two tabs.
+    const twoItems = airTabs && fromPrev && lyricsOnAir(cur) && !(prev.airSlide || prev.id === airId);
+    const [side, setSide] = useState("prev");
+    // A new item prepared shows itself; the No ar tab is a click away.
+    useEffect(() => { setSide("prev"); }, [prev?.id]);
+    const showAir = twoItems && side === "air";
+    const hand = fromPrev && !showAir;
+    const slides = useMemo(() => (hand ? prev.slides : air ? air.slides : []), [hand, prev, air]);
+    const index = hand ? prev.index : air ? air.index : -1;
     // The Prévia holds the item that is on air (another slide of it): mark both.
-    const airIndex = fromPrev && air && (prev.airSlide || prev.id === airId) ? air.index : -1;
+    const airIndex = hand && air && (prev.airSlide || prev.id === airId) ? air.index : -1;
     const listRef = useRef(null);
 
     useEffect(() => {
@@ -29,29 +43,39 @@ export default function SlidesPanel({ c, onGo }) {
     }, [index, slides]);
 
     const airWord = "is-air";
-    const pos = slides.length ? `${fromPrev ? "prévia" : "no ar"} ${index + 1}/${slides.length}` : "";
+    const pos = slides.length ? `${hand ? "prévia" : "no ar"} ${index + 1}/${slides.length}` : "";
     const pick = (i) => {
-        if (fromPrev) c.setPrev(stageAt(prev, i));
+        if (hand) c.setPrev(stageAt(prev, i));
         else if (air && i !== air.index) c.setPrev(stageAirSlide(air, i, airId));
     };
     const go = (i) => {
-        if (fromPrev) onGo?.(stageAt(prev, i));
+        if (hand) onGo?.(stageAt(prev, i));
         else if (air) c.goTo(i);
     };
 
     return (
         <>
+            {twoItems && (
+                <div className="dock-tabs slides-tabs" role="tablist" aria-label="O que a coluna mostra">
+                    <button type="button" role="tab" aria-selected={showAir} className={`dock-tab ${showAir ? "is-on" : ""}`} onClick={() => setSide("air")} title={`No ar: ${air.title || "Sem título"}`}>
+                        <span className="slides-dot is-air" aria-hidden="true" />No ar · {air.title || "Sem título"} · {air.index + 1}/{air.slides.length}
+                    </button>
+                    <button type="button" role="tab" aria-selected={!showAir} className={`dock-tab ${showAir ? "" : "is-on"}`} onClick={() => setSide("prev")} title={`Na prévia: ${prev.title || "Sem título"}`}>
+                        <span className="slides-dot is-prev" aria-hidden="true" />Prévia · {prev.title || "Sem título"}
+                    </button>
+                </div>
+            )}
             {!slides.length && <Empty icon="list" title="Nenhum item em mãos">Clique num item da Setlist ou da Biblioteca.</Empty>}
             <div ref={listRef} className="kx-cards" style={{ overflow: "auto", flex: 1 }}>
                 {slides.map((sl, i) => {
                     let cls = "";
-                    if (fromPrev) cls = [i === index && "is-prev", i === airIndex && airWord].filter(Boolean).join(" ");
+                    if (hand) cls = [i === index && "is-prev", i === airIndex && airWord].filter(Boolean).join(" ");
                     else cls = i === index ? airWord : i === index + 1 ? "is-next" : "";
                     const onAir = cls.includes(airWord);
                     return (
                         <button type="button" key={i} className={`kx-slide kx-t ${cls}`} onClick={() => pick(i)} onDoubleClick={() => go(i)}
                             onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
-                                { label: "Pôr na prévia", icon: "eye", disabled: !fromPrev && i === index, onSelect: () => pick(i) },
+                                { label: "Pôr na prévia", icon: "eye", disabled: !hand && i === index, onSelect: () => pick(i) },
                                 { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
                             ] })} title={`${onAir ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || ""}`}>
                             <span className="kx-slide-n">{i + 1}</span>
