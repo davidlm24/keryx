@@ -20,7 +20,7 @@ import Icon from "../console/Icon";
 import { IconBtn } from "../console/kx";
 import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName } from "@/lib/console/themes";
 import { themeBoxRect, rectToTheme, MIN_WIDTH } from "@/lib/console/themeBox";
-import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
+import { TRANSITIONS, TRANSITION_MS, NATURAL_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 // The samples the canvas dresses (as ThemeStudio had them, folded in here
 // 2026-10-13): what the theme looks like on a song, a passage and a text,
@@ -279,7 +279,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             </>}
                             <span className="k">Transição</span>
                             <span className="nv-inline">
-                                <Seg small value={draft.transition || ""} options={[["", "Herdar"], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
+                                <Seg small value={draft.transition || ""} options={[["", `Padrão (Esmaecer · ${NATURAL_MS.fade} ms)`], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
                                 {draft.transition && draft.transition !== "cut" && <><input type="range" className="le-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-meta">{Number(draft.transition_ms) || 400} ms</span></>}
                             </span>
                         </div>

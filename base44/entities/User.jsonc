@@ -24,11 +24,11 @@
     "transition_type": {
       "type": "string",
       "enum": ["fade", "slide", "cut"],
-      "description": "Transicao padrao entre slides nas telas (Configuracoes › Aparencia): esmaecer, deslizar ou corte"
+      "description": "Legado: nada le este campo; a transicao e so do tema desde a auditoria de 14/10/2026 (movida uma vez para o tema padrao, prefs_version 2). Mantido por ser dado do usuario"
     },
     "transition_ms": {
       "type": "integer",
-      "description": "Duracao padrao da transicao entre slides, em milissegundos (120 a 600)"
+      "description": "Legado: nada le este campo; a duracao da transicao mora no tema (movida uma vez para o tema padrao, prefs_version 2). Mantido por ser dado do usuario"
     },
     "show_forecast": {
       "type": "boolean",
@@ -37,7 +37,7 @@
     },
     "prefs_version": {
       "type": "integer",
-      "description": "Marca de migracao das preferencias: 1 = as preferencias do console (que viviam no localStorage deste computador) ja estao no banco; nulo = migrar na proxima abertura do console"
+      "description": "Marca de migracao das preferencias: 1 = as preferencias do console (que viviam no localStorage deste computador) ja estao no banco; 2 = a transicao de Aparencia foi movida para o tema padrao; nulo ou menor = migrar na proxima abertura do console"
     },
     "bible_version": {
       "type": "string",

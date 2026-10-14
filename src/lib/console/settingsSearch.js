@@ -38,8 +38,6 @@ export const SETTINGS_INDEX = [
     e("rede", "PIN", "o código que os aparelhos pedem para entrar; Mostrar PIN", ["senha", "código", "proteger", "mostrar pin", "esqueci"]),
     e("rede", "Telas conectadas pela rede", "os aparelhos conectados agora", ["aparelhos", "conectados"]),
 
-    e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte; um tema com transição própria vence", ["esmaecer", "deslizar", "corte", "fade", "animação"]),
-    e("aparencia", "Duração", "quanto dura a transição", ["ms", "velocidade", "tempo", "transição"]),
     e("aparencia", "Fundo padrão", "o fundo das telas quando nada está no ar (e depois do Esc), se o culto não tiver o seu", ["fundo de espera", "espera", "wallpaper", "imagem", "esc"]),
     e("aparencia", "Títulos", "o título do item no slide e a faixa de título do YouTube", ["título", "nome da música", "youtube", "canal", "esconder"]),
     e("aparencia", "Tela ociosa", "logo ou preto quando nada está no ar e não há fundo", ["ociosa", "logo", "preto", "nada no ar"]),
@@ -47,7 +45,7 @@ export const SETTINGS_INDEX = [
         ["imagens", "vídeos", "gerados", "enviar do computador", "Categoria", "Escurecer", "Desfoque", "Nas galerias", "favorito", "oculto", "biblioteca"]),
     e("temas", "Temas padrão", "um tema para cada tipo: músicas, Bíblia, texto e timer", ["tema padrão", "estilo padrão do texto", "estilo de fábrica", "padrão", "música", "bíblia", "texto", "timer", "relógio", "escola bíblica"]),
     e("temas", "Todos os temas", "estilos prontos de texto e fundo; clicar abre o Editor, na janela dele",
-        ["tema padrão", "presets", "estilo", "fonte", "efeito", "cor", "caixa do texto", "transição", "fundo", "alinhamento", "posição do texto", "Tornar padrão", "Novo tema", "editor de temas"]),
+        ["tema padrão", "presets", "estilo", "fonte", "efeito", "cor", "caixa do texto", "transição", "esmaecer", "deslizar", "corte", "duração", "animação", "fundo", "alinhamento", "posição do texto", "Tornar padrão", "Novo tema", "editor de temas"]),
 
     e("biblia", "Livros e importação", "livros abreviados e o corte das letras importadas", ["livros", "importar", "estrofe"]),
     e("biblia", "Livros da Bíblia", "abreviados (Gn) ou com o nome inteiro (Gênesis)", ["abreviados", "nome inteiro", "abrev", "livros"]),
