@@ -73,8 +73,9 @@ export const themeName = (t, fallback = "Tema sem nome") => (typeof t?.name === 
 // The themes Camadas › Temas offers as presets (owner's decision 2026-10-13,
 // as Holyrics' theme column): the pinned ones (ProjectionTheme.pinned), by
 // name; with none pinned, the default theme first and then the most recently
-// changed, so a new church sees something useful. At most `max` (6 tiles).
-export function consoleThemes(themes, max = 6) {
+// changed, so a new church sees something useful. At most `max`: the 9
+// slots of the Temas panel (owner 2026-10-14, ThemeStrip TEMAS_SLOTS).
+export function consoleThemes(themes, max = 9) {
     const all = themes || [];
     const pinned = all.filter((t) => t?.pinned);
     if (pinned.length) return pinned.slice(0, max);
