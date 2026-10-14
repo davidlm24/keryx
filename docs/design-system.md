@@ -48,10 +48,10 @@ row only prepares it in the Prévia (green). It reaches the screens by one of:
 
 | Act | Where |
 | --- | --- |
-| **Double click** on the item | Biblioteca, Setlist, slides, verses, search results, Escola bíblica materials, Mídia |
+| **Double click** on the item | Biblioteca, Setlist, slides, verses, search results, Escola bíblica materials, Mídia, the Prévia's screen |
 | **Enter** | with nothing focused (or the monitors focused): sends the Prévia / the Bíblia's selection |
 | **Ctrl+Enter** | from anywhere except a text field |
-| **Enviar ao ar** | the button (the Setlist's *Ir* and the Bíblia's own send button too). Its keys live in one tooltip on every send button, never printed: "Enviar ao ar · Enter (Ctrl+Enter de qualquer lugar)" (`SEND_TIP` in `src/lib/console/copy.js`) |
+| **Enviar ao ar** | the button where there is one: the Bíblia, the Escola bíblica, the Mídia (and the Setlist's *Ir*); the culto's Prévia has none since 2026-10-14 — Enter, a double click on its screen or its right-click menu send it. Its keys live in one tooltip on every send button, never printed: "Enviar ao ar · Enter (Ctrl+Enter de qualquer lugar)" (`SEND_TIP` in `src/lib/console/copy.js`) |
 | **Drag onto the Programa** | from the Biblioteca (onto the Prévia it prepares; onto the Setlist it adds) |
 
 A click on one control never leaves focus on it, so the next key works on the
@@ -198,7 +198,7 @@ The live column's fixed height is the sum of its rows (the Programa's caption
 26 px and the Prévia's 24 px, each with 4 px under it, three 8 px gaps, the
 36 px player slot, the 28 px Próximo line: 146 px in all); the Programa is as
 wide as the column and that height allow, with the player slot under it and
-the Prévia (46 % of the block) and *Enviar ao ar* under the slot. Spare height
+the Prévia (46 % of the block) and *Enviar ao ar* under the slot (historical: since 2026-10-14 the Programa and the Prévia have no card and the Prévia no button; its caption is a badge inside the screen, `kx-mon-badge`, and bare modules are `kx-panel-bare`). Spare height
 goes below, into the "Depois" list. The player slot is always reserved so
 starting a video never moves the monitors.
 
