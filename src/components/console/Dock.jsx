@@ -260,6 +260,8 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             );
             const next = f.children.findIndex((c, j) => j > i && !c.gone);
             if (ch.gone || next < 0) return;
+            // A locked height (the No ar strip, Camadas) is the console's: no splitter beside it.
+            if (ch.locked || f.children[next].locked) return;
             // One splitter per gap, owned by the fixed child on the side away
             // from the flexible one (dragging toward the flexible one grows it).
             const owner = i < fi ? i : next;

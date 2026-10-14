@@ -14,7 +14,7 @@ import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
-import { Panel, IconBtn } from "@/components/console/kx";
+import { Panel, IconBtn, Measure } from "@/components/console/kx";
 import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import Library from "@/components/console/Library";
@@ -24,7 +24,7 @@ import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaCaption } from
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
-import ThemeStrip from "@/components/console/ThemeStrip";
+import ThemeStrip, { newTheme } from "@/components/console/ThemeStrip";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
@@ -49,7 +49,7 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreEnv } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, moveModules, hideModule, trayFlags, applyTrayFlags, canTray, leaves, pathOf } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, trayFlags, applyTrayFlags, canTray, leaves, pathOf } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
@@ -97,6 +97,8 @@ export default function Console() {
     const [playerPick, setPlayerPick] = useState(null);
     // The Bible environment's selection, as a stage: what Enter sends there.
     const bibleStageRef = useRef(null);
+    // Camadas' + (its panel header): adds the text overlay (Layers.jsx).
+    const addOverlayRef = useRef(null);
     // The Bible environment's selection cursor (↑/↓ from the console's keys).
     const bibleApiRef = useRef(null);
     // ?env=biblia (the old /Bible page on desktop) opens the Bíblia environment.
@@ -772,7 +774,17 @@ export default function Console() {
     // The No ar strip only while lyrics are on air (owner 2026-10-14): it folds
     // away otherwise, wherever it is placed alone; while editing it stays, to be moved.
     const gone = editing ? "" : goneModules(c.cur).join();
-    const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h, { gone: gone ? gone.split(",") : [] }), [dock, mainSize.w, mainSize.h, gone]);
+    // Heights the console decides, never a splitter (owner 2026-10-14): the
+    // No ar strip as tall as the slide on air with the most lines (the song's
+    // editor decides them), Camadas as tall as what it holds (Measure).
+    const onAirH = onAirHeight(c.cur?.content?.slides);
+    // The panel header over Camadas' content (.kx-panel-h).
+    const PANEL_HEAD = 32;
+    const [camadasFitH, setCamadasFitH] = useState(0);
+    const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h, {
+        gone: gone ? gone.split(",") : [],
+        locked: { onair: onAirH, ...(camadasFitH ? { camadas: PANEL_HEAD + camadasFitH } : {}) },
+    }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
     const playerDocked = !onScreen("player");
     const setDock = (next) => setLayout({ ...layout, dock: next });
@@ -873,15 +885,21 @@ export default function Console() {
     const themeInUse = data.themes.find((t) => t.id === c.themeId) || defaultTheme(data.themes);
     const themeInUseName = themeInUse ? themeName(themeInUse, "") : "";
     const themeStrip = <ThemeStrip c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} />;
-    const temasPanel = <Panel title="Temas" count={themeInUseName ? `em uso: ${themeInUseName}` : ""} className="temas-panel">{themeStrip}</Panel>;
+    // The +, icon only at the header's right as everywhere (owner 2026-10-14).
+    const newThemeBtn = <IconBtn name="plus" title="Novo tema" small onClick={() => newTheme(c)} />;
+    const temasPanel = <Panel title="Temas" count={themeInUseName ? `em uso: ${themeInUseName}` : ""} className="temas-panel" actions={newThemeBtn}>{themeStrip}</Panel>;
     const temasOn = onScreen("temas");
     const layers = (
         <>
-            <Layers c={c} themes={data.themes} onSettings={openSettings} onFundo={pickServiceFundo} />
-            {!temasOn && <div className="layer-temas"><div className="listhead"><span className="kx-section">Temas{themeInUseName && <span className="kx-count"> · em uso: {themeInUseName}</span>}</span></div>{themeStrip}</div>}
+            <Layers c={c} themes={data.themes} onSettings={openSettings} onFundo={pickServiceFundo} addRef={addOverlayRef} />
+            {!temasOn && <div className="layer-temas"><div className="listhead"><span className="kx-section">Temas{themeInUseName && <span className="kx-count"> · em uso: {themeInUseName}</span>}</span>{newThemeBtn}</div>{themeStrip}</div>}
         </>
     );
-    const camadasPanel = <Panel title="Camadas" count="o que está no ar">{layers}</Panel>;
+    const camadasPanel = (
+        <Panel title="Camadas" count="o que está no ar" actions={<IconBtn name="plus" title="Adicionar sobreposição de texto" small onClick={() => addOverlayRef.current?.()} />}>
+            <Measure onHeight={setCamadasFitH}>{layers}</Measure>
+        </Panel>
+    );
     // The tabs panel: the tabs the operator checked in its (+) (Notas, Aviso
     // rápido, Timers, Ferramentas, Esteve no ar).
     const panelTabsShown = shownTabs("panel", tabLists.panel);

@@ -59,10 +59,11 @@ export function TeacherNotes({ prev, cur }) {
     );
 }
 
-// The Programa's caption, in its panel's header (one title, not a header and a
-// caption line): the state word (red only while something is on air, amber
-// for a failed output, blue when locked, grey when nothing is on air), what
-// is on air at 16px and its position. Used by Console.jsx's Programa panel.
+// The Programa's caption, in its panel's header: what is on air at 16px in
+// the colour of its state (red while something is on air, amber for a failed
+// output, blue when locked, grey when nothing is), a "Travado" chip while the
+// screens are locked, and its position. No "Programa" word (owner
+// 2026-10-14): the monitor says it. Used by Console.jsx's Programa panel.
 export function ProgramaCaption({ c, projectorDown }) {
     const { cur, locked } = c;
     const { title, pos } = captionParts(cur);
@@ -71,9 +72,9 @@ export function ProgramaCaption({ c, projectorDown }) {
     const idle = title === "nada";
     const tone = projectorDown ? "warn" : locked ? "rh" : idle ? "idle" : "air";
     return (
-        <span className={`kx-prog-cap is-${tone}`}>
-            <span className="kx-live-cap">{locked ? "Programa · travado" : "Programa"}</span>
-            <span className="kx-mon-t kx-live-title" title={title}>{title}</span>
+        <span className={`kx-prog-cap prog-cap is-${tone}`} aria-label={`Programa · ${idle ? "nada no ar" : title}${locked ? " · travado" : ""}`}>
+            <span className="kx-mon-t kx-live-title" title={idle ? "Nada no ar" : title}>{idle ? "Nada no ar" : title}</span>
+            {locked && <span className="prog-locked">Travado</span>}
             {pos && <span className="kx-meta">{pos}</span>}
             {since && <span className="kx-meta kx-since" title="Há quanto tempo este item está no ar">no ar há {since}</span>}
         </span>
