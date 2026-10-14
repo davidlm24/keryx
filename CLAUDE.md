@@ -139,7 +139,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   principal says so and offers Restaurar (`applyThemeOnAir`) and Salvar
   como novo (an unnamed theme). Camadas' header **+** is a menu (owner 2026-10-14, the "Menus (+)"
   proposal): Sobreposição de texto, Logo da igreja, Relógio, Cronômetro,
-  Timer… (the Timers prontos), Texto livre… and Aviso rápido… — the tools
+  Timer… (the Timers prontos), Texto livre… and Aviso rápido… —
+  **Sobreposição de texto always makes a NEW
+  overlay** (owner 2026-10-14, "adicionar camadas a mais"), up to 5
+  (`OVERLAY_LIMIT` in `src/lib/console/overlays.js`, tested; the menu item
+  disables at the limit). Each overlay is its own row named by its text
+  ("Sobreposição", muted, while empty), with eye, local padlock, pencil
+  (Texto, Posição) and Excluir… via `useConfirm`; with 2+ the rows join
+  under a thin "Sobreposições · n" heading (`.kx-ovhead`) — the group's one
+  handle in `live.layerOrder` (the "overlays" key stays one entry; never
+  put single overlays in the order) — and dragging a row inside the group
+  only changes who draws on top among them (the top row is the END of
+  `live.overlays`: the renderer draws the list in order). Esc and Limpar
+  leave overlays alone (their own controls, like the Logo). The tools
   are prepared in the Prévia (`stageFromTool`), the aviso goes to the
   screens at once (`alert.show`); a text is asked with `askText`
   (PromptDialog.jsx; Esc closes it first). The Setlist's **+** is a menu

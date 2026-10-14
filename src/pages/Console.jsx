@@ -60,6 +60,7 @@ import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presets
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
+import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
@@ -99,7 +100,8 @@ export default function Console() {
     const [playerPick, setPlayerPick] = useState(null);
     // The Bible environment's selection, as a stage: what Enter sends there.
     const bibleStageRef = useRef(null);
-    // Camadas' + (its panel header): adds the text overlay (Layers.jsx).
+    // Camadas' + (its panel header): adds a NEW text overlay, up to
+    // OVERLAY_LIMIT (Layers.jsx; owner 2026-10-14).
     const addOverlayRef = useRef(null);
     // Temas' + and library (its panel header): the strip's own menu (ThemeStrip.jsx).
     const themeMenuRef = useRef(null);
@@ -977,8 +979,9 @@ export default function Console() {
         const at = menuAt(e);
         const tool = (mode, opts) => { const st = stageFromTool(mode, opts); c.setPrev(st); c.say(`${st.title} na Prévia · Enter envia (no lugar da letra no ar).`); };
         const logoOn = Boolean(c.cur?.logo?.visible);
+        const ovFull = (c.cur?.overlays?.length || 0) >= OVERLAY_LIMIT;
         openMenu(e, { title: "Adicionar camada", items: [
-            { label: "Sobreposição de texto", icon: "text", onSelect: () => addOverlayRef.current?.() },
+            { label: ovFull ? `Sobreposição de texto · máx. ${OVERLAY_LIMIT}` : "Sobreposição de texto", icon: "text", disabled: ovFull, onSelect: () => addOverlayRef.current?.() },
             { label: logoOn ? "Logo da igreja · no ar" : "Logo da igreja", icon: "logo", disabled: logoOn, onSelect: () => c.callOp("logo.set", { visible: true }).catch((err) => c.say(err?.message || "Não foi possível mostrar o logo.")) },
             "sep",
             { label: "Relógio", icon: "clock", onSelect: () => tool("clock") },
@@ -1183,7 +1186,7 @@ export default function Console() {
                 const right = roomR > roomL;
                 return (
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
-                    <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
+                    <Panel title="Camadas" actions={<><IconBtn name="plus" title="Adicionar: sobreposição, logo, relógio, timer, texto livre, aviso rápido" small onClick={camadasMenu} /><IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} /></>}>
                         {layers}
                     </Panel>
                 </div>
