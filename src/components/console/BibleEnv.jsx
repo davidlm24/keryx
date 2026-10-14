@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, Field, Row, Seg, Empty } from "./kx";
+import { Panel, Btn, IconBtn, Field, Row, Seg, Empty } from "./kx";
 import DockView from "./Dock";
 import { useContextMenu } from "./ContextMenu";
 import AddMenu from "./AddMenu";
@@ -34,17 +34,21 @@ const save = (v) => {
         localStorage.setItem(KEY, JSON.stringify(Array.isArray(keep) && keep.length ? { ...rest, favs: keep } : rest));
     } catch { /* not remembered */ }
 };
-const MODES = [["ler", "Ler"], ["buscar", "Buscar"], ["comparar", "Comparar"]];
+// Ler and Comparar are the text panel's modes; Buscar is its header field
+// (owner 2026-10-14): a word searches, a reference opens the chapter.
+const MODES = [["ler", "Ler"], ["comparar", "Comparar"]];
 // The version the operator chose (here or in Configurações › Bíblia e músicas, one
 // preference in the database); the palette prepares references in it.
 export const bibleVersionWanted = () => getPrefs().bible_version;
 
 // The Bíblia environment, Holyrics-style, in three columns (their order is
-// the operator's, Ver › Editar layout): Livro, Capítulo and Versículo stacked;
-// the chapter — read it (Ler), search the installed Bíblia by word (Buscar),
-// or set versions side by side (Comparar), with recent chapters, favourites
-// and notes on top; and what is on air, the selection, its note and the
-// actions.
+// the operator's, Ver › Editar disposição): Livro, Capítulo and Versículo
+// stacked (the version, Abrev | Nomes, the install + and the view menu in
+// Livros' header — the old "Versão e busca" module is gone, 2026-10-14);
+// the chapter — read it (Ler) or set versions side by side (Comparar), with
+// the search field in the header (a word searches the installed Bíblia,
+// Buscar; a reference opens the chapter), recent chapters, favourites and
+// notes on top; and what is on air, the selection, its note and the actions.
 //   - The verse on air is red (is-air); the selection is green (is-prev).
 //   - A click or ↑/↓ moves the selection (in Buscar, through the results);
 //     nothing changes on the screens.
@@ -78,7 +82,7 @@ function ListMenu({ icon, label, count, empty, rows }) {
     );
 }
 
-export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, dockProps }) {
+export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, dockProps, grid = "medium", setGrid }) {
     const [mem, setMem] = useState(load);
     const [version, setVersion] = useState(null);
     const [book, setBook] = useState(mem.book || "João");
@@ -144,6 +148,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         if (!request) return;
         if (request.search) {
             setMode("buscar");
+            setQ(request.search);
             search.setQ(request.search);
             search.run(request.search, "all");
             return;
@@ -245,12 +250,13 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         setAnchor(n);
     };
     const goRef = (text) => { const r = parseReference(text); if (!r) { c.say("Referência não reconhecida. Ex.: Jo 3:16-21"); return false; } setBook(r.book); setChapter(r.chapter); setSel(r.verseStart ? Array.from({ length: r.verseEnd - r.verseStart + 1 }, (_, i) => r.verseStart + i) : []); setAnchor(r.verseStart || null); setQ(""); return true; };
-    // The top field: a reference opens it; anything else searches by word.
+    // The text panel's field: a reference opens it; anything else searches by
+    // word (the term stays in the field while the results show).
     const submitTop = () => {
         const text = q.trim();
         if (!text) return;
         if (parseReference(text)) { goRef(text); setMode("ler"); return; }
-        setMode("buscar"); search.setQ(text); search.run(text); setQ("");
+        setMode("buscar"); search.setQ(text); search.run(text);
     };
     // Installing downloads the edition: without internet the buttons say so
     // instead of failing after a click.
@@ -357,10 +363,25 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // Console.jsx keeps it): each is built here apart from its place.
     const modules = {
         books: (
-            <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={
+            <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={<>
+                <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" title="Versão da Bíblia" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
                 <Seg small value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
-            }>
-                <div className="bgrid" ref={gridRef}>
+                <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
+                <IconBtn name="grid" small title="Mais: tema da Bíblia, tamanho das células" onClick={(e) => menu(e, { title: "Bíblia", items: [
+                    { label: `Tema da Bíblia… · ${bibleTheme ? themeName(bibleTheme) : "estilo de fábrica"}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`, icon: "star", onSelect: chooseTheme },
+                    "sep",
+                    { label: "Células pequenas", icon: grid === "small" ? "check" : undefined, onSelect: () => setGrid?.("small") },
+                    { label: "Células médias", icon: grid === "medium" ? "check" : undefined, onSelect: () => setGrid?.("medium") },
+                    { label: "Células grandes", icon: grid === "large" ? "check" : undefined, onSelect: () => setGrid?.("large") },
+                ] })} />
+            </>}>
+                {badge && <div className={`bsrc ${badge.warn ? "kx-warn" : ""}`} title={badge.title || badge.text}><Icon name={badge.warn ? "warn" : "check"} size={12} /><span>{badge.text}</span></div>}
+                {ver && ver !== wanted && (
+                    <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
+                        {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
+                    </div>
+                )}
+                <div className={`bgrid is-${grid}`} ref={gridRef}>
                     {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{fullNames ? b.name : b.short}</button>)}
                 </div>
             </Panel>
@@ -368,7 +389,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         chapters: (
             <Panel className="bpick-chapters" title="Capítulos" count={`${bookRow.name} · ${bookRow.chapters}`}>
                 <div className="bchap">
-                    <div className="chapters">
+                    <div className={`chapters is-${grid}`}>
                         {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
                     </div>
                 </div>
@@ -377,7 +398,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         verses: (
             <Panel className="bpick-verses" title="Versículos" count={`${book} ${chapter}`}>
                 {!error && verses.length > 0 && (
-                    <div className="bverses"><div className="verse-cells" role="group" aria-label={`Versículos de ${book} ${chapter}`}>
+                    <div className="bverses"><div className={`verse-cells is-${grid}`} role="group" aria-label={`Versículos de ${book} ${chapter}`}>
                         {verses.map((v) => (
                             <button type="button" key={v.number}
                                 className={`kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`}
@@ -388,29 +409,14 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 )}
             </Panel>
         ),
-        bhead: (
-            <Panel className="bpick-head" title="Bíblia" count={version || wanted} actions={<>
-                <Btn small onClick={chooseTheme} title={`Tema da Bíblia: ${bibleTheme ? bibleTheme.name : "estilo de fábrica"}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"} · as passagens vão ao ar com ele`}>Tema</Btn>
-                <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
-            </>}>
-                {badge && <div className={`bsrc ${badge.warn ? "kx-warn" : ""}`} title={badge.title || badge.text}><Icon name={badge.warn ? "warn" : "check"} size={12} /><span>{badge.text}</span></div>}
-                {ver && ver !== wanted && (
-                    <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
-                        {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
-                    </div>
-                )}
-                <div className="searchrow">
-                    <Field value={q} onChange={setQ} placeholder="Referência (Jo 3:16) ou palavra" onKeyDown={(e) => { if (e.key === "Enter") submitTop(); }} />
-                    <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
-                </div>
-            </Panel>
-        ),
         reading: (
             <Panel className="bread bible-center" title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}${ver ? ` · ${ver}` : ""}`}
                 count={mode === "ler" ? "clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" : mode === "buscar" ? "↑↓ percorre os resultados · Enter ou 2 cliques projeta" : "versões lado a lado"}
                 actions={<>
                     {mode === "ler" && <><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}
                     <Seg small value={mode} onChange={setMode} options={MODES} />
+                    <span className="bread-search"><Field inputRef={searchInputRef} value={q} onChange={setQ} placeholder="Buscar: Jo 3:16 ou palavra" kbd="Enter"
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitTop(); } else if (e.key === "Escape" && mode === "buscar") { e.stopPropagation(); setMode("ler"); } }} /></span>
                 </>}>
                 <div className="bband-lists">
                     <span className="kx-section">Recentes</span>
@@ -458,7 +464,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                             </div>
                         </>
                     )}
-                    {mode === "buscar" && <BibleSearchPanel search={search} selected={searchSel} onPick={pickResult} onSend={sendResult} inputRef={searchInputRef} />}
+                    {mode === "buscar" && <BibleSearchPanel search={search} selected={searchSel} onPick={pickResult} onSend={sendResult} />}
                     {mode === "comparar" && <BibleCompareView book={book} chapter={chapter} version={version || wanted} sel={sel} onSelect={pick} onSendVersion={sendVersion} onUseVersion={switchVersion} />}
                 </div>
             </Panel>
