@@ -32,8 +32,19 @@ export const TIER_MEDIUM = 1100;
 export const tierFor = (width) => (width >= TIER_WIDE ? "wide" : width >= TIER_MEDIUM ? "medium" : "narrow");
 
 // List density (Ver › Densidade): confortável, 32 px rows with titles up to
-// two lines; compacta, today's 28 px single lines. Saved with the layout.
-export const DENSITIES = [["comfortable", "Confortável"], ["compact", "Compacta"]];
+// two lines; compacta, 28 px single lines and 28 px panel headers;
+// automática (the default since 2026-10-14, the small-screen review):
+// compacta when the console's grid is shorter than AUTO_COMPACT_H (a
+// notebook), confortável otherwise. Saved with the layout.
+export const DENSITIES = [["auto", "Automática"], ["comfortable", "Confortável"], ["compact", "Compacta"]];
+export const AUTO_COMPACT_H = 820;
+// The density the console shows for a grid `height` px tall.
+export const shownDensity = (layout, height) => {
+    const d = densityOf(layout);
+    return d === "auto" ? (height < AUTO_COMPACT_H ? "compact" : "comfortable") : d;
+};
+// A panel's header at that density (.kx-panel-h; console.css).
+export const panelHead = (density) => (density === "compact" ? 28 : 32);
 
 export const DEFAULT_LAYOUT = {
     hidden: {},
@@ -48,7 +59,7 @@ export const DEFAULT_LAYOUT = {
     // The Prévia's width, % of the centre's bottom band (the splitter
     // beside it; the Programa above gives way when the window is short).
     prevPct: 44,
-    density: "comfortable",
+    density: "auto",
     order: DEFAULT_ORDER,
     stacks: DEFAULT_STACKS,
     // The tabs each trimmable row shows (panelTabs.js): the panel beside
@@ -60,6 +71,14 @@ export const DEFAULT_LAYOUT = {
     dock: null,
     // The Bíblia's, the same way (fromBibleArrangement until it changes).
     bibleDock: null,
+    // One culto arrangement per width tier (owner 2026-10-14, the small-screen
+    // review): `dock` and `dockPreset` are the tier's on screen (`dockTier`);
+    // the others wait in `tierDocks` (switchTier), so a dock arranged on the
+    // church's big monitor never squeezes a notebook.
+    dockTier: null,
+    tierDocks: {},
+    // The No ar strip minimized to its header (its chevron, as Holyrics').
+    onairMin: false,
     // A console never edited starts with the modules the church's old
     // preference hid (console_hidden_modules) in the tray; after a restore,
     // with every module (false).
@@ -91,6 +110,35 @@ export function restoreEnv(layout, env) {
     };
 }
 
+// The culto's arrangement when the console's width tier changes: the one on
+// screen is kept for its tier and the new tier's comes back (null = the
+// console's own for that tier, fromArrangement). A save from before the tiers
+// had one dock: it belongs to the wide tier, where it was most likely made.
+export const TIERS = ["wide", "medium", "narrow"];
+export function switchTier(layout, tier) {
+    if (!TIERS.includes(tier)) return layout;
+    const from = TIERS.includes(layout.dockTier) ? layout.dockTier : layout.dock ? "wide" : tier;
+    if (from === tier) return layout.dockTier === tier ? layout : { ...layout, dockTier: tier };
+    const back = layout.tierDocks?.[tier] || {};
+    return {
+        ...layout,
+        tierDocks: { ...layout.tierDocks, [from]: { dock: layout.dock || null, dockPreset: layout.dockPreset || null } },
+        dock: back.dock || null,
+        dockPreset: back.dockPreset || null,
+        dockTier: tier,
+    };
+}
+
+function normalizeTierDocks(saved) {
+    const out = {};
+    for (const t of TIERS) {
+        const e = saved?.[t];
+        if (!e || typeof e !== "object") continue;
+        out[t] = { dock: e.dock ? normalizeDock(e.dock) : null, dockPreset: typeof e.dockPreset === "string" ? e.dockPreset : null };
+    }
+    return out;
+}
+
 export const densityOf = (layout) => (DENSITIES.some(([k]) => k === layout?.density) ? layout.density : DEFAULT_LAYOUT.density);
 
 const KEY = (profile) => `keryx.console.layout.${profile || "default"}`;
@@ -100,7 +148,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const saved = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles) };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), onairMin: saved.onairMin === true, dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }

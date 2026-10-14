@@ -42,7 +42,7 @@ export const PREF_FIELDS = {
         default: 0,
         normalize: (v) => { const n = Number(v); return v !== null && v !== "" && Number.isInteger(n) && n >= 0 && n <= 12 ? n : 0; },
     },
-    console_density: { default: "comfortable", normalize: oneOf(DENSITY_KEYS, "comfortable") },
+    console_density: { default: "auto", normalize: oneOf(DENSITY_KEYS, "auto") },
     console_hidden_modules: {
         default: [],
         normalize: (v) => (Array.isArray(v) ? [...new Set(v.filter((k) => MODULE_KEYS.includes(k)))] : []),

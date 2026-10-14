@@ -48,7 +48,7 @@ import TabsPanel from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
-import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreEnv } from "@/lib/console/layout";
+import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier } from "@/lib/console/layout";
 import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
@@ -237,6 +237,12 @@ export default function Console() {
     // Everything back to the console's own (the density too; every module on
     // screen), but the named arrangements stay and the church's old hidden
     // modules are not rewritten.
+    // One culto arrangement per width tier (switchTier): a new tier brings
+    // its own back, the one on screen is kept for when the screen grows again.
+    useEffect(() => {
+        const next = switchTier(layout, tier);
+        if (next !== layout) setLayout(next);
+    }, [tier, layout.dockTier]); // eslint-disable-line react-hooks/exhaustive-deps
     const restoreLayout = () => { setLayout({ ...DEFAULT_LAYOUT, hidden: layout.hidden, trayFromChurch: false, dockPresets: layout.dockPresets || [] }); c.say("Layout padrão restaurado."); };
     // The trimmable tab rows (panelTabs.js): what each shows, the (+) list.
     const tabLists = layout.tabs || DEFAULT_TABS;
@@ -793,9 +799,12 @@ export default function Console() {
     // Heights the console decides, never a splitter (owner 2026-10-14): the
     // No ar strip as tall as the slide on air with the most lines (the song's
     // editor decides them), Camadas as tall as what it holds (Measure).
-    const onAirH = onAirHeight(c.cur?.content?.slides);
-    // The panel header over Camadas' content (.kx-panel-h).
-    const PANEL_HEAD = 32;
+    // The density on screen (Automática: Compacta on a short grid) and the
+    // panel header it gives (28 or 32 px).
+    const density = shownDensity(layout, mainSize.h);
+    const PANEL_HEAD = panelHead(density);
+    // Minimized (its header's chevron, as Holyrics' strip): only its header.
+    const onAirH = layout.onairMin ? PANEL_HEAD : onAirHeight(c.cur?.content?.slides, PANEL_HEAD);
     const [camadasFitH, setCamadasFitH] = useState(0);
     const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h, {
         gone: gone ? gone.split(",") : [],
@@ -942,12 +951,13 @@ export default function Console() {
     );
     const slidesPanel = (
         <Panel title="Slides" count={handTitle(c) || "—"} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
+            <SlidesPanel c={c} onGo={(s) => sendStage(s)} airTabs={!onScreen("onair")} />
         </Panel>
     );
     // What is on air, slide by slide, whatever the Slides column holds.
     const onAirPanel = (
-        <Panel title="No ar" count={onAirCount(c) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="No ar" count={onAirCount(c, layout.onairMin) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
+            collapsed={Boolean(layout.onairMin)} onToggle={() => setLayout({ ...layout, onairMin: !layout.onairMin })}>
             <OnAirPanel c={c} />
         </Panel>
     );
@@ -1027,7 +1037,7 @@ export default function Console() {
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
-        <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
+        <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
 

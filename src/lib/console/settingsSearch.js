@@ -68,7 +68,7 @@ export const SETTINGS_INDEX = [
     e("culto", "Previsão do culto", "termina ~ e passou N min na barra do topo", ["previsão", "atraso", "termina", "passou", "fim", "duração"]),
 
     e("console", "Módulos", "Biblioteca, Slides, Camadas, Temas, No ar e Setlist", ["biblioteca", "slides", "camadas", "temas", "no ar", "setlist", "mostrar", "esconder", "ocultar"]),
-    e("console", "Densidade", "confortável ou compacta", ["compacta", "confortável", "linhas", "altura"]),
+    e("console", "Densidade", "automática, confortável ou compacta", ["automática", "compacta", "confortável", "linhas", "altura", "notebook", "tela pequena"]),
     e("console", "Disposição", "restaurar os módulos, a densidade e as colunas", ["restaurar disposição", "layout", "colunas", "tamanhos", "padrão"]),
     e("console", "Ao fechar", "perguntar antes de fechar o KERYX", ["fechar", "sair", "confirmar", "perguntar"]),
     e("console", "Iniciar com o Windows", "abrir o KERYX quando o computador liga", ["windows", "iniciar", "ligar", "automático", "inicialização"]),

@@ -88,8 +88,8 @@
     },
     "console_density": {
       "type": "string",
-      "enum": ["comfortable", "compact"],
-      "description": "Densidade das listas do console (Ver › Densidade). Nulo = confortavel"
+      "enum": ["auto", "comfortable", "compact"],
+      "description": "Densidade das listas do console (Ver › Densidade): auto = compacta em telas baixas. Nulo = auto"
     },
     "console_hidden_modules": {
       "type": "array",

@@ -53,8 +53,12 @@ export default function OnAirPanel({ c }) {
     );
 }
 
-// The module's header: the item on air and the slide it is at.
-export function onAirCount(c) {
+// The module's header: the item on air and the slide it is at; minimized,
+// also that slide's part (Verso, Refrão…), as Holyrics' folded strip.
+export function onAirCount(c, min = false) {
     const air = c.cur?.content;
-    return air?.slides?.length ? `${air.title || "Sem título"} · ${air.index + 1}/${air.slides.length}` : "";
+    if (!air?.slides?.length) return "";
+    const sl = air.slides[air.index] || {};
+    const label = min ? sl.label || (sl.is_chorus ? "Refrão" : "") : "";
+    return `${air.title || "Sem título"} · ${air.index + 1}/${air.slides.length}${label ? ` · ${label}` : ""}`;
 }

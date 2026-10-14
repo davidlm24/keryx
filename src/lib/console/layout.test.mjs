@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, densityOf, loadLayout, restoreEnv } from "./layout.js";
+import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, densityOf, shownDensity, panelHead, loadLayout, restoreEnv, switchTier } from "./layout.js";
 import { DEFAULT_ORDER, DEFAULT_STACKS } from "./arrange.js";
 import { DEFAULT_TILES } from "./multiview.js";
 import { DEFAULT_TABS } from "./panelTabs.js";
@@ -39,8 +39,15 @@ test("Restaurar posições: order, stacks and sizes back; shown modules and dens
     assert.equal(back.density, "compact");
 });
 
-test("density: Confortável or Compacta, anything else falls back to the default", () => {
-    assert.deepEqual(DENSITIES.map(([k]) => k), ["comfortable", "compact"]);
+test("density: Automática, Confortável or Compacta, anything else falls back to the default", () => {
+    assert.deepEqual(DENSITIES.map(([k]) => k), ["auto", "comfortable", "compact"]);
+    assert.equal(DEFAULT_LAYOUT.density, "auto");
+    // Automática: Compacta on a short grid (a notebook), Confortável otherwise; a choice wins.
+    assert.equal(shownDensity({ density: "auto" }, 700), "compact");
+    assert.equal(shownDensity({ density: "auto" }, 990), "comfortable");
+    assert.equal(shownDensity({ density: "comfortable" }, 700), "comfortable");
+    assert.equal(shownDensity({ density: "compact" }, 990), "compact");
+    assert.deepEqual([panelHead("compact"), panelHead("comfortable")], [28, 32]);
     assert.equal(densityOf({ density: "compact" }), "compact");
     assert.equal(densityOf({ density: "comfortable" }), "comfortable");
     assert.equal(densityOf({}), DEFAULT_LAYOUT.density); // a layout saved before densities existed
@@ -109,4 +116,33 @@ test("restoring one environment leaves the other's arrangement as it is", () => 
     assert.deepEqual(biblia.stacks.picker, DEFAULT_STACKS.picker);
     assert.equal(biblia.dockPreset, "c1", "the culto's untouched");
     assert.equal(biblia.libW, 400);
+});
+
+test("one culto arrangement per width tier: the big monitor's never squeezes the notebook", () => {
+    const big = { tree: { tabs: ["programa"], active: "programa" }, hidden: [] };
+    const small = { tree: { tabs: ["previa"], active: "previa" }, hidden: [] };
+    // A save from before the tiers: its dock is the wide tier's.
+    const old = { ...DEFAULT_LAYOUT, dock: big, dockPreset: "p1" };
+    const onNotebook = switchTier(old, "medium");
+    assert.equal(onNotebook.dock, null, "the medium tier starts as the console's own");
+    assert.equal(onNotebook.dockPreset, null);
+    assert.equal(onNotebook.dockTier, "medium");
+    assert.deepEqual(onNotebook.tierDocks.wide, { dock: big, dockPreset: "p1" });
+    // Arranged on the notebook, then back on the big monitor, then the notebook again.
+    const back = switchTier({ ...onNotebook, dock: small }, "wide");
+    assert.deepEqual([back.dock, back.dockPreset, back.dockTier], [big, "p1", "wide"]);
+    const again = switchTier(back, "medium");
+    assert.deepEqual(again.dock, small);
+    // The same tier: nothing changes (the same object once it is marked).
+    assert.equal(switchTier(again, "medium"), again);
+    // A fresh console just takes the tier it opens on.
+    const fresh = switchTier(DEFAULT_LAYOUT, "narrow");
+    assert.deepEqual([fresh.dock, fresh.dockTier, fresh.tierDocks], [null, "narrow", {}]);
+    // Saved and loaded: the tiers' docks come back, cleaned.
+    withStore({ ...again, tierDocks: { ...again.tierDocks, bogus: { dock: big } } }, () => {
+        const l = loadLayout("");
+        assert.equal(l.dockTier, "medium");
+        assert.deepEqual(Object.keys(l.tierDocks).sort(), ["medium", "wide"], "the bogus tier is dropped");
+        assert.equal(l.tierDocks.wide.dockPreset, "p1");
+    });
 });

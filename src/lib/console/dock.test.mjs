@@ -298,6 +298,7 @@ test("the No ar strip is as tall as the slide with the most lines", () => {
     assert.equal(onAirHeight([{ text: "a\nb" }]), Math.max(ONAIR_H, 72 + 2 * 18));
     assert.equal(onAirHeight([{ text: "a\nb" }, { text: "a\nb\nc\nd" }]), 72 + 4 * 18, "4 lines a slide (the song's editor)");
     assert.ok(onAirHeight([{ text: "1\n2\n3\n4\n5\n6" }]) > onAirHeight([{ text: "1\n2\n3\n4" }]), "a whole stanza");
+    assert.equal(onAirHeight([{ text: "a\nb\nc" }], 28), 72 + 3 * 18 - 4, "a compact header is 4 px shorter");
 });
 
 // The Bíblia's dock: the same engine, its own modules.
