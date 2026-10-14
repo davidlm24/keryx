@@ -38,7 +38,7 @@ export const SETTINGS_INDEX = [
     e("rede", "PIN", "o código que os aparelhos pedem para entrar; Mostrar PIN", ["senha", "código", "proteger", "mostrar pin", "esqueci"]),
     e("rede", "Telas conectadas pela rede", "os aparelhos conectados agora", ["aparelhos", "conectados"]),
 
-    e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte, para todo item", ["esmaecer", "deslizar", "corte", "fade", "animação"]),
+    e("aparencia", "Transição entre slides", "esmaecer, deslizar ou corte; um tema com transição própria vence", ["esmaecer", "deslizar", "corte", "fade", "animação"]),
     e("aparencia", "Duração", "quanto dura a transição", ["ms", "velocidade", "tempo", "transição"]),
     e("aparencia", "Fundo padrão", "o fundo das telas quando nada está no ar (e depois do Esc), se o culto não tiver o seu", ["fundo de espera", "espera", "wallpaper", "imagem", "esc"]),
     e("aparencia", "Títulos", "o título do item no slide e a faixa de título do YouTube", ["título", "nome da música", "youtube", "canal", "esconder"]),
@@ -57,8 +57,8 @@ export const SETTINGS_INDEX = [
     e("biblia", "Versão na referência", "João 3:16 · NVI, ou sem a versão", ["versão", "NVI"]),
     e("biblia", "Números dos versículos", "pequenos no texto ou ocultos", ["números", "versículos", "ocultar"]),
     e("biblia", "Ao importar letras", "uma estrofe, 2 ou 4 linhas por slide", ["importar", "letras", "músicas", "estrofe", "linhas", "slide"]),
-    e("biblia", "Bíblias instaladas", "baixar versões para usar sem internet; a versão padrão",
-        ["versão padrão", "baixar", "instalar", "sem internet", "offline", "do arquivo", "NVI", "ARA", "ACF", "ARC", "NAA", "NTLH", "AA", "BKJ1611"]),
+    e("biblia", "Bíblias instaladas", "baixar versões para usar sem internet; a versão em uso na Bíblia",
+        ["versão em uso", "usar esta", "versão padrão", "tornar padrão","baixar", "instalar", "sem internet", "offline", "do arquivo", "NVI", "ARA", "ACF", "ARC", "NAA", "NTLH", "AA", "BKJ1611"]),
 
     e("culto", "Dia do culto", "o dia da semana do Novo culto", ["domingo", "dia", "semana"]),
     e("culto", "Horário padrão", "o horário de sempre do culto", ["horário", "hora", "início", "19:00"]),
@@ -67,9 +67,9 @@ export const SETTINGS_INDEX = [
     e("culto", "Equipe de louvor", "os músicos e cantores para escalar no culto", ["equipe", "músicos", "louvor", "vocal", "banda", "membro"]),
     e("culto", "Previsão do culto", "termina ~ e passou N min na barra do topo", ["previsão", "atraso", "termina", "passou", "fim", "duração"]),
 
-    e("console", "Módulos", "Biblioteca, Slides, Camadas, Temas, No ar e Setlist", ["biblioteca", "slides", "camadas", "temas", "no ar", "setlist", "mostrar", "esconder", "ocultar"]),
-    e("console", "Densidade", "automática, confortável ou compacta", ["automática", "compacta", "confortável", "linhas", "altura", "notebook", "tela pequena"]),
-    e("console", "Disposição", "restaurar os módulos, a densidade e as colunas", ["restaurar disposição", "layout", "colunas", "tamanhos", "padrão"]),
+    e("console", "Módulos", "Biblioteca, Slides, Camadas, Temas, No ar e Setlist · deste computador", ["biblioteca", "slides", "camadas", "temas", "no ar", "setlist", "mostrar", "esconder", "ocultar"]),
+    e("console", "Densidade", "automática, confortável ou compacta · da igreja, viaja no backup", ["automática", "compacta", "confortável", "linhas", "altura", "notebook", "tela pequena"]),
+    e("console", "Disposição", "restaurar os módulos, a densidade e as colunas · deste computador", ["escopo","restaurar disposição", "layout", "colunas", "tamanhos", "padrão"]),
     e("console", "Ao fechar", "perguntar antes de fechar o KERYX", ["fechar", "sair", "confirmar", "perguntar"]),
     e("console", "Iniciar com o Windows", "abrir o KERYX quando o computador liga", ["windows", "iniciar", "ligar", "automático", "inicialização"]),
     e("console", "Atalhos", "as teclas do console: Enter, setas, B, L, C, Esc", ["teclado", "teclas", "atalho", "enter", "esc"]),

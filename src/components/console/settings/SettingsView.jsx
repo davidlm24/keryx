@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Panel, Row, IconBtn, Field, Empty } from "../kx";
-import { SECTIONS, sectionOf } from "@/lib/console/settings";
+import { SECTIONS, SECTION_SCOPE, SCOPE_LABEL, sectionOf } from "@/lib/console/settings";
 import { searchSettings, groupHits, countBySection } from "@/lib/console/settingsSearch";
 import { searchTerms, highlightParts } from "@/lib/bibleSearch";
 import { focusKind } from "@/lib/console/keys";
@@ -164,6 +164,7 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
                     </nav>
                     <div className="cfg">
                         <Panel title={searching ? `Resultados · ${hits.length}` : current.name} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "auto" }}>
+                            {!searching && SCOPE_LABEL[SECTION_SCOPE[current.id]] && <div className="listhead"><span className="kx-meta">{SCOPE_LABEL[SECTION_SCOPE[current.id]]}</span></div>}
                             {body}
                         </Panel>
                     </div>
