@@ -21,6 +21,12 @@ import { openEditor } from "@/lib/editorWindow";
 // hand always go on air with it (Song.theme_id); "Usar neste culto" makes it
 // the culto's theme (Service.theme_id), which becomes the theme in use when
 // the culto is chosen. An unnamed theme shows no caption (review 2026-10-14).
+// A new theme in the Editor de temas: the Temas panel's + (Console.jsx).
+export function newTheme(c) {
+    const r = openEditor({ theme: "new" });
+    if (r?.error) c.say(r.error);
+}
+
 export default function ThemeStrip({ c, themes, songs, service, ensureService }) {
     const shown = consoleThemes(themes);
     const def = defaultTheme(themes);
@@ -99,10 +105,11 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService })
                     <Btn small onClick={() => c.setThemeId(cultoTheme)} title="Voltar ao tema que o culto usa">Seguir o culto</Btn>
                 </div>
             )}
-            <div className="tm-acts">
-                {themes.length > shown.length && <Btn small onClick={openThemeLibrary} title="Todos os temas; o clique direito fixa um no console">Biblioteca de temas…</Btn>}
-                <Btn small onClick={() => edit("new")}><Icon name="plus" />Novo tema…</Btn>
-            </div>
+            {themes.length > shown.length && (
+                <div className="tm-acts">
+                    <Btn small onClick={openThemeLibrary} title="Todos os temas; o clique direito fixa um no console">Biblioteca de temas…</Btn>
+                </div>
+            )}
             {song && (
                 <div className="tm-song">
                     <span className="kx-meta" title={song.title}>{songTheme ? <>“{song.title}” segue o tema <b>{themeName(songTheme)}</b></> : <>“{song.title}”</>}</span>

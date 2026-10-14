@@ -559,10 +559,37 @@ export function allocate(sizes, mins, avail) {
 // other modules (No ar as a tab beside Camadas) it stays as it is. Every
 // child made only of folding modules carries `fold: true` (the Dock
 // animates its size).
-export function fitDock(dock, w, h, { gone = [] } = {}) {
+//
+// `locked`: { [moduleId]: px }, heights the console decides, never a
+// splitter (owner 2026-10-14: the No ar strip as tall as its slides' lines,
+// Camadas as tall as its list). A child of a column split that is that
+// module alone takes exactly that height, comes out `locked: true` (no
+// splitter beside it, Dock.jsx) and never gives way; across a row, or as a
+// tab beside other modules, the lock does not apply.
+export function fitDock(dock, w, h, { gone = [], locked = {} } = {}) {
     if (!dock?.tree) return null;
     const folding = new Set(gone.filter((id) => MODULES[id]?.fold));
-    return fitNode(dock.tree, [], w, h, { ...contextOf(dock.tree), folding });
+    return fitNode(dock.tree, [], w, h, { ...contextOf(dock.tree), folding, locked });
+}
+
+// A node's locked height (fitDock's `locked`): a group of one module that has one.
+const lockedPx = (node, ctx) => {
+    if (!isGroup(node) || node.tabs.length !== 1) return null;
+    const px = ctx.locked?.[node.tabs[0]];
+    return Number.isFinite(px) && px > 0 ? Math.round(px) : null;
+};
+
+// The No ar strip's height for the slides on air: its header and one row of
+// cards as tall as the slide with the most lines (the song's editor decides
+// them: a stanza, 2 or 4 lines; each line stays one line, SlideText), never
+// under ONAIR_H.
+export const ONAIR_LINE = 18;
+// The panel's header, the list's padding, a card's label (Verso, Refrão…)
+// and its padding.
+const ONAIR_CHROME = 32 + 12 + 16 + 12;
+export function onAirHeight(slides) {
+    const lines = Math.max(1, ...(slides || []).map((s) => String(s?.text ?? "").split("\n").length));
+    return Math.max(ONAIR_H, ONAIR_CHROME + lines * ONAIR_LINE);
 }
 
 const folds = (node) => leaves(node).every((id) => MODULES[id]?.fold);
@@ -590,10 +617,14 @@ function fitNode(node, path, w, h, ctx) {
     if (isGroup(node)) return { kind: "group", path, tabs: node.tabs, active: node.active, w, h };
     const row = node.dir === "row";
     const out = node.children.map((c, i) => (folds(c) && leaves(c).every((id) => ctx.folding?.has(id)) ? i : -1)).filter((i) => i >= 0);
-    let items = node.children.map((c, i) => ({ at: [i], min: minSize(c, row, ctx), size: node.sizes[i] })).filter((it) => !out.includes(it.at[0]));
-    // The flexible child gone: the largest one left takes the rest.
-    if (out.length && items.length && !items.some((it) => it.size === null)) {
-        items.reduce((a, it) => (it.size > a.size ? it : a), items[0]).size = null;
+    let items = node.children.map((c, i) => {
+        const px = row ? null : lockedPx(c, ctx);
+        return px === null ? { at: [i], min: minSize(c, row, ctx), size: node.sizes[i] } : { at: [i], min: px, size: px, locked: true };
+    }).filter((it) => !out.includes(it.at[0]));
+    // The flexible child gone (or locked): the largest free one left takes the rest.
+    if (items.length && !items.some((it) => it.size === null)) {
+        const free = items.filter((it) => !it.locked);
+        if (free.length) free.reduce((a, it) => (it.size > a.size ? it : a), free[0]).size = null;
     }
     const need = () => items.reduce((a, it) => a + it.min, 0) + G * (items.length - 1);
     const avail = row ? w : h;
@@ -625,7 +656,7 @@ function fitNode(node, path, w, h, ctx) {
         const frame = it.at.length === 1
             ? fitNode(node.children[it.at[0]], first, cw, ch, ctx)
             : tabsFrame(it.at.map((i) => node.children[i]), first, cw, ch, firstGroupPath(node.children[it.at[0]], first));
-        const child = { index: it.at[0], at: it.at, size: dims[k], fixed: it.size !== null, frame };
+        const child = { index: it.at[0], at: it.at, size: dims[k], fixed: it.size !== null, frame, ...(it.locked && it.at.length === 1 ? { locked: true } : {}) };
         return it.at.length === 1 && folds(node.children[it.at[0]]) ? { ...child, fold: true, gone: false } : child;
     });
     // The gone ones in their places, at no size.

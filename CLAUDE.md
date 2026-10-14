@@ -119,14 +119,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   pinned = the default + most recent). With the module in the tray the
   themes ride at the end of Camadas (card or drawer), never out of reach.
   **Camadas edits no look**: the layers come first, each with a pencil on
-  hover to where it is edited (Logo › Configurações › Igreja, Sobreposição
-  › its text field, Texto principal › the theme in use in the Editor de
-  temas, Fundo › the library for the Fundo do culto); the Fundo layer has
-  no options and no explanation (the row keeps its eye, padlock and place)
-  and Texto principal only the item's Título — the text look is edited
-  only in the Editor de temas; when the text on air looks otherwise (a
-  song's own look) it says so and offers Restaurar (`applyThemeOnAir`) and
-  Salvar como novo (an unnamed theme).
+  hover; **the settings under the list stay folded until a pencil opens
+  them** (owner 2026-10-14; a click on the row only selects it) — Logo
+  (with "Logo da igreja…", Configurações › Igreja), Sobreposição (its text
+  field), Texto principal (the item's Título and "Editar tema…", the theme
+  in use in the Editor de temas); the Fundo's pencil picks the Fundo do
+  culto in the library, the Fundo layer has no options (the row keeps its
+  eye, padlock and place). The text look is edited only in the Editor de
+  temas; when the text on air looks otherwise (a song's own look) Texto
+  principal says so and offers Restaurar (`applyThemeOnAir`) and Salvar
+  como novo (an unnamed theme). Camadas' header **+** adds the text
+  overlay and opens its settings. **Camadas is as tall as what it holds**
+  (its list, plus the settings a pencil opened; `Measure` in kx.jsx) and
+  the No ar strip as tall as the slide on air with the most lines (the
+  song's editor decides them; `onAirHeight`): heights the console passes
+  to `fitDock` as `locked` (dock.js, tested) — exact, never a splitter
+  beside them, only for a module alone down a column. **The +** of a
+  module is an icon at its header's right (Setlist, Temas, Camadas), never
+  a button in its body.
   **A click makes it the theme in use**: it dresses the text on air
   (`applyThemeOnAir` in `themeActions.js`: text look + Fundo, padlock
   respected) AND everything sent afterwards (Música in `themeForKind`,
@@ -258,13 +268,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   then the **tabs panel**
   (`TabsPanel.jsx`); under **all** the columns, edge to edge, the **No ar**
   strip (owner 2026-10-14: the dock's root is a column, the four columns
-  over `onair` at `ONAIR_H`, 104 px — its header and one row of cards;
+  over `onair`, at least `ONAIR_H` (104 px) and as tall as its slides'
+  lines (`onAirHeight`; the cards at 13 px, each line one line);
   medium and narrow start with it in the tray); the **right column** (`rightW`) is **Camadas, Temas and the
-  Setlist, full height** (Camadas 280 px, Temas `TEMAS_H`: the Setlist gets
-  the rest of the column). **The Notas tab** is the setlist item's notes
+  Setlist, full height** (Camadas as tall as its list, Temas `TEMAS_H`: the
+  Setlist gets the rest of the column). **The Notas tab** is the setlist item's notes
   (only when it has some) over the operator's free field, nothing else. **The Programa and the Prévia have no card** (owner 2026-10-14,
   `Panel bare`, `kx-panel-bare`): the Programa is its header line (caption,
   Fundo do culto, Voltar ao anterior, Multiview), the screen and the player;
+  its caption has **no "Programa" word** (owner 2026-10-14): the title is
+  in its state's colour (red on air, amber failure, blue locked, grey
+  "Nada no ar") with a blue "Travado" chip while the screens are locked;
   the Prévia is its screen, its caption a badge inside the top-left corner
   (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
   locked), and **no Enviar ao ar button** — Enter, a double click on it
