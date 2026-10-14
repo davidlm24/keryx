@@ -12,11 +12,13 @@ import { normalizePresets } from "./dockPresets.js";
 // Camadas is a section above the Setlist in the wide tier's right column
 // (owner's request, 2026-10-10; back there 2026-10-13); narrower, it is a
 // drawer opened from the Programa. The Setlist is not a module: it is
-// always on screen (the right column, else beside the Prévia).
+// always on screen (the right column, else beside the Prévia). No ar, the
+// strip of what is on air (2026-10-14), is one more switch.
 export const MODULES = [
     ["lib", "Biblioteca"],
     ["slides", "Slides"],
     ["camadas", "Camadas"],
+    ["onair", "No ar"],
 ];
 
 // The console's width tiers, measured on its grid (.main), not the window:

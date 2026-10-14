@@ -4,19 +4,23 @@ import { Btn, Empty } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 
-// The slides of the item in hand: the Prévia when it has slides, else what
-// is on air. A click prepares (that slide goes to the Prévia); a double
+// The item in hand (owner 2026-10-14, as in Holyrics): the Prévia's slides
+// whenever it holds an item, even one of a single slide; with nothing
+// prepared, what is on air. What is on air stays in view in the No ar module
+// (OnAirPanel). A click prepares (that slide goes to the Prévia); a double
 // click puts that slide on air, besides "Enviar ao ar" and the arrows.
+export const handIsPrev = (prev) => Boolean(prev && !prev.theme && prev.slides.length);
+
 export default function SlidesPanel({ c, onGo }) {
     const menu = useContextMenu();
     const { cur, prev } = c;
     const air = cur?.content;
     const airId = liveStageId(cur);
-    const handIsPrev = Boolean(prev && prev.slides.length > 1);
-    const slides = useMemo(() => (handIsPrev ? prev.slides : air ? air.slides : []), [handIsPrev, prev, air]);
-    const index = handIsPrev ? prev.index : air ? air.index : -1;
+    const fromPrev = handIsPrev(prev);
+    const slides = useMemo(() => (fromPrev ? prev.slides : air ? air.slides : []), [fromPrev, prev, air]);
+    const index = fromPrev ? prev.index : air ? air.index : -1;
     // The Prévia holds the item that is on air (another slide of it): mark both.
-    const airIndex = handIsPrev && air && (prev.airSlide || prev.id === airId) ? air.index : -1;
+    const airIndex = fromPrev && air && (prev.airSlide || prev.id === airId) ? air.index : -1;
     const listRef = useRef(null);
 
     useEffect(() => {
@@ -25,36 +29,33 @@ export default function SlidesPanel({ c, onGo }) {
     }, [index, slides]);
 
     const airWord = "is-air";
-    const pos = slides.length ? `${handIsPrev ? "prévia" : "no ar"} ${index + 1}/${slides.length}` : "";
+    const pos = slides.length ? `${fromPrev ? "prévia" : "no ar"} ${index + 1}/${slides.length}` : "";
     const pick = (i) => {
-        if (handIsPrev) c.setPrev(stageAt(prev, i));
+        if (fromPrev) c.setPrev(stageAt(prev, i));
         else if (air && i !== air.index) c.setPrev(stageAirSlide(air, i, airId));
     };
     const go = (i) => {
-        if (handIsPrev) onGo?.(stageAt(prev, i));
+        if (fromPrev) onGo?.(stageAt(prev, i));
         else if (air) c.goTo(i);
     };
 
     return (
         <>
             {!slides.length && <Empty icon="list" title="Nenhum item em mãos">Clique num item da Setlist ou da Biblioteca.</Empty>}
-            <div ref={listRef} style={{ overflow: "auto", flex: 1 }}>
+            <div ref={listRef} className="kx-cards" style={{ overflow: "auto", flex: 1 }}>
                 {slides.map((sl, i) => {
                     let cls = "";
-                    if (handIsPrev) cls = i === index ? "is-prev" : i === airIndex ? airWord : "";
+                    if (fromPrev) cls = [i === index && "is-prev", i === airIndex && airWord].filter(Boolean).join(" ");
                     else cls = i === index ? airWord : i === index + 1 ? "is-next" : "";
+                    const onAir = cls.includes(airWord);
                     return (
                         <button type="button" key={i} className={`kx-slide kx-t ${cls}`} onClick={() => pick(i)} onDoubleClick={() => go(i)}
                             onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
-                                { label: "Pôr na prévia", icon: "eye", disabled: !handIsPrev && i === index, onSelect: () => pick(i) },
+                                { label: "Pôr na prévia", icon: "eye", disabled: !fromPrev && i === index, onSelect: () => pick(i) },
                                 { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
-                            ] })} title={cls === airWord ? "No ar" : "Pôr na prévia · 2 cliques enviam"}>
+                            ] })} title={`${onAir ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || ""}`}>
                             <span className="kx-slide-n">{i + 1}</span>
-                            <span>
-                                {sl.label && <span className="kx-slide-lab" style={{ display: "block" }}>{sl.label}</span>}
-                                {!sl.label && sl.is_chorus && <span className="kx-slide-lab" style={{ display: "block" }}>Refrão</span>}
-                                {sl.text}
-                            </span>
+                            <SlideText slide={sl} />
                         </button>
                     );
                 })}
@@ -69,8 +70,20 @@ export default function SlidesPanel({ c, onGo }) {
     );
 }
 
+// A slide's label and its lines as the editor made them: each line stays one
+// line and ends in "…" when the column is too narrow (owner 2026-10-14; the
+// whole text is in the card's tooltip and in the Prévia).
+export function SlideText({ slide }) {
+    const label = slide.label || (slide.is_chorus ? "Refrão" : "");
+    return (
+        <span className="kx-slide-body">
+            {label && <span className="kx-slide-lab">{label}</span>}
+            {String(slide.text || "").split("\n").map((line, i) => <span key={i} className="kx-ln">{line || " "}</span>)}
+        </span>
+    );
+}
+
 // The title the Slides module shows in its header.
 export function handTitle(c) {
-    const handIsPrev = Boolean(c.prev && c.prev.slides.length > 1);
-    return handIsPrev ? c.prev.title : c.cur?.content?.title || "";
+    return handIsPrev(c.prev) ? c.prev.title : c.cur?.content?.title || "";
 }
