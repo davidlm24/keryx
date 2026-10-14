@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Btn } from "./kx";
 import { ThemeThumb } from "./library/BackgroundLibrary";
 import { consoleThemes, defaultTheme, defaultChanges, themeName } from "@/lib/console/themes";
 import { pickTheme, applyThemeOnAir, songInHand } from "./themeActions";
@@ -27,8 +26,12 @@ export function newTheme(c) {
     if (r?.error) c.say(r.error);
 }
 
-export default function ThemeStrip({ c, themes, songs, service, ensureService }) {
-    const shown = consoleThemes(themes);
+// The panel's slots: 9 pinned themes (3 × 3), the rest empty with a + (owner
+// 2026-10-14; the body shows only thumbnails, the header's + is the menu).
+export const TEMAS_SLOTS = 9;
+
+export default function ThemeStrip({ c, themes, songs, service, ensureService, menuRef, view = {}, setView }) {
+    const shown = consoleThemes(themes, TEMAS_SLOTS);
     const def = defaultTheme(themes);
     const song = songInHand(c, songs);
     const songTheme = song?.theme_id ? themes.find((t) => t.id === song.theme_id) || null : null;
@@ -83,41 +86,45 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService })
         { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${named(t)} saiu do console.` : `${named(t)} fixado no console.`) },
         { label: "Excluir…", icon: "trash", onSelect: () => removeTheme(t) },
     ] });
+    const thumb = view.thumb === "large" ? "large" : "small";
+    const names = view.names !== false;
+    // The header's + (Console.jsx): what can be done with the theme in use
+    // and the song in hand, and how the panel shows itself. The library
+    // button beside it is where the 9 are pinned.
+    const plusMenu = (e) => menu(e, { title: "Temas", items: [
+        { label: "Novo tema…", icon: "plus", onSelect: () => newTheme(c) },
+        ...(song ? [songTheme && (!current || current.id === songTheme.id)
+            ? { label: "Tirar tema da música", onSelect: () => saveForSong("") }
+            : { label: "Salvar tema para a música", disabled: !current, onSelect: () => saveForSong(current.id) }] : []),
+        "sep",
+        { label: service ? "Usar neste culto" : "Usar hoje", disabled: !current || cultoTheme === current?.id, onSelect: () => setForCulto(current) },
+        ...(cultoTheme && c.themeId !== cultoTheme ? [{ label: "Seguir o culto", icon: "undo", onSelect: () => c.setThemeId(cultoTheme) }] : []),
+        { label: current && current.id === def?.id ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: !current || current.id === def?.id, onSelect: () => run(keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, current.id)), `${named(current)} é o tema padrão.`) },
+        "sep",
+        { label: "Miniaturas pequenas", icon: thumb === "small" ? "check" : undefined, onSelect: () => setView?.({ temasThumb: "small" }) },
+        { label: "Miniaturas grandes", icon: thumb === "large" ? "check" : undefined, onSelect: () => setView?.({ temasThumb: "large" }) },
+        { label: "Mostrar nomes", icon: names ? "check" : undefined, onSelect: () => setView?.({ temasNames: !names }) },
+    ] });
+    useEffect(() => {
+        if (!menuRef) return undefined;
+        menuRef.current = { menu: plusMenu, library: openThemeLibrary };
+        return () => { if (menuRef.current?.menu === plusMenu) menuRef.current = null; };
+    });
+    const slots = Array.from({ length: TEMAS_SLOTS }, (_, k) => shown[k] || null);
     return (
         <div className="tm" style={{ gridColumn: "1 / -1" }}>
-            {!themes.length
-                ? <span className="kx-meta">Nenhum tema ainda. Crie um: o texto e o fundo das letras ficam prontos num clique.</span>
-                : (
-                    <div className="tm-grid" role="list" aria-label="Temas">
-                        {shown.map((t) => (
-                            <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={themeName(t)}
-                                title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
-                                onClick={() => inUse(t)} onDoubleClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
-                                <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
-                                {(t.id === def?.id || themeName(t, "")) && <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            {Boolean(cultoTheme) && c.themeId !== cultoTheme && (
-                <div className="tm-song">
-                    <span className="kx-meta">tema do culto: <b>{themeName(themes.find((t) => t.id === cultoTheme), "tema apagado")}</b></span>
-                    <Btn small onClick={() => c.setThemeId(cultoTheme)} title="Voltar ao tema que o culto usa">Seguir o culto</Btn>
-                </div>
-            )}
-            {themes.length > shown.length && (
-                <div className="tm-acts">
-                    <Btn small onClick={openThemeLibrary} title="Todos os temas; o clique direito fixa um no console">Biblioteca de temas…</Btn>
-                </div>
-            )}
-            {song && (
-                <div className="tm-song">
-                    <span className="kx-meta" title={song.title}>{songTheme ? <>“{song.title}” segue o tema <b>{themeName(songTheme)}</b></> : <>“{song.title}”</>}</span>
-                    {songTheme && (!current || current.id === songTheme.id)
-                        ? <Btn small onClick={() => saveForSong("")} title="A música volta a ir ao ar com o tema padrão">Tirar tema da música</Btn>
-                        : <Btn small disabled={!current} onClick={() => saveForSong(current.id)} title="A música vai ao ar sempre com este tema">Salvar tema para a música</Btn>}
-                </div>
-            )}
+            <div className={`tm-grid is-${thumb}`} role="list" aria-label="Temas">
+                {slots.map((t, k) => (t ? (
+                    <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={themeName(t)}
+                        title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
+                        onClick={() => inUse(t)} onDoubleClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
+                        <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
+                        {names && (t.id === def?.id || themeName(t, "")) && <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
+                    </button>
+                ) : (
+                    <button type="button" key={`empty-${k}`} className="kx-t tm-empty" onClick={() => newTheme(c)} title="Novo tema · na biblioteca, o clique direito fixa um tema aqui" aria-label="Novo tema"><Icon name="plus" /></button>
+                )))}
+            </div>
         </div>
     );
 }

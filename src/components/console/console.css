@@ -1096,11 +1096,14 @@
 /* Temas (ThemeStrip.jsx): the pinned themes as small screens inside
    Camadas › Fundo (presets, as in Holyrics). */
 .console .tm { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
-.console .tm-acts { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.console .tm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: var(--space-1) var(--space-2); }
+/* Temas (owner 2026-10-14): 9 slots, 3 a row (2 with large thumbnails);
+   the 2 px padding keeps the ring of the theme in use from being cut; an
+   empty slot is a dashed + (a new theme). */
+.console .tm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1) var(--space-2); padding: 2px; align-items: start; }
+.console .tm-grid.is-large { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .console .tm-tile .fg-name { font-size: 11px; }
-.console .tm-song { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; border-top: 1px solid var(--line); padding-top: var(--space-2); }
-.console .tm-song .kx-meta { flex: 1 1 120px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .tm-empty { aspect-ratio: 16 / 10; width: 100%; border-radius: var(--radius-control); border: 1px dashed var(--line-strong); background: none; color: var(--fg-3); display: grid; place-items: center; cursor: pointer; }
+.console .tm-empty:hover, .console .tm-empty:focus-visible { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); }
 /* The library's Gerados: the background alone, big and moving, while it is edited. */
 .console .lib-big { display: flex; flex-direction: column; gap: var(--space-1); }
 .console .lib-big-screen { width: 100%; max-width: 760px; display: grid; place-items: center; }
