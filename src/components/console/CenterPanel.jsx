@@ -59,17 +59,6 @@ export function TeacherNotes({ prev, cur }) {
     );
 }
 
-// What sending the Prévia will do, in one line, when it is not obvious from
-// the monitor: which screens it reaches.
-function sendNote(stage, locked) {
-    if (!stage) return null;
-    if (locked) return "Telas travadas: nada vai ao ar. Destrave em Saídas.";
-    if (stage.kind === "video") return "Ao enviar: toca nas telas de vídeo; o projetor continua como está.";
-    if (stage.kind === "audio") return "Ao enviar: toca no computador do projetor; as telas não mudam.";
-    if (stage.airSlide) return `Ao enviar: o slide no ar passa para o ${stage.index + 1}.`;
-    return null;
-}
-
 // The Programa's caption, in its panel's header (one title, not a header and a
 // caption line): the state word (red only while something is on air, amber
 // for a failed output, blue when locked, grey when nothing is on air), what
@@ -171,7 +160,6 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
             {capPos && <span className="kx-meta">{capPos}</span>}
         </span>
     );
-    const note = sendNote(prev, locked);
     // A drop from the Biblioteca on the Prévia prepares.
     const dropProps = {
         onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (!dropOn) setDropOn(true); } },
@@ -188,7 +176,6 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
                 {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"}</div>}
                 {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
             </Monitor>
-            {note && <div className="kx-meta sendnote">{note}</div>}
             {!notesInTab && <TeacherNotes prev={prev} cur={cur} />}
         </Panel>
     );
