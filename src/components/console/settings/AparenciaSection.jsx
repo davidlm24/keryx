@@ -25,9 +25,13 @@ export default function AparenciaSection({ c }) {
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };
     // Fundo padrão (src/lib/console/defaultFundo.js): the church's; a
-    // service's own (Fundo do culto: the Programa, Planejar o culto) wins while it is the one in hand.
+    // service's own (Fundo do culto: the Programa, Planejar o culto) wins
+    // while it is the one in hand — and the row says so (owner's OK
+    // 2026-10-14, "Fundo em três vias"): the live state's Fundo padrão
+    // carries whose it is in its title.
     const pick = useLibraryPicker();
     const church = churchFundo(user);
+    const cultoCobre = c.cur?.defaultBackground?.title === "Fundo do culto";
 
     if (!user) return null;
     return (
@@ -37,7 +41,8 @@ export default function AparenciaSection({ c }) {
                     <BgChip title="Fundo padrão" empty="nenhum · as telas mostram o logo" value={church}
                         noneLabel={church ? "Sem fundo padrão (logo da igreja)" : undefined}
                         onPick={(spec) => save({ default_background: spec || null, standby_background: spec?.kind === "image" ? spec.value : "" }, spec ? "Fundo padrão salvo." : "Sem fundo padrão.")} />
-                    <span className="kx-meta">o fundo da igreja: aparece quando nada está no ar, se o culto não tiver o seu</span>
+                    <span className="kx-meta">o fundo da igreja: aparece quando nada está no ar e o culto não tem o seu</span>
+                    {cultoCobre && <span className="kx-meta" style={{ color: "var(--warn-fg)" }}>Hoje o culto está com um fundo próprio (Programa › Fundo do culto); este fica guardado.</span>}
                 </FormRow>
                 <FormRow k="Fundos">
                     <Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca…</Btn>
