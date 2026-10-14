@@ -33,6 +33,9 @@ const PX_MAX = 4000;
 export const NEW_PX = 320;
 // The No ar strip's height in the default dock: its header and one row of cards.
 export const ONAIR_H = 132;
+// The Temas card's height under Camadas: its header, a row of theme
+// screens, Novo tema and the song's line.
+export const TEMAS_H = 220;
 
 // The smallest size each module is usable at, its panel's header included,
 // and its environment (env; absent: the culto). The Slides keep a slide's
@@ -47,6 +50,10 @@ export const MODULES = {
     // Never out of reach (the console audit, 2026-10-13).
     setlist: { name: "Setlist", minW: 220, minH: 120, required: true },
     camadas: { name: "Camadas", minW: 280, minH: 120 },
+    // The themes, out of Camadas into a card of their own under it (owner
+    // 2026-10-14). A save from before it comes with it under Camadas
+    // (`below`), not in the tray.
+    temas: { name: "Temas", minW: 240, minH: 120, below: "camadas" },
     // The slides of what is on air, whatever the Slides column holds (the
     // Holyrics strip, owner 2026-10-14): a strip under the Prévia at first.
     onair: { name: "No ar", minW: 220, minH: 110 },
@@ -166,6 +173,28 @@ function addBeside(tree, id) {
     return split("row", [tree, group([id])], [null, NEW_PX]);
 }
 
+// A new group under the group at `path`: in its column when it is in one
+// (the column gives the new one its height from its flexible child), else
+// the two become a column in the group's place.
+function insertBelow(tree, path, id) {
+    const size = MODULES[id].below === "camadas" ? TEMAS_H : NEW_PX;
+    const parentPath = path.slice(0, -1);
+    const parent = path.length ? nodeAt(tree, parentPath) : null;
+    const t = clone(tree);
+    if (parent && parent.dir === "col") {
+        const p = nodeAt(t, parentPath);
+        const i = path[path.length - 1];
+        p.children.splice(i + 1, 0, group([id]));
+        p.sizes.splice(i + 1, 0, size);
+        return t;
+    }
+    const wrapped = split("col", [nodeAt(t, path), group([id])], [null, size]);
+    if (!path.length) return wrapped;
+    const p = nodeAt(t, parentPath);
+    p.children[path[path.length - 1]] = wrapped;
+    return t;
+}
+
 // A saved dock made safe. Every module ends up in exactly one place: the
 // tree, the tray, or (the player) its home.
 export function normalizeDock(saved) {
@@ -177,8 +206,24 @@ export function normalizeDock(saved) {
         if (MODULES[id].required && !seen.has(id)) { tree = addBeside(tree, id); seen.add(id); }
     }
     const trayable = (id) => ids.includes(id) && !MODULES[id].required && !MODULES[id].home && !seen.has(id);
+    const savedHidden = Array.isArray(saved?.hidden) ? saved.hidden : [];
+    // A module the save does not know that belongs under another (Temas
+    // under Camadas) comes in there when that one is on screen.
+    for (const id of ids) {
+        const host = MODULES[id].below;
+        if (!host || seen.has(id) || savedHidden.includes(id) || !tree || !pathOf(tree, host)) continue;
+        const at = pathOf(tree, host);
+        const hostGroup = nodeAt(tree, at);
+        // Camadas among other tabs: Temas joins them as one more tab.
+        if (hostGroup.tabs.length > 1) {
+            tree = clone(tree);
+            const gr = nodeAt(tree, at);
+            gr.tabs.splice(gr.tabs.indexOf(host) + 1, 0, id);
+        } else tree = insertBelow(tree, at, id);
+        seen.add(id);
+    }
     const hidden = [];
-    for (const id of Array.isArray(saved?.hidden) ? saved.hidden : []) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
+    for (const id of savedHidden) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
     // A module the save does not know (a newer KERYX) starts in the tray.
     for (const id of ids) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
     return make(env, tree, hidden);
@@ -201,7 +246,7 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     const libW = px("libW", 260);
     const slidesW = px("slidesW", 300);
     const rightW = px("rightW", 320);
-    const camadasH = px("camadasH", 360);
+    const camadasH = px("camadasH", 280);
     const wide = tier !== "medium" && tier !== "narrow";
     const narrow = tier === "narrow";
     // Narrow: the Biblioteca and the Slides share a column, in the stack's order.
@@ -222,9 +267,11 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     const live = wide && !hidden.onair
         ? split("col", [group(["programa"]), band, group(["onair"])], [null, bottomH, ONAIR_H])
         : split("col", [group(["programa"]), band], [null, bottomH]);
-    // Camadas over the Setlist (or under it), Camadas with its own height.
-    const stack = normalizeOrder(layout?.stacks?.side, ["camadas", "roteiro"]).filter((id) => id !== "camadas" || !hidden.camadas);
-    const side = split("col", stack.map((id) => group([id === "roteiro" ? "setlist" : id])), stack.map((id) => (id === "camadas" ? camadasH : null)));
+    // Camadas over the Setlist (or under it), Camadas with its own height and
+    // Temas, a card of its own, right under it (owner 2026-10-14).
+    const stack = normalizeOrder(layout?.stacks?.side, ["camadas", "roteiro"]).filter((id) => id !== "camadas" || !hidden.camadas)
+        .flatMap((id) => (id === "camadas" ? ["camadas", "temas"] : [id]));
+    const side = split("col", stack.map((id) => group([id === "roteiro" ? "setlist" : id])), stack.map((id) => (id === "camadas" ? camadasH : id === "temas" ? TEMAS_H : null)));
     const cols = [];
     const sizes = [];
     let pairDone = false;
@@ -240,7 +287,9 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
         else if (!hidden[id]) { cols.push(group([id])); sizes.push(id === "lib" ? libW : slidesW); }
     }
     const tray = ["lib", "slides", "camadas", "onair"].filter((id) => hidden[id]);
-    if (!wide) tray.push("camadas", "abas", "onair");
+    // Temas goes where Camadas goes: in the tray it rides in Camadas' drawer.
+    if (hidden.camadas) tray.splice(tray.indexOf("camadas") + 1, 0, "temas");
+    if (!wide) tray.push("camadas", "temas", "abas", "onair");
     return normalizeDock({ tree: split("row", cols, sizes), hidden: tray });
 }
 

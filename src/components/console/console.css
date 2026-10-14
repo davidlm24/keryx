@@ -170,11 +170,11 @@
 .console .tabrow > button[role="tab"] { white-space: nowrap; min-width: 0; overflow: clip; overflow-clip-margin: 1px; text-overflow: ellipsis; } /* many tabs in a narrow panel: they shorten, the (+) stays */
 .console .tabs-panel > .kx-tabs { flex: none; overflow: hidden; }
 .console .tabs-pad { padding-top: var(--space-2); }
-.console .tabs-notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); }
+.console .tabs-notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); min-height: 100%; box-sizing: border-box; }
 .console .tabs-notes .tnotes { max-height: none; }
 /* Notas do operador (the Notas tab's free field, Service.operator_notes). */
-.console .op-notes { display: flex; flex-direction: column; gap: var(--space-1); }
-.console .op-notes .kx-section { padding: 0 2px; }
+.console .op-notes { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-height: 0; }
+.console .op-notes-f { flex: 1; }
 .console .op-notes-f { min-height: 96px; resize: vertical; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 6px var(--space-2); font: inherit; font-size: 12px; line-height: 18px; color-scheme: dark; outline: none; }
 .console .op-notes-f::placeholder { color: var(--fg-3); }
 .console .op-notes-f:focus { box-shadow: inset 0 0 0 1px var(--line-strong); }
@@ -252,8 +252,16 @@
 /* Próximo, in the column beside the Prévia: the label, the title, Pôr na prévia. */
 .console .layerprops { padding: var(--space-1) var(--space-2) var(--space-2); display: grid; grid-template-columns: 80px 1fr; gap: var(--space-1) var(--space-2); align-items: center; border-top: 1px solid var(--line); }
 /* Camadas › Temas (owner 2026-10-14): the theme tiles over the layer list. */
-.console .layerthemes { padding: 0 var(--space-2) var(--space-2); border-bottom: 1px solid var(--line); }
-.console .layerthemes > .listhead { padding: 0; }
+/* Temas: its own card (temas-panel), or at the end of Camadas while that
+   module is in the tray (layer-temas). */
+.console .layer-temas { padding: var(--space-2); border-top: 1px solid var(--line); }
+.console .temas-panel .tm { padding: 0 var(--space-2) var(--space-2); }
+/* The pencil on a layer: where it is edited; shown on hover or focus. */
+.console .kx-layer { grid-template-columns: 16px 20px 20px minmax(0, 1fr) 24px; }
+.console .kx-layer .layer-edit { opacity: 0; transition: opacity .12s; }
+.console .kx-layer:hover .layer-edit, .console .kx-layer .layer-edit:focus-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .console .kx-layer .layer-edit { transition: none; } }
+.console .layer-temas > .listhead { padding: 0; }
 .console .layeracts { display: flex; gap: var(--space-1); flex-wrap: wrap; }
 .console .layerprops .k { font-size: 11px; color: var(--fg-3); }
 /* Camadas is on screen in the wide tier: its choices are 24 px targets like every control (the Seg "small" inline sizes are overridden). */

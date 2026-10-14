@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, PLAYER_SLOT } from "./dock.js";
+import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The console of the 2026-10-13 audit: Biblioteca | Slides | Programa over
-// Prévia · Painel de abas over No ar | Camadas over the Setlist.
+// Prévia · Painel de abas over No ar | Camadas, Temas (2026-10-14) and the Setlist.
 const fourColumns = () => split("row", [
     g("lib"), g("slides"),
     split("col", [g("programa"), split("row", [g("previa"), g("abas")], [444, null]), g("onair")], [null, 334, ONAIR_H]),
-    split("col", [g("camadas"), g("setlist")], [360, null]),
+    split("col", [g("camadas"), g("temas"), g("setlist")], [280, TEMAS_H, null]),
 ], [260, 300, null, 320]);
 
 test("the default dock is the four-column console, nothing in the tray", () => {
@@ -24,9 +24,9 @@ test("an old layout migrates: its column order, stack order, hidden modules and 
         g("setlist"),
         g("slides"),
     ], [null, 320, 340]));
-    assert.deepEqual(d.hidden, ["lib", "camadas"]);
-    // The Setlist over Camadas: Camadas keeps its own height.
-    assert.deepEqual(fromArrangement({ stacks: { side: ["roteiro", "camadas"] }, camadasH: 200 }).tree.children[3], split("col", [g("setlist"), g("camadas")], [null, 200]));
+    assert.deepEqual(d.hidden, ["lib", "camadas", "temas"], "Temas goes where Camadas goes");
+    // The Setlist over Camadas: Camadas keeps its own height, Temas under it.
+    assert.deepEqual(fromArrangement({ stacks: { side: ["roteiro", "camadas"] }, camadasH: 200 }).tree.children[3], split("col", [g("setlist"), g("camadas"), g("temas")], [null, 200, TEMAS_H]));
 });
 
 test("a saved dock is made safe: every module in exactly one place", () => {
@@ -39,9 +39,25 @@ test("a saved dock is made safe: every module in exactly one place", () => {
     // player rides the Programa (never the tray); modules the save did not
     // place go to the tray.
     assert.deepEqual(d.tree, split("row", [g("lib"), g("programa"), g("previa"), g("setlist")], [200, null, NEW_PX, NEW_PX]));
-    assert.deepEqual(d.hidden, ["camadas", "slides", "abas", "onair"]);
-    assert.deepEqual(normalizeDock(null), { tree: split("row", [g("programa"), g("previa"), g("setlist")], [null, NEW_PX, NEW_PX]), hidden: ["lib", "slides", "abas", "camadas", "onair"] });
+    assert.deepEqual(d.hidden, ["camadas", "slides", "abas", "temas", "onair"]);
+    assert.deepEqual(normalizeDock(null), { tree: split("row", [g("programa"), g("previa"), g("setlist")], [null, NEW_PX, NEW_PX]), hidden: ["lib", "slides", "abas", "camadas", "temas", "onair"] });
     assert.deepEqual(normalizeDock({ tree: "junk", hidden: "junk" }), normalizeDock(null));
+});
+
+test("a save from before Temas gets it under Camadas, not in the tray", () => {
+    // Camadas over the Setlist: Temas comes in between, its height from the Setlist.
+    const old = normalizeDock({ tree: split("row", [g("programa"), g("previa"), split("col", [g("camadas"), g("setlist")], [360, null])], [null, 300, 320]), hidden: [] });
+    assert.deepEqual(nodeAt(old.tree, [2]), split("col", [g("camadas"), g("temas"), g("setlist")], [360, TEMAS_H, null]));
+    assert.equal(old.hidden.includes("temas"), false);
+    // Camadas alone in a row: the two become a column in its place.
+    const row = normalizeDock({ tree: split("row", [g("programa"), g("camadas"), g("previa"), g("setlist")], [null, 280, 300, 320]) });
+    assert.deepEqual(nodeAt(row.tree, [1]), split("col", [g("camadas"), g("temas")], [null, TEMAS_H]));
+    // Camadas among tabs: one more tab.
+    const tabs = normalizeDock({ tree: split("row", [g("programa", "camadas"), g("previa"), g("setlist")], [null, 300, 400]) });
+    assert.deepEqual(nodeAt(tabs.tree, [0]), group(["programa", "camadas", "temas"], "programa"));
+    // Camadas in the tray, or Temas already known: nothing moves.
+    assert.deepEqual(normalizeDock({ tree: split("row", [g("programa"), g("previa"), g("setlist")], [null, 300, 320]), hidden: ["camadas"] }).hidden, ["camadas", "lib", "slides", "abas", "temas", "onair"]);
+    assert.deepEqual(normalizeDock(defaultDock()), defaultDock());
 });
 
 test("one flexible child per split, the Programa's when there is a choice", () => {
@@ -64,15 +80,15 @@ test("a split inside a split of the same direction merges into it", () => {
 test("dropping in the middle of a group makes tabs", () => {
     const d = moveModules(defaultDock(), ["camadas"], { kind: "group", path: [2, 0], zone: "center" });
     assert.deepEqual(nodeAt(d.tree, [2]), split("col", [group(["programa", "camadas"], "camadas"), split("row", [g("previa"), g("abas")], [444, null]), g("onair")], [null, 334, ONAIR_H]));
-    assert.deepEqual(nodeAt(d.tree, [3]), g("setlist"), "the right column is the Setlist alone");
+    assert.deepEqual(nodeAt(d.tree, [3]), split("col", [g("temas"), g("setlist")], [TEMAS_H, null]), "Temas stays over the Setlist");
 });
 
 test("dropping on a side along the split inserts beside, halving a fixed neighbour", () => {
     // Half of the Biblioteca's 260, each kept at its minimum (Setlist 220, Biblioteca 200).
     const d = moveModules(defaultDock(), ["setlist"], { kind: "group", path: [0], zone: "left" });
-    assert.deepEqual(leaves(d.tree), ["setlist", "lib", "slides", "programa", "previa", "abas", "onair", "camadas"]);
+    assert.deepEqual(leaves(d.tree), ["setlist", "lib", "slides", "programa", "previa", "abas", "onair", "camadas", "temas"]);
     assert.deepEqual(d.tree.sizes, [220, 200, 300, null, 320]);
-    assert.deepEqual(nodeAt(d.tree, [4]), g("camadas"));
+    assert.deepEqual(nodeAt(d.tree, [4]), split("col", [g("camadas"), g("temas")], [null, TEMAS_H]));
     const wide = moveModules(fromArrangement({ libW: 480 }), ["abas"], { kind: "group", path: [0], zone: "right" });
     assert.deepEqual(wide.tree.sizes.slice(0, 2), [237, 237]);
     // Beside the flexible one: the new group gets the size it was given.
@@ -99,7 +115,7 @@ test("a drop onto where it already is changes nothing", () => {
     assert.deepEqual(moveModules(d, ["programa"], { kind: "group", path: [2, 0], zone: "center" }), d);
     assert.deepEqual(moveModules(d, ["programa"], { kind: "group", path: [2, 0], zone: "left" }), d, "a lone tab beside itself");
     // One tab of several can leave its group for its own side.
-    const tabs = normalizeDock({ tree: split("row", [g("programa", "camadas"), g("previa"), g("setlist")], [null, 300, 400]) });
+    const tabs = normalizeDock({ tree: split("row", [g("programa", "camadas"), g("previa"), g("setlist")], [null, 300, 400]), hidden: ["temas"] });
     const out = moveModules(tabs, ["camadas"], { kind: "group", path: [0], zone: "right" }, { px: 280 });
     assert.deepEqual(out.tree, split("row", [g("programa"), g("camadas"), g("previa"), g("setlist")], [null, 280, 300, 400]));
 });
@@ -107,7 +123,7 @@ test("a drop onto where it already is changes nothing", () => {
 test("the tray: modules leave the console; the Programa, the Prévia and the Setlist never do", () => {
     const d = hideModule(defaultDock(), "camadas");
     assert.deepEqual(d.hidden, ["camadas"]);
-    assert.deepEqual(nodeAt(d.tree, [3]), g("setlist"));
+    assert.deepEqual(nodeAt(d.tree, [3]), split("col", [g("temas"), g("setlist")], [TEMAS_H, null]));
     assert.deepEqual(hideModule(defaultDock(), "programa"), defaultDock());
     assert.deepEqual(hideModule(defaultDock(), "setlist"), defaultDock());
     assert.deepEqual(moveModules(defaultDock(), ["previa", "abas"], { kind: "tray" }), defaultDock());
@@ -119,12 +135,12 @@ test("the tray: modules leave the console; the Programa, the Prévia and the Set
 
 test("the player rides the Programa until it is placed, and goes home instead of the tray", () => {
     // In a column the player comes in at its own height (80), whatever was asked.
-    const placed = moveModules(defaultDock(), ["player"], { kind: "group", path: [3, 1], zone: "top" }, { px: 300 });
-    assert.deepEqual(nodeAt(placed.tree, [3]), split("col", [g("camadas"), g("player"), g("setlist")], [360, 80, null]));
-    const underCamadas = moveModules(defaultDock(), ["player"], { kind: "group", path: [3, 0], zone: "bottom" });
-    assert.deepEqual(nodeAt(underCamadas.tree, [3]).sizes, [274, 80, null], "a fixed neighbour gives up just that");
+    const placed = moveModules(defaultDock(), ["player"], { kind: "group", path: [3, 2], zone: "top" }, { px: 300 });
+    assert.deepEqual(nodeAt(placed.tree, [3]), split("col", [g("camadas"), g("temas"), g("player"), g("setlist")], [280, TEMAS_H, 80, null]));
+    const underCamadas = moveModules(defaultDock(), ["player"], { kind: "group", path: [3, 1], zone: "bottom" });
+    assert.deepEqual(nodeAt(underCamadas.tree, [3]).sizes, [280, 134, 80, null], "a fixed neighbour gives up just that");
     assert.equal(minSize(g("player"), false, { playerDocked: false }), 76, "its panel header counts");
-    assert.deepEqual(pathOf(placed.tree, "player"), [3, 1]);
+    assert.deepEqual(pathOf(placed.tree, "player"), [3, 2]);
     const hidden = hideModule(placed, "player");
     assert.equal(pathOf(hidden.tree, "player"), null);
     assert.deepEqual(hidden.hidden, [], "never in the tray");
@@ -157,7 +173,8 @@ test("switching tabs and resizing", () => {
 test("a splitter's restore: the size the default console gives the same modules", () => {
     const d = defaultDock();
     assert.equal(defaultSize(d, [], 0), 260);
-    assert.equal(defaultSize(d, [3], 0), 360);
+    assert.equal(defaultSize(d, [3], 0), 280);
+    assert.equal(defaultSize(d, [3], 1), TEMAS_H);
     const moved = moveModules(d, ["camadas"], { kind: "group", path: [0], zone: "center" });
     assert.equal(defaultSize(moved, [], 0), null, "Biblioteca with Camadas: nothing to restore to");
 });
@@ -194,7 +211,7 @@ test("fitting: what does not fit side by side becomes tabs, the dock itself unch
     // Nothing fits beside anything: one group of tabs.
     const tiny = fitDock(d, 400, 500);
     assert.equal(tiny.collapsed, true);
-    assert.deepEqual(tiny.tabs, ["lib", "slides", "programa", "previa", "abas", "onair", "camadas", "setlist"]);
+    assert.deepEqual(tiny.tabs, ["lib", "slides", "programa", "previa", "abas", "onair", "camadas", "temas", "setlist"]);
     assert.deepEqual(tiny.target, [0]);
 });
 
@@ -249,7 +266,7 @@ test("a console never edited opens as it looked at its width: medium and narrow"
         g("lib"), g("slides"),
         split("col", [g("programa"), split("row", [g("previa"), g("setlist")], [344, null])], [null, 278]),
     ], [260, 300, null]));
-    assert.deepEqual(medium.hidden, ["camadas", "abas", "onair"]);
+    assert.deepEqual(medium.hidden, ["camadas", "temas", "abas", "onair"]);
     // The Programa keeps its room, the Prévia and the Setlist side by side.
     const fit = fitDock(medium, 1354, 768);
     assert.equal(Math.round(fit.children[2].size), 782);
@@ -267,8 +284,8 @@ test("a console never edited opens as it looked at its width: medium and narrow"
 test("back from the tray at medium width: Camadas over the Setlist, as in the wide console", () => {
     const medium = fromArrangement({}, { width: 1354, height: 768, tier: "medium" });
     const back = returnModule(medium, "camadas", { width: 1354, height: 768, tier: "medium" });
-    assert.deepEqual(nodeAt(back.tree, [2, 1, 1]), split("col", [g("camadas"), g("setlist")], [360, null]));
-    assert.deepEqual(back.hidden, ["abas", "onair"]);
+    assert.deepEqual(nodeAt(back.tree, [2, 1, 1]), split("col", [g("camadas"), g("setlist")], [280, null]));
+    assert.deepEqual(back.hidden, ["temas", "abas", "onair"], "Temas stays in the tray: Camadas shows the themes then");
 });
 
 test("Ver's module switches over the tray: off goes to the tray, on comes back to its place", () => {
