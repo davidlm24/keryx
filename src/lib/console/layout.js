@@ -18,6 +18,7 @@ export const MODULES = [
     ["lib", "Biblioteca"],
     ["slides", "Slides"],
     ["camadas", "Camadas"],
+    ["temas", "Temas"],
     ["onair", "No ar"],
 ];
 
@@ -41,7 +42,7 @@ export const DEFAULT_LAYOUT = {
     rightW: 320,
     // Camadas' height over the Setlist (the splitter between them); the
     // Setlist takes the rest, most of the column.
-    camadasH: 360,
+    camadasH: 280,
     bibleSelW: 300,
     bibleAirW: 400,
     // The Prévia's width, % of the centre's bottom band (the splitter

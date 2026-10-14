@@ -63,7 +63,7 @@ test("the default Electron window (1440) is wide, not compact", () => {
 });
 
 test("Camadas and No ar are modules in Ver (the Setlist never hides); the right column is rightW wide, Camadas camadasH tall", () => {
-    assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "camadas", "onair"]);
+    assert.deepEqual(MODULES.map(([key]) => key), ["lib", "slides", "camadas", "temas", "onair"]);
     assert.ok(DEFAULT_LAYOUT.camadasH < 400, "the Setlist gets most of the column");
     const old = withStore({ libW: 300 }, () => loadLayout("x")); // a save from the two-band console
     assert.equal(old.camadasH, DEFAULT_LAYOUT.camadasH);

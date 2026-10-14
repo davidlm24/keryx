@@ -110,19 +110,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Esc answers no, before anything else). The Prévia's width is the
   operator's (`layout.prevPct`, the splitter beside it; the Programa gives
   way, `--prev` in console.css); the Próximo sits beside it.
-  **Camadas › Temas** (owner's review 2026-10-14, as Holyrics' theme
-  column; the Temas console card is gone — don't bring it back): a section
-  always at the top of Camadas, above the layer list, with up to 6 pinned
-  themes as small screens (`ThemeStrip.jsx`, `consoleThemes` in themes.js;
-  `ProjectionTheme.pinned`, toggled by "Fixar no console" in the strip's
-  menu, the library's Temas tab and Configurações › Temas; none pinned =
-  the default + most recent). **Camadas edits no look**: the Fundo layer
-  has no options (the culto's background is the Programa's Fundo do culto;
-  the row keeps its eye, padlock and place) and Texto principal only the
-  item's Título — the text look is edited only in the Editor de temas; when
-  the text on air looks otherwise (a song's own look) it says so and offers
-  Restaurar (`applyThemeOnAir`) and Salvar como novo (an unnamed theme).
-  The library's "Ao vivo" mode and Editar fundo… left with Camadas › Fundo.
+  **Temas** (owner's reviews 2026-10-14, as Holyrics' theme column): a
+  dock module of its own, `temas`, right under Camadas (`TEMAS_H`; a save
+  from before it gets it there, `below` in dock.js `MODULES`), with up to 6
+  pinned themes as small screens (`ThemeStrip.jsx`, `consoleThemes` in
+  themes.js; `ProjectionTheme.pinned`, toggled by "Fixar no console" in the
+  strip's menu, the library's Temas tab and Configurações › Temas; none
+  pinned = the default + most recent). With the module in the tray the
+  themes ride at the end of Camadas (card or drawer), never out of reach.
+  **Camadas edits no look**: the layers come first, each with a pencil on
+  hover to where it is edited (Logo › Configurações › Igreja, Sobreposição
+  › its text field, Texto principal › the theme in use in the Editor de
+  temas, Fundo › the library for the Fundo do culto); the Fundo layer has
+  no options and no explanation (the row keeps its eye, padlock and place)
+  and Texto principal only the item's Título — the text look is edited
+  only in the Editor de temas; when the text on air looks otherwise (a
+  song's own look) it says so and offers Restaurar (`applyThemeOnAir`) and
+  Salvar como novo (an unnamed theme).
   **A click makes it the theme in use**: it dresses the text on air
   (`applyThemeOnAir` in `themeActions.js`: text look + Fundo, padlock
   respected) AND everything sent afterwards (Música in `themeForKind`,
@@ -253,9 +257,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **ends at the centre's edge**: the Prévia (44 % of the centre at first),
   then the **tabs panel**
   (`TabsPanel.jsx`), and under that row the **No ar** strip (`ONAIR_H`;
-  medium and narrow start with it in the tray); the **right column** (`rightW`) is **Camadas over the
-  Setlist, full height** (Camadas 360 px high: the Setlist gets most of the
-  column). **The Programa and the Prévia have no card** (owner 2026-10-14,
+  medium and narrow start with it in the tray); the **right column** (`rightW`) is **Camadas, Temas and the
+  Setlist, full height** (Camadas 280 px, Temas `TEMAS_H`: the Setlist gets
+  the rest of the column). **The Notas tab** is the setlist item's notes
+  (only when it has some) over the operator's free field, nothing else. **The Programa and the Prévia have no card** (owner 2026-10-14,
   `Panel bare`, `kx-panel-bare`): the Programa is its header line (caption,
   Fundo do culto, Voltar ao anterior, Multiview), the screen and the player;
   the Prévia is its screen, its caption a badge inside the top-left corner

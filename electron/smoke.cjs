@@ -1394,13 +1394,15 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
         result.tlGone = await js("!document.querySelector('.tl-panel') && !document.querySelector('.kx-tl')");
-        // Camadas (owner's review 2026-10-14): Temas at the top, always
-        // there; the Fundo layer has no options of its own (the culto's
-        // background is the Programa's Fundo do culto) and the Visual do
-        // culto is gone. Camadas may be a card or the drawer at this width.
+        // Camadas (owner's reviews 2026-10-14): the layers first, Temas a
+        // card of its own under them (or, with that module in the tray, at
+        // the end of Camadas); every layer has its pencil; the Fundo layer
+        // has no options of its own (the culto's background is the
+        // Programa's Fundo do culto) and the Visual do culto is gone.
+        // Camadas may be a card or the drawer at this width.
         const dayLookDrawer = await js("(() => { const b = [...document.querySelectorAll('.prog-panel .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return Boolean(b); })()");
         await click(".kx-layer", "Fundo");
-        result.temasOnTop = await waitFor(() => js("(() => { const t = document.querySelector('.layerthemes'); const l = document.querySelector('.kx-layer'); return Boolean(t && l) && t.textContent.includes('Temas') && Boolean(t.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING) && ![...document.querySelectorAll('.layerprops button, .tm-acts button')].some((b) => /Biblioteca…|Editar fundo|Visual d/.test(b.textContent)); })()"), 4000);
+        result.temasCard = await waitFor(() => js("(() => { const t = document.querySelector('[data-dock-mods~=\"temas\"] .tm, .layer-temas .tm'); const l = document.querySelector('.kx-layer'); return Boolean(t && l) && Boolean(l.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING) && document.querySelectorAll('.kx-layer .layer-edit').length === 4 && !document.querySelector('.layerprops') && ![...document.querySelectorAll('.layerprops button, .tm-acts button')].some((b) => /Biblioteca…|Editar fundo|Visual d/.test(b.textContent)); })()"), 4000);
         if (dayLookDrawer) await js("(() => { const b = [...document.querySelectorAll('.prog-panel .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return true; })()");
         // No service yet: dropping a song on the Setlist (the right column,
         // under Camadas, in the wide tier) starts today's setlist.
@@ -1503,7 +1505,7 @@ async function checkConsole(webContents, { live, outputs }) {
             const col = set.closest('.dock-split.is-col');
             const order = col ? [...col.children].map((n) => (n.classList.contains('kx-split') ? '|' : ((n.querySelector(':scope > .dock-group') || {}).dataset || {}).dockMods)).join(',') : '';
             const r = (n) => n.getBoundingClientRect();
-            return order === 'camadas,|,setlist' && Math.abs(r(prev).top - r(abas).top) < 2 && r(abas).right <= r(prog).right + 1 && Boolean(abas.querySelector('.tabs-panel'));
+            return order === 'camadas,|,temas,|,setlist' && Math.abs(r(prev).top - r(abas).top) < 2 && r(abas).right <= r(prog).right + 1 && Boolean(abas.querySelector('.tabs-panel'));
         })()`);
         // Notas: the item prepared from the Setlist shows its notes in the
         // panel beside the Prévia (ServiceItem.notes, never on a screen).
@@ -2500,7 +2502,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
-        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasOnTop && result.serviceThemeSent && result.bgPrefFollows
+        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasCard && result.serviceThemeSent && result.bgPrefFollows
         && result.libBig && result.libEscClosed && result.padraoKept && result.padraoAfterEsc && result.padraoService && result.serviceFundoButton
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc

@@ -34,7 +34,6 @@ function ItemNotes({ c, items, prevItemId, airItemId, service, onSaveNotes }) {
     };
     const prevIt = noteOf(prevItemId);
     const airIt = airItemId !== prevItemId ? noteOf(airItemId) : null;
-    const teacher = c.prev?.notes || c.cur?.content?.stage?.notes;
     const block = (it, where) => (
         <div className="tnotes item-notes" key={`${where}-${it.id}`}>
             <span className="kx-section">{it.title} <span className="kx-count">· {where}</span></span>
@@ -43,7 +42,6 @@ function ItemNotes({ c, items, prevItemId, airItemId, service, onSaveNotes }) {
     );
     return (
         <div className="tabs-notes">
-            {!prevIt && !airIt && !teacher && <span className="kx-meta">As notas de um item da setlist (Planejar o culto) aparecem aqui quando ele está na prévia ou no ar.</span>}
             {prevIt && block(prevIt, airItemId === prevItemId ? "na prévia e no ar" : "na prévia")}
             {airIt && block(airIt, "no ar")}
             <TeacherNotes prev={c.prev} cur={c.cur} />
@@ -74,8 +72,7 @@ function OperatorNotes({ service, onSave }) {
     useEffect(() => () => clearTimeout(timer.current), []);
     return (
         <label className="op-notes">
-            <span className="kx-section">Notas do operador <span className="kx-count">· deste culto, só no console</span></span>
-            <textarea className="op-notes-f" value={text} placeholder="Escreva o que quiser lembrar durante o culto…" aria-label="Notas do operador"
+            <textarea className="op-notes-f" value={text} placeholder="Anotações deste culto (só aparecem aqui no console)…" aria-label="Anotações do operador"
                 onFocus={() => { focused.current = true; }}
                 onChange={(e) => { const v = e.target.value; setText(v); clearTimeout(timer.current); timer.current = setTimeout(() => save(v), 800); }}
                 onBlur={(e) => { focused.current = false; save(e.target.value); }} />

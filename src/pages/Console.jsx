@@ -9,7 +9,7 @@ import { usePosterBackfill } from "@/hooks/usePosterBackfill";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
 import { serviceTheme, lookFields, lookOf } from "@/lib/console/serviceLook";
-import { themeInUseSeed } from "@/lib/console/themes";
+import { themeInUseSeed, defaultTheme, themeName } from "@/lib/console/themes";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
@@ -24,6 +24,7 @@ import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaCaption } from
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
+import ThemeStrip from "@/components/console/ThemeStrip";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
@@ -862,11 +863,22 @@ export default function Console() {
             <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
         </Panel>
     );
-    const camadasPanel = (
-        <Panel title="Camadas" count="o que está no ar">
-            <Layers c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} />
-        </Panel>
+    // Temas: its own module under Camadas (owner 2026-10-14); a click makes
+    // one the theme in use, named in the header. With the module off screen
+    // (the tray) the themes ride at the end of Camadas, card or drawer, so
+    // they are never out of reach.
+    const themeInUse = data.themes.find((t) => t.id === c.themeId) || defaultTheme(data.themes);
+    const themeInUseName = themeInUse ? themeName(themeInUse, "") : "";
+    const themeStrip = <ThemeStrip c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} />;
+    const temasPanel = <Panel title="Temas" count={themeInUseName ? `em uso: ${themeInUseName}` : ""} className="temas-panel">{themeStrip}</Panel>;
+    const temasOn = onScreen("temas");
+    const layers = (
+        <>
+            <Layers c={c} themes={data.themes} onSettings={openSettings} onFundo={pickServiceFundo} />
+            {!temasOn && <div className="layer-temas"><div className="listhead"><span className="kx-section">Temas{themeInUseName && <span className="kx-count"> · em uso: {themeInUseName}</span>}</span></div>{themeStrip}</div>}
+        </>
     );
+    const camadasPanel = <Panel title="Camadas" count="o que está no ar">{layers}</Panel>;
     // The tabs panel: the tabs the operator checked in its (+) (Notas, Aviso
     // rápido, Timers, Ferramentas, Esteve no ar).
     const panelTabsShown = shownTabs("panel", tabLists.panel);
@@ -951,7 +963,7 @@ export default function Console() {
     // goes (the ids are src/lib/console/dock.js's MODULES); the dock places
     // them. The player rides inside the Programa until it is placed.
     const modulePanels = {
-        lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, abas: tabsPanel, setlist: setlistPanel, camadas: camadasPanel, onair: onAirPanel,
+        lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, abas: tabsPanel, setlist: setlistPanel, camadas: camadasPanel, temas: temasPanel, onair: onAirPanel,
         player: <Panel title="Player" className="player-panel">{playerSlot}</Panel>,
     };
     const renderModule = (id) => (modulePanels[id] ? React.cloneElement(modulePanels[id], { key: id }) : null);
@@ -1053,7 +1065,7 @@ export default function Console() {
                 return (
                 <div className={`drawer ${right ? "is-right" : ""}`} style={{ width: Math.max(240, Math.min(360, right ? roomR : roomL)) }}>
                     <Panel title="Camadas" actions={<IconBtn name="x" title="Fechar · Esc" small onClick={() => setDrawer(false)} />}>
-                        <Layers c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} />
+                        {layers}
                     </Panel>
                 </div>
                 );
