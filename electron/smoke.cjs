@@ -2004,11 +2004,17 @@ async function checkConsole(webContents, { live, outputs }) {
         result.themeSticky = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000)
             && !((await js(`window.keryxDesktop.db.call("Service", "get", [${JSON.stringify(svc.id)}])`)).data || {}).theme_id;
         const songThemeId = async () => ((await js(`window.keryxDesktop.db.call("Song", "get", [${JSON.stringify(song.id)}])`)).data || {}).theme_id || "";
-        await click(".tm-song button", "Salvar tema para a música");
+        // Temas' header + (owner 2026-10-14): the song's theme is saved and
+        // cleared from its menu; the panel's body is only the 9 slots.
+        const temasMenu = async (label) => {
+            await js("(() => { const b = document.querySelector('[data-dock-mods~=\"temas\"] .kx-panel-h button[title^=\"Temas:\"], .layer-temas .listhead button[title^=\"Temas:\"]'); if (b) b.click(); return Boolean(b); })()");
+            return waitFor(() => js(`(() => { const b = [...document.querySelectorAll(".kx-menu-item")].find((x) => x.textContent.startsWith(${JSON.stringify(label)})); if (b) b.click(); return Boolean(b); })()`), 4000);
+        };
+        await temasMenu("Salvar tema para a música");
         result.songThemeSaved = await waitFor(async () => Boolean(await songThemeId()), 4000);
-        await waitFor(() => js("[...document.querySelectorAll('.tm-song button')].some((b) => b.textContent === 'Tirar tema da música')"), 4000);
-        await click(".tm-song button", "Tirar tema da música");
+        await temasMenu("Tirar tema da música");
         result.songThemeCleared = await waitFor(async () => !(await songThemeId()), 4000);
+        result.temasSlots = await js("(() => { const g = document.querySelector('.tm-grid'); return Boolean(g) && g.children.length === 9 && !document.querySelector('.tm-song, .tm-acts'); })()").catch(() => false);
         // Camadas › Texto principal › Título: Sem hides the song's name on
         // this item (the Programa, and every output), whatever Aparência says.
         // Its settings open from its pencil (owner 2026-10-14: folded until then).

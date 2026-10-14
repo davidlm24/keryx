@@ -24,7 +24,7 @@ import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaCaption } from
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
-import ThemeStrip, { newTheme } from "@/components/console/ThemeStrip";
+import ThemeStrip from "@/components/console/ThemeStrip";
 import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
@@ -99,6 +99,8 @@ export default function Console() {
     const bibleStageRef = useRef(null);
     // Camadas' + (its panel header): adds the text overlay (Layers.jsx).
     const addOverlayRef = useRef(null);
+    // Temas' + and library (its panel header): the strip's own menu (ThemeStrip.jsx).
+    const themeMenuRef = useRef(null);
     // The Bible environment's selection cursor (↑/↓ from the console's keys).
     const bibleApiRef = useRef(null);
     // ?env=biblia (the old /Bible page on desktop) opens the Bíblia environment.
@@ -806,10 +808,11 @@ export default function Console() {
     // Minimized (its header's chevron, as Holyrics' strip): only its header.
     const onAirH = layout.onairMin ? PANEL_HEAD : onAirHeight(c.cur?.content?.slides, PANEL_HEAD);
     const [camadasFitH, setCamadasFitH] = useState(0);
+    const [temasFitH, setTemasFitH] = useState(0);
     const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h, {
         gone: gone ? gone.split(",") : [],
-        locked: { onair: onAirH, ...(camadasFitH ? { camadas: PANEL_HEAD + camadasFitH } : {}) },
-    }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH]);
+        locked: { onair: onAirH, ...(camadasFitH ? { camadas: PANEL_HEAD + camadasFitH } : {}), ...(temasFitH ? { temas: PANEL_HEAD + temasFitH } : {}) },
+    }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH, temasFitH]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
     const playerDocked = !onScreen("player");
     const setDock = (next) => setLayout({ ...layout, dock: next });
@@ -916,15 +919,17 @@ export default function Console() {
     // they are never out of reach.
     const themeInUse = data.themes.find((t) => t.id === c.themeId) || defaultTheme(data.themes);
     const themeInUseName = themeInUse ? themeName(themeInUse, "") : "";
-    const themeStrip = <ThemeStrip c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} />;
-    // The +, icon only at the header's right as everywhere (owner 2026-10-14).
-    const newThemeBtn = <IconBtn name="plus" title="Novo tema" small onClick={() => newTheme(c)} />;
-    const temasPanel = <Panel title="Temas" count={themeInUseName ? `em uso: ${themeInUseName}` : ""} className="temas-panel" actions={newThemeBtn}>{themeStrip}</Panel>;
+    const themeStrip = <ThemeStrip c={c} themes={data.themes} songs={data.songs} service={service} ensureService={ensureService} menuRef={themeMenuRef} view={{ thumb: layout.temasThumb, names: layout.temasNames }} setView={(v) => setLayout({ ...layout, ...v })} />;
+    // The header: the library (where the 9 slots are pinned) and the + menu
+    // (owner 2026-10-14: the body is only the thumbnails); as tall as its
+    // slots (Measure → locked.temas), like Camadas.
+    const temasBtns = <><IconBtn name="grid" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
+    const temasPanel = <Panel title="Temas" count={themeInUseName ? `em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
     const temasOn = onScreen("temas");
     const layers = (
         <>
             <Layers c={c} themes={data.themes} onSettings={openSettings} onFundo={pickServiceFundo} addRef={addOverlayRef} />
-            {!temasOn && <div className="layer-temas"><div className="listhead"><span className="kx-section">Temas{themeInUseName && <span className="kx-count"> · em uso: {themeInUseName}</span>}</span>{newThemeBtn}</div>{themeStrip}</div>}
+            {!temasOn && <div className="layer-temas"><div className="listhead"><span className="kx-section">Temas{themeInUseName && <span className="kx-count"> · em uso: {themeInUseName}</span>}</span>{temasBtns}</div>{themeStrip}</div>}
         </>
     );
     const camadasPanel = (

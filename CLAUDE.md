@@ -112,12 +112,21 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   way, `--prev` in console.css); the Próximo sits beside it.
   **Temas** (owner's reviews 2026-10-14, as Holyrics' theme column): a
   dock module of its own, `temas`, right under Camadas (`TEMAS_H`; a save
-  from before it gets it there, `below` in dock.js `MODULES`), with up to 6
+  from before it gets it there, `below` in dock.js `MODULES`), with up to 9
   pinned themes as small screens (`ThemeStrip.jsx`, `consoleThemes` in
   themes.js; `ProjectionTheme.pinned`, toggled by "Fixar no console" in the
   strip's menu, the library's Temas tab and Configurações › Temas; none
   pinned = the default + most recent). With the module in the tray the
-  themes ride at the end of Camadas (card or drawer), never out of reach.
+  themes ride at the end of Camadas (card or drawer), never out of reach. **The Temas panel is its 9 slots** (owner 2026-10-14, `TEMAS_SLOTS`
+  in ThemeStrip.jsx): 3 a row (2 with "Miniaturas grandes"), only the
+  thumbnails — a name under one only when the theme has a name and
+  "Mostrar nomes" is on (`layout.temasThumb`/`temasNames`, per computer);
+  an empty slot is a dashed + that makes a new theme; the panel is as tall
+  as its slots (`Measure` → `locked.temas`), like Camadas. Its header has
+  the library (`grid` icon; the library's right click pins a theme here)
+  and the **+ menu** (`menuRef`): Novo tema, Salvar/Tirar tema para a
+  música, Usar neste culto, Seguir o culto, Tornar padrão, Visualização.
+  Nothing else in the body: no "tema do culto" line, no buttons.
   **Camadas edits no look**: the layers come first, each with a pencil on
   hover; **the settings under the list stay folded until a pencil opens
   them** (owner 2026-10-14; a click on the row only selects it) — Logo
