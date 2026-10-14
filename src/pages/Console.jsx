@@ -49,7 +49,7 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreEnv } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, moveModules, hideModule, returnModule, canTray, leaves, pathOf } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, moveModules, hideModule, trayFlags, applyTrayFlags, canTray, leaves, pathOf } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
@@ -778,14 +778,9 @@ export default function Console() {
     // Ver's and Configurações' module switches: the culto's tray on this
     // computer. They see the layout with the tray as `hidden`; a switch
     // moves the module out (to the tray) or back (to its default place).
-    const trayHidden = Object.fromEntries(VER_MODULES.map((id) => [id, dock.hidden.includes(id)]));
-    const uiLayout = { ...layout, hidden: trayHidden };
+    const uiLayout = { ...layout, hidden: trayFlags(dock, VER_MODULES) };
     const setUiLayout = (next) => {
-        let d = dock;
-        for (const id of VER_MODULES) {
-            const want = Boolean(next.hidden?.[id]);
-            if (want !== trayHidden[id]) d = want ? hideModule(d, id) : returnModule(d, id, dockOpts);
-        }
+        const d = applyTrayFlags(dock, next.hidden, VER_MODULES, dockOpts);
         setLayout({ ...next, hidden: layout.hidden, dock: d === dock ? next.dock : d });
     };
     // The Bíblia's own dock (BibleEnv.jsx draws its modules), the same way.
@@ -855,7 +850,10 @@ export default function Console() {
     // drawer open beside it, wherever the dock puts it.
     const programaBox = () => mainRef.current?.querySelector('[data-dock-mods~="programa"]')?.getBoundingClientRect() || null;
     // "Voltar ao anterior" opens over the Programa, wherever it is.
-    const histLeft = open === "hist" ? Math.round(programaBox()?.left ?? 6) : 0;
+    // Under the Programa's header, where its button is; inside the window.
+    const histBox = open === "hist" ? programaBox() : null;
+    const histLeft = histBox ? Math.round(histBox.left) : 6;
+    const histTop = histBox ? Math.round(Math.min(histBox.top + 36, window.innerHeight - 240)) : 72;
     const camadasOn = onScreen("camadas");
     // Camadas on screen: no drawer left open behind it (Esc would close that first).
     useEffect(() => { if (camadasOn) setDrawer(false); }, [camadasOn]);
@@ -1026,7 +1024,7 @@ export default function Console() {
             {lookReq && <LookDialog c={c} row={lookRow} save={saveLook} onClose={() => setLookReq(null)} what={lookReq.kind === "template" ? "do modelo" : "do culto"}
                 title={lookReq.kind === "template" ? `Visual do modelo · ${lookRow?.name || ""}` : `Visual do culto · ${lookRow?.title || "hoje"}`}
                 note={lookReq.kind === "service" && !lookRow ? "Nenhum culto escolhido: a primeira escolha cria a setlist de hoje." : null} />}
-            {cfg && <SettingsView c={c} section={cfg} tab={cfgAt.tab} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} />}
+            {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
@@ -1043,7 +1041,7 @@ export default function Console() {
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => c.liveOp("idle.set", { mode: m }).catch((err) => c.say(err?.message || "Não foi possível mudar a tela ociosa."))} onSettings={openSettings} />
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} />
-            <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} />
+            <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} top={histTop} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
             {drawer && !camadasOn && !view && env === "culto" && (() => {

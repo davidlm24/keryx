@@ -31,7 +31,7 @@ export function QuickAlert({ c, data }) {
     const keep = canKeep(alertText, presets);
     const keepAlert = () => {
         if (!keep.ok) { c.say(keep.why); return; }
-        keryx.entities.AlertPreset.create({ message: cleanPreset(alertText) }).then(() => c.say("Mensagem guardada.")).catch((err) => c.say(err?.message || "Não foi possível guardar a mensagem."));
+        keryx.entities.AlertPreset.create({ message: cleanPreset(alertText) }).then(() => c.say("Mensagem salva.")).catch((err) => c.say(err?.message || "Não foi possível salvar a mensagem."));
     };
     const dropPreset = (p) => keryx.entities.AlertPreset.delete(p.id).catch((err) => c.say(err?.message || "Não foi possível excluir a mensagem."));
     const sendPreset = (p) => c.callOp("alert.show", { message: p.message, type: "message" }).catch(() => {});
@@ -41,7 +41,7 @@ export function QuickAlert({ c, data }) {
             <div className="qt-row">
                 <Field icon={null} value={alertText} onChange={setAlertText} placeholder="Aviso para as telas" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") showAlert(); }} />
                 <Btn onClick={showAlert} title="Mostrar nas telas agora · Enter">Mostrar</Btn>
-                <IconBtn name="star" on={Boolean(kept)} disabled={!kept && !alertText.trim()} title={kept ? "Esta mensagem já está guardada" : "Guardar esta mensagem como pronta"} onClick={keepAlert} />
+                <IconBtn name="star" on={Boolean(kept)} disabled={!kept && !alertText.trim()} title={kept ? "Esta mensagem já está salva" : "Salvar esta mensagem como pronta"} onClick={keepAlert} />
             </div>
             <div className="kx-presets" role="list" aria-label="Mensagens prontas">
                 {!presets.length && <span className="kx-meta kx-presets-empty">Escreva um aviso e use a estrela para guardá-lo como mensagem pronta. Ex.: Chamar pessoa, Kids, Carro.</span>}
@@ -88,7 +88,7 @@ export function ReadyTimers({ c, data, onPrepare, onGo, onPrepared }) {
     const keepTimer = canKeepTimer(minutes, data.timerPresets);
     const keepTimerNow = () => {
         if (!keepTimer.ok) { c.say(keepTimer.why); return; }
-        keryx.entities.TimerPreset.create({ minutes: cleanMinutes(minutes) }).then(() => c.say(`${minutesLabel(cleanMinutes(minutes))} guardado.`)).catch((err) => c.say(err?.message || "Não foi possível guardar o tempo."));
+        keryx.entities.TimerPreset.create({ minutes: cleanMinutes(minutes) }).then(() => c.say(`${minutesLabel(cleanMinutes(minutes))} salvo.`)).catch((err) => c.say(err?.message || "Não foi possível salvar o tempo."));
     };
     const dropTimer = (t) => keryx.entities.TimerPreset.delete(t.id).catch((err) => c.say(err?.message || "Não foi possível excluir o tempo."));
     const timerStage = (m) => stageFromTool("timer", { minutes: m });
@@ -100,14 +100,14 @@ export function ReadyTimers({ c, data, onPrepare, onGo, onPrepared }) {
                         <button type="button" className="kx-t kx-preset-t" title={`${minutesLabel(t.minutes)} · clique põe na prévia · dois cliques mostram nas telas`}
                             onClick={() => { setMinutes(t.minutes); onPrepare(timerStage(t.minutes)); }}
                             onDoubleClick={() => { setMinutes(t.minutes); onGo ? onGo(timerStage(t.minutes)) : onPrepare(timerStage(t.minutes)); }}>{minutesLabel(t.minutes)}</button>
-                        {t.id && <button type="button" className="kx-t kx-preset-x" aria-label={`Excluir o tempo ${minutesLabel(t.minutes)}`} title="Excluir este tempo guardado" onClick={() => dropTimer(t)}><Icon name="x" size={12} /></button>}
+                        {t.id && <button type="button" className="kx-t kx-preset-x" aria-label={`Excluir o tempo ${minutesLabel(t.minutes)}`} title="Excluir este tempo salvo" onClick={() => dropTimer(t)}><Icon name="x" size={12} /></button>}
                     </span>
                 ))}
             </div>
             <div className="kx-tool-pick">
                 <span className="kx-meta">Minutos</span>
                 <input type="number" min="1" max="180" value={minutes} onChange={(e) => setMinutes(Math.max(1, Math.min(180, Number(e.target.value) || 1)))} aria-label="Minutos" className="qt-min" />
-                <IconBtn name="star" small disabled={!keepTimer.ok} title={keepTimer.ok ? "Guardar este tempo na lista" : keepTimer.why} onClick={keepTimerNow} />
+                <IconBtn name="star" small disabled={!keepTimer.ok} title={keepTimer.ok ? "Salvar este tempo na lista" : keepTimer.why} onClick={keepTimerNow} />
                 <Btn onClick={() => { onPrepare(timerStage(minutes)); onPrepared?.(); }}>Pôr na prévia</Btn>
             </div>
         </>

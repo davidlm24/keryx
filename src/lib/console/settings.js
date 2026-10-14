@@ -16,12 +16,6 @@ export const SECTIONS = [
     { id: "backup", icon: "save", name: "Backup e atualizações" },
 ];
 
-// Telas e saídas' tabs besides one per output (an output's tab is its page
-// path without the "/": "Projection", "StageView"…).
-// Telas e saídas lost its tabs (2026-10-13, thumbnails): old
-// ?config=telas/<tab> links still resolve to the section (resolveSection).
-export const TELAS_TABS = [];
-
 // Ids of older versions, still in links (?config=), in notifications saved
 // in settings.json ("settings:dados") and in muscle memory.
 const ALIASES = {
@@ -41,11 +35,10 @@ export function resolveSection(raw) {
     const sub = cut < 0 ? "" : s.slice(cut + 1);
     if (head === "aparencia" && sub === "temas") return { id: "temas", tab: null };
     const id = ALIASES[head]?.id || (SECTIONS.some((x) => x.id === head) ? head : "telas");
-    if (id === "telas") return { id, tab: /^[A-Za-z]{1,40}$/.test(sub) ? sub : null };
+    // Telas e saídas lost its tabs (2026-10-13, thumbnails): an old
+    // ?config=telas/<tab> link opens the section.
     return { id, tab: null };
 }
 
 export const sectionOf = (id) => SECTIONS.find((s) => s.id === id) || SECTIONS[1];
 
-// An output's tab id (its page path without the "/") and back.
-export const outputTab = (key) => String(key || "").replace(/^\//, "");

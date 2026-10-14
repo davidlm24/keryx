@@ -134,6 +134,9 @@ export function normalizePref(row) {
 }
 
 export const isDefaultPref = (p) => !p.content && !p.hidden?.length && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.design && !p.layoutId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
+// The settings alone, the drawing aside: what "Restaurar padrão" puts back
+// (the drawing stays; the Editor's "Voltar à página padrão" is for it).
+export const isDefaultSettings = (p) => isDefaultPref({ ...p, design: null, layoutId: "" });
 
 // The drawing this screen uses: its own design; else (an old save) the
 // ScreenLayout row or factory layout its layout_id still names — the lazy

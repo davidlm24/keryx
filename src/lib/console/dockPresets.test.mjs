@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePresets, nameProblem, addPreset, updatePreset, renamePreset, removePreset, presetOf, presetChanged, presetsFor, cleanName, MAX_PRESETS } from "./dockPresets.js";
+import { normalizePresets, nameProblem, addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, cleanName, MAX_PRESETS } from "./dockPresets.js";
 import { defaultDock, moveModules, setActive } from "./dock.js";
 
 const dock = defaultDock();
@@ -29,22 +29,19 @@ test("names: required, never Padrão, never twice, a limited list", () => {
     assert.equal(nameProblem(list, "  "), "Dê um nome à disposição.");
     assert.match(nameProblem(list, "PADRÃO"), /de fábrica/);
     assert.match(nameProblem(list, "culto"), /Já existe/);
-    assert.equal(nameProblem(list, "culto", "a"), null, "renaming keeps its own name");
     assert.equal(nameProblem(list, "Ensaio"), null);
     const full = Array.from({ length: MAX_PRESETS }, (_, i) => ({ id: `p${i}`, name: `D${i}`, dock }));
     assert.match(nameProblem(full, "Mais uma"), /Cabem/);
     assert.equal(cleanName("  a   b  "), "a b");
 });
 
-test("add, update, rename, remove", () => {
+test("add, update, remove", () => {
     const { list, id } = addPreset([], "Ensaio", moved, "x1");
     assert.equal(id, "x1");
     assert.deepEqual(list.map((p) => p.name), ["Ensaio"]);
     assert.deepEqual(addPreset(list, "ensaio", dock, "x2"), { list, id: null }, "a taken name adds nothing");
     const upd = updatePreset(list, "x1", dock);
     assert.deepEqual(upd[0].dock, dock);
-    assert.equal(renamePreset(upd, "x1", "Ensaio geral")[0].name, "Ensaio geral");
-    assert.equal(renamePreset(upd, "x1", "Padrão"), upd, "a bad name renames nothing");
     assert.deepEqual(removePreset(upd, "x1"), []);
     assert.equal(presetOf(upd, "x1").name, "Ensaio");
     assert.equal(presetOf(upd, null), null);
@@ -70,7 +67,6 @@ test("each environment has its own arrangements: the same name in both, each cou
     assert.deepEqual(presetsFor(b.list, "biblia").map((p) => p.id), ["b1"]);
     assert.equal(presetsFor(b.list, "biblia")[0].dock.env, "biblia");
     assert.equal(addPreset(b.list, "estudo", bible, "b2").id, null, "but twice in the Bíblia, no");
-    assert.equal(renamePreset(b.list, "b1", "Culto").find((p) => p.id === "b1").name, "Culto");
     // A saved list keeps both, and twelve per environment.
     const many = [
         ...Array.from({ length: 13 }, (_, i) => ({ id: `c${i}`, name: `D${i}`, dock })),

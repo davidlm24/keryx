@@ -13,6 +13,7 @@ import { buildOutputsFile, readOutputsFile, prefWrites, fileName } from "@/lib/o
 import { useLayoutRows } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
 import { useContextMenu } from "../ContextMenu";
+import { useConfirm } from "../ConfirmDialog";
 
 const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
 
@@ -55,8 +56,8 @@ export default function TelasSection({ c, onOpenScreen }) {
     // Importar ajustes: the file read and checked (outputsFile.js), waiting
     // for the operator to confirm what changes.
     const [pending, setPending] = useState(null);
-    // Remover saída asks twice (like excluir um layout).
-    const [removeConfirm, setRemoveConfirm] = useState(null);
+    // Remover saída asks first, in the console's dialog.
+    const confirm = useConfirm();
     if (!displays) return <Empty icon="monitor" title="Telas e saídas">{desktopOnly}</Empty>;
     if (!state) return <Reading what="as telas" error={readError} />;
 
@@ -129,9 +130,9 @@ export default function TelasSection({ c, onOpenScreen }) {
         if (p.mode === "fullscreen") return number(p.displayId) ? `Tela cheia na Tela ${number(p.displayId)}` : "Tela cheia";
         return "Abre numa janela";
     };
-    const removeOutput = (o) => {
-        if (removeConfirm !== o.key) { setRemoveConfirm(o.key); c.say(`Clique de novo para remover ${o.label}. Os ajustes ficam guardados.`); return; }
-        setRemoveConfirm(null);
+    const removeOutput = async (o) => {
+        const ok = await confirm({ title: `Remover a saída ${o.label}?`, text: "Ela sai das listas e não abre mais ao iniciar. Os ajustes continuam salvos: Adicionar saída traz de volta.", ok: "Remover" });
+        if (!ok) return;
         apply(displays.set(o.key, { removed: true }).then((res) => { c.say(`${o.label} removida.`); return res; }));
     };
     // One card per output. A removed output leaves the grid (and Saídas,
@@ -205,7 +206,7 @@ export default function TelasSection({ c, onOpenScreen }) {
                 {/* Adicionar saída: the removed ones, back with one click
                     (the entry and the Ajustes were kept). */}
                 {removedOuts.map((o) => (
-                    <CfgKey key={o.key} k="Adicionar saída" as="button" type="button" className="kx-t cfg-card cfg-card-add" title={`Adicionar ${o.label} de volta · os ajustes ficaram guardados`}
+                    <CfgKey key={o.key} k="Adicionar saída" as="button" type="button" className="kx-t cfg-card cfg-card-add" title={`Adicionar ${o.label} de volta · os ajustes continuam salvos`}
                         onClick={() => apply(displays.set(o.key, { removed: false }).then((res) => { c.say(`${o.label} adicionada de volta.`); return res; }))}>
                         <span className="cfg-card-plus"><Icon name="plus" /></span>
                         <span className="cfg-card-t">Adicionar {o.label}</span>

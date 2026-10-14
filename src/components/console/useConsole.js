@@ -105,13 +105,15 @@ export function useConsole() {
     liveRef.current = live;
     const seenPrefs = useRef(null);
     useEffect(() => {
-        const first = seenPrefs.current === null;
+        const prev = seenPrefs.current;
         seenPrefs.current = bgPrefs;
-        if (first) return;
+        if (prev === null) return;
         const cur = liveRef.current;
         const bg = cur?.background;
         if (!bg || (bg.kind !== "image" && bg.kind !== "video") || layerLocked(cur, "background")) return;
         const look = backgroundLook(bgPrefs, bg.value);
+        // This picture's own settings, not another picture's row (a favourite, a hidden one).
+        if (JSON.stringify(look) === JSON.stringify(backgroundLook(prev, bg.value))) return;
         const patch = Object.fromEntries(Object.entries(look).filter(([k, v]) => v !== null && v !== (bg[k] ?? null)));
         if (Object.keys(patch).length) keryx.live.call("background.set", { ...bg, ...patch }).catch(() => {});
     }, [bgPrefs]);

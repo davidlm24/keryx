@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SECTIONS, resolveSection, sectionOf, outputTab } from "./settings.js";
+import { SECTIONS, resolveSection, sectionOf } from "./settings.js";
 
 test("settings: every section has an id, an icon and a name, none repeated", () => {
     assert.equal(new Set(SECTIONS.map((s) => s.id)).size, SECTIONS.length);
@@ -22,13 +22,12 @@ test("settings: the ids of older versions still open their place", () => {
     assert.deepEqual(resolveSection("igreja"), { id: "igreja", tab: null });
 });
 
-test("settings: Telas e saídas opens on a tab (an output, Layouts, Geral); others have none", () => {
-    assert.deepEqual(resolveSection("telas/layouts"), { id: "telas", tab: "layouts" });
-    assert.deepEqual(resolveSection("telas/StageView"), { id: "telas", tab: "StageView" });
+test("settings: an old link to a tab of Telas e saídas (it has none since the thumbnails) opens the section", () => {
+    assert.deepEqual(resolveSection("telas/layouts"), { id: "telas", tab: null });
+    assert.deepEqual(resolveSection("telas/StageView"), { id: "telas", tab: null });
     assert.deepEqual(resolveSection("telas/../x"), { id: "telas", tab: null });
     assert.deepEqual(resolveSection("aparencia/fundos"), { id: "aparencia", tab: null });
     assert.deepEqual(resolveSection("culto/x"), { id: "culto", tab: null });
-    assert.equal(outputTab("/PastorView"), "PastorView");
 });
 
 test("settings: unknown or empty ids open Telas e saídas", () => {

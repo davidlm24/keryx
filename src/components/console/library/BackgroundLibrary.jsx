@@ -65,7 +65,10 @@ export default function BackgroundLibrary({ c, request, onDone }) {
             row ? { label: "Excluir…", icon: "trash", onSelect: async () => {
                 if (!(await confirm(deleteQuestion(b.kind === "video" ? "o vídeo de fundo" : "a imagem de fundo", b.name)))) return;
                 try { await keryx.entities.Media.delete(row.id); if (sel?.value === b.url) setSel(null); c.say("Fundo excluído."); } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
-            } } : { label: "Os fundos que vêm com o KERYX não se excluem: use Oculto", disabled: true },
+            } } : media.some((m) => m.file_url === b.url)
+                // A Mídia picture set up as a background (it has a BackgroundPref): it is the Mídia's.
+                ? { label: "Está na Mídia: exclua por lá, ou use Oculto", disabled: true }
+                : { label: "Os fundos que vêm com o KERYX não se excluem: use Oculto", disabled: true },
         ] });
     };
     const list = useBackgrounds();

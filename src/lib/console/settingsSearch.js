@@ -9,7 +9,7 @@
 // query rules, src/lib/bibleSearch.js) and a word matches the start of a
 // word: "transi" finds Transição, "nvi" finds NVI but not "enviar".
 import { fold, searchTerms } from "../bibleSearch.js";
-import { SECTIONS, TELAS_TABS } from "./settings.js";
+import { SECTIONS } from "./settings.js";
 
 const e = (section, label, hint, keywords = [], extra = {}) => ({ section, label, hint, keywords, target: extra.target || label, tab: extra.tab || null });
 
@@ -22,7 +22,7 @@ export const SETTINGS_INDEX = [
     e("telas", "Identificar telas", "os monitores ligados e o número de cada um", ["monitores", "monitor", "projetor", "tv", "número"]),
     e("telas", "Saídas", "em que tela abre cada saída, tela cheia ou janela", ["projeção", "letras", "vídeo", "comunicação", "palco", "pastor", "tela cheia", "janela", "trazer para a frente", "fechar", "abrir"]),
     e("telas", "Abrir ao iniciar", "a saída abre sozinha quando o KERYX abre", ["iniciar", "automático"], { target: "Saídas" }),
-    e("telas", "Remover saída", "no clique direito da tela: tira a saída das listas; os ajustes ficam guardados", ["remover", "tirar", "esconder", "desativar", "excluir saída"], { target: "Saídas" }),
+    e("telas", "Remover saída", "no clique direito da tela: tira a saída das listas; os ajustes continuam salvos", ["remover", "tirar", "esconder", "desativar", "excluir saída"], { target: "Saídas" }),
     e("telas", "Adicionar saída", "traz de volta uma saída removida, com os mesmos ajustes", ["adicionar", "ativar", "restaurar saída", "voltar"]),
     e("telas", "Arquivo de ajustes", "exportar e importar a tela e os ajustes de cada saída", ["arquivo", "exportar", "importar"]),
     e("telas", "Exportar ajustes das saídas", "salva num arquivo a tela e os ajustes de cada saída", ["exportar", "salvar", "arquivo", "backup das saídas", "outro computador", "reinstalar", "spo"] ),
@@ -70,7 +70,7 @@ export const SETTINGS_INDEX = [
     e("console", "Módulos", "Biblioteca, Slides, Camadas e Setlist", ["biblioteca", "slides", "camadas", "setlist", "mostrar", "esconder", "ocultar"]),
     e("console", "Densidade", "confortável ou compacta", ["compacta", "confortável", "linhas", "altura"]),
     e("console", "Disposição", "restaurar os módulos, a densidade e as colunas", ["restaurar disposição", "layout", "colunas", "tamanhos", "padrão"]),
-    e("console", "Ao fechar", "perguntar antes de fechar com algo no ar", ["fechar", "sair", "confirmar", "perguntar"]),
+    e("console", "Ao fechar", "perguntar antes de fechar o KERYX", ["fechar", "sair", "confirmar", "perguntar"]),
     e("console", "Iniciar com o Windows", "abrir o KERYX quando o computador liga", ["windows", "iniciar", "ligar", "automático", "inicialização"]),
     e("console", "Atalhos", "as teclas do console: Enter, setas, B, L, C, Esc", ["teclado", "teclas", "atalho", "enter", "esc"]),
 
@@ -97,10 +97,8 @@ const matches = (text, terms) => { const hay = fold(text); return terms.every((t
 
 const ORDER = Object.fromEntries(SECTIONS.map((s, i) => [s.id, i]));
 const NAME = Object.fromEntries(SECTIONS.map((s) => [s.id, s.name]));
-const TAB = Object.fromEntries(TELAS_TABS);
-
-// "Telas e saídas › Layouts das telas": where an entry lives, for its result line.
-export const placeOf = (entry) => [NAME[entry.section], entry.tab && TAB[entry.tab]].filter(Boolean).join(" › ");
+// Where an entry lives ("Telas e saídas"), for its result line.
+export const placeOf = (entry) => NAME[entry.section] || "";
 
 // -> the entries matching the query (every word, in the label, the hint, the
 // keywords or the section's name), in the order of the sections; within a

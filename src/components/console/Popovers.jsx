@@ -241,10 +241,10 @@ export function TabsMenu({ open, list, onToggle, onRestore }) {
 }
 
 // "Esteve no ar": the live state's history, back through the Prévia.
-export function History({ open, setOpen, history, onPick, left }) {
+export function History({ open, setOpen, history, onPick, left, top = 72 }) {
     if (open !== "hist") return null;
     return (
-        <div className="pop kx-pop" style={{ left, top: 72, width: 300 }}>
+        <div className="pop kx-pop" style={{ left, top, width: 300 }}>
             <div className="kx-menu-h"><span className="kx-section">Voltar ao anterior</span><span style={{ flex: 1 }} /><span className="kx-meta">escolha para pôr na prévia</span></div>
             {!history.length && <div className="kx-menu-h"><span className="kx-meta">Nada ainda.</span></div>}
             {history.map((h) => (

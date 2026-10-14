@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Panel, Row, IconBtn, Field, Empty } from "../kx";
-import { SECTIONS, TELAS_TABS, sectionOf } from "@/lib/console/settings";
+import { SECTIONS, sectionOf } from "@/lib/console/settings";
 import { searchSettings, groupHits, countBySection } from "@/lib/console/settingsSearch";
 import { searchTerms, highlightParts } from "@/lib/bibleSearch";
 import { focusKind } from "@/lib/console/keys";
@@ -26,7 +26,6 @@ const BODIES = {
     backup: DadosSection,
 };
 const ICON = Object.fromEntries(SECTIONS.map((s) => [s.id, s.icon]));
-const TAB_NAME = Object.fromEntries(TELAS_TABS);
 
 // A text with the searched words marked (accents and case ignored).
 function Marked({ text, terms }) {
@@ -46,7 +45,7 @@ const FLASH_MS = 1600;
 // without accents (src/lib/console/settingsSearch.js): the results replace
 // the section, the left column counts them, and Enter or a click opens the
 // section and lights the row up.
-export default function SettingsView({ c, section, tab, setSection, onClose, layout, setLayout, restoreLayout, onOpenScreen }) {
+export default function SettingsView({ c, section, setSection, onClose, layout, setLayout, restoreLayout, onOpenScreen }) {
     const current = sectionOf(section);
     const [q, setQ] = useState("");
     const [active, setActive] = useState(0);
@@ -129,10 +128,9 @@ export default function SettingsView({ c, section, tab, setSection, onClose, lay
                         <div className="kx-menu-h"><span className="kx-section">{g.name}</span></div>
                         {g.hits.map((h) => {
                             const i = hits.indexOf(h);
-                            const where = h.tab && TAB_NAME[h.tab] ? `${TAB_NAME[h.tab]} · ` : "";
                             return (
                                 <Row key={`${h.section}:${h.tab}:${h.label}:${i}`} icon={ICON[h.section]} state={i === active ? "is-selected" : ""}
-                                    title={<Marked text={h.label} terms={terms} />} meta={<>{where}<Marked text={h.hint} terms={terms} /></>}
+                                    title={<Marked text={h.label} terms={terms} />} meta={<Marked text={h.hint} terms={terms} />}
                                     onClick={() => jump(h)} />
                             );
                         })}

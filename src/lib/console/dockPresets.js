@@ -36,14 +36,13 @@ export function normalizePresets(saved) {
 }
 
 // Why a name cannot be used for a new arrangement, or null when it can.
-// `list`: the arrangements of its environment (presetsFor); `except`: the
-// preset being renamed.
-export function nameProblem(list, name, except = null) {
+// `list`: the arrangements of its environment (presetsFor).
+export function nameProblem(list, name) {
     const n = cleanName(name);
     if (!n) return "Dê um nome à disposição.";
     if (sameName(n, PADRAO)) return "“Padrão” é a disposição de fábrica; escolha outro nome.";
-    if (list.some((p) => p.id !== except && sameName(p.name, n))) return `Já existe uma disposição “${n}”.`;
-    if (!except && list.length >= MAX_PRESETS) return `Cabem ${MAX_PRESETS} disposições; exclua uma antes.`;
+    if (list.some((p) => sameName(p.name, n))) return `Já existe uma disposição “${n}”.`;
+    if (list.length >= MAX_PRESETS) return `Cabem ${MAX_PRESETS} disposições; exclua uma antes.`;
     return null;
 }
 
@@ -57,12 +56,6 @@ export function addPreset(list, name, dock, id) {
 
 // The arrangement in use saved over its preset.
 export const updatePreset = (list, id, dock) => list.map((p) => (p.id === id ? { ...p, dock: normalizeDock(dock) } : p));
-
-export function renamePreset(list, id, name) {
-    const p = list.find((q) => q.id === id);
-    if (!p || nameProblem(presetsFor(list, dockEnv(p.dock)), name, id)) return list;
-    return list.map((q) => (q.id === id ? { ...q, name: cleanName(name) } : q));
-}
 
 export const removePreset = (list, id) => list.filter((p) => p.id !== id);
 

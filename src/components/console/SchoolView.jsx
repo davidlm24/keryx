@@ -8,6 +8,7 @@ import { stageFromMaterial, stageFromTool, liveStageId } from "@/lib/console/sta
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { AGE_GROUPS, ageLabel, MATERIAL_TYPES, materialIcon, materialMeta, quizQuestions, slidesFromText, textFromSlides, dayOf, isPresent, toggleAttendance, attendanceNote, presentCount } from "@/lib/console/school";
 import BgChip from "./library/BgChip";
+import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 
 const EMPTY = [];
 const CLASSES = ["console", "bibleClasses"];
@@ -31,7 +32,8 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     const [student, setStudent] = useState("");
     const [onlyClass, setOnlyClass] = useState(true);
     const [editing, setEditing] = useState(null); // a material draft (id or not)
-    const [confirm, setConfirm] = useState(null);
+    const [confirm, setConfirm] = useState(null); // "st:<i>": a student about to leave the class
+    const ask = useConfirm();
     const [minutes, setMinutes] = useState(5);
     const today = dayOf();
     const refresh = () => { client.invalidateQueries({ queryKey: CLASSES }); client.invalidateQueries({ queryKey: MATERIALS }); };
@@ -56,8 +58,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         } catch (err) { fail(err); }
     };
     const removeClass = async () => {
-        if (confirm !== "class") { setConfirm("class"); c.say(`Clique de novo para excluir a turma "${cls.name}" (os materiais ficam).`); return; }
-        setConfirm(null);
+        if (!(await ask(deleteQuestion("a turma", cls.name, "Os materiais ficam.")))) return;
         try { await keryx.entities.BibleSchoolClass.delete(cls.id); setClassId(null); refresh(); c.say("Turma excluída."); } catch (err) { fail(err); }
     };
     const addStudent = () => {
@@ -90,8 +91,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         } catch (err) { fail(err); }
     };
     const removeMaterial = async () => {
-        if (confirm !== "mat") { setConfirm("mat"); c.say(`Clique de novo para excluir "${editing.title}".`); return; }
-        setConfirm(null);
+        if (!(await ask(deleteQuestion("o material", editing.title)))) return;
         try { await keryx.entities.BibleMaterial.delete(editing.id); setEditing(null); refresh(); c.say("Material excluído."); } catch (err) { fail(err); }
     };
 
@@ -149,7 +149,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                                             <React.Fragment key={key}><span className="k">{label}</span><input className="pl-input" defaultValue={cls[key] || ""} aria-label={label} onBlur={(e) => e.target.value !== (cls[key] || "") && saveClass({ [key]: e.target.value })} /></React.Fragment>
                                         ))}
                                         <span />
-                                        <span><Btn small kind={confirm === "class" ? "air" : ""} onClick={removeClass}>{confirm === "class" ? "Excluir mesmo" : "Excluir turma"}</Btn></span>
+                                        <span><Btn small onClick={removeClass}>Excluir turma…</Btn></span>
                                     </div>
                                 )}
                                 <div className="listhead"><span className="kx-section">Alunos <span className="kx-count">· {(cls.students || []).length} · {presentCount(cls, today)} presentes hoje</span></span></div>
@@ -170,7 +170,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
             <div className="kx-gap" />
             <div className="col center sv-center">
                 {editing ? (
-                    <MaterialEditor c={c} draft={editing} setDraft={setEditing} classes={classes} media={media} confirm={confirm} onSave={saveMaterial} onCancel={() => setEditing(null)} onRemove={removeMaterial} onPreview={() => c.setPrev(stageFromMaterial({ ...editing, id: editing.id || "rascunho" }))} />
+                    <MaterialEditor c={c} draft={editing} setDraft={setEditing} classes={classes} media={media} onSave={saveMaterial} onCancel={() => setEditing(null)} onRemove={removeMaterial} onPreview={() => c.setPrev(stageFromMaterial({ ...editing, id: editing.id || "rascunho" }))} />
                 ) : (
                     <Panel title={<>Materiais da lição <span className="kx-count">· {onlyClass && cls ? cls.name : "todas as turmas"}</span></>} actions={<>
                         {cls && <Seg small value={onlyClass ? "turma" : "todos"} onChange={(v) => setOnlyClass(v === "turma")} options={[["turma", "Desta turma"], ["todos", "Todos"]]} />}
@@ -227,7 +227,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
 
 // The material editor, in place of the list: the kind, title, lesson and
 // class, the content of that kind, the teacher's notes and the colours.
-function MaterialEditor({ c, draft, setDraft, classes, media, confirm, onSave, onCancel, onRemove, onPreview }) {
+function MaterialEditor({ c, draft, setDraft, classes, media, onSave, onCancel, onRemove, onPreview }) {
     const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
     const [slidesText, setSlidesText] = useState(() => textFromSlides(draft.slides));
     const qs = draft.quiz_questions || [];
@@ -310,7 +310,7 @@ function MaterialEditor({ c, draft, setDraft, classes, media, confirm, onSave, o
                 </div>
             </div>
             <div className="nv-foot">
-                {draft.id && <Btn kind={confirm === "mat" ? "air" : ""} onClick={onRemove}>{confirm === "mat" ? "Excluir mesmo" : "Excluir"}</Btn>}
+                {draft.id && <Btn onClick={onRemove}>Excluir…</Btn>}
                 <span style={{ flex: 1 }} />
                 <Btn onClick={onPreview} title="Ver como fica, na Prévia">Pôr na prévia</Btn>
                 <Btn onClick={onCancel}>Cancelar</Btn>

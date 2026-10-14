@@ -6,6 +6,7 @@ import { importMediaFiles, mediaFromYouTube } from "@/lib/mediaImport";
 import { stageFromMedia, stageFromMediaList, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
+import { useConfirm } from "./ConfirmDialog";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
 const inCat = (m, cat) => cat === "todas" || (cat === "image" ? m.type === "image" || m.type === "gif" : cat === "doc" ? m.type === "pdf" || m.type === "powerpoint" : m.type === cat);
@@ -36,7 +37,7 @@ export default function MediaView({ c, media, onSend, onClose }) {
     const [sel, setSel] = useState([]);
     const [anchor, setAnchor] = useState(null);
     const [renaming, setRenaming] = useState(null);
-    const [confirmDel, setConfirmDel] = useState(false);
+    const confirm = useConfirm();
     const [uploads, setUploads] = useState(null); // { names, at, failed }
     const fileRef = useRef(null);
     const locateRef = useRef(null);
@@ -50,7 +51,6 @@ export default function MediaView({ c, media, onSend, onClose }) {
     const totalSize = media.reduce((a, m) => a + (m.size || 0), 0);
     const hasDocs = media.some((m) => inCat(m, "doc"));
     useEffect(() => { setSel((s) => s.filter((id) => media.some((m) => m.id === id))); }, [media]);
-    useEffect(() => { setConfirmDel(false); }, [sel]);
 
     const fail = (err) => c.say(err?.message || "Não foi possível.");
     const pick = (m, e) => {
@@ -106,12 +106,19 @@ export default function MediaView({ c, media, onSend, onClose }) {
         if (t && t !== m.title) keryx.entities.Media.update(m.id, { title: t }).catch(fail);
     };
     const recategorise = (value) => Promise.all(picked.map((m) => keryx.entities.Media.update(m.id, { category: value }))).then(() => c.say(`Categoria: ${catLabel(value)}.`)).catch(fail);
+    // Excluir asks first (useConfirm, as every Excluir does); the files stay
+    // in the media folder.
     const remove = async () => {
-        if (!confirmDel) { setConfirmDel(true); c.say(`Clique de novo para tirar ${picked.length === 1 ? `"${picked[0].title}"` : `${picked.length} arquivos`} da biblioteca.`); return; }
-        setConfirmDel(false);
+        if (!picked.length) return;
+        const one = picked.length === 1;
+        const ok = await confirm({
+            title: one ? "Excluir da Mídia?" : `Excluir ${picked.length} arquivos da Mídia?`,
+            text: `${one ? `"${picked[0].title}" sai` : "Eles saem"} da Mídia; ${one ? "o arquivo continua" : "os arquivos continuam"} na pasta de mídia do computador.`,
+        });
+        if (!ok) return;
         try {
             for (const m of picked) await keryx.entities.Media.delete(m.id);
-            c.say(`${picked.length === 1 ? "Tirado" : `${picked.length} tirados`} da biblioteca · os arquivos continuam na pasta de mídia.`);
+            c.say(`${one ? "Excluído" : `${picked.length} excluídos`} da Mídia · os arquivos continuam na pasta de mídia.`);
             setSel([]);
         } catch (err) { fail(err); }
     };
@@ -213,7 +220,7 @@ export default function MediaView({ c, media, onSend, onClose }) {
                             <option value="">Categoria…</option>
                             {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                         </select>
-                        <Btn small kind={confirmDel ? "air" : ""} onClick={remove} title="Excluir da Mídia · Delete">{confirmDel ? "Excluir mesmo" : "Excluir…"}</Btn>
+                        <Btn small onClick={remove} title="Excluir da Mídia · Delete">Excluir…</Btn>
                         <IconBtn name="x" small title="Limpar seleção · Esc" onClick={() => setSel([])} />
                     </div>
                 )}

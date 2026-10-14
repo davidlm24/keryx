@@ -261,11 +261,13 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             const owner = i < fi ? i : i + 1;
             const sign = i < fi ? 1 : -1;
             const size = f.children[owner].size;
-            const index = f.children[owner].index;
+            // A group of tabs made of several children: they all take the size.
+            const { index, at = [index] } = f.children[owner];
+            const resizeAll = (v) => at.reduce((d, j) => resizeChild(d, f.path, j, v), dock);
             out.push(
                 <Split key={`s${i}`} horizontal={f.dir === "col"} size={size} sign={sign}
-                    onSize={(v) => onDock(resizeChild(dock, f.path, index, v))}
-                    onReset={() => { const d = defaultSize(dock, f.path, index); if (d !== null) onDock(resizeChild(dock, f.path, index, d)); }}
+                    onSize={(v) => onDock(resizeAll(v))}
+                    onReset={() => { const d = defaultSize(dock, f.path, index); if (d !== null) onDock(resizeAll(d)); }}
                     clamp={(v) => Math.round(v)} />,
             );
         });

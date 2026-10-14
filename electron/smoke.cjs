@@ -1312,7 +1312,7 @@ async function checkConsole(webContents, { live, outputs }) {
         tone = toneFile && (await js(`window.keryxDesktop.db.call("Media", "create", [{ title: "Tom de teste", type: "audio", file_url: "keryx-media://${toneFile}" }])`)).data;
         await click(".kx-tabs button", "Vídeos");
         result.audioListed = await waitText(webContents, "Tom de teste");
-        // The YouTube link is keepable now: Guardar makes a Media row (one,
+        // The YouTube link is keepable now: Salvar makes a Media row (one,
         // even saved twice) that lists under Vídeos.
         await js(`(() => {
             const el = document.querySelector(".console .yt-field input");
@@ -1320,7 +1320,7 @@ async function checkConsole(webContents, { live, outputs }) {
             el.dispatchEvent(new Event("input", { bubbles: true }));
             return true;
         })()`);
-        await js("(() => { const b = [...document.querySelectorAll('.console button')].find((x) => x.textContent.trim() === 'Guardar'); if (b) b.click(); return Boolean(b); })()");
+        await js("(() => { const b = [...document.querySelectorAll('.console button')].find((x) => (x.title || '').startsWith('Salvar o link')); if (b) b.click(); return Boolean(b); })()");
         result.ytSaved = await waitFor(async () => {
             const rows = (await js('window.keryxDesktop.db.call("Media", "filter", [{ file_url: "https://youtube.com/watch?v=smokeyt" }])')).data || [];
             return rows.length === 1 && rows[0].type === "video";
@@ -2189,8 +2189,9 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear");
         await click(".mv-cats button", "Todas");
         await thumb("Arquivo sumido");
+        // Delete asks first (ConfirmDialog, as every Excluir does).
         await press("Delete");
-        await press("Delete");
+        await click(".console .confirm-dialog button", "Excluir");
         result.mvDeleted = await waitFor(async () => !((await js(`window.keryxDesktop.db.call("Media", "filter", [{ title: "Arquivo sumido" }])`)).data || []).length, 6000);
         result.shotMedia = await shot("midia");
         await press("Escape");
@@ -2228,7 +2229,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.nvAdvanced = await waitFor(() => (live.get().communication?.playlistIndex || 0) >= 1, 6000);
         live.call("clear");
 
-        // Mensagens prontas do Aviso rápido (AlertPreset): Guardar keeps the
+        // Mensagens prontas do Aviso rápido (AlertPreset): Salvar keeps the
         // field's text as a row (and refuses it twice); a click puts it back
         // in the field without touching the screens; a double click shows it
         // at once; the cross deletes it. Wide, the Aviso rápido is a tab of
@@ -2239,12 +2240,12 @@ async function checkConsole(webContents, { live, outputs }) {
         const presetRows = async () => ((await js(`window.keryxDesktop.db.call("AlertPreset", "list", [])`)).data || []);
         const presetChips = () => js(`[...document.querySelectorAll(".kx-preset-t")].map((b) => b.textContent)`);
         await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); if (!el) return false; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "Kids: chamar os pais da sala 2"); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
-        await click("button[title*='Guardar esta mensagem']");
+        await click("button[title*='Salvar esta mensagem']");
         result.presetKept = await waitFor(async () => (await presetRows()).some((r) => r.message === "Kids: chamar os pais da sala 2"));
         result.presetListed = await waitFor(async () => (await presetChips()).includes("Kids: chamar os pais da sala 2"));
         // Saved twice (other case and spacing): refused, still one row.
         await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "  kids:  CHAMAR os pais da sala 2 "); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
-        result.presetNoDup = await js(`(() => { const b = document.querySelector("button[title*='já está guardada']"); return Boolean(b) && b.classList.contains("is-on"); })()`);
+        result.presetNoDup = await js(`(() => { const b = document.querySelector("button[title*='já está salva']"); return Boolean(b) && b.classList.contains("is-on"); })()`);
         // A click puts it in the field; the screens do not change.
         await js(`(() => { const el = document.querySelector('.console input[placeholder="Aviso para as telas"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, ""); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
         await click(".kx-preset-t", "Kids: chamar os pais");
