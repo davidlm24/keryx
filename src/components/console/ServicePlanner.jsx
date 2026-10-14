@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { newServiceDefaults, defaultDuration, teamRole } from "@/lib/console/serviceDefaults";
 import { getPrefs } from "@/hooks/useUser";
 import { useChurch } from "@/hooks/useChurch";
@@ -31,7 +31,7 @@ const today = () => { const d = new Date(); const two = (n) => String(n).padStar
 // per item, totals and the end time; templates (which now keep each item's
 // content), duplicating the last culto, PDF. Everything saves as it changes;
 // nothing here touches the screens.
-export default function ServicePlanner({ c, services, serviceId, setServiceId, data, focusId = null, onClose }) {
+export default function ServicePlanner({ c, services, serviceId, setServiceId, data, focusId = null, onClose, escRef }) {
     const church = useChurch();
     const client = useQueryClient();
     const svc = services.find((s) => s.id === serviceId) || null;
@@ -165,22 +165,11 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         setMember("");
     };
 
-    // Esc: leaves a field, closes a popover, then closes the planner. The
-    // console never ends the projection from here.
-    const escRef = useRef(null);
-    escRef.current = () => { if (adding) { setAdding(null); return true; } if (pop) { setPop(null); return true; } onClose(); return true; };
-    useEffect(() => {
-        const onKey = (e) => {
-            // A console popover (the palette…) open over the planner closes first.
-            if (e.key !== "Escape" || document.querySelector(".console .scrim")) return;
-            e.preventDefault();
-            e.stopPropagation();
-            if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) { e.target.blur(); return; }
-            escRef.current();
-        };
-        window.addEventListener("keydown", onKey, true);
-        return () => window.removeEventListener("keydown", onKey, true);
-    }, []);
+    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
+    // whatever is open over the planner closes first, and a field's Esc
+    // already blurred): close the adder or a popover, then the planner.
+    // The console never ends the projection from here.
+    if (escRef) escRef.current = () => { if (adding) setAdding(null); else if (pop) setPop(null); else onClose(); };
 
     if (!svc || !form) {
         return (

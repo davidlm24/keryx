@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Monitor, Panel } from "./kx";
 import PlayerBar from "./PlayerBar";
@@ -98,9 +98,16 @@ export function PlayerSlot({ c, picked, setPicked, videoScreens, projectorOpen }
 // when the player rides with the Programa. Sized by console.css
 // (.liveblock): as wide as its panel allows, limited by the 16:9 of its
 // height. The Prévia is its own module (PreviaPanel); the dock places both.
-export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, onProgMenu, items = [], multiview = null, player = null }) {
+export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, onProgMenu, items = [], multiview = null, player = null, still = false }) {
     const { cur, now, locked } = c;
     const [dropOn, setDropOn] = useState(null);
+    // Under a floating view (owner 2026-10-14) the monitor draws one still
+    // frame: no video, no ticking clock (a new `now` each second replays the
+    // slide's transition, as the Prévia found) — the air itself never pauses,
+    // only this preview. The frame is the moment the view opened.
+    const frozen = useRef(null);
+    if (still) { if (frozen.current == null) frozen.current = now; } else frozen.current = null;
+    const shownNow = still ? frozen.current : now;
     // Locked: the screens keep this image, blue (they are not following). On
     // air there is no frame: the red lives in the header's state word and on
     // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
@@ -115,12 +122,12 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
         <div className={`mons ${player ? "" : "no-player"}`} data-live-keys="" tabIndex={-1}>
             <div className="liveblock">
                 {multiview ? (
-                    <MultiView live={cur} now={now} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick}
+                    <MultiView live={cur} now={shownNow} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick} still={still}
                         state={progState} className={dropOn ? "is-dropover" : ""} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
                         {dropOn && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
                     </MultiView>
                 ) : (
-                    <Monitor className={`prog ${dropOn ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={now} logoUrl={logoUrl} motion dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
+                    <Monitor className={`prog ${dropOn ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={shownNow} logoUrl={logoUrl} motion={!still} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
                         {dropOn && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
                     </Monitor>
                 )}

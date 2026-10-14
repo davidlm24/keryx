@@ -88,17 +88,20 @@ export const SHORTCUTS = [
 // only with nothing open ends the projection (live safety: closing a menu
 // must never take the screens down). Topmost first: a context menu, a
 // popover or dialog (the menu, Saídas, the palette, Verificar…),
-// Configurações, the Camadas drawer. A text field's first Esc only leaves
-// the field (liveAction's "blur"), before any of these. The Bible quick jump
-// and the full-screen views (editors, planner) handle their own Esc and defer
-// while anything above them is open.
-// layers: { menu, library, popover, settings, drawer, edit } (truthy = open)
-// -> the layer to close, or "end".
+// Configurações, a floating view (the planner, Mídia, the aviso editor —
+// the console routes it to the view, whose unsaved guard may ask instead
+// of closing), the Camadas drawer. A text field's first Esc only leaves
+// the field (liveAction's "blur"), before any of these. The Bible quick
+// jump and the views still shown as pages (the song editor, the Escola
+// bíblica, Relatórios) handle their own Esc and defer while anything
+// above them is open.
+// layers: { menu, library, popover, settings, view, drawer, edit }
+// (truthy = open) -> the layer to close, or "end".
 // "edit" (Ver › Editar layout) is the outermost: Esc leaves the edit mode
 // before it would end the projection. The background library opens from a
 // popover, Configurações or a view, always on top: it closes right after a
 // right-click menu (and the "Excluir?" question, which is over everything).
-export const ESC_ORDER = ["menu", "confirm", "library", "popover", "settings", "drawer", "edit"];
+export const ESC_ORDER = ["menu", "confirm", "library", "popover", "settings", "view", "drawer", "edit"];
 export function escapeTarget(layers = {}) {
     return ESC_ORDER.find((k) => Boolean(layers[k])) || "end";
 }
