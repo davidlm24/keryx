@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -123,13 +123,13 @@ test("dropping in the middle of a group makes tabs", () => {
 });
 
 test("dropping on a side along the split inserts beside, halving a fixed neighbour", () => {
-    // Half of the Biblioteca's 260, each kept at its minimum (Setlist 220, Biblioteca 200).
+    // Half of the Biblioteca's 260, each kept at its minimum (Setlist 220, Biblioteca 260).
     const d = moveModules(defaultDock(W), ["setlist"], { kind: "group", path: [0, 0], zone: "left" });
     assert.deepEqual(leaves(d.tree), ["setlist", "lib", "slides", "programa", "previa", "abas", "camadas", "temas", "onair"]);
-    assert.deepEqual(d.tree.children[0].sizes, [220, 200, 300, null, 320]);
+    assert.deepEqual(d.tree.children[0].sizes, [220, 260, 300, null, 320]);
     assert.deepEqual(nodeAt(d.tree, [0, 4]), split("col", [g("camadas"), g("temas")], [null, TEMAS_H]));
-    const wide = moveModules(fromArrangement({ libW: 480 }, W), ["abas"], { kind: "group", path: [0, 0], zone: "right" });
-    assert.deepEqual(wide.tree.children[0].sizes.slice(0, 2), [237, 237]);
+    const wide = moveModules(fromArrangement({ libW: 560 }, W), ["abas"], { kind: "group", path: [0, 0], zone: "right" });
+    assert.deepEqual(wide.tree.children[0].sizes.slice(0, 2), [277, 277]);
     // Beside the flexible one: the new group gets the size it was given.
     const e = moveModules(defaultDock(W), ["lib"], { kind: "group", path: [0, 2, 1, 1], zone: "right" }, { px: 280 });
     assert.deepEqual(nodeAt(e.tree, [0, 1, 1]), split("row", [g("previa"), g("abas"), g("lib")], [444, null, 280]));
@@ -208,7 +208,11 @@ test("switching tabs and resizing", () => {
     assert.equal(setActive(tabs, [0, 2, 0], "programa").tree.children[0].children[2].children[0].active, "programa");
     assert.deepEqual(setActive(tabs, [0, 2, 0], "lib"), tabs, "not a tab of that group");
     assert.equal(resizeChild(defaultDock(W), [0], 0, 400).tree.children[0].sizes[0], 400);
-    assert.equal(resizeChild(defaultDock(W), [0], 0, 50).tree.children[0].sizes[0], 200, "never under the module's minimum");
+    assert.equal(resizeChild(defaultDock(W), [0], 0, 50).tree.children[0].sizes[0], 260, "never under the module's minimum");
+    // The Biblioteca's floor holds its four tabs and the (+) (218 px) with room
+    // to spare, as the Slides' 300 holds a 2-line verse (owner 2026-10-14).
+    assert.equal(MODULES.lib.minW, 260);
+    assert.equal(minSize(g("lib"), true), 260);
     assert.equal(resizeChild(defaultDock(W), [0], 1, -350).tree.children[0].sizes[1], 300, "a drag past the edge stops at the minimum");
     assert.deepEqual(resizeChild(defaultDock(W), [0], 2, 900), defaultDock(W), "the flexible one takes the rest");
     assert.equal(resizeChild(defaultDock(W), [], 1, 20).tree.sizes[1], 96, "the No ar strip: never under one row of cards");
@@ -242,7 +246,7 @@ test("fitting: what does not fit side by side becomes tabs, the dock itself unch
     // 1200 px: the side columns give way to their minimums; the centre is
     // too narrow for the Prévia and the Painel de abas side by side.
     const mid = fitDock(d, 1200, 700).children[0].frame;
-    assert.deepEqual(mid.children.map((c) => Math.round(c.size)), [249, 300, 320, 313]);
+    assert.deepEqual(mid.children.map((c) => Math.round(c.size)), [260, 300, 320, 302]);
     const bottom = mid.children[2].frame.children[1];
     assert.equal(Math.round(bottom.size), 334);
     assert.deepEqual({ ...bottom.frame, w: Math.round(bottom.frame.w), h: Math.round(bottom.frame.h) }, { kind: "group", path: [0, 2, 1], tabs: ["previa", "abas"], active: "previa", w: 320, h: 334, collapsed: true, target: [0, 2, 1, 0] });

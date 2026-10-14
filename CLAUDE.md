@@ -586,10 +586,17 @@ its wrapper needs `contain: layout paint` (`.le-screen`, `.cfg-prev`).
 Every screen is landscape: every still of an output (Telas e saídas'
 cards, the Editor's canvas) is 16:9, the Pastor's included; only the
 real /PastorView page turns with a tablet held upright (its container
-query). **The Slides column has a minimum width** (`LIMITS.slidesW`, 300
-px, `layout.js`, tested): squeezed, a 2-line verse wrapped into 3 and
-looked split wrong; the splitter clamps there and the narrow tier's
-Biblioteca-over-Slides column takes `slidesW` too. A slide keeps the
+query). **The Slides and the Biblioteca have a minimum width**
+(`MODULES.slides.minW` 300 and `MODULES.lib.minW` 260 in `dock.js`, tested;
+there is no `LIMITS` object any more): squeezed, a 2-line verse wrapped
+into 3 and looked split wrong, and the Biblioteca's tabs read "Le…, Ima…";
+the splitter clamps there and the narrow tier's Biblioteca-over-Slides
+column takes `slidesW` too. 260 holds the default four tabs and the (+)
+(218 px) with room; **a tab row that does not fit breaks into a second
+line** (`.tabrow` flex-wrap, console.css: Áudios and Apresentações on, the
+(+) always on the last line) for the Biblioteca and the panel beside the
+Prévia alike (one `TabRow`; neither is a measured/`locked` module, so the
+extra line only pushes the list down). A slide keeps the
 editor's lines (owner 2026-10-14, replacing "never an ellipsis"): each line
 stays one line and a line too long for the column ends in "…" (`SlideText`
 in SlidesPanel.jsx, `.kx-ln`); the whole text is the card's tooltip and the
