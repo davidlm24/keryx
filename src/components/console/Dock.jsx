@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Split } from "./kx";
-import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray } from "@/lib/console/dock";
+import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned } from "@/lib/console/dock";
 
 // Ver › Editar disposição for the culto environment (2026-10-13; the
 // prototype "Disposição do console", model Livre): the console as a tree of
@@ -141,9 +141,9 @@ export function DockTray({ dock, dnd, onChipMenu }) {
         <div className="dock-tray" data-dock-tray="" title="Solte um módulo aqui para tirá-lo do console">
             <span className="kx-meta">Bandeja</span>
             {dock.hidden.length ? dock.hidden.map((id) => (
-                <button key={id} type="button" className="dock-chip" onPointerDown={(e) => dnd.start(e, { mods: [id], label: nameOf(id), fromTray: true })}
-                    onClick={(e) => { if (!dnd.justDragged()) onChipMenu(e, id); }} title={`Arraste para pôr ${nameOf(id)} no console · clique para escolher onde`}>
-                    <Icon name="grip" />{nameOf(id)}
+                <button key={id} type="button" className="dock-chip" onPointerDown={isPinned(id) ? undefined : (e) => dnd.start(e, { mods: [id], label: nameOf(id), fromTray: true })}
+                    onClick={(e) => { if (!dnd.justDragged()) onChipMenu(e, id); }} title={isPinned(id) ? `Clique para voltar ${nameOf(id)} à faixa embaixo` : `Arraste para pôr ${nameOf(id)} no console · clique para escolher onde`}>
+                    {!isPinned(id) && <Icon name="grip" />}{nameOf(id)}
                 </button>
             )) : <span className="kx-meta">vazia</span>}
         </div>
@@ -194,12 +194,14 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
     const chip = (id) => {
         const home = id === "player" && playerDocked;
         const out = canTray(id) || (id === "player" && !home);
+        // The No ar strip stays across the bottom (owner 2026-10-14): no drag, only ×.
+        const pinned = isPinned(id);
         return (
             <span key={id} className="dock-chipwrap">
-                <button type="button" className="dock-chip" onPointerDown={(e) => dnd.start(e, { mods: [id], label: nameOf(id) })}
+                <button type="button" className={`dock-chip ${pinned ? "is-pinned" : ""}`} onPointerDown={pinned ? undefined : (e) => dnd.start(e, { mods: [id], label: nameOf(id) })}
                     onClick={(e) => { if (!dnd.justDragged()) onChipMenu(e, id); }}
-                    title={home ? "O player fica sob o Programa · arraste para pô-lo em outro lugar" : `Arraste ${nameOf(id)} para outro lugar · clique para Mover para…`}>
-                    {nameOf(id)}{home ? <span className="kx-meta"> · sob o Programa</span> : null}
+                    title={pinned ? `${nameOf(id)} fica sempre embaixo · × tira para a bandeja` : home ? "O player fica sob o Programa · arraste para pô-lo em outro lugar" : `Arraste ${nameOf(id)} para outro lugar · clique para Mover para…`}>
+                    {nameOf(id)}{home ? <span className="kx-meta"> · sob o Programa</span> : pinned ? <span className="kx-meta"> · fixo embaixo</span> : null}
                 </button>
                 {out && (
                     <button type="button" className="dock-x" title={id === "player" ? "Voltar para baixo do Programa" : `Tirar ${nameOf(id)} para a bandeja`} aria-label={id === "player" ? "Voltar o player para baixo do Programa" : `Tirar ${nameOf(id)} para a bandeja`}
@@ -222,7 +224,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             if (playerDocked && f.tabs.includes("programa")) chips.push(chip("player"));
             head = (
                 <div className="dock-bar" role="group" aria-label={`Grupo: ${f.tabs.map(nameOf).join(", ")}`}>
-                    <span className="arr-grip" title="Arraste para mover o grupo inteiro" onPointerDown={(e) => dnd.start(e, { mods: f.tabs, label: f.tabs.map(nameOf).join(" + ") })}><Icon name="grip" /></span>
+                    {!f.tabs.some(isPinned) && <span className="arr-grip" title="Arraste para mover o grupo inteiro" onPointerDown={(e) => dnd.start(e, { mods: f.tabs, label: f.tabs.map(nameOf).join(" + ") })}><Icon name="grip" /></span>}
                     {chips}
                 </div>
             );
@@ -251,7 +253,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
         f.children.forEach((ch, i) => {
             // A folding module (the No ar strip) eases in and out of its
             // place; gone, it takes no room and has no splitter beside it.
-            const cls = ch.fold ? ` dock-fold${ch.gone ? " is-gone" : ""}` : "";
+            const cls = `${ch.fold ? ` dock-fold${ch.gone ? " is-gone" : ""}` : ""}${ch.locked ? " dock-locked" : ""}`;
             out.push(
                 <div key={firstOf(ch.frame)} className={`dock-cell${cls}`} aria-hidden={ch.gone || undefined} inert={ch.gone ? "" : undefined}
                     style={ch.fixed ? { flex: `0 0 ${Math.round(ch.size)}px` } : { flex: "1 1 0" }}>
@@ -260,11 +262,16 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             );
             const next = f.children.findIndex((c, j) => j > i && !c.gone);
             if (ch.gone || next < 0) return;
-            // A locked height (the No ar strip, Camadas) is the console's: no splitter beside it.
-            if (ch.locked || f.children[next].locked) return;
             // One splitter per gap, owned by the fixed child on the side away
             // from the flexible one (dragging toward the flexible one grows it).
             const owner = i < fi ? i : next;
+            // A locked height (the No ar strip, Camadas) is the console's:
+            // the gap it owns stays, without a handle (owner 2026-10-14);
+            // a neighbour's splitter still moves it, whole.
+            if (f.children[owner].locked) {
+                out.push(<div key={`g${i}`} className={`dock-gap is-${f.dir}`} aria-hidden="true" />);
+                return;
+            }
             const sign = i < fi ? 1 : -1;
             const size = f.children[owner].size;
             // A group of tabs made of several children: they all take the size.

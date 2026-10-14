@@ -842,7 +842,9 @@ async function checkConsole(webContents, { live, outputs }) {
         })()`);
         const airIndex = () => (live.get().content ? live.get().content.index : null);
         const indexBefore = airIndex();
-        const SPLIT = `document.querySelector(".console .dock > .dock-split > .kx-split[role='separator']")`;
+        // The first splitter of the columns (Biblioteca | Slides): the strip
+        // under them is pinned, its gap has no handle (owner 2026-10-14).
+        const SPLIT = `document.querySelector(".console .dock .dock-split.is-row > .kx-split[role='separator']")`;
         const splitWidth = () => js(`(() => { const s = ${SPLIT}; return s && s.previousElementSibling ? Math.round(s.previousElementSibling.getBoundingClientRect().width) : null; })()`);
         result.splitterFound = await js(`(() => { const s = ${SPLIT}; if (s) s.focus(); return s ? document.activeElement === s : [...document.querySelector(".console .dock").children].map((c) => c.className).join(" | "); })()`);
         const widthBefore = await splitWidth();
@@ -1503,9 +1505,9 @@ async function checkConsole(webContents, { live, outputs }) {
             const set = g('setlist'), prog = g('programa'), prev = g('previa'), abas = g('abas');
             if (!g('camadas') || !set || !prog || !prev || !abas || !set.querySelector('.rund')) return false;
             const col = set.closest('.dock-split.is-col');
-            const order = col ? [...col.children].map((n) => (n.classList.contains('kx-split') ? '|' : ((n.querySelector(':scope > .dock-group') || {}).dataset || {}).dockMods)).join(',') : '';
+            const order = col ? [...col.children].map((n) => (n.classList.contains('kx-split') ? '|' : n.classList.contains('dock-gap') ? '_' : ((n.querySelector(':scope > .dock-group') || {}).dataset || {}).dockMods)).join(',') : '';
             const r = (n) => n.getBoundingClientRect();
-            return order === 'camadas,|,temas,|,setlist' && Math.abs(r(prev).top - r(abas).top) < 2 && r(abas).right <= r(prog).right + 1 && Boolean(abas.querySelector('.tabs-panel'));
+            return order === 'camadas,_,temas,|,setlist' && Math.abs(r(prev).top - r(abas).top) < 2 && r(abas).right <= r(prog).right + 1 && Boolean(abas.querySelector('.tabs-panel'));
         })()`);
         // Notas: the item prepared from the Setlist shows its notes in the
         // panel beside the Prévia (ServiceItem.notes, never on a screen).

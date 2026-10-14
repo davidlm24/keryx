@@ -133,8 +133,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (its list, plus the settings a pencil opened; `Measure` in kx.jsx) and
   the No ar strip as tall as the slide on air with the most lines (the
   song's editor decides them; `onAirHeight`): heights the console passes
-  to `fitDock` as `locked` (dock.js, tested) — exact, never a splitter
-  beside them, only for a module alone down a column. **The +** of a
+  to `fitDock` as `locked` (dock.js, tested) — exact, only for a module
+  alone down a column. They keep the console's 6 px gap: a gap a locked
+  module would own is a `.dock-gap` without a handle (Dock.jsx), and a
+  neighbour's splitter still resizes the neighbour, the locked one moving
+  whole (owner 2026-10-14). **The No ar strip is pinned** (`MODULES.onair.pinned`):
+  always the band across the bottom — never dragged, no Mover para…,
+  nothing dropped in or beside it; × and Ver send it to the tray and it
+  comes back there (`returnModule`); a save with it elsewhere gets it back
+  across the bottom (`normalizeDock`). **The +** of a
   module is an icon at its header's right (Setlist, Temas, Camadas), never
   a button in its body.
   **A click makes it the theme in use**: it dresses the text on air

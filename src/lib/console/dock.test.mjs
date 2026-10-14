@@ -247,16 +247,28 @@ test("the No ar strip exists only while lyrics are on air", () => {
     assert.deepEqual(f.children[1].frame.path, [1]);
     assert.equal(f.children[0].frame.children[2].frame.children[0].size, 660, "the Programa takes the strip's 110 px");
     assert.deepEqual(fitDock(d, 1908, 1000, { gone: ["programa"] }), fitDock(d, 1908, 1000), "only a folding module folds");
-    // Wherever it is placed alone: under the Prévia, the Prévia takes its room.
-    const under = moveModules(d, ["onair"], { kind: "group", path: [0, 2, 1, 0], zone: "bottom" });
-    const col = fitDock(under, 1908, 1000, { gone: ["onair"] }).children[2].frame.children[1].frame.children[0].frame;
-    assert.deepEqual(col.children.map((c) => [c.frame.tabs[0], c.size, Boolean(c.gone)]), [["previa", 334, false], ["onair", 0, true]]);
-    // A tab beside another module: it stays.
-    const tab = moveModules(d, ["onair"], { kind: "group", path: [0, 3, 0], zone: "center" });
-    assert.equal(JSON.stringify(fitDock(tab, 1908, 1000, { gone: ["onair"] })).includes('"gone":true'), false);
-    // The flexible child gone: the largest one left takes the rest.
-    const flex = normalizeDock({ tree: split("col", [g("onair"), split("row", [g("programa"), g("previa"), g("setlist")], [null, 300, 300])], [null, 400]) });
-    assert.deepEqual(fitDock(flex, 1600, 900, { gone: ["onair"] }).children.map((c) => c.size), [0, 900]);
+});
+
+test("the No ar strip is pinned to the bottom: never moved, only to the tray and back", () => {
+    const d = defaultDock();
+    const bottom = (dk) => { const t = dk.tree; const last = t.children?.[t.children.length - 1]; return t.dir === "col" && JSON.stringify(last?.tabs) === '["onair"]'; };
+    assert.ok(bottom(d));
+    // Never dragged elsewhere, and nothing goes into it or beside it.
+    assert.deepEqual(moveModules(d, ["onair"], { kind: "group", path: [0, 3, 0], zone: "center" }), d);
+    assert.deepEqual(moveModules(d, ["onair"], { kind: "edge", zone: "left" }), d);
+    assert.deepEqual(moveModules(d, ["lib"], { kind: "group", path: pathOf(d.tree, "onair"), zone: "center" }), d);
+    assert.deepEqual(moveModules(d, ["lib"], { kind: "group", path: pathOf(d.tree, "onair"), zone: "left" }), d);
+    // A save with it somewhere else (as a tab beside Camadas, under the
+    // Prévia) gets it back across the bottom, the rest as it was.
+    const tabSave = normalizeDock({ tree: split("row", [g("lib"), g("programa", "onair"), split("col", [g("previa"), g("setlist")], [300, null])], [260, null, 320]) });
+    assert.ok(bottom(tabSave));
+    assert.deepEqual(nodeAt(tabSave.tree, pathOf(tabSave.tree, "programa")).tabs, ["programa"]);
+    // The tray and back: across the bottom again, whatever is on screen.
+    const out = hideModule(d, "onair");
+    assert.ok(out.hidden.includes("onair") && !pathOf(out.tree, "onair"));
+    const back = returnModule(out, "onair");
+    assert.ok(bottom(back) && !back.hidden.includes("onair"));
+    assert.deepEqual(back.tree, d.tree);
 });
 
 test("locked heights: the console's, exact, with no splitter, only down a column", () => {
@@ -272,13 +284,13 @@ test("locked heights: the console's, exact, with no splitter, only down a column
     assert.deepEqual(side.children.map((c) => [c.frame.tabs[0], Boolean(c.locked)]), [["camadas", true], ["temas", false], ["setlist", false]]);
     assert.equal(side.children[0].size, 152);
     // Across a row, or as a tab beside another module, the lock does not apply.
-    const row = normalizeDock({ tree: split("row", [g("onair"), g("programa")], [300, null]) });
-    assert.equal(JSON.stringify(fitDock(row, 1600, 900, { locked: { onair: 150 } })).includes('"locked":true'), false);
-    const tab = moveModules(d, ["onair"], { kind: "group", path: [0, 3, 0], zone: "center" });
-    assert.equal(JSON.stringify(fitDock(tab, 1908, 1000, { locked: { onair: 150 } })).includes('"locked":true'), false);
+    const row = normalizeDock({ tree: split("row", [g("camadas"), g("programa"), g("previa"), g("setlist")], [300, null, 300, 300]), hidden: ["temas", "onair"] });
+    assert.equal(JSON.stringify(fitDock(row, 1600, 900, { locked: { camadas: 152 } })).includes('"locked":true'), false);
+    const tab = moveModules(d, ["camadas"], { kind: "group", path: pathOf(d.tree, "setlist"), zone: "center" });
+    assert.equal(JSON.stringify(fitDock(tab, 1908, 1000, { locked: { camadas: 152 } })).includes('"locked":true'), false);
     // A locked child that was the flexible one: the largest free one takes the rest.
-    const flex = normalizeDock({ tree: split("col", [g("onair"), split("row", [g("programa"), g("previa"), g("setlist")], [null, 300, 300])], [null, 400]) });
-    assert.deepEqual(fitDock(flex, 1600, 900, { locked: { onair: 150 } }).children.map((c) => c.size), [150, 744]);
+    const flex = normalizeDock({ tree: split("col", [g("camadas"), split("row", [g("programa"), g("previa"), g("setlist")], [null, 300, 300])], [null, 400]), hidden: ["temas", "onair"] });
+    assert.deepEqual(fitDock(flex, 1600, 900, { locked: { camadas: 152 } }).children.map((c) => c.size), [152, 742]);
 });
 
 test("the No ar strip is as tall as the slide with the most lines", () => {

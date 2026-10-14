@@ -59,7 +59,10 @@ export const MODULES = {
     // Holyrics strip, owner 2026-10-14): a band across the bottom of the
     // window at first. `fold`: while nothing with lyrics is on air it takes
     // no room wherever it is placed alone (fitDock's `gone`).
-    onair: { name: "No ar", minW: 220, minH: 96, fold: true },
+    // `pinned`: always the band across the bottom of the console (owner
+    // 2026-10-14): it is never dragged nor moved beside another module, it
+    // can only leave for the tray and come back there.
+    onair: { name: "No ar", minW: 220, minH: 96, fold: true, pinned: "bottom" },
     // As a module of its own: the panel's header (32) over the slot (36); in
     // a column it comes in at its own height (`size.col`), not half of its
     // neighbour's.
@@ -225,12 +228,36 @@ export function normalizeDock(saved) {
         } else tree = insertBelow(tree, at, id);
         seen.add(id);
     }
+    // A pinned module somewhere else (a save from before, a tab beside
+    // Camadas) goes back to its band across the bottom.
+    for (const id of ids) {
+        if (MODULES[id].pinned !== "bottom" || !tree || !seen.has(id) || atBottom(tree, id)) continue;
+        tree = withBottomBand(tree, id, env);
+    }
     const hidden = [];
     for (const id of savedHidden) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
     // A module the save does not know (a newer KERYX) starts in the tray.
     for (const id of ids) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
     return make(env, tree, hidden);
 }
+
+// A module alone in the last child of a column at the root: the band across
+// the bottom of the console.
+function atBottom(tree, id) {
+    if (!isSplit(tree) || tree.dir !== "col") return false;
+    const last = tree.children[tree.children.length - 1];
+    return isGroup(last) && last.tabs.length === 1 && last.tabs[0] === id;
+}
+
+// The tree with `id` (out of wherever it was) as the band across its bottom.
+function withBottomBand(tree, id, env) {
+    const rest = clone(tree);
+    strip(rest, [id]);
+    const kept = clean(rest, new Set(), env);
+    return kept ? clean(split("col", [kept, group([id])], [null, ONAIR_H]), new Set(), env) : group([id]);
+}
+
+export const isPinned = (id) => Boolean(MODULES[id]?.pinned);
 
 // The dock that matches the console before Editar disposição became a tree,
 // from the layout saved then (the column order, the order of the stacked
@@ -341,6 +368,10 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
     const d = normalizeDock(dock);
     const list = (mods || []).filter((m, i, a) => MODULES[m] && a.indexOf(m) === i);
     if (!list.length || !target) return d;
+    // A pinned module only leaves for the tray (returnModule brings it back);
+    // nothing joins it or goes beside it.
+    if (target.kind !== "tray" && list.some(isPinned)) return d;
+    if (target.kind === "group" && (nodeAt(d.tree, target.path)?.tabs || []).some(isPinned)) return d;
     if (target.kind === "tray" || target.kind === "home") {
         if (list.some((m) => MODULES[m].required)) return d;
         if (target.kind === "home" && list.some((m) => !MODULES[m].home)) return d;
@@ -413,6 +444,11 @@ export const hideModule = (dock, id) => moveModules(dock, [id], { kind: "tray" }
 export function returnModule(dock, id, opts) {
     const d = normalizeDock(dock);
     if (!d.hidden.includes(id)) return d;
+    if (MODULES[id].pinned === "bottom") {
+        const env = dockEnv(d);
+        const tree = d.tree ? withBottomBand(d.tree, id, env) : group([id]);
+        return normalizeDock(make(env, tree, d.hidden.filter((m) => m !== id)));
+    }
     const def = defaultDock({ ...opts, tier: "wide", env: dockEnv(d) }).tree;
     const onScreen = (m) => m !== id && pathOf(d.tree, m);
     let p = pathOf(def, id);
