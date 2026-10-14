@@ -39,7 +39,7 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 // song's video or playback with lyric timing on the right. Nothing here
 // changes what is on air. Opening a song keeps its saved slides; editing the
 // lyrics (or the split) redoes them, keeping timings by position.
-export default function SongEditor({ c, songId, themes = [], onClose, onSaved }) {
+export default function SongEditor({ c, songId, themes = [], onClose, onSaved, escRef }) {
     const [song, setSong] = useState(null);
     const [error, setError] = useState("");
     const [split, setSplit] = useState(0); // lines per slide, 0 = Estrofe
@@ -319,23 +319,22 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
         onClose();
     }, [dirty, confirm, c, onClose]);
 
-    // Esc: leaves a text field first, then closes (asking once if unsaved);
-    // Ctrl+S saves. Captured here so the console never ends the projection.
+    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
+    // whatever is open over the editor closes first, and a field's Esc
+    // already blurred): close the Cifra panel, then close (asking once if
+    // unsaved). Ctrl+S saves — the editor's own key; it defers only to a
+    // dialog over the editor (its own scrim does not count).
+    if (escRef) escRef.current = () => { if (cifraOpen) setCifraOpen(false); else close(); };
     useEffect(() => {
         const onKey = (e) => {
-            // Something open over the editor (a popover, Configurações) takes the keys.
-            if (document.querySelector(".console .scrim")) return;
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (song) save(); return; }
-            if (e.key !== "Escape") return;
-            e.preventDefault();
-            e.stopPropagation();
-            if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) { e.target.blur(); return; }
-            if (cifraOpen) { setCifraOpen(false); return; }
-            close();
+            if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
+            if (document.querySelector(".console .scrim:not(.view-scrim)")) return;
+            e.preventDefault(); e.stopPropagation();
+            if (song) save();
         };
         window.addEventListener("keydown", onKey, true);
         return () => window.removeEventListener("keydown", onKey, true);
-    }, [close, save, song, cifraOpen]);
+    }, [save, song]);
 
     if (error) return <div className="col center"><Panel title="Editor de música"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div style={{ padding: "var(--space-2)" }}><Btn onClick={onClose}>Voltar ao console</Btn></div></Panel></div>;
     if (!song) return <div className="col center"><Panel title="Editor de música"><Empty title="Abrindo…" /></Panel></div>;

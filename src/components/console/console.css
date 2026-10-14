@@ -628,6 +628,8 @@
 .console .view-dialog { position: absolute; z-index: 30; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; align-items: stretch; gap: var(--gutter); padding: var(--gutter); background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
 .console .view-dialog > .col.center { min-width: 0; }
 .console .view-dialog.vd-media { width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); }
+.console .view-dialog.vd-wide { width: min(1240px, calc(100% - 32px)); height: min(800px, calc(100% - var(--pop-top) - 16px)); } /* the song editor's columns, the Escola */
+.console .view-dialog.vd-reports { width: min(1000px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); }
 
 /* ---------- Configurações (canvas artboard 20) ---------- */
 /* A window over the console: above the Camadas drawer (32), under Verificar

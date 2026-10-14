@@ -2396,12 +2396,12 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".topbar .markbtn", "");
         await click(".kx-pop button", "Escola bíblica");
         result.svOpen = await waitFor(() => js("Boolean(document.querySelector('.console .sv-mons'))"));
-        await click(".console .main .kx-row", "Turma do smoke");
+        await click(".console .view-dialog .kx-row", "Turma do smoke");
         await waitText(webContents, "Ana Smoke");
         await click(".console .sv-student", "Ana Smoke");
         const today = await js("(() => { const d = new Date(); const t = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + t(d.getMonth() + 1) + '-' + t(d.getDate()); })()");
         result.svPresence = await waitFor(async () => ((await db("BibleSchoolClass", "get", [svClass.id])).students || [])[0]?.attendance?.includes(today), 6000);
-        await click(".console .main .kx-row", "Quiz do smoke");
+        await click(".console .view-dialog .kx-row", "Quiz do smoke");
         result.svPrepared = await waitFor(() => js("[...document.querySelectorAll('.sv-mons .kx-mon')].some((n) => n.textContent.includes('Prévia · Quiz do smoke'))"));
         result.svNotes = await waitText(webContents, "Nota do professor smoke");
         await js("document.activeElement && document.activeElement.blur(); true");
@@ -2423,7 +2423,8 @@ async function checkConsole(webContents, { live, outputs }) {
             return rows[0]?.slides?.length === 2 && rows[0].slides[1].text === "Dois";
         }, 6000);
         await waitFor(() => js("!document.querySelector('.sv-ed')"));
-        await js("(() => { const row = [...document.querySelectorAll('.console .main .kx-row')].find((n) => n.textContent.includes('Slides do smoke')); const b = row && [...row.querySelectorAll('button')].find((x) => x.textContent === 'Setlist'); if (b) b.click(); return Boolean(b); })()");
+        // The Escola floats now (.view-dialog), so its rows are not under .main.
+        await js("(() => { const row = [...document.querySelectorAll('.console .view-dialog .kx-row')].find((n) => n.textContent.includes('Slides do smoke')); const b = row && [...row.querySelectorAll('button')].find((x) => x.textContent === 'Setlist'); if (b) b.click(); return Boolean(b); })()");
         result.svSetlist = await waitFor(async () => ((await db("ServiceItem", "filter", [{ type: "MATERIAL", title: "Slides do smoke" }])) || []).length === 1, 6000);
         result.shotSchool = await shot("escola");
         live.call("clear");
