@@ -11,7 +11,8 @@ const EXTRA = {
     grid: '<rect x="4" y="5" width="7" height="6" rx="1"/><rect x="13" y="5" width="7" height="6" rx="1"/><rect x="4" y="13" width="7" height="6" rx="1"/><rect x="13" y="13" width="7" height="6" rx="1"/>',
     trash: '<path d="M5 7.5h14M10 7.5V5.5h4v2M7 7.5l.8 11a1.5 1.5 0 0 0 1.5 1.4h5.4a1.5 1.5 0 0 0 1.5-1.4l.8-11M10.5 11v5.5M13.5 11v5.5"/>',
     copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>',
-    pin: '<path d="M9.5 4.5h5l-.7 5 2.7 2.5v1.5H7.5V12l2.7-2.5z"/><path d="M12 13.5V20"/>',
+    info: '<circle cx="12" cy="12" r="8"/><path d="M12 11v5.5"/><path d="M12 7.8v.2"/>',
+    pin:'<path d="M9.5 4.5h5l-.7 5 2.7 2.5v1.5H7.5V12l2.7-2.5z"/><path d="M12 13.5V20"/>',
 };
 
 export default function Icon({ name, size = 16, className = "" }) {

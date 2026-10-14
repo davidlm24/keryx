@@ -14,6 +14,7 @@ export const SECTIONS = [
     { id: "culto", icon: "clock", name: "Culto" },
     { id: "console", icon: "keyboard", name: "Console" },
     { id: "backup", icon: "save", name: "Backup e atualizações" },
+    { id: "sobre", icon: "info", name: "Sobre" },
 ];
 
 // Where a section's settings live: "church" rides the database (and the

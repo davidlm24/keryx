@@ -5,11 +5,12 @@ import Icon from "./Icon";
 import { Btn, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { useConfirm } from "./ConfirmDialog";
-import { themeStyle, sameLook, themeBackgroundArgs, defaultTheme, themeName } from "@/lib/console/themes";
+import { themeStyle, sameLook, newThemeBackground, defaultTheme, themeName } from "@/lib/console/themes";
 import { applyThemeOnAir } from "./themeActions";
 import { STYLE_KEYS, LAYER_ORDER, layerHidden, layerLocked } from "@shared/live-state.mjs";
 import { OVERLAY_LIMIT, overlayName, newOverlay, overlayRows, moveOverlayRow } from "@/lib/console/overlays";
-import { bgFields, cleanSpec } from "@/lib/console/backgroundSpec";
+import { bgFields } from "@/lib/console/backgroundSpec";
+import { useLibraryPicker, ALL_KINDS } from "./library/libraryContext";
 import { openEditor } from "@/lib/editorWindow";
 
 // Camadas: what is on air as layers of the live state — Logo (live.logo), the
@@ -54,6 +55,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     const [localLocks, setLocalLocks] = useState({});
     const menu = useContextMenu();
     const confirm = useConfirm();
+    const pickLibrary = useLibraryPicker();
     const ovInput = useRef(null);
     // Drag to reorder: the anchors (fixed layers, the Sobreposições group)
     // follow live.layerOrder (top first); rows inside the group reorder only
@@ -149,11 +151,17 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     // date); the toast opens it in the Editor to give it a name.
     const saveAsNew = async () => {
         try {
-            // The Fundo on air goes with the theme, any kind (a picture, a
-            // clip, a generated one with its numbers and colours, a colour);
-            // with none, the theme's own stays.
+            // A theme is saved with a background (owner 2026-10-14): the Fundo
+            // on air goes with it, any kind (a picture, a clip, a generated one
+            // with its numbers and colours, a colour), else the theme in use's;
+            // with neither, the library is asked, and closing it saves nothing.
             const look = Object.fromEntries(Object.entries(themeStyle({ ...theme, ...style })).filter(([, v]) => v !== ""));
-            const spec = cleanSpec(cur?.background) || (theme ? cleanSpec(themeBackgroundArgs(theme)) : null);
+            let spec = newThemeBackground(cur?.background, theme);
+            if (!spec) {
+                const r = await pickLibrary({ accept: ALL_KINDS, title: "Fundo do tema novo" });
+                spec = r?.spec || null;
+                if (!spec) { c.say("Tema não salvo: falta o fundo."); return; }
+            }
             const row = await keryx.entities.ProjectionTheme.create({ name: "", ...look, ...bgFields(spec) });
             c.setThemeId(row.id);
             c.say("Tema salvo, sem nome.", { label: "Editar", run: () => { const r = openEditor({ theme: row.id }); if (r?.error) c.say(r.error); } });

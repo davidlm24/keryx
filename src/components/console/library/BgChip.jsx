@@ -23,7 +23,8 @@ export function BgThumb({ spec }) {
 //   accept     kinds offered (default: all four)
 //   noneLabel  the library's "no background" button (none when omitted)
 //   empty      what the row says with nothing chosen
-export default function BgChip({ value, onPick, accept, title, noneLabel, empty = "nenhum", names = {}, disabled, label = "Escolher…" }) {
+//   className  added to the chip ("is-missing": a background is required)
+export default function BgChip({ value, onPick, accept, title, noneLabel, empty = "nenhum", names = {}, disabled, label = "Escolher…", className = "" }) {
     const pick = useLibraryPicker();
     const s = cleanSpec(value);
     const open = async () => {
@@ -32,7 +33,7 @@ export default function BgChip({ value, onPick, accept, title, noneLabel, empty 
         else if (r?.spec) onPick(r.spec);
     };
     return (
-        <span className="bgchip">
+        <span className={`bgchip ${className}`.trim()}>
             <BgThumb spec={s} />
             <span className="bgchip-l">{s ? names[s.value] || bgLabel(s, GEN_NAMES) : empty}</span>
             <Btn small disabled={disabled} onClick={open}>{s ? "Trocar…" : label}</Btn>

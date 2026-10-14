@@ -14,6 +14,7 @@ import { Panel, Btn, Seg, Empty } from "../console/kx";
 import { Switch } from "../console/settings/parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import BgChip from "../console/library/BgChip";
+import { useLibraryPicker, ALL_KINDS } from "../console/library/libraryContext";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import Icon from "../console/Icon";
 import { IconBtn } from "../console/kx";
@@ -78,11 +79,21 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     const set = (patch) => { setConfirm(null); setDraft((d) => ({ ...d, ...patch })); };
     const bg = bgSpec(draft || {});
     const setBg = (patch) => set(bgFields(patch && bg ? { ...bg, ...patch } : patch));
+    // A theme is saved with a background from the library (owner 2026-10-14,
+    // themeHasBackground): Salvar waits for one, an old theme without one
+    // included; Ctrl+S without one opens the library.
+    const pickLibrary = useLibraryPicker();
+    const NEEDS_BG = "Escolha um fundo da biblioteca para salvar o tema.";
+    const chooseBg = async () => {
+        const r = await pickLibrary({ accept: ALL_KINDS, value: bg, title: "Fundo do tema" });
+        if (r?.spec) set(bgFields(r.spec));
+    };
 
     const save = async () => {
         // No name, no name: never a made-up date (owner 2026-10-14).
         const name = (draft.name || "").trim();
         const data = { ...draft, name };
+        if (!bgSpec(data)) { say(NEEDS_BG); chooseBg(); return null; }
         setBusy(true);
         try {
             const row = isNew && !saved ? await keryx.entities.ProjectionTheme.create(data) : await keryx.entities.ProjectionTheme.update(savedId.current, data);
@@ -120,6 +131,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     // Keys: Ctrl+S saves; Esc leaves a field, then the window (asking once).
     const keysRef = useRef(null);
     keysRef.current = (e) => {
+        // The library open over the Editor: Esc closes it (its scrim), never the window.
+        const scrim = document.querySelector(".console .lib-scrim");
+        if (scrim) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); scrim.click(); } return; }
         const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft) save(); return; }
         if (e.key === "Escape") {
@@ -249,8 +263,8 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                         <div className="frm nv-frm">
                             <span className="k">Fundo</span>
                             <span className="nv-inline">
-                                <BgChip value={bg} title="Fundo do tema" empty="nenhum" noneLabel="Sem fundo no tema" onPick={(spec) => set(bgFields(spec))} />
-                                <span className="kx-meta">vai para a camada Fundo quando um item com este tema vai ao ar</span>
+                                <BgChip value={bg} title="Fundo do tema" empty="falta escolher" className={bg ? "" : "is-missing"} onPick={(spec) => spec && set(bgFields(spec))} />
+                                <span className={`kx-meta${bg ? "" : " is-warn"}`}>{bg ? "vai para a camada Fundo quando um item com este tema vai ao ar" : "obrigatório · imagem, vídeo, gerado ou cor"}</span>
                             </span>
                             {bg && bg.kind !== "color" && bg.kind !== "generator" && <>
                                 <span className="k">Ajuste do fundo</span>
@@ -276,8 +290,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                         {Boolean(savedId.current) && (defaultTheme(themes)?.id === savedId.current
                             ? <span className="kx-meta" style={{ marginRight: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="star" size={12} />tema padrão</span>
                             : <Btn style={{ marginRight: "auto" }} onClick={async () => { try { await keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, savedId.current)); say(`${draft.name || "O tema"} é o tema padrão.`); } catch (err) { say(err?.message || "Não foi possível."); } }}><Icon name="star" />Tornar padrão</Btn>)}
+                        {!bg && <span className="kx-meta is-warn nv-hint"><Icon name="warn" size={12} />{NEEDS_BG}</span>}
                         <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
-                        <Btn kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar tema</Btn>
+                        <Btn kind="brand" disabled={busy || !bg} onClick={save} title={bg ? "Ctrl+S" : NEEDS_BG}>Salvar tema</Btn>
                     </div>
                 </Panel>
             </div>

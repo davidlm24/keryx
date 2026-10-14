@@ -124,7 +124,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   an empty slot is a dashed + that makes a new theme; the panel is as tall
   as its slots (`Measure` → `locked.temas`), like Camadas. Its header has
   the library (`grid` icon; the library's right click pins a theme here)
-  and the **+ menu** (`menuRef`): Novo tema, Salvar/Tirar tema para a
+  and the **+ menu** (`menuRef`): Novo tema, Configurações › Temas…, Salvar/Tirar tema para a
   música, Usar neste culto, Seguir o culto, Tornar padrão, Visualização.
   Nothing else in the body: no "tema do culto" line, no buttons.
   **Camadas edits no look**: the layers come first, each with a pencil on
@@ -218,6 +218,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   saves them, applying one fills what the service has not chosen
   (`lookForService`). Themes may be unnamed (`ProjectionTheme.name` is
   optional, `themeName`): no made-up date, no caption under the thumb.
+  **A theme is saved with a background from the library** (owner
+  2026-10-14, `themeHasBackground`; a colour counts, Cor is a library
+  tab): the Editor de temas keeps Salvar tema off until the Fundo is
+  chosen (no "Sem fundo no tema"; Ctrl+S opens the library), an old theme
+  opened there included; Camadas' "Salvar como novo" takes the Fundo on
+  air, else the theme in use's (`newThemeBackground`), else asks the
+  library and saves nothing when it is closed. Themes saved before
+  without one still work as they did (the text only, the Fundo on air
+  stays) and wear a mark (`NoBgMark`: a dot in Temas, "sem fundo" in the
+  library and Configurações › Temas) with "Escolher fundo…" in their
+  menus. Temas' + also has "Configurações › Temas…".
   The Programa's header has **Fundo do culto** (Fundo de hoje with no
   service; `pickServiceFundo` in Console.jsx): the library picks the
   service's wallpaper, saved as `Service.background` (the day's draft
@@ -242,7 +253,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   whatever is on screen, its own `cfg` state, `?config=`; its sections are
   `src/lib/console/settings.js`, old ids resolve through `resolveSection`;
   its search indexes every row in `settingsSearch.js` — a new `FormRow k`
-  goes in the index, or `npm test` fails).
+  goes in the index, or `npm test` fails). **Sobre** is the last section
+  (owner 2026-10-14, `SobreSection.jsx`; also the KERYX menu's "Sobre o
+  KERYX…", `openSettings("sobre")`): version (the `info` call of Backup;
+  "Prévia de desenvolvimento" without the desktop), Ver novidades (the
+  console's popover, not a second one), the church's name, Electron and
+  Chromium, the Geist license (read from `/fonts/Geist-OFL.txt`) and the
+  notice that the Bibles are installed by each church. Updating stays in
+  Backup e atualizações.
   Everything else
   is a view inside it, one at a time (the `view` state in Console.jsx,
   `?song=`, `?planner=`, `?media=`, `?notice=`, `?school=`, `?reports=`):
