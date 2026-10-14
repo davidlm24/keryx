@@ -42,7 +42,7 @@ export function useConsole() {
     // or a passage that has no look of its own, at send time: what is on
     // air never changes by itself (themes.js, withThemeDefaults).
     // A Bible passage takes the Bíblia's own theme (Configurações › Bíblia
-    // e músicas, or the Bíblia's Tema button); everything else the default.
+    // e músicas, or the Bíblia's Tema button); everything else the songs'.
     const themes = useThemes();
     // One default theme per kind (themes.js themeForKind): Música, Bíblia,
     // Texto and Timer (a tool.show).

@@ -88,18 +88,28 @@ export const KIND_FIELD = { bible: "bible_theme_id", text: "text_theme_id", tool
 // serviceIds: the service's own themes per kind (Service.kind_themes:
 // { lyrics, bible, text, tool }, src/lib/console/serviceLook.js), which come
 // first (owner's decision 2026-10-13); one that was deleted is passed over.
+// "The same as Música" is the theme the songs get now: the service's Música
+// theme or the theme in use (withThemeInUse), else the default — so a theme
+// clicked in the strip dresses a passage, a text or a timer that follows the
+// songs, and one with a theme of its own keeps it (audit 2026-10-14).
 export function themeForKind(themes, kind, ids = {}, serviceIds = null) {
-    const svc = serviceIds && typeof serviceIds === "object" ? serviceIds[kind] : "";
-    if (svc) {
+    const list = themes || [];
+    // The service's theme for a kind: a theme, null (the factory look on
+    // purpose) or undefined (none of its own, or deleted).
+    const ofService = (k) => {
+        const svc = serviceIds && typeof serviceIds === "object" ? serviceIds[k] : "";
+        if (!svc) return undefined;
         if (svc === "none") return null;
-        const t = (themes || []).find((x) => x?.id === svc);
-        if (t) return t;
-    }
-    const def = defaultTheme(themes);
+        return list.find((x) => x?.id === svc) || undefined;
+    };
+    const mine = ofService(kind);
+    if (mine !== undefined) return mine;
+    const lyrics = kind === "lyrics" ? undefined : ofService("lyrics");
+    const musica = lyrics !== undefined ? lyrics : defaultTheme(list);
     const own = typeof ids === "string" ? (kind === "bible" ? ids : "") : ids?.[kind] || "";
-    if (!KIND_FIELD[kind] || !own) return def;
+    if (!KIND_FIELD[kind] || !own) return musica;
     if (own === "none") return null;
-    return (themes || []).find((t) => t?.id === own) || def;
+    return list.find((t) => t?.id === own) || musica;
 }
 
 // The bulkUpdate rows that make `id` the only default (null: none is).

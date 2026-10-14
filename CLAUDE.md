@@ -133,7 +133,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   second theme editor back),
   and "Salvar tema para a música" writes `Song.theme_id` for the song on air
   or in the Prévia. A Bible passage takes **the Bíblia's own theme**
-  (`User.bible_theme_id`: "" = the songs' default, "none" = factory;
+  (`User.bible_theme_id`: "" = whatever the songs get now — the theme in
+  use, else the culto's Música, else the default; the same for Texto and
+  Timer — "none" = factory;
   `themeForKind` in themes.js, used by `stamp`), chosen in the Bíblia's Tema
   button or Configurações › Bíblia e músicas. The item's title over the
   slide is `style.title` (show/hide, Camadas › Texto principal › Título);

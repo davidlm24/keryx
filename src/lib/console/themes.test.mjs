@@ -156,6 +156,22 @@ test("the theme in use rides as the service's Música theme", () => {
     assert.equal(themeForKind(themes, "lyrics", {}, withThemeInUse(null, null)).id, "padrao");
 });
 
+test("O mesmo das músicas follows the theme the songs get: in use or the culto's Música; a theme of its own stays", () => {
+    const themes = [{ id: "padrao", is_default: true }, { id: "vinho" }, { id: "biblia" }, { id: "culto" }];
+    const inUse = withThemeInUse(null, "vinho");
+    for (const kind of ["bible", "text", "tool"]) {
+        assert.equal(themeForKind(themes, kind, {}, inUse).id, "vinho", `${kind}: the clicked theme`);
+        assert.equal(themeForKind(themes, kind, { [kind]: "apagado" }, inUse).id, "vinho", `${kind}: a deleted one falls back to Música's`);
+        assert.equal(themeForKind(themes, kind, { [kind]: "none" }, inUse), null, `${kind}: the factory look stays`);
+    }
+    assert.equal(themeForKind(themes, "bible", { bible: "biblia" }, inUse).id, "biblia", "the church's Bíblia theme stays");
+    assert.equal(themeForKind(themes, "bible", {}, withThemeInUse({ bible: "culto" }, "vinho")).id, "culto", "the culto's Bíblia theme stays");
+    assert.equal(themeForKind(themes, "text", {}, { lyrics: "culto" }).id, "culto", "no click: the culto's Música");
+    assert.equal(themeForKind(themes, "tool", {}, { lyrics: "none" }), null, "the culto's Música is the factory look: so is the timer's");
+    assert.equal(themeForKind(themes, "bible", {}, { lyrics: "apagado" }).id, "padrao", "a deleted Música: the default");
+    assert.equal(themeForKind(themes, "bible", {}, null).id, "padrao", "nothing chosen: the default");
+});
+
 test("the theme in use: choosing a culto seeds it; the day's draft the operator just started leaves it", () => {
     assert.equal(themeInUseSeed({ serviceId: "s1", lyrics: "vinho" }), "vinho", "a culto with its Música theme");
     assert.equal(themeInUseSeed({ serviceId: "s2" }), null, "a culto without one: the default");
