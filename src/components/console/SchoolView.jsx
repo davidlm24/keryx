@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, Monitor, BackBtn } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, Monitor, WinBar } from "./kx";
 import { previewDoc, captionOf, TeacherNotes } from "./CenterPanel";
 import { stageFromMaterial, stageFromTool, liveStageId } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
@@ -21,7 +21,7 @@ const blankMaterial = (classRow) => ({ title: "", type: "slides", subject: "", c
 // click prepares a material, Enter or a double click sends it, a quiz's
 // answer is the next slide (→). Materials are edited here; they also go
 // into the Setlist (planner, "Setlist" here) and the palette.
-export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, onClose, escRef }) {
+export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, onClose, escRef, active = true }) {
     const client = useQueryClient();
     useEffect(() => keryx.entities.BibleSchoolClass.subscribe(() => client.invalidateQueries({ queryKey: CLASSES })), [client]);
     useEffect(() => keryx.entities.BibleMaterial.subscribe(() => client.invalidateQueries({ queryKey: MATERIALS })), [client]);
@@ -32,6 +32,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     const [student, setStudent] = useState("");
     const [onlyClass, setOnlyClass] = useState(true);
     const [editing, setEditing] = useState(null); // a material draft (id or not)
+    const editOrigRef = useRef(null); // the draft as opened, for the unsaved guard
     const [confirm, setConfirm] = useState(null); // "st:<i>": a student about to leave the class
     const ask = useConfirm();
     const [minutes, setMinutes] = useState(5);
@@ -95,17 +96,31 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         try { await keryx.entities.BibleMaterial.delete(editing.id); setEditing(null); refresh(); c.say("Material excluído."); } catch (err) { fail(err); }
     };
 
-    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
-    // whatever is open over the view closes first, and a field's Esc
-    // already blurred): close the material editor, then the view. Ctrl+S
-    // saves the material being edited — the view's own key; it defers only
-    // to a dialog over the view (its own scrim does not count). Every other
-    // key is the console's (Enter sends, ←/→ walk the slides, B, L, C).
-    if (escRef) escRef.current = () => { if (editing) setEditing(null); else onClose(); };
+    // A material draft with changes asks before it is dropped (Rodada C:
+    // before, Esc and "Materiais" discarded it in silence).
+    const openMaterial = (draft) => { editOrigRef.current = JSON.stringify(draft); setEditing(draft); };
+    const closeMaterial = async () => {
+        if (editing && JSON.stringify(editing) !== editOrigRef.current && !(await ask({ title: "Descartar as mudanças?", text: `O material "${editing.title?.trim() || "Novo material"}" tem mudanças não salvas.`, ok: "Descartar" }))) return false;
+        setEditing(null);
+        return true;
+    };
+    // Esc comes routed from the console (keys.js ESC_ORDER "window", so
+    // whatever is open over the page closes first, and a field's Esc
+    // already blurred): close the material editor (asking if it changed),
+    // then leave; the Voltar chip and the (x) pass the same guard. Ctrl+S
+    // saves the material being edited — the page's own key; it defers to a
+    // dialog over the page (its own scrim does not count) and sleeps while
+    // another page covers this one. Every other key is the console's
+    // (Enter sends, ←/→ walk the slides, B, L, C).
+    if (escRef) escRef.current = async (mode) => {
+        if (mode === "esc") { if (editing) await closeMaterial(); else onClose(); return; }
+        if (editing && !(await closeMaterial())) return;
+        onClose(mode === "all");
+    };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        if (!(editing && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
-        if (document.querySelector(".console .scrim:not(.view-scrim)")) return;
+        if (!(editing && active && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
+        if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
         e.preventDefault(); e.stopPropagation();
         saveMaterial();
     };
@@ -129,8 +144,10 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
 
     return (
         <>
+            <WinBar title="Escola bíblica" />
+            <div className="win-body">
             <div className="col" style={{ flex: "0 1 340px", minWidth: 280 }}>
-                <Panel lead={<BackBtn onClick={onClose} />} title={<>Turmas <span className="kx-count">· {classes.length}</span></>} actions={<><IconBtn name="plus" small title="Nova turma" onClick={newClass} /></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel title={<>Turmas <span className="kx-count">· {classes.length}</span></>} actions={<><IconBtn name="plus" small title="Nova turma" onClick={newClass} /></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="sv-scroll">
                         {!classes.length && <Empty icon="user" title="Nenhuma turma">Crie uma turma com +. Os materiais funcionam mesmo sem turma.</Empty>}
                         {classes.map((k) => (
@@ -171,11 +188,11 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
             <div className="kx-gap" />
             <div className="col center sv-center">
                 {editing ? (
-                    <MaterialEditor c={c} draft={editing} setDraft={setEditing} classes={classes} media={media} onSave={saveMaterial} onCancel={() => setEditing(null)} onRemove={removeMaterial} onPreview={() => c.setPrev(stageFromMaterial({ ...editing, id: editing.id || "rascunho" }))} />
+                    <MaterialEditor c={c} draft={editing} setDraft={setEditing} classes={classes} media={media} onSave={saveMaterial} onCancel={closeMaterial} onRemove={removeMaterial} onPreview={() => c.setPrev(stageFromMaterial({ ...editing, id: editing.id || "rascunho" }))} />
                 ) : (
                     <Panel title={<>Materiais da lição <span className="kx-count">· {onlyClass && cls ? cls.name : "todas as turmas"}</span></>} actions={<>
                         {cls && <Seg small value={onlyClass ? "turma" : "todos"} onChange={(v) => setOnlyClass(v === "turma")} options={[["turma", "Desta turma"], ["todos", "Todos"]]} />}
-                        <IconBtn name="plus" small title="Novo material" onClick={() => setEditing(blankMaterial(onlyClass ? cls : null))} />
+                        <IconBtn name="plus" small title="Novo material" onClick={() => openMaterial(blankMaterial(onlyClass ? cls : null))} />
                     </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                         <div className="sv-scroll">
                             {!shown.length && <Empty icon="book" title="Nenhum material">Use + para criar slides, um quiz, um texto, um vídeo ou uma imagem para a lição.</Empty>}
@@ -186,7 +203,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                                         <Row key={m.id} icon={materialIcon(m.type)} title={m.title} meta={[materialMeta(m), !onlyClass && m.class_name, m.description ? "tem notas" : ""].filter(Boolean).join(" · ")} state={stateOf(m)}
                                             onClick={() => prepare(m)} onDoubleClick={() => send(m)}
                                             actions={<>
-                                                <Btn onClick={(e) => { e.stopPropagation(); setEditing({ ...blankMaterial(null), ...m, slides: m.slides || [], quiz_questions: quizQuestions(m) }); }}>Editar</Btn>
+                                                <Btn onClick={(e) => { e.stopPropagation(); openMaterial({ ...blankMaterial(null), ...m, slides: m.slides || [], quiz_questions: quizQuestions(m) }); }}>Editar</Btn>
                                                 {onAddToSetlist && <Btn onClick={(e) => { e.stopPropagation(); onAddToSetlist(m); }} title="Adicionar ao fim da setlist">Setlist</Btn>}
                                                 <Btn onClick={(e) => { e.stopPropagation(); send(m); }} title="Enviar ao ar · duplo clique">Projetar</Btn>
                                             </>} />
@@ -221,6 +238,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                         <Btn small onClick={() => c.setPrev(stageFromTool("timer", { minutes }))}>Pôr na prévia</Btn>
                     </div>
                 </Panel>
+            </div>
             </div>
         </>
     );

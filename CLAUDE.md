@@ -305,25 +305,35 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   notice that the Bibles are installed by each church. Updating stays in
   Backup e atualizações.
   Everything else
-  is a view inside it, one at a time (the `view` state in Console.jsx,
-  `?song=`, `?planner=`, `?media=`, `?notice=`, `?school=`, `?reports=`):
-  the song editor (`SongEditor.jsx`), the
-  planner (`ServicePlanner.jsx`), the media library (`MediaView.jsx`), the
-  aviso editor (`NoticeEditor.jsx`), the Escola bíblica (`SchoolView.jsx`;
-  it projects through the console's Prévia/Programa and every live key
-  works there) and Relatórios (`ReportsView.jsx`). **Every view floats**
-  (owner 2026-10-14, "janelas flutuantes"): it opens as a dialog over the
-  live console (`.view-dialog` + `.view-scrim` in console.css, under
-  Configurações and the library; sizes `vd-media`/`vd-wide`/`vd-reports`),
-  never as a page replacing the dock — the view registers its close
-  request on Console's `viewEscRef` (prop `escRef`), Esc reaches it
-  through keys.js (`ESC_ORDER` "view", tested; an unsaved guard may ask
-  instead of closing, and the scrim click asks the same way) and the view
-  keeps no Esc listener of its own (its other keys — Ctrl+S, Mídia's
-  Enter/Delete — stay its listeners, deferring to
-  `.scrim:not(.view-scrim)`); while any view is open the Programa monitor
-  and the Multiview draw one still frame (`still` on CenterPanel — the
-  air itself never pauses). The Bíblia is the
+  is a page of **THE window** (Rodada C, owner's choice "uma janela, com
+  Voltar", 2026-10-14; the `win` stack in Console.jsx fed by
+  `src/lib/console/nav.js`, tested; `?song=`, `?planner=`, `?media=`,
+  `?notice=`, `?school=`, `?reports=`, `?config=` open their page):
+  Configurações, the song editor (`SongEditor.jsx`), the planner
+  (`ServicePlanner.jsx`), the media library (`MediaView.jsx`), the aviso
+  editor (`NoticeEditor.jsx`), the Escola bíblica (`SchoolView.jsx`; it
+  projects through the console's Prévia/Programa and every live key works
+  there), Relatórios (`ReportsView.jsx`) and the theme/screen editors.
+  **One floating window over the live console**, the Configurações frame
+  on every page (`WinBar` in kx.jsx: the ← Voltar chip from level 2, the
+  title, the page's tools and actions, the (x) "Fechar · Esc"; there is
+  no "← Console" BackBtn any more), `.win-dialog` + `.win-scrim` in
+  console.css, two sizes (Padrão, and `.is-editor` for the editors; the
+  frame animates between them). **Opening from inside navigates in the
+  same window**: `nav.js` push ("← Temas", "← Telas e saídas", "← Editor
+  da tela"; `openEditor`'s `from` carries the label), Esc / the Voltar
+  chip / the scrim pop ONE level (the first closes), the (x) closes the
+  whole stack, and every exit goes through the top page's `escRef`
+  (modes "esc" | "back" | "all"), so the one unsaved guard asks —
+  **"Descartar as mudanças?" via `useConfirm`** (owner's pick, Rodada C;
+  Esc answers "continuar"), never the old two-step toast. Pages under
+  the top stay mounted and hidden (Voltar finds them as they were); a
+  page's own keys (Ctrl+S, Mídia's Enter/Delete) sleep while covered
+  (prop `active`) and defer to `.scrim:not(.win-scrim)`. Pickers that
+  answer (the background library, ConfirmDialog, menus) stay ON TOP,
+  never in the stack. While the window is open the Programa monitor and
+  the Multiview draw one still frame (`still` on CenterPanel — the air
+  itself never pauses). The Bíblia is the
   console's second environment (`BibleEnv.jsx`: Ler, Comparar, the Buscar field,
   notes). Where the modules go is the operator's: **each environment is a
   dock** (owner 2026-10-13, the "Disposição do console" prototype, model
@@ -502,9 +512,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   so the player that unmounts hands it to the one that mounts in the same
   commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
-  topmost thing open (`escapeTarget`: a right-click menu, the background library, a popover, then
-  Configurações, then the floating view (routed to its close request),
-  then the Camadas drawer) and with nothing
+  topmost thing open (`escapeTarget`: a right-click menu, the background
+  library, a popover, then THE window — one level of its stack, routed to
+  the top page's close request — then the Camadas drawer) and with nothing
   open ends at once (music on the audio channel keeps playing; the Fundo
   stays on screen, and the idle look shows only with no Fundo); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
@@ -633,21 +643,24 @@ um elemento novo é um entry em `ELEMENT_TYPES` + seu caso em `elementText`
 ou no `Body` do renderer; num renderer output o elemento **Projeção**
 desenha a vista da saída (`prefState`) e um desenho com *timer* tira a
 camada `tool` dela (`layoutHasTimer`).
-**O Editor das telas e dos temas flutua na console** (owner 2026-10-14,
-"janelas flutuantes"; reverte a janela própria de 2026-10-13): todo
-`openEditor({ screen|theme })` (`src/lib/editorWindow.js`) cai no host que
-a console registra (`setEditorHost`) e abre o diálogo `.vd-editor` —
-quase tela cheia, camada própria do Esc (`ESC_ORDER` "editor", roteado ao
-guarda de não salvo do editor como as views), POR CIMA de Configurações
-(que fica aberta atrás e reaparece ao fechar) e por baixo da biblioteca,
-que ele mesmo abre; a biblioteca de onde se veio dá lugar. O corpo é um
-só, `EditorHost.jsx` (troca Temas | Telas, rodapé) — nunca um segundo
-editor. **"Destacar em janela"** (rodapé do diálogo; para quem edita
-vendo outro monitor) abre o mesmo EditorHost na janela de sempre:
+**Os editores são páginas DA janela** (Rodada C, owner 2026-10-14, "uma
+janela, com Voltar"): todo `openEditor({ screen|theme, from })`
+(`src/lib/editorWindow.js`) cai no host que a console registra
+(`setEditorHost`) — com `from` (o título de onde veio) ele empurra um
+nível NA janela em cena ("← Temas", "← Telas e saídas"; de dentro do
+Editor da tela, "Editar tema…" empurra o Editor de temas, nível 3), sem
+`from` abre como janela própria; Esc volta um nível, o (x) fecha a
+pilha, a janela cresce para o tamanho Editor (`.is-editor`) e a console
+desenha a barra (WinBar: título, ⧉ Destacar, ×). Na console cada editor
+é uma página (não há mais o alternador Temas | Telas nem o rodapé do
+diálogo; o guarda de não salvo pergunta via `useConfirm`, e trocar de
+tema/tela também). **"Destacar em janela"** (o ⧉ da barra; para quem
+edita vendo outro monitor) abre o `EditorHost` na janela de sempre:
 `/Editor` (`src/pages/Editor.jsx`; `openEditor({ …, detached: true })`,
 janela nomeada `keryx-editor`; aba no preview; nunca em NETWORK_SCREENS),
-com o guarda de fechar do Electron (closeGuard). O rodapé alterna
-**Temas | Telas**:
+com o guarda de fechar do Electron (closeGuard) — só lá ficam o rodapé
+com o alternador Temas | Telas e o guarda de dois toques (sem provider
+de confirmação). Os dois corpos:
   - uma TELA (`ScreenEditor.jsx`): menu vertical com as telas
     (`EDITOR_SCREENS`), o canvas edita o design DELA com os ajustes reais
     da própria tela vestindo a prévia (prefState + kp-out, ou só a Escala

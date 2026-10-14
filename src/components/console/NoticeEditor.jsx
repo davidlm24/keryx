@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePrefs } from "@/hooks/useUser";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, BackBtn } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { NOTICE_TYPES, newNotice, noticeLabel } from "@/lib/console/notice";
 import { parseDuration, formatDuration } from "@/lib/songImport";
@@ -24,7 +24,7 @@ const pickFields = (row) => Object.fromEntries(FIELDS.filter((k) => row[k] !== u
 // (a bundled photo, a colour, an image, a video, audio, or a loop of files)
 // and a live 16:9 preview drawn by ScreenRenderer, so it is the screen.
 // Saving changes the library only; "Pôr na prévia do console" prepares it.
-export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved, escRef }) {
+export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved, escRef, active = true }) {
     const chimeOn = usePrefs().chime_on;
     const isNew = noticeId === "new";
     const [draft, setDraft] = useState(() => (isNew ? newNotice("countdown") : null));
@@ -33,7 +33,6 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
     const [durText, setDurText] = useState(isNew ? formatDuration(300) : "");
     const [startedAt, setStartedAt] = useState(() => keryx.live.now());
     const [pick, setPick] = useState(null); // "video" | "audio" | "files"
-    const [confirm, setConfirm] = useState(null); // "discard"
     const ask = useConfirm();
     const [busy, setBusy] = useState(false);
     const fileRef = useRef(null);
@@ -49,7 +48,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
     }, [noticeId, isNew]);
 
     const dirty = useMemo(() => draft && JSON.stringify(pickFields(draft)) !== JSON.stringify(saved ? { ...pickFields({ ...newNotice(saved.type), ...pickFields(saved), files: saved.files || [] }) } : pickFields(newNotice("countdown"))), [draft, saved]);
-    const set = (patch) => { setConfirm(null); setDraft((d) => ({ ...d, ...patch })); };
+    const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
     // The preview restarts when the timing changes (kind, length, files).
     useEffect(() => { setStartedAt(keryx.live.now()); }, [draft?.type, draft?.duration, draft?.files?.length]);
 
@@ -79,9 +78,11 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         if (!(await ask(deleteQuestion("o aviso", draft.title)))) return;
         try { await keryx.entities.CommunicationVideo.delete(noticeId); c.say("Aviso excluído."); onClose(); } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
     };
-    const leave = () => {
-        if (dirty && confirm !== "discard") { setConfirm("discard"); c.say("Há mudanças não salvas · clique de novo (ou Esc) para descartar."); return; }
-        onClose();
+    // Leaving with changes asks (Rodada C: the one guard, through the
+    // Excluir question's own dialog; Esc answers "continuar").
+    const leave = async (all = false) => {
+        if (dirty && !(await ask({ title: "Descartar as mudanças?", text: `O aviso "${(draft.text || "").trim() || "Novo aviso"}" tem mudanças não salvas.`, ok: "Descartar" }))) return;
+        onClose(all);
     };
     const toPrev = () => { c.setPrev(stageFromPiece({ ...(saved || {}), ...payload(), id: saved?.id || "rascunho" })); c.say("Aviso na Prévia do console. Nada mudou nas telas."); };
 
@@ -105,16 +106,17 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         });
     };
 
-    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
+    // Esc comes routed from the console (keys.js ESC_ORDER "window", so
     // whatever is open over the editor closes first, and a field's Esc
-    // already blurred): close a picker, then leave (asking once if there
-    // are changes). Ctrl+S saves — the editor's own key; it defers only to
-    // a dialog over the editor (its own scrim does not count).
-    if (escRef) escRef.current = () => { if (pick) setPick(null); else leave(); };
+    // already blurred): close a picker, then leave (asking if there are
+    // changes); the (x) leaves the whole window the same way. Ctrl+S saves
+    // — the editor's own key; it defers to a dialog over the editor (its
+    // own scrim does not count) and sleeps while another page covers this.
+    if (escRef) escRef.current = (mode) => { if (mode === "esc" && pick) setPick(null); else leave(mode === "all"); };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
-        if (document.querySelector(".console .scrim:not(.view-scrim)")) return;
+        if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") || !active) return;
+        if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
         e.preventDefault(); e.stopPropagation();
         if (draft) save();
     };
@@ -124,8 +126,8 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         return () => window.removeEventListener("keydown", onKey, true);
     }, []);
 
-    if (error) return <div className="col center"><Panel title="Editor de aviso"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div className="pl-pad"><Btn onClick={onClose}>Voltar ao console</Btn></div></Panel></div>;
-    if (!draft) return <div className="col center"><Panel title="Editor de aviso"><Empty title="Abrindo…" /></Panel></div>;
+    if (error) return <><WinBar title="Aviso" /><div className="win-body"><div className="col center"><Panel noHead><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div className="pl-pad"><Btn onClick={() => onClose()}>Fechar</Btn></div></Panel></div></div></>;
+    if (!draft) return <><WinBar title="Aviso" /><div className="win-body"><div className="col center"><Panel noHead><Empty title="Abrindo…" /></Panel></div></div></>;
 
     const timed = draft.type === "countdown" || draft.type === "timer";
     const videos = media.filter((m) => m.type === "video" && !/youtu/.test(m.file_url || "") && !m.missing);
@@ -143,10 +145,14 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
 
     return (
         <>
+            <WinBar title="Aviso" sub={`${isNew ? "Novo aviso" : draft.title}${dirty ? " · não salvo" : ""}`} actions={<>
+                {!isNew && <Btn small onClick={remove}>Excluir…</Btn>}
+                <Btn small onClick={() => leave()}>Cancelar</Btn>
+                <Btn small kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar aviso</Btn>
+            </>} />
+            <div className="win-body">
             <div className="col nv-l" style={{ flex: "0 1 420px", minWidth: 340 }}>
-                <Panel lead={<BackBtn onClick={leave} />} title={<>Aviso <span className="kx-count">· {isNew ? "Novo aviso" : draft.title}{dirty ? " · não salvo" : ""}</span></>} actions={<>
-                    {!isNew && <Btn small onClick={remove}>Excluir…</Btn>}
-                                    </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden onChange={(e) => { fileChosen(e.target.files?.[0]); e.target.value = ""; }} />
                     <div className="nv-scroll">
                         <div className="listhead"><span className="kx-section">Tipo</span></div>
@@ -224,10 +230,6 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                             )}
                         </div>
                     </div>
-                    <div className="nv-foot">
-                        <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
-                        <Btn kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar aviso</Btn>
-                    </div>
                 </Panel>
             </div>
             <div className="kx-gap" />
@@ -242,6 +244,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                         <Btn kind="outline" onClick={toPrev}>Pôr na prévia do console</Btn>
                     </div>
                 </Panel>
+            </div>
             </div>
         </>
     );

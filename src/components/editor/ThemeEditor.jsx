@@ -7,7 +7,7 @@
 // the canvas (src/lib/console/themeBox.js maps it to text_align /
 // text_position / text_max_width / text_nudge, "" = factory), with the 3×3
 // zones as guides while dragging.
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { Panel, Btn, Seg, Empty } from "../console/kx";
@@ -22,6 +22,7 @@ import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme,
 import { themeBoxRect, rectToTheme, MIN_WIDTH } from "@/lib/console/themeBox";
 import { TRANSITIONS, TRANSITION_MS, NATURAL_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
+import { ConfirmContext, deleteQuestion } from "../console/ConfirmDialog";
 // The samples the canvas dresses (as ThemeStudio had them, folded in here
 // 2026-10-13): what the theme looks like on a song, a passage and a text,
 // with their own slides.
@@ -52,7 +53,7 @@ const FIELDS = Object.keys(BLANK);
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const pick = (row) => { const out = { ...BLANK }; for (const k of FIELDS) if (row?.[k] != null) out[k] = row[k]; return { ...out, ...bgFields(bgSpec(row)) }; };
 
-export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null }) {
+export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null, active = true }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["editor", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["editor", "themes"] })), [client]);
@@ -60,7 +61,10 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     const [draft, setDraft] = useState(() => (isNew ? { ...BLANK } : null));
     const [saved, setSaved] = useState(null);
     const [error, setError] = useState("");
-    const [confirm, setConfirm] = useState(null); // "delete" | "discard"
+    const [confirm, setConfirm] = useState(null); // "delete" | "discard" (detached only)
+    // The console's window provides the one-question guard; the detached
+    // /Editor has no provider (null) and keeps the two-step toast.
+    const askCtx = useContext(ConfirmContext);
     const [busy, setBusy] = useState(false);
     const [dragging, setDragging] = useState(false);
     // Which sample the canvas dresses, and its slide.
@@ -113,17 +117,28 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         setBusy(false);
         return null;
     };
+    // In the console's window the guard is the one question (Rodada C,
+    // ConfirmDialog); the detached /Editor window has no provider and keeps
+    // the two-step toast, as agreed (owner 2026-10-13).
+    const askDiscard = async () => {
+        if (!dirty) return true;
+        if (askCtx) return askCtx({ title: "Descartar as mudanças?", text: `O tema "${(draft?.name || "").trim() || "sem nome"}" tem mudanças não salvas.`, ok: "Descartar" });
+        return false;
+    };
     const removeTheme = async () => {
-        if (confirm !== "delete") { setConfirm("delete"); say(`Clique de novo para excluir "${draft.name || "o tema"}".`); return; }
+        if (askCtx) { if (!(await askCtx(deleteQuestion("o tema", draft.name || "Tema sem nome")))) return; }
+        else if (confirm !== "delete") { setConfirm("delete"); say(`Clique de novo para excluir "${draft.name || "o tema"}".`); return; }
         try { await keryx.entities.ProjectionTheme.delete(savedId.current); say("Tema excluído."); (onSwitch || onClose)("new"); } catch (err) { say(err?.message || "Não foi possível excluir."); }
     };
-    const leave = () => {
-        if (dirty && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · clique de novo (ou Esc) para descartar."); return; }
-        onClose();
+    const leave = async (all = false) => {
+        if (dirty && !askCtx && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · clique de novo (ou Esc) para descartar."); return; }
+        if (askCtx && !(await askDiscard())) return;
+        onClose(all);
     };
-    const switchTo = (id) => {
+    const switchTo = async (id) => {
         if (id === (savedId.current || themeId)) return;
-        if (dirty && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · escolha de novo para descartar."); return; }
+        if (dirty && !askCtx && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · escolha de novo para descartar."); return; }
+        if (askCtx && !(await askDiscard())) return;
         onSwitch?.(id);
     };
     useEffect(() => {
@@ -133,20 +148,21 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         return () => window.removeEventListener("beforeunload", guard);
     }, [dirty]);
 
-    // Keys: Ctrl+S saves; Esc leaves a field, then the window (asking once).
-    // Hosted in the console's floating dialog (escRef set), Esc comes routed
-    // from the console instead (keys.js ESC_ORDER "editor") and the dirty
-    // guard still asks; leaveRef is the footer's guarded Fechar. Anything
-    // over the editor (the library, a confirm) takes the keys first.
-    if (escRef) escRef.current = () => leave();
+    // Keys: Ctrl+S saves; Esc leaves a field, then the window (asking).
+    // Hosted in the console's window (escRef set), Esc comes routed from
+    // the console instead (keys.js ESC_ORDER "window") and the dirty guard
+    // still asks; the (x) ("all") leaves the whole stack the same way.
+    // leaveRef is the detached footer's guarded Fechar. Anything over the
+    // editor (the library, a confirm) takes the keys first.
+    if (escRef) escRef.current = (mode) => leave(mode === "all");
     if (leaveRef) leaveRef.current = () => leave();
     const keysRef = useRef(null);
     keysRef.current = (e) => {
+        if (!active) return; // another page of the window covers this one
         // Only what opens OVER the editor takes the keys (the library, a
-        // right-click menu, a confirm); Configurações' scrim sits under the
-        // floating editor and must not. In the window, Esc closes the
-        // library itself (its scrim) — in the console's dialog the console
-        // routes that (ESC_ORDER "library" before "editor").
+        // right-click menu, a confirm). In the detached window, Esc closes
+        // the library itself (its scrim) — in the console's window the
+        // console routes that (ESC_ORDER "library" before "window").
         const libScrim = document.querySelector(".console .lib-scrim");
         if (libScrim) { if (!escRef && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); libScrim.click(); } return; }
         if (document.querySelector(".console .ctx-scrim, .console .confirm-scrim")) return;

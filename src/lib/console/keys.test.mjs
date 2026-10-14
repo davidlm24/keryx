@@ -101,36 +101,27 @@ test("Esc closes the topmost thing open, one per press; with nothing open it end
     assert.equal(escapeTarget({}), "end");
     assert.equal(escapeTarget(), "end");
     assert.equal(escapeTarget({ drawer: true }), "drawer");
-    assert.equal(escapeTarget({ settings: true, drawer: true }), "settings");
-    assert.equal(escapeTarget({ popover: "verificar", settings: true, drawer: true }), "popover");
-    assert.equal(escapeTarget({ menu: true, popover: "outs", settings: true }), "menu");
-    // The background library opens over a popover or Configurações: it goes first.
-    assert.equal(escapeTarget({ library: true, popover: "outs", settings: true }), "library");
+    assert.equal(escapeTarget({ window: true, drawer: true }), "window");
+    assert.equal(escapeTarget({ popover: "verificar", window: true, drawer: true }), "popover");
+    assert.equal(escapeTarget({ menu: true, popover: "outs", window: true }), "menu");
+    // The background library opens over a popover or any window page: it goes first.
+    assert.equal(escapeTarget({ library: true, popover: "outs", window: true }), "library");
     assert.equal(escapeTarget({ menu: true, library: true }), "menu");
-    assert.equal(escapeTarget({ popover: null, settings: false, drawer: false }), "end");
+    assert.equal(escapeTarget({ popover: null, window: false, drawer: false }), "end");
     // The edit mode: left before the projection ends, after everything over it.
     assert.equal(escapeTarget({ edit: true }), "edit");
     assert.equal(escapeTarget({ drawer: true, edit: true }), "drawer");
-    // The order is the visual stacking: a context menu over the background library over a popover over the floating Editor over Configurações over a floating view over Camadas over the edit mode.
-    assert.deepEqual(ESC_ORDER, ["menu", "confirm", "library", "popover", "editor", "settings", "view", "drawer", "edit"], "the Visual do culto window is gone (review 2026-10-14); the Editor floats over Configurações and under the library it opens");
-    assert.equal(escapeTarget({ library: true, settings: true }), "library", "the library picks over Configurações");
-    assert.equal(escapeTarget({ confirm: true, library: true, settings: true }), "confirm", "the Excluir? question first");
-    // A floating view (the planner, Mídia, the aviso editor — owner
-    // 2026-10-14): under everything that opens over it, and Esc reaches it
-    // before the drawer and the edit mode. The console routes "view" to the
-    // view's own close request, so an unsaved guard can ask instead of closing.
-    assert.equal(escapeTarget({ view: true }), "view");
-    assert.equal(escapeTarget({ settings: true, view: true }), "settings", "Configurações opens over a view and closes first");
-    assert.equal(escapeTarget({ library: true, view: true }), "library", "the library picked from a view closes first");
-    assert.equal(escapeTarget({ confirm: true, view: true }), "confirm");
-    assert.equal(escapeTarget({ view: true, drawer: true, edit: true }), "view");
-    // The floating Editor (phase 4): over Configurações, which may have
-    // opened it and stays open behind; under the library it opens and the
-    // Excluir? question; routed to the editor's close request like a view.
-    assert.equal(escapeTarget({ editor: true }), "editor");
-    assert.equal(escapeTarget({ editor: true, settings: true }), "editor", "the Editor closes back to Configurações");
-    assert.equal(escapeTarget({ library: true, editor: true, settings: true }), "library", "the library picked from the Editor closes first");
-    assert.equal(escapeTarget({ confirm: true, editor: true }), "confirm");
+    // The order is the visual stacking: a context menu over the background
+    // library over a popover over the ONE window (Rodada C: Configurações,
+    // the views and the editors are its pages — Esc there pops one level,
+    // the first closes) over Camadas over the edit mode.
+    assert.deepEqual(ESC_ORDER, ["menu", "confirm", "library", "popover", "window", "drawer", "edit"], "one window since Rodada C: the editor, settings and view layers folded into it");
+    assert.equal(escapeTarget({ library: true, window: true }), "library", "the library picks over the window");
+    assert.equal(escapeTarget({ confirm: true, library: true, window: true }), "confirm", "the Excluir? question first");
+    // The console routes "window" to the TOP page's own close request, so
+    // an unsaved guard can ask instead of popping.
+    assert.equal(escapeTarget({ window: true }), "window");
+    assert.equal(escapeTarget({ window: true, drawer: true, edit: true }), "window");
 });
 
 test("the shortcut list and the keys never drift apart", () => {

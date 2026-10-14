@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 
@@ -8,8 +8,10 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 
 // `bare`: no card (kx-panel-bare), the module sits on the console's ground
 // (the Programa, the Prévia); with nothing for it, the header is left out.
-export function Panel({ title, count, lead, caption, actions, collapsed, onToggle, bare = false, className = "", style, children, bodyStyle }) {
-    const head = !bare || title || caption || actions || lead || onToggle;
+export function Panel({ title, count, lead, caption, actions, collapsed, onToggle, bare = false, noHead = false, className = "", style, children, bodyStyle }) {
+    // `noHead`: the card without its header line — a window page whose
+    // title and tools ride the win-bar (Rodada C).
+    const head = !noHead && (!bare || title || caption || actions || lead || onToggle);
     return (
         <div className={`kx-panel ${bare ? "kx-panel-bare" : ""} ${collapsed ? "is-collapsed" : ""} ${className}`} style={style}>
             {head && <div className="kx-panel-h">
@@ -32,14 +34,30 @@ export function Btn({ kind = "", small, on, className = "", children, ...rest })
     return <button type="button" className={cls} style={small ? { height: 24, padding: "0 6px" } : undefined} aria-pressed={typeof on === "boolean" ? on : undefined} {...rest}>{children}</button>;
 }
 
-// The way back from a full-screen view (song editor, planner, media, ...):
-// always the first thing in the view's first header, outlined so it does not
-// blend into the header's ghost buttons. Esc does the same.
-export function BackBtn({ onClick, label = "Console", title = "Voltar ao console · Esc" }) {
+// The window frame's bar (owner 2026-10-14, Rodada C: every floating page
+// has the Configurações frame). The console provides the navigation through
+// WinCtx — the Voltar chip (level 2 on: "← where it came from", as Esc),
+// the (x) "Fechar · Esc" that closes the whole stack — and the page brings
+// its own title, context (`sub`, muted), tools (the page's search, filters)
+// and actions (Salvar, Cancelar). There is no "← Console" any more: the
+// first level's Esc and (x) just close.
+export const WinCtx = createContext(null);
+export function WinBar({ title, sub, tools, actions, detach }) {
+    const w = useContext(WinCtx) || {};
     return (
-        <button type="button" className="kx-btn kx-btn-outline kx-btn-back kx-t" onClick={onClick} title={title}>
-            <Icon name="arrow-left" />{label}
-        </button>
+        <div className="win-bar">
+            {w.back && (
+                <button type="button" className="kx-btn kx-btn-outline kx-btn-back kx-t" onClick={w.onBack} title={`Voltar a ${w.back} · Esc`}>
+                    <Icon name="arrow-left" />{w.back}
+                </button>
+            )}
+            <span className="kx-section win-title">{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
+            {tools && <span className="win-tools">{tools}</span>}
+            <span className="win-gap" />
+            {actions}
+            {detach && <IconBtn name="external" title="Destacar em janela: abrir o Editor em janela própria (para editar vendo outra tela)" onClick={detach} />}
+            <IconBtn name="x" title="Fechar · Esc" onClick={w.onCloseAll} />
+        </div>
     );
 }
 

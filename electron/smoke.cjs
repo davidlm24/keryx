@@ -1587,7 +1587,7 @@ async function checkConsole(webContents, { live, outputs }) {
         if (camadasDrawer) await click(".drawer .kx-btn", "Fechar");
 
         // The song editor: "+ › Nova música" opens it as a floating dialog
-        // over the live console (.view-dialog, owner 2026-10-14), lyrics
+        // over the live console (.win-dialog, owner 2026-10-14), lyrics
         // split live into slides, Ctrl+S saves, Esc closes; "Editar" reopens
         // it with the song.
         await click(".envtabs button", "KERYX");
@@ -1604,7 +1604,7 @@ async function checkConsole(webContents, { live, outputs }) {
             return r.left >= 0 && r.right <= innerWidth ? true : "fora da tela: " + Math.round(r.left) + " a " + Math.round(r.right) + " em " + innerWidth;
         })()`);
         await click(".addmenu-pop button", "Nova música");
-        result.edOpen = await waitFor(() => js("Boolean(document.querySelector('.view-dialog .song-ed-l'))"));
+        result.edOpen = await waitFor(() => js("Boolean(document.querySelector('.win-dialog .song-ed-l'))"));
         if (!result.edOpen) result.edOpenDiag = await js("document.body.innerText.slice(0, 300)");
         result.edFill = await js(`(() => {
             const setVal = (el, v) => { const p = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(p, "value").set.call(el, v); el.dispatchEvent(new Event("input", { bubbles: true })); };
@@ -1642,7 +1642,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Each slide says its lines and characters; the split chosen in the
         // Letra header is saved with the song and comes back when reopened.
         result.edFit = await waitFor(() => js("[...document.querySelectorAll('.ed-th .fit')].map((n) => n.textContent).join('|') === '2 l · 18 c|2 l · 20 c'"), 3000);
-        await click(".view-dialog .lines-pick button", "4 linhas");
+        await click(".win-dialog .lines-pick button", "4 linhas");
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("s", ["control"]);
         result.edSplitSaved = await waitFor(async () => {
@@ -1685,7 +1685,7 @@ async function checkConsole(webContents, { live, outputs }) {
         const SPLIT_LYRICS = "[Verso]\num\ndois\ntrês\nquatro";
         const edTyped = await js(`(() => {
             const el = document.querySelector("textarea[aria-label=Letra]");
-            if (!el) return "sem textarea · editor aberto: " + Boolean(document.querySelector(".view-dialog .song-ed-l"));
+            if (!el) return "sem textarea · editor aberto: " + Boolean(document.querySelector(".win-dialog .song-ed-l"));
             const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
             set.call(el, ${JSON.stringify(SPLIT_LYRICS)});
             el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -1694,7 +1694,7 @@ async function checkConsole(webContents, { live, outputs }) {
         if (edTyped === true) {
             // The split is still "4 linhas": the 4-row stanza is one slide.
             const edOneSlide = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 1"));
-            await click(".view-dialog .lines-pick button", "2 linhas");
+            await click(".win-dialog .lines-pick button", "2 linhas");
             const edTwoSlides = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 2"), 3000);
             const edLyricsKept = await js(`(document.querySelector("textarea[aria-label=Letra]") || {}).value === ${JSON.stringify(SPLIT_LYRICS)}`);
             result.edSplitLive = edOneSlide && edTwoSlides && edLyricsKept === true;
@@ -1710,7 +1710,7 @@ async function checkConsole(webContents, { live, outputs }) {
             if (operatorWin) operatorWin.setContentSize(w, 820);
             await sleep(400);
             result.edNoOverflow[w] = await js(`(() => {
-                const sels = [".song-ed-l .kx-panel-b", ".ed-tools", ".ed-acts", ".song-ed-r .kx-panel-b", ".ed-lyrics"];
+                const sels = [".song-ed-l .kx-panel-b", ".ed-tools", ".win-bar", ".song-ed-r .kx-panel-b", ".ed-lyrics"];
                 return sels.every((sel) => [...document.querySelectorAll(sel)].every((n) => n.scrollWidth <= n.clientWidth + 1));
             })()`);
         }
@@ -1718,10 +1718,12 @@ async function checkConsole(webContents, { live, outputs }) {
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(300);
         result.shotEditor = await shot("editor");
-        // The editor is dirty (the split test typed over the lyrics): the
-        // first Esc asks "Alterações não salvas", the next one discards.
-        for (let i = 0; i < 3; i += 1) {
-            await press("Escape");
+        // The editor is dirty (the split test typed over the lyrics): Esc
+        // asks "Descartar as mudanças?" (Rodada C's one guard) and the
+        // Descartar button discards; Esc on the question would stay.
+        for (let i = 0; i < 4; i += 1) {
+            const asked = await js("(() => { const b = [...document.querySelectorAll('.confirm-dialog button')].find((x) => x.textContent.trim() === 'Descartar'); if (b) b.click(); return Boolean(b); })()");
+            if (!asked) await press("Escape");
             if (await waitFor(() => js("!document.querySelector('.song-ed-l')"), 3000)) break;
         }
 
@@ -1834,10 +1836,10 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".kx-pop button", "Configurações");
         result.cfgOpen = await waitFor(() => js("Boolean(document.querySelector('.console .cfg'))"));
         // Over the console, which stays mounted behind it.
-        result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .dock') && document.querySelector('.console .cfg-scrim'))");
+        result.cfgDialog = await js("Boolean(document.querySelector('.console .win-dialog[role=dialog] .cfg') && document.querySelector('.console .main .dock') && document.querySelector('.console .win-scrim'))");
         result.cfgSections = {};
         for (const name of ["Igreja", "Telas e saídas", "Telas na rede", "Temas e fundos", "Bíblia e músicas", "Culto", "Console", "Backup e atualizações"]) {
-            await click(".console .cfg-dialog .kx-row", name);
+            await click(".console .win-dialog .kx-row", name);
             result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
         }
         result.cfgAll = Object.values(result.cfgSections).every(Boolean);
@@ -1846,25 +1848,25 @@ async function checkConsole(webContents, { live, outputs }) {
         // find a setting, Enter opens its section with the row lit, Esc clears.
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("/");
-        result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .cfg-dialog-h .cfg-search input')"), 3000);
+        result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .win-bar .cfg-search input')"), 3000);
         await type("fundo de espera");
         result.cfgSearchHits = await waitFor(() => js("[...document.querySelectorAll('.console .cfg-results .kx-row-title')].some((n) => n.textContent === 'Qualquer outro culto')"), 3000);
         await press("Escape");
-        result.cfgSearchClear = await waitFor(() => js("Boolean(document.querySelector('.console .cfg-dialog')) && document.querySelector('.console .cfg-search input').value === '' && !document.querySelector('.console .cfg-results')"), 3000);
+        result.cfgSearchClear = await waitFor(() => js("Boolean(document.querySelector('.console .win-dialog')) && document.querySelector('.console .cfg-search input').value === '' && !document.querySelector('.console .cfg-results')"), 3000);
         await type("pin");
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg-results .kx-row'))"), 3000);
         await press("Enter");
         result.cfgSearchJump = await waitFor(() => js("(document.querySelector('.console .cfg .kx-panel-h .kx-section') || {}).textContent === 'Telas na rede' && Boolean(document.querySelector('.console .cfg [data-cfg-k=\"PIN\"].is-flash'))"), 5000);
         // Backup automático turns off and back on (settings.json, merged).
-        await click(".console .cfg-dialog .kx-row", "Backup e atualizações");
+        await click(".console .win-dialog .kx-row", "Backup e atualizações");
         const autoBackup = async () => ((await js('window.keryxDesktop.system.call("info")')).data || {}).backup?.enabled;
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg button[aria-label=\"Backup automático\"]'))"), 6000);
         await js("document.querySelector('.console .cfg button[aria-label=\"Backup automático\"]').click(); true");
         result.backupOff = await waitFor(async () => (await autoBackup()) === false, 5000);
         await js("document.querySelector('.console .cfg button[aria-label=\"Backup automático\"]').click(); true");
         result.backupOn = await waitFor(async () => (await autoBackup()) === true, 5000);
-        if (!(result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump)) result.cfgSearchDiag = await js("document.querySelector('.console .cfg-dialog').innerText.slice(0, 300)");
-        await click(".console .cfg-dialog .kx-row", "Telas e saídas");
+        if (!(result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump)) result.cfgSearchDiag = await js("document.querySelector('.console .win-dialog').innerText.slice(0, 300)");
+        await click(".console .win-dialog .kx-row", "Telas e saídas");
         result.cfgOutputs = await waitText(webContents, "Projeção principal");
         // Telas e saídas as thumbnails (2026-10-13): one card per output
         // with a real still of what that screen shows; the thumbs follow a
@@ -1893,39 +1895,42 @@ async function checkConsole(webContents, { live, outputs }) {
 
         // Temas: Configurações keeps only the list; "Novo tema…" opens the
         // Editor de temas e telas as a floating dialog over Configurações
-        // (.vd-editor, owner 2026-10-14 "janelas flutuantes"; "Destacar em
+        // (.win-dialog.is-editor, owner 2026-10-14 "janelas flutuantes"; "Destacar em
         // janela" still opens the /Editor window — the shutdown check keeps
         // covering that path), where the theme gets a name and a font with a
         // live sample, Salvar writes the row, and Esc closes back to
         // Configurações. Element clicks (not coordinates): the dialog
         // relayouts while it opens.
-        const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .cfg-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
+        const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .win-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
         const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
         await waitFor(() => section("Temas"), 4000);
         await waitFor(() => press2("Novo tema…"), 4000);
-        result.themeWindow = await waitFor(() => js("Boolean(document.querySelector('.console .vd-editor .nv-frm input.pl-input'))"), 8000);
+        result.themeWindow = await waitFor(() => js("Boolean(document.querySelector('.console .win-dialog.is-editor .nv-frm input.pl-input'))"), 8000);
         await js(`(() => {
-            const name = document.querySelector(".vd-editor .nv-frm input.pl-input");
+            const name = document.querySelector(".win-dialog.is-editor .nv-frm input.pl-input");
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(name, "Tema Smoke");
             name.dispatchEvent(new Event("input", { bubbles: true }));
-            const font = document.querySelector(".vd-editor .nv-frm select");
+            const font = document.querySelector(".win-dialog.is-editor .nv-frm select");
             font.value = "serif"; font.dispatchEvent(new Event("change", { bubbles: true }));
             return true;
         })()`);
-        result.themeSample = await waitFor(() => js("(getComputedStyle(document.querySelector('.vd-editor .le-screen .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
-        // Unsaved: Esc asks first (the editor's dirty guard, routed through
-        // the console's ESC_ORDER "editor") and keeps the dialog, changes
-        // and all.
+        result.themeSample = await waitFor(() => js("(getComputedStyle(document.querySelector('.win-dialog.is-editor .le-screen .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
+        // Unsaved: Esc asks first (Rodada C: the one guard, a "Descartar as
+        // mudanças?" question in the ConfirmDialog, routed through the
+        // console's ESC_ORDER "window") and keeps the page, changes and
+        // all; Esc on the question answers "continuar".
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("Escape");
         await sleep(400);
-        result.editorLeaveAsks = await js("Boolean(document.querySelector('.console .vd-editor')) && (document.querySelector('.vd-editor .nv-frm input.pl-input') || {}).value === 'Tema Smoke'");
+        result.editorLeaveAsks = await js("Boolean(document.querySelector('.console .win-dialog.is-editor')) && Boolean(document.querySelector('.confirm-dialog')) && (document.querySelector('.win-dialog.is-editor .nv-frm input.pl-input') || {}).value === 'Tema Smoke'");
+        await press("Escape");
+        await sleep(300);
         // A theme is saved with a background from the library (owner
         // 2026-10-14): Salvar waits for one; the Fundo's Escolher… opens the
         // console's library over the Editor dialog and a colour (Cor) is enough.
-        const saveBtn = "[...document.querySelectorAll('.vd-editor button')].find((x) => x.textContent.trim() === 'Salvar tema')";
-        result.themeNeedsBg = await js(`(() => { const b = ${saveBtn}; return Boolean(b && b.disabled) && Boolean(document.querySelector('.vd-editor .bgchip.is-missing')); })()`).catch(() => false);
-        await js("(() => { const b = document.querySelector('.vd-editor .bgchip button'); if (b) b.click(); return Boolean(b); })()");
+        const saveBtn = "[...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar tema')";
+        result.themeNeedsBg = await js(`(() => { const b = ${saveBtn}; return Boolean(b && b.disabled) && Boolean(document.querySelector('.win-dialog.is-editor .bgchip.is-missing')); })()`).catch(() => false);
+        await js("(() => { const b = document.querySelector('.win-dialog.is-editor .bgchip button'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("(() => { const t = [...document.querySelectorAll('.lib-tabs [role=tab]')].find((x) => x.textContent.trim() === 'Cor'); if (t) t.click(); return Boolean(t); })()"), 5000);
         await waitFor(() => js("(() => { const s = document.querySelector('.lib-swatch'); if (s) s.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); return Boolean(s); })()"), 4000);
         result.themeBgPicked = await waitFor(() => js(`(() => { const b = ${saveBtn}; return !document.querySelector('.lib-dialog') && Boolean(b && !b.disabled); })()`), 4000);
@@ -1934,25 +1939,25 @@ async function checkConsole(webContents, { live, outputs }) {
             const rows = (await js('window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])')).data || [];
             return rows.length === 1 && rows[0].font_family === "serif" && (rows[0].background || {}).kind === "color";
         }, 6000);
-        if (!result.themeSaved) result.themeDiag = await js("(document.querySelector('.toast') || {}).textContent || document.querySelector('.vd-editor').innerText.slice(0, 300)");
-        // Saved: Esc closes clean (the dirty guard has nothing to ask) and
-        // Configurações is still there behind.
+        if (!result.themeSaved) result.themeDiag = await js("(document.querySelector('.toast') || {}).textContent || document.querySelector('.win-dialog.is-editor').innerText.slice(0, 300)");
+        // Saved: Esc pops clean (the dirty guard has nothing to ask) — one
+        // level back, "← Temas": Configurações is the window again.
         await press("Escape");
-        result.themeWindowClosed = await waitFor(() => js("!document.querySelector('.console .vd-editor') && Boolean(document.querySelector('.console .cfg-dialog'))"), 5000);
+        result.themeWindowClosed = await waitFor(() => js("!document.querySelector('.console .win-dialog.is-editor') && Boolean(document.querySelector('.console .win-dialog .cfg'))"), 5000);
         // Each screen owns its design (owner 2026-10-13): "Editar a tela…"
         // opens the Editor on that screen straight into editing (the canvas
         // seeded with the ready design, nothing "não salvo" yet), Salvar
         // writes OutputPref.design and the vertical menu lists the screens.
         await section("Telas e saídas");
         await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; const b = c && c.querySelector(".cfg-card-thumb"); if (b) b.click(); return Boolean(b); })()`), 5000);
-        result.screenEditor = await waitFor(() => js("Boolean(document.querySelector('.console .vd-editor'))"), 8000);
+        result.screenEditor = await waitFor(() => js("Boolean(document.querySelector('.console .win-dialog.is-editor'))"), 8000);
         const sjs = (code) => js(code);
-        result.screenStraight = await waitFor(() => sjs("Boolean(document.querySelector('.vd-editor .le-screen .le-hit')) && !/Desenhar esta tela|não salvo/.test(document.querySelector('.vd-editor').innerText)").catch(() => false), 8000);
+        result.screenStraight = await waitFor(() => sjs("Boolean(document.querySelector('.win-dialog.is-editor .le-screen .le-hit')) && !/Desenhar esta tela|não salvo/.test(document.querySelector('.win-dialog.is-editor').innerText)").catch(() => false), 8000);
         // The Ajustes card is styled in the Editor too (.cfg): labels in a
         // column beside the controls, not stacked over them.
-        result.screenCardStyled = await sjs("(() => { const f = document.querySelector('.vd-editor .nv-scroll.cfg .cfg-outprefs .frm'); return Boolean(f) && getComputedStyle(f).display === 'grid'; })()").catch(() => false);
-        result.screenMenu = await sjs("[...document.querySelectorAll('.vd-editor .kx-row-title')].filter((n) => ['Projeção', 'Palco', 'Pastor', 'Transmissão'].includes(n.textContent)).length >= 4").catch(() => false);
-        await sjs("(() => { const b = [...document.querySelectorAll('.vd-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela'); if (b) b.click(); return Boolean(b); })()");
+        result.screenCardStyled = await sjs("(() => { const f = document.querySelector('.win-dialog.is-editor .nv-scroll.cfg .cfg-outprefs .frm'); return Boolean(f) && getComputedStyle(f).display === 'grid'; })()").catch(() => false);
+        result.screenMenu = await sjs("[...document.querySelectorAll('.win-dialog.is-editor .kx-row-title')].filter((n) => ['Projeção', 'Palco', 'Pastor', 'Transmissão'].includes(n.textContent)).length >= 4").catch(() => false);
+        await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela'); if (b) b.click(); return Boolean(b); })()");
         result.screenSaved = await waitFor(async () => {
             const rows = (await js('window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: "/StageView" }])')).data || [];
             return Boolean(rows[0] && rows[0].design && Array.isArray(rows[0].design.elements) && rows[0].design.elements.length > 0 && !rows[0].layout_id);
@@ -1960,7 +1965,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Nome por saída, in the editor's Ajustes: renaming Palco reaches
         // the console's grid; clearing restores the default.
         await sjs(`(() => {
-            const el = document.querySelector(".vd-editor .cfg-outprefs input.fg-input");
+            const el = document.querySelector(".win-dialog.is-editor .cfg-outprefs input.fg-input");
             if (!el) return false;
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "Telão");
             el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -1969,20 +1974,25 @@ async function checkConsole(webContents, { live, outputs }) {
         })()`);
         result.outName = await waitFor(() => js(`Boolean(${cardOf("Telão")})`), 6000);
         await sjs(`(() => {
-            const el = document.querySelector(".vd-editor .cfg-outprefs input.fg-input");
+            const el = document.querySelector(".win-dialog.is-editor .cfg-outprefs input.fg-input");
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "");
             el.dispatchEvent(new Event("input", { bubbles: true }));
             el.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
             return true;
         })()`);
         result.outNameBack = await waitFor(() => js(`Boolean(${cardOf("Palco")})`), 6000);
-        if (!result.screenSaved) result.screenDiag = await sjs("(document.querySelector('.toast') || {}).textContent || document.querySelector('.vd-editor').innerText.slice(0, 300)").catch(() => "");
+        if (!result.screenSaved) result.screenDiag = await sjs("(document.querySelector('.toast') || {}).textContent || document.querySelector('.win-dialog.is-editor').innerText.slice(0, 300)").catch(() => "");
         await js('(async () => { for (const path of ["/StageView", "/Projection"]) { const rows = (await window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: path }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("OutputPref", "update", [r.id, { design: null }]); } return true; })()');
         // The design reset above may re-dirty the open editor (its saved
-        // baseline moved under it): Esc until the dialog is gone, taking the
-        // discard question when it asks.
-        for (let i = 0; i < 4 && await js("Boolean(document.querySelector('.console .vd-editor'))"); i += 1) { await press("Escape"); await sleep(300); }
-        await waitFor(() => js("!document.querySelector('.console .vd-editor')"), 5000);
+        // baseline moved under it): Esc until the editor page is gone,
+        // answering the "Descartar as mudanças?" question when it asks
+        // (Esc on the question would keep editing).
+        for (let i = 0; i < 6 && await js("Boolean(document.querySelector('.console .win-dialog.is-editor'))"); i += 1) {
+            const asked = await js("(() => { const b = [...document.querySelectorAll('.confirm-dialog button')].find((x) => x.textContent.trim() === 'Descartar'); if (b) b.click(); return Boolean(b); })()");
+            if (!asked) await press("Escape");
+            await sleep(300);
+        }
+        await waitFor(() => js("!document.querySelector('.console .win-dialog.is-editor')"), 5000);
         // Aparência dissolved (Rodada B 2026-10-14): the Fundos row lives in
         // Temas e fundos and opens the library to manage the backgrounds
         // (Fechar, no Usar), over Configurações.
@@ -1999,7 +2009,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
         await click(".console .cfg .kx-seg button", "Logo da igreja");
         await waitFor(() => live.get().idle === "logo");
-        await click(".console .cfg-dialog .kx-row", "Igreja");
+        await click(".console .win-dialog .kx-row", "Igreja");
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg input[placeholder=\"Nome da igreja\"]'))"));
         await click(".console .cfg .kx-field", "");
         await type("Igreja do Teste");
@@ -2014,9 +2024,9 @@ async function checkConsole(webContents, { live, outputs }) {
         // The X closes it as well.
         await click(".topbar .markbtn", "");
         await click(".kx-pop button", "Configurações");
-        await waitFor(() => js("Boolean(document.querySelector('.console .cfg-dialog'))"));
-        await click(".console .cfg-dialog-h button", "");
-        result.cfgX = await waitFor(() => js("!document.querySelector('.console .cfg-dialog')"));
+        await waitFor(() => js("Boolean(document.querySelector('.console .win-dialog'))"));
+        await click(".console .win-bar button", "");
+        result.cfgX = await waitFor(() => js("!document.querySelector('.console .win-dialog')"));
 
         // Camadas › Fundo: a clip from Mídia plays as the background layer;
         // the theme select applies a preset to what is on air, at once.
@@ -2471,12 +2481,12 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".topbar .markbtn", "");
         await click(".kx-pop button", "Escola bíblica");
         result.svOpen = await waitFor(() => js("Boolean(document.querySelector('.console .sv-mons'))"));
-        await click(".console .view-dialog .kx-row", "Turma do smoke");
+        await click(".console .win-dialog .kx-row", "Turma do smoke");
         await waitText(webContents, "Ana Smoke");
         await click(".console .sv-student", "Ana Smoke");
         const today = await js("(() => { const d = new Date(); const t = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + t(d.getMonth() + 1) + '-' + t(d.getDate()); })()");
         result.svPresence = await waitFor(async () => ((await db("BibleSchoolClass", "get", [svClass.id])).students || [])[0]?.attendance?.includes(today), 6000);
-        await click(".console .view-dialog .kx-row", "Quiz do smoke");
+        await click(".console .win-dialog .kx-row", "Quiz do smoke");
         result.svPrepared = await waitFor(() => js("[...document.querySelectorAll('.sv-mons .kx-mon')].some((n) => n.textContent.includes('Prévia · Quiz do smoke'))"));
         result.svNotes = await waitText(webContents, "Nota do professor smoke");
         await js("document.activeElement && document.activeElement.blur(); true");
@@ -2486,8 +2496,8 @@ async function checkConsole(webContents, { live, outputs }) {
             && !(await (main && !main.isDestroyed() ? main.webContents.executeJavaScript("document.body.innerText").catch(() => "") : "")).includes("Nota do professor smoke");
         await press("ArrowRight");
         result.svReveal = await waitFor(() => { const ct = live.get().content; return ct?.index === 1 && ct.slides[1].text.includes("✓ B) Noé"); });
-        // The Escola floats (.view-dialog): its buttons are not under .main.
-        await js("(() => { const b = [...document.querySelectorAll('.console .view-dialog button')].find((x) => x.getAttribute('title') === 'Novo material'); if (b) b.click(); return Boolean(b); })()");
+        // The Escola floats (.win-dialog): its buttons are not under .main.
+        await js("(() => { const b = [...document.querySelectorAll('.console .win-dialog button')].find((x) => x.getAttribute('title') === 'Novo material'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("Boolean(document.querySelector('.sv-ed'))"));
         await setVal(".sv-ed .kx-field input", "Slides do smoke");
         await setVal(".sv-slides", "Um\n\nDois");
@@ -2499,8 +2509,8 @@ async function checkConsole(webContents, { live, outputs }) {
             return rows[0]?.slides?.length === 2 && rows[0].slides[1].text === "Dois";
         }, 6000);
         await waitFor(() => js("!document.querySelector('.sv-ed')"));
-        // The Escola floats now (.view-dialog), so its rows are not under .main.
-        await js("(() => { const row = [...document.querySelectorAll('.console .view-dialog .kx-row')].find((n) => n.textContent.includes('Slides do smoke')); const b = row && [...row.querySelectorAll('button')].find((x) => x.textContent === 'Setlist'); if (b) b.click(); return Boolean(b); })()");
+        // The Escola floats now (.win-dialog), so its rows are not under .main.
+        await js("(() => { const row = [...document.querySelectorAll('.console .win-dialog .kx-row')].find((n) => n.textContent.includes('Slides do smoke')); const b = row && [...row.querySelectorAll('button')].find((x) => x.textContent === 'Setlist'); if (b) b.click(); return Boolean(b); })()");
         result.svSetlist = await waitFor(async () => ((await db("ServiceItem", "filter", [{ type: "MATERIAL", title: "Slides do smoke" }])) || []).length === 1, 6000);
         result.shotSchool = await shot("escola");
         live.call("clear");

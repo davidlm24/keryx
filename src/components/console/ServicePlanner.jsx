@@ -5,7 +5,8 @@ import { useChurch } from "@/hooks/useChurch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, BackBtn } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "./kx";
+import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { readChapter } from "@/lib/bibleText";
 import { bibleVersionWanted } from "./BibleEnv";
@@ -54,6 +55,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const [pop, setPop] = useState(null); // "tpl" | "saveTpl"
     const [tplName, setTplName] = useState("");
     const [confirm, setConfirm] = useState(null);
+    const ask = useConfirm();
     const [drag, setDrag] = useState(null);
     const [over, setOver] = useState(null);
     const [busy, setBusy] = useState("");
@@ -150,8 +152,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         if (row?.id) setServiceId(row.id);
     };
     const deleteService = async () => {
-        if (confirm !== "svc") { setConfirm("svc"); c.say(`Clique de novo em Excluir culto para apagar "${svc.title}" e a setlist dele.`); return; }
-        setConfirm(null);
+        if (!(await ask(deleteQuestion("o culto", svc.title, "A setlist dele sai junto.")))) return;
         for (const it of items) await keryx.entities.ServiceItem.delete(it.id).catch(() => {});
         await run(keryx.entities.Service.delete(serviceId), "Culto excluído.");
         setServiceId(null);
@@ -165,21 +166,36 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         setMember("");
     };
 
-    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
+    // Esc comes routed from the console (keys.js ESC_ORDER "window", so
     // whatever is open over the planner closes first, and a field's Esc
-    // already blurred): close the adder or a popover, then the planner.
-    // The console never ends the projection from here.
-    if (escRef) escRef.current = () => { if (adding) setAdding(null); else if (pop) setPop(null); else onClose(); };
+    // already blurred): close the adder or a popover, then leave. The
+    // Voltar chip ("back") and the (x) ("all") leave at once — nothing to
+    // guard, the planner saves as it goes. The console never ends the
+    // projection from here.
+    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (adding) setAdding(null); else if (pop) setPop(null); else onClose(); };
 
+    const bar = (
+        <WinBar title="Planejar o culto" tools={svc && form ? <>
+            <select className="cfg-select pl-pick" value={serviceId} onChange={(e) => setServiceId(e.target.value)} aria-label="Escolher culto">
+                {services.map((s) => <option key={s.id} value={s.id}>{s.title}{s.date ? ` · ${s.date.split("-").reverse().slice(0, 2).join("/")}` : ""}</option>)}
+            </select>
+            <IconBtn name="plus" small title="Novo culto" onClick={newService} />
+        </> : null} />
+    );
     if (!svc || !form) {
         return (
-            <div className="col center"><Panel lead={<BackBtn onClick={onClose} />} title="Planejador de culto">
+            <>
+            {bar}
+            <div className="win-body">
+            <div className="col center"><Panel noHead>
                 <Empty icon="list" title={services.length ? "Escolha um culto" : "Nenhum culto ainda"}>Crie um culto para planejar a setlist.</Empty>
                 <div className="pl-pad">
                     {services.slice(0, 12).map((s) => <Row key={s.id} single icon="list" title={s.title} time={s.date ? s.date.split("-").reverse().slice(0, 2).join("/") : ""} onClick={() => setServiceId(s.id)} />)}
                     <Btn kind="brand" onClick={newService}><Icon name="plus" />Novo culto</Btn>
                 </div>
             </Panel></div>
+            </div>
+            </>
         );
     }
 
@@ -204,13 +220,10 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
 
     return (
         <>
+            {bar}
+            <div className="win-body">
             <div className="col" style={{ flex: "0 1 360px", minWidth: 300, gap: "var(--gutter)" }}>
-                <Panel lead={<BackBtn onClick={onClose} />} title="Culto" style={{ flex: "none" }} actions={<>
-                    <select className="cfg-select pl-pick" value={serviceId} onChange={(e) => setServiceId(e.target.value)} aria-label="Escolher culto">
-                        {services.map((s) => <option key={s.id} value={s.id}>{s.title}{s.date ? ` · ${s.date.split("-").reverse().slice(0, 2).join("/")}` : ""}</option>)}
-                    </select>
-                    <IconBtn name="plus" small title="Novo culto" onClick={newService} />
-                                    </>}>
+                <Panel title="Culto" style={{ flex: "none" }}>
                     <div className="frm pl-frm">
                         <span className="k">Nome</span><Field icon={null} {...f("title")} placeholder="Culto de domingo" />
                         <span className="k">Data</span><input type="date" className="pl-input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} onBlur={() => commit("date")} aria-label="Data" />
@@ -231,7 +244,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                 onPick={(id) => saveSvc({ theme_id: id }, id ? "Tema do culto salvo · fica em uso ao escolher o culto." : "O culto fica sem tema próprio.")} />
                         </div>
                     </div>
-                    <div className="pl-danger"><Btn small kind={confirm === "svc" ? "air" : ""} onClick={deleteService}>{confirm === "svc" ? "Excluir mesmo" : "Excluir culto"}</Btn></div>
+                    <div className="pl-danger"><Btn small onClick={deleteService}>Excluir culto…</Btn></div>
                 </Panel>
                 <Panel title={<>Equipe <span className="kx-count">· {(svc.worship_team || []).length}</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {(svc.worship_team || []).map((m, i) => (
@@ -330,6 +343,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         {ADD.map(([t, icon, label]) => <Btn key={t} kind={t === "SONG" ? "outline" : ""} on={adding === t} onClick={() => { setAdding(adding === t ? null : t); setPick(""); }}><Icon name={icon} />{label}</Btn>)}
                     </div>
                 </Panel>
+            </div>
             </div>
         </>
     );

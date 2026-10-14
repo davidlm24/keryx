@@ -3,7 +3,7 @@ import { useChurch } from "@/hooks/useChurch";
 import { useQuery } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, Field, Seg, BackBtn } from "./kx";
+import { Panel, Btn, Field, Seg, WinBar } from "./kx";
 import { PERIODS, periodStart, topSongs, playsByCategory, servicesByMonth, ccliReport, ccliText, ccliCsv } from "@/lib/console/reports";
 
 const EMPTY = [];
@@ -64,16 +64,17 @@ export default function ReportsView({ c, onClose, escRef }) {
         c.say("Relatório CCLI salvo em CSV.");
     };
 
-    // Esc goes back to the console (never ends the projection from here).
-    // Esc comes routed from the console (keys.js ESC_ORDER "view"): it
-    // just closes the view.
-    if (escRef) escRef.current = () => onClose();
+    // Esc comes routed from the console (keys.js ESC_ORDER "window"):
+    // nothing to guard here, it just leaves (never ends the projection).
+    if (escRef) escRef.current = (mode) => onClose(mode === "all");
 
     return (
+        <>
+        <WinBar title="Relatórios" sub={`${church.line ? `${church.line} · ` : ""}${periodLabel} · ${plays.length} ${plays.length === 1 ? "projeção" : "projeções"} de músicas`}
+            tools={<Seg small value={period} onChange={setPeriod} options={PERIODS} label="Período" />} />
+        <div className="win-body">
         <div className="col center rp">
-            <Panel lead={<BackBtn onClick={onClose} />} title={<>Relatórios <span className="kx-count">· {church.line ? `${church.line} · ` : ""}{periodLabel} · {plays.length} {plays.length === 1 ? "projeção" : "projeções"} de músicas</span></>} actions={<>
-                <Seg small value={period} onChange={setPeriod} options={PERIODS} />
-                            </>} bodyStyle={{ overflow: "auto" }}>
+            <Panel noHead bodyStyle={{ overflow: "auto" }}>
                 <div className="rp-grid">
                     <section className="rp-card rp-wide">
                         <div className="listhead"><span className="kx-section">Músicas mais projetadas <span className="kx-count">· {top.length}</span></span></div>
@@ -119,5 +120,7 @@ export default function ReportsView({ c, onClose, escRef }) {
                 </div>
             </Panel>
         </div>
+        </div>
+        </>
     );
 }

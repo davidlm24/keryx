@@ -87,21 +87,20 @@ export const SHORTCUTS = [
 // Esc closes the topmost thing open over the console, one per press, and
 // only with nothing open ends the projection (live safety: closing a menu
 // must never take the screens down). Topmost first: a context menu, a
-// popover or dialog (the menu, Saídas, the palette, Verificar…),
-// the floating Editor de temas e telas (over Configurações, which may have
-// opened it, and under the library, which it opens), Configurações, the
-// floating view open (every view is one — the console routes Esc to the
-// view's registered close request, whose unsaved guard may ask instead of
-// closing; the Editor routes the same way), the Camadas drawer. A text
-// field's first Esc only leaves the field (liveAction's "blur"), before
-// any of these.
-// layers: { menu, library, popover, editor, settings, view, drawer, edit }
-// (truthy = open) -> the layer to close, or "end".
+// popover or dialog (the menu, Saídas, the palette, Verificar…), then the
+// WINDOW — Configurações, the views and the editors are pages of one
+// floating window since Rodada C (src/lib/console/nav.js): Esc there goes
+// to the top page's registered request, whose unsaved guard may ask, and
+// pops one level ("← Voltar") or, at the first, closes — then the Camadas
+// drawer. A text field's first Esc only leaves the field (liveAction's
+// "blur"), before any of these.
+// layers: { menu, library, popover, window, drawer, edit } (truthy = open)
+// -> the layer to close, or "end".
 // "edit" (Ver › Editar layout) is the outermost: Esc leaves the edit mode
 // before it would end the projection. The background library opens from a
-// popover, Configurações or a view, always on top: it closes right after a
+// popover or any window page, always on top: it closes right after a
 // right-click menu (and the "Excluir?" question, which is over everything).
-export const ESC_ORDER = ["menu", "confirm", "library", "popover", "editor", "settings", "view", "drawer", "edit"];
+export const ESC_ORDER = ["menu", "confirm", "library", "popover", "window", "drawer", "edit"];
 export function escapeTarget(layers = {}) {
     return ESC_ORDER.find((k) => Boolean(layers[k])) || "end";
 }

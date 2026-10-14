@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "../console/Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty } from "../console/kx";
@@ -14,6 +14,7 @@ import { useOutputPrefRows } from "@/hooks/useOutputPref";
 import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars } from "@/lib/outputPrefs";
 import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, SAMPLE_ITEMS } from "../console/settings/sample";
+import { ConfirmContext } from "../console/ConfirmDialog";
 
 const DIMS = [["0.5", "Pouco"], ["0.72", "Médio"], ["0.9", "Muito"]];
 const COUNTS = [["1", "1"], ["2", "2"], ["3", "3"], ["5", "5"], ["8", "8"]];
@@ -44,7 +45,7 @@ const seedFor = (path) => {
 // opens straight into editing, the canvas seeded with that page's ready
 // design (owner 2026-10-13): the seed is the baseline, so only real edits
 // are "não salvo", and nothing is written until "Salvar a tela".
-export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null }) {
+export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true }) {
     const prefRows = useOutputPrefRows();
     const church = useChurch();
     const path = EDITOR_SCREENS.includes(screenPath) ? screenPath : "/Projection";
@@ -59,7 +60,10 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const [own, setOwn] = useState(false); // the row has a design of its own
     const [sel, setSel] = useState(null);
     const [adding, setAdding] = useState(false);
-    const [confirm, setConfirm] = useState(null); // "reset" | "discard"
+    const [confirm, setConfirm] = useState(null); // "reset" | "discard" (detached only)
+    // The console's window provides the one-question guard; the detached
+    // /Editor has no provider (null) and keeps the two-step toast.
+    const askCtx = useContext(ConfirmContext);
     const [busy, setBusy] = useState(false);
     const [source, setSource] = useState("auto"); // "auto" | "sample"
     const [guides, setGuides] = useState([]);
@@ -130,7 +134,8 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     // Voltar à página padrão: the design goes, the page draws itself again
     // and the canvas starts over from its ready design.
     const resetToPage = async () => {
-        if (confirm !== "reset") { setConfirm("reset"); say(`Clique de novo: ${name} volta ao desenho padrão da página.`); return; }
+        if (askCtx) { if (!(await askCtx({ title: "Voltar à página padrão?", text: `O desenho próprio de ${name} sai; a tela volta a se desenhar sozinha.`, ok: "Voltar ao padrão" }))) return; }
+        else if (confirm !== "reset") { setConfirm("reset"); say(`Clique de novo: ${name} volta ao desenho padrão da página.`); return; }
         setConfirm(null);
         try {
             if (row && own) await keryx.entities.OutputPref.update(row.id, { design: null, layout_id: "" });
@@ -139,14 +144,23 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
             say(`${name} voltou à página padrão.`);
         } catch (err) { say(err?.message || "Não foi possível."); }
     };
-    const leave = () => {
-        if (dirty && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · clique de novo (ou Esc) para descartar."); return; }
-        onClose();
+    // In the console's window the guard is the one question (Rodada C);
+    // detached, the two-step toast stays.
+    const askDiscard = async () => {
+        if (!dirty) return true;
+        if (askCtx) return askCtx({ title: "Descartar as mudanças?", text: `O desenho de ${name} tem mudanças não salvas.`, ok: "Descartar" });
+        return false;
+    };
+    const leave = async (all = false) => {
+        if (dirty && !askCtx && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · clique de novo (ou Esc) para descartar."); return; }
+        if (askCtx && !(await askDiscard())) return;
+        onClose(all);
     };
     // The vertical menu: another screen, the dirty guard asking first.
-    const switchTo = (p) => {
+    const switchTo = async (p) => {
         if (p === path) return;
-        if (dirty && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · escolha de novo para descartar."); return; }
+        if (dirty && !askCtx && confirm !== "discard") { setConfirm("discard"); say("Há mudanças não salvas · escolha de novo para descartar."); return; }
+        if (askCtx && !(await askDiscard())) return;
         onSwitch?.(p);
     };
     useEffect(() => {
@@ -185,18 +199,19 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
 
     // Keys: arrows nudge, Delete removes, Ctrl+D duplicates, Ctrl+S saves;
     // Esc steps out (field, picker, selection, then the window). Hosted in
-    // the console's floating dialog (escRef set), Esc comes routed from the
-    // console instead (keys.js ESC_ORDER "editor"), stepping out the same
-    // way; leaveRef is the footer's guarded Fechar.
-    if (escRef) escRef.current = () => { if (adding) setAdding(false); else if (pickImage) setPickImage(false); else if (sel) setSel(null); else leave(); };
+    // the console's window (escRef set), Esc comes routed from the console
+    // instead (keys.js ESC_ORDER "window"), stepping out the same way; the
+    // (x) ("all") leaves the whole stack through the guard. leaveRef is
+    // the detached footer's guarded Fechar.
+    if (escRef) escRef.current = (mode) => { if (mode !== "esc") leave(mode === "all"); else if (adding) setAdding(false); else if (pickImage) setPickImage(false); else if (sel) setSel(null); else leave(); };
     if (leaveRef) leaveRef.current = () => leave();
     const keysRef = useRef(null);
     keysRef.current = (e) => {
+        if (!active) return; // another page of the window covers this one
         // Only what opens OVER the editor takes the keys (the library, a
-        // right-click menu, a confirm); Configurações' scrim sits under the
-        // floating editor and must not. In the window, Esc closes the
-        // library itself (its scrim) — in the console's dialog the console
-        // routes that (ESC_ORDER "library" before "editor").
+        // right-click menu, a confirm). In the detached window, Esc closes
+        // the library itself (its scrim) — in the console's window the
+        // console routes that (ESC_ORDER "library" before "window").
         const libScrim = document.querySelector(".console .lib-scrim");
         if (libScrim) { if (!escRef && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); libScrim.click(); } return; }
         if (document.querySelector(".console .ctx-scrim, .console .confirm-scrim")) return;

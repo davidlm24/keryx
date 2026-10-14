@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Empty, BackBtn } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Empty, WinBar } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
@@ -11,6 +11,7 @@ import BgChip from "./library/BgChip";
 import { parseChords, slidesFromLyrics, linesLimit, withTimings, parseDuration, formatDuration } from "@/lib/songImport";
 import { chordLinesToInline, hasInlineChords, isChordLine, keyChords, transposeInline, transposeChords, transposeChord } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
+import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
 import { useContextMenu } from "./ContextMenu";
 import LinesPicker from "./LinesPicker";
@@ -39,7 +40,7 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 // song's video or playback with lyric timing on the right. Nothing here
 // changes what is on air. Opening a song keeps its saved slides; editing the
 // lyrics (or the split) redoes them, keeping timings by position.
-export default function SongEditor({ c, songId, themes = [], onClose, onSaved, escRef }) {
+export default function SongEditor({ c, songId, themes = [], onClose, onSaved, escRef, active = true }) {
     const [song, setSong] = useState(null);
     const [error, setError] = useState("");
     const [split, setSplit] = useState(0); // lines per slide, 0 = Estrofe
@@ -55,7 +56,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const [starts, setStarts] = useState([]);
     const [busy, setBusy] = useState("");
     const [dirty, setDirty] = useState(false);
-    const [confirm, setConfirm] = useState(null); // "close" | "delete"
+    const ask = useConfirm();
     const mediaRef = useRef(null);
     const fileRef = useRef(null);
     const lyricsRef = useRef(null);
@@ -79,7 +80,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         return () => { alive = false; };
     }, [songId]);
 
-    const set = (patch) => { setSong((s) => ({ ...s, ...patch })); setDirty(true); setConfirm(null); };
+    const set = (patch) => { setSong((s) => ({ ...s, ...patch })); setDirty(true); };
     // One kind of line break, so every offset (the cursor, slideSpan) means
     // the same place in the text.
     const setLyrics = (lyrics) => { set({ lyrics: unCR(lyrics) }); setResplit(true); };
@@ -101,7 +102,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         const lines = linesLimit(n);
         if (lines === split && resplit) return;
         const count = slidesFromLyrics(song.lyrics, { lines }).length;
-        setSplit(lines); setResplit(true); setDirty(true); setConfirm(null);
+        setSplit(lines); setResplit(true); setDirty(true);
         if (starts.some((x) => Number.isFinite(x)) && count !== slides.length) {
             setStarts([]);
             c.say(`${count} ${count === 1 ? "slide" : "slides"} · marque os tempos de novo.`);
@@ -311,33 +312,36 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     }, [song, slides, durationText, songId, split, c, onSaved]);
 
     const remove = async () => {
-        if (confirm !== "delete") { setConfirm("delete"); c.say(`Clique de novo em Excluir para apagar "${song.title}".`); return; }
+        if (!(await ask(deleteQuestion("a música", song.title)))) return;
         try { await keryx.entities.Song.delete(songId); c.say("Música excluída."); onClose(); } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
     };
-    const close = useCallback(() => {
-        if (dirty && confirm !== "close") { setConfirm("close"); c.say("Alterações não salvas · Esc ou Cancelar de novo descarta."); return; }
-        onClose();
-    }, [dirty, confirm, c, onClose]);
+    // Leaving with changes asks (Rodada C: the one guard; Esc answers
+    // "continuar").
+    const close = useCallback(async (all = false) => {
+        if (dirty && !(await ask({ title: "Descartar as mudanças?", text: `"${song?.title || "Nova música"}" tem mudanças não salvas.`, ok: "Descartar" }))) return;
+        onClose(all);
+    }, [dirty, ask, song?.title, onClose]);
 
-    // Esc comes routed from the console (keys.js ESC_ORDER "view", so
+    // Esc comes routed from the console (keys.js ESC_ORDER "window", so
     // whatever is open over the editor closes first, and a field's Esc
-    // already blurred): close the Cifra panel, then close (asking once if
-    // unsaved). Ctrl+S saves — the editor's own key; it defers only to a
-    // dialog over the editor (its own scrim does not count).
-    if (escRef) escRef.current = () => { if (cifraOpen) setCifraOpen(false); else close(); };
+    // already blurred): close the Cifra panel, then leave (asking if
+    // unsaved); the (x) leaves the whole window the same way. Ctrl+S saves
+    // — the editor's own key; it defers to a dialog over the editor (its
+    // own scrim does not count) and sleeps while another page covers this.
+    if (escRef) escRef.current = (mode) => { if (mode === "esc" && cifraOpen) setCifraOpen(false); else close(mode === "all"); };
     useEffect(() => {
         const onKey = (e) => {
-            if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
-            if (document.querySelector(".console .scrim:not(.view-scrim)")) return;
+            if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") || !active) return;
+            if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
             e.preventDefault(); e.stopPropagation();
             if (song) save();
         };
         window.addEventListener("keydown", onKey, true);
         return () => window.removeEventListener("keydown", onKey, true);
-    }, [save, song]);
+    }, [save, song, active]);
 
-    if (error) return <div className="col center"><Panel title="Editor de música"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div style={{ padding: "var(--space-2)" }}><Btn onClick={onClose}>Voltar ao console</Btn></div></Panel></div>;
-    if (!song) return <div className="col center"><Panel title="Editor de música"><Empty title="Abrindo…" /></Panel></div>;
+    if (error) return <><WinBar title="Editor de música" /><div className="win-body"><div className="col center"><Panel noHead><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div style={{ padding: "var(--space-2)" }}><Btn onClick={() => onClose()}>Fechar</Btn></div></Panel></div></div></>;
+    if (!song) return <><WinBar title="Editor de música" /><div className="win-body"><div className="col center"><Panel noHead><Empty title="Abrindo…" /></Panel></div></div></>;
 
     // The song's theme (songTheme.js): a theme it follows hides the look
     // controls; each labelled part of the lyrics can follow another.
@@ -350,8 +354,17 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
 
     return (
         <>
+            <WinBar title="Editor de música" sub={`${songId === "new" ? "Nova música" : song.title || "Música"}${dirty ? " · não salvo" : ""}`}
+                tools={<IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={() => set({ is_favorite: !song.is_favorite })} />}
+                actions={<>
+                    {songId !== "new" && <Btn small onClick={remove}>Excluir…</Btn>}
+                    <Btn small onClick={() => printSong({ ...song, duration: parseDuration(durationText) }, slides)} disabled={!slides.length}>Imprimir</Btn>
+                    <Btn small onClick={() => close()}>Cancelar</Btn>
+                    <Btn small kind="brand" disabled={busy === "save"} onClick={save} title="Salvar · Ctrl+S">{busy === "save" ? "Salvando…" : "Salvar"}</Btn>
+                </>} />
+            <div className="win-body">
             <div className="col song-ed-l" style={{ flex: "0 1 340px", minWidth: 280 }}>
-                <Panel lead={<BackBtn onClick={close} />} title={songId === "new" ? "Nova música" : "Dados da música"} actions={<><IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={() => set({ is_favorite: !song.is_favorite })} /></>} bodyStyle={{ overflow: "auto" }}>
+                <Panel title="Dados da música" bodyStyle={{ overflow: "auto" }}>
                     <div className="frm">
                         <span className="k">Título</span><Field icon={null} value={song.title} onChange={(v) => set({ title: v })} placeholder="Título da música" />
                         <span className="k">Artista</span><Field icon={null} value={song.artist || ""} onChange={(v) => set({ artist: v })} placeholder="Artista ou ministério" />
@@ -513,14 +526,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         </>
                     )}
                 </Panel>
-                <div className="ed-acts">
-                    {songId !== "new" && <Btn kind={confirm === "delete" ? "air" : ""} onClick={remove}>{confirm === "delete" ? "Excluir mesmo" : "Excluir"}</Btn>}
-                    <span style={{ flex: 1 }} />
-                    {dirty && <span className="kx-meta">alterações não salvas</span>}
-                    <Btn onClick={() => printSong({ ...song, duration: parseDuration(durationText) }, slides)} disabled={!slides.length}>Imprimir</Btn>
-                    <Btn onClick={close}>{confirm === "close" ? "Descartar" : "Cancelar"}</Btn>
-                    <Btn kind="brand" disabled={busy === "save"} onClick={save} title="Salvar · Ctrl+S">{busy === "save" ? "Salvando…" : "Salvar"}</Btn>
-                </div>
+            </div>
             </div>
         </>
     );

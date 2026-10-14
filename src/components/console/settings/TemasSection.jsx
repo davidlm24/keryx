@@ -75,7 +75,8 @@ export default function TemasSection({ c }) {
         try { await p; if (message) c.say(message); } catch (err) { c.say(err?.message || "Não foi possível."); }
         reload();
     };
-    const edit = (id) => { const r = openEditor({ theme: id || "new" }); if (r?.error) c.say(r.error); };
+    // Opens in the same window, one level in: "← Temas" (Rodada C).
+    const edit = (id) => { const r = openEditor({ theme: id || "new", from: "Temas" }); if (r?.error) c.say(r.error); };
     // One transaction: never two defaults, never none in between.
     const setDefault = (id) => {
         const rows = defaultChanges(themes, id);

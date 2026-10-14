@@ -22,8 +22,11 @@ export function setEditorHost(fn) {
 
 // openEditor({ theme: id|"new" } | { screen: path }, detached: true for the
 // window) -> { error } when the browser blocked the window, else {}.
-export function openEditor({ theme = "", screen = "", detached = false } = {}) {
-    if (!detached && host && host({ theme, screen })) return {};
+// `from` (Rodada C): the title of the page it was opened from — the editor
+// then opens as a new level IN the window on screen, with "← from"; without
+// it the editor opens as a window of its own (level 1).
+export function openEditor({ theme = "", screen = "", from = "", detached = false } = {}) {
+    if (!detached && host && host({ theme, screen, from })) return {};
     const p = new URLSearchParams();
     if (theme) p.set("theme", theme);
     else if (screen) p.set("screen", screen);

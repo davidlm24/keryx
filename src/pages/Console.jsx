@@ -14,7 +14,7 @@ import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
-import { Panel, IconBtn, Measure, Seg } from "@/components/console/kx";
+import { Panel, IconBtn, Measure, Seg, WinBar, WinCtx } from "@/components/console/kx";
 import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import Library from "@/components/console/Library";
@@ -36,7 +36,9 @@ import ServicePlanner from "@/components/console/ServicePlanner";
 import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
 import { openEditor, setEditorHost } from "@/lib/editorWindow";
-import EditorHost from "@/components/editor/EditorHost";
+import ThemeEditor from "@/components/editor/ThemeEditor";
+import ScreenEditor from "@/components/editor/ScreenEditor";
+import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams } from "@/lib/console/nav";
 import { setIdleMode } from "@/lib/console/idle";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
@@ -113,51 +115,43 @@ export default function Console() {
     const [env, setEnvState] = useState(() => {
         try { return new URLSearchParams(window.location.search).get("env") === "biblia" ? "biblia" : "culto"; } catch { return "culto"; }
     });
-    // The views inside the console, one at a time (null: the console itself):
-    // { song: id | "new" } the song editor,
-    // { planner: true } the service planner, { media: true } the media
-    // library, { notice: id | "new" } the aviso editor, { school: true } the
-    // Escola bíblica, { reports: true } Relatórios. The old pages land here on
-    // desktop: /Settings ?config=telas, /Home ?song=new, /Services
-    // ?planner=<id>, /Media ?media=1, /Communication ?lib=avisos,
-    // /BibleSchool ?school=1, /Analytics and /SongHistoryPage ?reports=1.
-    const [view, setView] = useState(() => {
-        try {
-            const p = new URLSearchParams(window.location.search);
-            if (p.get("song")) return { song: p.get("song") };
-            if (p.get("planner")) return { planner: true };
-            if (p.get("media")) return { media: true };
-            if (p.get("notice")) return { notice: p.get("notice") };
-            if (p.get("school")) return { school: true };
-            if (p.get("reports")) return { reports: true };
-        } catch { /* no query */ }
-        return null;
+    // THE window (Rodada C, owner 2026-10-14: "uma janela, com Voltar"):
+    // Configurações, the six views and the two editors are pages of one
+    // floating window, stacked by src/lib/console/nav.js. Opening from
+    // inside pushes a level ("← de onde veio"); Esc, the Voltar chip and
+    // the scrim pop one level (the first closes); the (x) closes the whole
+    // stack. Every exit goes through the TOP page's registered request
+    // (its escRef below), so an unsaved guard can ask instead of leaving.
+    // The old pages land here on desktop: /Settings ?config=telas, /Home
+    // ?song=new, /Services ?planner=<id>, /Media ?media=1, /Communication
+    // ?lib=avisos, /BibleSchool ?school=1, /Analytics ?reports=1.
+    const [win, setWin] = useState(() => {
+        try { return stackFromParams(new URLSearchParams(window.location.search)) || []; } catch { return []; }
     });
-    const editSong = view?.song || null;
-    const planner = Boolean(view?.planner);
-    const mediaView = Boolean(view?.media);
-    const notice = view?.notice || null;
-    const school = Boolean(view?.school);
-    const reports = Boolean(view?.reports);
-    // Every view is a floating dialog over the live console (owner
-    // 2026-10-14, "janelas flutuantes"); none replaces the dock any more.
-    const dlgView = Boolean(view);
-    const closeView = useCallback(() => setView(null), []);
-    // Floating views (owner 2026-10-14, "janelas flutuantes"): the planner,
-    // Mídia and the aviso editor open as dialogs over the live console
-    // (.view-dialog); the song editor, the Escola bíblica and Relatórios are
-    // still pages that replace the dock. The mounted floating view registers
-    // its close request here: Esc (keys.js ESC_ORDER "view") and the scrim
-    // click go through it, so an unsaved guard can ask instead of closing.
-    const viewEscRef = useRef(null);
-    useEffect(() => { if (!view) viewEscRef.current = null; }, [view]);
-    // The Editor de temas e telas: a floating dialog of its own layer
-    // (ESC_ORDER "editor"), over whatever opened it — Configurações stays
-    // open behind and is there again on close. { kind: "theme"|"screen", id }.
-    const [edDoc, setEdDoc] = useState(null);
-    const editorEscRef = useRef(null);
-    useEffect(() => { if (!edDoc) editorEscRef.current = null; }, [edDoc]);
-    const setEnv = useCallback((v) => { setView(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
+    const winStateRef = useRef(win);
+    winStateRef.current = win;
+    const winTop = winTopOf(win);
+    const winOpen = win.length > 0;
+    // One escRef per stack entry: pages under the top stay mounted (Voltar
+    // finds them as they were), so each keeps its own request.
+    const winRefs = useRef(new Map());
+    const winRef = (k) => { if (!winRefs.current.has(k)) winRefs.current.set(k, { current: null }); return winRefs.current.get(k); };
+    useEffect(() => {
+        const keys = new Set(win.map((e) => e.key));
+        for (const k of [...winRefs.current.keys()]) if (!keys.has(k)) winRefs.current.delete(k);
+    }, [win]);
+    // What a page's guard calls once leaving is allowed: pop (or close, at
+    // the first level); all = the (x), the whole stack.
+    const leaveTop = useCallback((all = false) => setWin((s) => (all || s.length <= 1 ? [] : winPop(s))), []);
+    // Esc, the scrim, the Voltar chip and the (x) all go through the top
+    // page's request; a page that registered none just leaves.
+    const winEsc = useCallback((mode = "esc") => {
+        const t = winTopOf(winStateRef.current);
+        if (!t) return;
+        const fn = winRefs.current.get(t.key)?.current;
+        if (fn) fn(mode); else leaveTop(mode === "all");
+    }, [leaveTop]);
+    const setEnv = useCallback((v) => { setWin([]); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
     // Configurações: a window over whatever is on screen (the console or a
     // view), with its section (and Aparência's tab); ?config=<section> opens
     // it at launch. Old ids still work (resolveSection).
@@ -169,7 +163,8 @@ export default function Console() {
     });
     const cfg = cfgAt?.id || null;
     const setCfg = useCallback((id, tab) => setCfgAt(id ? resolveSection(tab ? `${id}/${tab}` : id) : null), []);
-    const closeSettings = useCallback(() => setCfgAt(null), []);
+    // The section only lives while the window holds the Configurações page.
+    useEffect(() => { if (!win.some((e) => e.page === "config")) setCfgAt(null); }, [win]);
     // The background library (library/BackgroundLibrary.jsx): one window
     // that every background or theme picker opens and awaits.
     const [libReq, setLibReq] = useState(null);
@@ -189,29 +184,42 @@ export default function Console() {
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
     const closeMenu = useCallback(() => setCtxMenu(null), []);
-    const openSettings = useCallback((section = "telas") => { setOpen(null); setCfg(section); }, [setCfg]);
-    const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
-    const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
-    const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
-    // The Editor de temas e telas: every openEditor call lands in this
-    // console's floating dialog (the host below; owner 2026-10-14), over
-    // whatever opened it — the library it may have come from gives way,
-    // Configurações stays behind. "Destacar em janela" goes back through
-    // openEditor with detached: true. Each screen owns its design
-    // (2026-10-13), so the Editor opens on a screen, never a catalog layout.
+    const openSettings = useCallback((section = "telas") => {
+        setOpen(null);
+        setCfg(section);
+        setWin((s) => (winTopOf(s)?.page === "config" ? s : openStack({ page: "config" })));
+    }, [setCfg]);
+    const openSong = useCallback((id) => { setOpen(null); setWin(openStack({ page: "song", props: { id } })); }, []);
+    const openMedia = useCallback(() => { setOpen(null); setWin(openStack({ page: "media" })); }, []);
+    const openNotice = useCallback((id) => { setOpen(null); setWin(openStack({ page: "notice", props: { id: id || "new" } })); }, []);
+    // The Editor de temas e telas: every openEditor call lands in the
+    // window — with `from` (the title of the page it came from) it pushes
+    // a level IN the window on screen ("← Temas", "← Telas e saídas"), and
+    // without one it opens as a window of its own. "Destacar em janela"
+    // goes back through openEditor with detached: true. Each screen owns
+    // its design (2026-10-13), so the Editor opens on a screen, never a
+    // catalog layout.
     const openScreen = useCallback((path) => {
-        const r = openEditor({ screen: path || "/Projection" });
+        const r = openEditor({ screen: path || "/Projection", from: "Telas e saídas" });
         if (r?.error) c.say(r.error);
     }, [c]);
-    useEffect(() => setEditorHost(({ theme, screen }) => {
-        setEdDoc(theme ? { kind: "theme", id: theme } : { kind: "screen", id: screen || "/Projection" });
+    useEffect(() => setEditorHost(({ theme, screen, from }) => {
+        const spec = theme ? { page: "theme", props: { id: theme } } : { page: "screen", props: { path: screen || "/Projection" } };
         setOpen(null);
         closeLibrary(null);
+        setWin((s) => (from && s.length ? winPush(s, spec, from) : openStack(spec)));
         return true;
     }), [closeLibrary]);
+    // Pop the editor's level, then reopen the same document in the /Editor
+    // window (for whoever edits looking at another monitor).
+    const detachEditor = useCallback((entry) => {
+        setWin((s) => (s.length > 1 ? winPop(s) : []));
+        const r = openEditor({ [entry.page === "theme" ? "theme" : "screen"]: entry.page === "theme" ? entry.props.id : entry.props.path, detached: true });
+        if (r?.error) c.say(r.error);
+    }, [c]);
     // The Escola bíblica sends through the KERYX environment's Prévia.
-    const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setView({ school: true }); }, []);
-    const openReports = useCallback(() => { setOpen(null); setView({ reports: true }); }, []);
+    const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setWin(openStack({ page: "school" })); }, []);
+    const openReports = useCallback(() => { setOpen(null); setWin(openStack({ page: "reports" })); }, []);
     const [plannerFocus, setPlannerFocus] = useState(null);
     const [open, setOpen] = useState(null);
     const [libTab, setLibTab] = useState(() => {
@@ -221,7 +229,7 @@ export default function Console() {
     const [panelTab, setPanelTab] = useState("notas");
     const [drawer, setDrawer] = useState(false);
     // Ver › Editar layout: moving the columns and stacked cards (arrange.js).
-    // A view (editor, planner, ...) takes the whole grid: editing ends.
+    // A window page (the planner, an editor, ...) covers the grid: editing ends.
     const [editing, setEditing] = useState(false);
     // The layout: sizes, collapsed cards and the arrangement are this
     // computer's (localStorage, per profile); which modules show and the
@@ -293,7 +301,7 @@ export default function Console() {
     const panelTabNow = activeTab("panel", tabLists.panel, panelTab);
     // KERYX › Avisos: the Biblioteca on its Avisos tab, shown again if it was unchecked.
     const openNotices = () => {
-        setOpen(null); setView(null); setEnvState("culto"); setLibTab("avisos");
+        setOpen(null); setWin([]); setEnvState("culto"); setLibTab("avisos");
         if (!tabLists.lib.includes("avisos")) setTabList("lib", showTab("lib", tabLists.lib, "avisos"));
     };
 
@@ -542,9 +550,9 @@ export default function Console() {
         lastOpen.current = open;
     }, [open]);
     useEffect(() => {
-        if (open || view) return;
+        if (open || winOpen) return;
         if (shouldOpenOnLaunch({ update: upd.update, sinceMountMs: Date.now() - mountedAt.current, dismissed: updDismissed })) setOpen("update");
-    }, [upd.update, open, view, updDismissed]);
+    }, [upd.update, open, winOpen, updDismissed]);
     const updateNow = useCallback(() => {
         const u = upd.update;
         if (!hasUpdate(u)) return;
@@ -572,7 +580,6 @@ export default function Console() {
         }).catch(() => {});
     }, []);
     const openWhatsNew = useCallback(() => {
-        setView(null);
         setWhatsNew((w) => (w?.from && !w.seen ? w : { from: null, to: w?.to || null, all: true, seen: true }));
         setOpen("novidades");
     }, []);
@@ -617,7 +624,7 @@ export default function Console() {
             } catch (err) { c.say(err?.message || "Não foi possível criar o culto."); return; }
         } else if (id && id !== true) setServiceId(id);
         setPlannerFocus(itemId);
-        setView({ planner: true });
+        setWin(openStack({ page: "planner" }));
     }, [c]);
 
     const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
@@ -749,7 +756,7 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && !cfg && quick === null && !view && !edDoc) {
+            if (env === "biblia" && !open && quick === null && !winOpen) {
                 const ch = quickJumpKey(e);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
@@ -759,18 +766,17 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                // "view" only when a floating view registered its close
-                // request; the page views still handle their own Esc.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, editor: edDoc && editorEscRef.current, settings: cfg, view: view && viewEscRef.current, drawer, edit: editing });
+                // "window": Esc goes to the TOP page's registered request
+                // (nav.js), which pops one level — "← Voltar" — or, at the
+                // first, closes; an unsaved guard may ask instead.
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, window: winOpen, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
                     else if (top === "confirm") { if (ask) answerAsk(null); else answerConfirm(false); }
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
-                    else if (top === "editor") editorEscRef.current?.();
-                    else if (top === "settings") setCfgAt(null);
-                    else if (top === "view") viewEscRef.current?.();
+                    else if (top === "window") winEsc("esc");
                     else if (top === "drawer") setDrawer(false);
                     else if (top === "edit") setEditing(false);
                     return;
@@ -781,12 +787,12 @@ export default function Console() {
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
             if ((libReq || confirmReq) && !["black", "logo"].includes(action)) return;
-            // Behind a floating view (and Configurações) only the emergency
-            // keys (Tela preta, Logo) act; a view's own keys (Mídia's Enter
-            // and Delete, the editors' Ctrl+S, Space while marking timings)
-            // are its own listeners. The Escola bíblica is the projecting
-            // view: every live key works there.
-            if ((cfg || edDoc || (view && !school)) && !["black", "logo"].includes(action)) return;
+            // Behind the window only the emergency keys (Tela preta, Logo)
+            // act; a page's own keys (Mídia's Enter and Delete, the editors'
+            // Ctrl+S, Space while marking timings) are its own listeners.
+            // The Escola bíblica is the projecting page: every live key
+            // works there.
+            if (winOpen && winTop?.page !== "school" && !["black", "logo"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -813,8 +819,8 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, edDoc, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm]);
-    useEffect(() => { if (view) setEditing(false); }, [view]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm]);
+    useEffect(() => { if (winOpen) setEditing(false); }, [winOpen]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
@@ -1081,7 +1087,7 @@ export default function Console() {
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} player={playerDocked ? playerSlot : null}
-                items={playable} multiview={multiview} still={Boolean(view || edDoc)}
+                items={playable} multiview={multiview} still={winOpen}
                 onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
                 onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
                     { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
@@ -1155,9 +1161,9 @@ export default function Console() {
             {/* Travar telas: the console prepares, the screens keep what they show. */}
             {editing && (
                 <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
-                    {!view && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
-                    {!view && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Sob as colunas", { title: "A faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela toda", { title: "A faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
-                    {!view && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
+                    {!winOpen && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
+                    {!winOpen && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Sob as colunas", { title: "A faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela toda", { title: "A faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
+                    {!winOpen && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
                 </EditBanner>
             )}
             {c.locked && (
@@ -1171,38 +1177,52 @@ export default function Console() {
             </div>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
 
-            {/* The floating views: a dialog over the live console; the scrim
-                click asks the view to close, exactly as Esc does. */}
-            {dlgView && <div className="scrim is-dim view-scrim" onClick={() => viewEscRef.current?.()} />}
-            {dlgView && (
-                <div className={`view-dialog ${mediaView ? "vd-media" : ""} ${editSong || school ? "vd-wide" : ""} ${reports ? "vd-reports" : ""}`} role="dialog" aria-modal="true"
-                    aria-label={planner ? "Planejar o culto" : mediaView ? "Mídia" : notice ? "Aviso" : editSong ? "Editor de música" : school ? "Escola bíblica" : "Relatórios"}>
-                    {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} escRef={viewEscRef} />}
-                    {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} escRef={viewEscRef} />}
-                    {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} escRef={viewEscRef} />}
-                    {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { songSaved(row); if (editSong === "new" && row?.id) setView({ song: row.id }); }} escRef={viewEscRef} />}
-                    {school && <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={closeView} escRef={viewEscRef} />}
-                    {reports && <ReportsView c={c} onClose={closeView} escRef={viewEscRef} />}
+            {/* THE window (Rodada C): one dialog, its pages stacked by
+                nav.js — all mounted, only the top shown, so Voltar finds
+                the page below as it was. The scrim click asks the top page
+                to leave, exactly as Esc does; the bar's (x) closes all. */}
+            {winOpen && <div className="scrim is-dim win-scrim" onClick={() => winEsc("esc")} />}
+            {winOpen && (
+                <div className={`win-dialog ${winSize(win) === "editor" ? "is-editor" : ""}`} role="dialog" aria-modal="true" aria-label={PAGE_TITLES[winTop.page]}>
+                    {win.map((entry, i) => {
+                        const active = i === win.length - 1;
+                        const escRef = winRef(entry.key);
+                        const onClose = (all = false) => leaveTop(Boolean(all));
+                        let page = null;
+                        if (entry.page === "config") page = <SettingsView c={c} section={cfg || "igreja"} setSection={setCfg} onClose={onClose} escRef={escRef} active={active} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} onWhatsNew={openWhatsNew} />;
+                        else if (entry.page === "planner") page = <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={onClose} escRef={escRef} />;
+                        else if (entry.page === "media") page = <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={onClose} escRef={escRef} active={active} />;
+                        else if (entry.page === "notice") page = <NoticeEditor c={c} noticeId={entry.props.id} logoUrl={logoUrl} media={data.media} onClose={onClose} onSaved={(row) => { if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active} />;
+                        else if (entry.page === "song") page = <SongEditor c={c} songId={entry.props.id} themes={data.themes} onClose={onClose} onSaved={(row) => { songSaved(row); if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active} />;
+                        else if (entry.page === "school") page = <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={onClose} escRef={escRef} active={active} />;
+                        else if (entry.page === "reports") page = <ReportsView c={c} onClose={onClose} escRef={escRef} />;
+                        else if (entry.page === "theme") page = (
+                            <>
+                                <WinBar title={PAGE_TITLES.theme} detach={() => detachEditor(entry)} />
+                                <div className="win-body is-ed">
+                                    <ThemeEditor themeId={entry.props.id} say={c.say} now={c.now} onClose={onClose} onSaved={(row) => { if (row?.id && entry.props.id !== row.id) setWin((s) => winReplaceTop(s, { id: row.id }, { keep: true })); }} onSwitch={(id) => setWin((s) => winReplaceTop(s, { id: id || "new" }))} escRef={escRef} active={active} />
+                                </div>
+                            </>
+                        );
+                        else if (entry.page === "screen") page = (
+                            <>
+                                <WinBar title={PAGE_TITLES.screen} detach={() => detachEditor(entry)} />
+                                <div className="win-body is-ed">
+                                    <ScreenEditor screenPath={entry.props.path} media={data.media} themes={data.themes} say={c.say} live={c.cur} now={c.now} onClose={onClose} onSwitch={(path) => setWin((s) => winReplaceTop(s, { path: path || "/Projection" }))} escRef={escRef} active={active} />
+                                </div>
+                            </>
+                        );
+                        return (
+                            <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all") }}>
+                                <div className="win-page" hidden={!active}>{page}</div>
+                            </WinCtx.Provider>
+                        );
+                    })}
                 </div>
             )}
-
-            {/* Configurações: a window over the console or the view behind it. */}
-            {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
-            {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} onWhatsNew={openWhatsNew} />}
-            {/* The Editor de temas e telas: a floating dialog over whatever
-                opened it (Configurações stays behind); the scrim click asks
-                the editor to close, exactly as Esc does. */}
-            {edDoc && <div className="scrim is-dim ed-scrim" onClick={() => editorEscRef.current?.()} />}
-            {edDoc && (
-                <div className="view-dialog vd-editor" role="dialog" aria-modal="true" aria-label="Editor de temas e telas">
-                    <EditorHost key={`${edDoc.kind}:${edDoc.id}`} initial={edDoc} say={c.say} live={c.cur} now={c.now} media={data.media} themes={data.themes}
-                        onClose={() => setEdDoc(null)} escRef={editorEscRef} closeLabel="Fechar"
-                        onDetach={(doc) => { setEdDoc(null); const r = openEditor({ [doc.kind === "theme" ? "theme" : "screen"]: doc.id, detached: true }); if (r?.error) c.say(r.error); }} />
-                </div>
-            )}
-            {open && <div className={`scrim ${cfg ? "over-cfg" : dlgView ? "over-view" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open && <div className={`scrim ${winOpen ? "over-win" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
@@ -1222,7 +1242,7 @@ export default function Console() {
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />
-            {drawer && !camadasOn && !view && env === "culto" && (() => {
+            {drawer && !camadasOn && !winOpen && env === "culto" && (() => {
                 // Never over the Programa: on the side of it with more room
                 // (the dock can put it anywhere), up to its edge.
                 const r = programaBox();
