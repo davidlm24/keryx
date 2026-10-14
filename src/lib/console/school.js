@@ -13,6 +13,9 @@ export const ageLabel = (g) => AGE_GROUPS.find(([k]) => k === g)?.[1] || "Turma"
 export const MATERIAL_TYPES = [["slides", "Slides", "layers"], ["quiz", "Quiz", "check"], ["text", "Texto", "text"], ["video", "Vídeo", "film"], ["image", "Imagem", "image"]];
 export const materialLabel = (t) => MATERIAL_TYPES.find(([k]) => k === t)?.[1] || "Material";
 export const materialIcon = (t) => MATERIAL_TYPES.find(([k]) => k === t)?.[2] || "text";
+// A fresh material, seeded with the class it is made from (the Material
+// page and the Escola's "Novo material" share it).
+export const blankMaterial = (classRow) => ({ title: "", type: "slides", subject: "", class_id: classRow?.id || "", class_name: classRow?.name || "", age_group: classRow?.age_group || "all", slides: [], quiz_questions: [], video_url: "", image_url: "", description: "", text_color: "#ffffff", background_color: "", background_image: "" });
 const LETTERS = "ABCDEFGH";
 
 // The questions of a quiz; old rows kept one question in quiz_question.

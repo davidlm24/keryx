@@ -41,6 +41,7 @@ import ScreenEditor from "@/components/editor/ScreenEditor";
 import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams } from "@/lib/console/nav";
 import { setIdleMode } from "@/lib/console/idle";
 import SchoolView from "@/components/console/SchoolView";
+import MaterialView from "@/components/console/MaterialView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView from "@/components/console/settings/SettingsView";
 import { resolveSection } from "@/lib/console/settings";
@@ -1194,8 +1195,11 @@ export default function Console() {
                             onEditSong={(id) => setWin((s) => winPush(s, { page: "song", props: { id } }, "Planejar o culto"))} />;
                         else if (entry.page === "media") page = <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={onClose} escRef={escRef} active={active} askText={askText} />;
                         else if (entry.page === "notice") page = <NoticeEditor c={c} noticeId={entry.props.id} logoUrl={logoUrl} media={data.media} onClose={onClose} onSaved={(row) => { if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active} />;
-                        else if (entry.page === "song") page = <SongEditor c={c} songId={entry.props.id} themes={data.themes} onClose={onClose} onSaved={(row) => { songSaved(row); if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active} />;
-                        else if (entry.page === "school") page = <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={onClose} escRef={escRef} active={active} />;
+                        else if (entry.page === "song") page = <SongEditor c={c} songId={entry.props.id} themes={data.themes} onClose={onClose} onSaved={(row) => { songSaved(row); if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active}
+                            onEditTheme={(id) => setWin((s) => winPush(s, { page: "theme", props: { id } }, "Editor de música"))} />;
+                        else if (entry.page === "school") page = <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={onClose} escRef={escRef}
+                            onEditMaterial={(id, kid) => setWin((s) => winPush(s, { page: "material", props: { id: id || null, classId: kid || "" } }, "Escola bíblica"))} />;
+                        else if (entry.page === "material") page = <MaterialView c={c} materialId={entry.props.id} classId={entry.props.classId} media={data.media} onClose={onClose} escRef={escRef} active={active} />;
                         else if (entry.page === "reports") page = <ReportsView c={c} onClose={onClose} escRef={escRef} />;
                         else if (entry.page === "theme") page = (
                             <>
