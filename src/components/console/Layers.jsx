@@ -9,7 +9,9 @@ import { themeStyle, sameLook, newThemeBackground, defaultTheme, themeName } fro
 import { applyThemeOnAir } from "./themeActions";
 import { STYLE_KEYS, LAYER_ORDER, layerHidden, layerLocked } from "@shared/live-state.mjs";
 import { OVERLAY_LIMIT, overlayName, newOverlay, overlayRows, moveOverlayRow } from "@/lib/console/overlays";
-import { bgFields } from "@/lib/console/backgroundSpec";
+import { bgFields, bgLabel } from "@/lib/console/backgroundSpec";
+import { fundoNow } from "@/lib/console/defaultFundo";
+import { GENERATORS } from "@/lib/generators";
 import { useLibraryPicker, ALL_KINDS } from "./library/libraryContext";
 import { openEditor } from "@/lib/editorWindow";
 
@@ -18,8 +20,12 @@ import { openEditor } from "@/lib/editorWindow";
 // (live.background) — each with its eye, padlock, place in the order and, on
 // hover, a pencil. The settings under the list stay folded until a pencil
 // opens them (owner 2026-10-14: Camadas is as tall as its list, never an
-// empty card); the Fundo's pencil picks the culto's background in the library
-// (the Programa's Fundo do culto). The panel's + always adds a NEW text
+// empty card); the Fundo's pencil (and the row's right click) opens a menu
+// that first names whose background the screen shows now (fundoNow) and then
+// routes: "Trocar o fundo do culto…" is the Programa's same via, "Fundo
+// padrão da igreja…" opens Configurações › Aparência — it no longer opens
+// the library blind (owner's OK 2026-10-14, "Fundo em três vias"). The
+// panel's + always adds a NEW text
 // overlay (`addRef`, Console.jsx; owner 2026-10-14) up to OVERLAY_LIMIT: each
 // one is its own row named by its text, and with 2+ they join under a thin
 // "Sobreposições · n" heading — the group's handle in the layer order, while
@@ -37,6 +43,7 @@ const LAYERS = [
     { id: "bg", name: "Fundo", key: "background" },
 ];
 const BY_KEY = Object.fromEntries(LAYERS.map((l) => [l.key, l]));
+const GEN_NAMES = Object.fromEntries(GENERATORS.map((g) => [g.id, g.name]));
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"]];
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));
@@ -178,17 +185,31 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
         if (r?.error) c.say(r.error);
     };
     // The pencil on each layer opens (or folds) its settings under the list;
-    // the Fundo has none: its pencil picks the culto's background.
+    // the Fundo has none: its pencil opens the menu below.
     const toggleOpen = (id) => {
         const next = open === id ? null : id;
         setSel(id);
         setOpen(next);
         if (next && !LAYERS.some((l) => l.id === next)) focusOverlay();
     };
+    // The Fundo's menu (owner's OK 2026-10-14, "Fundo em três vias"): first
+    // whose background the screen shows now, then the two doors — the
+    // culto's (the Programa's same via) and the church's (Aparência).
+    const fundoTitle = () => {
+        const now = fundoNow(cur);
+        if (!now) return "Nada no Fundo";
+        if (now.from === "culto") return `No Fundo: Fundo do culto · ${bgLabel(cur.background, GEN_NAMES)}`;
+        if (now.from === "igreja") return `No Fundo: Fundo padrão (da igreja) · ${bgLabel(cur.background, GEN_NAMES)}`;
+        return now.title ? `No Fundo: fundo de “${now.title}”` : "No Fundo: o fundo do item no ar";
+    };
+    const fundoItems = [
+        { label: "Trocar o fundo do culto…", icon: "image", onSelect: () => onFundo?.() },
+        { label: "Fundo padrão da igreja…", icon: "sliders", onSelect: () => onSettings?.("aparencia") },
+    ];
     const EDIT = {
         logo: { title: "Ajustes do logo", run: () => toggleOpen("logo") },
         text: { title: "Ajustes do texto principal", run: () => toggleOpen("text") },
-        bg: { title: "Escolher o fundo do culto", run: () => onFundo?.() },
+        bg: { title: "O que está no Fundo e onde trocar", run: (e) => menu(e, { title: fundoTitle(), items: fundoItems }) },
     };
 
     // The drag of the layer order: the fixed rows, the group's heading and
@@ -217,10 +238,10 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
         return (
             <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"} ${drag === L.key ? "is-dragging" : ""} ${layerDropBefore(L.key) ? "is-dropbefore" : ""}`}
                 onClick={() => setSel(L.id)} role="button" tabIndex={0}
-                onContextMenu={(e) => menu(e, { title: L.name, items: [
+                onContextMenu={(e) => menu(e, { title: L.id === "bg" ? fundoTitle() : L.name, items: [
                     { label: visible[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] ? "eye-off" : "eye", onSelect: () => toggleEye(L.id) },
                     { label: locked[L.id] ? "Destravar" : "Travar", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => toggleLock(L.id) },
-                    { label: "Editar…", icon: "edit", onSelect: EDIT[L.id].run },
+                    ...(L.id === "bg" ? fundoItems : [{ label: "Editar…", icon: "edit", onSelect: EDIT[L.id].run }]),
                     { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
                     { label: "Descer", disabled: i === order.length - 1, onSelect: () => moveLayer(L.key, i + 2) },
                 ] })}
@@ -230,7 +251,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                 <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>
                 <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={locked[L.id] ? "Destravar" : "Travar"} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Destravar" : "Travar"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
                 <span className="kx-layer-name">{L.name}</span>
-                <button type="button" className={`kx-btn kx-t layer-edit ${open === L.id ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); EDIT[L.id].run(); }} aria-label={EDIT[L.id].title} title={EDIT[L.id].title} aria-expanded={L.id === "bg" ? undefined : open === L.id}><Icon name="edit" /></button>
+                <button type="button" className={`kx-btn kx-t layer-edit ${open === L.id ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); EDIT[L.id].run(e); }} aria-label={EDIT[L.id].title} title={EDIT[L.id].title} aria-expanded={L.id === "bg" ? undefined : open === L.id} aria-haspopup={L.id === "bg" ? "menu" : undefined}><Icon name="edit" /></button>
             </div>
         );
     };

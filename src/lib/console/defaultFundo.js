@@ -10,7 +10,7 @@
 // (A background per day of the week existed for a day, unreleased: the
 // service and its template took its place; User.weekday_backgrounds is no
 // longer read.) Pure: tested in defaultFundo.test.mjs.
-import { cleanSpec, bgArgs } from "./backgroundSpec.js";
+import { cleanSpec, bgArgs, sameBg } from "./backgroundSpec.js";
 import { layerLocked } from "../../../shared/live-state.mjs";
 
 const picture = (url) => (typeof url === "string" && url.trim() ? { kind: "image", value: url.trim() } : null);
@@ -29,6 +29,22 @@ export function defaultFundo({ service = null, user = null } = {}) {
 
 // background.default's argument for it (null: none).
 export const defaultFundoArgs = (d) => (d ? bgArgs(d.spec, d.title) : null);
+
+// Whose background the Fundo layer holds right now, for the UI that names it
+// (Camadas' pencil menu): by the title this module stamps on what it sends
+// ("Fundo do culto" / "Fundo padrão"), else by matching the Fundo padrão in
+// the live state (background.default); anything else is the item's own.
+// -> { from: "culto" | "igreja" | "item", title } or null (nothing on the Fundo).
+export function fundoNow(live) {
+    const bg = cleanSpec(live?.background);
+    if (!bg) return null;
+    const title = typeof live.background.title === "string" ? live.background.title : "";
+    const whose = title === "Fundo do culto" || title === "Fundo padrão" ? title
+        : sameBg(bg, cleanSpec(live.defaultBackground)) ? live.defaultBackground.title : "";
+    if (whose === "Fundo do culto") return { from: "culto", title: whose };
+    if (whose === "Fundo padrão") return { from: "igreja", title: whose };
+    return { from: "item", title };
+}
 
 // Whether a new Fundo padrão (KERYX opens, a service is chosen, the church
 // changes it) goes on the Fundo right away: when nothing the screens show is

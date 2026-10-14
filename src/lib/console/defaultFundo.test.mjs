@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { defaultFundo, defaultFundoArgs, fundoGoesOnNow } from "./defaultFundo.js";
+import { defaultFundo, defaultFundoArgs, fundoGoesOnNow, fundoNow } from "./defaultFundo.js";
 import { applyOp, emptyState, restoreState, LIVE_VERSION } from "../../../shared/live-state.mjs";
 
 const T = new Date(2026, 9, 11, 19, 0).getTime();
@@ -30,6 +30,27 @@ test("background.default takes it", () => {
     assert.equal(s.defaultBackground.value, "#203040");
     assert.equal(s.defaultBackground.title, "Fundo do culto");
     assert.equal(defaultFundoArgs(null), null);
+});
+
+test("fundoNow names whose background the Fundo holds (culto, igreja, the item's own)", () => {
+    const empty = emptyState(T);
+    assert.equal(fundoNow(empty), null, "nothing on the Fundo");
+    assert.equal(fundoNow(null), null);
+    // The default-fundo plumbing titles what it sends (defaultFundoArgs).
+    const culto = applyOp(applyOp(empty,
+        "background.default", { background: { kind: "color", value: "#405060", title: "Fundo do culto" } }, T),
+        "background.set", { kind: "color", value: "#405060", title: "Fundo do culto" }, T);
+    assert.deepEqual(fundoNow(culto), { from: "culto", title: "Fundo do culto" });
+    const igreja = applyOp(applyOp(empty,
+        "background.default", { background: { kind: "image", value: "keryx-media://igreja.webp", title: "Fundo padrão" } }, T),
+        "background.set", { kind: "image", value: "keryx-media://igreja.webp", title: "Fundo padrão" }, T);
+    assert.deepEqual(fundoNow(igreja), { from: "igreja", title: "Fundo padrão" });
+    // An untitled Fundo that matches the Fundo padrão is still named by it.
+    const untitled = applyOp(culto, "background.set", { kind: "color", value: "#405060" }, T);
+    assert.equal(fundoNow(untitled).from, "culto");
+    // A song's own background (fundoOps titles it with the item).
+    const song = applyOp(culto, "background.set", { kind: "generator", value: "aurora", title: "Oceans" }, T);
+    assert.deepEqual(fundoNow(song), { from: "item", title: "Oceans" });
 });
 
 test("a new Fundo padrão goes on at once with nothing on air, under Tela preta too, never past a lock", () => {
