@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
 import { BIBLE_VERSIONS } from "@/lib/bibleBooks";
 import { forgetInstalledVersions } from "@/lib/bibleText";
@@ -42,18 +41,16 @@ export default function BibliasSection({ c }) {
                 const online = !v.install;
                 return (
                     <div key={v.id} className="kx-row">
-                        <span className="kx-glyph"><Icon name="book" /></span>
                         <div className="kx-row-main">
-                            <div className="kx-row-title">{v.id} · {v.name}</div>
+                            <div className="kx-row-title">{v.id} · {v.name}{def === v.id && <span className="kx-count"> · padrão</span>}</div>
                             <div className={`kx-row-meta ${!count && def === v.id ? "kx-warn" : ""}`}>
-                                {count ? `Instalada para uso sem internet · ${count.toLocaleString("pt-BR")} versículos` : online ? "Só com internet" : "Só com internet · baixe para usar sem rede"}
-                                {def === v.id ? " · padrão" : ""}
+                                {count ? `Instalada neste computador · ${count.toLocaleString("pt-BR")} versículos` : online ? "Só com internet" : "Só com internet · baixe para usar sem rede"}
                             </div>
                         </div>
                         <span className="cfg-acts">
-                            {def !== v.id && <Btn onClick={() => setDefault(v.id)}>Tornar padrão</Btn>}
-                            {v.install && <Btn kind={count ? "" : "outline"} disabled={Boolean(busy)} onClick={() => run(v.id, false)}>{busy === v.id ? "Baixando…" : count ? "Reinstalar" : "Baixar · 4 MB"}</Btn>}
-                            {v.install && <Btn disabled={Boolean(busy)} onClick={() => run(v.id, true)}>Do arquivo…</Btn>}
+                            {def !== v.id && <Btn small onClick={() => setDefault(v.id)}>Tornar padrão</Btn>}
+                            {v.install && <Btn small kind={count ? "" : "outline"} disabled={Boolean(busy)} onClick={() => run(v.id, false)}>{busy === v.id ? "Baixando…" : count ? "Reinstalar" : "Baixar · 4 MB"}</Btn>}
+                            {v.install && <Btn small disabled={Boolean(busy)} onClick={() => run(v.id, true)}>Do arquivo…</Btn>}
                         </span>
                     </div>
                 );
