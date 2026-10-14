@@ -1,11 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PANEL_TABS, DEFAULT_TABS, normalizeRow, normalizeTabs, toggleTab, showTab, tabsMenu, shownTabs, activeTab } from "./panelTabs.js";
+import { PANEL_TABS, DEFAULT_TABS, normalizeRow, normalizeTabs, toggleTab, showTab, tabsMenu, shownTabs, activeTab, libMediaKinds } from "./panelTabs.js";
 
 test("the panel beside the Prévia and the Biblioteca: what each offers and shows by default", () => {
     assert.deepEqual(PANEL_TABS.panel.map((t) => t.id), ["notas", "aviso", "timers", "ferramentas", "historico"]);
     assert.deepEqual(DEFAULT_TABS.panel, ["notas", "aviso", "timers"]);
     assert.deepEqual(DEFAULT_TABS.lib, ["letras", "imagens", "videos", "avisos"]);
+    assert.deepEqual(PANEL_TABS.lib.map((t) => t.id), ["letras", "imagens", "videos", "avisos", "audios", "apresentacoes"], "Áudios and Apresentações in the (+), off at first");
+});
+
+test("Áudios and Apresentações take their files out of Vídeos and Imagens only while shown", () => {
+    const base = DEFAULT_TABS.lib;
+    assert.deepEqual(libMediaKinds("videos", base), ["video", "audio"], "hidden: Vídeos keeps the audio");
+    assert.deepEqual(libMediaKinds("imagens", base), ["image", "gif", "pdf", "powerpoint"]);
+    assert.deepEqual(libMediaKinds("videos", [...base, "audios"]), ["video"]);
+    assert.deepEqual(libMediaKinds("audios", [...base, "audios"]), ["audio"]);
+    assert.deepEqual(libMediaKinds("imagens", [...base, "apresentacoes"]), ["image", "gif"]);
+    assert.deepEqual(libMediaKinds("apresentacoes", [...base, "apresentacoes"]), ["pdf", "powerpoint"]);
+    assert.equal(libMediaKinds("letras", base), null, "not a media tab");
 });
 
 test("a saved row is made safe: known ids, the list's order, never empty", () => {
@@ -24,7 +36,7 @@ test("the (+): unchecking hides a tab, checking puts it back in its place, the l
     assert.deepEqual(toggleTab("lib", ["videos"], "videos"), ["videos"], "at least one always checked");
     assert.deepEqual(toggleTab("lib", ["videos"], "nope"), ["videos"]);
     const menu = tabsMenu("lib", ["videos"]);
-    assert.deepEqual(menu.map((t) => t.checked), [false, false, true, false]);
+    assert.deepEqual(menu.map((t) => t.checked), [false, false, true, false, false, false], "Áudios and Apresentações listed, unchecked");
     assert.equal(menu.find((t) => t.id === "videos").last, true, "the last one says it cannot go");
 });
 

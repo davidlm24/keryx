@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { libMediaKinds } from "@/lib/console/panelTabs";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Row, Btn, IconBtn, Field, Empty } from "./kx";
@@ -149,6 +150,10 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
         const { created, failed } = await importMediaFiles(files);
         c.say(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"} à Mídia${failed.length ? ` · falhou: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
     };
+    // The media tabs (Imagens, Vídeos, and Áudios and Apresentações when the
+    // (+) shows them): which Media types each lists (panelTabs.js).
+    const shownIds = (tabs || []).map((t) => t.id);
+    const mediaKinds = libMediaKinds(tab, shownIds);
     const addItems = tab === "letras"
         ? [
             { label: "Nova música…", icon: "plus", onClick: () => onEditSong?.("new") },
@@ -164,12 +169,23 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
         ]
         : tab === "imagens"
             ? [
-                { label: "Do computador…", icon: "folder", accept: "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
+                { label: "Do computador…", icon: "folder", accept: shownIds.includes("apresentacoes") ? "image/*,.gif" : "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
+                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+            ]
+        : tab === "audios"
+            ? [
+                { label: "Do computador…", icon: "folder", accept: "audio/*", onFiles: importMedia },
+                { label: "Uma pasta inteira…", icon: "folder", accept: "audio/*", directory: true, onFiles: (files) => importMedia(files.filter((f) => f.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(f.name))) },
+                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+            ]
+        : tab === "apresentacoes"
+            ? [
+                { label: "Do computador…", icon: "folder", accept: ".pdf,.ppt,.pptx", onFiles: importMedia },
                 { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
         : tab === "videos"
             ? [
-                { label: "Do computador…", icon: "folder", accept: "video/*,audio/*", onFiles: importMedia },
+                { label: "Do computador…", icon: "folder", accept: shownIds.includes("audios") ? "video/*" : "video/*,audio/*", onFiles: importMedia },
                 { label: "Link do YouTube", icon: "film", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
                 { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
@@ -219,9 +235,8 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
                 );
             })()}
 
-            {(tab === "imagens" || tab === "videos") && (() => {
-                const kinds = tab === "imagens" ? ["image", "gif", "pdf", "powerpoint"] : ["video", "audio"];
-                const media = data.media.filter((m) => kinds.includes(m.type) && match(ql, m.title, m.description));
+            {mediaKinds && (() => {
+                const media = data.media.filter((m) => mediaKinds.includes(m.type) && match(ql, m.title, m.description));
                 const audios = media.filter((m) => m.type === "audio" && !m.missing);
                 const ytStage = /youtu/.test(yt) ? stageFromYouTube(yt.trim()) : null;
                 const saveYt = async () => {
@@ -269,7 +284,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}
                         <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
-                            {!media.length && <Empty icon={tab === "imagens" ? "image" : "film"} title={ql ? `Nada com "${q}"` : tab === "imagens" ? "Nenhuma imagem" : "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
+                            {!media.length && <Empty icon={{ imagens: "image", audios: "music" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
                             {media.map(mediaRow)}
                         </div>
                     </>
@@ -305,7 +320,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
                     </>
                 );
             })()}
-            {(tab === "imagens" || tab === "videos") && <MediaPeek peek={peek} />}
+            {mediaKinds && <MediaPeek peek={peek} />}
         </>
     );
 }

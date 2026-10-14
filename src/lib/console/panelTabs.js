@@ -20,8 +20,29 @@ export const PANEL_TABS = {
         { id: "imagens", name: "Imagens", on: true },
         { id: "videos", name: "Vídeos", on: true },
         { id: "avisos", name: "Avisos", on: true },
+        // Off at first (owner 2026-10-14): checked in the (+), each takes its
+        // files out of the tab that held them (libMediaKinds).
+        { id: "audios", name: "Áudios", hint: "músicas, playbacks, efeitos" },
+        { id: "apresentacoes", name: "Apresentações", hint: "PDF e PowerPoint" },
     ],
 };
+
+// The Media types a Biblioteca tab lists. Áudios and Apresentações, when
+// shown, take their files out of Vídeos and Imagens; hidden, those tabs keep
+// them, so no file is ever out of reach. `shown`: the ids of the tabs shown.
+const MEDIA_TABS = {
+    imagens: ["image", "gif", "pdf", "powerpoint"],
+    videos: ["video", "audio"],
+    audios: ["audio"],
+    apresentacoes: ["pdf", "powerpoint"],
+};
+export function libMediaKinds(tab, shown = []) {
+    const kinds = MEDIA_TABS[tab];
+    if (!kinds) return null;
+    if (tab === "imagens" && shown.includes("apresentacoes")) return kinds.filter((k) => !MEDIA_TABS.apresentacoes.includes(k));
+    if (tab === "videos" && shown.includes("audios")) return kinds.filter((k) => k !== "audio");
+    return kinds;
+}
 
 // What each (+) list is headed with.
 export const TABS_MENU_TITLE = { panel: "Mostrar neste painel", lib: "Mostrar na Biblioteca" };

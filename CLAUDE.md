@@ -325,7 +325,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Mídia keep theirs). Camadas in the tray is a drawer opened from the
   Programa's header. The old `order`/`stacks`/widths are only read to build the first
   dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca end
-  their tab row in a (+)** that lists every tab with a check mark
+  their tab row in a (+)** (the Biblioteca's also offers Áudios and
+  Apresentações, off at first: shown, they take their files out of Vídeos
+  and Imagens — `libMediaKinds` in panelTabs.js, tested) that lists every tab with a check mark
   (`TabsMenu` in Popovers.jsx, as Ver lists the modules): checked = shown,
   in the list's order, at least one always, "Restaurar abas padrão" at the
   bottom; saved per computer as `layout.tabs` (`src/lib/console/panelTabs.js`,
