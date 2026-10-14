@@ -1481,6 +1481,9 @@
         "notes": {
           "type": "text"
         },
+        "operator_notes": {
+          "type": "text"
+        },
         "status": {
           "type": "text",
           "default": "DRAFT"

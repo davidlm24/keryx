@@ -115,6 +115,10 @@
       "type": "string",
       "description": "Notas gerais do culto"
     },
+    "operator_notes": {
+      "type": "string",
+      "description": "Notas livres do operador no console (aba Notas): so no console, fora do PDF; vao com o culto e o backup"
+    },
     "status": {
       "type": "string",
       "enum": [

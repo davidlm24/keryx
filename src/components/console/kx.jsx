@@ -6,17 +6,20 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 // pieces: a module, its header, buttons, a field, a row, a monitor, a
 // splitter. Visual rules live in the stylesheet; these only lay out markup.
 
-export function Panel({ title, count, lead, caption, actions, collapsed, onToggle, className = "", style, children, bodyStyle }) {
+// `bare`: no card (kx-panel-bare), the module sits on the console's ground
+// (the Programa, the Prévia); with nothing for it, the header is left out.
+export function Panel({ title, count, lead, caption, actions, collapsed, onToggle, bare = false, className = "", style, children, bodyStyle }) {
+    const head = !bare || title || caption || actions || lead || onToggle;
     return (
-        <div className={`kx-panel ${collapsed ? "is-collapsed" : ""} ${className}`} style={style}>
-            <div className="kx-panel-h">
+        <div className={`kx-panel ${bare ? "kx-panel-bare" : ""} ${collapsed ? "is-collapsed" : ""} ${className}`} style={style}>
+            {head && <div className="kx-panel-h">
                 {lead}
                 {caption ? <span className="kx-panel-cap">{caption}</span> : <span className="kx-section">{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>}
                 {actions}
                 {onToggle && (
                     <IconBtn name={collapsed ? "chevron-right" : "chevron-down"} title={collapsed ? "Expandir" : "Recolher"} onClick={onToggle} small />
                 )}
-            </div>
+            </div>}
             <div className="kx-panel-b" style={bodyStyle}>{children}</div>
         </div>
     );
