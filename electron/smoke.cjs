@@ -1050,11 +1050,12 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(1000);
         result.slideSettles = Boolean(main) && await main.webContents.executeJavaScript("(() => { const t = document.querySelector('.ks-text'); return Boolean(t && t.getAnimations().length === 0 && getComputedStyle(t).opacity === '1'); })()").catch(() => false);
         live.call("clear", {});
-        // Aparência's default transition goes on air with an item that has none.
+        // The transition is the theme's alone (audit 2026-10-14): the legacy
+        // Aparência fields on the row stamp nothing into an item any more.
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { transition_type: "slide", transition_ms: 200 }])`);
         await sleep(600);
         await dblclick(".kx-row", "Canto do console");
-        result.lookDefault = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.transition === "slide" && st.transition_ms === 200); }, 5000);
+        result.lookDefault = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && !st.transition && st.transition_ms == null); }, 5000);
         // "no ar há m:ss" in the Programa's caption while the item is on air.
         result.airSince = await waitFor(() => js("/^no ar há \\d+:\\d\\d$/.test((document.querySelector('.kx-prog-cap .kx-since') || {}).textContent || '')"), 5000);
         // Títulos nas telas off: the song's name leaves the Programa (and every output).
@@ -1065,13 +1066,14 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear", {});
         await waitFor(() => !live.get().content);
 
-        // The default theme (Aparência › Temas) dresses a song with no look
-        // of its own when it is sent; changing the theme afterwards does not
+        // The default theme (Configurações › Temas) dresses a song with no
+        // look of its own when it is sent — its transition included (the only
+        // place one is chosen) — and changing the theme afterwards does not
         // reskin what is on air.
-        const defTheme = (await js(`window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Padrão Smoke", font_family: "serif", font_size: "xlarge", is_default: true }])`)).data;
+        const defTheme = (await js(`window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Padrão Smoke", font_family: "serif", font_size: "xlarge", transition: "slide", transition_ms: 200, is_default: true }])`)).data;
         await sleep(800);
         await dblclick(".kx-row", "Canto do console");
-        result.themeDefaultApplied = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif" && st.font_size === "xlarge"); }, 5000);
+        result.themeDefaultApplied = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif" && st.font_size === "xlarge" && st.transition === "slide" && st.transition_ms === 200); }, 5000);
         await js(`window.keryxDesktop.db.call("ProjectionTheme", "update", [${JSON.stringify(defTheme.id)}, { font_family: "mono" }])`);
         await sleep(800);
         result.themeDefaultNoReskin = ((live.get().content || {}).style || {}).font_family === "serif";

@@ -5,8 +5,14 @@
 //     database (a restored backup, another computer) always wins.
 //   - The old keys are never deleted, so an older KERYX keeps working.
 //   - prefs_version marks the row as done; the caller writes it with the
-//     patch (useMigratePrefs, the console window only).
-export const PREFS_VERSION = 1;
+//     patch (useMigratePrefs, the console window only). 2 also moves the
+//     church's old Aparência transition into the default theme
+//     (migrateTransition below): the transition is the theme's alone since
+//     the audit 2026-10-14 (achado nº 4).
+import { TRANSITIONS, TRANSITION_MS } from "../console/look.js";
+import { defaultTheme } from "../console/themes.js";
+
+export const PREFS_VERSION = 2;
 export const LEGACY = {
     bible: "keryx.console.bible",
     importLines: "keryx.import.lines",
@@ -48,3 +54,25 @@ export function migrateLocalPrefs(user, storage) {
 }
 
 export const needsMigration = (user) => !(Number(user?.prefs_version) >= PREFS_VERSION);
+
+// Version 2: the church's old default transition (Configurações › Aparência,
+// User.transition_type/transition_ms — nobody reads them any more) becomes
+// the default theme's, so the church keeps seeing the same transition.
+// -> what to write before prefs_version is marked:
+//    { id, patch }  the default theme inherits ("Padrão"): give it the
+//                   church's transition (a theme with one already won before,
+//                   so it is left alone);
+//    { create }     no theme is marked default: a theme with only the
+//                   transition, marked padrão (it dresses with the factory
+//                   look, so the screens look the same);
+//    null           nothing to move.
+export function migrateTransition(user, themes) {
+    const kind = TRANSITIONS.some(([v]) => v === user?.transition_type) ? user.transition_type : null;
+    if (!kind) return null;
+    const ms = Number(user?.transition_ms);
+    const [lo, hi] = TRANSITION_MS;
+    const patch = { transition: kind, ...(Number.isFinite(ms) && ms > 0 ? { transition_ms: Math.round(Math.min(hi, Math.max(lo, ms))) } : {}) };
+    const def = defaultTheme(themes);
+    if (!def) return { create: { ...patch, is_default: true } };
+    return def.transition ? null : { id: def.id, patch };
+}

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { keryx } from "@/api/keryxClient";
 import { prefsOf } from "@/lib/prefs/schema";
-import { migrateLocalPrefs, needsMigration, PREFS_VERSION } from "@/lib/prefs/migrate";
+import { migrateLocalPrefs, migrateTransition, needsMigration, PREFS_VERSION } from "@/lib/prefs/migrate";
 
 // The local profile (the one User row: the church, its look, its
 // preferences), read once per window and kept current by the entity's
@@ -82,9 +82,18 @@ export async function updateUser(patch) {
 // never do: they only read.
 export function useMigratePrefs() {
     const u = useUser();
+    const busy = useRef(false);
     useEffect(() => {
-        if (!loaded || !u || !needsMigration(u)) return;
-        const patch = migrateLocalPrefs(u, safeStorage());
-        updateUser({ ...patch, prefs_version: PREFS_VERSION }).catch(() => { /* tried again on the next launch */ });
+        if (busy.current || !loaded || !u || !needsMigration(u)) return;
+        busy.current = true;
+        (async () => {
+            // Version 2: the old Aparência transition goes into the default
+            // theme BEFORE the row is marked, so a failed write retries on
+            // the next launch instead of losing the church's transition.
+            const move = migrateTransition(u, await keryx.entities.ProjectionTheme.list());
+            if (move?.id) await keryx.entities.ProjectionTheme.update(move.id, move.patch);
+            else if (move) await keryx.entities.ProjectionTheme.create(move.create);
+            await updateUser({ ...migrateLocalPrefs(u, safeStorage()), prefs_version: PREFS_VERSION });
+        })().catch(() => { busy.current = false; /* tried again on the next launch */ });
     }, [u]);
 }

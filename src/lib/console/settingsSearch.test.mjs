@@ -50,7 +50,8 @@ test("search index: every jump lands on a row that exists", () => {
 
 test("search: accents and case do not matter, every word must match", () => {
     const labels = (q) => searchSettings(q).map((h) => h.label);
-    assert.ok(labels("transicao").includes("Transição entre slides"));
+    assert.ok(labels("transicao").includes("Todos os temas"), "the transition is the theme's alone (audit 2026-10-14)");
+    assert.ok(!labels("transicao").some((l) => l === "Transição entre slides"), "the old Aparência row is gone");
     assert.ok(labels("FUNDO de espera").includes("Fundo padrão"), "the old name still finds it");
     assert.deepEqual(labels("pin"), ["PIN"]);
     assert.deepEqual(labels(""), []);

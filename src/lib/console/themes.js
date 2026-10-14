@@ -13,7 +13,8 @@ export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 
 // A theme's text look: the five classic keys, plus the extras it was saved
 // with (absent ones apply as "", so a theme without a box removes one; a
-// theme without a transition falls back to Aparência's default).
+// theme without a transition leaves the factory one — fade, look.js
+// NATURAL_MS — the transition is the theme's alone, audit 2026-10-14).
 //
 // Where the text lands is decided in this order (ScreenRenderer draws
 // content.style, slide.style over it):
@@ -144,8 +145,8 @@ export const followsTheme = (row) => row?.style_mode === "theme" || (row?.style_
 // in the Prévia), so a theme change never touches what is already on air.
 //   - look: the theme's text look replaces the factory one; its extras
 //     (box, case, ...) fill what the item leaves empty.
-//   - the theme's transition goes where the item has none (the church's
-//     transition, look.js, fills after it).
+//   - the theme's transition goes where the item has none (without one the
+//     screens play the factory transition, look.js NATURAL_MS).
 //   - background: the theme's (picture, video, generated or colour), when
 //     the item has none of its own, rides in args.fundo: it goes to the Fundo
 //     layer when the item is sent (backgroundSpec.js fundoOps), so it stays

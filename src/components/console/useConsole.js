@@ -32,8 +32,9 @@ export function useConsole() {
     const live = useLiveState();
     const now = useLiveNow(1000);
     const [prev, setPrevState] = useState(null);
-    // The church's default transition (Configurações › Aparência, on User),
-    // stamped into each item that goes on air (src/lib/console/look.js).
+    // The Bíblia's display preferences (Configurações › Bíblia e músicas,
+    // on User), stamped into each passage that goes on air
+    // (src/lib/console/look.js). The transition is the theme's alone.
     const user = useUser();
     const look = useMemo(() => lookDefaults(user), [user]);
     // Each background's dim and blur (Aparência › Fundos), a starting point

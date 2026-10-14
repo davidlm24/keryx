@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { prefsOf, PREF_FIELDS, hiddenList, hiddenMap } from "./schema.js";
-import { migrateLocalPrefs, needsMigration, LEGACY } from "./migrate.js";
+import { migrateLocalPrefs, migrateTransition, needsMigration, LEGACY } from "./migrate.js";
 
 const storage = (entries) => ({ getItem: (k) => (k in entries ? entries[k] : null) });
 
@@ -62,5 +62,32 @@ test("migration: corrupt or missing storage moves nothing", () => {
 test("migration: the marker says when it is done", () => {
     assert.equal(needsMigration({}), true);
     assert.equal(needsMigration({ prefs_version: null }), true);
-    assert.equal(needsMigration({ prefs_version: 1 }), false);
+    assert.equal(needsMigration({ prefs_version: 1 }), true, "version 1 still moves the transition into the theme");
+    assert.equal(needsMigration({ prefs_version: 2 }), false);
+});
+
+// Version 2 (audit 2026-10-14, achado nº 4): the old Aparência transition
+// becomes the default theme's, once, so the church keeps seeing it.
+test("migration: the Aparência transition moves into the default theme", () => {
+    const user = { transition_type: "slide", transition_ms: 200 };
+    // The default theme inherits ("Padrão"): it takes the church's transition.
+    assert.deepEqual(migrateTransition(user, [{ id: "a" }, { id: "b", is_default: true }]),
+        { id: "b", patch: { transition: "slide", transition_ms: 200 } });
+    // A theme in "Herdar" saved as "" counts as inheriting.
+    assert.deepEqual(migrateTransition(user, [{ id: "b", is_default: true, transition: "" }]).id, "b");
+    // The theme already chose: it won before too, nothing to write.
+    assert.equal(migrateTransition(user, [{ id: "b", is_default: true, transition: "fade" }]), null);
+    // No theme marked default: a theme with only the transition, marked padrão.
+    assert.deepEqual(migrateTransition(user, []), { create: { transition: "slide", transition_ms: 200, is_default: true } });
+    assert.deepEqual(migrateTransition(user, [{ id: "a" }]), { create: { transition: "slide", transition_ms: 200, is_default: true } }, "none marked: never the first by surprise");
+    // No saved length: the theme keeps its natural one (transition_ms untouched).
+    assert.deepEqual(migrateTransition({ transition_type: "cut" }, [{ id: "b", is_default: true }]), { id: "b", patch: { transition: "cut" } });
+    // The length is kept in range, as lookDefaults did.
+    assert.equal(migrateTransition({ transition_type: "fade", transition_ms: 5000 }, []).create.transition_ms, 600);
+    assert.equal(migrateTransition({ transition_type: "fade", transition_ms: 10 }, []).create.transition_ms, 120);
+    // Nothing chosen in Aparência (or an unknown kind): nothing to move.
+    assert.equal(migrateTransition({}, []), null);
+    assert.equal(migrateTransition(null, []), null);
+    assert.equal(migrateTransition({ transition_type: "zoom" }, []), null);
+    assert.equal(migrateTransition({ transition_ms: 300 }, []), null, "a length alone moves nothing");
 });
