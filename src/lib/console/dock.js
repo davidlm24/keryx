@@ -67,9 +67,10 @@ export const MODULES = {
     // a column it comes in at its own height (`size.col`), not half of its
     // neighbour's.
     player: { name: "Player", minW: 280, minH: 76, home: "programa", size: { col: 80 } },
-    // The Bíblia (BibleEnv.jsx): the version, theme and search; the three
-    // pickers; the text; what is on air with Enviar ao ar.
-    bhead: { name: "Versão e busca", minW: 240, minH: 100, required: true, env: "biblia" },
+    // The Bíblia (BibleEnv.jsx): the three pickers (the version and the
+    // search live in their headers since 2026-10-14; an old save's "Versão
+    // e busca" module is dropped by clean); the text; what is on air with
+    // Enviar ao ar.
     books: { name: "Livros", minW: 200, minH: 120, env: "biblia" },
     chapters: { name: "Capítulos", minW: 200, minH: 90, env: "biblia" },
     verses: { name: "Versículos", minW: 200, minH: 96, env: "biblia" },
@@ -332,7 +333,7 @@ export function fromBibleArrangement(layout = {}) {
     const stack = normalizeOrder(layout?.stacks?.picker, ["books", "chapters", "verses"]);
     // The last picker takes the rest of the column; the others their height.
     const sizes = stack.map((id, i) => (i === stack.length - 1 ? null : HEIGHT[id] ?? 200));
-    const picker = split("col", [group(["bhead"]), ...stack.map((id) => group([id]))], [132, ...sizes]);
+    const picker = split("col", stack.map((id) => group([id])), sizes);
     const cols = [];
     const widths = [];
     for (const id of normalizeOrder(layout?.order?.biblia, DEFAULT_ORDER.biblia)) {

@@ -239,13 +239,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   aviso editor (`NoticeEditor.jsx`), the Escola bíblica (`SchoolView.jsx`;
   it projects through the console's Prévia/Programa and every live key
   works there) and Relatórios (`ReportsView.jsx`). The Bíblia is the
-  console's second environment (`BibleEnv.jsx`: Ler, Buscar, Comparar,
+  console's second environment (`BibleEnv.jsx`: Ler, Comparar, the Buscar field,
   notes). Where the modules go is the operator's: **each environment is a
   dock** (owner 2026-10-13, the "Disposição do console" prototype, model
   Livre) — never place a column by hand in `Console.jsx` or `BibleEnv.jsx`.
-  The Bíblia's dock (`layout.bibleDock`, `env: "biblia"`; modules Versão e
-  busca, Livros, Capítulos, Versículos, Texto, No ar — the first, the text
-  and No ar never leave) starts as its three columns
+  The Bíblia's dock (`layout.bibleDock`, `env: "biblia"`; modules Livros, Capítulos, Versículos, Texto, No ar — the text and
+  No ar never leave; the old "Versão e busca" module is gone, 2026-10-14:
+  the version, Abrev | Nomes, the install + and a view menu (Tema da
+  Bíblia…, Células pequenas/médias/grandes — `layout.bibleGrid`, per
+  computer) are Livros' header, and Buscar
+  is the text panel's header field — a reference opens the chapter, a word
+  searches, Esc or Ler goes back; its modes are Ler | Comparar) starts as its three columns
   (`fromBibleArrangement`); BibleEnv builds the modules, Console.jsx keeps
   the dock. `src/lib/console/arrange.js` now only reads the old
   `order`/`stacks` saves. The culto's: a tree of splits and tab groups,
