@@ -18,7 +18,9 @@ import { useConfirm } from "../ConfirmDialog";
 const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
 
 // Som do aviso: the chime of avisos with "Som de alerta", on or off and its
-// volume, for every output and network screen (on the profile).
+// volume, for every output and network screen (on the profile). The YouTube
+// title bar rides here too (from the dissolved Aparência, Rodada B
+// 2026-10-14): what the screens draw over a YouTube video is theirs.
 function SomBlock({ c }) {
     const prefs = usePrefs();
     const save = (patch, message) => updateUser(patch).then(() => message && c.say(message)).catch(() => c.say("Não foi possível salvar."));
@@ -30,6 +32,10 @@ function SomBlock({ c }) {
                 <Seg small label="Volume do sino" value={VOLUMES.some(([v]) => v === vol) ? vol : "35"} options={VOLUMES} onChange={(v) => save({ chime_volume: Number(v) })} />
                 <Btn small disabled={!prefs.chime_on} onClick={() => ringBell({ on: true, volume: prefs.chime_volume })} title="Toca o sino aqui, neste computador">Testar som</Btn>
                 <span className="kx-meta">o sino curto dos avisos com Som de alerta, nas saídas e nas telas na rede</span>
+            </FormRow>
+            <FormRow k="Título do YouTube">
+                <Switch on={prefs.youtube_hide_title} onChange={(on) => save({ youtube_hide_title: on }, on ? "A faixa de título do YouTube fica escondida." : "O YouTube volta a mostrar o título sobre o vídeo.")} label="Esconder o título que o YouTube põe sobre o vídeo" />
+                <span className="kx-meta">a faixa que o YouTube põe sobre o vídeo, em todas as telas</span>
             </FormRow>
         </div>
     );
@@ -43,7 +49,7 @@ function SomBlock({ c }) {
 // Editor on that screen; the card keeps only the placement (Automático /
 // Tela N, Abrir ao iniciar, Abrir/Fechar; Remover in the menu). The chime
 // and the settings file sit below — no more vertical tabs. The idle look
-// is in Aparência; the placement rules live in electron/outputs.cjs.
+// is in Culto › Fora do ar; the placement rules live in electron/outputs.cjs.
 export default function TelasSection({ c, onOpenScreen }) {
     const displays = useBridge("displays");
     const [state, , setState, readError] = usePoll(() => displays?.list(), 3000);

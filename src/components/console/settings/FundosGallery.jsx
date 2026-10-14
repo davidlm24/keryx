@@ -13,7 +13,7 @@ const SAMPLE = SAMPLE_SLIDES.slice(0, 1);
 // blur (a starting point for the items that use it), a favourite mark (first
 // in the galleries) and Ocultar (out of the galleries, still in the library).
 // Drawn by the background library (library/BackgroundLibrary.jsx), which
-// manages the backgrounds since Aparência lost its Fundos tab (2026-10-12).
+// manages the backgrounds; its door is Configurações › Temas e fundos (Aparência dissolved 2026-10-14).
 
 // One change to a background's settings (BackgroundPref): the row is
 // created the first time (once, even when two changes race), updated after.

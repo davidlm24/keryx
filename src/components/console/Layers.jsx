@@ -22,9 +22,11 @@ import { openEditor } from "@/lib/editorWindow";
 // opens them (owner 2026-10-14: Camadas is as tall as its list, never an
 // empty card); the Fundo's pencil (and the row's right click) opens a menu
 // that first names whose background the screen shows now (fundoNow) and then
-// routes: "Trocar o fundo do culto…" is the Programa's same via, "Fundo
-// padrão da igreja…" opens Configurações › Aparência — it no longer opens
-// the library blind (owner's OK 2026-10-14, "Fundo em três vias"). The
+// the wallpaper's two homes — Camadas › Fundo IS the papel de parede and its
+// pencil the one live door since the Rodada B 2026-10-14 ("Papel de parede ×
+// Tema"; the Programa's header button is gone): "Trocar o papel de parede…"
+// writes today's culto's (pickServiceFundo, Console.jsx) and "Qualquer outro
+// culto…" opens Configurações › Culto › Fora do ar, the fallback. The
 // panel's + always adds a NEW text
 // overlay (`addRef`, Console.jsx; owner 2026-10-14) up to OVERLAY_LIMIT: each
 // one is its own row named by its text, and with 2+ they join under a thin
@@ -192,19 +194,19 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
         setOpen(next);
         if (next && !LAYERS.some((l) => l.id === next)) focusOverlay();
     };
-    // The Fundo's menu (owner's OK 2026-10-14, "Fundo em três vias"): first
-    // whose background the screen shows now, then the two doors — the
-    // culto's (the Programa's same via) and the church's (Aparência).
+    // The Fundo's menu (Rodada B 2026-10-14): first whose background the
+    // screen shows now, then the papel de parede's two homes — today's
+    // culto's (the one live door) and the fallback (Configurações › Culto).
     const fundoTitle = () => {
         const now = fundoNow(cur);
         if (!now) return "Nada no Fundo";
-        if (now.from === "culto") return `No Fundo: Fundo do culto · ${bgLabel(cur.background, GEN_NAMES)}`;
-        if (now.from === "igreja") return `No Fundo: Fundo padrão (da igreja) · ${bgLabel(cur.background, GEN_NAMES)}`;
+        if (now.from === "culto") return `No Fundo: o papel de parede do culto · ${bgLabel(cur.background, GEN_NAMES)}`;
+        if (now.from === "igreja") return `No Fundo: o papel de parede da igreja · ${bgLabel(cur.background, GEN_NAMES)}`;
         return now.title ? `No Fundo: fundo de “${now.title}”` : "No Fundo: o fundo do item no ar";
     };
     const fundoItems = [
-        { label: "Trocar o fundo do culto…", icon: "image", onSelect: () => onFundo?.() },
-        { label: "Fundo padrão da igreja…", icon: "sliders", onSelect: () => onSettings?.("aparencia") },
+        { label: "Trocar o papel de parede…", icon: "image", onSelect: () => onFundo?.() },
+        { label: "Qualquer outro culto…", icon: "sliders", onSelect: () => onSettings?.("culto") },
     ];
     const EDIT = {
         logo: { title: "Ajustes do logo", run: () => toggleOpen("logo") },

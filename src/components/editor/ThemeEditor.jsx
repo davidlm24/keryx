@@ -37,10 +37,15 @@ const LINES = [["tight", "Justas"], ["", "Normais"], ["loose", "Largas"]];
 const H_ALIGNS = [["left", "Esq."], ["", "Centro"], ["right", "Dir."]];
 const V_POS = [["top", "Alto"], ["", "Meio"], ["bottom", "Baixo"]];
 const OPACITIES = [["", "100%"], ["0.85", "85%"], ["0.7", "70%"], ["0.5", "50%"]];
+// show_item_title is the theme's since the Rodada B 2026-10-14 (it was the
+// church's, Aparência): a new theme starts with it on; a theme from before
+// the field opens as on and saves the choice — prefs v3 already filled the
+// existing themes with the church's value, so this only meets a backup
+// restored from an older KERYX.
 const BLANK = {
     name: "", font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff", text_color_2: "",
     text_opacity: "", text_max_width: "", line_height: "", text_case: "", text_nudge: "", text_align: "", text_position: "",
-    text_box: "", text_box_color: "", text_box_opacity: "", transition: "", transition_ms: "",
+    text_box: "", text_box_color: "", text_box_opacity: "", transition: "", transition_ms: "", show_item_title: true,
     background_image: "", background_fit: "", background_dim: "", background_blur: "",
 };
 const FIELDS = Object.keys(BLANK);
@@ -170,7 +175,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
             const b = themeBackgroundArgs(draft);
             if (b) st = applyOp(st, "background.set", b, madeAt.current);
             const s = SAMPLES[sample].args;
-            st = applyOp(st, "content.show", { ...s, style: themeStyle(draft) }, madeAt.current);
+            st = applyOp(st, "content.show", { ...s, style: { ...themeStyle(draft), title: draft.show_item_title !== false ? "show" : "hide" } }, madeAt.current);
             return slide && st.content.slides.length > slide ? { ...st, content: { ...st.content, index: slide } } : st;
         } catch { return null; }
     }, [draft, sample, slide]);
@@ -269,6 +274,15 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             <span className="nv-inline">
                                 <input type="range" className="le-range" min={-20} max={20} step={1} value={Number(draft.text_nudge) || 0} onChange={(e) => set({ text_nudge: Number(e.target.value) === 0 ? "" : Number(e.target.value) })} aria-label="Ajuste fino vertical" />
                                 <span className="kx-meta">{Number(draft.text_nudge) || 0}%</span>
+                            </span>
+                            {/* The item's title over the slide is the theme's
+                                choice (Rodada B 2026-10-14); Camadas › Texto
+                                principal › Título still decides per item on
+                                air. */}
+                            <span className="k">Título do item</span>
+                            <span className="nv-inline">
+                                <Switch on={draft.show_item_title !== false} onChange={(on) => set({ show_item_title: on })} label="Mostrar o título do item sobre o slide" />
+                                <span className="kx-meta">o nome da música ou do texto, no alto do slide</span>
                             </span>
                         </div>
                         <div className="listhead"><span className="kx-section">Fundo e transição</span></div>

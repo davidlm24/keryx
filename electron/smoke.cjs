@@ -1417,8 +1417,8 @@ async function checkConsole(webContents, { live, outputs }) {
         // Camadas (owner's reviews 2026-10-14): the layers first, Temas a
         // card of its own under them (or, with that module in the tray, at
         // the end of Camadas); every layer has its pencil; the Fundo layer
-        // has no options of its own (the culto's background is the
-        // Programa's Fundo do culto) and the Visual do culto is gone.
+        // has no options of its own (its pencil's menu changes the papel de
+        // parede) and the Visual do culto is gone.
         // Camadas may be a card or the drawer at this width.
         const dayLookDrawer = await js("(() => { const b = [...document.querySelectorAll('.prog-panel .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return Boolean(b); })()");
         await click(".kx-layer", "Fundo");
@@ -1836,7 +1836,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Over the console, which stays mounted behind it.
         result.cfgDialog = await js("Boolean(document.querySelector('.console .cfg-dialog[role=dialog] .cfg') && document.querySelector('.console .main .dock') && document.querySelector('.console .cfg-scrim'))");
         result.cfgSections = {};
-        for (const name of ["Igreja", "Telas e saídas", "Telas na rede", "Aparência", "Temas", "Bíblia e músicas", "Culto", "Console", "Backup e atualizações"]) {
+        for (const name of ["Igreja", "Telas e saídas", "Telas na rede", "Temas e fundos", "Bíblia e músicas", "Culto", "Console", "Backup e atualizações"]) {
             await click(".console .cfg-dialog .kx-row", name);
             result.cfgSections[name] = await waitFor(() => js(`(() => { const h = document.querySelector(".console .cfg .kx-panel-h .kx-section"); const b = document.querySelector(".console .cfg .kx-panel-b"); return Boolean(h && h.textContent.trim().toUpperCase() === ${JSON.stringify(name.toUpperCase())} && b && b.innerText.trim().length > 0); })()`), 6000);
         }
@@ -1848,7 +1848,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("/");
         result.cfgSearchFocus = await waitFor(() => js("document.activeElement === document.querySelector('.console .cfg-dialog-h .cfg-search input')"), 3000);
         await type("fundo de espera");
-        result.cfgSearchHits = await waitFor(() => js("[...document.querySelectorAll('.console .cfg-results .kx-row-title')].some((n) => n.textContent === 'Fundo padrão')"), 3000);
+        result.cfgSearchHits = await waitFor(() => js("[...document.querySelectorAll('.console .cfg-results .kx-row-title')].some((n) => n.textContent === 'Qualquer outro culto')"), 3000);
         await press("Escape");
         result.cfgSearchClear = await waitFor(() => js("Boolean(document.querySelector('.console .cfg-dialog')) && document.querySelector('.console .cfg-search input').value === '' && !document.querySelector('.console .cfg-results')"), 3000);
         await type("pin");
@@ -1983,15 +1983,17 @@ async function checkConsole(webContents, { live, outputs }) {
         // discard question when it asks.
         for (let i = 0; i < 4 && await js("Boolean(document.querySelector('.console .vd-editor'))"); i += 1) { await press("Escape"); await sleep(300); }
         await waitFor(() => js("!document.querySelector('.console .vd-editor')"), 5000);
-        // Aparência has no tabs; its Fundos row opens the library to manage
-        // the backgrounds (Fechar, no Usar), over Configurações.
-        await section("Aparência");
-        result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .cfg-tabs') && !document.querySelector('.console .cfg .fg')"), 4000);
+        // Aparência dissolved (Rodada B 2026-10-14): the Fundos row lives in
+        // Temas e fundos and opens the library to manage the backgrounds
+        // (Fechar, no Usar), over Configurações.
+        await section("Temas e fundos");
+        result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .cfg-tabs') && [...document.querySelectorAll('.console .cfg .kx-section')].some((n) => n.textContent.startsWith('Fundos'))"), 4000);
         await waitFor(() => press2("Abrir a biblioteca…"), 4000);
         result.fundosInTemas = await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog')) && [...document.querySelectorAll('.lib-foot button')].some((b) => b.textContent === 'Fechar')"), 4000);
         await js("(() => { const b = [...document.querySelectorAll('.lib-foot button')].find((x) => x.textContent === 'Fechar'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 3000);
-        // Tela ociosa is in Aparência (no longer in Telas e saídas).
+        // Tela ociosa is in Culto › Fora do ar (it was Aparência's).
+        await section("Culto");
         await waitText(webContents, "Tela ociosa");
         await click(".console .cfg .kx-seg button", "Preto");
         result.cfgIdle = await waitFor(() => live.get().idle === "black");
@@ -2028,13 +2030,21 @@ async function checkConsole(webContents, { live, outputs }) {
         result.bgNotInMedia = await js("Boolean(document.querySelector('.console .kx-tabs button.is-on')) && ![...document.querySelectorAll('.console .kx-row')].some((n) => n.textContent.includes('Clipe de fundo'))");
         await click(".kx-tabs button", "Letras");
         await waitText(webContents, "Canto do console");
-        // The clip comes from the background library through the Programa's
-        // Fundo do culto (Vídeos), a double click takes it; with nothing on
-        // air it goes on the Fundo at once (the Fundo padrão).
+        // The clip comes from the background library through the papel de
+        // parede's one live door (Rodada B 2026-10-14): Camadas › Fundo's
+        // pencil opens a menu whose "Trocar o papel de parede…" opens the
+        // library (the Programa's header button is gone). A double click
+        // takes it; with nothing on air it goes on the Fundo at once.
+        const openWallpaper = async () => {
+            const pencil = await js("(() => { const row = [...document.querySelectorAll('.console .kx-layer')].find((n) => ((n.querySelector('.kx-layer-name') || {}).textContent || '') === 'Fundo'); const b = row && row.querySelector('.layer-edit'); if (b) b.click(); return Boolean(b); })()");
+            if (!pencil) return false;
+            await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
+            await click(".console .ctx-menu button", "Trocar o papel de parede");
+            return waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog'))"), 4000);
+        };
         live.call("clear", {});
         await waitFor(() => !live.get().content);
-        await click(".prog-panel .kx-panel-h button", "Fundo d");
-        result.libOpen = await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog'))"), 4000);
+        result.libOpen = await openWallpaper();
         await click(".lib-tabs button", "Vídeos");
         await waitFor(() => js("Boolean(document.querySelector('.lib-dialog [aria-label=\"Clipe de fundo\"]'))"), 8000);
         await dblclick(".lib-dialog .fg-tile", "Clipe de fundo");
@@ -2106,10 +2116,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "" }])`);
         live.call("background.clear", {});
 
-        // Gerados in the library (the Programa's Fundo do culto): the
+        // Gerados in the library (the papel de parede's door): the
         // background big and moving; Esc closes it without choosing.
-        await click(".prog-panel .kx-panel-h button", "Fundo d");
-        await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog'))"), 4000);
+        await openWallpaper();
         await click(".lib-tabs button", "Gerados");
         await js("(() => { const b = [...document.querySelectorAll('.lib-dialog .lyr-gen')].find((n) => n.textContent.includes('Aurora')); if (b) b.click(); return Boolean(b); })()");
         result.libBig = await waitFor(() => js("Boolean(document.querySelector('.lib-dialog .lib-big-screen .ks'))"), 4000);
@@ -2117,9 +2126,9 @@ async function checkConsole(webContents, { live, outputs }) {
         result.libEscClosed = await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 2000);
         live.call("background.clear", {});
 
-        // Fundo padrão (Aparência; the service's wins): the console keeps it
-        // in the live state, and Esc puts it on the Fundo after a song with a
-        // background of its own.
+        // Papel de parede (Configurações › Culto › "Qualquer outro culto";
+        // the service's wins): the console keeps it in the live state, and
+        // Esc puts it on the Fundo after a song with a background of its own.
         await js('window.keryxDesktop.db.call("User", "update", ["local", { default_background: { kind: "color", value: "#203040" } }])');
         result.padraoKept = await waitFor(() => (live.get().defaultBackground || {}).value === "#203040", 5000);
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background: { kind: "generator", value: "aurora" } }])`);
@@ -2129,20 +2138,19 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         result.padraoAfterEsc = await waitFor(() => !live.get().content && (live.get().background || {}).value === "#203040", 4000);
         await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { background: { kind: "color", value: "#405060" } }])`);
-        result.padraoService = await waitFor(() => { const d = live.get().defaultBackground || {}; return d.value === "#405060" && d.title === "Fundo do culto"; }, 5000)
+        result.padraoService = await waitFor(() => { const d = live.get().defaultBackground || {}; return d.value === "#405060" && d.title === "Papel de parede do culto"; }, 5000)
             && await waitFor(() => (live.get().background || {}).value === "#405060", 4000);
-        // Fundo do culto, one click from the Programa's header (owner's
-        // request 2026-10-13): the button opens the library, the choice is
-        // saved on the service and the Fundo padrão follows at once.
-        await js("(() => { const b = [...document.querySelectorAll('.prog-panel .kx-panel-h button')].find((x) => (x.getAttribute('aria-label') || '').startsWith('Fundo do')); if (b) b.click(); return Boolean(b); })()");
-        await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog'))"), 4000);
+        // Today's papel de parede through Camadas › Fundo's pencil (the one
+        // live door, Rodada B 2026-10-14): the menu opens the library, the
+        // choice is saved on the service and the screens follow at once.
+        await openWallpaper();
         await click(".lib-tabs button", "Cor");
         await js("(() => { const b = document.querySelector('.lib-dialog .lib-colors button'); if (b) b.click(); return Boolean(b); })()");
         await click(".lib-foot button", "Usar");
         result.serviceFundoButton = await waitFor(async () => {
             const d = live.get().defaultBackground || {};
             const row = (await js(`window.keryxDesktop.db.call("Service", "get", [${JSON.stringify(svc.id)}])`)).data || {};
-            return d.kind === "color" && d.title === "Fundo do culto" && (row.background || {}).kind === "color";
+            return d.kind === "color" && d.title === "Papel de parede do culto" && (row.background || {}).kind === "color";
         }, 6000);
         await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { background: null }])`);
         await js('window.keryxDesktop.db.call("User", "update", ["local", { default_background: null }])');

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { keryx } from "@/api/keryxClient";
 import { prefsOf } from "@/lib/prefs/schema";
-import { migrateLocalPrefs, migrateTransition, needsMigration, PREFS_VERSION } from "@/lib/prefs/migrate";
+import { migrateLocalPrefs, migrateTransition, migrateItemTitle, migrationFrom, needsMigration, PREFS_VERSION } from "@/lib/prefs/migrate";
 
 // The local profile (the one User row: the church, its look, its
 // preferences), read once per window and kept current by the entity's
@@ -87,12 +87,23 @@ export function useMigratePrefs() {
         if (busy.current || !loaded || !u || !needsMigration(u)) return;
         busy.current = true;
         (async () => {
-            // Version 2: the old Aparência transition goes into the default
-            // theme BEFORE the row is marked, so a failed write retries on
-            // the next launch instead of losing the church's transition.
-            const move = migrateTransition(u, await keryx.entities.ProjectionTheme.list());
-            if (move?.id) await keryx.entities.ProjectionTheme.update(move.id, move.patch);
-            else if (move) await keryx.entities.ProjectionTheme.create(move.create);
+            // The theme moves go BEFORE the row is marked, so a failed write
+            // retries on the next launch instead of losing the church's
+            // values. Each runs only from below its version (migrationFrom):
+            // a church already at 2 whose default theme lost its transition
+            // since must not get the old one back.
+            const themes = await keryx.entities.ProjectionTheme.list();
+            if (migrationFrom(u) < 2) {
+                // Version 2: the old Aparência transition goes into the
+                // default theme.
+                const move = migrateTransition(u, themes);
+                if (move?.id) await keryx.entities.ProjectionTheme.update(move.id, move.patch);
+                else if (move) await keryx.entities.ProjectionTheme.create(move.create);
+            }
+            // Version 3: the church's "Título do item nas telas" goes into
+            // every theme without a choice of its own.
+            const titles = migrateItemTitle(u, themes);
+            if (titles.length) await keryx.entities.ProjectionTheme.bulkUpdate(titles);
             await updateUser({ ...migrateLocalPrefs(u, safeStorage()), prefs_version: PREFS_VERSION });
         })().catch(() => { busy.current = false; /* tried again on the next launch */ });
     }, [u]);

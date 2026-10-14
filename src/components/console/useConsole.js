@@ -41,7 +41,7 @@ export function useConsole() {
     // for the items that use it. stamp() gives an op the church's defaults;
     // the Prévia renders through it too, so it shows what will go out.
     const bgPrefs = useBackgroundPrefs();
-    // The default theme (Configurações › Aparência › Temas) dresses a song
+    // The default theme (Configurações › Temas e fundos) dresses a song
     // or a passage that has no look of its own, at send time: what is on
     // air never changes by itself (themes.js, withThemeDefaults).
     // A Bible passage takes the Bíblia's own theme (Configurações › Bíblia

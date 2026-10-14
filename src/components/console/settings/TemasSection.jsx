@@ -123,6 +123,10 @@ export default function TemasSection({ c }) {
                 ))}
             </div>
             {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Use "Novo tema…", ou ajuste o texto em Camadas e salve como novo.</Empty>}
+            {/* The backgrounds live in the library (BackgroundLibrary, manage
+                mode); this is its door in Configurações — it was Aparência's
+                until the section dissolved (Rodada B 2026-10-14). */}
+            <CfgKey k="Fundos" className="listhead"><span className="kx-section">Fundos <span className="kx-count">· imagens, vídeos, gerados e cores para temas e papéis de parede</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca…</Btn></CfgKey>
         </>
     );
 }

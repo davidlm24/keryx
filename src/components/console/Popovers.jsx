@@ -199,7 +199,7 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             </div>
             <div className="kx-menu-h"><span className="kx-section">Tela ociosa</span><span style={{ flex: 1 }} />
                 {/* Logo or Preto when nothing is on air and there is no Fundo; a
-                    picture for those moments is the Fundo padrão. */}
+                    picture for those moments is the papel de parede. */}
                 <Seg small value={idle === "black" ? "black" : "logo"} onChange={(m) => onIdle(m)}
                     options={[["logo", "Logo da igreja"], ["black", "Preto"]]} />
             </div>

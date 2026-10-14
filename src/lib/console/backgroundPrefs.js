@@ -1,4 +1,4 @@
-// The church's settings for each background (Configurações › Aparência ›
+// The church's settings for each background (Configurações › Temas e fundos ›
 // Fundos, BackgroundPref rows): a name, a category, a default dim and blur,
 // hidden from the galleries, a favourite. The galleries read the list built
 // here; the dim and blur are a starting point, stamped into an item's style

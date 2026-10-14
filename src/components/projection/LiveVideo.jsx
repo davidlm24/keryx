@@ -9,7 +9,7 @@ import { usePrefs } from "@/hooks/useUser";
 // (at the start and on pause) and its logo at the bottom; no player option
 // turns them off. Made this much taller than the screen, the video still
 // fills the screen (fit to the width) and those bars sit on the black
-// letterbox outside it (Configurações › Aparência, on by default).
+// letterbox outside it (Configurações › Telas e saídas, on by default).
 // At least 64 px, 7% of the height on a big screen (its bars grow with it).
 const YT_CROP = "calc(-1 * max(64px, 7%))";
 import { useDurationReport } from "@/hooks/useDurationReport";

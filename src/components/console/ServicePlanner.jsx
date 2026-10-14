@@ -40,7 +40,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         .slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const templates = useQuery({ queryKey: ["console", "serviceTemplates"], queryFn: () => keryx.entities.ServiceTemplate.list("name") }).data || [];
     // The culto's look (serviceLook.js, owner's review 2026-10-14): its
-    // Fundo do culto and one theme from the library.
+    // papel de parede and one theme from the library.
     const look = lookOf(svc);
     const team = useQuery({ queryKey: ["console", "worshipTeam"], queryFn: () => keryx.entities.WorshipTeam.list("name") }).data || [];
     // Configurações › Culto edits both lists while the planner stays open.
@@ -220,10 +220,10 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         {form.service_type === "evento" && <><span className="k">Evento</span><Field icon={null} {...f("event_description")} placeholder="Descrição do evento" /></>}
                         <span className="k">Status</span><Seg small value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
                         <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
-                        <span className="k">Fundo do culto</span>
+                        <span className="k">Papel de parede</span>
                         <div className="pl-wall">
-                            <BgChip value={look.background} title="Fundo do culto" empty="o fundo padrão da igreja" noneLabel={look.background ? "Sem fundo próprio (usa o da igreja)" : undefined}
-                                onPick={(spec) => saveSvc(lookFields({ ...look, background: spec }), spec ? "Fundo do culto salvo." : "O culto volta ao fundo da igreja.")} />
+                            <BgChip value={look.background} title="Papel de parede do culto" empty="o de qualquer outro culto" noneLabel={look.background ? "Sem papel de parede próprio (o de qualquer outro culto)" : undefined}
+                                onPick={(spec) => saveSvc(lookFields({ ...look, background: spec }), spec ? "Papel de parede do culto salvo." : "O culto volta ao papel de parede da igreja.")} />
                         </div>
                         <span className="k">Tema do culto</span>
                         <div className="pl-wall">

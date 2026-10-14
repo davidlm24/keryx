@@ -384,7 +384,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         <select className="cfg-select" aria-label="Estilo da música"
                             value={look.theme || look.missing ? `t:${song.theme_id}` : following ? "default" : "own"}
                             onChange={(e) => { const v = e.target.value; if (v.startsWith("t:")) set({ theme_id: v.slice(2) }); else if (v === "default") set({ theme_id: "", style_mode: "theme" }); else setLook({ theme_id: "" }); }}
-                            title="Tema padrão: vai ao ar com o tema padrão (Configurações › Aparência › Temas). Um tema: a música segue esse tema inteiro. Próprio: o estilo abaixo">
+                            title="Tema padrão: vai ao ar com o tema padrão (Configurações › Temas e fundos). Um tema: a música segue esse tema inteiro. Próprio: o estilo abaixo">
                             <option value="default">{def ? `Tema padrão · ${def.name}` : "Tema padrão (estilo de fábrica)"}</option>
                             {themes.filter((t) => !def || t.id !== def.id).map((t) => <option key={t.id} value={`t:${t.id}`}>Tema · {themeName(t)}</option>)}
                             {def && <option value={`t:${def.id}`}>Tema · {def.name} (sempre este)</option>}

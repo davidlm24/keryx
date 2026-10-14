@@ -15,8 +15,7 @@ const FILES = {
     "OutputPrefCard.jsx": "telas",
     "RedeSection.jsx": "rede",
     "RemoteBlock.jsx": "rede",
-    "AparenciaSection.jsx": "aparencia",
-    "IdleBlock.jsx": "aparencia",
+    "IdleBlock.jsx": "culto",
     "TemasSection.jsx": "temas",
     "BibliaSection.jsx": "biblia",
     "CultoSection.jsx": "culto",
@@ -52,7 +51,8 @@ test("search: accents and case do not matter, every word must match", () => {
     const labels = (q) => searchSettings(q).map((h) => h.label);
     assert.ok(labels("transicao").includes("Todos os temas"), "the transition is the theme's alone (audit 2026-10-14)");
     assert.ok(!labels("transicao").some((l) => l === "Transição entre slides"), "the old Aparência row is gone");
-    assert.ok(labels("FUNDO de espera").includes("Fundo padrão"), "the old name still finds it");
+    assert.ok(labels("FUNDO de espera").includes("Qualquer outro culto"), "the old name still finds the wallpaper's fallback row");
+    assert.ok(labels("papel de parede").some((l) => l === "Qualquer outro culto"), "the new word finds it too");
     assert.deepEqual(labels("pin"), ["PIN"]);
     assert.deepEqual(labels(""), []);
     assert.deepEqual(labels("x"), [], "one letter is not a search");
@@ -72,7 +72,7 @@ test("search: keywords and a card's rows find their place", () => {
     assert.equal(first("NVI").section, "biblia");
     const tema = searchSettings("tema padrão").find((h) => h.label === "Todos os temas");
     assert.equal(tema.section, "temas", "Temas is a section of its own");
-    assert.equal(placeOf(tema), "Temas");
+    assert.equal(placeOf(tema), "Temas e fundos");
 });
 
 test("search: results come in the order of the sections, label hits first", () => {

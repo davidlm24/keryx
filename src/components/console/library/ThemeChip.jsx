@@ -5,7 +5,7 @@ import { useLibraryPicker } from "./libraryContext";
 import { useThemes } from "../useConsoleData";
 import { themeName } from "@/lib/console/themes";
 
-// A culto's (or a template's) theme as a chip, beside its Fundo do culto
+// A culto's (or a template's) theme as a chip, beside its papel de parede
 // (BgChip): what is chosen and a button that opens the library on Temas
 // (owner's review 2026-10-14: one theme per culto, picked from the library;
 // it becomes the theme in use when the culto is chosen). onPick(id): "" is
