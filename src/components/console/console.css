@@ -607,6 +607,9 @@
 .console .bible-air .kx-mon { width: min(100%, calc(35cqh * 16 / 9)); }
 
 /* "+" beside a search field: the menu of what can be added there. */
+/* The Biblioteca's search field with its ☆ and "+" on one line. */
+.console .searchrow { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
+.console .searchrow > .kx-field { flex: 1; }
 .console .addmenu { position: relative; flex: none; }
 .console .addmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 45; width: 230px; }
 
