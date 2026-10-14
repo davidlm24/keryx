@@ -309,6 +309,17 @@
 .console .temas-panel .tm { padding: 0 var(--space-2) var(--space-2); }
 /* The pencil on a layer: where it is edited; shown on hover or focus. */
 .console .kx-layer { grid-template-columns: 16px 20px 20px minmax(0, 1fr) 24px; }
+/* Camadas › Sobreposições (owner 2026-10-14): one row per overlay, its text
+   as the name; with 2+ they join under a thin heading — the group's handle in
+   the layer order — behind an inset bar. The top row draws on top on screen. */
+.console .kx-ovhead { display: flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 var(--space-3) 0 var(--space-2); cursor: grab; }
+.console .kx-ovhead .kx-glyph { color: var(--fg-3); display: inline-flex; justify-content: center; width: 16px; }
+.console .kx-ovhead .kx-section { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .kx-ovhead .kx-count { font-weight: 400; color: var(--fg-3); }
+.console .kx-ovhead.is-dragging { opacity: .4; }
+.console .kx-ovhead.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
+.console .kx-layer.is-ov { grid-template-columns: 10px 20px 20px minmax(0, 1fr) 24px; width: auto; margin-left: 14px; padding-left: 6px; border-left: 2px solid var(--line-strong); }
+.console .kx-layer .kx-layer-name.is-ph { color: var(--fg-3); }
 .console .kx-layer .layer-edit { opacity: 0; transition: opacity .12s; }
 .console .kx-layer:hover .layer-edit, .console .kx-layer .layer-edit:focus-visible { opacity: 1; }
 /* Its settings open under the list: the pencil stays, marked. */
