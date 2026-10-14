@@ -844,7 +844,7 @@ async function checkConsole(webContents, { live, outputs }) {
         const indexBefore = airIndex();
         // The first splitter of the columns (Biblioteca | Slides): the strip
         // under them is pinned, its gap has no handle (owner 2026-10-14).
-        const SPLIT = `document.querySelector(".console .dock .dock-split.is-row > .kx-split[role='separator']")`;
+        const SPLIT = `document.querySelector(".console .dock .dock-cell:has(> .dock-group[data-dock-mods='lib']) + .kx-split[role='separator']")`;
         const splitWidth = () => js(`(() => { const s = ${SPLIT}; return s && s.previousElementSibling ? Math.round(s.previousElementSibling.getBoundingClientRect().width) : null; })()`);
         result.splitterFound = await js(`(() => { const s = ${SPLIT}; if (s) s.focus(); return s ? document.activeElement === s : [...document.querySelector(".console .dock").children].map((c) => c.className).join(" | "); })()`);
         const widthBefore = await splitWidth();

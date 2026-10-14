@@ -14,7 +14,7 @@ import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
-import { Panel, IconBtn, Measure } from "@/components/console/kx";
+import { Panel, IconBtn, Measure, Seg } from "@/components/console/kx";
 import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import Library from "@/components/console/Library";
@@ -49,7 +49,7 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
@@ -792,9 +792,12 @@ export default function Console() {
     // church's old preference hid start in the tray).
     // Until then it follows the width, as the console's tiers did (wide,
     // medium, narrow: fromArrangement).
-    const dockOpts = { width: mainSize.w, height: mainSize.h, tier };
+    const dockOpts = { width: mainSize.w, height: mainSize.h, tier, onairSpan: layout.onairSpan };
     const dock = useMemo(() => (layout.dock ? normalizeDock(layout.dock) : fromArrangement(layout.trayFromChurch === false ? { ...layout, hidden: {} } : layout, dockOpts)),
-        [layout.dock, layout.order, layout.stacks, layout.libW, layout.slidesW, layout.rightW, layout.camadasH, layout.prevPct, layout.hidden, layout.trayFromChurch, mainSize.w, mainSize.h]); // eslint-disable-line react-hooks/exhaustive-deps
+        [layout.dock, layout.order, layout.stacks, layout.libW, layout.slidesW, layout.rightW, layout.camadasH, layout.prevPct, layout.hidden, layout.trayFromChurch, layout.onairSpan, mainSize.w, mainSize.h]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Editar disposição › No ar: the strip's band (dock.js moveBand); a dock
+    // never edited follows through fromArrangement.
+    const setOnairSpan = (v) => setLayout({ ...layout, onairSpan: v, dock: layout.dock ? moveBand(layout.dock, v) : null });
     // The No ar strip only while lyrics are on air (owner 2026-10-14): it folds
     // away otherwise, wherever it is placed alone; while editing it stays, to be moved.
     const gone = editing ? "" : goneModules(c.cur).join();
@@ -1071,6 +1074,7 @@ export default function Console() {
             {editing && (
                 <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {!view && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
+                    {!view && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Sob as colunas", { title: "A faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela toda", { title: "A faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
                     {!view && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
                 </EditBanner>
             )}

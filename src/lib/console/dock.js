@@ -59,9 +59,10 @@ export const MODULES = {
     // Holyrics strip, owner 2026-10-14): a band across the bottom of the
     // window at first. `fold`: while nothing with lyrics is on air it takes
     // no room wherever it is placed alone (fitDock's `gone`).
-    // `pinned`: always the band across the bottom of the console (owner
-    // 2026-10-14): it is never dragged nor moved beside another module, it
-    // can only leave for the tray and come back there.
+    // `pinned`: always its band at the bottom of the console (owner
+    // 2026-10-14; which band: layout.onairSpan, bandOf): it is never dragged
+    // nor moved beside another module, it can only leave for the tray and
+    // come back there.
     onair: { name: "No ar", minW: 220, minH: 96, fold: true, pinned: "bottom" },
     // As a module of its own: the panel's header (32) over the slot (36); in
     // a column it comes in at its own height (`size.col`), not half of its
@@ -230,10 +231,10 @@ export function normalizeDock(saved) {
         seen.add(id);
     }
     // A pinned module somewhere else (a save from before, a tab beside
-    // Camadas) goes back to its band across the bottom.
+    // Camadas) goes back to a band at the bottom (either one is kept).
     for (const id of ids) {
-        if (MODULES[id].pinned !== "bottom" || !tree || !seen.has(id) || atBottom(tree, id)) continue;
-        tree = withBottomBand(tree, id, env);
+        if (MODULES[id].pinned !== "bottom" || !tree || !seen.has(id) || bandOf(tree, id)) continue;
+        tree = withBand(tree, id, env);
     }
     const hidden = [];
     for (const id of savedHidden) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
@@ -242,20 +243,54 @@ export function normalizeDock(saved) {
     return make(env, tree, hidden);
 }
 
-// A module alone in the last child of a column at the root: the band across
-// the bottom of the console.
-function atBottom(tree, id) {
-    if (!isSplit(tree) || tree.dir !== "col") return false;
-    const last = tree.children[tree.children.length - 1];
-    return isGroup(last) && last.tabs.length === 1 && last.tabs[0] === id;
+// The band the No ar strip lives in (layout.onairSpan; owner 2026-10-14):
+//   "columns"  under the Biblioteca, the Slides and the centre, with the
+//              Setlist's column running to the bottom beside it (the default);
+//   "window"   under every column, edge to edge.
+// In the tree: "window" is a module alone in the last child of a column at
+// the root; "columns" the same at the end of a column that is a child of the
+// root row (the Setlist's column being another child of that row).
+export const ONAIR_SPANS = ["columns", "window"];
+export const onairSpanOf = (v) => (ONAIR_SPANS.includes(v) ? v : "columns");
+const isBand = (node, id) => isGroup(node) && node.tabs.length === 1 && node.tabs[0] === id;
+const endsWithBand = (node, id) => isSplit(node) && node.dir === "col" && isBand(node.children[node.children.length - 1], id);
+// Where a pinned module sits now: "window", "columns", or null (elsewhere).
+export function bandOf(tree, id) {
+    if (!isSplit(tree)) return null;
+    if (endsWithBand(tree, id)) return "window";
+    if (tree.dir === "row" && tree.children.some((c) => endsWithBand(c, id))) return "columns";
+    return null;
 }
 
-// The tree with `id` (out of wherever it was) as the band across its bottom.
-function withBottomBand(tree, id, env) {
+// The tree with `id` (out of wherever it was) in the band of `span`. For
+// "columns" the root must be a row with the Setlist's column as one child
+// and the others beside it: those go over the strip in a column, the
+// Setlist's keeps its width to the bottom. Otherwise the band crosses the
+// window.
+function withBand(tree, id, env, span = "columns") {
     const rest = clone(tree);
     strip(rest, [id]);
     const kept = clean(rest, new Set(), env);
-    return kept ? clean(split("col", [kept, group([id])], [null, ONAIR_H]), new Set(), env) : group([id]);
+    if (!kept) return group([id]);
+    const windowBand = () => clean(split("col", [kept, group([id])], [null, ONAIR_H]), new Set(), env);
+    if (onairSpanOf(span) !== "columns" || !isSplit(kept) || kept.dir !== "row" || kept.children.length < 2) return windowBand();
+    const si = kept.children.findIndex((c) => leaves(c).includes("setlist"));
+    if (si < 0) return windowBand();
+    const others = kept.children.filter((_, i) => i !== si);
+    const otherSizes = kept.sizes.filter((_, i) => i !== si);
+    const over = others.length === 1 ? others[0] : withOneFlex(split("row", others, otherSizes));
+    const band = split("col", [over, group([id])], [null, ONAIR_H]);
+    const sideSize = kept.sizes[si] ?? 320;
+    const row = si === 0 ? split("row", [kept.children[si], band], [sideSize, null]) : split("row", [band, kept.children[si]], [null, sideSize]);
+    return clean(row, new Set(), env);
+}
+
+// The strip to the band of `span` (Editar disposição › No ar): the dock
+// otherwise as it is; in the tray it stays there.
+export function moveBand(dock, span) {
+    const d = normalizeDock(dock);
+    if (!pathOf(d.tree, "onair") || bandOf(d.tree, "onair") === onairSpanOf(span)) return d;
+    return normalizeDock(make(dockEnv(d), withBand(d.tree, "onair", dockEnv(d), span), d.hidden));
 }
 
 export const isPinned = (id) => Boolean(MODULES[id]?.pinned);
@@ -271,7 +306,7 @@ export const isPinned = (id) => Boolean(MODULES[id]?.pinned);
 //   narrow  the same, and the Biblioteca over the Slides in one column.
 // `width`, `height`: the console's grid, to turn the Prévia's percentage
 // and a stacked column into pixels.
-export function fromArrangement(layout = {}, { width = 1908, height = 900, tier = "wide" } = {}) {
+export function fromArrangement(layout = {}, { width = 1908, height = 900, tier = "wide", onairSpan = "columns" } = {}) {
     const hidden = layout?.hidden || {};
     const px = (k, d) => pxOrNull(layout?.[k]) ?? d;
     const libW = px("libW", 260);
@@ -319,8 +354,9 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     if (hidden.camadas) tray.splice(tray.indexOf("camadas") + 1, 0, "temas");
     if (!wide) tray.push("camadas", "temas", "abas", "onair");
     const row = split("row", cols, sizes);
-    // Wide: the No ar strip under every column, edge to edge.
-    const tree = wide && !hidden.onair ? split("col", [row, group(["onair"])], [null, ONAIR_H]) : row;
+    // Wide: the No ar strip in its band (onairSpan): under the columns beside
+    // the Setlist's, or under every column (withBand decides, and falls back).
+    const tree = wide && !hidden.onair ? withBand(row, "onair", "culto", onairSpan) : row;
     return normalizeDock({ tree, hidden: tray });
 }
 
@@ -447,7 +483,7 @@ export function returnModule(dock, id, opts) {
     if (!d.hidden.includes(id)) return d;
     if (MODULES[id].pinned === "bottom") {
         const env = dockEnv(d);
-        const tree = d.tree ? withBottomBand(d.tree, id, env) : group([id]);
+        const tree = d.tree ? withBand(d.tree, id, env, opts?.onairSpan) : group([id]);
         return normalizeDock(make(env, tree, d.hidden.filter((m) => m !== id)));
     }
     const def = defaultDock({ ...opts, tier: "wide", env: dockEnv(d) }).tree;

@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizePresets, nameProblem, addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, cleanName, MAX_PRESETS } from "./dockPresets.js";
 import { defaultDock, moveModules, setActive } from "./dock.js";
+// The window band's shape (see dock.test.mjs).
+const W = { onairSpan: "window" };
 
-const dock = defaultDock();
+const dock = defaultDock(W);
 const moved = moveModules(dock, ["camadas"], { kind: "group", path: [0, 0], zone: "left" });
 
 test("a saved list is made safe: an id, a name that is not Padrão, a dock; no repeats", () => {

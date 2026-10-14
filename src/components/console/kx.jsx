@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 
@@ -134,8 +134,11 @@ export function Monitor({ state, caption, cap, noCap = false, live, now, logoUrl
 
 // A splitter between two modules. Drag changes `size` by the mouse delta
 // (sign: +1 when dragging right/down grows the module, -1 otherwise).
-export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp }) {
+// `label`: shown on the splitter (the size in %, while editing the
+// arrangement); a click makes it a field and Enter gives `onPercent` the number.
+export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp, label = null, onPercent }) {
     const drag = useRef(null);
+    const [typing, setTyping] = useState(null);
     useEffect(() => {
         const move = (e) => {
             if (!drag.current) return;
@@ -164,10 +167,20 @@ export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp }) {
             aria-label="Redimensionar · setas ajustam, Enter restaura"
             tabIndex={0}
             title="Arraste para redimensionar · duplo clique restaura"
-            onMouseDown={(e) => { e.preventDefault(); drag.current = { x: e.clientX, y: e.clientY, size }; document.body.style.cursor = horizontal ? "row-resize" : "col-resize"; }}
-            onDoubleClick={onReset}
+            onMouseDown={(e) => { if (e.target.closest?.(".kx-split-pct")) return; e.preventDefault(); drag.current = { x: e.clientX, y: e.clientY, size }; document.body.style.cursor = horizontal ? "row-resize" : "col-resize"; }}
+            onDoubleClick={(e) => { if (!e.target.closest?.(".kx-split-pct")) onReset?.(); }}
             onKeyDown={onKeyDown}
-        />
+        >
+            {label !== null && typing === null && (
+                <button type="button" className="kx-split-pct kx-t" title="O tamanho em % do espaço · clique para digitar" tabIndex={-1}
+                    onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); setTyping(String(parseInt(label, 10) || "")); }}>{label}</button>
+            )}
+            {label !== null && typing !== null && (
+                <input className="kx-split-pct kx-split-pct-in" type="number" min={1} max={99} value={typing} autoFocus aria-label="Tamanho em %"
+                    onMouseDown={(e) => e.stopPropagation()} onChange={(e) => setTyping(e.target.value)} onBlur={() => setTyping(null)}
+                    onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); onPercent?.(Number(typing)); setTyping(null); } else if (e.key === "Escape") { e.preventDefault(); setTyping(null); } }} />
+            )}
+        </div>
     );
 }
 
