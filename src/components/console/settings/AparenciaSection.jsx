@@ -36,7 +36,7 @@ export default function AparenciaSection({ c }) {
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
     };
     // Fundo padrão (src/lib/console/defaultFundo.js): the church's; a
-    // service's own (Visual do culto) wins while it is the one in hand.
+    // service's own (Fundo do culto: the Programa, Planejar o culto) wins while it is the one in hand.
     const pick = useLibraryPicker();
     const church = churchFundo(user);
 

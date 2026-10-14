@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeGenerator } from "../../../shared/generators.mjs";
-import { consoleThemes, withThemeInUse, themeInUseSeed, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
+import { consoleThemes, themeInUseSeed, themeName, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
 
 test("themeStyle: classics defaulted, extras empty unless saved", () => {
     const t = { font_family: "serif", text_box: "band", transition: "slide", transition_ms: 300 };
@@ -137,7 +137,7 @@ test("a default theme per kind: Música, Bíblia, Texto, Timer", () => {
     assert.equal(withThemeDefaults("tool.show", own, themes[3]), own, "its own look stays");
 });
 
-test("the Fundo layer's presets: pinned themes, else default + recent", () => {
+test("Camadas › Temas presets: pinned themes, else default + recent", () => {
     const t = (id, extra = {}) => ({ id, name: id, ...extra });
     const many = [t("a"), t("b", { is_default: true }), t("c", { pinned: true }), t("d", { pinned: true }), t("e", { updated_date: "2026-10-12" }), t("f", { updated_date: "2026-10-13" })];
     assert.deepEqual(consoleThemes(many).map((x) => x.id), ["c", "d"], "pinned only, in list order");
@@ -147,37 +147,75 @@ test("the Fundo layer's presets: pinned themes, else default + recent", () => {
     assert.deepEqual(consoleThemes([]), []);
 });
 
-test("the theme in use rides as the service's Música theme", () => {
-    assert.deepEqual(withThemeInUse({ bible: "b" }, "vinho"), { bible: "b", lyrics: "vinho" }, "it wins over the culto's");
-    assert.deepEqual(withThemeInUse(null, "vinho"), { lyrics: "vinho" });
-    assert.equal(withThemeInUse({ lyrics: "culto" }, null)?.lyrics, "culto", "none in use: the culto's stands");
-    const themes = [{ id: "padrao", is_default: true }, { id: "vinho" }];
-    assert.equal(themeForKind(themes, "lyrics", {}, withThemeInUse({ lyrics: "padrao" }, "vinho")).id, "vinho");
-    assert.equal(themeForKind(themes, "lyrics", {}, withThemeInUse(null, null)).id, "padrao");
-});
-
-test("O mesmo das músicas follows the theme the songs get: in use or the culto's Música; a theme of its own stays", () => {
-    const themes = [{ id: "padrao", is_default: true }, { id: "vinho" }, { id: "biblia" }, { id: "culto" }];
-    const inUse = withThemeInUse(null, "vinho");
+test("the theme in use is Música's theme; Bíblia, Texto and Timer follow it unless the church chose theirs", () => {
+    const themes = [{ id: "padrao", is_default: true }, { id: "vinho" }, { id: "biblia" }];
+    assert.equal(themeForKind(themes, "lyrics", {}, "vinho").id, "vinho", "it wins over the default");
+    assert.equal(themeForKind(themes, "lyrics", {}, null).id, "padrao", "none in use: the default");
+    assert.equal(themeForKind(themes, "lyrics", {}, "apagado").id, "padrao", "a deleted one is passed over");
     for (const kind of ["bible", "text", "tool"]) {
-        assert.equal(themeForKind(themes, kind, {}, inUse).id, "vinho", `${kind}: the clicked theme`);
-        assert.equal(themeForKind(themes, kind, { [kind]: "apagado" }, inUse).id, "vinho", `${kind}: a deleted one falls back to Música's`);
-        assert.equal(themeForKind(themes, kind, { [kind]: "none" }, inUse), null, `${kind}: the factory look stays`);
+        assert.equal(themeForKind(themes, kind, {}, "vinho").id, "vinho", `${kind}: the clicked theme`);
+        assert.equal(themeForKind(themes, kind, { [kind]: "apagado" }, "vinho").id, "vinho", `${kind}: a deleted one falls back to Música's`);
+        assert.equal(themeForKind(themes, kind, { [kind]: "none" }, "vinho"), null, `${kind}: the factory look stays`);
     }
-    assert.equal(themeForKind(themes, "bible", { bible: "biblia" }, inUse).id, "biblia", "the church's Bíblia theme stays");
-    assert.equal(themeForKind(themes, "bible", {}, withThemeInUse({ bible: "culto" }, "vinho")).id, "culto", "the culto's Bíblia theme stays");
-    assert.equal(themeForKind(themes, "text", {}, { lyrics: "culto" }).id, "culto", "no click: the culto's Música");
-    assert.equal(themeForKind(themes, "tool", {}, { lyrics: "none" }), null, "the culto's Música is the factory look: so is the timer's");
-    assert.equal(themeForKind(themes, "bible", {}, { lyrics: "apagado" }).id, "padrao", "a deleted Música: the default");
+    assert.equal(themeForKind(themes, "bible", { bible: "biblia" }, "vinho").id, "biblia", "the church's Bíblia theme stays");
     assert.equal(themeForKind(themes, "bible", {}, null).id, "padrao", "nothing chosen: the default");
 });
 
-test("the theme in use: choosing a culto seeds it; the day's draft the operator just started leaves it", () => {
-    assert.equal(themeInUseSeed({ serviceId: "s1", lyrics: "vinho" }), "vinho", "a culto with its Música theme");
-    assert.equal(themeInUseSeed({ serviceId: "s2" }), null, "a culto without one: the default");
-    assert.equal(themeInUseSeed({ serviceId: null }), null, "no culto");
-    assert.equal(themeInUseSeed({ serviceId: "d1", draftId: "d1" }), undefined, "the draft the first item started: the clicked theme stays");
-    assert.equal(themeInUseSeed({ serviceId: "d1", draftId: "d1", lyrics: "azul" }), "azul", "Visual de hoje gave the draft a Música theme");
-    assert.equal(themeInUseSeed({ serviceId: "s1", draftId: "d1" }), null, "another culto chosen afterwards");
-    assert.equal(themeInUseSeed(), null);
+test("the theme in use: a culto with a theme of its own replaces it; one with none leaves it (review 2026-10-14)", () => {
+    assert.equal(themeInUseSeed("vinho"), "vinho");
+    assert.equal(themeInUseSeed(""), undefined, "a culto without a theme: the clicked one stays");
+    assert.equal(themeInUseSeed(null), undefined);
+    assert.equal(themeInUseSeed(), undefined);
+});
+
+test("the theme in use: when KERYX opens, the last click wins over the culto's theme", () => {
+    assert.equal(themeInUseSeed("vinho", { reopening: true, inUse: "azul" }), undefined, "the theme clicked before closing stays");
+    assert.equal(themeInUseSeed("vinho", { reopening: true, inUse: null }), "vinho", "nothing clicked yet on this computer: the culto's");
+    assert.equal(themeInUseSeed("vinho", { reopening: false, inUse: "azul" }), "vinho", "a culto chosen afterwards (or its theme changed): the culto's");
+    assert.equal(themeInUseSeed("", { reopening: true, inUse: null }), undefined);
+});
+
+test("an unnamed theme has no name (no date made up)", () => {
+    assert.equal(themeName({ name: "Vinho" }), "Vinho");
+    assert.equal(themeName({ name: "  " }), "Tema sem nome");
+    assert.equal(themeName({ name: "" }, ""), "", "a caption passes \"\": no caption");
+    assert.equal(themeName(null), "Tema sem nome");
+});
+
+// The bug of the review 2026-10-14: with a theme in use, a song went out
+// over the Fundo do culto. The whole send chain: content.js builds the
+// item, the stamp fills the theme in use (themeForKind + withThemeDefaults),
+// fundoOps puts its background on the Fundo before the text, and Esc gives
+// the Fundo do culto back.
+test("the theme in use puts its background on the Fundo with the content; Esc gives the Fundo do culto back", async () => {
+    const { songContent, passageContent } = await import("./content.js");
+    const { fundoOps, applyWithFundo } = await import("./backgroundSpec.js");
+    const { emptyState, applyOp } = await import("../../../shared/live-state.mjs");
+    const vinho = { id: "vinho", name: "Vinho", font_family: "serif", background: { kind: "color", value: "#aa2222" } };
+    const themes = [{ id: "padrao", is_default: true, name: "Padrão" }, vinho];
+    const stamp = (op, args) => withThemeDefaults(op, args, themeForKind(themes, args.kind, {}, "vinho"));
+    const culto = { kind: "color", value: "#224466", title: "Fundo do culto" };
+    let live = applyOp(applyOp(emptyState(0), "background.default", { background: culto }, 0), "background.set", culto, 0);
+
+    const song = { id: "s", title: "Graça", lyrics: "Linha um\nLinha dois" };
+    const own = { ...song, id: "o", style_mode: "own", font_family: "mono" };
+    const passage = { reference: "Jo 3:16", text: "Porque Deus amou o mundo" };
+    const text = { kind: "text", title: "Oração", slides: [{ text: "Oremos" }], inherit: { look: true, background: true } };
+    for (const [what, args] of [["a song", { ...songContent(song, {}, themes), kind: "lyrics" }], ["a song with its own look", { ...songContent(own, {}, themes), kind: "lyrics" }], ["a passage", { ...passageContent(passage), kind: "bible" }], ["a text", text]]) {
+        const ops = fundoOps("content.show", stamp("content.show", args), live);
+        assert.deepEqual(ops.map(([o]) => o), ["background.set", "content.show"], `${what}: the Fundo first`);
+        assert.equal(ops[0][1].value, "#aa2222", `${what}: the theme's background`);
+        const on = applyWithFundo(live, "content.show", stamp("content.show", args), 1);
+        assert.equal(on.background.value, "#aa2222", `${what}: on the screen`);
+        assert.equal(applyOp(on, "clear", {}, 2).background.value, "#224466", `${what}: Esc, the Fundo do culto`);
+    }
+
+    // A song with a background of its own keeps it (owner 2026-10-14).
+    const pic = { ...song, background: { kind: "image", value: "keryx-media://mar.webp" } };
+    const ops = fundoOps("content.show", stamp("content.show", { ...songContent(pic, {}, themes), kind: "lyrics" }), live);
+    assert.equal(ops[0][1].value, "keryx-media://mar.webp");
+
+    // The Fundo's padlock holds it.
+    live = applyOp(live, "layers.lock", { layer: "background", locked: true }, 3);
+    assert.deepEqual(fundoOps("content.show", stamp("content.show", { ...songContent(song, {}, themes), kind: "lyrics" }), live).map(([o]) => o), ["content.show"]);
 });

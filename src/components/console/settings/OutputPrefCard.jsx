@@ -14,6 +14,7 @@ import { useLayoutRows } from "@/hooks/useLayout";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 import { useChurch } from "@/hooks/useChurch";
 import { openEditor } from "@/lib/editorWindow";
+import { themeName } from "@/lib/console/themes";
 
 const SCALES = [["80", "80%"], ["90", "90%"], ["100", "100%"], ["110", "110%"], ["125", "125%"], ["140", "140%"]];
 const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
@@ -219,7 +220,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
             <FormRow k="Tema">
                 <select className="cfg-select" value={pref.themeId} onChange={(e) => save({ theme_id: e.target.value })} aria-label={`Tema de ${output.label}`}>
                     <option value="">O mesmo da Projeção</option>
-                    {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    {themes.map((t) => <option key={t.id} value={t.id}>{themeName(t)}</option>)}
                     {themeGone && <option value={pref.themeId} disabled>(tema excluído)</option>}
                 </select>
                 {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor, na janela dele"><Icon name="edit" />Editar tema…</Btn>}

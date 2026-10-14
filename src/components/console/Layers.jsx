@@ -4,24 +4,22 @@ import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
 import { Btn, IconBtn, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
-import { THEME_FONTS, FAMILY_SET, themeStyle, sameLook, themeBackgroundArgs, defaultTheme } from "@/lib/console/themes";
+import { themeStyle, sameLook, themeBackgroundArgs, defaultTheme, themeName } from "@/lib/console/themes";
 import { applyThemeOnAir } from "./themeActions";
 import ThemeStrip from "./ThemeStrip";
-import { useBackgrounds } from "./useConsoleData";
 import { STYLE_KEYS, LAYER_ORDER, layerHidden, layerLocked } from "@shared/live-state.mjs";
-import { useLibraryPicker } from "./library/libraryContext";
-import { bgArgs, bgFields, bgLabel, cleanSpec } from "@/lib/console/backgroundSpec";
-import { GENERATORS } from "@/lib/generators";
+import { bgFields, cleanSpec } from "@/lib/console/backgroundSpec";
 import { openEditor } from "@/lib/editorWindow";
 
-const GEN_NAMES = Object.fromEntries(GENERATORS.map((g) => [g.id, g.name]));
-
-// Camadas: the look of what is on air, as four layers of the live state —
-// Logo (live.logo), Sobreposição (live.overlays), Texto principal
-// (content.style) and Fundo (live.background) — and the theme they came
-// from (ProjectionTheme). Changing a layer changes the live state at once
-// (or the rehearsal copy); the theme marks itself "Modificado" until it is
-// restored or the look is saved as a new theme.
+// Camadas: the themes (Temas, at the top: a click makes one the theme in
+// use) and what is on air as four layers of the live state — Logo
+// (live.logo), Sobreposição (live.overlays), Texto principal (content) and
+// Fundo (live.background) — each with its eye, padlock and place in the
+// order. The look of the text is the theme's, edited only in the Editor de
+// temas, and the culto's background is chosen in the Programa (Fundo do
+// culto): Texto principal keeps the item's title choice and, when the text
+// on air looks otherwise, Restaurar / Salvar como novo; Fundo has no options
+// (owner's review 2026-10-14).
 
 const LAYERS = [
     { id: "logo", name: "Logo", key: "logo" },
@@ -31,23 +29,17 @@ const LAYERS = [
 ];
 const BY_KEY = Object.fromEntries(LAYERS.map((l) => [l.key, l]));
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"]];
-const TEXT_SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"]];
-// Theme helpers live in src/lib/console/themes.js, shared with the editor
-// in Configurações › Aparência › Temas.
-const FONTS = THEME_FONTS;
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));
 
 export default function Layers({ c, themes, songs, service, ensureService }) {
     // The item's title: its own choice (style.title), else the church's.
     const showTitle = usePrefs().show_item_title;
-    const backgrounds = useBackgrounds();
     const { cur } = c;
     const [sel, setSel] = useState("text");
     // The padlock: the Fundo's is the live state's (layers.lock: nothing
     // changes it, whoever sends); the others only hold Camadas' controls.
     const [localLocks, setLocalLocks] = useState({});
-    const pick = useLibraryPicker();
     const menu = useContextMenu();
     // Drag to reorder: the list follows live.layerOrder (top first).
     const [drag, setDrag] = useState(null);
@@ -65,10 +57,9 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
     const logo = cur?.logo || { visible: false, corner: "bottom-right", size: "medium" };
     const overlays = cur?.overlays || [];
     const textOverlay = overlays.find((o) => o.type === "text" || o.type === "announcement") || null;
-    // The theme last applied from the Fundo layer strip (c.themeId), else the default.
+    // The theme in use (Temas, c.themeId), else the default.
     const theme = themes.find((t) => t.id === c.themeId) || defaultTheme(themes);
     const modified = Boolean(theme && content && !sameLook(style, theme));
-    const fontMissing = style.font_family && !FAMILY_SET.has(style.font_family) ? style.font_family : null;
 
     const visible = { logo: logo.visible, ov: Boolean(textOverlay) && textOverlay.enabled !== false, text: Boolean(content) && !layerHidden(cur, "content"), bg: Boolean(cur?.background) && !layerHidden(cur, "background") };
     const op = (name, args) => c.callOp(name, args).catch(() => {});
@@ -77,15 +68,8 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
         if (id === "bg") op("layers.lock", { layer: "background", locked: !locked.bg });
         else setLocalLocks({ ...localLocks, [id]: !localLocks[id] });
     };
-    // A background from the library (Temas, Imagens, Vídeos, Gerados, Cor).
-    // It is the Fundo on air: "Ao vivo" can send each choice at once
-    // (Editar fundo… opens with it on, for the generated one on air).
-    const openLibrary = async (startLive = false) => {
-        const r = await pick({ accept: ["image", "video", "generator", "color"], value: cur?.background || null, title: startLive ? "Editar fundo" : "Fundo", allowNone: Boolean(cur?.background), noneLabel: "Tirar o fundo", live: true, startLive });
-        if (r?.none) op("background.clear");
-        else if (r?.spec) op("background.set", bgArgs(r.spec, r.spec.kind === "generator" ? GEN_NAMES[r.spec.value] : backgrounds.find((b) => b.url === r.spec.value)?.name || bgLabel(r.spec, GEN_NAMES)));
-    };
-    const setStyle = (patch) => { if (content) op("content.update", { style: Object.fromEntries(Object.entries({ ...style, ...patch }).filter(([k]) => STYLE_KEYS.includes(k))) }); };
+    // The item's title over the slide (style.title): its own choice, not the theme's.
+    const setTitle = (title) => { if (content) op("content.update", { style: Object.fromEntries(Object.entries({ ...style, title }).filter(([k]) => STYLE_KEYS.includes(k))) }); };
     const setOverlays = (list) => op("overlays.set", { overlays: list });
 
     const toggleEye = (id) => {
@@ -99,45 +83,40 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
             else op(layerHidden(cur, "content") ? "layers.show" : "layers.hide", { layer: "content" });
         }
         if (id === "bg") {
-            if (!cur?.background) c.say("Escolha um fundo na camada Fundo.");
+            if (!cur?.background) c.say("Nada no Fundo.");
             else op(layerHidden(cur, "background") ? "layers.show" : "layers.hide", { layer: "background" });
         }
     };
 
+    // Salvar como novo: the look on air (the item's own, a song's "Próprio")
+    // as a theme, its Fundo with it. Unnamed (owner 2026-10-14: no made-up
+    // date); the toast opens it in the Editor to give it a name.
     const saveAsNew = async () => {
-        const name = `${theme ? theme.name : "Tema"} ${new Date().toLocaleDateString("pt-BR")}`;
         try {
             // The Fundo on air goes with the theme, any kind (a picture, a
             // clip, a generated one with its numbers and colours, a colour);
             // with none, the theme's own stays.
             const look = Object.fromEntries(Object.entries(themeStyle({ ...theme, ...style })).filter(([, v]) => v !== ""));
             const spec = cleanSpec(cur?.background) || (theme ? cleanSpec(themeBackgroundArgs(theme)) : null);
-            const row = await keryx.entities.ProjectionTheme.create({ name, ...look, ...bgFields(spec) });
+            const row = await keryx.entities.ProjectionTheme.create({ name: "", ...look, ...bgFields(spec) });
             c.setThemeId(row.id);
-            c.say(`Tema salvo como "${name}".`);
+            c.say("Tema salvo, sem nome.", { label: "Editar", run: () => { const r = openEditor({ theme: row.id }); if (r?.error) c.say(r.error); } });
         } catch (err) {
             c.say(err?.message || "Não foi possível salvar o tema.");
         }
     };
 
     const disabled = locked[sel];
+    const inUseName = theme ? themeName(theme, "") : "";
 
     return (
         <>
-            <div className="themerow">
-                <span className="t" title="Escolha o tema na camada Fundo">Tema: {theme ? theme.name : "nenhum"}{modified && <span> · Modificado</span>}</span>
-                <span style={{ flex: 1 }} />
-                {/* Editing lives in the Editor de temas e layouts (its window);
-                    here the operator only adjusts what is on air. */}
-                {theme && <Btn small onClick={() => { const r = openEditor({ theme: theme.id }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor de temas e layouts">Editar tema…</Btn>}
+            {/* Temas (owner's review 2026-10-14): always at the top, as
+                Holyrics' theme column; a click makes one the theme in use. */}
+            <div className="layerthemes">
+                <div className="listhead"><span className="kx-section">Temas{inUseName && <span className="kx-count"> · em uso: {inUseName}</span>}</span></div>
+                <ThemeStrip c={c} themes={themes} songs={songs} service={service} ensureService={ensureService} />
             </div>
-            {modified && (
-                <div className="themeacts">
-                    <Btn kind="outline" small onClick={() => applyThemeOnAir(c, theme)}>Restaurar</Btn>
-                    <Btn small onClick={saveAsNew}>Salvar como novo</Btn>
-                </div>
-            )}
-            {fontMissing && <div className="warnline"><Icon name="warn" /><span>Fonte "{fontMissing}" não instalada · usando a fonte padrão</span></div>}
             {rows.map((L, i) => (
                 <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"} ${drag === L.key ? "is-dragging" : ""} ${over === i && drag && drag !== L.key ? "is-dropbefore" : ""}`}
                     onClick={() => setSel(L.id)} role="button" tabIndex={0}
@@ -161,45 +140,24 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
             ))}
             <div className="layerprops">
                 <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{LAYERS.find((l) => l.id === sel)?.name}{disabled ? " · travada" : ""}</span>
+                {/* Texto principal: the look is the theme's, edited only in the
+                    Editor de temas (owner's review 2026-10-14); here only the
+                    item's title choice, and the way back to the theme in use
+                    when what is on air looks otherwise (a song's own look). */}
                 {sel === "text" && (!content ? <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Nada no ar.</span> : <>
-                    <span className="k">Fonte</span>
-                    <select value={style.font_family || "sans"} disabled={disabled} onChange={(e) => setStyle({ font_family: e.target.value })} aria-label="Fonte">{FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-                    <span className="k">Tamanho</span><Seg small value={style.font_size || "large"} options={TEXT_SIZES} onChange={(v) => !disabled && setStyle({ font_size: v })} />
-                    <span className="k">Alinhamento</span><Seg small value={style.text_align || "center"} options={[["left", "Esq."], ["center", "Centro"], ["right", "Dir."]]} onChange={(v) => !disabled && setStyle({ text_align: v })} />
-                    <span className="k">Posição</span><Seg small value={style.text_position || "middle"} options={[["top", "Alto"], ["middle", "Meio"], ["bottom", "Baixo"]]} onChange={(v) => !disabled && setStyle({ text_position: v })} />
-                    <span className="k">Sombra</span><Seg small value={style.text_effect === "none" ? "none" : "shadow"} options={[["shadow", "Com"], ["none", "Sem"]]} onChange={(v) => !disabled && setStyle({ text_effect: v })} />
-                    <span className="k">Transição</span><Seg small value={style.transition || "fade"} options={[["fade", "Esmaecer"], ["slide", "Deslizar"], ["cut", "Corte"]]} onChange={(v) => !disabled && setStyle({ transition: v })} />
-                    <span className="k">Opacidade</span><Seg small value={num(style.text_opacity ?? 1)} options={[["1", "100%"], ["0.8", "80%"], ["0.6", "60%"]]} onChange={(v) => !disabled && setStyle({ text_opacity: v === "1" ? "" : Number(v) })} />
-                    <span className="k">Largura</span><Seg small value={num(style.text_max_width ?? 100)} options={[["100", "Toda"], ["80", "80%"], ["60", "60%"]]} onChange={(v) => !disabled && setStyle({ text_max_width: v === "100" ? "" : Number(v) })} />
-                    <span className="k">Entrelinhas</span><Seg small value={style.line_height || "normal"} options={[["tight", "Justa"], ["normal", "Normal"], ["loose", "Solta"]]} onChange={(v) => !disabled && setStyle({ line_height: v === "normal" ? "" : v })} />
-                    <span className="k">Maiúsculas</span><Seg small value={style.text_case || "none"} options={[["none", "Não"], ["upper", "Sim"]]} onChange={(v) => !disabled && setStyle({ text_case: v === "none" ? "" : v })} />
-                    <span className="k">Caixa</span><Seg small value={style.text_box || "none"} options={[["none", "Nenhuma"], ["band", "Faixa"], ["block", "Bloco"]]} onChange={(v) => !disabled && setStyle({ text_box: v === "none" ? "" : v })} />
-                    {style.text_box && style.text_box !== "none" && <>
-                        <span className="k">Cor da caixa</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            <input type="color" className="ed-color" disabled={disabled} value={style.text_box_color || "#000000"} onChange={(e) => setStyle({ text_box_color: e.target.value })} aria-label="Cor da caixa" />
-                            <Seg small value={num(style.text_box_opacity ?? 0.55)} options={[["0.35", "35%"], ["0.55", "55%"], ["0.75", "75%"]]} onChange={(v) => !disabled && setStyle({ text_box_opacity: Number(v) })} />
+                    <span className="k">Título</span><Seg small value={style.title || (showTitle ? "show" : "hide")} options={[["show", "Com"], ["hide", "Sem"]]} onChange={(v) => !disabled && setTitle(v)} />
+                    {modified && <>
+                        <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>{inUseName ? <>Diferente do tema <b>{inUseName}</b></> : "Diferente do tema em uso"}</span>
+                        <span className="layeracts" style={{ gridColumn: "1 / -1" }}>
+                            <Btn kind="outline" small disabled={disabled} onClick={() => applyThemeOnAir(c, theme)} title="O texto no ar volta ao visual do tema em uso">Restaurar</Btn>
+                            <Btn small onClick={saveAsNew} title="Guarda o visual no ar como um tema novo, sem nome">Salvar como novo</Btn>
                         </span>
                     </>}
-                    <span className="k">Título</span><Seg small value={style.title || (showTitle ? "show" : "hide")} options={[["show", "Com"], ["hide", "Sem"]]} onChange={(v) => !disabled && setStyle({ title: v })} />
-                    <span className="k">Ajuste fino</span><Seg small value={num(style.text_nudge ?? 0)} options={[["-10", "↑ 10"], ["-5", "↑ 5"], ["0", "0"], ["5", "↓ 5"], ["10", "↓ 10"]]} onChange={(v) => !disabled && setStyle({ text_nudge: v === "0" ? "" : Number(v) })} />
                 </>)}
-                {sel === "bg" && (<>
-                    <span className="k">Fundo</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                        <span style={{ flex: "0 1 auto", color: "var(--fg-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? cur.background.title || bgLabel(cur.background, GEN_NAMES) : "nenhum"}</span>
-                        {/* The picture's own settings (dim, blur, fit, position) ride with it;
-                            the library edits them — one window, one button (owner 2026-10-13). */}
-                        <span className="kx-meta" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cur?.background ? [cur.background.dim != null ? `escurecer ${Math.round(cur.background.dim * 100)}%` : "", cur.background.blur ? "desfoque" : "", cur.background.fit === "contain" ? "conter" : ""].filter(Boolean).join(" · ") : ""}</span>
-                        {cur?.background?.kind === "generator" && <Btn small disabled={disabled} onClick={() => openLibrary(true)} title="Abre o fundo gerado grande, numa janela; cada ajuste vai às telas na hora">Editar fundo…</Btn>}
-                        <Btn small disabled={disabled} onClick={() => openLibrary(false)} title="Temas, imagens, vídeos, fundos gerados e cores · abre no fundo no ar, com os ajustes dele (escurecer, desfoque, ajuste, posição)">Biblioteca…</Btn>
-                    </span>
-                    {disabled && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Travado: o fundo próprio das músicas não aparece.</span>}
-                    {/* The themes as presets (owner's decision 2026-10-13):
-                        text look + background in one click, Holyrics-style. */}
-                    <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 6 }}>Temas</span>
-                    <ThemeStrip c={c} themes={themes} songs={songs} service={service} ensureService={ensureService} />
-                </>)}
+                {/* Fundo: the culto's is chosen in the Programa (Fundo do culto)
+                    and a theme in use brings its own; the row keeps the eye and
+                    the padlock (owner's review 2026-10-14). */}
+                {sel === "bg" && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>{locked.bg ? "Travado: nada que vai ao ar troca o fundo." : "O fundo do culto se escolhe no Programa (Fundo do culto); um tema em uso traz o dele."}</span>}
                 {sel === "logo" && (<>
                     <span className="k">Canto</span>
                     <select value={logo.corner} disabled={disabled} onChange={(e) => op("logo.set", { corner: e.target.value })} aria-label="Canto do logo">
