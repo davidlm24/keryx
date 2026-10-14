@@ -49,7 +49,7 @@ import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/co
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
 import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, densityOf, restoreEnv } from "@/lib/console/layout";
-import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, moveModules, hideModule, trayFlags, applyTrayFlags, canTray, leaves, pathOf } from "@/lib/console/dock";
+import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, moveModules, hideModule, trayFlags, applyTrayFlags, canTray, leaves, pathOf } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
 import { EditBanner } from "@/components/console/Arrange";
@@ -769,7 +769,10 @@ export default function Console() {
     const dockOpts = { width: mainSize.w, height: mainSize.h, tier };
     const dock = useMemo(() => (layout.dock ? normalizeDock(layout.dock) : fromArrangement(layout.trayFromChurch === false ? { ...layout, hidden: {} } : layout, dockOpts)),
         [layout.dock, layout.order, layout.stacks, layout.libW, layout.slidesW, layout.rightW, layout.camadasH, layout.prevPct, layout.hidden, layout.trayFromChurch, mainSize.w, mainSize.h]); // eslint-disable-line react-hooks/exhaustive-deps
-    const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h), [dock, mainSize.w, mainSize.h]);
+    // The No ar strip only while lyrics are on air (owner 2026-10-14): it folds
+    // away otherwise, wherever it is placed alone; while editing it stays, to be moved.
+    const gone = editing ? "" : goneModules(c.cur).join();
+    const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h, { gone: gone ? gone.split(",") : [] }), [dock, mainSize.w, mainSize.h, gone]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
     const playerDocked = !onScreen("player");
     const setDock = (next) => setLayout({ ...layout, dock: next });

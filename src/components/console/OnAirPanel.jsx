@@ -7,7 +7,9 @@ import { stageAirSlide, liveStageId } from "@/lib/console/stage";
 // The No ar module (owner 2026-10-14, the strip under Holyrics' console):
 // the slides of what is on air, whatever the Slides column holds, so the
 // operator never loses the place while preparing the next item. A strip of
-// cards when the module is wide and low, a list in a column (console.css).
+// cards when the module is wide and low (the band across the bottom of the
+// window), a list in a column (console.css). It exists only while lyrics are
+// on air: otherwise the dock folds it away (fitDock's gone, dock.js).
 // A click prepares that slide (the Prévia), a double click puts it on air,
 // as everywhere; ←/→ move it.
 export default function OnAirPanel({ c }) {

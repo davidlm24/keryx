@@ -249,16 +249,20 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
         const fi = f.children.findIndex((ch) => !ch.fixed);
         const out = [];
         f.children.forEach((ch, i) => {
+            // A folding module (the No ar strip) eases in and out of its
+            // place; gone, it takes no room and has no splitter beside it.
+            const cls = ch.fold ? ` dock-fold${ch.gone ? " is-gone" : ""}` : "";
             out.push(
-                <div key={firstOf(ch.frame)} className="dock-cell"
+                <div key={firstOf(ch.frame)} className={`dock-cell${cls}`} aria-hidden={ch.gone || undefined} inert={ch.gone ? "" : undefined}
                     style={ch.fixed ? { flex: `0 0 ${Math.round(ch.size)}px` } : { flex: "1 1 0" }}>
                     {node(ch.frame)}
                 </div>,
             );
-            if (i === f.children.length - 1) return;
+            const next = f.children.findIndex((c, j) => j > i && !c.gone);
+            if (ch.gone || next < 0) return;
             // One splitter per gap, owned by the fixed child on the side away
             // from the flexible one (dragging toward the flexible one grows it).
-            const owner = i < fi ? i : i + 1;
+            const owner = i < fi ? i : next;
             const sign = i < fi ? 1 : -1;
             const size = f.children[owner].size;
             // A group of tabs made of several children: they all take the size.
