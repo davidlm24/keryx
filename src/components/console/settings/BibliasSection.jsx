@@ -6,7 +6,8 @@ import { useBridge, usePoll, desktopOnly, Reading } from "./parts";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 
 // Bíblias instaladas: each version downloaded once (or from a file) works
-// without internet; the default is what the Bible environment opens with.
+// without internet; the one in use (User.bible_version, also set by the Livros selector) is
+// what the whole app reads.
 // The texts are never shipped with KERYX (electron/bible.cjs).
 export default function BibliasSection({ c }) {
     const bible = useBridge("bible");
@@ -30,8 +31,8 @@ export default function BibliasSection({ c }) {
     };
     const setDefault = (v) => {
         updateUser({ bible_version: v })
-            .then(() => c.say(`${v} é a versão padrão da Bíblia.`))
-            .catch(() => c.say("Não foi possível salvar a versão padrão."));
+            .then(() => c.say(`${v} é a versão em uso na Bíblia.`))
+            .catch(() => c.say("Não foi possível salvar a versão em uso."));
     };
 
     return (
@@ -42,20 +43,20 @@ export default function BibliasSection({ c }) {
                 return (
                     <div key={v.id} className="kx-row">
                         <div className="kx-row-main">
-                            <div className="kx-row-title">{v.id} · {v.name}{def === v.id && <span className="kx-count"> · padrão</span>}</div>
+                            <div className="kx-row-title">{v.id} · {v.name}{def === v.id && <span className="kx-count"> · em uso</span>}</div>
                             <div className={`kx-row-meta ${!count && def === v.id ? "kx-warn" : ""}`}>
                                 {count ? `Instalada neste computador · ${count.toLocaleString("pt-BR")} versículos` : online ? "Só com internet" : "Só com internet · baixe para usar sem rede"}
                             </div>
                         </div>
                         <span className="cfg-acts">
-                            {def !== v.id && <Btn small onClick={() => setDefault(v.id)}>Tornar padrão</Btn>}
+                            {def !== v.id && <Btn small onClick={() => setDefault(v.id)}>Usar esta</Btn>}
                             {v.install && <Btn small kind={count ? "" : "outline"} disabled={Boolean(busy)} onClick={() => run(v.id, false)}>{busy === v.id ? "Baixando…" : count ? "Reinstalar" : "Baixar · 4 MB"}</Btn>}
                             {v.install && <Btn small disabled={Boolean(busy)} onClick={() => run(v.id, true)}>Do arquivo…</Btn>}
                         </span>
                     </div>
                 );
             })}
-            <div className="listhead"><span className="kx-meta">A versão aparece com cada referência. Se a escolhida faltar, o KERYX avisa e mostra outra instalada; nunca troca em silêncio. Sem internet aqui, use "Do arquivo" com o JSON baixado em outro computador.</span></div>
+            <div className="listhead"><span className="kx-meta">A versão em uso vale em todo o KERYX, na Bíblia e nas referências; trocá-la aqui ou no seletor de Livros é a mesma coisa. Se a escolhida faltar, o KERYX avisa e mostra outra instalada; nunca troca em silêncio. Sem internet aqui, use "Do arquivo" com o JSON baixado em outro computador.</span></div>
         </>
     );
 }
