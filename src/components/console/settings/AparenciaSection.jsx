@@ -55,7 +55,7 @@ export default function AparenciaSection({ c }) {
             <div className="frm">
                 <FormRow k="Transição entre slides">
                     <Seg small value={kind} onChange={(v) => save({ transition_type: v }, `Transição padrão: ${TRANSITIONS.find(([k]) => k === v)?.[1]}.`)} options={TRANSITIONS} />
-                    <span className="kx-meta">cada item pode escolher a sua em Camadas</span>
+                    <span className="kx-meta">um tema com transição própria vence</span>
                 </FormRow>
                 <FormRow k="Duração">
                     <input type="range" className="ap-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={ms} disabled={kind === "cut"}

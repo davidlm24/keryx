@@ -2,7 +2,7 @@
 // the text style it applies, the Fundo layer it sets, which theme starts
 // selected. Shared by Camadas (apply/save) and Configurações › Aparência › Temas (the
 // editor). Pure, so node --test checks it.
-import { bgSpec, bgArgs } from "./backgroundSpec.js";
+import { bgSpec, bgArgs, cleanSpec } from "./backgroundSpec.js";
 
 // The text sizes a theme or a song can choose, smallest first.
 export const TEXT_SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
@@ -38,6 +38,19 @@ export const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v
 // generated background saved before it; backgroundSpec.js), as
 // background.set's arguments; null when it has none.
 export const themeBackgroundArgs = (t) => bgArgs(bgSpec(t), t?.name || "Tema");
+
+// A theme is saved with a background from the library (owner 2026-10-14):
+// without one, applying it dressed only the text and the previous theme's
+// Fundo stayed on screen, so a new theme looked broken. The Editor de temas
+// saves only with one (a colour counts: Cor is a library tab) and "Salvar
+// como novo" in Camadas takes one along or asks. Themes saved before keep
+// working as they did (the text only, the Fundo on air stays) and carry a
+// "sem fundo" mark until someone gives them one.
+export const themeHasBackground = (t) => Boolean(bgSpec(t));
+// The background Camadas' "Salvar como novo" gives the new theme: the Fundo
+// on air (any kind, even hidden by its eye), else the theme in use's; null
+// = there is none at hand and the library is asked for one.
+export const newThemeBackground = (onAir, inUse) => cleanSpec(onAir) || bgSpec(inUse);
 
 // The default theme (Configurações › Aparência › Temas, "Tornar padrão"):
 // the one marked, the most recently changed if several are; none when none

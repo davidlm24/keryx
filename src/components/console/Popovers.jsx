@@ -83,6 +83,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>
             <MenuItem icon="star" onClick={() => onWhatsNew?.()}>Novidades</MenuItem>
             <MenuItem icon="sliders" onClick={() => { setOpen(null); onSettings?.("telas"); }}>Configurações</MenuItem>
+            <MenuItem icon="info" onClick={() => { setOpen(null); onSettings?.("sobre"); }}>Sobre o KERYX…</MenuItem>
             {hasUpdate(update) && (
                 <MenuItem icon="download" onClick={() => onUpdateNow?.()}>
                     <span style={{ flex: 1 }}>{update.status === "downloading" ? "Atualizando…" : "Atualizar agora"}</span>

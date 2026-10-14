@@ -1,12 +1,13 @@
 import React, { useEffect } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { ThemeThumb } from "./library/BackgroundLibrary";
-import { consoleThemes, defaultTheme, defaultChanges, themeName } from "@/lib/console/themes";
+import { ThemeThumb, NoBgMark, NO_BG_HINT } from "./library/BackgroundLibrary";
+import { consoleThemes, defaultTheme, defaultChanges, themeName, themeHasBackground } from "@/lib/console/themes";
+import { bgFields } from "@/lib/console/backgroundSpec";
 import { pickTheme, applyThemeOnAir, songInHand } from "./themeActions";
 import { useContextMenu } from "./ContextMenu";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
-import { useLibraryPicker } from "./library/libraryContext";
+import { useLibraryPicker, ALL_KINDS } from "./library/libraryContext";
 import { serviceTheme } from "@/lib/console/serviceLook";
 import { updateUser } from "@/hooks/useUser";
 import { openEditor } from "@/lib/editorWindow";
@@ -20,7 +21,10 @@ import { openEditor } from "@/lib/editorWindow";
 // hand always go on air with it (Song.theme_id); "Usar neste culto" makes it
 // the culto's theme (Service.theme_id), which becomes the theme in use when
 // the culto is chosen. An unnamed theme shows no caption (review 2026-10-14).
-// A new theme in the Editor de temas: the Temas panel's + (Console.jsx).
+// A new theme in the Editor de temas: the Temas panel's + (Console.jsx); it
+// is saved only with a background from the library (owner 2026-10-14). A
+// theme saved before without one keeps working as it did and wears a mark
+// (NoBgMark), with "Escolher fundo…" in its menu.
 export function newTheme(c) {
     const r = openEditor({ theme: "new" });
     if (r?.error) c.say(r.error);
@@ -30,7 +34,7 @@ export function newTheme(c) {
 // 2026-10-14; the body shows only thumbnails, the header's + is the menu).
 export const TEMAS_SLOTS = 9;
 
-export default function ThemeStrip({ c, themes, songs, service, ensureService, menuRef, view = {}, setView }) {
+export default function ThemeStrip({ c, themes, songs, service, ensureService, menuRef, view = {}, setView, onSettings }) {
     const shown = consoleThemes(themes, TEMAS_SLOTS);
     const def = defaultTheme(themes);
     const song = songInHand(c, songs);
@@ -54,6 +58,10 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
         } catch (err) { c.say(err?.message || "Não foi possível gravar o tema do culto."); }
     };
     const edit = (id) => { const r = openEditor({ theme: id }); if (r?.error) c.say(r.error); };
+    const chooseBg = async (t) => {
+        const r = await pick({ accept: ALL_KINDS, title: "Fundo do tema" });
+        if (r?.spec) run(keryx.entities.ProjectionTheme.update(t.id, bgFields(r.spec)), "Fundo do tema salvo.");
+    };
     const openThemeLibrary = async () => {
         const r = await pick({ accept: "theme", title: "Temas", value: current?.id || null });
         if (r?.theme) pickTheme(c, r.theme);
@@ -77,11 +85,12 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
     const themeMenu = (e, t) => menu(e, { title: themeName(t), items: [
         { label: "Aplicar no ar", icon: "play", onSelect: () => applyThemeOnAir(c, t) },
         { label: "Editar tema…", icon: "edit", onSelect: () => edit(t.id) },
+        ...(themeHasBackground(t) ? [] : [{ label: "Escolher fundo…", icon: "image", onSelect: () => chooseBg(t) }]),
         ...(song ? [song.theme_id === t.id
             ? { label: "Tirar tema da música", onSelect: () => saveForSong("") }
             : { label: "Salvar tema para a música", onSelect: () => saveForSong(t.id) }] : []),
         { label: t.id === def?.id ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: t.id === def?.id, onSelect: () => run(keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, t.id)), `${named(t)} é o tema padrão.`) },
-        { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), "As passagens vão ao ar com este tema.") },
+        { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), `Bíblia: tema ${themeName(t)}.`) },
         { label: service ? "Usar neste culto" : "Usar hoje", disabled: cultoTheme === t.id, onSelect: () => setForCulto(t) },
         { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${named(t)} saiu do console.` : `${named(t)} fixado no console.`) },
         { label: "Excluir…", icon: "trash", onSelect: () => removeTheme(t) },
@@ -93,6 +102,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
     // button beside it is where the 9 are pinned.
     const plusMenu = (e) => menu(e, { title: "Temas", items: [
         { label: "Novo tema…", icon: "plus", onSelect: () => newTheme(c) },
+        ...(onSettings ? [{ label: "Configurações › Temas…", icon: "sliders", onSelect: () => onSettings("temas") }] : []),
         ...(song ? [songTheme && (!current || current.id === songTheme.id)
             ? { label: "Tirar tema da música", onSelect: () => saveForSong("") }
             : { label: "Salvar tema para a música", disabled: !current, onSelect: () => saveForSong(current.id) }] : []),
@@ -116,9 +126,9 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
             <div className={`tm-grid is-${thumb}`} role="list" aria-label="Temas">
                 {slots.map((t, k) => (t ? (
                     <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={themeName(t)}
-                        title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
+                        title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""}${themeHasBackground(t) ? "" : ` · ${NO_BG_HINT}`} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
                         onClick={() => inUse(t)} onDoubleClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
-                        <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
+                        <span className="fg-img"><ThemeThumb theme={t} now={c.now} /><NoBgMark theme={t} /></span>
                         {names && (t.id === def?.id || themeName(t, "")) && <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
                     </button>
                 ) : (
