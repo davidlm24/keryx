@@ -132,8 +132,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   them** (owner 2026-10-14; a click on the row only selects it) — Logo
   (with "Logo da igreja…", Configurações › Igreja), Sobreposição (its text
   field), Texto principal (the item's Título and "Editar tema…", the theme
-  in use in the Editor de temas); the Fundo's pencil picks the Fundo do
-  culto in the library, the Fundo layer has no options (the row keeps its
+  in use in the Editor de temas); the Fundo's pencil (and the row's right
+  click) opens a menu, never the library blind (owner's OK 2026-10-14,
+  "Fundo em três vias"): its title names whose background the screen shows
+  now — Fundo do culto, Fundo padrão or the item's own (`fundoNow` in
+  defaultFundo.js, tested) — and its items are "Trocar o fundo do culto…"
+  (the Programa's same via) and "Fundo padrão da igreja…" (Configurações ›
+  Aparência); the Fundo layer still has no options (the row keeps its
   eye, padlock and place). The text look is edited only in the Editor de
   temas; when the text on air looks otherwise (a song's own look) Texto
   principal says so and offers Restaurar (`applyThemeOnAir`) and Salvar
@@ -193,7 +198,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   screen shows the service's background (`Service.background`), else the
   church's (`User.default_background`; the old `standby_background` still
   counts; `User.weekday_backgrounds` is no longer read) — `defaultFundo` in
-  `src/lib/console/defaultFundo.js`. **A service keeps a background and one
+  `src/lib/console/defaultFundo.js`. The culto's and the church's each keep
+  their own doors and say which is which (owner's OK 2026-10-14, "Fundo em
+  três vias"): Aparência › Fundo padrão warns while the culto on screen has
+  a fundo of its own (the live state's `defaultBackground.title`), and
+  Camadas' Fundo menu names what is on screen (`fundoNow`). **A service keeps a background and one
   theme** (owner's review 2026-10-14, as in Holyrics: the Visual do culto,
   its window `LookDialog` and the per-kind service themes are gone — don't
   bring them back; `src/lib/console/serviceLook.js`): `Service.background`
