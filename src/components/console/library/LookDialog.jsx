@@ -45,13 +45,15 @@ export function LookTiles({ c, look, onChange, what = "do culto" }) {
             <div className="tmg tmg-kinds look-kinds">
                 {THEME_KINDS.map(([kind, name]) => {
                     const mine = own[kind] ? themes.find((t) => t.id === own[kind]) || null : null;
-                    const t = mine || themeForKind(themes, kind, church);
+                    // A kind that follows the songs takes this culto's Música theme.
+                    const t = mine || themeForKind(themes, kind, church, own);
+                    const viaMusica = !mine && t !== themeForKind(themes, kind, church);
                     return (
                         <button type="button" key={kind} className={`kx-t fg-tile tmg-tile ${mine ? "is-on" : ""}`} onClick={() => choose(kind, name)} aria-label={`Tema de ${name} ${what}: ${t ? t.name : "estilo de fábrica"}`} title={`${name} · clique para escolher`}>
                             <span className="tmg-kind">{name}</span>
                             <span className="fg-img">{t ? <ThemeThumb theme={t} now={c.now} /> : <span className="tmg-plus" />}</span>
                             <span className="fg-name">{t ? t.name : "Estilo de fábrica"}</span>
-                            <span className="kx-meta tmg-meta">{mine ? `próprio ${what}` : "o padrão da igreja"}</span>
+                            <span className="kx-meta tmg-meta">{mine ? `próprio ${what}` : viaMusica ? "o mesmo das músicas" : "o padrão da igreja"}</span>
                         </button>
                     );
                 })}
