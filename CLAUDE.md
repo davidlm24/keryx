@@ -268,19 +268,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   planner (`ServicePlanner.jsx`), the media library (`MediaView.jsx`), the
   aviso editor (`NoticeEditor.jsx`), the Escola bíblica (`SchoolView.jsx`;
   it projects through the console's Prévia/Programa and every live key
-  works there) and Relatórios (`ReportsView.jsx`). **Views float** (owner
-  2026-10-14, "janelas flutuantes"): the planner, Mídia and the aviso
-  editor open as dialogs over the live console (`.view-dialog` +
-  `.view-scrim` in console.css, under Configurações and the library), not
-  as pages — the view registers its close request on Console's
-  `viewEscRef` (prop `escRef`), Esc reaches it through keys.js (`ESC_ORDER`
-  "view", tested; an unsaved guard may ask instead of closing, and the
-  scrim click asks the same way) and the view keeps no Esc listener of its
-  own; while any view is open the Programa monitor and the Multiview draw
-  one still frame (`still` on CenterPanel — the air itself never pauses).
-  The song editor, the Escola bíblica and Relatórios are still pages that
-  replace the dock (`pageView` in Console.jsx) until their phase of the
-  series converts them. The Bíblia is the
+  works there) and Relatórios (`ReportsView.jsx`). **Every view floats**
+  (owner 2026-10-14, "janelas flutuantes"): it opens as a dialog over the
+  live console (`.view-dialog` + `.view-scrim` in console.css, under
+  Configurações and the library; sizes `vd-media`/`vd-wide`/`vd-reports`),
+  never as a page replacing the dock — the view registers its close
+  request on Console's `viewEscRef` (prop `escRef`), Esc reaches it
+  through keys.js (`ESC_ORDER` "view", tested; an unsaved guard may ask
+  instead of closing, and the scrim click asks the same way) and the view
+  keeps no Esc listener of its own (its other keys — Ctrl+S, Mídia's
+  Enter/Delete — stay its listeners, deferring to
+  `.scrim:not(.view-scrim)`); while any view is open the Programa monitor
+  and the Multiview draw one still frame (`still` on CenterPanel — the
+  air itself never pauses). The Bíblia is the
   console's second environment (`BibleEnv.jsx`: Ler, Comparar, the Buscar field,
   notes). Where the modules go is the operator's: **each environment is a
   dock** (owner 2026-10-13, the "Disposição do console" prototype, model
@@ -459,8 +459,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background library, a popover, then
-  Configurações, then a floating view (routed to its close request), then
-  the Camadas drawer; the page views defer while a `.scrim` is up) and with nothing
+  Configurações, then the floating view (routed to its close request),
+  then the Camadas drawer) and with nothing
   open ends at once (music on the audio channel keeps playing; the Fundo
   stays on screen, and the idle look shows only with no Fundo); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in

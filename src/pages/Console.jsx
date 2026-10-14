@@ -138,11 +138,9 @@ export default function Console() {
     const notice = view?.notice || null;
     const school = Boolean(view?.school);
     const reports = Boolean(view?.reports);
-    // Which kind the open view is: a floating dialog over the console, or a
-    // page that replaces the dock (the remaining ones of the 2026-10-14
-    // "janelas flutuantes" review).
-    const dlgView = Boolean(view?.planner || view?.media || view?.notice);
-    const pageView = Boolean(view?.song || view?.school || view?.reports);
+    // Every view is a floating dialog over the live console (owner
+    // 2026-10-14, "janelas flutuantes"); none replaces the dock any more.
+    const dlgView = Boolean(view);
     const closeView = useCallback(() => setView(null), []);
     // Floating views (owner 2026-10-14, "janelas flutuantes"): the planner,
     // Mídia and the aviso editor open as dialogs over the live console
@@ -765,13 +763,11 @@ export default function Console() {
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
             if ((libReq || confirmReq) && !["black", "logo"].includes(action)) return;
-            // The song editor handles its own keys (Esc, Space while marking);
-            // only the emergency keys reach the screens from there.
-            // So do the planner, the media library, the aviso editor and the
-            // reports (each closes itself on Esc). The Escola bíblica is a
-            // projecting view: every live key works there.
-            // Configurações is a window over the console: behind it, as behind
-            // the views, only the emergency keys (Tela preta, Logo) act.
+            // Behind a floating view (and Configurações) only the emergency
+            // keys (Tela preta, Logo) act; a view's own keys (Mídia's Enter
+            // and Delete, the editors' Ctrl+S, Space while marking timings)
+            // are its own listeners. The Escola bíblica is the projecting
+            // view: every live key works there.
             if ((cfg || (view && !school)) && !["black", "logo"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
@@ -1156,13 +1152,10 @@ export default function Console() {
                 <div className="kx-banner is-rh" role="status"><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             <div className="main" ref={mainRef}>
-                {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { songSaved(row); if (editSong === "new" && row?.id) setView({ song: row.id }); }} />}
-                {school && <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={closeView} />}
-                {reports && <ReportsView c={c} onClose={closeView} />}
-                {!pageView && env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)}
+                {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu }} />}
-                {!pageView && env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
+                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
             </div>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
 
@@ -1170,10 +1163,14 @@ export default function Console() {
                 click asks the view to close, exactly as Esc does. */}
             {dlgView && <div className="scrim is-dim view-scrim" onClick={() => viewEscRef.current?.()} />}
             {dlgView && (
-                <div className={`view-dialog ${mediaView ? "vd-media" : ""}`} role="dialog" aria-modal="true" aria-label={planner ? "Planejar o culto" : mediaView ? "Mídia" : "Aviso"}>
+                <div className={`view-dialog ${mediaView ? "vd-media" : ""} ${editSong || school ? "vd-wide" : ""} ${reports ? "vd-reports" : ""}`} role="dialog" aria-modal="true"
+                    aria-label={planner ? "Planejar o culto" : mediaView ? "Mídia" : notice ? "Aviso" : editSong ? "Editor de música" : school ? "Escola bíblica" : "Relatórios"}>
                     {planner && <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={closeView} escRef={viewEscRef} />}
                     {mediaView && <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={closeView} escRef={viewEscRef} />}
                     {notice && <NoticeEditor key={notice} c={c} noticeId={notice} logoUrl={logoUrl} media={data.media} onClose={closeView} onSaved={(row) => { if (notice === "new" && row?.id) setView({ notice: row.id }); }} escRef={viewEscRef} />}
+                    {editSong && <SongEditor key={editSong} c={c} songId={editSong} themes={data.themes} onClose={closeView} onSaved={(row) => { songSaved(row); if (editSong === "new" && row?.id) setView({ song: row.id }); }} escRef={viewEscRef} />}
+                    {school && <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={closeView} escRef={viewEscRef} />}
+                    {reports && <ReportsView c={c} onClose={closeView} escRef={viewEscRef} />}
                 </div>
             )}
 
