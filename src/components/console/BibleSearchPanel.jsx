@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Field, Seg, Empty } from "./kx";
+import { Seg, Empty } from "./kx";
 import { bibleBooks } from "@/lib/bibleBooks";
 import { searchBible } from "@/lib/bibleText";
 import { highlightParts, scopeBooks, SCOPES } from "@/lib/bibleSearch";
@@ -34,11 +34,12 @@ export function useBibleSearch(version, book) {
     return { q, setQ, scope, setScope, result, busy, error, run };
 }
 
-// Results: reference, the verse with the words marked. A click selects the
-// verse (its chapter opens behind, the selection turns green), a double
-// click projects from it, ↑/↓ walk the list.
-export default function BibleSearchPanel({ search, selected, onPick, onSend, inputRef }) {
-    const { q, setQ, scope, setScope, result, busy, error, run } = search;
+// Results: reference, the verse with the words marked. The query comes from
+// the text panel's header field (BibleEnv); here the scope and the status.
+// A click selects the verse (its chapter opens behind, the selection turns
+// green), a double click projects from it, ↑/↓ walk the list.
+export default function BibleSearchPanel({ search, selected, onPick, onSend }) {
+    const { q, scope, setScope, result, busy, error, run } = search;
     const listRef = useRef(null);
     const isSel = (r) => selected && selected.book === r.book && Number(selected.chapter) === Number(r.chapter) && Number(selected.verse) === Number(r.verse);
     useEffect(() => {
@@ -47,7 +48,8 @@ export default function BibleSearchPanel({ search, selected, onPick, onSend, inp
     return (
         <div className="bs">
             <div className="bs-bar">
-                <Field inputRef={inputRef} value={q} onChange={setQ} placeholder='Palavra ou frase · "entre aspas" para a frase exata' onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); run(); } }} kbd="Enter" style={{ flex: 1, minWidth: 200 }} />
+                <span className="kx-meta">{q.trim() ? <>“{q.trim()}”</> : 'Palavra ou frase · "entre aspas" para a frase exata'}</span>
+                <span style={{ flex: 1 }} />
                 <Seg small value={scope} onChange={(v) => { setScope(v); if (q.trim()) run(q, v); }} options={SCOPES} />
             </div>
             <div className="listhead bs-status">

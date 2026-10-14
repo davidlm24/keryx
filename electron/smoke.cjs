@@ -1190,10 +1190,10 @@ async function checkConsole(webContents, { live, outputs }) {
             await sleep(500);
             result.bibleNoScroll[`${w}x${h}`] = await js(`(() => {
                 const mods = [...document.querySelectorAll(".console .dock .dock-group")].map((n) => n.dataset.dockMods).join(",");
-                if (mods !== "bhead,books,chapters,verses,reading,air") return "módulos: " + mods;
+                if (mods !== "books,chapters,verses,reading,air") return "módulos: " + mods;
                 const g = (m) => document.querySelector('.console .dock .dock-group[data-dock-mods="' + m + '"]').getBoundingClientRect();
                 if (!(g("books").right <= g("reading").left + 1 && g("reading").right <= g("air").left + 1)) return "fora de ordem";
-                if (!(g("bhead").bottom <= g("books").top + 1 && g("books").bottom <= g("chapters").top + 1 && g("chapters").bottom <= g("verses").top + 1)) return "pilha fora de ordem";
+                if (!(g("books").bottom <= g("chapters").top + 1 && g("chapters").bottom <= g("verses").top + 1)) return "pilha fora de ordem";
                 const box = document.querySelector(".bpick-chapters > .kx-panel-b");
                 const c150 = [...box.querySelectorAll(".chapters button")].find((b) => b.textContent === "150");
                 if (!c150) return "sem 150";
@@ -2297,10 +2297,14 @@ async function checkConsole(webContents, { live, outputs }) {
         // a quoted phrase; Comparar side by side; a note and a favourite as
         // BibleNote rows; the palette's "Buscar … na Bíblia".
         await click(".envtabs button", "Bíblia");
-        await click(".console .main .kx-seg button", "Buscar");
-        result.bsOpen = await waitFor(() => js("Boolean(document.querySelector('.bs-bar input')) && document.activeElement === document.querySelector('.bs-bar input')"));
-        await setVal(".bs-bar input", "versiculo TESTE");
+        // Buscar is the text panel's header field (owner 2026-10-14): a word
+        // searches the installed Bíblia, a reference opens the chapter.
+        const SEARCH = ".bread > .kx-panel-h .bread-search input";
+        const focusSearch = () => js(`(() => { const i = document.querySelector(${JSON.stringify(SEARCH)}); if (i) i.focus(); return Boolean(i); })()`);
+        await setVal(SEARCH, "versiculo TESTE");
+        await focusSearch();
         await press("Enter");
+        result.bsOpen = await waitFor(() => js(`Boolean(document.querySelector('.bs-bar')) && document.activeElement === document.querySelector(${JSON.stringify(SEARCH)})`));
         result.bsFound = await waitFor(() => js("document.querySelectorAll('.bs-hit').length === 5 && [...document.querySelectorAll('.bs-hit mark')].some((m) => m.textContent === 'versículo')"), 6000);
         await js("document.activeElement && document.activeElement.blur(); true");
         // A click on the first result selects it; ↓ walks to the next one.
@@ -2310,7 +2314,8 @@ async function checkConsole(webContents, { live, outputs }) {
         result.bsWalked = await waitFor(() => js("(document.querySelector('.bs-hit.is-prev .bs-ref') || {}).textContent === 'João 3:15'"));
         await press("Enter");
         result.bsSent = await waitFor(() => { const ct = live.get().content; return Boolean(ct && ct.ref?.wholeChapter && ct.ref.book === "João" && ct.index === 1); });
-        await setVal(".bs-bar input", '"versículo 17"');
+        await setVal(SEARCH, '"versículo 17"');
+        await focusSearch();
         await press("Enter");
         result.bsPhrase = await waitFor(() => js("document.querySelectorAll('.bs-hit').length === 1 && document.querySelector('.bs-hit .bs-ref').textContent === 'João 3:17'"), 6000);
         result.shotSearch = await shot("biblia-busca");

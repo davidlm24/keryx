@@ -231,15 +231,21 @@
    keeps its cards: there they run sideways and the card tells where a slide
    ends. */
 .console { --live: var(--brand); --live-fg: var(--brand-hover); --live-bg: color-mix(in srgb, var(--brand) 24%, var(--bg-2)); --prev-bg: color-mix(in srgb, var(--prev) 24%, var(--bg-2)); }
-.console .kx-cards, .console .reading, .console .bs-list { display: flex; flex-direction: column; gap: 0; padding: 0 var(--space-1) var(--space-1); }
+.console .kx-cards { display: flex; flex-direction: column; gap: 0; padding: 0 0 var(--space-1); }
+/* Verses (Ler, Buscar) are cards again (owner 2026-10-14): prose reads
+   better with its own box; the lists of slides are rows. */
+.console .reading, .console .bs-list { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-2); }
 .console .onair-card { position: relative; display: grid; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: 13px; line-height: 18px; }
 .console .kx-slide, .console .onair-card { grid-template-columns: 20px minmax(0, 1fr); white-space: normal; }
-.console .kx-slide, .console .kx-verse, .console .onair-card { flex: none; border-radius: 4px; background: none; box-shadow: inset 0 -1px 0 var(--line); }
-.console .kx-slide, .console .onair-card { padding-top: 5px; padding-bottom: 5px; }
+/* Rows edge to edge (owner 2026-10-14): no radius, the separator and the
+   state's background run from one edge of the column to the other. */
+.console .kx-slide, .console .onair-card { flex: none; border-radius: 0; background: none; box-shadow: inset 0 -1px 0 var(--line); padding-top: 5px; padding-bottom: 5px; }
+.console .kx-verse { flex: none; border-radius: var(--radius-control); background: var(--bg-2); }
 .console .kx-slide::before, .console .kx-verse::before { content: none; }
-.console .kx-slide:hover, .console .kx-verse:hover, .console .onair-card:hover { background: var(--bg-2); }
+.console .kx-slide:hover, .console .onair-card:hover { background: var(--bg-2); }
+.console .kx-verse:hover { background: var(--bg-3); }
 /* A row with a background (a state, the pointer) drops its separator. */
-.console :is(.kx-slide, .kx-verse, .onair-card):is(.is-air, .is-prev, .is-next, :hover) { box-shadow: none; }
+.console :is(.kx-slide, .onair-card):is(.is-air, .is-prev, .is-next, :hover) { box-shadow: none; }
 .console .kx-slide-body { display: flex; flex-direction: column; min-width: 0; }
 .console .kx-slide-body .kx-slide-lab { font-size: 11px; line-height: 14px; color: var(--fg-3); margin-bottom: 2px; }
 .console .kx-ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -379,8 +385,25 @@
    side widths are the operator's (Ver › Editar layout). Each picker card
    scrolls on its own; Versículos takes what is left. */
 .console .bible-center { container: bible / inline-size; }
-.console .bpick-head .kx-panel-b { overflow: visible; }
-.console .bpick-head .bsrc { display: flex; height: 20px; padding: 0 var(--space-2); }
+.console .bpick-books .bsrc { display: flex; height: 20px; padding: 0 var(--space-2); }
+/* Livros, Capítulos and Versículos as compact cells glued with 1 px lines
+   (owner 2026-10-14, as Holyrics), or the large ones with gaps: Livros'
+   header menu, layout.bibleGrid. The state is the cell's background. */
+.console .bgrid.is-compact { gap: 0; padding: 0; }
+.console .bgrid.is-compact .kx-book { height: 28px; border-radius: 0; background: none; box-shadow: inset -1px -1px 0 var(--line); }
+.console .bgrid.is-compact .kx-book::before { border-radius: 0; }
+.console .bgrid.is-compact .kx-book:hover { background: var(--bg-2); }
+.console .bgrid.is-compact .kx-book.is-selected { background: var(--bg-3); outline: 0; }
+.console .bpick-chapters .bchap:has(.is-compact), .console .bpick-verses .bverses:has(.is-compact) { padding: 0; }
+.console .chapters.is-compact, .console .verse-cells.is-compact { gap: 0; }
+.console .chapters.is-compact button, .console .verse-cells.is-compact button { border-radius: 0; background: none; box-shadow: inset -1px -1px 0 var(--line); }
+.console .chapters.is-compact button:hover, .console .verse-cells.is-compact button:hover { background: var(--bg-2); }
+.console .chapters.is-compact button.is-on { background: var(--bg-3); outline: 0; }
+.console .verse-cells.is-compact button.is-prev { background: var(--prev-bg); color: var(--prev-fg); box-shadow: none; }
+.console .verse-cells.is-compact button.is-air { background: var(--live-bg); color: var(--live-fg); box-shadow: none; }
+/* The text panel's search field (Buscar; a reference opens the chapter). */
+.console .bread-search { flex: 0 1 240px; min-width: 140px; }
+.console .bread-search .kx-field { width: 100%; }
 .console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: var(--space-1) var(--space-2) var(--space-2); }
 .console .bpick-books.names-full .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
 .console .bpick-chapters .bchap { border-top: 0; padding-bottom: var(--space-2); }
@@ -558,8 +581,6 @@
 .console .bible-air .kx-mon { width: min(100%, calc(35cqh * 16 / 9)); }
 
 /* "+" beside a search field: the menu of what can be added there. */
-.console .searchrow { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
-.console .searchrow > .kx-field { flex: 1; }
 .console .addmenu { position: relative; flex: none; }
 .console .addmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 45; width: 230px; }
 
