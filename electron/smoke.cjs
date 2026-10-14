@@ -1953,9 +1953,12 @@ async function checkConsole(webContents, { live, outputs }) {
         result.screenEditor = await waitFor(() => js("Boolean(document.querySelector('.console .win-dialog.is-editor'))"), 8000);
         const sjs = (code) => js(code);
         result.screenStraight = await waitFor(() => sjs("Boolean(document.querySelector('.win-dialog.is-editor .le-screen .le-hit')) && !/Desenhar esta tela|não salvo/.test(document.querySelector('.win-dialog.is-editor').innerText)").catch(() => false), 8000);
+        // The middle column splits into Desenho | Ajustes (Rodada C, fase
+        // d2): the Ajustes card only exists on its half.
+        await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor [role=radio]')].find((x) => x.textContent.trim() === 'Ajustes'); if (b) b.click(); return Boolean(b); })()");
         // The Ajustes card is styled in the Editor too (.cfg): labels in a
         // column beside the controls, not stacked over them.
-        result.screenCardStyled = await sjs("(() => { const f = document.querySelector('.win-dialog.is-editor .nv-scroll.cfg .cfg-outprefs .frm'); return Boolean(f) && getComputedStyle(f).display === 'grid'; })()").catch(() => false);
+        result.screenCardStyled = await waitFor(() => sjs("(() => { const f = document.querySelector('.win-dialog.is-editor .nv-scroll.cfg .cfg-outprefs .frm'); return Boolean(f) && getComputedStyle(f).display === 'grid'; })()").catch(() => false), 4000);
         result.screenMenu = await sjs("[...document.querySelectorAll('.win-dialog.is-editor .kx-row-title')].filter((n) => ['Projeção', 'Palco', 'Pastor', 'Transmissão'].includes(n.textContent)).length >= 4").catch(() => false);
         await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela'); if (b) b.click(); return Boolean(b); })()");
         result.screenSaved = await waitFor(async () => {

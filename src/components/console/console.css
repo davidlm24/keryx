@@ -1264,3 +1264,7 @@
 .console .cfg .cfg-outprefs.cfg-bible { margin-left: 0; border-left: 0; background: none; border-radius: 0; }
 .console .cfg .cfg-bible .cfg-prevcol { width: 260px; padding-top: var(--space-2); }
 
+
+/* The Editor da tela's drawing tail (Rodada C, fase d2): the ready starting
+   points and the way back, one wrapping row. */
+.console .le-starts { height: auto; min-height: var(--row); flex-wrap: wrap; gap: var(--space-1); padding-block: var(--space-1); }

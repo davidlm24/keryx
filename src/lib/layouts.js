@@ -18,7 +18,9 @@ export const LAYOUT_CATEGORIES = [["palco", "Palco"], ["pastor", "Pastor"], ["pu
 // passage, a text), only with a clock or timer on air, or only when nothing
 // is on air (an idle clock, "Aguardando projeção").
 export const WHEN = [["always", "Sempre"], ["content", "Com algo no ar"], ["tool", "Com relógio ou timer no ar"], ["idle", "Sem nada no ar"]];
-export const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Monoespaçada"]];
+// The same families every theme offers (FONT_MAP in deviceStyles); the
+// screens' designs knew only three until the Rodada C (fase d2).
+export const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["georgia", "Georgia"], ["times", "Times"], ["arial", "Arial"], ["verdana", "Verdana"], ["mono", "Monoespaçada"], ["cursive", "Cursiva"]];
 export const ALIGNS = [["left", "Esq."], ["center", "Centro"], ["right", "Dir."]];
 export const VALIGNS = [["top", "Topo"], ["middle", "Meio"], ["bottom", "Base"]];
 export const SIZE_RANGE = [1, 30];
@@ -101,6 +103,10 @@ export function normalizeElement(raw) {
         align: oneOf(raw.align, ALIGNS, t.align || "left"),
         valign: oneOf(raw.valign, VALIGNS, t.valign || "top"),
         box: onOff(raw.box, Boolean(t.box)),
+        // The full package (owner's pick, Rodada C fase d2): an element can
+        // be hidden without losing its place, and faded.
+        hidden: onOff(raw.hidden, false),
+        opacity: clamp(num(raw.opacity, 1), 0.1, 1),
         props,
     };
 }
@@ -351,5 +357,18 @@ export function reorderElement(elements, id, dir) {
     if (i < 0 || j < 0 || j >= elements.length) return elements;
     const out = elements.slice();
     [out[i], out[j]] = [out[j], out[i]];
+    return out;
+}
+
+// One element dropped at another place in the stack (the editor's list,
+// dragged): `to` is the index it lands on after the move.
+export function moveElement(elements, id, to) {
+    const i = elements.findIndex((e) => e.id === id);
+    if (i < 0) return elements;
+    const j = Math.max(0, Math.min(elements.length - 1, to));
+    if (i === j) return elements;
+    const out = elements.slice();
+    const [el] = out.splice(i, 1);
+    out.splice(j, 0, el);
     return out;
 }

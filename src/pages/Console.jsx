@@ -14,7 +14,7 @@ import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
-import { Panel, IconBtn, Measure, Seg, WinBar, WinCtx } from "@/components/console/kx";
+import { Panel, IconBtn, Measure, Seg, WinCtx } from "@/components/console/kx";
 import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import Library from "@/components/console/Library";
@@ -1202,14 +1202,7 @@ export default function Console() {
                         else if (entry.page === "material") page = <MaterialView c={c} materialId={entry.props.id} classId={entry.props.classId} media={data.media} onClose={onClose} escRef={escRef} active={active} />;
                         else if (entry.page === "reports") page = <ReportsView c={c} onClose={onClose} escRef={escRef} />;
                         else if (entry.page === "theme") page = <ThemeEditor hosted themeId={entry.props.id} say={c.say} now={c.now} onClose={onClose} onSaved={(row) => { if (row?.id && entry.props.id !== row.id) setWin((s) => winReplaceTop(s, { id: row.id }, { keep: true })); }} onSwitch={(id) => setWin((s) => winReplaceTop(s, { id: id || "new" }))} escRef={escRef} active={active} onDetach={() => detachEditor(entry)} />;
-                        else if (entry.page === "screen") page = (
-                            <>
-                                <WinBar title={PAGE_TITLES.screen} detach={() => detachEditor(entry)} />
-                                <div className="win-body is-ed">
-                                    <ScreenEditor screenPath={entry.props.path} media={data.media} themes={data.themes} say={c.say} live={c.cur} now={c.now} onClose={onClose} onSwitch={(path) => setWin((s) => winReplaceTop(s, { path: path || "/Projection" }))} escRef={escRef} active={active} />
-                                </div>
-                            </>
-                        );
+                        else if (entry.page === "screen") page = <ScreenEditor hosted screenPath={entry.props.path} media={data.media} themes={data.themes} say={c.say} live={c.cur} now={c.now} onClose={onClose} onSwitch={(path) => setWin((s) => winReplaceTop(s, { path: path || "/Projection" }))} escRef={escRef} active={active} onDetach={() => detachEditor(entry)} />;
                         return (
                             <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all") }}>
                                 <div className="win-page" hidden={!active}>{page}</div>
