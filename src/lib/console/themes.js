@@ -56,9 +56,15 @@ export const isDefaultTheme = (themes, t) => Boolean(t) && defaultTheme(themes)?
 // 2026-10-14). It dresses everything sent until someone changes it (Música
 // in themeForKind); choosing a culto with a theme of its own
 // (Service.theme_id, serviceLook.js) makes that one the theme in use, a
-// culto with none leaves it as it is.
+// culto with none leaves it as it is. When KERYX opens, the last click wins
+// (owner 2026-10-14): the culto it opens on does not replace a theme the
+// operator had in use on this computer (`reopening` with `inUse`); choosing
+// a culto afterwards, or changing its theme, does.
 // -> the new theme in use, or undefined: it stays.
-export const themeInUseSeed = (cultoTheme) => (typeof cultoTheme === "string" && cultoTheme.trim() ? cultoTheme.trim() : undefined);
+export function themeInUseSeed(cultoTheme, { reopening = false, inUse = null } = {}) {
+    if (reopening && inUse) return undefined;
+    return typeof cultoTheme === "string" && cultoTheme.trim() ? cultoTheme.trim() : undefined;
+}
 
 // A theme's name for menus, tooltips and toasts; an unnamed theme shows no
 // caption under its thumbnail (owner 2026-10-14), so callers pass "" there.

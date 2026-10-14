@@ -261,10 +261,16 @@ export default function Console() {
     // culto") makes that one the theme in use, and so does changing it; a
     // culto with none leaves the one the operator clicked (themeInUseSeed) —
     // it used to fall back to the default when the services loaded, and the
-    // song went out over the Fundo do culto.
+    // song went out over the Fundo do culto. The culto KERYX opens on is not
+    // a choice: the theme last clicked on this computer stays (owner
+    // 2026-10-14, "the last click wins").
     const cultoTheme = serviceTheme(service);
+    const openingCulto = useRef(undefined);
     useEffect(() => {
-        const seed = themeInUseSeed(cultoTheme);
+        if (!serviceId) return;
+        const reopening = openingCulto.current === undefined;
+        if (reopening) openingCulto.current = serviceId;
+        const seed = themeInUseSeed(cultoTheme, { reopening, inUse: c.themeId });
         if (seed !== undefined) c.setThemeId(seed);
     }, [serviceId, cultoTheme]); // eslint-disable-line react-hooks/exhaustive-deps
     const churchRow = useUser();

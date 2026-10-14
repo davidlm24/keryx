@@ -131,8 +131,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `keryx.themeInUse`, `useConsole`): lost on a reopen, the next song went
   out over the Fundo do culto with the factory look (the bug of the review
   2026-10-14, pinned in themes.test.mjs). Choosing a culto with a theme of
-  its own (`Service.theme_id`) makes that one the theme in use; a culto with
-  none leaves it (`themeInUseSeed`). The menu's "Usar neste culto" ("Usar
+  its own (`Service.theme_id`), or changing its theme, makes that one the
+  theme in use; a culto with none leaves it (`themeInUseSeed`). When KERYX
+  opens, the last click wins: the culto it opens on does not replace a
+  theme in use on this computer. The menu's "Usar neste culto" ("Usar
   hoje" with no service, starting the day's draft) writes `Service.theme_id`;
   "Seguir o culto" goes back to it. With nothing on air a click puts an
   example in the Prévia instead

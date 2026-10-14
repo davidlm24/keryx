@@ -168,6 +168,13 @@ test("the theme in use: a culto with a theme of its own replaces it; one with no
     assert.equal(themeInUseSeed(), undefined);
 });
 
+test("the theme in use: when KERYX opens, the last click wins over the culto's theme", () => {
+    assert.equal(themeInUseSeed("vinho", { reopening: true, inUse: "azul" }), undefined, "the theme clicked before closing stays");
+    assert.equal(themeInUseSeed("vinho", { reopening: true, inUse: null }), "vinho", "nothing clicked yet on this computer: the culto's");
+    assert.equal(themeInUseSeed("vinho", { reopening: false, inUse: "azul" }), "vinho", "a culto chosen afterwards (or its theme changed): the culto's");
+    assert.equal(themeInUseSeed("", { reopening: true, inUse: null }), undefined);
+});
+
 test("an unnamed theme has no name (no date made up)", () => {
     assert.equal(themeName({ name: "Vinho" }), "Vinho");
     assert.equal(themeName({ name: "  " }), "Tema sem nome");
