@@ -11,7 +11,7 @@ import { importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { visibleBackgrounds, categoriesOf, sourceOf } from "@/lib/console/backgroundPrefs";
 import { cleanSpec, bgArgs, bgSpec, bgLabel, sameBg } from "@/lib/console/backgroundSpec";
-import { themeStyle, themeBackgroundArgs, themeName } from "@/lib/console/themes";
+import { themeStyle, themeBackgroundArgs, themeName, themeHasBackground } from "@/lib/console/themes";
 import { GENERATORS } from "@/lib/generators";
 import { ALL_KINDS } from "./libraryContext";
 import { useContextMenu } from "../ContextMenu";
@@ -165,7 +165,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                             onContextMenu={(e) => menu(e, { title: themeName(t), items: [
                                                 { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }).catch(() => {}) },
                                             ] })}>
-                                            <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
+                                            <span className="fg-img"><ThemeThumb theme={t} now={c.now} />{themeMode && <NoBgMark theme={t} label />}</span>
                                             {(t.is_default || t.pinned || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{t.pinned && <Icon name="pin" size={12} />}{themeName(t, "")}</span>}
                                         </button>
                                     );
@@ -252,6 +252,17 @@ export default function BackgroundLibrary({ c, request, onDone }) {
             </div>
         </>
     );
+}
+
+// A theme saved without a background (from before the rule, owner
+// 2026-10-14, themeHasBackground): a dot on the Temas panel's small thumbs,
+// a "sem fundo" label where the thumbs are big. Inside the .fg-img.
+export const NO_BG_HINT = "Sem fundo: ao aplicar, o Fundo no ar fica";
+export function NoBgMark({ theme, label = false }) {
+    if (themeHasBackground(theme)) return null;
+    return label
+        ? <span className="nobg-label" title={NO_BG_HINT}>sem fundo</span>
+        : <span className="nobg-mark" title={NO_BG_HINT}><Icon name="warn" size={10} /></span>;
 }
 
 // A theme as a small screen: its text look over its background (the

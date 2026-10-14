@@ -4,11 +4,12 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
 import { CfgKey } from "./parts";
-import { ThemeThumb } from "../library/BackgroundLibrary";
+import { ThemeThumb, NoBgMark } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
-import { THEME_FONTS, TEXT_SIZES, defaultTheme, defaultChanges, themeForKind, THEME_KINDS, KIND_FIELD, themeName } from "@/lib/console/themes";
-import { useLibraryPicker } from "../library/libraryContext";
+import { THEME_FONTS, TEXT_SIZES, defaultTheme, defaultChanges, themeForKind, THEME_KINDS, KIND_FIELD, themeName, themeHasBackground } from "@/lib/console/themes";
+import { bgFields } from "@/lib/console/backgroundSpec";
+import { useLibraryPicker, ALL_KINDS } from "../library/libraryContext";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { openEditor } from "@/lib/editorWindow";
 
@@ -89,9 +90,17 @@ export default function TemasSection({ c }) {
         if (!(await confirm(deleteQuestion("o tema", themeName(t), "Quem usa este tema volta ao padrão.")))) return;
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
+    // A theme saved before backgrounds were required (owner 2026-10-14): its
+    // background from the library, without opening the Editor.
+    const pick = useLibraryPicker();
+    const chooseBg = async (t) => {
+        const r = await pick({ accept: ALL_KINDS, title: "Fundo do tema" });
+        if (r?.spec) run(keryx.entities.ProjectionTheme.update(t.id, bgFields(r.spec)), "Fundo do tema salvo.");
+    };
     const menu = useContextMenu();
     const themeMenu = (e, t) => menu(e, { title: themeName(t), items: [
         { label: "Editar", icon: "edit", onSelect: () => edit(t.id) },
+        ...(themeHasBackground(t) ? [] : [{ label: "Escolher fundo…", icon: "image", onSelect: () => chooseBg(t) }]),
         { label: t.is_default ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: Boolean(t.is_default), onSelect: () => makeDefault(t) },
         { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${themeName(t)} saiu do console.` : `${themeName(t)} fixado no console.`) },
         { label: "Excluir…", icon: "trash", onSelect: () => remove(t) },
@@ -107,7 +116,7 @@ export default function TemasSection({ c }) {
                 {themes.map((t) => (
                     <button type="button" key={t.id} role="listitem" className="kx-t fg-tile tmg-tile" aria-label={themeName(t)}
                         title={`${themeName(t)} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
-                        <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
+                        <span className="fg-img"><ThemeThumb theme={t} now={c.now} /><NoBgMark theme={t} label /></span>
                         {(t.is_default || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
                         <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G"].filter(Boolean).join(" · ")}</span>
                     </button>
