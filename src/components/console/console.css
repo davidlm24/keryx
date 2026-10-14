@@ -650,7 +650,7 @@
 .console .cfg .kx-row .kx-row-meta { white-space: normal; }
 /* A row of Configurações grows with its text (a title and a line under it
    never overflow a 32 px row; the owner's review 2026-10-14). */
-.console .cfg .kx-row { height: auto; min-height: var(--row-comfortable); padding-block: 4px; }
+.console .cfg .kx-row { flex: none; height: auto; min-height: var(--row-comfortable); padding-block: 4px; }
 .console .cfg .listhead { height: auto; min-height: var(--row); padding: var(--space-1) var(--space-3); }
 /* Groups breathe: space above every sub-title but the first (owner: the
    sections felt cramped). */
