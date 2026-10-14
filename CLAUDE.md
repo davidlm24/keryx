@@ -287,7 +287,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   continua", as in Holyrics) moves a video off the projector into the
   audio channel at the same second (`media.toAudio`; "Mostrar o vídeo" is
   `audio.toMedia`; `videoSwap` in `src/lib/console/player.js`, no
-  YouTube). Keys go through `src/lib/console/keys.js` (with
+  YouTube) in the same `<video>`, without a gap: `LiveVideo` takes its
+  element from the window's pool by url (`src/lib/mediaPool.js`, tested),
+  so the player that unmounts hands it to the one that mounts in the same
+  commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background library, a popover, then
   Configurações, then the Camadas drawer; views defer while a `.scrim` is
@@ -379,7 +382,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **Media URLs:** the store keeps `keryx-media://<file>`; pages get
   `http://127.0.0.1:7700/media/<file>` from the adapter. Never write the http
   form into the database by other means, and keep checks like
-  `startsWith("http")` working.
+  `startsWith("http")` working. A video's still is `Media.thumbnail_url`
+  (taken by the console, `usePosterBackfill` + `mediaPosterCapture.js`,
+  sent through `UploadFile`); it rides in the live item as `poster` for the
+  Prévia and shows on hover in the Biblioteca.
 
 ## Commands
 

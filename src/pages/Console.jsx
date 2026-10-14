@@ -5,6 +5,7 @@ import "@ds/components/bundle.css";
 import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
+import { usePosterBackfill } from "@/hooks/usePosterBackfill";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
 import { cleanKindThemes } from "@/lib/console/serviceLook";
@@ -88,6 +89,9 @@ export default function Console() {
     useAudioFeed(c.live);
     const logoUrl = useChurchLogo();
     const data = useLibrary();
+    // Every video's still (Media.thumbnail_url), the background library's too.
+    const allMedia = useMemo(() => [...data.media, ...data.backgroundMedia], [data.media, data.backgroundMedia]);
+    usePosterBackfill(allMedia);
     const [profile, setProfile] = useState("");
     const [quick, setQuick] = useState(null);
     // The layer the player controls when several play (null: the newest).

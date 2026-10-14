@@ -45,7 +45,7 @@ export function stageFromText(title, text) {
 // screens show.
 export function stageFromMedia(media, { toVideo = false } = {}) {
     const kind = media.type === "video" && media.file_url?.includes("youtu") ? "youtube" : media.type;
-    const item = { kind, url: media.file_url, title: media.title || "", duration: media.duration || undefined, id: media.id };
+    const item = { kind, url: media.file_url, title: media.title || "", duration: media.duration || undefined, id: media.id, poster: media.thumbnail_url || undefined };
     if (kind === "audio") return { kind: "audio", id: `media:${media.id}`, title: media.title || "", meta: "Áudio", slides: [], index: 0, op: "audio.show", args: item, missing: Boolean(media.missing) };
     return { kind: toVideo ? "video" : "media", id: `media:${media.id}`, title: media.title || "", meta: KIND_LABEL[kind] || media.type, slides: [], index: 0, op: toVideo ? "video.show" : "media.show", args: item, missing: Boolean(media.missing) };
 }
@@ -60,7 +60,7 @@ export function stageFromAudioList(list) {
 // Pictures and videos shown one after the other on the projector (images
 // for their duration, videos to the end); the projector moves on by itself.
 export function stageFromMediaList(list) {
-    const items = list.map((m) => ({ kind: m.type === "video" && m.file_url?.includes("youtu") ? "youtube" : m.type, url: m.file_url, title: m.title || "", id: m.id, duration: m.duration || undefined }));
+    const items = list.map((m) => ({ kind: m.type === "video" && m.file_url?.includes("youtu") ? "youtube" : m.type, url: m.file_url, title: m.title || "", id: m.id, duration: m.duration || undefined, poster: m.thumbnail_url || undefined }));
     return { kind: "media", id: `medias:${list.map((m) => m.id).join(",")}`, title: `${list.length} mídias em sequência`, meta: "Mídia", slides: [], index: 0, op: "media.playlist", args: { items, index: 0 }, missing: list.some((m) => m.missing) };
 }
 

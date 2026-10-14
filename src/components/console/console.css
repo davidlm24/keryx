@@ -276,6 +276,9 @@
 .console .dock-hint { position: fixed; z-index: 45; pointer-events: none; border: 2px solid var(--brand); border-radius: var(--radius-panel); background: color-mix(in srgb, var(--brand) 18%, transparent); }
 .console .dock-hint > span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 11px/16px var(--font-sans); white-space: nowrap; }
 .console .dock-ghost { position: fixed; z-index: 46; pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font: 500 12px/16px var(--font-sans); }
+/* A media row's picture on hover (Library.jsx MediaPeek): beside the Biblioteca, 16:9, never under the mouse */
+.console .media-peek { position: fixed; z-index: 44; pointer-events: none; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: var(--popover); outline: 1px solid var(--line); }
+.console .media-peek img { width: 100%; height: 100%; object-fit: contain; display: block; }
 /* The Bíblia in three columns (owner layout 2026-10-12): Livro, Capítulo
    and Versículo stacked, the chosen text, what is on air. Their order and the
    side widths are the operator's (Ver › Editar layout). Each picker card

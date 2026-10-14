@@ -464,7 +464,21 @@ test("Tirar o vídeo · o som continua: the video leaves the projector, its soun
     assert.throws(() => applyOp(off, "audio.toMedia", {}, T0), (e) => e.status === 423);
 });
 
-test("Tirar o vídeo from a list: the list goes along, only what can be heard, and stops at its end", () => {
+test("a video's still (poster) rides with it: shown, in a list, to the audio channel and back", () => {
+    const video = { kind: "video", url: "keryx-media://v.mp4", title: "Abertura", poster: "keryx-media://v-poster.jpg" };
+    const shown = run([["media.show", video, T0]]);
+    assert.equal(shown.media.poster, "keryx-media://v-poster.jpg");
+    const listed = run([["media.playlist", { items: [{ kind: "image", url: "i" }, video], index: 1 }, T0]]);
+    assert.equal(listed.media.poster, "keryx-media://v-poster.jpg");
+    assert.equal(listed.media.playlist[1].poster, "keryx-media://v-poster.jpg");
+    const moved = applyOp(shown, "media.toAudio", {}, T0 + 1000);
+    assert.equal(moved.audio.poster, "keryx-media://v-poster.jpg");
+    assert.equal(applyOp(moved, "audio.toMedia", {}, T0 + 2000).media.poster, "keryx-media://v-poster.jpg");
+    assert.equal("poster" in run([["media.show", { kind: "video", url: "v" }, T0]]).media, false, "none, no field");
+    assert.throws(() => applyOp(emptyState(T0), "media.show", { ...video, poster: { url: "x" } }, T0), LiveError);
+});
+
+test("Tirar o vídeo from a list:the list goes along, only what can be heard, and stops at its end", () => {
     const items = [{ kind: "image", url: "i" }, { kind: "video", url: "a" }, { kind: "pdf", url: "p" }, { kind: "video", url: "b" }, { kind: "audio", url: "c" }];
     const s = run([["media.playlist", { items, index: 3 }, T0], ["media.toAudio", {}, T0 + 1000]]);
     assert.deepEqual(s.audio.playlist.map((it) => it.url), ["a", "b", "c"]);

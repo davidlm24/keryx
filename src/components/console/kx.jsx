@@ -89,9 +89,9 @@ export function Field({ icon = "search", value, onChange, placeholder, onKeyDown
 // A list row: a glyph, a title and one grey line, time on the right, actions
 // on hover. Click, Enter and Space on the row all prepare (onClick); a
 // double click sends to air (onDoubleClick), as in Holyrics.
-export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, onContextMenu, dragProps, single, className = "", current, children }) {
+export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, onContextMenu, onMouseEnter, onMouseLeave, dragProps, single, className = "", current, children }) {
     return (
-        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} role="button" tabIndex={0} aria-current={current || undefined} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
+        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} role="button" tabIndex={0} aria-current={current || undefined} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
             {icon && <span className="kx-glyph"><Icon name={icon} /></span>}
             <div className="kx-row-main">
                 <div className="kx-row-title">{title}</div>

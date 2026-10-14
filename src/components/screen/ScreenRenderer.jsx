@@ -311,7 +311,8 @@ function MediaPoster({ media, motion = false }) {
         <div className="ks-media">
             {image && <img src={media.url} alt="" />}
             {moving && <LiveVideo item={media} muted className="ks-vidcover-v" />}
-            {!image && !moving && <><div className="ks-media-kind">{KIND_LABEL[media.kind] || media.kind}</div><div className="ks-media-t">{media.title || media.url}</div></>}
+            {!image && !moving && media.poster && <><img src={media.poster} alt="" /><div className="ks-media-chip">{KIND_LABEL[media.kind] || media.kind}</div></>}
+            {!image && !moving && !media.poster && <><div className="ks-media-kind">{KIND_LABEL[media.kind] || media.kind}</div><div className="ks-media-t">{media.title || media.url}</div></>}
             {media.playlist && <div className="ks-media-count">{media.playlistIndex + 1} / {media.playlist.length}</div>}
         </div>
     );
