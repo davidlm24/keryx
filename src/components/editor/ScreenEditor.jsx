@@ -194,8 +194,12 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     keysRef.current = (e) => {
         // Only what opens OVER the editor takes the keys (the library, a
         // right-click menu, a confirm); Configurações' scrim sits under the
-        // floating editor and must not.
-        if (document.querySelector(".console .lib-scrim, .console .ctx-scrim, .console .confirm-scrim")) return;
+        // floating editor and must not. In the window, Esc closes the
+        // library itself (its scrim) — in the console's dialog the console
+        // routes that (ESC_ORDER "library" before "editor").
+        const libScrim = document.querySelector(".console .lib-scrim");
+        if (libScrim) { if (!escRef && e.key === "Escape") { e.preventDefault(); e.stopPropagation(); libScrim.click(); } return; }
+        if (document.querySelector(".console .ctx-scrim, .console .confirm-scrim")) return;
         const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft) save(); return; }
         if (e.key === "Escape") {

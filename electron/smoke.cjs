@@ -1868,10 +1868,19 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         await sleep(400);
         result.editorLeaveAsks = await js("Boolean(document.querySelector('.console .vd-editor')) && (document.querySelector('.vd-editor .nv-frm input.pl-input') || {}).value === 'Tema Smoke'");
-        await js("(() => { const b = [...document.querySelectorAll('.vd-editor button')].find((x) => x.textContent.trim() === 'Salvar tema'); if (b) b.click(); return Boolean(b); })()");
+        // A theme is saved with a background from the library (owner
+        // 2026-10-14): Salvar waits for one; the Fundo's Escolher… opens the
+        // console's library over the Editor dialog and a colour (Cor) is enough.
+        const saveBtn = "[...document.querySelectorAll('.vd-editor button')].find((x) => x.textContent.trim() === 'Salvar tema')";
+        result.themeNeedsBg = await js(`(() => { const b = ${saveBtn}; return Boolean(b && b.disabled) && Boolean(document.querySelector('.vd-editor .bgchip.is-missing')); })()`).catch(() => false);
+        await js("(() => { const b = document.querySelector('.vd-editor .bgchip button'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("(() => { const t = [...document.querySelectorAll('.lib-tabs [role=tab]')].find((x) => x.textContent.trim() === 'Cor'); if (t) t.click(); return Boolean(t); })()"), 5000);
+        await waitFor(() => js("(() => { const s = document.querySelector('.lib-swatch'); if (s) s.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); return Boolean(s); })()"), 4000);
+        result.themeBgPicked = await waitFor(() => js(`(() => { const b = ${saveBtn}; return !document.querySelector('.lib-dialog') && Boolean(b && !b.disabled); })()`), 4000);
+        await js(`(() => { const b = ${saveBtn}; if (b) b.click(); return Boolean(b); })()`);
         result.themeSaved = await waitFor(async () => {
             const rows = (await js('window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])')).data || [];
-            return rows.length === 1 && rows[0].font_family === "serif";
+            return rows.length === 1 && rows[0].font_family === "serif" && (rows[0].background || {}).kind === "color";
         }, 6000);
         if (!result.themeSaved) result.themeDiag = await js("(document.querySelector('.toast') || {}).textContent || document.querySelector('.vd-editor').innerText.slice(0, 300)");
         // Saved: Esc closes clean (the dirty guard has nothing to ask) and
@@ -1991,8 +2000,13 @@ async function checkConsole(webContents, { live, outputs }) {
         // ties the song on air to it and "Tirar tema da música" lets it go.
         await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "update", [r.id, { pinned: true }]); return rows.length; })()');
         await waitFor(() => js("Boolean(document.querySelector('.tm-tile[aria-label=\"Tema Smoke\"]'))"), 5000);
+        // The theme has a background now (the rule above): applying it puts
+        // it on the Fundo too — the owner's bug was a new theme dressing the
+        // text only. The Fundo there was comes back for the padlock checks.
+        const fundoBefore = live.get().background;
         await click(".tm-tile", "Tema Smoke");
         result.themeApplied = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000);
+        result.themeFundo = await waitFor(() => (live.get().background || {}).kind === "color", 4000);
         // The clicked theme is the one in use — the next send keeps it,
         // without writing the culto's theme (Service.theme_id).
         await dblclick(".kx-row", "Canto do console");
@@ -2010,6 +2024,12 @@ async function checkConsole(webContents, { live, outputs }) {
         await temasMenu("Tirar tema da música");
         result.songThemeCleared = await waitFor(async () => !(await songThemeId()), 4000);
         result.temasSlots = await js("(() => { const g = document.querySelector('.tm-grid'); return Boolean(g) && g.children.length === 9 && !document.querySelector('.tm-song, .tm-acts'); })()").catch(() => false);
+        // From here on Tema Smoke (still the theme in use) dresses the text
+        // only, as before the rule, so the checks below see the Fundo they
+        // set themselves: its background off (as a theme from before the
+        // rule has none), the Fundo there was back on air.
+        await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "update", [r.id, { background: null, background_image: "", background_generator: null }]); return true; })()');
+        if (fundoBefore) live.call("background.set", fundoBefore);
         // Camadas › Texto principal › Título: Sem hides the song's name on
         // this item (the Programa, and every output), whatever Aparência says.
         // Its settings open from its pencil (owner 2026-10-14: folded until then).
@@ -2529,7 +2549,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
