@@ -29,7 +29,7 @@ export const SETTINGS_INDEX = [
     e("telas", "Importar ajustes das saídas", "abre um arquivo de saídas e mostra o que muda antes de aplicar", ["importar", "restaurar", "arquivo", "outro computador", "reinstalar", "carregar"] ),
     e("telas", "Som do aviso", "o sino dos avisos: ligar, desligar, volume, testar", ["som", "sino", "alerta", "volume", "testar som", "áudio"] ),
     e("telas", "Ajustes", "clique numa tela: nome, ícone, conteúdo, desenho, texto, margens, logo e tema moram no Editor",
-        ["Nome", "Ícone", "Conteúdo", "Desenho", "layout", "Editar a tela", "Escala do texto", "Cifra", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra", "Mostrar", "filtro", "só letras", "só Bíblia",
+        ["Nome", "Ícone", "Conteúdo", "Desenho", "layout", "Editar a tela", "Escala do texto", "Cifra", "Nome da parte", "acordes", "Refrão", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra", "Mostrar", "filtro", "só letras", "só Bíblia",
             "Faixa", "Tamanho do texto", "Posição", "Referência na legenda"], { target: "Saídas" }),
 
     e("rede", "Ligar telas na rede", "celulares, tablets e TVs pela rede da igreja", ["wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),

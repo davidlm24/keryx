@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf } from "./outputPrefs.js";
+import { normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -75,8 +75,8 @@ test("the Palco's and the Pastor's own switches: missing keys are the screen as 
     assert.deepEqual(stageOptions(normalizePref(null)), STAGE_DEFAULTS);
     assert.deepEqual(pastorOptions(normalizePref(null)), PASTOR_DEFAULTS);
     const p = normalizePref({ options: { chords: false, clock: "sim", next_count: 99 } });
-    assert.deepEqual(stageOptions(p), { chords: false, clock: true, notes: true, next: true }, "a non-boolean counts as unset");
-    assert.deepEqual(pastorOptions(p), { clock: true, next_count: 5 }, "next_count clamps to 0..5");
+    assert.deepEqual(stageOptions(p), { chords: false, labels: true, clock: true, notes: true, next: true }, "a non-boolean counts as unset");
+    assert.deepEqual(pastorOptions(p), { chords: false, labels: false, clock: true, next_count: 5 }, "next_count clamps to 0..5");
     assert.equal(pastorOptions(normalizePref({ options: { next_count: 0 } })).next_count, 0, "0 is a choice (hide the list)");
     assert.deepEqual(normalizePref({ options: ["x"] }).options, {}, "an array is not options");
     assert.ok(!isDefaultPref(normalizePref({ options: { chords: false } })), "an option counts as an adjustment");
@@ -173,4 +173,18 @@ test("Restaurar padrão: the settings alone, the drawing aside", () => {
     assert.equal(isDefaultSettings(drawn), true, "but not of its settings: Restaurar padrão has nothing to put back");
     assert.equal(isDefaultSettings(normalizePref({ layout_id: "old" })), true, "an old layout pointer is the drawing too");
     assert.equal(isDefaultSettings(normalizePref({ text_scale: 120, design: { elements: [] } })), false);
+});
+
+test("chords and part names: each screen's own choice, on the Palco by default only", () => {
+    const none = normalizePref(null);
+    assert.deepEqual(lyricsOptions("/StageView", none), { chords: true, labels: true });
+    for (const page of ["/Projection", "/LyricProjection", "/PastorView"]) assert.deepEqual(lyricsOptions(page, none), { chords: false, labels: false }, page);
+    const on = normalizePref({ options: { chords: true, labels: true } });
+    assert.deepEqual(lyricsOptions("/Projection", on), { chords: true, labels: true });
+    assert.deepEqual(lyricsOptions("/StageView", normalizePref({ options: { labels: false } })), { chords: true, labels: false });
+    // prefState hands the choice to the renderer with the content.
+    assert.equal(prefState("/Projection", live, none).content.show, undefined, "nothing added: the congregation sees only the lyrics");
+    assert.deepEqual(prefState("/Projection", live, on).content.show, { chords: true, labels: true });
+    assert.equal(live.content.show, undefined, "the live state itself is untouched");
+    assert.equal(prefState("/Projection", { ...live, content: null }, on).content, null);
 });

@@ -5,7 +5,13 @@ import { semitoneLabel } from "@/utils/chordTranspose";
 // A slide's lines with their chords riding above the syllables (the Palco,
 // and a layout's "Letra atual"): `chorded` is the slide's chorded twin from
 // stage.chordedSlides, transposed by `transpose` semitones. Chord-less lines
-// render plain. Styles: net.css (.ns-chorded and friends).
+// render plain. Styles: net.css (.ns-chorded and friends), screen.css.
+// Each segment is cut into words (the chord rides on the first), so a long
+// line wraps between words where the screen lets it, never past the edge.
+const byWords = (segs) => segs.flatMap((g) => {
+    const words = String(g.text).split(/(?<=\s)(?=\S)/);
+    return words.map((text, i) => ({ chord: i === 0 ? g.chord : "", text }));
+});
 export default function ChordedLines({ chorded, transpose = 0 }) {
     const lines = transposeInline(chorded, transpose).split("\n");
     return (
@@ -15,7 +21,7 @@ export default function ChordedLines({ chorded, transpose = 0 }) {
                 if (segs.every((g) => !g.chord)) return <span key={i} className="ns-line">{segs.map((g) => g.text).join("")}</span>;
                 return (
                     <span key={i} className="ns-line">
-                        {segs.map((g, k) => (
+                        {byWords(segs).map((g, k) => (
                             <span key={k} className="ns-seg">
                                 <span className={`ns-ch ${g.chord ? "" : "is-empty"}`} aria-hidden={g.chord ? undefined : "true"}>{g.chord || ""}</span>
                                 <span className="ns-tx">{g.text}</span>

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isChordToken, isChordLine, hasInlineChords, stripLine, stripChords, transposeChord, transposeInline, transposeLine, transposeChords, chordLinesToInline, parseChordLine } from "./chords.js";
+import { isChordToken, isChordLine, hasInlineChords, stripLine, stripChords, transposeChord, transposeInline, transposeLine, transposeChords, chordLinesToInline, parseChordLine, keyChords } from "./chords.js";
 
 test("chord tokens: real chords in, markers and words out", () => {
     for (const ok of ["G", "Am", "Am7", "A7", "G/B", "D/F#", "C#m", "Bb", "F#m7", "C7(9)", "Am7(b5)", "Gsus4", "Dsus", "Dadd9", "E7M", "Cº", "C°", "Em"]) {
@@ -44,4 +44,16 @@ test("parseChordLine: segments with the chord riding the text after it", () => {
     assert.deepEqual(parseChordLine("intro [G]"), [{ chord: null, text: "intro " }, { chord: "G", text: "" }]);
     assert.deepEqual(parseChordLine("sem acordes"), [{ chord: null, text: "sem acordes" }]);
     assert.deepEqual(parseChordLine("la [x2] [G]fim"), [{ chord: null, text: "la [x2] " }, { chord: "G", text: "fim" }]);
+});
+
+test("keyChords: the chords of the song's key, for the editor's chips", () => {
+    assert.deepEqual(keyChords("D"), ["D", "Em", "F#m", "G", "A", "Bm"]);
+    assert.deepEqual(keyChords("Am"), ["Am", "C", "Dm", "Em", "F", "G"]);
+    assert.deepEqual(keyChords("F"), ["F", "Gm", "Am", "Bb", "C", "Dm"], "flat keys spell flats");
+    assert.deepEqual(keyChords("Bb"), ["Bb", "Cm", "Dm", "Eb", "F", "Gm"]);
+    assert.deepEqual(keyChords("Dm"), ["Dm", "F", "Gm", "Am", "Bb", "C"]);
+    assert.deepEqual(keyChords("F#m"), ["F#m", "A", "Bm", "C#m", "D", "E"]);
+    assert.deepEqual(keyChords("Cmaj7"), ["C", "Dm", "Em", "F", "G", "Am"], "maj is not minor");
+    assert.deepEqual(keyChords(""), []);
+    assert.deepEqual(keyChords("Verso"), []);
 });

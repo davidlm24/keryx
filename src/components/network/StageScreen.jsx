@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { transposeChords } from "@/utils/chordTranspose";
+import { transposeChords, transposeChord } from "@/utils/chordTranspose";
 import ChordedLines, { chordedOf, Transpose } from "./ChordedLines";
 import "@/components/network/net.css";
 
@@ -20,7 +20,7 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
     const now = new Date(nowMs);
     // Which parts this screen shows (Configurações › Telas e saídas ›
     // Ajustes); a missing key means on, the screen as it always was.
-    const show = { chords: opts.chords ?? true, clock: opts.clock ?? true, notes: opts.notes ?? true, next: opts.next ?? true };
+    const show = { chords: opts.chords ?? true, labels: opts.labels ?? true, clock: opts.clock ?? true, notes: opts.notes ?? true, next: opts.next ?? true };
     const style = scale !== 1 ? { "--kp-text": scale } : undefined;
     const [transpose, setTranspose] = useState(0);
 
@@ -61,7 +61,8 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
                     {song.artist && <span>{song.artist}</span>}
                 </div>
                 <div className="ns-chips">
-                    {song.song_key && <div className="ns-chip"><small>Tom</small><b>{song.song_key}</b></div>}
+                    {show.labels && current.label && <div className="ns-chip"><small>Parte</small><b>{current.label}</b></div>}
+                    {song.song_key && <div className="ns-chip"><small>Tom</small><b>{transposeChord(song.song_key, transpose)}</b></div>}
                     {song.bpm && <div className="ns-chip"><small>BPM</small><b>{song.bpm}</b></div>}
                     {show.clock && <div className="ns-chip"><small>Na música</small><b>{mmss(elapsed)}</b></div>}
                     {show.clock && <div className="ns-chip is-clock"><small>Hora</small><b>{hhmm(now)}</b></div>}

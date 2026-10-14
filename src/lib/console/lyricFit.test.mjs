@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { lineLimit, slideFit, stanzaAt, slideSpan } from "./lyricFit.js";
+import { lineLimit, slideFit, stanzaAt, slideSpan, fitScale } from "./lyricFit.js";
 
 test("the characters that fit on a screen line shrink as the letters grow", () => {
     assert.equal(lineLimit("large"), 31);
@@ -27,6 +27,10 @@ test("the stanza around the caret, for Duplicar estrofe", () => {
     assert.equal(text.slice(a, b), "[Refrão]\nrefrão 1");
     assert.equal(text.slice(...stanzaAt(text, 0)), "[Verso]\nlinha 1\nlinha 2");
     assert.equal(text.slice(...stanzaAt(text, text.length)), "fim");
+    const spaced = "um\ndois\n  \ntrês\n\n\nquatro\n";
+    assert.equal(spaced.slice(...stanzaAt(spaced, 1)), "um\ndois", "a line of spaces separates stanzas, as the slides split them");
+    assert.equal(spaced.slice(...stanzaAt(spaced, spaced.indexOf("\n\n") + 1)), "quatro", "on a blank line: the stanza after it");
+    assert.equal(spaced.slice(...stanzaAt(spaced, spaced.length)), "quatro", "trailing blank: the stanza before it");
 });
 
 test("slideSpan finds each slide's own lines, a repeated chorus its own copy", () => {
@@ -56,4 +60,12 @@ test("slideSpan maps stripped slides back to chorded lyric lines", () => {
     const [a, b] = slideSpan(text, slides, 0);
     assert.equal(text.slice(a, b), "[G]Deus é [D]fiel\n[Em]Santo é Ele", "the selection covers the chorded lines");
     assert.equal(text.slice(...slideSpan(text, slides, 1)), "refrão um");
+});
+
+test("fitScale: the font shrinks only as much as the longest line needs", () => {
+    assert.equal(fitScale(800, 600), 1, "fits: untouched");
+    assert.equal(fitScale(800, 1000), 0.8);
+    assert.equal(fitScale(800, 4000), 0.55, "never below the minimum");
+    assert.equal(fitScale(800, 4000, 0.3), 0.3);
+    assert.equal(fitScale(0, 100), 1, "nothing measured yet: untouched");
 });

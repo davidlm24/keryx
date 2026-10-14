@@ -150,19 +150,35 @@ export function designOf(pref, layoutRows) {
 // Palco and Pastor draw their own layouts; OutputPref.options says which
 // parts (Configurações › Telas e saídas › Ajustes). Missing keys are the
 // screen as it always was.
-export const STAGE_DEFAULTS = { chords: true, clock: true, notes: true, next: true };
-export const PASTOR_DEFAULTS = { clock: true, next_count: 3 };
+export const STAGE_DEFAULTS = { chords: true, labels: true, clock: true, notes: true, next: true };
+export const PASTOR_DEFAULTS = { chords: false, labels: false, clock: true, next_count: 3 };
 const onOff = (v, d) => (typeof v === "boolean" ? v : d);
 export const stageOptions = (pref) => ({
     chords: onOff(pref?.options?.chords, true),
+    labels: onOff(pref?.options?.labels, true),
     clock: onOff(pref?.options?.clock, true),
     notes: onOff(pref?.options?.notes, true),
     next: onOff(pref?.options?.next, true),
 });
 export const pastorOptions = (pref) => {
     const n = Number(pref?.options?.next_count);
-    return { clock: onOff(pref?.options?.clock, true), next_count: Number.isFinite(n) ? Math.min(5, Math.max(0, Math.round(n))) : 3 };
+    return {
+        chords: onOff(pref?.options?.chords, false),
+        labels: onOff(pref?.options?.labels, false),
+        clock: onOff(pref?.options?.clock, true),
+        next_count: Number.isFinite(n) ? Math.min(5, Math.max(0, Math.round(n))) : 3,
+    };
 };
+
+// What a screen adds to a song's text (owner 2026-10-14): `chords`, the
+// lyrics' [G] chords over the syllables, and `labels`, the part's name
+// ([Refrão], [Ponte]…) over the slide. Each screen's own choice
+// (OutputPref.options); the Palco shows both unless told otherwise, every
+// other output neither (the congregation sees only the lyrics).
+export function lyricsOptions(page, pref) {
+    const on = page === "/StageView";
+    return { chords: onOff(pref?.options?.chords, on), labels: onOff(pref?.options?.labels, on) };
+}
 
 // Transmissão (/StreamView): the band of the lower third. Missing keys are
 // the band as it always was.
@@ -204,6 +220,11 @@ export function prefState(page, live, pref, theme = null) {
     let state = outputView(prefViewKey(page, pref), live);
     if (!state || !pref) return state;
     state = hideKinds(state, pref.hidden);
+    // The renderer draws chords and part names only where this output asks.
+    if (state.content) {
+        const show = lyricsOptions(page, pref);
+        if (show.chords || show.labels) state = { ...state, content: { ...state.content, show } };
+    }
     if (!pref.showLogo && state.logo?.visible) state = { ...state, logo: { ...state.logo, visible: false } };
     if (pref.themeId && theme) {
         // The output's theme wins over the song's parts too: their own looks go.
