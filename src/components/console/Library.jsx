@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Row, Btn, IconBtn, Field, Empty, Seg } from "./kx";
@@ -24,7 +24,66 @@ const dragProps = (stage) => ({
     onDragEnd: () => clearDragStage(),
 });
 
-const MEDIA_ICON = { video: "film", image: "image", gif: "image", pdf: "film", powerpoint: "film", audio: "music" };
+// The picture a media row shows on hover: an image itself, a video's still
+// (Media.thumbnail_url, src/lib/mediaPosterCapture.js); nothing else has one.
+const peekOf = (m) => (m.missing ? "" : m.type === "image" || m.type === "gif" ? m.file_url : m.type === "video" ? m.thumbnail_url || "" : "");
+const PEEK_DELAY_MS = 350;
+const PEEK_W = 240;
+
+// Hovering a row of Imagens or Vídeos shows its picture beside the
+// Biblioteca, so the rows stay one line. The card never takes the mouse.
+function usePeek() {
+    const [peek, setPeek] = useState(null);
+    const timer = useRef(0);
+    const hide = useCallback(() => { clearTimeout(timer.current); setPeek(null); }, []);
+    useEffect(() => {
+        if (!peek) return undefined;
+        const off = () => hide();
+        window.addEventListener("mousedown", off, true);
+        window.addEventListener("wheel", off, true);
+        window.addEventListener("dragstart", off, true);
+        window.addEventListener("keydown", off, true);
+        return () => {
+            window.removeEventListener("mousedown", off, true);
+            window.removeEventListener("wheel", off, true);
+            window.removeEventListener("dragstart", off, true);
+            window.removeEventListener("keydown", off, true);
+        };
+    }, [peek, hide]);
+    useEffect(() => () => clearTimeout(timer.current), []);
+    const rowProps = (m) => {
+        const src = peekOf(m);
+        if (!src) return {};
+        return {
+            onMouseEnter: (e) => {
+                const row = e.currentTarget.getBoundingClientRect();
+                const panel = (e.currentTarget.closest(".kx-panel") || e.currentTarget).getBoundingClientRect();
+                clearTimeout(timer.current);
+                timer.current = setTimeout(() => setPeek({ src, row, panel }), PEEK_DELAY_MS);
+            },
+            onMouseLeave: hide,
+        };
+    };
+    return { peek, rowProps };
+}
+
+function MediaPeek({ peek }) {
+    if (!peek) return null;
+    const { row, panel } = peek;
+    const h = Math.round(PEEK_W * 9 / 16);
+    const gap = 8;
+    // Beside the panel, on the side with room; level with the row.
+    const right = panel.right + gap + PEEK_W <= window.innerWidth - gap;
+    const left = right ? panel.right + gap : Math.max(gap, panel.left - gap - PEEK_W);
+    const top = Math.min(Math.max(gap, row.top + row.height / 2 - h / 2), window.innerHeight - h - gap);
+    return (
+        <div className="media-peek" style={{ left, top, width: PEEK_W }} aria-hidden="true">
+            <img src={peek.src} alt="" />
+        </div>
+    );
+}
+
+const MEDIA_ICON ={ video: "film", image: "image", gif: "image", pdf: "film", powerpoint: "film", audio: "music" };
 const MEDIA_LABEL = { video: "Vídeo", image: "Imagem", gif: "GIF", pdf: "Apresentação", powerpoint: "Apresentação", audio: "Áudio" };
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLowerCase().includes(q));
@@ -39,7 +98,8 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
-    const ql = q.trim().toLowerCase();
+    const { peek, rowProps } = usePeek();
+    const ql =q.trim().toLowerCase();
     const airId = liveStageId(c.cur);
     const prevId = c.prev?.id;
     const state = (id) => (id === airId ? "is-air" : id === prevId ? "is-prev" : "");
@@ -188,6 +248,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
                             onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
                         ] })}
                         dragProps={dragProps(stageFromMedia(m))}
+                        {...rowProps(m)}
                         actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label="Telas de vídeo"><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
                     />
                 );
@@ -242,6 +303,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
                     </>
                 );
             })()}
+            {(tab === "imagens" || tab === "videos") && <MediaPeek peek={peek} />}
         </>
     );
 }

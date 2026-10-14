@@ -5,6 +5,7 @@ import "@ds/components/bundle.css";
 import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
+import { usePosterBackfill } from "@/hooks/usePosterBackfill";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
 import { cleanKindThemes } from "@/lib/console/serviceLook";
@@ -89,6 +90,9 @@ export default function Console() {
     useAudioFeed(c.live);
     const logoUrl = useChurchLogo();
     const data = useLibrary();
+    // Every video's still (Media.thumbnail_url), the background library's too.
+    const allMedia = useMemo(() => [...data.media, ...data.backgroundMedia], [data.media, data.backgroundMedia]);
+    usePosterBackfill(allMedia);
     const [profile, setProfile] = useState("");
     const [quick, setQuick] = useState(null);
     // The layer the player controls when several play (null: the newest).
@@ -415,6 +419,18 @@ export default function Console() {
             c.say(r.none ? "O culto volta ao fundo da igreja." : service ? "Fundo do culto salvo." : "Fundo de hoje salvo.");
         } catch (err) { c.say(err?.message || "Não foi possível salvar o fundo."); }
     }, [service, services, serviceId, ensureService, pickFromLibrary, c]);
+
+    // The Notas tab's free notes (Service.operator_notes). With no service the
+    // first save starts the day's draft, once: saves made while it is being
+    // created wait for it.
+    const notesDraft = useRef(null);
+    useEffect(() => { if (serviceId) notesDraft.current = null; }, [serviceId]);
+    const saveOperatorNotes = useCallback(async (text) => {
+        try {
+            const sid = serviceId || await (notesDraft.current ||= ensureService());
+            await keryx.entities.Service.update(sid, { operator_notes: text });
+        } catch (err) { c.say(err?.message || "Não foi possível salvar as notas."); throw err; }
+    }, [serviceId, ensureService, c]);
 
     // A library item dropped on the Setlist: a ServiceItem at that position.
     const addStageToSetlist = useCallback(async (stage, index) => {
@@ -881,7 +897,7 @@ export default function Console() {
     const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
     const tabsPanel = (
         <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
-            items={items} prevItemId={prevItemId} airItemId={airItemId} onPrepare={prepare} onGo={prepareAndSend} />
+            items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend} />
     );
     const libraryPanel = (
         <Panel title="Biblioteca" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -920,7 +936,7 @@ export default function Console() {
     // The Programa: its caption, Camadas (when it is in the tray: a drawer),
     // Voltar ao anterior, Multiview, and the monitor (CenterPanel).
     const livePanel = (
-        <Panel className="prog-panel" caption={<ProgramaCaption c={c} projectorDown={projectorDown} />} actions={
+        <Panel bare className="prog-panel" caption={<ProgramaCaption c={c} projectorDown={projectorDown} />} actions={
             <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 2 }}>
                 {health.onAir && <span className={`kx-meta prog-where ${health.onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{health.onAir.text}</span>}
                 {!camadasOn && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
@@ -942,8 +958,8 @@ export default function Console() {
                 ] })} />
         </Panel>
     );
-    // The Prévia, Enviar ao ar under its monitor (the teacher notes too,
-    // unless the Notas tab is on screen).
+    // The Prévia: its screen, then the teacher notes (unless the Notas tab
+    // is on screen). Enter, a double click or its menu send it.
     const previaPanel = (
         <PreviaPanel c={c} logoUrl={logoUrl} notesInTab={panelOnScreen && tabLists.panel.includes("notas")}
             onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}

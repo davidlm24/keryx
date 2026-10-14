@@ -239,14 +239,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Biblioteca and Slides are whole columns; the **centre** (`live`) is the
   Programa on top (CenterPanel: the monitor or the Multiview, and the
   player **always visible**, dimmed while idle) and below it one row that
-  **ends at the centre's edge**: the Prévia panel (caption in its header
-  like the Programa's; 44 % of the centre at first) with **Enviar ao ar
-  inside it, right under the monitor**, then the **tabs panel**
+  **ends at the centre's edge**: the Prévia (44 % of the centre at first),
+  then the **tabs panel**
   (`TabsPanel.jsx`), and under that row the **No ar** strip (`ONAIR_H`;
   medium and narrow start with it in the tray); the **right column** (`rightW`) is **Camadas over the
   Setlist, full height** (Camadas 360 px high: the Setlist gets most of the
-  column). Camadas in the tray is a drawer opened from the Programa's
-  header. The old `order`/`stacks`/widths are only read to build the first
+  column). **The Programa and the Prévia have no card** (owner 2026-10-14,
+  `Panel bare`, `kx-panel-bare`): the Programa is its header line (caption,
+  Fundo do culto, Voltar ao anterior, Multiview), the screen and the player;
+  the Prévia is its screen, its caption a badge inside the top-left corner
+  (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
+  locked), and **no Enviar ao ar button** — Enter, a double click on it
+  or its right-click menu send (the Bíblia, the Escola bíblica and the
+  Mídia keep theirs). Camadas in the tray is a drawer opened from the
+  Programa's header. The old `order`/`stacks`/widths are only read to build the first
   dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca end
   their tab row in a (+)** that lists every tab with a check mark
   (`TabsMenu` in Popovers.jsx, as Ver lists the modules): checked = shown,
@@ -255,8 +261,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tested; "Restaurar disposição" resets it). The panel's tabs reuse what
   exists, no projection logic of their own: **Notas** (the
   `ServiceItem.notes` of the item in the Prévia / on air, and the Escola
-  bíblica teacher notes — these sit under Enviar ao ar when the Notas tab
-  is not on screen), **Aviso rápido**, **Timers** (`QuickTools.jsx`; the
+  bíblica teacher notes — these sit under the Prévia's screen when the
+  Notas tab is not on screen — and the operator's own free notes,
+  `Service.operator_notes`, saved a moment after typing stops and on
+  leaving the field; never in the PDF, never on a screen; with no service
+  the first one starts the day's draft), **Aviso rápido**, **Timers** (`QuickTools.jsx`; the
   defaults), **Ferramentas** and **Esteve no ar** (the "Voltar ao
   anterior" history). Where the panel shows the Aviso rápido or the
   Ferramentas, Biblioteca › Avisos leaves them out (`elsewhere`); the
@@ -285,8 +294,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   are `.onair-card`, so `.kx-slide` is only the Slides column. Setlist sections are ServiceItems of type `SECTION`: headers that
   take no time and never go on air — use `playableItems`/`plan` from
   `src/lib/console/setlist.js`. A click prepares a *stage* in the Prévia;
-  Enter, a **double click** or "Enviar ao ar" sends it (user decision
-  2026-10-07; dragging a library row onto the Prévia prepares, onto the
+  Enter, a **double click** or the Prévia's menu "Enviar ao ar" sends it
+  (user decision 2026-10-07; dragging a library row onto the Prévia prepares, onto the
   Programa sends, onto the Setlist adds a ServiceItem). There is no
   Ensaio: rehearsing is **"Travar telas"** (Saídas), the live state's
   `locked` flag, enforced in `applyOp` (status 423) so every sender
@@ -304,7 +313,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   continua", as in Holyrics) moves a video off the projector into the
   audio channel at the same second (`media.toAudio`; "Mostrar o vídeo" is
   `audio.toMedia`; `videoSwap` in `src/lib/console/player.js`, no
-  YouTube). Keys go through `src/lib/console/keys.js` (with
+  YouTube) in the same `<video>`, without a gap: `LiveVideo` takes its
+  element from the window's pool by url (`src/lib/mediaPool.js`, tested),
+  so the player that unmounts hands it to the one that mounts in the same
+  commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background library, a popover, then
   Configurações, then the Camadas drawer; views defer while a `.scrim` is
@@ -396,7 +408,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **Media URLs:** the store keeps `keryx-media://<file>`; pages get
   `http://127.0.0.1:7700/media/<file>` from the adapter. Never write the http
   form into the database by other means, and keep checks like
-  `startsWith("http")` working.
+  `startsWith("http")` working. A video's still is `Media.thumbnail_url`
+  (taken by the console, `usePosterBackfill` + `mediaPosterCapture.js`,
+  sent through `UploadFile`); it rides in the live item as `poster` for the
+  Prévia and shows on hover in the Biblioteca.
 
 ## Commands
 

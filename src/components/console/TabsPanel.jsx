@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Row, Empty } from "./kx";
 import { TeacherNotes } from "./CenterPanel";
@@ -24,9 +24,10 @@ export function TabRow({ row, tabs, active, onPick, onMenu, menuOpen = false }) 
 
 // The operator's notes of the item in the Prévia and of the one on air
 // (ServiceItem.notes, written in Planejar o culto; a Texto item's notes are
-// its text, so they are not repeated here), and an Escola bíblica
-// material's teacher notes. Only in the console, never on a projector.
-function ItemNotes({ c, items, prevItemId, airItemId }) {
+// its text, so they are not repeated here), an Escola bíblica material's
+// teacher notes, and the operator's own free notes. Only in the console,
+// never on a projector.
+function ItemNotes({ c, items, prevItemId, airItemId, service, onSaveNotes }) {
     const noteOf = (id) => {
         const it = id ? items.find((i) => i.id === id) : null;
         return it && it.notes?.trim() && String(it.type || "").toUpperCase() !== "TEXT" ? it : null;
@@ -34,9 +35,6 @@ function ItemNotes({ c, items, prevItemId, airItemId }) {
     const prevIt = noteOf(prevItemId);
     const airIt = airItemId !== prevItemId ? noteOf(airItemId) : null;
     const teacher = c.prev?.notes || c.cur?.content?.stage?.notes;
-    if (!prevIt && !airIt && !teacher) {
-        return <Empty icon="list" title="Sem notas">As notas de um item da setlist (Planejar o culto) aparecem aqui quando ele está na prévia ou no ar.</Empty>;
-    }
     const block = (it, where) => (
         <div className="tnotes item-notes" key={`${where}-${it.id}`}>
             <span className="kx-section">{it.title} <span className="kx-count">· {where}</span></span>
@@ -45,10 +43,43 @@ function ItemNotes({ c, items, prevItemId, airItemId }) {
     );
     return (
         <div className="tabs-notes">
+            {!prevIt && !airIt && !teacher && <span className="kx-meta">As notas de um item da setlist (Planejar o culto) aparecem aqui quando ele está na prévia ou no ar.</span>}
             {prevIt && block(prevIt, airItemId === prevItemId ? "na prévia e no ar" : "na prévia")}
             {airIt && block(airIt, "no ar")}
             <TeacherNotes prev={c.prev} cur={c.cur} />
+            {onSaveNotes && <OperatorNotes service={service} onSave={onSaveNotes} />}
         </div>
+    );
+}
+
+// The operator's free notes (Service.operator_notes, owner 2026-10-14):
+// they ride the service and the backup, never the PDF or a screen. Saved a
+// moment after typing stops and on leaving the field (Esc leaves it); with
+// no service the first save starts the day's draft (onSave does).
+function OperatorNotes({ service, onSave }) {
+    const saved = service?.operator_notes || "";
+    const [text, setText] = useState(saved);
+    const focused = useRef(false);
+    const last = useRef(saved);
+    const timer = useRef(null);
+    // Another service, or the row changed elsewhere: follow it unless the
+    // operator is typing here.
+    useEffect(() => { if (!focused.current) { setText(saved); last.current = saved; } }, [service?.id, saved]);
+    const save = (v) => {
+        clearTimeout(timer.current);
+        if (v === last.current) return;
+        last.current = v;
+        Promise.resolve(onSave(v)).catch(() => { last.current = null; });
+    };
+    useEffect(() => () => clearTimeout(timer.current), []);
+    return (
+        <label className="op-notes">
+            <span className="kx-section">Notas do operador <span className="kx-count">· deste culto, só no console</span></span>
+            <textarea className="op-notes-f" value={text} placeholder="Escreva o que quiser lembrar durante o culto…" aria-label="Notas do operador"
+                onFocus={() => { focused.current = true; }}
+                onChange={(e) => { const v = e.target.value; setText(v); clearTimeout(timer.current); timer.current = setTimeout(() => save(v), 800); }}
+                onBlur={(e) => { focused.current = false; save(e.target.value); }} />
+        </label>
     );
 }
 
@@ -73,12 +104,12 @@ function AirHistory({ c, onPrepare, onGo }) {
 
 // The panel beside the Prévia (owner's design 2026-10-13, the console
 // audit): one tab at a time, the ones the operator checked in its (+).
-export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, onPrepare, onGo }) {
+export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo }) {
     return (
         <div className="kx-panel bb-side tabs-panel" data-panel-tab={active}>
             <TabRow row="panel" tabs={tabs} active={active} onPick={setActive} onMenu={onMenu} menuOpen={menuOpen} />
             <div className="kx-panel-b">
-                {active === "notas" && <ItemNotes c={c} items={items} prevItemId={prevItemId} airItemId={airItemId} />}
+                {active === "notas" && <ItemNotes c={c} items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={onSaveNotes} />}
                 {active === "aviso" && <div className="tabs-pad"><QuickAlert c={c} data={data} /></div>}
                 {active === "timers" && <div className="tabs-pad"><OnAirTimer c={c} /><ReadyTimers c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}
                 {active === "ferramentas" && <div className="tabs-pad"><ToolsPicker c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}

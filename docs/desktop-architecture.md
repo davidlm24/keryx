@@ -226,18 +226,20 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
    channel (`media.toAudio`: same second, volume and pause; a list goes
    along, only what can be heard; allowed while locked) and "Mostrar o
    vídeo" moves it back (`audio.toMedia`). YouTube cannot play hidden, so
-   it is refused. The sound has a short cut at the switch (another element
-   loads the same file and seeks).
-   **Level meters:** where sound plays (`LiveVideo` with a `meter` layer:
-   the projector's media and audio, the video screens), `useAudioMeter`
-   routes the element through Web Audio (element to the speakers and to two
-   analysers), built only when the context runs and the file is readable,
-   so a file is never silenced; `captureStream()` was tried and broke
-   seeking. It measures L/R peaks after the volume and
-   sends them with the duration over `keryx:meter` a dozen times a second;
-   the main process relays them to the other windows. Nothing is stored.
-   Local media is loaded in CORS mode for this (the media server sends
-   `Access-Control-Allow-Origin`); YouTube reports its duration only.
+   it is refused. There is no cut at the switch (2026-10-14): a window's
+   `<video>` elements come from one pool by url (`src/lib/mediaPool.js`,
+   used by `LiveVideo`), so the media layer's player lets the element go
+   and the hidden audio player takes the same one in the same React
+   commit, still playing; detached and attached again inside one task, it
+   never pauses or reloads. One let go and not taken back is paused at
+   once (Tela preta, an aviso over it: silent, as before) and thrown away
+   after a few seconds.
+   **Level meters:** the console reads the computer's own output (system
+   loopback, `meterStore.js`); nothing taps an element. Where sound plays
+   (`LiveVideo` with a `meter` layer: the projector's media and audio, the
+   video screens) the output only reports the item's duration over
+   `keryx:meter` (`useDurationReport`), relayed by the main process to the
+   console's player. Nothing is stored. YouTube reports its duration only.
 4. The rest of the engine and outputs. **Done** (decided 2026-10-06: engine
    and outputs only; today's operator pages are not rewired, because the
    redesign replaces them).
@@ -588,9 +590,16 @@ those keys.
   longer exist and were dropped. The import (`npm run db:import`) downloads
   files from Base44's CDN into the media folder and points known Unsplash
   URLs at the bundled copies (`scripts/localize-media.cjs`).
-- Thumbnails: **not built.** Nothing displays `thumbnail_url` (the media list
-  shows icons; `MediaCard`, which would, is unused). Revisit with the UI
-  redesign.
+- Thumbnails (2026-10-14): a video's still is `Media.thumbnail_url`, a JPEG
+  in the media folder like any file (`keryx-media://`). The console takes
+  it (`usePosterBackfill` in Console.jsx: one video at a time, those just
+  sent and the ones from before; `src/lib/mediaPosterCapture.js` draws a
+  frame of a never-shown `<video>` to a canvas and sends it through
+  `UploadFile`), filling the duration when the row has none. "Localizar…"
+  clears it so a new one is taken. It rides in the live item as `poster`
+  (`stageFromMedia`), so the Prévia shows the frame instead of a black box;
+  the Biblioteca's Imagens and Vídeos show the picture on hover, and the
+  media library's grid uses it instead of opening each file.
 - `powerpoint` as a media type can't be rendered offline by Electron; v1
   accepts PDF exports and says so in the UI.
 
