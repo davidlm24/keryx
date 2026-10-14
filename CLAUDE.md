@@ -523,6 +523,18 @@ so a release follows these rules. The steps and commands are in README ›
 - The `comunidadegerar` token is for the release the user asked for, and
   nothing else.
 
+## Merging PRs (one at a time)
+
+- **One merge at a time.** Merge a PR only after the previous merge is on
+  `master`. Never merge two PRs in a row without re-checking the second.
+- **Check `master` right before each merge.** A green CI run only covers the
+  `master` it ran against. If `master` moved (the PR shows "out-of-date with
+  the base branch", or another PR merged since), update the branch with the
+  base (`sync_with_base_branch` in a worktree, or merge `master` in), wait for
+  CI to pass again, then merge.
+- **Conflicts are resolved in the PR's own session**, then tested again
+  (`npm test`, `npm run lint`, `npm run build`) before the merge.
+
 ## Watch out for
 
 - **Column names are the entity field names verbatim**, including camelCase
