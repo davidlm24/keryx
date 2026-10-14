@@ -622,7 +622,7 @@ async function checkConsole(webContents, { live, outputs }) {
         }
         return false;
     };
-    const js = (code) => webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← ${String(code).replace(/s+/g, " ").slice(0, 160)}`); });
+    const js = (code) => webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← ${String(code).replace(/\s+/g, " ").slice(0, 160)}`); });
     // The live column's monitors caption in parts (state word, title, position):
     // read the title of the Programa (".prog") or the Prévia (".prev-panel .kx-mon").
     const PROG = ".prog";
@@ -1242,7 +1242,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // synthetic char event ignores preventDefault and adds a stray
         // space a real keyboard would not; collapse whitespace.
         result.quickSpaceValue = String(await js("(document.querySelector('.qj-input input') || {}).value"));
-        result.quickSpace = result.quickSpaceValue.replace(/s+/g, " ").trim() === "João 3 16";
+        result.quickSpace = result.quickSpaceValue.replace(/\s+/g, " ").trim() === "João 3 16";
         result.shotBible = await shot("biblia");
         await press("Enter");
         result.quickPicked = await waitFor(() => js("!document.querySelector('.qj') && [...document.querySelectorAll('.kx-panel-h')].some((n) => n.textContent.startsWith('João 3'))"));
@@ -1568,13 +1568,16 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("layers.order", { order: ["logo", "overlays", "content", "background"] });
         if (camadasDrawer) await click(".drawer .kx-btn", "Fechar");
 
-        // The song editor: "+ › Nova música", lyrics split live into slides,
-        // Ctrl+S saves, Esc closes; "Editar" reopens it with the song.
+        // The song editor: "+ › Nova música" opens it as a floating dialog
+        // over the live console (.view-dialog, owner 2026-10-14), lyrics
+        // split live into slides, Ctrl+S saves, Esc closes; "Editar" reopens
+        // it with the song.
         await click(".envtabs button", "KERYX");
         await click(".kx-tabs button", "Letras");
         await click(".searchrow .addmenu button", "");
         await click(".addmenu-pop button", "Nova música");
-        result.edOpen = await waitFor(() => js("Boolean(document.querySelector('.song-ed-l'))"));
+        result.edOpen = await waitFor(() => js("Boolean(document.querySelector('.view-dialog .song-ed-l'))"));
+        if (!result.edOpen) result.edOpenDiag = await js("document.body.innerText.slice(0, 300)");
         result.edFill = await js(`(() => {
             const setVal = (el, v) => { const p = el.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(p, "value").set.call(el, v); el.dispatchEvent(new Event("input", { bubbles: true })); };
             const title = document.querySelector(".song-ed-l .kx-field input");
@@ -1592,9 +1595,11 @@ async function checkConsole(webContents, { live, outputs }) {
             edSong = rows[0] || null;
             return Boolean(edSong) && edSong.slides?.length === 2 && edSong.slides[1].label === "Refrão" && edSong.slides[1].is_chorus === true;
         }, 6000);
-        // A new song reopens as itself (?song=<id>) once saved: Esc waits for
-        // that editor, or it lands while the first one is going away.
-        if (edSong) await waitFor(() => js(`location.search.includes(${JSON.stringify(edSong.id)}) && (document.querySelector('.song-ed-l .kx-field input') || {}).value === 'Música do editor'`), 4000);
+        // A new song reopens as itself once saved (the view remounts "new" →
+        // id; the URL is only read at launch, never written): Esc waits for
+        // the saved song's editor — "Dados da música" instead of "Nova
+        // música" — or it lands while the first one is going away.
+        if (edSong) await waitFor(() => js(`[...document.querySelectorAll('.song-ed-l .kx-section')].some((n) => n.textContent.includes('Dados da música')) && (document.querySelector('.song-ed-l .kx-field input') || {}).value === 'Música do editor'`), 4000);
         await sleep(300);
         // Under load the saved song reopens late and a single Esc can land in
         // that gap: press again until the editor is really gone.
@@ -1609,7 +1614,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Each slide says its lines and characters; the split chosen in the
         // Letra header is saved with the song and comes back when reopened.
         result.edFit = await waitFor(() => js("[...document.querySelectorAll('.ed-th .fit')].map((n) => n.textContent).join('|') === '2 l · 18 c|2 l · 20 c'"), 3000);
-        await click(".song-ed-l ~ .col .kx-panel-h .kx-seg button, .kx-panel-h .kx-seg button", "4 linhas");
+        await click(".view-dialog .lines-pick button", "4 linhas");
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("s", ["control"]);
         result.edSplitSaved = await waitFor(async () => {
@@ -1635,7 +1640,7 @@ async function checkConsole(webContents, { live, outputs }) {
         const edMenuLabels = (await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000))
             ? await js("[...document.querySelectorAll('.console .ctx-menu button')].map((b) => b.textContent.trim()).join('|')") : "";
         await click(".console .ctx-menu button", "Duplicar estrofe");
-        const edDuplicated = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 3 && (document.querySelector('textarea[aria-label=Letra]').value.match(/refrão um/g) || []).length === 2"), 3000);
+        const edDuplicated = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 3 && ((((document.querySelector('textarea[aria-label=Letra]') || {}).value || '').match(/refrão um/g)) || []).length === 2"), 3000);
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("s", ["control"]);
         const edDupSaved = await waitFor(async () => {
@@ -1645,18 +1650,31 @@ async function checkConsole(webContents, { live, outputs }) {
         const edAirAfter = JSON.stringify(live.get().content ? [live.get().content.startedAt, live.get().content.index] : null);
         result.edSlideMenu = { labels: edMenuLabels, duplicated: edDuplicated, saved: edDupSaved, airUntouched: edAirAfter === edAirBefore };
         result.edSlideMenuOk = edMenuLabels === "Mostrar na letra|Duplicar estrofe|Dividir em dois" && edDuplicated && edDupSaved && edAirAfter === edAirBefore;
-        // Choosing "2 linhas" rewrites the lyrics to read like the slides: a
-        // 4-row stanza becomes two 2-row blocks in the textarea itself.
-        await js(`(() => {
+        // Choosing "2 linhas" never rewrites the lyrics (owner 2026-10-14:
+        // Song.lines_per_slide is a setting, the old one-way reflow is gone):
+        // the 4-row stanza re-splits into two slides and the textarea keeps
+        // the exact text that was typed.
+        const SPLIT_LYRICS = "[Verso]\num\ndois\ntrês\nquatro";
+        const edTyped = await js(`(() => {
             const el = document.querySelector("textarea[aria-label=Letra]");
+            if (!el) return "sem textarea · editor aberto: " + Boolean(document.querySelector(".view-dialog .song-ed-l"));
             const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set;
-            set.call(el, "[Verso]\\num\\ndois\\ntrês\\nquatro");
+            set.call(el, ${JSON.stringify(SPLIT_LYRICS)});
             el.dispatchEvent(new Event("input", { bubbles: true }));
             return true;
         })()`);
-        await waitFor(() => js("document.querySelectorAll('.ed-th').length === 1"));
-        await click(".song-ed-l ~ .col .kx-panel-h .kx-seg button, .kx-panel-h .kx-seg button", "2 linhas");
-        result.edReflow = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 2 && document.querySelector('textarea[aria-label=Letra]').value.includes('dois\\n\\ntrês')"), 3000);
+        if (edTyped === true) {
+            // The split is still "4 linhas": the 4-row stanza is one slide.
+            const edOneSlide = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 1"));
+            await click(".view-dialog .lines-pick button", "2 linhas");
+            const edTwoSlides = await waitFor(() => js("document.querySelectorAll('.ed-th').length === 2"), 3000);
+            const edLyricsKept = await js(`(document.querySelector("textarea[aria-label=Letra]") || {}).value === ${JSON.stringify(SPLIT_LYRICS)}`);
+            result.edSplitLive = edOneSlide && edTwoSlides && edLyricsKept === true;
+            if (!result.edSplitLive) result.edSplitLiveDiag = { edOneSlide, edTwoSlides, edLyricsKept };
+        } else {
+            result.edSplitLive = false;
+            result.edSplitLiveDiag = edTyped;
+        }
 
         // Nothing in the editor scrolls sideways at the operator widths.
         result.edNoOverflow = {};
@@ -1672,8 +1690,12 @@ async function checkConsole(webContents, { live, outputs }) {
         if (operatorWin) operatorWin.setContentSize(1600, 900);
         await sleep(300);
         result.shotEditor = await shot("editor");
-        await press("Escape");
-        await waitFor(() => js("!document.querySelector('.song-ed-l')"));
+        // The editor is dirty (the split test typed over the lyrics): the
+        // first Esc asks "Alterações não salvas", the next one discards.
+        for (let i = 0; i < 3; i += 1) {
+            await press("Escape");
+            if (await waitFor(() => js("!document.querySelector('.song-ed-l')"), 3000)) break;
+        }
 
         // The Prévia: the prepared song as Projeção shows it (the picker of
         // other outputs went with the Multiview, 2026-10-12).
@@ -2552,7 +2574,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
         && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
-        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edReflow && result.edNoOverflowOk
+        && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edSplitLive && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted && result.timerChips && result.timerKept && result.timerListed && result.timerPrepared && result.timerOn && result.timerAdjusted && result.timerDeleted && result.mvOn && result.mvShows && result.mvPicked && result.mvOff
