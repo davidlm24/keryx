@@ -46,7 +46,7 @@ const FIELDS = Object.keys(BLANK);
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const pick = (row) => { const out = { ...BLANK }; for (const k of FIELDS) if (row?.[k] != null) out[k] = row[k]; return { ...out, ...bgFields(bgSpec(row)) }; };
 
-export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch }) {
+export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["editor", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["editor", "themes"] })), [client]);
@@ -118,11 +118,22 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     }, [dirty]);
 
     // Keys: Ctrl+S saves; Esc leaves a field, then the window (asking once).
+    // Hosted in the console's floating dialog (escRef set), Esc comes routed
+    // from the console instead (keys.js ESC_ORDER "editor") and the dirty
+    // guard still asks; leaveRef is the footer's guarded Fechar. Anything
+    // over the editor (the library, a confirm) takes the keys first.
+    if (escRef) escRef.current = () => leave();
+    if (leaveRef) leaveRef.current = () => leave();
     const keysRef = useRef(null);
     keysRef.current = (e) => {
+        // Only what opens OVER the editor takes the keys (the library, a
+        // right-click menu, a confirm); Configurações' scrim sits under the
+        // floating editor and must not.
+        if (document.querySelector(".console .lib-scrim, .console .ctx-scrim, .console .confirm-scrim")) return;
         const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft) save(); return; }
         if (e.key === "Escape") {
+            if (escRef) return; // the console routes it
             e.preventDefault(); e.stopPropagation();
             if (typing) { e.target.blur(); return; }
             leave();

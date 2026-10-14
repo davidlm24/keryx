@@ -44,7 +44,7 @@ const seedFor = (path) => {
 // opens straight into editing, the canvas seeded with that page's ready
 // design (owner 2026-10-13): the seed is the baseline, so only real edits
 // are "não salvo", and nothing is written until "Salvar a tela".
-export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch }) {
+export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null }) {
     const prefRows = useOutputPrefRows();
     const church = useChurch();
     const path = EDITOR_SCREENS.includes(screenPath) ? screenPath : "/Projection";
@@ -184,13 +184,22 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const endDrag = () => { if (drag.current?.moved) setConfirm(null); drag.current = null; setGuides([]); };
 
     // Keys: arrows nudge, Delete removes, Ctrl+D duplicates, Ctrl+S saves;
-    // Esc steps out (field, picker, selection, then the window).
+    // Esc steps out (field, picker, selection, then the window). Hosted in
+    // the console's floating dialog (escRef set), Esc comes routed from the
+    // console instead (keys.js ESC_ORDER "editor"), stepping out the same
+    // way; leaveRef is the footer's guarded Fechar.
+    if (escRef) escRef.current = () => { if (adding) setAdding(false); else if (pickImage) setPickImage(false); else if (sel) setSel(null); else leave(); };
+    if (leaveRef) leaveRef.current = () => leave();
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        if (document.querySelector(".console .scrim")) return;
+        // Only what opens OVER the editor takes the keys (the library, a
+        // right-click menu, a confirm); Configurações' scrim sits under the
+        // floating editor and must not.
+        if (document.querySelector(".console .lib-scrim, .console .ctx-scrim, .console .confirm-scrim")) return;
         const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft) save(); return; }
         if (e.key === "Escape") {
+            if (escRef) return; // the console routes it
             e.preventDefault(); e.stopPropagation();
             if (typing) { e.target.blur(); return; }
             if (adding) { setAdding(false); return; }

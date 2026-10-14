@@ -630,6 +630,13 @@
 .console .view-dialog.vd-media { width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); }
 .console .view-dialog.vd-wide { width: min(1240px, calc(100% - 32px)); height: min(800px, calc(100% - var(--pop-top) - 16px)); } /* the song editor's columns, the Escola */
 .console .view-dialog.vd-reports { width: min(1000px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); }
+/* The floating Editor de temas e telas: near full screen, a layer of its
+   own — over Configurações (33), which may have opened it and stays
+   behind, under the library (37) it opens. A column: the editor body
+   (.main) and the edw footer. */
+.console .ed-scrim { z-index: 35; }
+.console .view-dialog.vd-editor { z-index: 35; flex-direction: column; gap: 0; padding: 0; width: min(1360px, calc(100% - 24px)); height: min(860px, calc(100% - var(--pop-top) - 12px)); }
+.console .view-dialog.vd-editor > .main { padding: var(--gutter); }
 
 /* ---------- Configurações (canvas artboard 20) ---------- */
 /* A window over the console: above the Camadas drawer (32), under Verificar
@@ -1102,8 +1109,8 @@
 .console .le-range { flex: 1 1 80px; min-width: 60px; accent-color: var(--brand); }
 /* The Editor de temas e layouts window (/Editor, src/pages/Editor.jsx):
    the console's shell without its top bar; a one-line footer instead. */
-.console.edw .edw-foot { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); font-size: 11px; color: var(--fg-3); }
-.console.edw .kx-gap { flex: none; width: var(--gutter); }
+.console .edw-foot { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); font-size: 11px; color: var(--fg-3); }
+.console.edw .kx-gap, .console .vd-editor .kx-gap { flex: none; width: var(--gutter); }
 
 /* Biblioteca de temas e fundos (library/BackgroundLibrary.jsx): one window
    for every picker, above Configurações (it opens from there too), below the

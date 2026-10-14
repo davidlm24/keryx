@@ -35,7 +35,8 @@ import SongEditor from "@/components/console/SongEditor";
 import ServicePlanner from "@/components/console/ServicePlanner";
 import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
-import { openEditor } from "@/lib/editorWindow";
+import { openEditor, setEditorHost } from "@/lib/editorWindow";
+import EditorHost from "@/components/editor/EditorHost";
 import SchoolView from "@/components/console/SchoolView";
 import ReportsView from "@/components/console/ReportsView";
 import SettingsView from "@/components/console/settings/SettingsView";
@@ -147,6 +148,12 @@ export default function Console() {
     // click go through it, so an unsaved guard can ask instead of closing.
     const viewEscRef = useRef(null);
     useEffect(() => { if (!view) viewEscRef.current = null; }, [view]);
+    // The Editor de temas e telas: a floating dialog of its own layer
+    // (ESC_ORDER "editor"), over whatever opened it — Configurações stays
+    // open behind and is there again on close. { kind: "theme"|"screen", id }.
+    const [edDoc, setEdDoc] = useState(null);
+    const editorEscRef = useRef(null);
+    useEffect(() => { if (!edDoc) editorEscRef.current = null; }, [edDoc]);
     const setEnv = useCallback((v) => { setView(null); setEnvState(typeof v === "function" ? v(env) : v); }, [env]);
     // Configurações: a window over whatever is on screen (the console or a
     // view), with its section (and Aparência's tab); ?config=<section> opens
@@ -183,14 +190,22 @@ export default function Console() {
     const openSong = useCallback((id) => { setOpen(null); setView({ song: id }); }, []);
     const openMedia = useCallback(() => { setOpen(null); setView({ media: true }); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setView({ notice: id || "new" }); }, []);
-    // The Editor de temas e layouts: its own window (src/lib/editorWindow.js)
-    // — the console stays exactly where it is; closing the window is the way
-    // back. Each screen owns its design (2026-10-13), so the Editor opens on
-    // a screen, never a catalog layout.
+    // The Editor de temas e telas: every openEditor call lands in this
+    // console's floating dialog (the host below; owner 2026-10-14), over
+    // whatever opened it — the library it may have come from gives way,
+    // Configurações stays behind. "Destacar em janela" goes back through
+    // openEditor with detached: true. Each screen owns its design
+    // (2026-10-13), so the Editor opens on a screen, never a catalog layout.
     const openScreen = useCallback((path) => {
         const r = openEditor({ screen: path || "/Projection" });
         if (r?.error) c.say(r.error);
     }, [c]);
+    useEffect(() => setEditorHost(({ theme, screen }) => {
+        setEdDoc(theme ? { kind: "theme", id: theme } : { kind: "screen", id: screen || "/Projection" });
+        setOpen(null);
+        closeLibrary(null);
+        return true;
+    }), [closeLibrary]);
     // The Escola bíblica sends through the KERYX environment's Prévia.
     const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setView({ school: true }); }, []);
     const openReports = useCallback(() => { setOpen(null); setView({ reports: true }); }, []);
@@ -729,7 +744,7 @@ export default function Console() {
     // environment a letter or digit opens the quick jump.
     useEffect(() => {
         const onKey = (e) => {
-            if (env === "biblia" && !open && !cfg && quick === null && !view) {
+            if (env === "biblia" && !open && !cfg && quick === null && !view && !edDoc) {
                 const ch = quickJumpKey(e);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
@@ -741,13 +756,14 @@ export default function Console() {
             if (action === "end") {
                 // "view" only when a floating view registered its close
                 // request; the page views still handle their own Esc.
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, settings: cfg, view: view && viewEscRef.current, drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq || ask, library: libReq, popover: open, editor: edDoc && editorEscRef.current, settings: cfg, view: view && viewEscRef.current, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
                     else if (top === "confirm") { if (ask) answerAsk(null); else answerConfirm(false); }
                     else if (top === "library") closeLibrary(null);
                     else if (top === "popover") setOpen(null);
+                    else if (top === "editor") editorEscRef.current?.();
                     else if (top === "settings") setCfgAt(null);
                     else if (top === "view") viewEscRef.current?.();
                     else if (top === "drawer") setDrawer(false);
@@ -765,7 +781,7 @@ export default function Console() {
             // and Delete, the editors' Ctrl+S, Space while marking timings)
             // are its own listeners. The Escola bíblica is the projecting
             // view: every live key works there.
-            if ((cfg || (view && !school)) && !["black", "logo"].includes(action)) return;
+            if ((cfg || edDoc || (view && !school)) && !["black", "logo"].includes(action)) return;
             if (action === "send") { e.preventDefault(); sendStage(); }
             else if (action === "next") { e.preventDefault(); c.moveSlide(1); }
             else if (action === "prev") { e.preventDefault(); c.moveSlide(-1); }
@@ -792,7 +808,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, edDoc, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm]);
     useEffect(() => { if (view) setEditing(false); }, [view]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -1065,7 +1081,7 @@ export default function Console() {
             </div>
         } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} player={playerDocked ? playerSlot : null}
-                items={playable} multiview={multiview} still={Boolean(view)}
+                items={playable} multiview={multiview} still={Boolean(view || edDoc)}
                 onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
                 onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
                     { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
@@ -1175,6 +1191,17 @@ export default function Console() {
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} />}
+            {/* The Editor de temas e telas: a floating dialog over whatever
+                opened it (Configurações stays behind); the scrim click asks
+                the editor to close, exactly as Esc does. */}
+            {edDoc && <div className="scrim is-dim ed-scrim" onClick={() => editorEscRef.current?.()} />}
+            {edDoc && (
+                <div className="view-dialog vd-editor" role="dialog" aria-modal="true" aria-label="Editor de temas e telas">
+                    <EditorHost key={`${edDoc.kind}:${edDoc.id}`} initial={edDoc} say={c.say} live={c.cur} now={c.now} media={data.media} themes={data.themes}
+                        onClose={() => setEdDoc(null)} escRef={editorEscRef} closeLabel="Fechar"
+                        onDetach={(doc) => { setEdDoc(null); const r = openEditor({ [doc.kind === "theme" ? "theme" : "screen"]: doc.id, detached: true }); if (r?.error) c.say(r.error); }} />
+                </div>
+            )}
             {open && <div className={`scrim ${cfg ? "over-cfg" : dlgView ? "over-view" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (

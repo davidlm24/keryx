@@ -178,7 +178,7 @@ export default function TelasSection({ c, onOpenScreen }) {
                                 o.open && { label: "Trazer para a frente", onSelect: () => apply(displays.open(o.key)) },
                                 o.key !== "/Projection" && { label: "Remover saída", icon: "trash", onSelect: () => removeOutput(o) },
                             ].filter(Boolean) })}>
-                            <button type="button" className="kx-t cfg-card-thumb" onClick={() => onOpenScreen?.(o.key)} title={`Editar ${o.label} no Editor, na janela dele`}>
+                            <button type="button" className="kx-t cfg-card-thumb" onClick={() => onOpenScreen?.(o.key)} title={`Editar ${o.label} no Editor`}>
                                 <OutputPreview path={o.key} pref={pref} design={designOf(pref, layoutRows)} themes={themes} live={c.live} now={c.now} church={church} />
                             </button>
                             <div className="cfg-card-h">
