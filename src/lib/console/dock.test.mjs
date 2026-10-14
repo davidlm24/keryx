@@ -303,7 +303,7 @@ test("the No ar strip is as tall as the slide with the most lines", () => {
 
 // The Bíblia's dock: the same engine, its own modules.
 const bible = () => split("row", [
-    split("col", [g("bhead"), g("books"), g("chapters"), g("verses")], [132, 320, 200, null]),
+    split("col", [g("books"), g("chapters"), g("verses")], [320, 200, null]),
     g("reading"),
     g("air"),
 ], [300, null, 400]);
@@ -314,7 +314,7 @@ test("the Bíblia: its default dock is the three columns it had", () => {
     const d = fromBibleArrangement({ order: { biblia: ["reading", "picker", "air"] }, stacks: { picker: ["verses", "books", "chapters"] }, bibleSelW: 340 });
     assert.deepEqual(d.tree, split("row", [
         g("reading"),
-        split("col", [g("bhead"), g("verses"), g("books"), g("chapters")], [132, 200, 320, null]),
+        split("col", [g("verses"), g("books"), g("chapters")], [200, 320, null]),
         g("air"),
     ], [null, 340, 400]));
 });
@@ -322,7 +322,10 @@ test("the Bíblia: its default dock is the three columns it had", () => {
 test("the Bíblia: only its modules, its required ones back, the environment kept", () => {
     const d = normalizeDock({ env: "biblia", tree: split("row", [g("reading", "lib"), g("programa")], [null, 300]), hidden: ["slides", "books"] });
     assert.equal(d.env, "biblia");
-    assert.deepEqual(leaves(d.tree), ["reading", "bhead", "air"], "culto modules are not the Bíblia's; Versão e busca and No ar come back");
+    assert.deepEqual(leaves(d.tree), ["reading", "air"], "culto modules are not the Bíblia's; No ar comes back");
+    // "Versão e busca" (bhead) folded into Livros and the text's header (2026-10-14): an old save loses it.
+    const old = normalizeDock({ env: "biblia", tree: split("row", [split("col", [g("bhead"), g("books"), g("chapters"), g("verses")], [132, 320, 200, null]), g("reading"), g("air")], [300, null, 400]) });
+    assert.deepEqual(old.tree, bible(), "the picker column closes up without it");
     assert.deepEqual(d.hidden, ["books", "chapters", "verses"]);
     // The culto never takes the Bíblia's modules.
     assert.equal(leaves(normalizeDock({ tree: g("programa", "reading") }).tree).includes("reading"), false);
@@ -331,17 +334,18 @@ test("the Bíblia: only its modules, its required ones back, the environment kep
     assert.deepEqual(off.hidden, ["books"]);
     assert.deepEqual(hideModule(defaultDock({ env: "biblia" }), "air"), defaultDock({ env: "biblia" }), "No ar never leaves");
     assert.deepEqual(returnModule(off, "books"), defaultDock({ env: "biblia" }));
-    const tabs = moveModules(defaultDock({ env: "biblia" }), ["chapters"], { kind: "group", path: [0, 1], zone: "center" });
+    const tabs = moveModules(defaultDock({ env: "biblia" }), ["chapters"], { kind: "group", path: [0, 0], zone: "center" });
     assert.equal(tabs.env, "biblia");
-    assert.deepEqual(nodeAt(tabs.tree, [0, 1]), group(["books", "chapters"], "chapters"));
+    assert.deepEqual(nodeAt(tabs.tree, [0, 0]), group(["books", "chapters"], "chapters"));
     assert.equal(defaultSize(defaultDock({ env: "biblia" }), [], 2), 400);
 });
 
 test("the Bíblia fits the smallest window side by side", () => {
     const f = fitDock(defaultDock({ env: "biblia" }), 960, 600);
     assert.equal(JSON.stringify(f).includes('"collapsed"'), false);
-    // 948 px: the side columns give way in proportion to their room (60 and 100 px).
-    assert.deepEqual(f.children.map((c) => Math.round(c.size)), [258, 360, 330]);
+    // 948 px: the side columns give way in proportion to their room (100 px
+    // each: the pickers column is 200 px at least since "Versão e busca" left).
+    assert.deepEqual(f.children.map((c) => Math.round(c.size)), [244, 360, 344]);
 });
 
 test("a console never edited opens as it looked at its width: medium and narrow", () => {
