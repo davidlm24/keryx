@@ -1447,6 +1447,9 @@
         "standby_background": {
           "type": "text"
         },
+        "theme_id": {
+          "type": "text"
+        },
         "kind_themes": {
           "type": "json"
         },
@@ -1476,6 +1479,9 @@
           "type": "json"
         },
         "notes": {
+          "type": "text"
+        },
+        "operator_notes": {
           "type": "text"
         },
         "status": {
@@ -1564,6 +1570,9 @@
         },
         "background": {
           "type": "json"
+        },
+        "theme_id": {
+          "type": "text"
         },
         "kind_themes": {
           "type": "json"

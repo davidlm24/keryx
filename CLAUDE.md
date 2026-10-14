@@ -16,9 +16,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   cronômetro, usuário) — the church is Brazilian; do not use pt-PT forms
   (ecrã, guardar, ficheiro, eliminar, telemóvel). Do not introduce English UI
   copy. Code identifiers and comments are English.
-- **Copy rules (owner 2026-10-13).** One word per concept, everywhere:
-  Visual do culto (fundo+temas) / Fundo do culto (só o fundo) / Fundo padrão
-  (o da igreja); "O mesmo das músicas" (herdar) e "Estilo de fábrica" (sem
+- **Copy rules (owner 2026-10-13/14).** One word per concept, everywhere:
+  Fundo do culto (o fundo do culto) / Tema do culto (o tema que o culto usa)
+  / Fundo padrão (o da igreja) — there is no "Visual do culto" any more;
+  "Tema sem nome" only where a name is required (menus, tooltips, a select),
+  never as a caption; "O mesmo das músicas" (herdar) e "Estilo de fábrica" (sem
   tema); Excluir = apaga (sempre via `useConfirm`/ConfirmDialog; the
   Editor window alone keeps the two-click, it has no provider), Tirar =
   sai do lugar, Remover só em "Remover saída"; Travar/Destravar; Tela =
@@ -78,7 +80,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   A picture's dim, blur, fit and position are its own settings
   (BackgroundPref, edited in the library; `backgroundLook`): they fill the
   Fundo when it goes on air and the Fundo on air follows when they change
-  (`useConsole`); Camadas › Fundo has no sliders of its own (2026-10-13). The
+  (`useConsole`); Camadas › Fundo has no options at all (2026-10-14). The
   Prévia and other still previews draw the text without its transition
   (`Content still`) and are built with a time fixed per stage, never the
   ticking clock (it replayed the transition every second).
@@ -97,8 +99,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   left out of `useLibrary().media` (Biblioteca, media library, editors) and
   listed by `useBackgrounds()` (plus Mídia pictures that already have a
   BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. **A default
-  theme per kind** (`themeForKind`, `THEME_KINDS`): Música (the theme marked
-  padrão), Bíblia, Texto and Timer (`User.bible_theme_id`, `text_theme_id`,
+  theme per kind** (`themeForKind`, `THEME_KINDS`): Música (the theme in
+  use, else the theme marked padrão), Bíblia, Texto and Timer (`User.bible_theme_id`, `text_theme_id`,
   `timer_theme_id`; "" = Música's, "none" = factory), chosen in Temas ›
   Temas padrão; a timer takes its theme's font, colour and background
   (`withThemeDefaults` on `tool.show`, `fundoOps`), text items and Escola
@@ -108,23 +110,34 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Esc answers no, before anything else). The Prévia's width is the
   operator's (`layout.prevPct`, the splitter beside it; the Programa gives
   way, `--prev` in console.css); the Próximo sits beside it.
-  **Temas are presets of the Fundo layer** (owner's decision 2026-10-13, as
-  Holyrics' theme column; the Temas console card is gone — don't bring it
-  back): Camadas › Fundo shows up to 6 pinned themes as small screens
-  (`ThemeStrip.jsx`, `consoleThemes` in themes.js; `ProjectionTheme.pinned`,
-  toggled by "Fixar no console" in the strip's menu, the library's Temas tab
-  and Configurações › Temas; none pinned = the default + most recent).
-  **A click makes it the theme in use** (the hybrid, 2026-10-13): it
-  dresses the text on air (`applyThemeOnAir` in `themeActions.js`: text
-  look + Fundo, padlock respected) AND everything sent afterwards
-  (`withThemeInUse` in stamp; `c.themeId` is what Camadas calls "Tema: …"),
-  until someone changes it — without writing the service's preset. The
-  Visual do culto only seeds it (choosing the culto, or its Música theme
-  changing; the day's draft an action of the operator starts is not a
-  choice of culto and leaves it, `themeInUseSeed`); the menu's "Salvar no visual do culto" records it, "Seguir o
-  culto" goes back, and the Fundo section has no quick-picture strip (the
-  library is one button away). With nothing on air a click puts an example
-  in the Prévia instead
+  **Camadas › Temas** (owner's review 2026-10-14, as Holyrics' theme
+  column; the Temas console card is gone — don't bring it back): a section
+  always at the top of Camadas, above the layer list, with up to 6 pinned
+  themes as small screens (`ThemeStrip.jsx`, `consoleThemes` in themes.js;
+  `ProjectionTheme.pinned`, toggled by "Fixar no console" in the strip's
+  menu, the library's Temas tab and Configurações › Temas; none pinned =
+  the default + most recent). **Camadas edits no look**: the Fundo layer
+  has no options (the culto's background is the Programa's Fundo do culto;
+  the row keeps its eye, padlock and place) and Texto principal only the
+  item's Título — the text look is edited only in the Editor de temas; when
+  the text on air looks otherwise (a song's own look) it says so and offers
+  Restaurar (`applyThemeOnAir`) and Salvar como novo (an unnamed theme).
+  The library's "Ao vivo" mode and Editar fundo… left with Camadas › Fundo.
+  **A click makes it the theme in use**: it dresses the text on air
+  (`applyThemeOnAir` in `themeActions.js`: text look + Fundo, padlock
+  respected) AND everything sent afterwards (Música in `themeForKind`,
+  via stamp; `c.themeId`, the "· em uso" of the Temas heading), until
+  someone changes it. **It is kept on this computer** (localStorage
+  `keryx.themeInUse`, `useConsole`): lost on a reopen, the next song went
+  out over the Fundo do culto with the factory look (the bug of the review
+  2026-10-14, pinned in themes.test.mjs). Choosing a culto with a theme of
+  its own (`Service.theme_id`), or changing its theme, makes that one the
+  theme in use; a culto with none leaves it (`themeInUseSeed`). When KERYX
+  opens, the last click wins: the culto it opens on does not replace a
+  theme in use on this computer. The menu's "Usar neste culto" ("Usar
+  hoje" with no service, starting the day's draft) writes `Service.theme_id`;
+  "Seguir o culto" goes back to it. With nothing on air a click puts an
+  example in the Prévia instead
   (`themeSampleStage`, `stage.theme`: sending it only applies the theme's
   background, never the example text), a double click
   (or the menu's Editar, or Configurações › Temas) edits it in the Editor
@@ -133,7 +146,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   second theme editor back),
   and "Salvar tema para a música" writes `Song.theme_id` for the song on air
   or in the Prévia. A Bible passage takes **the Bíblia's own theme**
-  (`User.bible_theme_id`: "" = the songs' default, "none" = factory;
+  (`User.bible_theme_id`: "" = whatever the songs get now — the theme in
+  use, else the default; the same for Texto and Timer — "none" = factory;
   `themeForKind` in themes.js, used by `stamp`), chosen in the Bíblia's Tema
   button or Configurações › Bíblia e músicas. The item's title over the
   slide is `style.title` (show/hide, Camadas › Texto principal › Título);
@@ -142,22 +156,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   screen shows the service's background (`Service.background`), else the
   church's (`User.default_background`; the old `standby_background` still
   counts; `User.weekday_backgrounds` is no longer read) — `defaultFundo` in
-  `src/lib/console/defaultFundo.js`. **The look is the service's**
-  (2026-10-13, `src/lib/console/serviceLook.js`): its background and its
-  own theme per kind (`Service.kind_themes` { lyrics, bible, text, tool }),
-  which `themeForKind` puts before the church's Temas padrão; edited in
-  "Visual do culto…" (`library/LookDialog.jsx`, `useLookEditor()`: the Fundo
-  layer's strip in Camadas — the right side owns the projection's look,
-  2026-10-13; it left the Setlist's header — plus Planejar o culto and a
-  template's "Visual…" in Configurações › Culto). With no service it is "Visual de hoje…" and the first choice
-  starts the day's draft (`ensureService`), as in Holyrics. A template
-  (`ServiceTemplate.background`/`kind_themes`) keeps the look: "Salvar como
-  modelo" saves it, applying one fills what the service has not chosen
-  (`lookForService`).
+  `src/lib/console/defaultFundo.js`. **A service keeps a background and one
+  theme** (owner's review 2026-10-14, as in Holyrics: the Visual do culto,
+  its window `LookDialog` and the per-kind service themes are gone — don't
+  bring them back; `src/lib/console/serviceLook.js`): `Service.background`
+  (the Fundo do culto) and `Service.theme_id` (optional, from the library;
+  `serviceTheme` reads the old `kind_themes.lyrics` when it is empty).
+  `kind_themes` stays in the table (user data) and nothing writes or reads
+  its other kinds. Planejar o culto edits both (`BgChip`,
+  `library/ThemeChip.jsx`), and so does a template's row in Configurações ›
+  Culto (`ServiceTemplate.background`/`theme_id`): "Salvar como modelo"
+  saves them, applying one fills what the service has not chosen
+  (`lookForService`). Themes may be unnamed (`ProjectionTheme.name` is
+  optional, `themeName`): no made-up date, no caption under the thumb.
   The Programa's header has **Fundo do culto** (Fundo de hoje with no
   service; `pickServiceFundo` in Console.jsx): the library picks the
-  service's wallpaper, saved as the Visual do culto's background (the
-  day's draft starts if need be), and the Fundo padrão follows at once.
+  service's wallpaper, saved as `Service.background` (the day's draft
+  starts if need be), and the Fundo padrão follows at once.
   The console keeps it
   in the live state (`background.default`, `defaultBackground`) and `clear`
   (Esc, from anyone) puts it on the Fundo unless the padlock holds it;
@@ -166,10 +181,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Tela preta too — KERYX reopens with the screens black — but never past
   Travar telas or the padlock (`fundoGoesOnNow` in defaultFundo.js). The idle
   screen is only Logo or Preto. In the library, Gerados shows the
-  background big; opened for the Fundo on air (`live: true`, Camadas'
-  Biblioteca… and Editar fundo…) "Ao vivo" sends each choice at once and
-  Cancelar/Esc put back the Fundo there was. A right click on a Temas card
-  offers Aplicar, Editar, Salvar para a música, Tornar padrão, Usar na Bíblia.
+  background big. A right click on a Temas card offers Aplicar, Editar,
+  Salvar para a música, Tornar padrão, Usar na Bíblia, Usar neste culto.
 
 - **The app is the operator console, `/Console`** (`src/pages/Console.jsx`,
   `src/components/console/`); `/` and any unknown path go there. It is built
@@ -237,13 +250,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Biblioteca and Slides are whole columns; the **centre** (`live`) is the
   Programa on top (CenterPanel: the monitor or the Multiview, and the
   player **always visible**, dimmed while idle) and below it one row that
-  **ends at the centre's edge**: the Prévia panel (caption in its header
-  like the Programa's; 44 % of the centre at first) with **Enviar ao ar
-  inside it, right under the monitor**, then the **tabs panel**
+  **ends at the centre's edge**: the Prévia (44 % of the centre at first),
+  then the **tabs panel**
   (`TabsPanel.jsx`); the **right column** (`rightW`) is **Camadas over the
   Setlist, full height** (Camadas 360 px high: the Setlist gets most of the
-  column). Camadas in the tray is a drawer opened from the Programa's
-  header. The old `order`/`stacks`/widths are only read to build the first
+  column). **The Programa and the Prévia have no card** (owner 2026-10-14,
+  `Panel bare`, `kx-panel-bare`): the Programa is its header line (caption,
+  Fundo do culto, Voltar ao anterior, Multiview), the screen and the player;
+  the Prévia is its screen, its caption a badge inside the top-left corner
+  (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
+  locked), and **no Enviar ao ar button** — Enter, a double click on it
+  or its right-click menu send (the Bíblia, the Escola bíblica and the
+  Mídia keep theirs). Camadas in the tray is a drawer opened from the
+  Programa's header. The old `order`/`stacks`/widths are only read to build the first
   dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca end
   their tab row in a (+)** that lists every tab with a check mark
   (`TabsMenu` in Popovers.jsx, as Ver lists the modules): checked = shown,
@@ -252,8 +271,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tested; "Restaurar disposição" resets it). The panel's tabs reuse what
   exists, no projection logic of their own: **Notas** (the
   `ServiceItem.notes` of the item in the Prévia / on air, and the Escola
-  bíblica teacher notes — these sit under Enviar ao ar when the Notas tab
-  is not on screen), **Aviso rápido**, **Timers** (`QuickTools.jsx`; the
+  bíblica teacher notes — these sit under the Prévia's screen when the
+  Notas tab is not on screen — and the operator's own free notes,
+  `Service.operator_notes`, saved a moment after typing stops and on
+  leaving the field; never in the PDF, never on a screen; with no service
+  the first one starts the day's draft), **Aviso rápido**, **Timers** (`QuickTools.jsx`; the
   defaults), **Ferramentas** and **Esteve no ar** (the "Voltar ao
   anterior" history). Where the panel shows the Aviso rápido or the
   Ferramentas, Biblioteca › Avisos leaves them out (`elsewhere`); the
@@ -266,8 +288,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Setlist tab are gone. Setlist sections are ServiceItems of type `SECTION`: headers that
   take no time and never go on air — use `playableItems`/`plan` from
   `src/lib/console/setlist.js`. A click prepares a *stage* in the Prévia;
-  Enter, a **double click** or "Enviar ao ar" sends it (user decision
-  2026-10-07; dragging a library row onto the Prévia prepares, onto the
+  Enter, a **double click** or the Prévia's menu "Enviar ao ar" sends it
+  (user decision 2026-10-07; dragging a library row onto the Prévia prepares, onto the
   Programa sends, onto the Setlist adds a ServiceItem). There is no
   Ensaio: rehearsing is **"Travar telas"** (Saídas), the live state's
   `locked` flag, enforced in `applyOp` (status 423) so every sender
@@ -285,7 +307,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   continua", as in Holyrics) moves a video off the projector into the
   audio channel at the same second (`media.toAudio`; "Mostrar o vídeo" is
   `audio.toMedia`; `videoSwap` in `src/lib/console/player.js`, no
-  YouTube). Keys go through `src/lib/console/keys.js` (with
+  YouTube) in the same `<video>`, without a gap: `LiveVideo` takes its
+  element from the window's pool by url (`src/lib/mediaPool.js`, tested),
+  so the player that unmounts hands it to the one that mounts in the same
+  commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
   a test); a mouse click must not leave focus on a control, Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background library, a popover, then
   Configurações, then the Camadas drawer; views defer while a `.scrim` is
@@ -334,7 +359,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   renderer's background (moving on an output and on the Programa monitor,
   one still frame elsewhere). A new generator is an entry in `GENERATORS`
   (its GLSL body leaves `v`), its id in `GENERATOR_IDS`, and a preset. The
-  console edits it in Camadas › Fundo › Gerado (`GeneratorPanel.jsx`); a
+  console edits it in the library's Gerados (`GeneratorPanel.jsx`); a
   theme keeps one in `background_generator` (`themeBackgroundArgs`).
   **Áudio-reativo** (`gen.audio`): the console measures the PC's output
   with its meters (`useAudioFeed`) and sends the level ~20×/s over its own
@@ -377,7 +402,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **Media URLs:** the store keeps `keryx-media://<file>`; pages get
   `http://127.0.0.1:7700/media/<file>` from the adapter. Never write the http
   form into the database by other means, and keep checks like
-  `startsWith("http")` working.
+  `startsWith("http")` working. A video's still is `Media.thumbnail_url`
+  (taken by the console, `usePosterBackfill` + `mediaPosterCapture.js`,
+  sent through `UploadFile`); it rides in the live item as `poster` for the
+  Prévia and shows on hover in the Biblioteca.
 
 ## Commands
 
@@ -498,7 +526,7 @@ so a release follows these rules. The steps and commands are in README ›
   version's note (`docs/release-notes/<version>.md`) before the build. Every other session
   ships features as normal PRs but never changes `version` in
   `package.json`, never opens a `release/<version>` branch or PR, and never
-  runs `electron-builder --publish`. A session that sees a claim by another
+  runs `scripts/release-upload.cjs` (or `electron-builder --publish`). A session that sees a claim by another
   one (below) does not release: it tells the user. The rules below are the
   release session's.
 - **Claim the version first.** The next patch after the latest published
@@ -510,7 +538,13 @@ so a release follows these rules. The steps and commands are in README ›
 - **Publish only when the user asks, once, from the release branch.** A publish
   that fails or is interrupted is never re-run blindly: look at the release
   first.
-- **A publish makes a draft, never a public release** (`releaseType: draft`).
+- **The build never publishes** (`electron-builder --publish never`):
+  `node scripts/release-upload.cjs <version>` checks `release/`, refuses if
+  `v<version>` exists in any state, and uploads it as **one draft**, the
+  installer first and `latest.yml` last. `--publish always` is out: its
+  parallel uploads each created the release (two drafts in 0.2.15 and
+  0.2.16).
+- **An upload makes a draft, never a public release.**
   `node scripts/release-check.cjs <version> --publish` checks it (the
   installer, its `.blockmap` and `latest.yml` are there, `latest.yml` names
   this version, the installer has the sha512 and size it names) and only then

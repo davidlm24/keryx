@@ -2,7 +2,7 @@
 // screen shows the service's background, else the church's. It goes on the
 // Fundo when KERYX opens with none, when a service is chosen, and on Esc (the
 // live state's background.default; never past Camadas' padlock).
-//   Service.background            the service's (Visual do culto; a template
+//   Service.background            the service's (Fundo do culto; a template
 //                                 brings it, and a day with no service gets
 //                                 its draft "Setlist de dd/mm")
 //   User.default_background       the church's (Aparência)

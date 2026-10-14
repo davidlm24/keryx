@@ -1393,12 +1393,13 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
         result.tlGone = await js("!document.querySelector('.tl-panel') && !document.querySelector('.kx-tl')");
-        // No service yet: the Fundo layer's strip offers the day's look
-        // (Visual de hoje…, which would start today's setlist, as adding an
-        // item does). Camadas may be a card or the drawer at this width.
+        // Camadas (owner's review 2026-10-14): Temas at the top, always
+        // there; the Fundo layer has no options of its own (the culto's
+        // background is the Programa's Fundo do culto) and the Visual do
+        // culto is gone. Camadas may be a card or the drawer at this width.
         const dayLookDrawer = await js("(() => { const b = [...document.querySelectorAll('.prog-panel .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return Boolean(b); })()");
         await click(".kx-layer", "Fundo");
-        result.dayLookButton = await waitFor(() => js("[...document.querySelectorAll('.tm-acts button')].some((b) => b.textContent.includes('Visual de hoje'))"), 4000);
+        result.temasOnTop = await waitFor(() => js("(() => { const t = document.querySelector('.layerthemes'); const l = document.querySelector('.kx-layer'); return Boolean(t && l) && t.textContent.includes('Temas') && Boolean(t.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING) && ![...document.querySelectorAll('.layerprops button, .tm-acts button')].some((b) => /Biblioteca…|Editar fundo|Visual d/.test(b.textContent)); })()"), 4000);
         if (dayLookDrawer) await js("(() => { const b = [...document.querySelectorAll('.prog-panel .kx-panel-h button')].find((x) => x.textContent.includes('Camadas')); if (b) b.click(); return true; })()");
         // No service yet: dropping a song on the Setlist (the right column,
         // under Camadas, in the wide tier) starts today's setlist.
@@ -1966,14 +1967,12 @@ async function checkConsole(webContents, { live, outputs }) {
         result.bgNotInMedia = await js("Boolean(document.querySelector('.console .kx-tabs button.is-on')) && ![...document.querySelectorAll('.console .kx-row')].some((n) => n.textContent.includes('Clipe de fundo'))");
         await click(".kx-tabs button", "Letras");
         await waitText(webContents, "Canto do console");
-        await dblclick(".kx-row", "Canto do console");
-        await waitFor(() => Boolean(live.get().content));
-        const styleBefore = JSON.stringify(live.get().content.style || {});
-        // The clip comes from the background library (Camadas › Fundo ›
-        // Biblioteca…, Vídeos), a double click takes it; Esc closes the
-        // window before anything else.
-        await click(".kx-layer", "Fundo");
-        await click(".layerprops button", "Biblioteca…");
+        // The clip comes from the background library through the Programa's
+        // Fundo do culto (Vídeos), a double click takes it; with nothing on
+        // air it goes on the Fundo at once (the Fundo padrão).
+        live.call("clear", {});
+        await waitFor(() => !live.get().content);
+        await click(".prog-panel .kx-panel-h button", "Fundo d");
         result.libOpen = await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog'))"), 4000);
         await click(".lib-tabs button", "Vídeos");
         await waitFor(() => js("Boolean(document.querySelector('.lib-dialog [aria-label=\"Clipe de fundo\"]'))"), 8000);
@@ -1981,20 +1980,24 @@ async function checkConsole(webContents, { live, outputs }) {
         result.libClosed = await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 4000);
         result.bgVideoSet = await waitFor(() => { const b = live.get().background; return Boolean(b && b.kind === "video" && String(b.value).endsWith("smoke-fundo.mp4")); }, 5000);
         result.bgVideoDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("Boolean(document.querySelector('video.ks-bg-video'))").catch(() => false), 4000);
-        // Temas na camada Fundo (presets, ThemeStrip): a pinned theme shows
-        // as a tile; a click dresses what is on air; "Salvar tema para a
-        // música" ties the song on air to it and "Tirar tema da música" lets
-        // it go.
+        // The clip stays on the Fundo; the culto goes back to no background of its own.
+        await js('(async () => { const rows = (await window.keryxDesktop.db.call("Service", "list", [])).data || []; for (const r of rows) if (String((r.background || {}).value || "").endsWith("smoke-fundo.mp4")) await window.keryxDesktop.db.call("Service", "update", [r.id, { background: null, standby_background: "" }]); return true; })()');
+        await waitFor(() => !String((live.get().defaultBackground || {}).value || "").endsWith("smoke-fundo.mp4"), 4000);
+        await dblclick(".kx-row", "Canto do console");
+        await waitFor(() => Boolean(live.get().content));
+        const styleBefore = JSON.stringify(live.get().content.style || {});
+        // Camadas › Temas (presets, ThemeStrip): a pinned theme shows as a
+        // tile; a click dresses what is on air; "Salvar tema para a música"
+        // ties the song on air to it and "Tirar tema da música" lets it go.
         await js('(async () => { const rows = (await window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("ProjectionTheme", "update", [r.id, { pinned: true }]); return rows.length; })()');
-        await click(".kx-layer", "Fundo");
         await waitFor(() => js("Boolean(document.querySelector('.tm-tile[aria-label=\"Tema Smoke\"]'))"), 5000);
         await click(".tm-tile", "Tema Smoke");
         result.themeApplied = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000);
-        // The hybrid (2026-10-13): the clicked theme is the one in use — the
-        // next send keeps it, without writing the service's preset.
+        // The clicked theme is the one in use — the next send keeps it,
+        // without writing the culto's theme (Service.theme_id).
         await dblclick(".kx-row", "Canto do console");
         result.themeSticky = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "serif"); }, 5000)
-            && !(((await js(`window.keryxDesktop.db.call("Service", "get", [${JSON.stringify(svc.id)}])`)).data || {}).kind_themes || {}).lyrics;
+            && !((await js(`window.keryxDesktop.db.call("Service", "get", [${JSON.stringify(svc.id)}])`)).data || {}).theme_id;
         const songThemeId = async () => ((await js(`window.keryxDesktop.db.call("Song", "get", [${JSON.stringify(song.id)}])`)).data || {}).theme_id || "";
         await click(".tm-song button", "Salvar tema para a música");
         result.songThemeSaved = await waitFor(async () => Boolean(await songThemeId()), 4000);
@@ -2011,7 +2014,6 @@ async function checkConsole(webContents, { live, outputs }) {
         // Camadas' padlock on the Fundo: a song sent with its own picture
         // leaves the Fundo as it is (and the projector does not paint the
         // song's picture); Destravar frees it again.
-        await click(".kx-layer", "Fundo");
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "keryx-media://bundled/backgrounds/1557672172-298e090bd0f1.webp" }])`);
         await sleep(600);
         await js("(() => { const row = [...document.querySelectorAll('.kx-layer')].find((n) => n.textContent.includes('Fundo')); const b = row && row.querySelector('button[aria-label=\"Travar\"]'); if (b) b.click(); return Boolean(b); })()");
@@ -2024,19 +2026,15 @@ async function checkConsole(webContents, { live, outputs }) {
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "" }])`);
         live.call("background.clear", {});
 
-        // Editar fundo… (Camadas, a generated Fundo on air): the library opens
-        // with the background big and Ao vivo on; another generator goes to
-        // the screens before Usar, and Esc puts back the one there was.
-        live.call("background.set", { kind: "generator", value: "clouds", title: "Nuvens" });
-        await waitFor(() => (live.get().background || {}).value === "clouds");
-        await click(".kx-layer", "Fundo");
-        await click(".layerprops button", "Editar fundo…");
-        result.libBig = await waitFor(() => js("Boolean(document.querySelector('.lib-dialog .lib-big-screen .ks'))"), 4000);
+        // Gerados in the library (the Programa's Fundo do culto): the
+        // background big and moving; Esc closes it without choosing.
+        await click(".prog-panel .kx-panel-h button", "Fundo d");
+        await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog'))"), 4000);
+        await click(".lib-tabs button", "Gerados");
         await js("(() => { const b = [...document.querySelectorAll('.lib-dialog .lyr-gen')].find((n) => n.textContent.includes('Aurora')); if (b) b.click(); return Boolean(b); })()");
-        result.libLive = await waitFor(() => (live.get().background || {}).value === "aurora", 4000);
+        result.libBig = await waitFor(() => js("Boolean(document.querySelector('.lib-dialog .lib-big-screen .ks'))"), 4000);
         await press("Escape");
-        result.libLiveBack = await waitFor(() => (live.get().background || {}).value === "clouds", 4000)
-            && await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 2000);
+        result.libEscClosed = await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 2000);
         live.call("background.clear", {});
 
         // Fundo padrão (Aparência; the service's wins): the console keeps it
@@ -2070,16 +2068,16 @@ async function checkConsole(webContents, { live, outputs }) {
         await js('window.keryxDesktop.db.call("User", "update", ["local", { default_background: null }])');
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background: null }])`);
         await waitFor(() => !live.get().defaultBackground, 5000);
-        // Visual do culto: the service's own theme for songs comes before the
-        // church's Temas padrão (Service.kind_themes, serviceLook.js).
+        // The culto's theme (Service.theme_id, serviceLook.js; owner's review
+        // 2026-10-14): it becomes the theme in use, so the songs go with it.
         const svcTheme = (await js('window.keryxDesktop.db.call("ProjectionTheme", "create", [{ name: "Tema do culto smoke", font_family: "mono", text_color: "#abcdef" }])')).data;
-        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { kind_themes: { lyrics: ${JSON.stringify(svcTheme.id)} } }])`);
+        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { theme_id: ${JSON.stringify(svcTheme.id)} }])`);
         await sleep(1200);
         await dblclick(".kx-row", "Canto do console");
         result.serviceThemeSent = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.font_family === "mono" && st.text_color === "#abcdef"); }, 5000);
         if (!result.serviceThemeSent) result.serviceThemeDiag = JSON.stringify((live.get().content || {}).style || null);
         live.call("clear", {});
-        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { kind_themes: null }])`);
+        await js(`window.keryxDesktop.db.call("Service", "update", [${JSON.stringify(svc.id)}, { theme_id: "" }])`);
         await js(`window.keryxDesktop.db.call("ProjectionTheme", "delete", [${JSON.stringify(svcTheme.id)}])`);
         live.call("background.clear", {});
         await js(`window.keryxDesktop.db.call("Media", "delete", [${JSON.stringify(vidRow.id)}])`);
@@ -2501,8 +2499,8 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
-        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.dayLookButton && result.serviceThemeSent && result.bgPrefFollows
-        && result.libBig && result.libLive && result.libLiveBack && result.padraoKept && result.padraoAfterEsc && result.padraoService && result.serviceFundoButton
+        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasOnTop && result.serviceThemeSent && result.bgPrefFollows
+        && result.libBig && result.libEscClosed && result.padraoKept && result.padraoAfterEsc && result.padraoService && result.serviceFundoButton
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
         && result.unlocked && result.unlockedSends && /^Culto|^Começa|^Sem culto|^Culto sem/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended

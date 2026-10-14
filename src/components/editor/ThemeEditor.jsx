@@ -17,7 +17,7 @@ import BgChip from "../console/library/BgChip";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import Icon from "../console/Icon";
 import { IconBtn } from "../console/kx";
-import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges } from "@/lib/console/themes";
+import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName } from "@/lib/console/themes";
 import { themeBoxRect, rectToTheme, MIN_WIDTH } from "@/lib/console/themeBox";
 import { TRANSITIONS, TRANSITION_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
@@ -80,7 +80,8 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     const setBg = (patch) => set(bgFields(patch && bg ? { ...bg, ...patch } : patch));
 
     const save = async () => {
-        const name = draft.name.trim() || `Tema ${new Date().toLocaleDateString("pt-BR")}`;
+        // No name, no name: never a made-up date (owner 2026-10-14).
+        const name = (draft.name || "").trim();
         const data = { ...draft, name };
         setBusy(true);
         try {
@@ -185,11 +186,11 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     return (
         <>
             <div className="col nv-l" style={{ flex: "0 1 400px", minWidth: 340 }}>
-                <Panel title={<>Tema <span className="kx-count">· {draft.name || "Novo tema"}{dirty ? " · não salvo" : ""}</span></>} actions={<>
+                <Panel title={<>Tema <span className="kx-count">· {draft.name || (savedId.current ? "Tema sem nome" : "Novo tema")}{dirty ? " · não salvo" : ""}</span></>} actions={<>
                     <select className="pl-input le-use" value={savedId.current || ""} onChange={(e) => switchTo(e.target.value || "new")} aria-label="Trocar de tema" title="Editar outro tema">
                         {!savedId.current && <option value="">{draft.name || "Novo tema"}</option>}
                         <option value="new">Novo tema…</option>
-                        {others.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        {others.map((t) => <option key={t.id} value={t.id}>{themeName(t)}</option>)}
                     </select>
                     {Boolean(savedId.current) && <Btn small kind={confirm === "delete" ? "air" : ""} onClick={removeTheme}>{confirm === "delete" ? "Excluir mesmo" : "Excluir"}</Btn>}
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>

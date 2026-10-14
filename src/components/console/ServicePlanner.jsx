@@ -11,12 +11,10 @@ import { readChapter } from "@/lib/bibleText";
 import { bibleVersionWanted } from "./BibleEnv";
 import { parseDuration, formatDuration } from "@/lib/songImport";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
-import { BgThumb } from "./library/BgChip";
-import { useLookEditor } from "./library/LookDialog";
-import { lookOf, lookForService, templateLookFields } from "@/lib/console/serviceLook";
-import { THEME_KINDS } from "@/lib/console/themes";
+import BgChip from "./library/BgChip";
+import ThemeChip from "./library/ThemeChip";
+import { lookOf, lookFields, lookForService, templateLookFields } from "@/lib/console/serviceLook";
 import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
-import { useThemes } from "./useConsoleData";
 
 const ADD = [
     ["SONG", "music", "Música"], ["BIBLE", "book", "Bíblia"], ["VIDEO", "film", "Vídeo"], ["AUDIO", "volume", "Áudio"],
@@ -41,12 +39,9 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const items = (useQuery({ queryKey: itemsKey, queryFn: () => keryx.entities.ServiceItem.filter({ serviceId }, "order"), enabled: Boolean(serviceId) }).data || [])
         .slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const templates = useQuery({ queryKey: ["console", "serviceTemplates"], queryFn: () => keryx.entities.ServiceTemplate.list("name") }).data || [];
-    // Visual do culto (serviceLook.js): its background and themes per kind.
-    const openLook = useLookEditor();
-    const themeRows = useThemes();
+    // The culto's look (serviceLook.js, owner's review 2026-10-14): its
+    // Fundo do culto and one theme from the library.
     const look = lookOf(svc);
-    const named = THEME_KINDS.map(([k, name]) => { const t = look.kind_themes[k] && themeRows.find((x) => x.id === look.kind_themes[k]); return t ? `${name}: ${t.name}` : null; }).filter(Boolean);
-    const lookSummary = named.length ? named.join(" · ") : look.background ? "fundo próprio · temas da igreja" : "o padrão da igreja";
     const team = useQuery({ queryKey: ["console", "worshipTeam"], queryFn: () => keryx.entities.WorshipTeam.list("name") }).data || [];
     // Configurações › Culto edits both lists while the planner stays open.
     useEffect(() => keryx.entities.ServiceTemplate.subscribe(() => client.invalidateQueries({ queryKey: ["console", "serviceTemplates"] })), [client]);
@@ -236,11 +231,15 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         {form.service_type === "evento" && <><span className="k">Evento</span><Field icon={null} {...f("event_description")} placeholder="Descrição do evento" /></>}
                         <span className="k">Status</span><Seg small value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
                         <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
-                        <span className="k">Visual do culto</span>
+                        <span className="k">Fundo do culto</span>
                         <div className="pl-wall">
-                            <BgThumb spec={look.background} />
-                            <span className="kx-meta pl-look">{lookSummary}</span>
-                            <Btn small onClick={() => openLook({ kind: "service", id: serviceId })} title="O fundo e os temas deste culto (Música, Bíblia, Texto, Timer)">Visual do culto…</Btn>
+                            <BgChip value={look.background} title="Fundo do culto" empty="o fundo padrão da igreja" noneLabel={look.background ? "Sem fundo próprio (usa o da igreja)" : undefined}
+                                onPick={(spec) => saveSvc(lookFields({ ...look, background: spec }), spec ? "Fundo do culto salvo." : "O culto volta ao fundo da igreja.")} />
+                        </div>
+                        <span className="k">Tema do culto</span>
+                        <div className="pl-wall">
+                            <ThemeChip value={look.theme_id} now={c.now}
+                                onPick={(id) => saveSvc({ theme_id: id }, id ? "Tema do culto salvo · fica em uso ao escolher o culto." : "O culto fica sem tema próprio.")} />
                         </div>
                     </div>
                     <div className="pl-danger"><Btn small kind={confirm === "svc" ? "air" : ""} onClick={deleteService}>{confirm === "svc" ? "Excluir mesmo" : "Excluir culto"}</Btn></div>

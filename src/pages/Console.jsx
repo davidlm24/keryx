@@ -5,9 +5,10 @@ import "@ds/components/bundle.css";
 import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
+import { usePosterBackfill } from "@/hooks/usePosterBackfill";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
-import { cleanKindThemes } from "@/lib/console/serviceLook";
+import { serviceTheme, lookFields, lookOf } from "@/lib/console/serviceLook";
 import { themeInUseSeed } from "@/lib/console/themes";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
@@ -40,9 +41,6 @@ import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
-import LookDialog, { LookContext } from "@/components/console/library/LookDialog";
-import { lookFields, lookOf, templateLookFields } from "@/lib/console/serviceLook";
-import { useServiceTemplates } from "@/components/console/useConsoleData";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew, TabsMenu } from "@/components/console/Popovers";
 import TabsPanel from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
@@ -88,6 +86,9 @@ export default function Console() {
     useAudioFeed(c.live);
     const logoUrl = useChurchLogo();
     const data = useLibrary();
+    // Every video's still (Media.thumbnail_url), the background library's too.
+    const allMedia = useMemo(() => [...data.media, ...data.backgroundMedia], [data.media, data.backgroundMedia]);
+    usePosterBackfill(allMedia);
     const [profile, setProfile] = useState("");
     const [quick, setQuick] = useState(null);
     // The layer the player controls when several play (null: the newest).
@@ -151,9 +152,6 @@ export default function Console() {
     const [confirmReq, setConfirmReq] = useState(null);
     const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
     const answerConfirm = useCallback((yes) => setConfirmReq((prev) => { prev?.resolve(Boolean(yes)); return null; }), []);
-    // Visual do culto (library/LookDialog.jsx): { kind: "service" | "template", id }.
-    const [lookReq, setLookReq] = useState(null);
-    const openLook = useCallback((req) => setLookReq(req || { kind: "service", id: null }), []);
     // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
@@ -262,22 +260,23 @@ export default function Console() {
     // and when it changes (KERYX opens, a service is chosen, the church edits
     // it) with nothing on air (under Tela preta too) it goes on the Fundo now —
     // never past Travar telas or the padlock (fundoGoesOnNow).
-    // The service's own themes per kind go to the console's stamp (serviceLook.js).
-    const serviceThemesKey = JSON.stringify(cleanKindThemes(service?.kind_themes));
-    useEffect(() => { c.setServiceThemes(JSON.parse(serviceThemesKey)); }, [serviceThemesKey]); // eslint-disable-line react-hooks/exhaustive-deps
-    // The theme in use starts at the service's (the hybrid, 2026-10-13):
-    // choosing a culto seeds it, and editing the preset's Música theme
-    // (Visual do culto, "Salvar no visual…") makes it follow — a deliberate
-    // choice. Clicking the strip still overrides freely, without writing.
-    // The day's draft an action of the operator starts (ensureService) is not
-    // a choice of culto: the theme in use stays (themeInUseSeed).
-    const cultoLyricsKey = cleanKindThemes(service?.kind_themes).lyrics || "";
-    const draftStarted = useRef(null);
+    // The theme in use (owner's review 2026-10-14): choosing a culto with a
+    // theme of its own (Service.theme_id, Planejar o culto or "Usar neste
+    // culto") makes that one the theme in use, and so does changing it; a
+    // culto with none leaves the one the operator clicked (themeInUseSeed) —
+    // it used to fall back to the default when the services loaded, and the
+    // song went out over the Fundo do culto. The culto KERYX opens on is not
+    // a choice: the theme last clicked on this computer stays (owner
+    // 2026-10-14, "the last click wins").
+    const cultoTheme = serviceTheme(service);
+    const openingCulto = useRef(undefined);
     useEffect(() => {
-        if (serviceId !== draftStarted.current) draftStarted.current = null;
-        const seed = themeInUseSeed({ serviceId, draftId: draftStarted.current, lyrics: cultoLyricsKey });
+        if (!serviceId) return;
+        const reopening = openingCulto.current === undefined;
+        if (reopening) openingCulto.current = serviceId;
+        const seed = themeInUseSeed(cultoTheme, { reopening, inUse: c.themeId });
         if (seed !== undefined) c.setThemeId(seed);
-    }, [serviceId, cultoLyricsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [serviceId, cultoTheme]); // eslint-disable-line react-hooks/exhaustive-deps
     const churchRow = useUser();
     const fundoPadrao = useMemo(() => defaultFundoArgs(defaultFundo({ service, user: churchRow })), [service, churchRow]);
     const padraoKey = JSON.stringify(fundoPadrao);
@@ -377,29 +376,14 @@ export default function Console() {
         const start = getPrefs().service_start_time;
         const at = start ? { startTime: start } : {};
         const row = await keryx.entities.Service.create({ title: `Setlist de ${two(d.getDate())}/${two(d.getMonth() + 1)}`, date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, status: "DRAFT", ...at });
-        draftStarted.current = row.id;
         setServiceId(row.id);
         c.say("Criada a setlist de hoje · renomeie em Planejar o culto.");
         return row.id;
     }, [serviceId, c]);
 
-    // Visual do culto: the row it edits (the service in hand, or a template)
-    // and its save. With no service yet, the first choice starts the day's
-    // draft, as adding the first item does.
-    const templateRows = useServiceTemplates();
-    const lookRow = !lookReq ? null : lookReq.kind === "template" ? templateRows.find((t) => t.id === lookReq.id) || null
-        : services.find((s) => s.id === (lookReq.id || serviceId)) || null;
-    const saveLook = useCallback(async (look) => {
-        try {
-            if (lookReq?.kind === "template") { await keryx.entities.ServiceTemplate.update(lookReq.id, templateLookFields(look)); return; }
-            const sid = lookReq?.id || serviceId || await ensureService();
-            await keryx.entities.Service.update(sid, lookFields(look));
-            if (!lookReq?.id) setLookReq({ kind: "service", id: sid });
-        } catch (err) { c.say(err?.message || "Não foi possível salvar o visual."); }
-    }, [lookReq, serviceId, ensureService, c]);
     // The service's wallpaper, one click from the Programa's header (owner's
-    // request 2026-10-13): the library picks it, saved as the Visual do
-    // culto's background (with no service, today's draft starts). The Fundo
+    // request 2026-10-13): the library picks it, saved as the service's
+    // background (with no service, today's draft starts). The Fundo
     // padrão effect below then sends background.default — and background.set
     // with nothing on air — so the screen follows at once; Esc keeps showing
     // it after a song with a background of its own.
@@ -414,6 +398,18 @@ export default function Console() {
             c.say(r.none ? "O culto volta ao fundo da igreja." : service ? "Fundo do culto salvo." : "Fundo de hoje salvo.");
         } catch (err) { c.say(err?.message || "Não foi possível salvar o fundo."); }
     }, [service, services, serviceId, ensureService, pickFromLibrary, c]);
+
+    // The Notas tab's free notes (Service.operator_notes). With no service the
+    // first save starts the day's draft, once: saves made while it is being
+    // created wait for it.
+    const notesDraft = useRef(null);
+    useEffect(() => { if (serviceId) notesDraft.current = null; }, [serviceId]);
+    const saveOperatorNotes = useCallback(async (text) => {
+        try {
+            const sid = serviceId || await (notesDraft.current ||= ensureService());
+            await keryx.entities.Service.update(sid, { operator_notes: text });
+        } catch (err) { c.say(err?.message || "Não foi possível salvar as notas."); throw err; }
+    }, [serviceId, ensureService, c]);
 
     // A library item dropped on the Setlist: a ServiceItem at that position.
     const addStageToSetlist = useCallback(async (stage, index) => {
@@ -697,13 +693,12 @@ export default function Console() {
             // Esc closes the topmost thing open (src/lib/console/keys.js,
             // escapeTarget); only with nothing open does it end the projection.
             if (action === "end") {
-                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq, library: libReq, look: lookReq, popover: open, settings: cfg, drawer, edit: editing });
+                const top = escapeTarget({ menu: ctxMenu, confirm: confirmReq, library: libReq, popover: open, settings: cfg, drawer, edit: editing });
                 if (top !== "end") {
                     e.preventDefault();
                     if (top === "menu") setCtxMenu(null);
                     else if (top === "confirm") answerConfirm(false);
                     else if (top === "library") closeLibrary(null);
-                    else if (top === "look") setLookReq(null);
                     else if (top === "popover") setOpen(null);
                     else if (top === "settings") setCfgAt(null);
                     else if (top === "drawer") setDrawer(false);
@@ -715,7 +710,7 @@ export default function Console() {
             if (ctxMenu && !["black", "logo"].includes(action)) return;
             if (open) return;
             // The library is a window over everything: only the emergency keys pass.
-            if ((libReq || confirmReq || lookReq) && !["black", "logo"].includes(action)) return;
+            if ((libReq || confirmReq) && !["black", "logo"].includes(action)) return;
             // The song editor handles its own keys (Esc, Space while marking);
             // only the emergency keys reach the screens from there.
             // So do the planner, the media library, the aviso editor and the
@@ -750,7 +745,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm, lookReq]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, view, cfg, school, libReq, closeLibrary, confirmReq, answerConfirm]);
     useEffect(() => { if (view) setEditing(false); }, [view]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -879,7 +874,7 @@ export default function Console() {
     const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
     const tabsPanel = (
         <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
-            items={items} prevItemId={prevItemId} airItemId={airItemId} onPrepare={prepare} onGo={prepareAndSend} />
+            items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend} />
     );
     const libraryPanel = (
         <Panel title="Biblioteca" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -912,7 +907,7 @@ export default function Console() {
     // The Programa: its caption, Camadas (when it is in the tray: a drawer),
     // Voltar ao anterior, Multiview, and the monitor (CenterPanel).
     const livePanel = (
-        <Panel className="prog-panel" caption={<ProgramaCaption c={c} projectorDown={projectorDown} />} actions={
+        <Panel bare className="prog-panel" caption={<ProgramaCaption c={c} projectorDown={projectorDown} />} actions={
             <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 2 }}>
                 {health.onAir && <span className={`kx-meta prog-where ${health.onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{health.onAir.text}</span>}
                 {!camadasOn && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, fundo, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
@@ -934,8 +929,8 @@ export default function Console() {
                 ] })} />
         </Panel>
     );
-    // The Prévia, Enviar ao ar under its monitor (the teacher notes too,
-    // unless the Notas tab is on screen).
+    // The Prévia: its screen, then the teacher notes (unless the Notas tab
+    // is on screen). Enter, a double click or its menu send it.
     const previaPanel = (
         <PreviaPanel c={c} logoUrl={logoUrl} notesInTab={panelOnScreen && tabLists.panel.includes("notas")}
             onSend={() => sendStage()} onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
@@ -968,7 +963,6 @@ export default function Console() {
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
-        <LookContext.Provider value={openLook}>
         <div className={`kx console is-${tier} is-${densityOf(layout)} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
@@ -1021,9 +1015,6 @@ export default function Console() {
             {cfg && <div className="scrim is-dim cfg-scrim" onClick={closeSettings} />}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
-            {lookReq && <LookDialog c={c} row={lookRow} save={saveLook} onClose={() => setLookReq(null)} what={lookReq.kind === "template" ? "do modelo" : "do culto"}
-                title={lookReq.kind === "template" ? `Visual do modelo · ${lookRow?.name || ""}` : `Visual do culto · ${lookRow?.title || "hoje"}`}
-                note={lookReq.kind === "service" && !lookRow ? "Nenhum culto escolhido: a primeira escolha cria a setlist de hoje." : null} />}
             {cfg && <SettingsView c={c} section={cfg} setSection={setCfg} onClose={closeSettings} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} />}
             {open && <div className={`scrim ${cfg ? "over-cfg" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
@@ -1071,7 +1062,6 @@ export default function Console() {
             )}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
-        </LookContext.Provider>
         </ConfirmContext.Provider>
         </LibraryContext.Provider>
         </ContextMenuProvider>

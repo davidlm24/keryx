@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { playbackPlan } from "@shared/live-state.mjs";
+import { createPool } from "@/lib/mediaPool";
 import { getYouTubeId, loadYouTubeApi } from "@/utils/youtube";
 import { usePrefs } from "@/hooks/useUser";
 
@@ -14,6 +15,27 @@ const YT_CROP = "calc(-1 * max(64px, 7%))";
 import { useDurationReport } from "@/hooks/useDurationReport";
 
 const SYNC_MS = 2000;
+
+// This window's <video> elements, by url (src/lib/mediaPool.js): a player
+// that unmounts lets its element go and one that mounts in the same commit
+// with the same file takes it, still playing. That is how "Tirar o vídeo"
+// (media.toAudio) and "Mostrar o vídeo" move a video between the media
+// layer and the hidden audio player (Projection.jsx) without a gap.
+const videos = createPool({
+    create(url) {
+        const el = document.createElement("video");
+        el.className = "w-full h-full object-contain bg-black";
+        el.playsInline = true;
+        el.preload = "auto";
+        el.src = url;
+        return el;
+    },
+    dispose(el) {
+        el.pause();
+        el.removeAttribute("src");
+        el.load();
+    },
+});
 
 /**
  * Plays one live media item (a file or a YouTube link) in step with the live
@@ -31,12 +53,13 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     const isYouTube = item?.kind === "youtube";
     const hideYtTitle = usePrefs().youtube_hide_title;
     const videoRef = useRef(null);
+    const hostRef = useRef(null);
     const ytBoxRef = useRef(null);
     const ytRef = useRef(null);
     const [blocked, setBlocked] = useState(false); // the browser refused to play with sound
     const [needTap, setNeedTap] = useState(false); // fullscreen asked for, the browser wants a tap
-    const callbacks = useRef({ onEnded, onDuration, loop });
-    callbacks.current = { onEnded, onDuration, loop };
+    const callbacks = useRef({ onEnded, onDuration, loop, muted });
+    callbacks.current = { onEnded, onDuration, loop, muted };
     const playback = item?.playback;
     const metered = Boolean(meter) && Boolean(window.keryxDesktop);
     useDurationReport(videoRef, { layer: meter, url: item?.url || "", enabled: metered && !isYouTube });
@@ -89,6 +112,41 @@ export default function LiveVideo({ item, loop = false, muted = false, className
             });
         }
     };
+
+    // A file plays in an element from the pool, put into this player's box.
+    // A layout effect, so the element changes hands inside the commit.
+    const fileUrl = isYouTube ? "" : item?.url || "";
+    useLayoutEffect(() => {
+        const host = hostRef.current;
+        if (!fileUrl || !host) return undefined;
+        const el = videos.claim(fileUrl);
+        el.muted = callbacks.current.muted;
+        el.loop = callbacks.current.loop;
+        const onMeta = () => {
+            callbacks.current.onDuration?.(el.duration);
+            syncRef.current();
+        };
+        const onEnd = () => callbacks.current.onEnded?.();
+        el.addEventListener("loadedmetadata", onMeta);
+        el.addEventListener("ended", onEnd);
+        host.appendChild(el);
+        videoRef.current = el;
+        // Taken from another player: already loaded, no loadedmetadata to wait for.
+        if (el.readyState >= 1) onMeta();
+        return () => {
+            el.removeEventListener("loadedmetadata", onMeta);
+            el.removeEventListener("ended", onEnd);
+            if (videoRef.current === el) videoRef.current = null;
+            videos.release(el);
+        };
+    }, [fileUrl]);
+
+    useLayoutEffect(() => {
+        const el = videoRef.current;
+        if (!el) return;
+        el.muted = muted;
+        el.loop = loop;
+    }, [muted, loop, fileUrl]);
 
     // Follow every change of the shared playback, and correct drift now and then.
     useEffect(() => {
@@ -161,21 +219,7 @@ export default function LiveVideo({ item, loop = false, muted = false, className
                     <div ref={ytBoxRef} style={hideYtTitle ? { position: "absolute", left: 0, right: 0, top: YT_CROP, bottom: YT_CROP } : { width: "100%", height: "100%" }} />
                 </div>
             ) : (
-                <video
-                    ref={videoRef}
-                    key={item.url}
-                    src={item.url}
-                    muted={muted}
-                    loop={loop}
-                    playsInline
-                    preload="auto"
-                    className="w-full h-full object-contain bg-black"
-                    onLoadedMetadata={(e) => {
-                        callbacks.current.onDuration?.(e.currentTarget.duration);
-                        syncRef.current();
-                    }}
-                    onEnded={() => callbacks.current.onEnded?.()}
-                />
+                <div ref={hostRef} className="w-full h-full" />
             )}
             {(blocked || needTap) && (
                 <button

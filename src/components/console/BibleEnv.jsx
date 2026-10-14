@@ -18,7 +18,7 @@ import { verseNumbers } from "@/lib/verseMarks";
 import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 import { useLibraryPicker } from "./library/libraryContext";
 import { useThemes } from "./useConsoleData";
-import { themeForKind } from "@/lib/console/themes";
+import { themeForKind, themeName } from "@/lib/console/themes";
 
 // Book groups, by position in the canon, for the colour bar of each book.
 const GROUPS = [[0, 4, "#b08a5a"], [5, 16, "#9a7a4a"], [17, 21, "#8d8a6a"], [22, 38, "#8a6a9a"], [39, 43, "#5a8ab0"], [44, 64, "#6a9a7a"], [65, 65, "#7a9a5a"]];
@@ -117,7 +117,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         const r = await pickTheme({ accept: "theme", value: prefs.bible_theme_id || bibleTheme?.id || null, title: "Tema da Bíblia", allowNone: true, noneLabel: "O mesmo das músicas", useLabel: "Usar na Bíblia" });
         const id = r?.theme ? r.theme.id : r?.none ? "" : null;
         if (id === null) return;
-        updateUser({ bible_theme_id: id }).then(() => c.say(id ? `As passagens vão ao ar com o tema ${r.theme.name}.` : "A Bíblia segue o tema das músicas.")).catch(() => c.say("Não foi possível salvar o tema da Bíblia."));
+        updateUser({ bible_theme_id: id }).then(() => c.say(id ? `As passagens vão ao ar com o tema ${themeName(r.theme)}.` : "A Bíblia segue o tema das músicas.")).catch(() => c.say("Não foi possível salvar o tema da Bíblia."));
     };
     // Bumped after an install, so the installed list and the version are read again.
     const [installRev, setInstallRev] = useState(0);

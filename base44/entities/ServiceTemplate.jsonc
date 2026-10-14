@@ -14,9 +14,13 @@
       "type": "object",
       "description": "Fundo do culto que o modelo traz ({ kind, value, gen, dim, blur, fit }); aplicado so quando o culto ainda nao tem o seu"
     },
+    "theme_id": {
+      "type": "string",
+      "description": "Tema do culto que o modelo traz (id de ProjectionTheme); aplicado so quando o culto ainda nao tem o seu (src/lib/console/serviceLook.js)"
+    },
     "kind_themes": {
       "type": "object",
-      "description": "Temas por tipo que o modelo traz ({ lyrics, bible, text, tool }); aplicados so onde o culto ainda nao tem o seu"
+      "description": "Antigo (Visual do culto, ate 2026-10-14): temas por tipo { lyrics, bible, text, tool }; nada grava mais, so o lyrics e lido quando theme_id esta vazio"
     },
     "items": {
       "type": "array",

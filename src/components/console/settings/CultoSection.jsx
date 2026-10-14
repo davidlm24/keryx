@@ -7,9 +7,9 @@ import { FormRow, Switch, CfgKey } from "./parts";
 import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import { WEEKDAYS, TEAM_ROLES, teamRole } from "@/lib/console/serviceDefaults";
 import { parseDuration, formatDuration } from "@/lib/songImport";
-import { BgThumb } from "../library/BgChip";
-import { useLookEditor } from "../library/LookDialog";
-import { lookOf } from "@/lib/console/serviceLook";
+import BgChip from "../library/BgChip";
+import ThemeChip from "../library/ThemeChip";
+import { lookOf, templateLookFields } from "@/lib/console/serviceLook";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 
 // The two lists this section edits, with the planner's query keys: a change
@@ -36,7 +36,6 @@ function Inline({ value, onCommit, placeholder, label, width = 220, type = "text
 // without a length, the forecast of the end, the setlist templates and the
 // worship team.
 export default function CultoSection({ c }) {
-    const openLook = useLookEditor();
     const user = useUser();
     const prefs = usePrefs();
     const forecast = user?.show_forecast === true;
@@ -95,7 +94,14 @@ export default function CultoSection({ c }) {
                     <Inline value={t.name} label={`Nome do modelo ${t.name}`} onCommit={(name) => { if (name) run(keryx.entities.ServiceTemplate.update(t.id, { name }), "Modelo renomeado."); }} />
                     <span className="kx-meta">{(t.items || []).length} {(t.items || []).length === 1 ? "item" : "itens"}{t.isDefault ? " · modelo do KERYX" : ""}</span>
                     <span style={{ flex: 1 }} />
-                    {!t.isDefault && <><BgThumb spec={lookOf(t).background} /><Btn small onClick={() => openLook({ kind: "template", id: t.id })} title="O fundo e os temas que este modelo traz ao culto">Visual…</Btn></>}
+                    {/* What the template brings to the culto (owner's review
+                        2026-10-14): its Fundo do culto and its theme. */}
+                    {!t.isDefault && <>
+                        <BgChip value={lookOf(t).background} title={`Fundo do modelo ${t.name}`} empty="o da igreja" noneLabel={lookOf(t).background ? "Sem fundo próprio" : undefined}
+                            onPick={(spec) => run(keryx.entities.ServiceTemplate.update(t.id, templateLookFields({ ...lookOf(t), background: spec })), "Fundo do modelo salvo.")} />
+                        <ThemeChip value={lookOf(t).theme_id} title={`Tema do modelo ${t.name}`} empty="sem tema" now={c.now}
+                            onPick={(id) => run(keryx.entities.ServiceTemplate.update(t.id, { theme_id: id }), id ? "Tema do modelo salvo." : "O modelo fica sem tema.")} />
+                    </>}
                     {!t.isDefault && <Btn small onClick={async () => { if (await confirmAsk(deleteQuestion("o modelo", t.name))) run(keryx.entities.ServiceTemplate.delete(t.id), "Modelo excluído."); }}>Excluir…</Btn>}
                 </div>
             ))}

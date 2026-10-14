@@ -6,17 +6,20 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 // pieces: a module, its header, buttons, a field, a row, a monitor, a
 // splitter. Visual rules live in the stylesheet; these only lay out markup.
 
-export function Panel({ title, count, lead, caption, actions, collapsed, onToggle, className = "", style, children, bodyStyle }) {
+// `bare`: no card (kx-panel-bare), the module sits on the console's ground
+// (the Programa, the Prévia); with nothing for it, the header is left out.
+export function Panel({ title, count, lead, caption, actions, collapsed, onToggle, bare = false, className = "", style, children, bodyStyle }) {
+    const head = !bare || title || caption || actions || lead || onToggle;
     return (
-        <div className={`kx-panel ${collapsed ? "is-collapsed" : ""} ${className}`} style={style}>
-            <div className="kx-panel-h">
+        <div className={`kx-panel ${bare ? "kx-panel-bare" : ""} ${collapsed ? "is-collapsed" : ""} ${className}`} style={style}>
+            {head && <div className="kx-panel-h">
                 {lead}
                 {caption ? <span className="kx-panel-cap">{caption}</span> : <span className="kx-section">{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>}
                 {actions}
                 {onToggle && (
                     <IconBtn name={collapsed ? "chevron-right" : "chevron-down"} title={collapsed ? "Expandir" : "Recolher"} onClick={onToggle} small />
                 )}
-            </div>
+            </div>}
             <div className="kx-panel-b" style={bodyStyle}>{children}</div>
         </div>
     );
@@ -89,9 +92,9 @@ export function Field({ icon = "search", value, onChange, placeholder, onKeyDown
 // A list row: a glyph, a title and one grey line, time on the right, actions
 // on hover. Click, Enter and Space on the row all prepare (onClick); a
 // double click sends to air (onDoubleClick), as in Holyrics.
-export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, onContextMenu, dragProps, single, className = "", current, children }) {
+export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, onContextMenu, onMouseEnter, onMouseLeave, dragProps, single, className = "", current, children }) {
     return (
-        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} role="button" tabIndex={0} aria-current={current || undefined} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
+        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} role="button" tabIndex={0} aria-current={current || undefined} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
             {icon && <span className="kx-glyph"><Icon name={icon} /></span>}
             <div className="kx-row-main">
                 <div className="kx-row-title">{title}</div>

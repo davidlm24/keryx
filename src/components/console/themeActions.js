@@ -1,15 +1,15 @@
-import { themeStyle, themeBackgroundArgs } from "@/lib/console/themes";
+import { themeStyle, themeBackgroundArgs, themeName } from "@/lib/console/themes";
 import { STYLE_KEYS, layerLocked } from "@shared/live-state.mjs";
 
-// What clicking a theme does, shared by the Fundo layer's theme strip
-// (ThemeStrip) and Camadas' Restaurar. No rendering here.
+// What clicking a theme does, shared by Camadas › Temas (ThemeStrip)
+// and Camadas' Restaurar. No rendering here.
 
 // A theme as a stage for the Prévia: example text in its look over its
 // background (stage.theme: sending it applies the theme, useConsole.send).
 const SAMPLE_TEXT = [{ text: "Grande é o Senhor\ne mui digno de louvor" }];
 export const themeSampleStage = (theme) => ({
-    kind: "text", id: `theme:${theme.id}`, title: `Tema · ${theme.name}`, meta: "Exemplo do tema", slides: SAMPLE_TEXT, index: 0, theme,
-    op: "content.show", args: { kind: "text", title: theme.name, slides: SAMPLE_TEXT, style: themeStyle(theme), ...(themeBackgroundArgs(theme) ? { fundo: themeBackgroundArgs(theme) } : {}) },
+    kind: "text", id: `theme:${theme.id}`, title: themeName(theme, "") ? `Tema · ${themeName(theme)}` : "Tema", meta: "Exemplo do tema", slides: SAMPLE_TEXT, index: 0, theme,
+    op: "content.show", args: { kind: "text", title: themeName(theme, ""), slides: SAMPLE_TEXT, style: themeStyle(theme), ...(themeBackgroundArgs(theme) ? { fundo: themeBackgroundArgs(theme) } : {}) },
 });
 
 // A click on a theme: with text on air, it dresses it at once

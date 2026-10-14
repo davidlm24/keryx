@@ -153,10 +153,8 @@
     "pinned": {
       "type": "boolean",
       "default": false,
-      "description": "Fixado no console: aparece na faixa de temas da camada Fundo (consoleThemes em src/lib/console/themes.js)"
+      "description": "Fixado no console: aparece em Camadas › Temas (consoleThemes em src/lib/console/themes.js)"
     }
   },
-  "required": [
-    "name"
-  ]
+  "required": []
 }

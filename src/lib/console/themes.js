@@ -20,14 +20,14 @@ export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 //   1. slide.style — a song part's theme (songTheme.js); a per-output theme
 //      drops it (outputPrefs.js).
 //   2. the output's own theme (OutputPref.theme_id), for the keys it sets.
-//   3. the item's explicit style (Camadas, a song's "Próprio" look) — extras
+//   3. the item's explicit style (a song's "Próprio" look) — extras
 //      the item sets survive the default theme (withThemeDefaults fills only
 //      what is empty).
 //   4. the default (or Bíblia's) theme, stamped when the item is sent.
 //   5. the renderer's factory look (center/middle, large, sans, shadow).
 // text_align and text_position ride as extras, so the Editor de temas moves
-// the box per theme and Camadas still wins on air. Applying a theme on air
-// (the Fundo layer strip) spreads the whole themeStyle: it resets them too — a theme is
+// the box per theme and the item's own style still wins. Applying a theme on air
+// (Camadas › Temas) spreads the whole themeStyle: it resets them too — a theme is
 // a complete look.
 export const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position", "transition", "transition_ms"];
 const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""]));
@@ -49,21 +49,28 @@ export function defaultTheme(themes) {
 }
 export const isDefaultTheme = (themes, t) => Boolean(t) && defaultTheme(themes)?.id === t.id;
 
-// The theme in use (owner's decision 2026-10-13, the hybrid): the one the
-// operator last clicked in the Fundo layer's strip (c.themeId). It dresses
-// everything sent until someone changes it, without writing the service's
-// preset — the Visual do culto only seeds it when the service is chosen.
-// Here: it rides as the service's Música theme into themeForKind.
-export const withThemeInUse = (serviceThemes, themeId) => (themeId ? { ...(serviceThemes || {}), lyrics: themeId } : serviceThemes);
+// The theme in use (owner's decisions 2026-10-13/14): the one the operator
+// last clicked in Camadas › Temas (c.themeId, useConsole), kept on this
+// computer so it survives KERYX reopening — lost on a reopen, the next song
+// went out over the Fundo do culto with the factory look (review
+// 2026-10-14). It dresses everything sent until someone changes it (Música
+// in themeForKind); choosing a culto with a theme of its own
+// (Service.theme_id, serviceLook.js) makes that one the theme in use, a
+// culto with none leaves it as it is. When KERYX opens, the last click wins
+// (owner 2026-10-14): the culto it opens on does not replace a theme the
+// operator had in use on this computer (`reopening` with `inUse`); choosing
+// a culto afterwards, or changing its theme, does.
+// -> the new theme in use, or undefined: it stays.
+export function themeInUseSeed(cultoTheme, { reopening = false, inUse = null } = {}) {
+    if (reopening && inUse) return undefined;
+    return typeof cultoTheme === "string" && cultoTheme.trim() ? cultoTheme.trim() : undefined;
+}
 
-// What the theme in use becomes when the service, or its Música theme,
-// changes (choosing a culto seeds it): the service's Música theme, null for
-// the default — or undefined, "it stays", for the day's draft that an action
-// of the operator just started (the first item added, Fundo de hoje): that is
-// not a choice of culto, and the draft has no Música theme of its own.
-export const themeInUseSeed = ({ serviceId = null, draftId = null, lyrics = "" } = {}) => (serviceId && serviceId === draftId && !lyrics ? undefined : lyrics || null);
+// A theme's name for menus, tooltips and toasts; an unnamed theme shows no
+// caption under its thumbnail (owner 2026-10-14), so callers pass "" there.
+export const themeName = (t, fallback = "Tema sem nome") => (typeof t?.name === "string" && t.name.trim()) || fallback;
 
-// The themes the Fundo layer offers as presets (owner's decision 2026-10-13,
+// The themes Camadas › Temas offers as presets (owner's decision 2026-10-13,
 // as Holyrics' theme column): the pinned ones (ProjectionTheme.pinned), by
 // name; with none pinned, the default theme first and then the most recently
 // changed, so a new church sees something useful. At most `max` (6 tiles).
@@ -77,29 +84,28 @@ export function consoleThemes(themes, max = 6) {
 }
 
 // A default theme per kind of content (owner's decision 2026-10-13, as in
-// SPresenter): Música is the theme marked padrão (ProjectionTheme.is_default);
-// Bíblia, Texto (text items, Escola bíblica) and Timer (the clock, the
-// stopwatch and timers) have their own on the profile (User.bible_theme_id,
-// text_theme_id, timer_theme_id): "" = the same as Música, "none" = the
+// SPresenter): Música is the theme in use, else the theme marked padrão
+// (ProjectionTheme.is_default); Bíblia, Texto (text items, Escola bíblica)
+// and Timer (the clock, the stopwatch and timers) have their own on the
+// profile (User.bible_theme_id, text_theme_id, timer_theme_id): "" = the
+// same as Música — so a theme clicked in Camadas dresses a passage, a text
+// or a timer that follows the songs (audit 2026-10-14) — "none" = the
 // factory look, else a theme (a deleted one falls back to Música's).
+// A service's old theme per kind (Service.kind_themes) is no longer read:
+// the owner's review 2026-10-14 left a service one theme, which only seeds
+// the theme in use.
 export const THEME_KINDS = [["lyrics", "Música"], ["bible", "Bíblia"], ["text", "Texto"], ["tool", "Timer"]];
 export const KIND_FIELD = { bible: "bible_theme_id", text: "text_theme_id", tool: "timer_theme_id" };
 // ids: { bible, text, tool } (or, as before, the Bíblia's id alone).
-// serviceIds: the service's own themes per kind (Service.kind_themes:
-// { lyrics, bible, text, tool }, src/lib/console/serviceLook.js), which come
-// first (owner's decision 2026-10-13); one that was deleted is passed over.
-export function themeForKind(themes, kind, ids = {}, serviceIds = null) {
-    const svc = serviceIds && typeof serviceIds === "object" ? serviceIds[kind] : "";
-    if (svc) {
-        if (svc === "none") return null;
-        const t = (themes || []).find((x) => x?.id === svc);
-        if (t) return t;
-    }
-    const def = defaultTheme(themes);
+// inUse: the theme in use's id (null: none; a deleted one is passed over).
+export function themeForKind(themes, kind, ids = {}, inUse = null) {
+    const list = themes || [];
+    const used = typeof inUse === "string" && inUse ? list.find((t) => t?.id === inUse) || null : null;
+    const musica = used || defaultTheme(list);
     const own = typeof ids === "string" ? (kind === "bible" ? ids : "") : ids?.[kind] || "";
-    if (!KIND_FIELD[kind] || !own) return def;
+    if (!KIND_FIELD[kind] || !own) return musica;
     if (own === "none") return null;
-    return (themes || []).find((t) => t?.id === own) || def;
+    return list.find((t) => t?.id === own) || musica;
 }
 
 // The bulkUpdate rows that make `id` the only default (null: none is).

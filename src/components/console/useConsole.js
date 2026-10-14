@@ -7,7 +7,7 @@ import { undoEndOps } from "@/lib/console/restore";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
-import { themeForKind, withThemeDefaults, withThemeInUse, themeBackgroundArgs } from "@/lib/console/themes";
+import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName } from "@/lib/console/themes";
 import { layerLocked } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { useUser, usePrefs } from "@/hooks/useUser";
@@ -24,6 +24,8 @@ import { useUser, usePrefs } from "@/hooks/useUser";
 // The Prévia is a stage, never sent until the operator sends it (a double
 // click, Enter, or "Enviar ao ar"). Every other change of what is on screen
 // goes through callOp.
+// The theme in use, on this computer (localStorage, like the arrangement).
+const THEME_IN_USE_KEY = "keryx.themeInUse";
 export const LOCKED_SAY = "Telas travadas: nada vai ao ar. Destrave em Saídas.";
 
 export function useConsole() {
@@ -42,22 +44,24 @@ export function useConsole() {
     // or a passage that has no look of its own, at send time: what is on
     // air never changes by itself (themes.js, withThemeDefaults).
     // A Bible passage takes the Bíblia's own theme (Configurações › Bíblia
-    // e músicas, or the Bíblia's Tema button); everything else the default.
+    // e músicas, or the Bíblia's Tema button); everything else the songs'.
     const themes = useThemes();
     // One default theme per kind (themes.js themeForKind): Música, Bíblia,
     // Texto and Timer (a tool.show).
     const prefs = usePrefs();
     const kindIds = useMemo(() => ({ bible: prefs.bible_theme_id, text: prefs.text_theme_id, tool: prefs.timer_theme_id }), [prefs.bible_theme_id, prefs.text_theme_id, prefs.timer_theme_id]);
-    // The service in hand may have its own theme per kind (Visual do culto,
-    // serviceLook.js): they come before the church's. Console.jsx sets them.
-    const [serviceThemes, setServiceThemes] = useState(null);
-    // The theme in use (owner's decision 2026-10-13, the hybrid): the one
-    // last clicked in the Fundo layer's strip. It dresses everything sent
-    // until someone changes it (withThemeInUse in stamp); the Visual do
-    // culto only seeds it when the service is chosen (Console.jsx). Shown
-    // in Camadas as "Tema: …"; null = the culto's, else the church's.
-    const [themeId, setThemeId] = useState(null);
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, withThemeInUse(serviceThemes, themeId))), look), bgPrefs), [themes, kindIds, serviceThemes, themeId, look, bgPrefs]);
+    // The theme in use (owner's decisions 2026-10-13/14): the one last
+    // clicked in Camadas › Temas. It dresses everything sent until someone
+    // changes it (Música in themeForKind); choosing a culto with a theme of
+    // its own replaces it (Console.jsx, themeInUseSeed). Kept on this
+    // computer: lost when KERYX reopened, the next song went out over the
+    // Fundo do culto (review 2026-10-14). null = the default theme.
+    const [themeId, setThemeIdState] = useState(() => { try { return localStorage.getItem(THEME_IN_USE_KEY) || null; } catch { return null; } });
+    const setThemeId = useCallback((id) => {
+        setThemeIdState(id || null);
+        try { if (id) localStorage.setItem(THEME_IN_USE_KEY, id); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
+    }, []);
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, themeId)), look), bgPrefs), [themes, kindIds, themeId, look, bgPrefs]);
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 
@@ -129,7 +133,7 @@ export function useConsole() {
         if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
-        // A theme's example (the Fundo layer strip, nothing on air): sending it uses
+        // A theme's example (Camadas › Temas, nothing on air): sending it uses
         // the theme — its background on the Fundo (not past the padlock) —
         // never the example text.
         if (stage.theme) {
@@ -137,7 +141,7 @@ export function useConsole() {
             try { if (bg && !layerLocked(live, "background")) await callOp("background.set", bg); } catch { return false; }
             setThemeId(stage.theme.id);
             setPrevState(null);
-            say(`Tema ${stage.theme.name} em uso.`);
+            say(themeName(stage.theme, "") ? `Tema ${themeName(stage.theme)} em uso.` : "Tema em uso.");
             return true;
         }
         const [op, stageArgs] = stageOp(stage);
@@ -156,7 +160,7 @@ export function useConsole() {
         }
         setPrevState(null);
         return true;
-    }, [prev, locked, live, callOp, say, stamp]);
+    }, [prev, locked, live, callOp, say, stamp, setThemeId]);
 
     const moveSlide = useCallback((d) => {
         if (!live?.content) { say("Nada com slides no ar."); return; }
@@ -209,5 +213,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, bgPrefs, themeId, setThemeId, setServiceThemes, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
+    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
 }

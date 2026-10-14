@@ -129,7 +129,8 @@ export default function MediaView({ c, media, onSend, onClose }) {
         if (!m || !file) return;
         try {
             const { file_url } = await keryx.integrations.Core.UploadFile({ file });
-            await keryx.entities.Media.update(m.id, { file_url });
+            // The old still goes with the old file: the console takes a new one.
+            await keryx.entities.Media.update(m.id, { file_url, thumbnail_url: "" });
             c.say(`${m.title}: arquivo encontrado.`);
         } catch (err) { fail(err); }
     };
@@ -232,7 +233,9 @@ export default function MediaView({ c, media, onSend, onClose }) {
                                 <div key={m.id} className="mv-cell">
                                     <button type="button" className={`mv-th kx-t ${state(m)}`} title={m.title} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} {...drag(m)}>
                                         {(m.type === "image" || m.type === "gif") && !m.missing && <img src={m.file_url} alt="" loading="lazy" />}
-                                        {m.type === "video" && !isYouTube(m) && !m.missing && <video src={`${m.file_url}#t=1`} preload="metadata" muted onLoadedMetadata={(e) => learn(m, e.currentTarget.duration)} />}
+                                        {m.type === "video" && !isYouTube(m) && !m.missing && (m.thumbnail_url && m.duration > 0
+                                            ? <img src={m.thumbnail_url} alt="" loading="lazy" />
+                                            : <video src={`${m.file_url}#t=1`} preload="metadata" muted onLoadedMetadata={(e) => learn(m, e.currentTarget.duration)} />)}
                                         {m.type === "audio" && !m.missing && <audio src={m.file_url} preload="metadata" onLoadedMetadata={(e) => learn(m, e.currentTarget.duration)} />}
                                         {!hasPoster(m) && (
                                             <span className={`mv-th-t ${m.missing ? "is-warn" : ""}`}>{m.missing ? "Arquivo não encontrado" : <><Icon name={ICON[m.type] || "film"} size={22} />{isYouTube(m) ? "YouTube" : KIND[m.type]}</>}</span>

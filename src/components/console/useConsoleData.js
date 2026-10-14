@@ -37,7 +37,7 @@ function useMediaFiles(rows) {
 
 // The projection themes (the same list and cache as useLibrary's).
 export const useThemes = () => useList("ProjectionTheme", ["name"]).data;
-// The service templates (their look: Visual do culto, serviceLook.js).
+// The service templates (their look: Fundo do culto and theme, serviceLook.js).
 export const useServiceTemplates = () => useList("ServiceTemplate", ["name"]).data;
 
 // Mídia and the background library are separate (owner's decision

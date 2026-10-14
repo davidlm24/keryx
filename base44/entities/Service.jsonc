@@ -23,9 +23,13 @@
       "type": "string",
       "description": "Fundo de espera do culto: a imagem das telas quando nada esta no ar (URL de midia ou fundo incluido). Antigo: lido quando background esta vazio"
     },
+    "theme_id": {
+      "type": "string",
+      "description": "Tema do culto (id de ProjectionTheme, opcional): vira o tema em uso quando o culto e escolhido (src/lib/console/serviceLook.js)"
+    },
     "kind_themes": {
       "type": "object",
-      "description": "Temas do culto por tipo de conteudo: { lyrics, bible, text, tool } com ids de ProjectionTheme; vazio = os Temas padrao da igreja (src/lib/console/serviceLook.js)"
+      "description": "Antigo (Visual do culto, ate 2026-10-14): temas por tipo { lyrics, bible, text, tool }; nada grava mais, so o lyrics e lido quando theme_id esta vazio"
     },
     "background": {
       "type": "object",
@@ -110,6 +114,10 @@
     "notes": {
       "type": "string",
       "description": "Notas gerais do culto"
+    },
+    "operator_notes": {
+      "type": "string",
+      "description": "Notas livres do operador no console (aba Notas): so no console, fora do PDF; vao com o culto e o backup"
     },
     "status": {
       "type": "string",
