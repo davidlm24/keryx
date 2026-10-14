@@ -1840,75 +1840,67 @@ async function checkConsole(webContents, { live, outputs }) {
         })()`), 8000);
 
         // Temas: Configurações keeps only the list; "Novo tema…" opens the
-        // Editor de temas e layouts in its own window (/Editor), where the
-        // theme gets a name and a font with a live sample, Salvar writes the
-        // row, and the window closes. Element clicks (not coordinates): the
-        // dialog relayouts while it opens.
+        // Editor de temas e telas as a floating dialog over Configurações
+        // (.vd-editor, owner 2026-10-14 "janelas flutuantes"; "Destacar em
+        // janela" still opens the /Editor window — the shutdown check keeps
+        // covering that path), where the theme gets a name and a font with a
+        // live sample, Salvar writes the row, and Esc closes back to
+        // Configurações. Element clicks (not coordinates): the dialog
+        // relayouts while it opens.
         const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .cfg-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
         const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
         await waitFor(() => section("Temas"), 4000);
         await waitFor(() => press2("Novo tema…"), 4000);
-        const editorWin = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/Editor"));
-        result.themeWindow = await waitFor(() => Boolean(editorWin()), 8000);
-        const ew = editorWin();
-        const ejs = (code) => ew.webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← editor ← ${String(code).replace(/\s+/g, " ").slice(0, 120)}`); });
-        await waitFor(() => ejs("Boolean(document.querySelector('.nv-frm input.pl-input'))"), 8000);
-        await ejs(`(() => {
-            const name = document.querySelector(".nv-frm input.pl-input");
+        result.themeWindow = await waitFor(() => js("Boolean(document.querySelector('.console .vd-editor .nv-frm input.pl-input'))"), 8000);
+        await js(`(() => {
+            const name = document.querySelector(".vd-editor .nv-frm input.pl-input");
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(name, "Tema Smoke");
             name.dispatchEvent(new Event("input", { bubbles: true }));
-            const font = document.querySelector(".nv-frm select");
+            const font = document.querySelector(".vd-editor .nv-frm select");
             font.value = "serif"; font.dispatchEvent(new Event("change", { bubbles: true }));
             return true;
         })()`);
-        result.themeSample = await waitFor(() => ejs("(getComputedStyle(document.querySelector('.le-screen .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
-        // Unsaved: the Editor's own X asks (closeGuard.askLeave; Electron
-        // alone kept the window without a word), and "Continuar editando"
-        // keeps it, changes and all.
-        {
-            const guard = require("./closeGuard.cjs");
-            let asked = false;
-            // As an operator would have: a gesture in the Editor first.
-            await ew.webContents.executeJavaScript("true", true).catch(() => {});
-            guard.setAskLeave(() => { asked = true; return false; });
-            ew.close();
-            await sleep(1000);
-            result.editorLeaveAsks = asked && Boolean(editorWin()) && await ejs("document.querySelector('.nv-frm input.pl-input').value === 'Tema Smoke'").catch(() => false);
-            guard.setAskLeave(null);
-        }
+        result.themeSample = await waitFor(() => js("(getComputedStyle(document.querySelector('.vd-editor .le-screen .ks-text') || document.body).fontFamily || '').includes('serif')"), 4000);
+        // Unsaved: Esc asks first (the editor's dirty guard, routed through
+        // the console's ESC_ORDER "editor") and keeps the dialog, changes
+        // and all.
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("Escape");
+        await sleep(400);
+        result.editorLeaveAsks = await js("Boolean(document.querySelector('.console .vd-editor')) && (document.querySelector('.vd-editor .nv-frm input.pl-input') || {}).value === 'Tema Smoke'");
         // A theme is saved with a background from the library (owner
         // 2026-10-14): Salvar waits for one; the Fundo's Escolher… opens the
-        // library and a colour (Cor) is enough.
-        const saveBtn = "[...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Salvar tema')";
-        result.themeNeedsBg = await ejs(`(() => { const b = ${saveBtn}; return Boolean(b && b.disabled) && Boolean(document.querySelector('.bgchip.is-missing')); })()`).catch(() => false);
-        await ejs("(() => { const b = document.querySelector('.bgchip button'); if (b) b.click(); return Boolean(b); })()");
-        await waitFor(() => ejs("(() => { const t = [...document.querySelectorAll('.lib-tabs [role=tab]')].find((x) => x.textContent.trim() === 'Cor'); if (t) t.click(); return Boolean(t); })()"), 5000);
-        await waitFor(() => ejs("(() => { const s = document.querySelector('.lib-swatch'); if (s) s.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); return Boolean(s); })()"), 4000);
-        result.themeBgPicked = await waitFor(() => ejs(`(() => { const b = ${saveBtn}; return !document.querySelector('.lib-dialog') && Boolean(b && !b.disabled); })()`), 4000);
-        await ejs(`(() => { const b = ${saveBtn}; if (b) b.click(); return Boolean(b); })()`);
+        // console's library over the Editor dialog and a colour (Cor) is enough.
+        const saveBtn = "[...document.querySelectorAll('.vd-editor button')].find((x) => x.textContent.trim() === 'Salvar tema')";
+        result.themeNeedsBg = await js(`(() => { const b = ${saveBtn}; return Boolean(b && b.disabled) && Boolean(document.querySelector('.vd-editor .bgchip.is-missing')); })()`).catch(() => false);
+        await js("(() => { const b = document.querySelector('.vd-editor .bgchip button'); if (b) b.click(); return Boolean(b); })()");
+        await waitFor(() => js("(() => { const t = [...document.querySelectorAll('.lib-tabs [role=tab]')].find((x) => x.textContent.trim() === 'Cor'); if (t) t.click(); return Boolean(t); })()"), 5000);
+        await waitFor(() => js("(() => { const s = document.querySelector('.lib-swatch'); if (s) s.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); return Boolean(s); })()"), 4000);
+        result.themeBgPicked = await waitFor(() => js(`(() => { const b = ${saveBtn}; return !document.querySelector('.lib-dialog') && Boolean(b && !b.disabled); })()`), 4000);
+        await js(`(() => { const b = ${saveBtn}; if (b) b.click(); return Boolean(b); })()`);
         result.themeSaved = await waitFor(async () => {
             const rows = (await js('window.keryxDesktop.db.call("ProjectionTheme", "filter", [{ name: "Tema Smoke" }])')).data || [];
             return rows.length === 1 && rows[0].font_family === "serif" && (rows[0].background || {}).kind === "color";
         }, 6000);
-        if (!result.themeSaved) result.themeDiag = await ejs("(document.querySelector('.toast') || {}).textContent || document.body.innerText.slice(0, 300)");
-        // Saved: the window closes clean (the dirty guard has nothing to ask).
-        { const w = editorWin(); if (w) w.close(); }
-        result.themeWindowClosed = await waitFor(() => !editorWin(), 5000);
+        if (!result.themeSaved) result.themeDiag = await js("(document.querySelector('.toast') || {}).textContent || document.querySelector('.vd-editor').innerText.slice(0, 300)");
+        // Saved: Esc closes clean (the dirty guard has nothing to ask) and
+        // Configurações is still there behind.
+        await press("Escape");
+        result.themeWindowClosed = await waitFor(() => js("!document.querySelector('.console .vd-editor') && Boolean(document.querySelector('.console .cfg-dialog'))"), 5000);
         // Each screen owns its design (owner 2026-10-13): "Editar a tela…"
         // opens the Editor on that screen straight into editing (the canvas
         // seeded with the ready design, nothing "não salvo" yet), Salvar
         // writes OutputPref.design and the vertical menu lists the screens.
         await section("Telas e saídas");
         await waitFor(() => js(`(() => { const c = ${cardOf("Palco")}; const b = c && c.querySelector(".cfg-card-thumb"); if (b) b.click(); return Boolean(b); })()`), 5000);
-        result.screenEditor = await waitFor(() => Boolean(editorWin()), 8000);
-        const sw = editorWin();
-        const sjs = (code) => sw.webContents.executeJavaScript(code).catch((err) => { throw new Error(`${err.message} ← editor ← ${String(code).replace(/s+/g, " ").slice(0, 120)}`); });
-        result.screenStraight = await waitFor(() => sjs("Boolean(document.querySelector('.le-screen .le-hit')) && !/Desenhar esta tela|não salvo/.test(document.body.innerText)").catch(() => false), 8000);
+        result.screenEditor = await waitFor(() => js("Boolean(document.querySelector('.console .vd-editor'))"), 8000);
+        const sjs = (code) => js(code);
+        result.screenStraight = await waitFor(() => sjs("Boolean(document.querySelector('.vd-editor .le-screen .le-hit')) && !/Desenhar esta tela|não salvo/.test(document.querySelector('.vd-editor').innerText)").catch(() => false), 8000);
         // The Ajustes card is styled in the Editor too (.cfg): labels in a
         // column beside the controls, not stacked over them.
-        result.screenCardStyled = await sjs("(() => { const f = document.querySelector('.nv-scroll.cfg .cfg-outprefs .frm'); return Boolean(f) && getComputedStyle(f).display === 'grid'; })()").catch(() => false);
-        result.screenMenu = await sjs("[...document.querySelectorAll('.kx-row-title')].filter((n) => ['Projeção', 'Palco', 'Pastor', 'Transmissão'].includes(n.textContent)).length >= 4").catch(() => false);
-        await sjs("(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Salvar a tela'); if (b) b.click(); return Boolean(b); })()");
+        result.screenCardStyled = await sjs("(() => { const f = document.querySelector('.vd-editor .nv-scroll.cfg .cfg-outprefs .frm'); return Boolean(f) && getComputedStyle(f).display === 'grid'; })()").catch(() => false);
+        result.screenMenu = await sjs("[...document.querySelectorAll('.vd-editor .kx-row-title')].filter((n) => ['Projeção', 'Palco', 'Pastor', 'Transmissão'].includes(n.textContent)).length >= 4").catch(() => false);
+        await sjs("(() => { const b = [...document.querySelectorAll('.vd-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela'); if (b) b.click(); return Boolean(b); })()");
         result.screenSaved = await waitFor(async () => {
             const rows = (await js('window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: "/StageView" }])')).data || [];
             return Boolean(rows[0] && rows[0].design && Array.isArray(rows[0].design.elements) && rows[0].design.elements.length > 0 && !rows[0].layout_id);
@@ -1916,7 +1908,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Nome por saída, in the editor's Ajustes: renaming Palco reaches
         // the console's grid; clearing restores the default.
         await sjs(`(() => {
-            const el = document.querySelector(".cfg-outprefs input.fg-input");
+            const el = document.querySelector(".vd-editor .cfg-outprefs input.fg-input");
             if (!el) return false;
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "Telão");
             el.dispatchEvent(new Event("input", { bubbles: true }));
@@ -1925,17 +1917,20 @@ async function checkConsole(webContents, { live, outputs }) {
         })()`);
         result.outName = await waitFor(() => js(`Boolean(${cardOf("Telão")})`), 6000);
         await sjs(`(() => {
-            const el = document.querySelector(".cfg-outprefs input.fg-input");
+            const el = document.querySelector(".vd-editor .cfg-outprefs input.fg-input");
             Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "");
             el.dispatchEvent(new Event("input", { bubbles: true }));
             el.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
             return true;
         })()`);
         result.outNameBack = await waitFor(() => js(`Boolean(${cardOf("Palco")})`), 6000);
-        if (!result.screenSaved) result.screenDiag = await sjs("(document.querySelector('.toast') || {}).textContent || document.body.innerText.slice(0, 300)").catch(() => "");
+        if (!result.screenSaved) result.screenDiag = await sjs("(document.querySelector('.toast') || {}).textContent || document.querySelector('.vd-editor').innerText.slice(0, 300)").catch(() => "");
         await js('(async () => { for (const path of ["/StageView", "/Projection"]) { const rows = (await window.keryxDesktop.db.call("OutputPref", "filter", [{ screen_path: path }])).data || []; for (const r of rows) await window.keryxDesktop.db.call("OutputPref", "update", [r.id, { design: null }]); } return true; })()');
-        { const w = editorWin(); if (w) w.close(); }
-        await waitFor(() => !editorWin(), 5000);
+        // The design reset above may re-dirty the open editor (its saved
+        // baseline moved under it): Esc until the dialog is gone, taking the
+        // discard question when it asks.
+        for (let i = 0; i < 4 && await js("Boolean(document.querySelector('.console .vd-editor'))"); i += 1) { await press("Escape"); await sleep(300); }
+        await waitFor(() => js("!document.querySelector('.console .vd-editor')"), 5000);
         // Aparência has no tabs; its Fundos row opens the library to manage
         // the backgrounds (Fechar, no Usar), over Configurações.
         await section("Aparência");

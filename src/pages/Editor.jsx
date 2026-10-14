@@ -1,22 +1,20 @@
-// The Editor de temas e layouts: its own window (opened by
-// src/lib/editorWindow.js; /Editor in App.jsx), so the console never swaps
-// views for an edit — the operator edits here, closes the window and is back
-// where they were. It talks to the same store and live state as every other
-// window (IPC on the desktop, SSE in the browser preview), so Salvar reaches
-// the console, the outputs and the network screens at once.
+// The Editor de temas e telas, DETACHED: its own window (/Editor in
+// App.jsx), opened by "Destacar em janela" in the console's floating Editor
+// dialog — openEditor({ ..., detached: true }) in src/lib/editorWindow.js —
+// for whoever edits watching another monitor. The dialog in the console
+// (owner 2026-10-14, "janelas flutuantes") is the usual host; both mount
+// the same EditorHost, never a second editor. This window talks to the same
+// store and live state as every other window (IPC on the desktop, SSE in
+// the browser preview), so Salvar reaches the console, the outputs and the
+// network screens at once.
 //
-// Two kinds of document, one window: a TEMA (how the projection dresses the
-// text: look, placement, background — ThemeEditor) or a TELA (its drawing
-// and its visual settings — ScreenEditor; each screen owns its design,
-// owner 2026-10-13). Deep links: ?theme=<id | new> or ?screen=<path>. The
-// window is named (keryx-editor): opening the editor again navigates this
-// one instead of stacking a second.
+// Deep links: ?theme=<id | new> or ?screen=<path>. The window is named
+// (keryx-editor): opening the editor again navigates this one instead of
+// stacking a second.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import ScreenEditor from "@/components/editor/ScreenEditor";
-import ThemeEditor from "@/components/editor/ThemeEditor";
+import EditorHost from "@/components/editor/EditorHost";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
-import { Seg } from "@/components/console/kx";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useLibrary } from "@/components/console/useConsoleData";
 import "@/components/console/console.css";
@@ -30,10 +28,7 @@ const readUrl = () => {
 };
 
 export default function Editor() {
-    const [doc, setDoc] = useState(readUrl);
-    // Remounts the editor only on an explicit switch — never on save (the
-    // old console view remounted on save and lost "Usar em…").
-    const [docKey, setDocKey] = useState(0);
+    const [initial] = useState(readUrl);
     const live = useLiveState();
     const now = useLiveNow();
     const { media, themes } = useLibrary();
@@ -58,34 +53,21 @@ export default function Editor() {
     // only for its Ao vivo mode, never used from here — the live state.
     const libC = { say, now, cur: live || undefined, callOp: async () => {} };
 
+    // The URL follows the document, so a reload (F5) reopens the same one.
     const setUrl = (next) => {
         const p = new URLSearchParams();
         p.set(next.kind === "theme" ? "theme" : "screen", next.id);
         try { window.history.replaceState(null, "", `/Editor?${p}`); } catch { /* the URL is cosmetic */ }
     };
-    // The first save of a new theme: keep the URL pointing at the row, so a
-    // reload (F5) reopens the same document. No remount.
-    const onSaved = (row) => { if (doc.kind === "theme" && row?.id && doc.id !== row.id) { const next = { ...doc, id: row.id }; setDoc(next); setUrl(next); } };
-    const onSwitch = (id) => { const next = { ...doc, id: id || (doc.kind === "theme" ? "new" : "/Projection") }; setDoc(next); setUrl(next); setDocKey((k) => k + 1); };
-    const onKind = (kind) => { if (kind === doc.kind) return; const next = { kind, id: kind === "theme" ? "new" : "/Projection" }; setDoc(next); setUrl(next); setDocKey((k) => k + 1); };
     // window.close works here: this window is always script-opened (the
     // console's openEditor, or window.open in the preview). Opened by a typed
     // URL it may be refused — then the toast says what to do.
     const close = () => { window.close(); setTimeout(() => say("Feche esta janela quando terminar."), 150); };
 
-    const editor = doc.kind === "theme"
-        ? <ThemeEditor key={`${docKey}:theme:${doc.id}`} themeId={doc.id} say={say} now={now} onClose={close} onSaved={onSaved} onSwitch={onSwitch} />
-        : <ScreenEditor key={`${docKey}:screen:${doc.id}`} screenPath={doc.id} media={media} themes={themes} say={say} live={live} now={now} onClose={close} onSwitch={onSwitch} />;
-
     return (
         <LibraryContext.Provider value={pickFromLibrary}>
         <div className="console edw">
-            <div className="main">{editor}</div>
-            <div className="edw-foot">
-                <Seg small label="O que editar" value={doc.kind} options={[["theme", "Temas"], ["screen", "Telas"]]} onChange={onKind} />
-                <span style={{ flex: 1 }} />
-                <button type="button" className="kx-btn kx-t" onClick={close}>Fechar janela</button>
-            </div>
+            <EditorHost initial={initial} say={say} live={live} now={now} media={media} themes={themes} onClose={close} onDoc={setUrl} />
             {libReq && <BackgroundLibrary c={libC} request={libReq} onDone={closeLibrary} />}
             {toast && <div className="toast" role="status"><span className="toast-t">{toast}</span></div>}
         </div>

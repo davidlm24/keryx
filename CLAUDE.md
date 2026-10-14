@@ -190,9 +190,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`themeSampleStage`, `stage.theme`: sending it only applies the theme's
   background, never the example text), a double click
   (or the menu's Editar, or Configurações › Temas) edits it in the Editor
-  de temas e layouts (its own window, `openEditor({ theme })`; the one-off
-  ThemeStudio overlay from 2026-10-13 was folded into it — don't bring a
-  second theme editor back),
+  de temas e telas (the console's floating dialog, `openEditor({ theme })`;
+  the one-off ThemeStudio overlay from 2026-10-13 was folded into it —
+  don't bring a second theme editor back),
   and "Salvar tema para a música" writes `Song.theme_id` for the song on air
   or in the Prévia. A Bible passage takes **the Bíblia's own theme**
   (`User.bible_theme_id`: "" = whatever the songs get now — the theme in
@@ -589,10 +589,21 @@ um elemento novo é um entry em `ELEMENT_TYPES` + seu caso em `elementText`
 ou no `Body` do renderer; num renderer output o elemento **Projeção**
 desenha a vista da saída (`prefState`) e um desenho com *timer* tira a
 camada `tool` dela (`layoutHasTimer`).
-**O Editor é a janela das telas e dos temas** (2026-10-13): `/Editor`
-(`src/pages/Editor.jsx`; `openEditor({ screen|theme })` em
-`src/lib/editorWindow.js`, janela nomeada `keryx-editor`; aba no preview;
-nunca em NETWORK_SCREENS). O rodapé alterna **Temas | Telas**:
+**O Editor das telas e dos temas flutua na console** (owner 2026-10-14,
+"janelas flutuantes"; reverte a janela própria de 2026-10-13): todo
+`openEditor({ screen|theme })` (`src/lib/editorWindow.js`) cai no host que
+a console registra (`setEditorHost`) e abre o diálogo `.vd-editor` —
+quase tela cheia, camada própria do Esc (`ESC_ORDER` "editor", roteado ao
+guarda de não salvo do editor como as views), POR CIMA de Configurações
+(que fica aberta atrás e reaparece ao fechar) e por baixo da biblioteca,
+que ele mesmo abre; a biblioteca de onde se veio dá lugar. O corpo é um
+só, `EditorHost.jsx` (troca Temas | Telas, rodapé) — nunca um segundo
+editor. **"Destacar em janela"** (rodapé do diálogo; para quem edita
+vendo outro monitor) abre o mesmo EditorHost na janela de sempre:
+`/Editor` (`src/pages/Editor.jsx`; `openEditor({ …, detached: true })`,
+janela nomeada `keryx-editor`; aba no preview; nunca em NETWORK_SCREENS),
+com o guarda de fechar do Electron (closeGuard). O rodapé alterna
+**Temas | Telas**:
   - uma TELA (`ScreenEditor.jsx`): menu vertical com as telas
     (`EDITOR_SCREENS`), o canvas edita o design DELA com os ajustes reais
     da própria tela vestindo a prévia (prefState + kp-out, ou só a Escala

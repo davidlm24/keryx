@@ -122,7 +122,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
         <div className="frm cfg-outprefs-form">
             {/* The design first: this screen's own drawing (the Editor's canvas). */}
             {!isStream && !inEditor && <FormRow k="Desenho">
-                <Btn small kind="brand" onClick={() => onOpenScreen?.(output.key)} title="Abre esta tela no Editor, na janela dele: mover e redimensionar cada elemento"><Icon name="edit" />Editar a tela…</Btn>
+                <Btn small kind="brand" onClick={() => onOpenScreen?.(output.key)} title="Abre esta tela no Editor: mover e redimensionar cada elemento"><Icon name="edit" />Editar a tela…</Btn>
                 {design && <Btn small onClick={() => save({ design: null, layout_id: "" })} title="A tela volta ao desenho padrão da página">Voltar à página padrão</Btn>}
                 <span className="kx-meta">{design ? (pref.design ? "desenho próprio desta tela" : "do antigo layout; é salvo na tela ao editar") : "a página padrão"}</span>
             </FormRow>}
@@ -241,7 +241,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
                     {themes.map((t) => <option key={t.id} value={t.id}>{themeName(t)}</option>)}
                     {themeGone && <option value={pref.themeId} disabled>(tema excluído)</option>}
                 </select>
-                {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor, na janela dele"><Icon name="edit" />Editar tema…</Btn>}
+                {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor"><Icon name="edit" />Editar tema…</Btn>}
             </FormRow>
             </>}
             <FormRow k="">
