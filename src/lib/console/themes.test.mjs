@@ -145,6 +145,7 @@ test("Camadas › Temas presets: pinned themes, else default + recent", () => {
     assert.deepEqual(consoleThemes(none).map((x) => x.id), ["b", "f", "e", "a", "c", "d"], "default first, then the most recent");
     assert.deepEqual(consoleThemes(none, 2).map((x) => x.id), ["b", "f"], "capped at max");
     assert.deepEqual(consoleThemes([]), []);
+    assert.equal(consoleThemes(Array.from({ length: 12 }, (_, i) => t("t" + i))).length, 9, "the panel's 9 slots");
 });
 
 test("the theme in use is Música's theme; Bíblia, Texto and Timer follow it unless the church chose theirs", () => {
