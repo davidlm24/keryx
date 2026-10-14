@@ -14,7 +14,17 @@ export const SECTIONS = [
     { id: "culto", icon: "clock", name: "Culto" },
     { id: "console", icon: "keyboard", name: "Console" },
     { id: "backup", icon: "save", name: "Backup e atualizações" },
+    { id: "sobre", icon: "info", name: "Sobre" },
 ];
+
+// Where a section's settings live: "church" rides the database (and the
+// backup), "machine" stays on this computer (settings.json, windows, the
+// network). Console is mixed: its rows say it one by one.
+export const SECTION_SCOPE = {
+    igreja: "church", aparencia: "church", temas: "church", biblia: "church", culto: "church",
+    telas: "machine", rede: "machine", backup: "machine", console: "mixed",
+};
+export const SCOPE_LABEL = { church: "da igreja · viaja no backup", machine: "deste computador" };
 
 // Ids of older versions, still in links (?config=), in notifications saved
 // in settings.json ("settings:dados") and in muscle memory.

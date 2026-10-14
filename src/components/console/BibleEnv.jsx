@@ -121,7 +121,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         const r = await pickTheme({ accept: "theme", value: prefs.bible_theme_id || bibleTheme?.id || null, title: "Tema da Bíblia", allowNone: true, noneLabel: "O mesmo das músicas", useLabel: "Usar na Bíblia" });
         const id = r?.theme ? r.theme.id : r?.none ? "" : null;
         if (id === null) return;
-        updateUser({ bible_theme_id: id }).then(() => c.say(id ? `As passagens vão ao ar com o tema ${themeName(r.theme)}.` : "A Bíblia segue o tema das músicas.")).catch(() => c.say("Não foi possível salvar o tema da Bíblia."));
+        updateUser({ bible_theme_id: id }).then(() => c.say(id ? `Bíblia: tema ${themeName(r.theme)}.` : "Bíblia: o mesmo tema das músicas.")).catch(() => c.say("Não foi possível salvar o tema da Bíblia."));
     };
     // Bumped after an install, so the installed list and the version are read again.
     const [installRev, setInstallRev] = useState(0);

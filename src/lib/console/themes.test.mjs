@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeGenerator } from "../../../shared/generators.mjs";
-import { consoleThemes, themeInUseSeed, themeName, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, THEME_FONTS, FAMILY_SET } from "./themes.js";
+import { consoleThemes, themeInUseSeed, themeName, themeStyle, sameLook, themeBackgroundArgs, themeForKind, defaultTheme, isDefaultTheme, defaultChanges, isFactoryLook, followsTheme, withThemeDefaults, themeHasBackground, newThemeBackground, THEME_FONTS, FAMILY_SET } from "./themes.js";
 
 test("themeStyle: classics defaulted, extras empty unless saved", () => {
     const t = { font_family: "serif", text_box: "band", transition: "slide", transition_ms: 300 };
@@ -219,4 +219,20 @@ test("the theme in use puts its background on the Fundo with the content; Esc gi
     // The Fundo's padlock holds it.
     live = applyOp(live, "layers.lock", { layer: "background", locked: true }, 3);
     assert.deepEqual(fundoOps("content.show", stamp("content.show", { ...songContent(song, {}, themes), kind: "lyrics" }), live).map(([o]) => o), ["content.show"]);
+});
+
+test("a theme is saved with a background (owner 2026-10-14)", () => {
+    assert.equal(themeHasBackground({ name: "Sem" }), false);
+    assert.equal(themeHasBackground(null), false);
+    assert.equal(themeHasBackground({ background: { kind: "color", value: "#000000" } }), true, "a colour from the library counts");
+    assert.equal(themeHasBackground({ background: { kind: "color", value: "preto" } }), false, "not a background");
+    assert.equal(themeHasBackground({ background_image: "u.png" }), true, "the old picture field");
+    assert.equal(themeHasBackground({ background_generator: { id: "aurora" } }), true, "the old generated field");
+    // Salvar como novo: the Fundo on air, else the theme in use's, else ask.
+    const onAir = { kind: "image", value: "keryx-media://a.jpg", title: "Fundo do culto", dim: 0.3 };
+    const inUse = { name: "Domingo", background: { kind: "video", value: "keryx-media://v.mp4" } };
+    assert.deepEqual(newThemeBackground(onAir, inUse), { kind: "image", value: "keryx-media://a.jpg", dim: 0.3 }, "the Fundo on air goes with it, its title left behind");
+    assert.deepEqual(newThemeBackground(null, inUse), { kind: "video", value: "keryx-media://v.mp4" });
+    assert.equal(newThemeBackground(null, { name: "Antigo" }), null, "nothing at hand: ask the library");
+    assert.equal(newThemeBackground(null, null), null);
 });

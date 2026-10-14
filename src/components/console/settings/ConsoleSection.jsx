@@ -37,26 +37,26 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                             <span className="kx-meta">{name}</span>
                         </span>
                     ))}
-                    <span className="kx-meta">neste computador</span>
+                    <span className="kx-meta">deste computador</span>
                 </FormRow>
                 <FormRow k="Densidade">
                     <Seg small label="Densidade" value={densityOf(layout)} onChange={(v) => setLayout({ ...layout, density: v })} options={DENSITIES} />
-                    <span className="kx-meta">a altura das linhas das listas</span>
+                    <span className="kx-meta">a altura das linhas das listas · da igreja, viaja no backup</span>
                 </FormRow>
                 <FormRow k="Disposição">
                     <Btn small onClick={restoreLayout}>Restaurar disposição</Btn>
-                    <span className="kx-meta">volta os módulos, a densidade, os tamanhos e a ordem das colunas ao padrão</span>
+                    <span className="kx-meta">volta os módulos, a densidade, os tamanhos e a ordem das colunas ao padrão · deste computador</span>
                 </FormRow>
                 <FormRow k="Ao fechar">
                     <Switch on={machine ? machine.confirmClose : true} disabled={!system || !machine} label="Perguntar antes de fechar o KERYX"
                         onChange={(on) => change("machineSet", { confirmClose: on }, on ? "O KERYX pergunta antes de fechar." : "Fechar o KERYX não pergunta mais.")} />
-                    <span className="kx-meta">fechar tira tudo das telas</span>
+                    <span className="kx-meta">fechar tira tudo das telas · deste computador</span>
                 </FormRow>
                 <FormRow k="Iniciar com o Windows">
                     <Switch on={Boolean(login?.on)} disabled={!login?.available} label="Abrir o KERYX quando o Windows iniciar"
                         onChange={(on) => change("loginSet", { on }, on ? "O KERYX abre quando o Windows iniciar." : "O KERYX não abre mais sozinho.")} />
                     <span className={login?.blocked ? "kx-warn" : "kx-meta"}>
-                        {!login?.available ? "só no KERYX instalado" : login.blocked ? "desativado no Gerenciador de Tarefas do Windows (Inicializar)" : "as saídas com Abrir ao iniciar abrem em tela cheia logo depois"}
+                        {!login?.available ? "só no KERYX instalado" : login.blocked ? "desativado no Gerenciador de Tarefas do Windows (Inicializar)" : "as saídas com Abrir ao iniciar abrem em tela cheia logo depois · deste computador"}
                     </span>
                 </FormRow>
             </div>

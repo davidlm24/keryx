@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Panel, Row, IconBtn, Field, Empty } from "../kx";
-import { SECTIONS, sectionOf } from "@/lib/console/settings";
+import { SECTIONS, SECTION_SCOPE, SCOPE_LABEL, sectionOf } from "@/lib/console/settings";
 import { searchSettings, groupHits, countBySection } from "@/lib/console/settingsSearch";
 import { searchTerms, highlightParts } from "@/lib/bibleSearch";
 import { focusKind } from "@/lib/console/keys";
@@ -15,8 +15,10 @@ import BibliaSection from "./BibliaSection";
 import CultoSection from "./CultoSection";
 import ConsoleSection from "./ConsoleSection";
 import DadosSection from "./DadosSection";
+import SobreSection from "./SobreSection";
 
 const BODIES = {
+    sobre: SobreSection,
     igreja: IgrejaSection,
     rede: RedeSection,
     aparencia: AparenciaSection,
@@ -45,7 +47,7 @@ const FLASH_MS = 1600;
 // without accents (src/lib/console/settingsSearch.js): the results replace
 // the section, the left column counts them, and Enter or a click opens the
 // section and lights the row up.
-export default function SettingsView({ c, section, setSection, onClose, layout, setLayout, restoreLayout, onOpenScreen }) {
+export default function SettingsView({ c, section, setSection, onClose, layout, setLayout, restoreLayout, onOpenScreen, onWhatsNew }) {
     const current = sectionOf(section);
     const [q, setQ] = useState("");
     const [active, setActive] = useState(0);
@@ -140,7 +142,7 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
         ) : <Empty icon="search" title={`Nada encontrado para “${q.trim()}”`}>Tente outra palavra: PIN, fundo, backup, transição, logo…</Empty>;
     } else if (current.id === "telas") body = <TelasSection c={c} onOpenScreen={onOpenScreen} />;
     else if (current.id === "console") body = <ConsoleSection c={c} layout={layout} setLayout={setLayout} restoreLayout={restoreLayout} />;
-    else { const Body = BODIES[current.id]; body = <Body c={c} onOpenScreen={onOpenScreen} />; }
+    else { const Body = BODIES[current.id]; body = <Body c={c} onOpenScreen={onOpenScreen} onWhatsNew={onWhatsNew} onSection={(id) => setSection(id)} />; }
 
     return (
         <CfgFlash.Provider value={flash}>
@@ -164,6 +166,7 @@ export default function SettingsView({ c, section, setSection, onClose, layout, 
                     </nav>
                     <div className="cfg">
                         <Panel title={searching ? `Resultados · ${hits.length}` : current.name} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "auto" }}>
+                            {!searching && SCOPE_LABEL[SECTION_SCOPE[current.id]] && <div className="listhead"><span className="kx-meta">{SCOPE_LABEL[SECTION_SCOPE[current.id]]}</span></div>}
                             {body}
                         </Panel>
                     </div>
