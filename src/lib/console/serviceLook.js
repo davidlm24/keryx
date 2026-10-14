@@ -1,28 +1,32 @@
-// The look of a service (owner's decision 2026-10-13): its background (the
-// Fundo padrão while it is the service in hand) and its own theme per kind of
-// content — kind_themes { lyrics, bible, text, tool }, theme ids; empty = the
-// church's Temas padrão. A template (ServiceTemplate) keeps the same look and
-// brings it with its items; a day with no service keeps it on its draft
-// ("Setlist de dd/mm"). Pure: tested in serviceLook.test.mjs.
+// The look of a service (owner's review 2026-10-14, as in Holyrics: no more
+// Visual do culto): its background — the Fundo do culto, the Fundo padrão
+// while it is the service in hand — and one optional theme from the library
+// (theme_id), which becomes the theme in use when the culto is chosen. A
+// template (ServiceTemplate) keeps the same two and brings them with its
+// items; a day with no service keeps them on its draft ("Setlist de dd/mm").
+// The old theme per kind (kind_themes { lyrics, bible, text, tool }) is user
+// data, kept and no longer written: only its Música theme is read, for a
+// row with no theme_id. Pure: tested in serviceLook.test.mjs.
 import { cleanSpec } from "./backgroundSpec.js";
-import { THEME_KINDS } from "./themes.js";
 import { serviceFundo } from "./defaultFundo.js";
 
-const KINDS = THEME_KINDS.map(([k]) => k);
+const id = (v) => (typeof v === "string" ? v.trim() : "");
 
-// kind_themes as kept: known kinds, non-empty string ids.
-export function cleanKindThemes(map) {
-    if (!map || typeof map !== "object" || Array.isArray(map)) return {};
-    return Object.fromEntries(KINDS.map((k) => [k, typeof map[k] === "string" ? map[k].trim() : ""]).filter(([, v]) => v));
+// The service's (or template's) theme id; "" for none.
+export function serviceTheme(row) {
+    const own = id(row?.theme_id);
+    if (own) return own;
+    const old = row?.kind_themes;
+    return old && typeof old === "object" && !Array.isArray(old) ? id(old.lyrics) : "";
 }
 
-// A service's or a template's look: { background: spec | null, kind_themes }.
-export const lookOf = (row) => ({ background: serviceFundo(row), kind_themes: cleanKindThemes(row?.kind_themes) });
+// A service's or a template's look: { background: spec | null, theme_id }.
+export const lookOf = (row) => ({ background: serviceFundo(row), theme_id: serviceTheme(row) });
 
 // What to save on a row for a look (the old standby picture kept in step).
 export const lookFields = (look) => {
     const background = cleanSpec(look?.background);
-    return { background, kind_themes: cleanKindThemes(look?.kind_themes), standby_background: background?.kind === "image" ? background.value : "" };
+    return { background, theme_id: id(look?.theme_id), standby_background: background?.kind === "image" ? background.value : "" };
 };
 // A template keeps no standby_background (it never had one).
 export const templateLookFields = (look) => {
@@ -31,14 +35,10 @@ export const templateLookFields = (look) => {
 };
 
 // A template applied to a service: its look fills what the service has not
-// chosen (its own background, each kind's theme); -> the patch, or null.
+// chosen (its own background, its theme); -> the patch, or null.
 export function lookForService(service, template) {
     const own = lookOf(service);
     const from = lookOf(template);
-    const background = own.background || from.background;
-    const kind_themes = { ...from.kind_themes, ...own.kind_themes };
-    const changed = (!own.background && from.background) || Object.keys(kind_themes).length !== Object.keys(own.kind_themes).length;
-    return changed ? lookFields({ background, kind_themes }) : null;
+    const changed = (!own.background && from.background) || (!own.theme_id && from.theme_id);
+    return changed ? lookFields({ background: own.background || from.background, theme_id: own.theme_id || from.theme_id }) : null;
 }
-
-export const hasLook = (row) => Boolean(lookOf(row).background) || Object.keys(lookOf(row).kind_themes).length > 0;

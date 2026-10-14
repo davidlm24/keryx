@@ -13,7 +13,7 @@ import { chordLinesToInline, hasInlineChords, isChordLine } from "@/lib/chords";
 import { printSong } from "@/lib/printSong";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
 import { useContextMenu } from "./ContextMenu";
-import { TEXT_SIZES, defaultTheme, followsTheme, themeStyle } from "@/lib/console/themes";
+import { TEXT_SIZES, defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["cursive", "Cursiva"], ["arial", "Arial"], ["georgia", "Georgia"], ["times", "Times"], ["verdana", "Verdana"]];
@@ -354,7 +354,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                             onChange={(e) => { const v = e.target.value; if (v.startsWith("t:")) set({ theme_id: v.slice(2) }); else if (v === "default") set({ theme_id: "", style_mode: "theme" }); else setLook({ theme_id: "" }); }}
                             title="Tema padrão: vai ao ar com o tema padrão (Configurações › Aparência › Temas). Um tema: a música segue esse tema inteiro. Próprio: o estilo abaixo">
                             <option value="default">{def ? `Tema padrão · ${def.name}` : "Tema padrão (estilo de fábrica)"}</option>
-                            {themes.filter((t) => !def || t.id !== def.id).map((t) => <option key={t.id} value={`t:${t.id}`}>Tema · {t.name}</option>)}
+                            {themes.filter((t) => !def || t.id !== def.id).map((t) => <option key={t.id} value={`t:${t.id}`}>Tema · {themeName(t)}</option>)}
                             {def && <option value={`t:${def.id}`}>Tema · {def.name} (sempre este)</option>}
                             {look.missing && <option value={`t:${song.theme_id}`} disabled>(tema excluído)</option>}
                             <option value="own">Próprio</option>
@@ -362,7 +362,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                     </div>
                     {look.theme && (
                         <div className="ed-pad ed-linked">
-                            <span className="kx-meta">Segue o tema <b>{look.theme.name}</b>: mudar o tema muda esta música.</span>
+                            <span className="kx-meta">Segue o tema <b>{themeName(look.theme)}</b>: mudar o tema muda esta música.</span>
                             <Btn small onClick={() => { applyTheme(look.theme.id); set({ theme_id: "" }); }} title="Traz a fonte, as cores e o fundo do tema para o visual próprio, para ajustar aqui">Copiar para o visual próprio</Btn>
                         </div>
                     )}
@@ -400,7 +400,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved })
                                         <select className="cfg-select" value={id} aria-label={`Tema de ${p.name}`}
                                             onChange={(e) => { const next = { ...partThemes }; if (e.target.value) next[p.key] = e.target.value; else delete next[p.key]; set({ part_themes: next }); }}>
                                             <option value="">Como a música</option>
-                                            {themes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                            {themes.map((t) => <option key={t.id} value={t.id}>{themeName(t)}</option>)}
                                             {gone && <option value={id} disabled>(tema excluído)</option>}
                                         </select>
                                     </React.Fragment>

@@ -7,7 +7,7 @@ import { CfgKey } from "./parts";
 import { ThemeThumb } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
-import { THEME_FONTS, TEXT_SIZES, defaultTheme, defaultChanges, themeForKind, THEME_KINDS, KIND_FIELD } from "@/lib/console/themes";
+import { THEME_FONTS, TEXT_SIZES, defaultTheme, defaultChanges, themeForKind, THEME_KINDS, KIND_FIELD, themeName } from "@/lib/console/themes";
 import { useLibraryPicker } from "../library/libraryContext";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { openEditor } from "@/lib/editorWindow";
@@ -32,7 +32,7 @@ function KindThemes({ c, themes, setDefault }) {
         if (!r || (!r.theme && !r.none)) return;
         if (!field) { setDefault(r.theme ? r.theme.id : null); return; }
         updateUser({ [field]: r.theme ? r.theme.id : "" })
-            .then(() => c.say(r.theme ? `${name}: tema ${r.theme.name}.` : `${name}: o mesmo tema das músicas.`))
+            .then(() => c.say(r.theme ? `${name}: tema ${themeName(r.theme)}.` : `${name}: o mesmo tema das músicas.`))
             .catch(() => c.say("Não foi possível salvar o tema."));
     };
     return (
@@ -43,7 +43,7 @@ function KindThemes({ c, themes, setDefault }) {
                     const field = KIND_FIELD[kind];
                     const t = themeForKind(themes, kind, ids);
                     const same = field && !ids[kind];
-                    const what = t ? t.name : "Estilo de fábrica";
+                    const what = t ? themeName(t) : "Estilo de fábrica";
                     return (
                         <button type="button" key={kind} className="kx-t fg-tile tmg-tile" onClick={() => choose(kind, name)} aria-label={`Tema padrão de ${name}: ${what}`} title={`${name} · clique para escolher o tema`}>
                             <span className="tmg-kind">{name}</span>
@@ -80,20 +80,20 @@ export default function TemasSection({ c }) {
         const rows = defaultChanges(themes, id);
         if (!rows.length) return;
         const t = themes.find((x) => x.id === id);
-        run(keryx.entities.ProjectionTheme.bulkUpdate(rows), t ? `${t.name} é o tema padrão.` : "Sem tema padrão: vale o estilo de fábrica.");
+        run(keryx.entities.ProjectionTheme.bulkUpdate(rows), t ? `${themeName(t)} é o tema padrão.` : "Sem tema padrão: vale o estilo de fábrica.");
     };
     const makeDefault = (t) => setDefault(t.id);
     // Excluir asks first (ConfirmDialog.jsx), as in the console's menus.
     const confirm = useConfirm();
     const remove = async (t) => {
-        if (!(await confirm(deleteQuestion("o tema", t.name, "Quem usa este tema volta ao padrão.")))) return;
+        if (!(await confirm(deleteQuestion("o tema", themeName(t), "Quem usa este tema volta ao padrão.")))) return;
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
     const menu = useContextMenu();
-    const themeMenu = (e, t) => menu(e, { title: t.name, items: [
+    const themeMenu = (e, t) => menu(e, { title: themeName(t), items: [
         { label: "Editar", icon: "edit", onSelect: () => edit(t.id) },
         { label: t.is_default ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: Boolean(t.is_default), onSelect: () => makeDefault(t) },
-        { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${t.name} saiu do console.` : `${t.name} fixado no console.`) },
+        { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${themeName(t)} saiu do console.` : `${themeName(t)} fixado no console.`) },
         { label: "Excluir…", icon: "trash", onSelect: () => remove(t) },
     ] });
 
@@ -105,10 +105,10 @@ export default function TemasSection({ c }) {
                 2026-10-13); a click edits in the Editor de temas e layouts. */}
             <div className="tmg" role="list" aria-label="Temas">
                 {themes.map((t) => (
-                    <button type="button" key={t.id} role="listitem" className="kx-t fg-tile tmg-tile" aria-label={t.name}
-                        title={`${t.name} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
+                    <button type="button" key={t.id} role="listitem" className="kx-t fg-tile tmg-tile" aria-label={themeName(t)}
+                        title={`${themeName(t)} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                         <span className="fg-img"><ThemeThumb theme={t} now={c.now} /></span>
-                        <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{t.name}</span>
+                        {(t.is_default || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
                         <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G"].filter(Boolean).join(" · ")}</span>
                     </button>
                 ))}
