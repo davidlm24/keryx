@@ -18,7 +18,8 @@ import { Panel, IconBtn } from "@/components/console/kx";
 import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import Library from "@/components/console/Library";
-import SlidesPanel, { handTitle } from "@/components/console/SlidesPanel";
+import SlidesPanel, { handTitle, handIsPrev } from "@/components/console/SlidesPanel";
+import OnAirPanel, { onAirCount } from "@/components/console/OnAirPanel";
 import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaCaption } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
@@ -529,11 +530,12 @@ export default function Console() {
     const removedOutputs = useMemo(() => outputs.filter((o) => o.removed), [outputs]);
 
     // ↑/↓ in the KERYX environment: the selection walks the slides of the
-    // item in hand (the Prévia's own, else the ones on air); Enter sends it.
+    // item in hand, as the Slides column shows it (the Prévia's own, even a
+    // single slide, else the ones on air); Enter sends it.
     const selectSlide = useCallback((d) => {
         const p = c.prev;
         const air = c.cur?.content;
-        if (p && p.slides.length > 1 && !p.airSlide) { c.setPrev(stageAt(p, p.index + d)); return; }
+        if (handIsPrev(p) && !p.airSlide) { c.setPrev(stageAt(p, p.index + d)); return; }
         if (air && air.slides.length) {
             const from = p?.airSlide ? p.index : air.index;
             c.setPrev(stageAirSlide(air, Math.max(0, Math.min(air.slides.length - 1, from + d)), liveStageId(c.cur)));
@@ -887,6 +889,12 @@ export default function Console() {
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} />
         </Panel>
     );
+    // What is on air, slide by slide, whatever the Slides column holds.
+    const onAirPanel = (
+        <Panel title="No ar" count={onAirCount(c) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <OnAirPanel c={c} />
+        </Panel>
+    );
 
     // Multiview (Programa › Multiview; src/lib/console/multiview.js): the
     // Programa as four outputs at once; a quadrant's label picks its output.
@@ -943,7 +951,7 @@ export default function Console() {
     // goes (the ids are src/lib/console/dock.js's MODULES); the dock places
     // them. The player rides inside the Programa until it is placed.
     const modulePanels = {
-        lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, abas: tabsPanel, setlist: setlistPanel, camadas: camadasPanel,
+        lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, abas: tabsPanel, setlist: setlistPanel, camadas: camadasPanel, onair: onAirPanel,
         player: <Panel title="Player" className="player-panel">{playerSlot}</Panel>,
     };
     const renderModule = (id) => (modulePanels[id] ? React.cloneElement(modulePanels[id], { key: id }) : null);
