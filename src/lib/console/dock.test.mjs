@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT } from "./dock.js";
+import { normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The console of the 2026-10-13 audit: Biblioteca | Slides | Programa over
@@ -257,6 +257,35 @@ test("the No ar strip exists only while lyrics are on air", () => {
     // The flexible child gone: the largest one left takes the rest.
     const flex = normalizeDock({ tree: split("col", [g("onair"), split("row", [g("programa"), g("previa"), g("setlist")], [null, 300, 300])], [null, 400]) });
     assert.deepEqual(fitDock(flex, 1600, 900, { gone: ["onair"] }).children.map((c) => c.size), [0, 900]);
+});
+
+test("locked heights: the console's, exact, with no splitter, only down a column", () => {
+    const d = defaultDock();
+    // The No ar strip at the height its lines ask, whatever the dock saved.
+    const f = fitDock(d, 1908, 1000, { locked: { onair: 150 } });
+    assert.deepEqual(f.children.map((c) => [c.size, Boolean(c.locked)]), [[844, false], [150, true]]);
+    assert.deepEqual(f.children[1].frame.tabs, ["onair"]);
+    // Gone wins: nothing on air, no room.
+    assert.deepEqual(fitDock(d, 1908, 1000, { gone: ["onair"], locked: { onair: 150 } }).children.map((c) => c.size), [1000, 0]);
+    // Camadas over the Setlist: Camadas exactly its list, the Setlist the rest.
+    const side = fitDock(d, 1908, 1000, { locked: { camadas: 152 } }).children[0].frame.children[3].frame;
+    assert.deepEqual(side.children.map((c) => [c.frame.tabs[0], Boolean(c.locked)]), [["camadas", true], ["temas", false], ["setlist", false]]);
+    assert.equal(side.children[0].size, 152);
+    // Across a row, or as a tab beside another module, the lock does not apply.
+    const row = normalizeDock({ tree: split("row", [g("onair"), g("programa")], [300, null]) });
+    assert.equal(JSON.stringify(fitDock(row, 1600, 900, { locked: { onair: 150 } })).includes('"locked":true'), false);
+    const tab = moveModules(d, ["onair"], { kind: "group", path: [0, 3, 0], zone: "center" });
+    assert.equal(JSON.stringify(fitDock(tab, 1908, 1000, { locked: { onair: 150 } })).includes('"locked":true'), false);
+    // A locked child that was the flexible one: the largest free one takes the rest.
+    const flex = normalizeDock({ tree: split("col", [g("onair"), split("row", [g("programa"), g("previa"), g("setlist")], [null, 300, 300])], [null, 400]) });
+    assert.deepEqual(fitDock(flex, 1600, 900, { locked: { onair: 150 } }).children.map((c) => c.size), [150, 744]);
+});
+
+test("the No ar strip is as tall as the slide with the most lines", () => {
+    assert.equal(onAirHeight([]), ONAIR_H, "never under the default strip");
+    assert.equal(onAirHeight([{ text: "a\nb" }]), Math.max(ONAIR_H, 72 + 2 * 18));
+    assert.equal(onAirHeight([{ text: "a\nb" }, { text: "a\nb\nc\nd" }]), 72 + 4 * 18, "4 lines a slide (the song's editor)");
+    assert.ok(onAirHeight([{ text: "1\n2\n3\n4\n5\n6" }]) > onAirHeight([{ text: "1\n2\n3\n4" }]), "a whole stanza");
 });
 
 // The Bíblia's dock: the same engine, its own modules.

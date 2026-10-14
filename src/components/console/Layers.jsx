@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
@@ -13,10 +13,11 @@ import { openEditor } from "@/lib/editorWindow";
 // Camadas: what is on air as four layers of the live state — Logo
 // (live.logo), Sobreposição (live.overlays), Texto principal (content) and
 // Fundo (live.background) — each with its eye, padlock, place in the order
-// and, on hover, a pencil to where that layer is edited (owner 2026-10-14):
-// the logo in Configurações › Igreja, the overlay's text here, the theme in
-// use in the Editor de temas, the culto's background in the library (the
-// Programa's Fundo do culto). The themes are their own module, Temas
+// and, on hover, a pencil. The settings under the list stay folded until a
+// pencil opens them (owner 2026-10-14: Camadas is as tall as its list, never
+// an empty card); the Fundo's pencil picks the culto's background in the
+// library (the Programa's Fundo do culto). The panel's + adds the text
+// overlay (`addRef`, Console.jsx). The themes are their own module, Temas
 // (ThemeStrip.jsx, `temasPanel` in Console.jsx), under Camadas. Texto principal keeps the item's title
 // choice and, when the text on air looks otherwise, Restaurar / Salvar como
 // novo; Fundo has no options of its own.
@@ -32,11 +33,13 @@ const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"]];
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));
 
-export default function Layers({ c, themes, onSettings, onFundo }) {
+export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     // The item's title: its own choice (style.title), else the church's.
     const showTitle = usePrefs().show_item_title;
     const { cur } = c;
     const [sel, setSel] = useState("text");
+    // The layer whose settings are open under the list (its pencil); none at first.
+    const [open, setOpen] = useState(null);
     // The padlock: the Fundo's is the live state's (layers.lock: nothing
     // changes it, whoever sends); the others only hold Camadas' controls.
     const [localLocks, setLocalLocks] = useState({});
@@ -73,10 +76,35 @@ export default function Layers({ c, themes, onSettings, onFundo }) {
     const setTitle = (title) => { if (content) op("content.update", { style: Object.fromEntries(Object.entries({ ...style, title }).filter(([k]) => STYLE_KEYS.includes(k))) }); };
     const setOverlays = (list) => op("overlays.set", { overlays: list });
 
+    // The text overlay: a new one where there is none (the eye, the panel's +).
+    const newOverlay = () => ({ id: `ov-${Date.now()}`, type: "text", content: "Sobreposição", x: 4, y: 86, width: 40, enabled: true });
+    // The overlay's text field takes the focus once it is there and enabled
+    // (a new overlay arrives with the live state, a moment after the click).
+    const wantFocus = useRef(false);
+    const focusOverlay = () => { wantFocus.current = true; };
+    useEffect(() => {
+        const el = ovInput.current;
+        if (!wantFocus.current || open !== "ov" || !el || el.disabled) return;
+        wantFocus.current = false;
+        el.focus();
+        el.select();
+    });
+    const addOverlay = () => {
+        if (!textOverlay) setOverlays([...overlays, newOverlay()]);
+        setSel("ov");
+        setOpen("ov");
+        focusOverlay();
+    };
+    useEffect(() => {
+        if (!addRef) return undefined;
+        addRef.current = addOverlay;
+        return () => { if (addRef.current === addOverlay) addRef.current = null; };
+    });
+
     const toggleEye = (id) => {
         if (id === "logo") op("logo.set", { visible: !logo.visible });
         if (id === "ov" && textOverlay) setOverlays(overlays.map((o) => (o === textOverlay ? { ...o, enabled: o.enabled === false } : o)));
-        if (id === "ov" && !textOverlay) setOverlays([...overlays, { id: `ov-${Date.now()}`, type: "text", content: "Sobreposição", x: 4, y: 86, width: 40, enabled: true }]);
+        if (id === "ov" && !textOverlay) setOverlays([...overlays, newOverlay()]);
         // Texto principal and Fundo: hidden on every screen, still on air
         // (the arrows walk the text; a new item shows its text again).
         if (id === "text") {
@@ -107,17 +135,25 @@ export default function Layers({ c, themes, onSettings, onFundo }) {
         }
     };
 
-    const disabled = locked[sel];
+    const disabled = locked[open];
     const inUseName = theme ? themeName(theme, "") : "";
-    // The pencil on each layer: where that layer is edited.
+    const editTheme = () => {
+        if (!theme) { c.say("Nenhum tema em uso."); return; }
+        const r = openEditor({ theme: theme.id });
+        if (r?.error) c.say(r.error);
+    };
+    // The pencil on each layer opens (or folds) its settings under the list;
+    // the Fundo has none: its pencil picks the culto's background.
+    const toggleOpen = (id) => {
+        const next = open === id ? null : id;
+        setSel(id);
+        setOpen(next);
+        if (next === "ov") focusOverlay();
+    };
     const EDIT = {
-        logo: { title: "Editar o logo · Configurações › Igreja", run: () => onSettings?.("igreja") },
-        ov: { title: "Editar o texto da sobreposição", run: () => { setSel("ov"); setTimeout(() => ovInput.current?.focus(), 0); } },
-        text: { title: inUseName ? `Editar o tema em uso (${inUseName}) · Editor de temas` : "Editar o tema em uso · Editor de temas", run: () => {
-            if (!theme) { c.say("Nenhum tema em uso."); return; }
-            const r = openEditor({ theme: theme.id });
-            if (r?.error) c.say(r.error);
-        } },
+        logo: { title: "Ajustes do logo", run: () => toggleOpen("logo") },
+        ov: { title: "Ajustes da sobreposição", run: () => toggleOpen("ov") },
+        text: { title: "Ajustes do texto principal", run: () => toggleOpen("text") },
         bg: { title: "Escolher o fundo do culto", run: () => onFundo?.() },
     };
 
@@ -143,16 +179,17 @@ export default function Layers({ c, themes, onSettings, onFundo }) {
                     <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>
                     <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={locked[L.id] ? "Destravar" : "Travar"} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Destravar" : "Travar"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
                     <span className="kx-layer-name">{L.name}</span>
-                    <button type="button" className="kx-btn kx-t layer-edit" onClick={(e) => { e.stopPropagation(); EDIT[L.id].run(); }} aria-label={EDIT[L.id].title} title={EDIT[L.id].title}><Icon name="edit" /></button>
+                    <button type="button" className={`kx-btn kx-t layer-edit ${open === L.id ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); EDIT[L.id].run(); }} aria-label={EDIT[L.id].title} title={EDIT[L.id].title} aria-expanded={L.id === "bg" ? undefined : open === L.id}><Icon name="edit" /></button>
                 </div>
             ))}
-            {sel !== "bg" && <div className="layerprops">
-                <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{LAYERS.find((l) => l.id === sel)?.name}{disabled ? " · travada" : ""}</span>
+            {open && <div className="layerprops">
+                <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{LAYERS.find((l) => l.id === open)?.name}{disabled ? " · travada" : ""}</span>
                 {/* Texto principal: the look is the theme's, edited only in the
                     Editor de temas (owner's review 2026-10-14); here only the
                     item's title choice, and the way back to the theme in use
                     when what is on air looks otherwise (a song's own look). */}
-                {sel === "text" && (!content ? <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Nada no ar.</span> : <>
+                {open === "text" && <span className="layeracts" style={{ gridColumn: "1 / -1" }}><Btn small onClick={editTheme} title={inUseName ? `O tema em uso (${inUseName}) no Editor de temas` : "O tema em uso no Editor de temas"}>Editar tema…</Btn></span>}
+                {open === "text" && (!content ? <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Nada no ar.</span> : <>
                     <span className="k">Título</span><Seg small value={style.title || (showTitle ? "show" : "hide")} options={[["show", "Com"], ["hide", "Sem"]]} onChange={(v) => !disabled && setTitle(v)} />
                     {modified && <>
                         <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>{inUseName ? <>Diferente do tema <b>{inUseName}</b></> : "Diferente do tema em uso"}</span>
@@ -162,7 +199,7 @@ export default function Layers({ c, themes, onSettings, onFundo }) {
                         </span>
                     </>}
                 </>)}
-                {sel === "logo" && (<>
+                {open === "logo" && (<>
                     <span className="k">Canto</span>
                     <select value={logo.corner} disabled={disabled} onChange={(e) => op("logo.set", { corner: e.target.value })} aria-label="Canto do logo">
                         <option value="top-left">Alto esq.</option><option value="top-right">Alto dir.</option><option value="bottom-left">Baixo esq.</option><option value="bottom-right">Baixo dir.</option>
@@ -175,8 +212,9 @@ export default function Layers({ c, themes, onSettings, onFundo }) {
                     </span>
                     <span className="k">Opacidade</span><Seg small value={num(logo.opacity ?? 1)} options={[["1", "100%"], ["0.7", "70%"], ["0.4", "40%"]]} onChange={(v) => !disabled && op("logo.set", { opacity: v === "1" ? null : Number(v) })} />
                     <span className="k">Margem</span><Seg small value={num(logo.margin ?? 3)} options={[["1.5", "Junto"], ["3", "Normal"], ["6", "Afastado"]]} onChange={(v) => !disabled && op("logo.set", { margin: v === "3" ? null : Number(v) })} />
+                    <span className="layeracts" style={{ gridColumn: "1 / -1" }}><Btn small onClick={() => onSettings?.("igreja")} title="O logo da igreja · Configurações › Igreja">Logo da igreja…</Btn></span>
                 </>)}
-                {sel === "ov" && (<>
+                {open === "ov" && (<>
                     <span className="k">Texto</span>
                     <input ref={ovInput} value={textOverlay?.content || ""} disabled={disabled || !textOverlay} onChange={(e) => setOverlays(overlays.map((o) => (o === textOverlay ? { ...o, content: e.target.value } : o)))} placeholder={textOverlay ? "" : "Mostre a camada para criar"} aria-label="Texto da sobreposição" style={{ height: 24, background: "var(--bg-2)", border: 0, borderRadius: 4, color: "var(--fg-1)", padding: "0 6px", font: "inherit", minWidth: 0 }} />
                     <span className="k">Posição</span><Seg small value={textOverlay ? (textOverlay.y > 50 ? (textOverlay.x > 30 ? "bc" : "bl") : "tl") : "bl"} options={[["bl", "Baixo esq."], ["bc", "Baixo centro"], ["tl", "Alto esq."]]} onChange={(v) => { if (!textOverlay || disabled) return; const pos = { bl: { x: 4, y: 86 }, bc: { x: 30, y: 86 }, tl: { x: 4, y: 4 } }[v]; setOverlays(overlays.map((o) => (o === textOverlay ? { ...o, ...pos } : o))); }} />

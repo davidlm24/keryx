@@ -749,7 +749,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await js(`history.pushState({}, "", "/Console"); window.dispatchEvent(new PopStateEvent("popstate")); true`);
         // Section captions are uppercase on screen (CSS), so innerText is too.
         // The console opens live, one screen, with the full module layout.
-        result.opened = await waitCap(PROG, "nada", 15000);
+        result.opened = await waitCap(PROG, "Nada no ar", 15000);
         result.listed = await waitText(webContents, "Canto do console", true, 15000);
         result.fullConsole = await js("Boolean(document.querySelector('.console .main .kx-split')) && !document.querySelector('.topbar .kx-seg + .kx-seg')");
 
@@ -795,13 +795,13 @@ async function checkConsole(webContents, { live, outputs }) {
         // The projector's letters are the Geist that ships with KERYX (src/fonts.css),
         // loaded from the app, never from the internet.
         result.progTitle16 = (await capTitle(PROG)) === "Canto do console" && await js(`getComputedStyle(document.querySelector("${capSel(PROG)}")).fontSize === "16px"`).catch(() => false);
-        // One PROGRAMA title (the panel header's caption, red while on air) and no
-        // permanent red frame on the monitor; the panel header no longer repeats it.
+        // No "Programa" word (owner 2026-10-14): the title itself is red while on
+        // air, and no permanent red frame on the monitor.
         result.progOneTitle = await js(`(() => {
             const caps = [...document.querySelectorAll(".console .dock .kx-live-cap")].filter((e) => /^programa/i.test(e.textContent.trim()));
-            const word = caps[0] && getComputedStyle(caps[0]).color;
+            const title = document.querySelector(".prog-panel .prog-cap .kx-mon-t");
             const frame = getComputedStyle(document.querySelector(".prog .kx-mon-screen"), "::after").borderTopColor;
-            return caps.length === 1 && word === "rgb(255, 107, 112)" && frame !== "rgb(229, 72, 77)" && !document.querySelector(".prog .kx-mon-cap");
+            return caps.length === 0 && Boolean(title) && getComputedStyle(title).color === "rgb(255, 107, 112)" && frame !== "rgb(229, 72, 77)" && !document.querySelector(".prog .kx-mon-cap");
         })()`).catch(() => false);
         result.projectorFont = Boolean(main) && await main.webContents.executeJavaScript(`(async () => {
             const faces = await document.fonts.load("40px Geist");
@@ -2009,7 +2009,9 @@ async function checkConsole(webContents, { live, outputs }) {
         result.songThemeCleared = await waitFor(async () => !(await songThemeId()), 4000);
         // Camadas › Texto principal › Título: Sem hides the song's name on
         // this item (the Programa, and every output), whatever Aparência says.
-        await click(".kx-layer", "Texto principal");
+        // Its settings open from its pencil (owner 2026-10-14: folded until then).
+        await js("(() => { const r = [...document.querySelectorAll('.kx-layer')].find((n) => n.textContent.includes('Texto principal')); const e = r && r.querySelector('.layer-edit'); if (e && e.getAttribute('aria-expanded') !== 'true') e.click(); return Boolean(e); })()");
+        await waitFor(() => js("Boolean(document.querySelector('.layerprops'))"), 4000);
         await js("(() => { const k = [...document.querySelectorAll('.layerprops .k')].find((n) => n.textContent === 'Título'); const b = k && [...k.nextElementSibling.querySelectorAll('button')].find((x) => x.textContent === 'Sem'); if (b) b.click(); return Boolean(b); })()");
         result.itemTitleHidden = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && st.title === "hide"); }, 4000)
             && await waitFor(() => js("Boolean(document.querySelector('.kx-mon .ks-text')) && !document.querySelector('.kx-mon .ks-title')"), 4000);

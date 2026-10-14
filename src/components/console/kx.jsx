@@ -190,3 +190,23 @@ export function MenuItem({ icon, checked, kbd, children, ...rest }) {
         </button>
     );
 }
+
+// Reports its content's natural height (a ResizeObserver), for a module the
+// console sizes to what it holds (Camadas: its list, or its list and the
+// settings a pencil opened; dock.js `locked`). The content's own height,
+// never the box it sits in, so the size it causes does not feed back.
+export function Measure({ onHeight, children }) {
+    const ref = useRef(null);
+    const cb = useRef(onHeight);
+    cb.current = onHeight;
+    useEffect(() => {
+        const el = ref.current;
+        if (!el || typeof ResizeObserver === "undefined") return undefined;
+        const report = () => cb.current?.(Math.ceil(el.offsetHeight));
+        report();
+        const ro = new ResizeObserver(report);
+        ro.observe(el);
+        return () => { ro.disconnect(); };
+    }, []);
+    return <div ref={ref} className="kx-measure">{children}</div>;
+}
