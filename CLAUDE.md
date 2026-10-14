@@ -230,7 +230,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   whatever is on screen, its own `cfg` state, `?config=`; its sections are
   `src/lib/console/settings.js`, old ids resolve through `resolveSection`;
   its search indexes every row in `settingsSearch.js` — a new `FormRow k`
-  goes in the index, or `npm test` fails).
+  goes in the index, or `npm test` fails). **Sobre** is the last section
+  (owner 2026-10-14, `SobreSection.jsx`; also the KERYX menu's "Sobre o
+  KERYX…", `openSettings("sobre")`): version (the `info` call of Backup;
+  "Prévia de desenvolvimento" without the desktop), Ver novidades (the
+  console's popover, not a second one), the church's name, Electron and
+  Chromium, the Geist license (read from `/fonts/Geist-OFL.txt`) and the
+  notice that the Bibles are installed by each church. Updating stays in
+  Backup e atualizações.
   Everything else
   is a view inside it, one at a time (the `view` state in Console.jsx,
   `?song=`, `?planner=`, `?media=`, `?notice=`, `?school=`, `?reports=`):

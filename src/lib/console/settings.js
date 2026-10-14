@@ -14,6 +14,7 @@ export const SECTIONS = [
     { id: "culto", icon: "clock", name: "Culto" },
     { id: "console", icon: "keyboard", name: "Console" },
     { id: "backup", icon: "save", name: "Backup e atualizações" },
+    { id: "sobre", icon: "info", name: "Sobre" },
 ];
 
 // Ids of older versions, still in links (?config=), in notifications saved
