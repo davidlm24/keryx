@@ -40,6 +40,9 @@
 .kx-panel-b { flex: 1; min-height: 0; overflow: auto; }
 .kx-panel.is-collapsed .kx-panel-b { display: none; }
 .kx-panel.is-collapsed { height: 32px; }
+/* Bare: no card, the module sits on the ground (the Programa; the Prévia, whose screen is the box). */
+.kx-panel.kx-panel-bare { background: none; border-radius: 0; }
+.kx-panel-bare > .kx-panel-h { padding: 0 0 0 2px; }
 
 /* ---- Button: ghost by default, 28px. Fills: the state buttons (prev, rh, air) and the gold one for ordinary primary actions. ---- */
 .kx-btn { height: var(--row); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 var(--space-2); border-radius: var(--radius-control);
@@ -130,6 +133,10 @@
 .kx-mon-cap .kx-live-cap { flex: none; }
 .kx-mon-cap .kx-mon-t { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kx-mon-cap .kx-meta { flex: none; white-space: nowrap; }
+/* A caption inside the screen, top-left (the Prévia's "Prévia · nome · 2/6"); it never takes a click. */
+.kx-mon-badge { position: absolute; top: var(--space-2); left: var(--space-2); z-index: 201; display: flex; align-items: center; gap: 6px; max-width: calc(100% - 2 * var(--space-2)); height: 22px; padding: 0 var(--space-2); border-radius: 6px; background: #0d0d0cd9; box-shadow: 0 0 0 1px #ffffff14; font-family: var(--font-sans); color: var(--fg-1); pointer-events: none; }
+.kx-mon-badge .kx-live-cap { font-size: 11px; }
+.kx-mon-badge .kx-mon-t { font-size: 12px; line-height: 16px; font-weight: 500; }
 .kx-screen-bg { position: absolute; inset: 0; }
 .kx-screen-txt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 8cqw 10cqw; gap: 2cqw; }
 .kx-screen-lyrics { font-size: 5.2cqw; line-height: 1.2; font-weight: 600; white-space: pre-line; text-shadow: var(--screen-text); }
