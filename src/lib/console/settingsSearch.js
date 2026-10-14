@@ -67,7 +67,7 @@ export const SETTINGS_INDEX = [
     e("culto", "Equipe de louvor", "os músicos e cantores para escalar no culto", ["equipe", "músicos", "louvor", "vocal", "banda", "membro"]),
     e("culto", "Previsão do culto", "termina ~ e passou N min na barra do topo", ["previsão", "atraso", "termina", "passou", "fim", "duração"]),
 
-    e("console", "Módulos", "Biblioteca, Slides, Camadas, No ar e Setlist", ["biblioteca", "slides", "camadas", "no ar", "setlist", "mostrar", "esconder", "ocultar"]),
+    e("console", "Módulos", "Biblioteca, Slides, Camadas, Temas, No ar e Setlist", ["biblioteca", "slides", "camadas", "temas", "no ar", "setlist", "mostrar", "esconder", "ocultar"]),
     e("console", "Densidade", "confortável ou compacta", ["compacta", "confortável", "linhas", "altura"]),
     e("console", "Disposição", "restaurar os módulos, a densidade e as colunas", ["restaurar disposição", "layout", "colunas", "tamanhos", "padrão"]),
     e("console", "Ao fechar", "perguntar antes de fechar o KERYX", ["fechar", "sair", "confirmar", "perguntar"]),

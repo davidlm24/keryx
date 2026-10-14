@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
@@ -6,20 +6,20 @@ import { Btn, IconBtn, Seg } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import { themeStyle, sameLook, themeBackgroundArgs, defaultTheme, themeName } from "@/lib/console/themes";
 import { applyThemeOnAir } from "./themeActions";
-import ThemeStrip from "./ThemeStrip";
 import { STYLE_KEYS, LAYER_ORDER, layerHidden, layerLocked } from "@shared/live-state.mjs";
 import { bgFields, cleanSpec } from "@/lib/console/backgroundSpec";
 import { openEditor } from "@/lib/editorWindow";
 
-// Camadas: the themes (Temas, at the top: a click makes one the theme in
-// use) and what is on air as four layers of the live state — Logo
+// Camadas: what is on air as four layers of the live state — Logo
 // (live.logo), Sobreposição (live.overlays), Texto principal (content) and
-// Fundo (live.background) — each with its eye, padlock and place in the
-// order. The look of the text is the theme's, edited only in the Editor de
-// temas, and the culto's background is chosen in the Programa (Fundo do
-// culto): Texto principal keeps the item's title choice and, when the text
-// on air looks otherwise, Restaurar / Salvar como novo; Fundo has no options
-// (owner's review 2026-10-14).
+// Fundo (live.background) — each with its eye, padlock, place in the order
+// and, on hover, a pencil to where that layer is edited (owner 2026-10-14):
+// the logo in Configurações › Igreja, the overlay's text here, the theme in
+// use in the Editor de temas, the culto's background in the library (the
+// Programa's Fundo do culto). The themes are their own module, Temas
+// (ThemeStrip.jsx, `temasPanel` in Console.jsx), under Camadas. Texto principal keeps the item's title
+// choice and, when the text on air looks otherwise, Restaurar / Salvar como
+// novo; Fundo has no options of its own.
 
 const LAYERS = [
     { id: "logo", name: "Logo", key: "logo" },
@@ -32,7 +32,7 @@ const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"]];
 // Seg works on strings; these settings are numbers.
 const num = (v) => (v == null || v === "" ? "" : String(v));
 
-export default function Layers({ c, themes, songs, service, ensureService }) {
+export default function Layers({ c, themes, onSettings, onFundo }) {
     // The item's title: its own choice (style.title), else the church's.
     const showTitle = usePrefs().show_item_title;
     const { cur } = c;
@@ -41,6 +41,7 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
     // changes it, whoever sends); the others only hold Camadas' controls.
     const [localLocks, setLocalLocks] = useState({});
     const menu = useContextMenu();
+    const ovInput = useRef(null);
     // Drag to reorder: the list follows live.layerOrder (top first).
     const [drag, setDrag] = useState(null);
     const [over, setOver] = useState(null);
@@ -108,21 +109,27 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
 
     const disabled = locked[sel];
     const inUseName = theme ? themeName(theme, "") : "";
+    // The pencil on each layer: where that layer is edited.
+    const EDIT = {
+        logo: { title: "Editar o logo · Configurações › Igreja", run: () => onSettings?.("igreja") },
+        ov: { title: "Editar o texto da sobreposição", run: () => { setSel("ov"); setTimeout(() => ovInput.current?.focus(), 0); } },
+        text: { title: inUseName ? `Editar o tema em uso (${inUseName}) · Editor de temas` : "Editar o tema em uso · Editor de temas", run: () => {
+            if (!theme) { c.say("Nenhum tema em uso."); return; }
+            const r = openEditor({ theme: theme.id });
+            if (r?.error) c.say(r.error);
+        } },
+        bg: { title: "Escolher o fundo do culto", run: () => onFundo?.() },
+    };
 
     return (
         <>
-            {/* Temas (owner's review 2026-10-14): always at the top, as
-                Holyrics' theme column; a click makes one the theme in use. */}
-            <div className="layerthemes">
-                <div className="listhead"><span className="kx-section">Temas{inUseName && <span className="kx-count"> · em uso: {inUseName}</span>}</span></div>
-                <ThemeStrip c={c} themes={themes} songs={songs} service={service} ensureService={ensureService} />
-            </div>
             {rows.map((L, i) => (
                 <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"} ${drag === L.key ? "is-dragging" : ""} ${over === i && drag && drag !== L.key ? "is-dropbefore" : ""}`}
                     onClick={() => setSel(L.id)} role="button" tabIndex={0}
                     onContextMenu={(e) => menu(e, { title: L.name, items: [
                         { label: visible[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] ? "eye-off" : "eye", onSelect: () => toggleEye(L.id) },
                         { label: locked[L.id] ? "Destravar" : "Travar", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => toggleLock(L.id) },
+                        { label: "Editar…", icon: "edit", onSelect: EDIT[L.id].run },
                         { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
                         { label: "Descer", disabled: i === rows.length - 1, onSelect: () => moveLayer(L.key, i + 2) },
                     ] })}
@@ -136,9 +143,10 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
                     <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>
                     <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={locked[L.id] ? "Destravar" : "Travar"} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Destravar" : "Travar"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
                     <span className="kx-layer-name">{L.name}</span>
+                    <button type="button" className="kx-btn kx-t layer-edit" onClick={(e) => { e.stopPropagation(); EDIT[L.id].run(); }} aria-label={EDIT[L.id].title} title={EDIT[L.id].title}><Icon name="edit" /></button>
                 </div>
             ))}
-            <div className="layerprops">
+            {sel !== "bg" && <div className="layerprops">
                 <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{LAYERS.find((l) => l.id === sel)?.name}{disabled ? " · travada" : ""}</span>
                 {/* Texto principal: the look is the theme's, edited only in the
                     Editor de temas (owner's review 2026-10-14); here only the
@@ -154,10 +162,6 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
                         </span>
                     </>}
                 </>)}
-                {/* Fundo: the culto's is chosen in the Programa (Fundo do culto)
-                    and a theme in use brings its own; the row keeps the eye and
-                    the padlock (owner's review 2026-10-14). */}
-                {sel === "bg" && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>{locked.bg ? "Travado: nada que vai ao ar troca o fundo." : "O fundo do culto se escolhe no Programa (Fundo do culto); um tema em uso traz o dele."}</span>}
                 {sel === "logo" && (<>
                     <span className="k">Canto</span>
                     <select value={logo.corner} disabled={disabled} onChange={(e) => op("logo.set", { corner: e.target.value })} aria-label="Canto do logo">
@@ -174,11 +178,11 @@ export default function Layers({ c, themes, songs, service, ensureService }) {
                 </>)}
                 {sel === "ov" && (<>
                     <span className="k">Texto</span>
-                    <input value={textOverlay?.content || ""} disabled={disabled || !textOverlay} onChange={(e) => setOverlays(overlays.map((o) => (o === textOverlay ? { ...o, content: e.target.value } : o)))} placeholder={textOverlay ? "" : "Mostre a camada para criar"} aria-label="Texto da sobreposição" style={{ height: 24, background: "var(--bg-2)", border: 0, borderRadius: 4, color: "var(--fg-1)", padding: "0 6px", font: "inherit", minWidth: 0 }} />
+                    <input ref={ovInput} value={textOverlay?.content || ""} disabled={disabled || !textOverlay} onChange={(e) => setOverlays(overlays.map((o) => (o === textOverlay ? { ...o, content: e.target.value } : o)))} placeholder={textOverlay ? "" : "Mostre a camada para criar"} aria-label="Texto da sobreposição" style={{ height: 24, background: "var(--bg-2)", border: 0, borderRadius: 4, color: "var(--fg-1)", padding: "0 6px", font: "inherit", minWidth: 0 }} />
                     <span className="k">Posição</span><Seg small value={textOverlay ? (textOverlay.y > 50 ? (textOverlay.x > 30 ? "bc" : "bl") : "tl") : "bl"} options={[["bl", "Baixo esq."], ["bc", "Baixo centro"], ["tl", "Alto esq."]]} onChange={(v) => { if (!textOverlay || disabled) return; const pos = { bl: { x: 4, y: 86 }, bc: { x: 30, y: 86 }, tl: { x: 4, y: 4 } }[v]; setOverlays(overlays.map((o) => (o === textOverlay ? { ...o, ...pos } : o))); }} />
                     {textOverlay && <div style={{ gridColumn: "1 / -1" }}><IconBtn name="x" title="Excluir sobreposição" small onClick={() => setOverlays(overlays.filter((o) => o !== textOverlay))} /></div>}
                 </>)}
-            </div>
+            </div>}
         </>
     );
 }

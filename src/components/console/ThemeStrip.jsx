@@ -12,9 +12,9 @@ import { serviceTheme } from "@/lib/console/serviceLook";
 import { updateUser } from "@/hooks/useUser";
 import { openEditor } from "@/lib/editorWindow";
 
-// Camadas › Temas (owner's decisions 2026-10-13/14, as Holyrics' theme
-// column): the pinned themes (consoleThemes) as small screens at the top of
-// Camadas. A click makes it the theme in use (it dresses what is on air and
+// Temas (owner's decisions 2026-10-13/14, as Holyrics' theme column; its
+// own module under Camadas since the 2026-10-14 review): the pinned themes
+// (consoleThemes) as small screens. A click makes it the theme in use (it dresses what is on air and
 // everything sent afterwards), a double click opens the theme in the Editor
 // de temas e layouts, and the rest lives in the right-click menu; the whole
 // library is one button away. "Salvar tema para a música" makes the song in
