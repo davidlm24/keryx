@@ -22,6 +22,7 @@ const FILES = {
     "CultoSection.jsx": "culto",
     "ConsoleSection.jsx": "console",
     "DadosSection.jsx": "backup",
+    "SobreSection.jsx": "sobre",
 };
 const labelsIn = (src) => [
     ...[...src.matchAll(/FormRow[^>]*?\sk="([^"]+)"/g)].map((m) => m[1]),

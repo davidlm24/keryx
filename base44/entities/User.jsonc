@@ -11,11 +11,11 @@
         "fr"
       ],
       "default": "pt",
-      "description": "Idioma da interface"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Idioma da interface"
     },
     "background_url": {
       "type": "string",
-      "description": "URL da imagem de fundo"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. URL da imagem de fundo"
     },
     "logo_url": {
       "type": "string",
@@ -153,7 +153,7 @@
     },
     "weekday_backgrounds": {
       "type": "object",
-      "description": "Fundo padrao por dia da semana: { \"0\".. \"6\": fundo } (0 = domingo); vale antes do fundo padrao da igreja"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Fundo padrao por dia da semana: { \"0\".. \"6\": fundo } (0 = domingo); vale antes do fundo padrao da igreja"
     },
     "church_name": {
       "type": "string",
@@ -166,32 +166,32 @@
     "primary_color": {
       "type": "string",
       "default": "#84cc16",
-      "description": "Cor prim\u00e1ria (hex)"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor prim\u00e1ria (hex)"
     },
     "secondary_color": {
       "type": "string",
       "default": "#10b981",
-      "description": "Cor secund\u00e1ria (hex)"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor secund\u00e1ria (hex)"
     },
     "navbar_primary_color": {
       "type": "string",
       "default": "#84cc16",
-      "description": "Cor prim\u00e1ria da barra de navega\u00e7\u00e3o (hex)"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor prim\u00e1ria da barra de navega\u00e7\u00e3o (hex)"
     },
     "navbar_secondary_color": {
       "type": "string",
       "default": "#10b981",
-      "description": "Cor secund\u00e1ria da barra de navega\u00e7\u00e3o (hex)"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor secund\u00e1ria da barra de navega\u00e7\u00e3o (hex)"
     },
     "submenu_primary_color": {
       "type": "string",
       "default": "#6366f1",
-      "description": "Cor prim\u00e1ria do submenu / menu de navega\u00e7\u00e3o (hex)"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor prim\u00e1ria do submenu / menu de navega\u00e7\u00e3o (hex)"
     },
     "submenu_secondary_color": {
       "type": "string",
       "default": "#a855f7",
-      "description": "Cor secund\u00e1ria do submenu / menu de navega\u00e7\u00e3o (hex)"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Cor secund\u00e1ria do submenu / menu de navega\u00e7\u00e3o (hex)"
     },
     "device_mode": {
       "type": "string",
@@ -201,7 +201,7 @@
         "desktop"
       ],
       "default": "desktop",
-      "description": "Modo de visualiza\u00e7\u00e3o"
+      "description": "Legado: nada lê este campo; mantido por ser dado do usuário. Modo de visualiza\u00e7\u00e3o"
     }
   },
   "required": []

@@ -90,7 +90,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
             ? { label: "Tirar tema da música", onSelect: () => saveForSong("") }
             : { label: "Salvar tema para a música", onSelect: () => saveForSong(t.id) }] : []),
         { label: t.id === def?.id ? "É o tema padrão" : "Tornar padrão", icon: "star", disabled: t.id === def?.id, onSelect: () => run(keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, t.id)), `${named(t)} é o tema padrão.`) },
-        { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), "As passagens vão ao ar com este tema.") },
+        { label: "Usar na Bíblia", onSelect: () => run(updateUser({ bible_theme_id: t.id }), `Bíblia: tema ${themeName(t)}.`) },
         { label: service ? "Usar neste culto" : "Usar hoje", disabled: cultoTheme === t.id, onSelect: () => setForCulto(t) },
         { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => run(keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }), t.pinned ? `${named(t)} saiu do console.` : `${named(t)} fixado no console.`) },
         { label: "Excluir…", icon: "trash", onSelect: () => removeTheme(t) },
