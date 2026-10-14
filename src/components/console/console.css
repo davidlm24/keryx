@@ -99,10 +99,13 @@
 .console .ctx-menu .kx-menu-item:disabled:hover { background: none; }
 .console .scrim { position: absolute; inset: 0; z-index: 25; }
 .console .scrim.is-dim { background: #0d0d0c99; }
-.console .dialog { position: absolute; z-index: 40; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 460px; max-width: calc(100vw - 24px); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); color: var(--fg-1); font-size: 13px; line-height: 18px; }
+/* Every floating dialog (Configurações, the background library, the internet
+   lyrics, confirm/prompt, the palette) wears --dialog: the menus' ring at 60%
+   — visible but quieter — with a lighter shadow (owner 2026-10-14). */
+.console .dialog { position: absolute; z-index: 40; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 460px; max-width: calc(100vw - 24px); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); color: var(--fg-1); font-size: 13px; line-height: 18px; }
 .console .dialog .acts { display: flex; justify-content: flex-end; gap: var(--space-2); }
 /* The command palette: left-anchored over the source columns, never over the Programa (its width comes from Console). */
-.console .palette { position: absolute; z-index: 40; left: 50%; transform: translateX(-50%); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 620px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); display: flex; flex-direction: column; max-height: min(640px, calc(100% - var(--topbar) - 64px)); }
+.console .palette { position: absolute; z-index: 40; left: 50%; transform: translateX(-50%); top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); width: 620px; max-width: calc(100vw - 2 * var(--gutter)); background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); display: flex; flex-direction: column; max-height: min(640px, calc(100% - var(--topbar) - 64px)); }
 .console .palette .kx-field { height: 40px; margin: var(--space-1); background: var(--bg-3); }
 .console .palette .kx-field input { font-size: 13px; }
 .console .palette .res { overflow: auto; padding: 0 var(--space-1) var(--space-1); }
@@ -608,7 +611,7 @@
 .console .addmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 45; width: 230px; }
 
 /* Lyrics from the web (LyricsSearch): the Holyrics-style search dialog. */
-.console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); color: var(--fg-1); }
+.console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); color: var(--fg-1); }
 .console .lyr-h { display: flex; align-items: center; gap: var(--space-2); height: 40px; padding: 0 var(--space-2) 0 var(--space-3); border-bottom: 1px solid var(--line); flex: none; }
 .console .lyr-q { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); flex: none; }
 .console .lyr-q .kx-field { flex: 1; height: 36px; background: var(--bg-3); }
@@ -631,7 +634,7 @@
    backdrop above it (.scrim.over-cfg). */
 .console .cfg-scrim { z-index: 33; }
 .console .scrim.over-cfg { z-index: 34; }
-.console .cfg-dialog { position: absolute; z-index: 33; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
+.console .cfg-dialog { position: absolute; z-index: 33; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1100px, calc(100% - 48px)); height: min(720px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
 .console .cfg-dialog-h { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
 .console .cfg-dialog-h .kx-section { flex: none; color: var(--fg-1); font-size: 12px; }
 /* The search beside the title: results replace the section; the left column
@@ -1110,7 +1113,7 @@
    right-click menu. Tabs in the header, the tiles on the left, the sample
    and the chosen background's settings on the right. */
 .console .lib-scrim { z-index: 36; }
-.console .lib-dialog { position: absolute; z-index: 37; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--popover); overflow: hidden; }
+.console .lib-dialog { position: absolute; z-index: 37; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1040px, calc(100% - 48px)); height: min(680px, calc(100% - var(--pop-top) - 24px)); display: flex; flex-direction: column; background: var(--bg-1); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; }
 .console .lib-tabs { height: 40px; border-bottom: 0; margin-left: var(--space-3); }
 .console .lib-body { flex: 1; min-height: 0; display: flex; }
 .console .lib-main { flex: 1; min-width: 0; overflow: auto; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
