@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -432,4 +432,55 @@ test("Ver's module switches over the tray: off goes to the tray, on comes back t
     // The Painel de abas is not one of Ver's switches: its tray stays.
     const abas = hideModule(d, "abas");
     assert.deepEqual(applyTrayFlags(abas, {}, ids).hidden, ["abas"]);
+});
+
+test("Por %: the proportions survive a smaller box (owner 2026-10-15, Rodada D)", () => {
+    const free = normalizeDock({ tree: fourColumns(), hidden: [] });
+    assert.equal(dockMode(free), "free");
+    const pct = setDockMode(free, "pct", 1908, 1000);
+    assert.equal(dockMode(pct), "pct");
+    assert.deepEqual(pct.ref, { w: 1908, h: 1000 });
+    // Normalizing (a save read back, any edit) keeps the mode.
+    assert.deepEqual(normalizeDock(pct).ref, { w: 1908, h: 1000 });
+    assert.equal(dockMode(hideModule(pct, "temas")), "pct");
+    const cols = (f) => f.children[0].frame.children.map((c) => c.size);
+    // At the box it was made for, pct draws what free draws.
+    assert.deepEqual(cols(fitDock(pct, 1908, 1000)), cols(fitDock(free, 1908, 1000)));
+    // In a box 0.9 as wide, the fixed columns keep their share; free keeps pixels.
+    const small = cols(fitDock(pct, 1717, 1000));
+    assert.equal(small[0], MODULES.lib.minW); // 195 would be under its minimum
+    assert.ok(Math.abs(small[3] - 288) <= 1, `side ${small[3]}`);
+    assert.equal(cols(fitDock(free, 1717, 1000))[3], 320);
+    // Minimums still win: the Slides never go under theirs.
+    const tiny = cols(fitDock(pct, 1000, 1000));
+    assert.ok(tiny[1] >= MODULES.slides.minW || tiny.length < 4);
+});
+
+test("Por %: rebase makes the sizes the ones drawn, and Livre keeps them", () => {
+    const pct = setDockMode(normalizeDock({ tree: fourColumns(), hidden: [] }), "pct", 1908, 1000);
+    const re = rebaseDock(pct, 954, 1000);
+    assert.deepEqual(re.ref, { w: 954, h: 1000 });
+    assert.equal(nodeAt(re.tree, [0]).sizes[3], 160);
+    // Back to Livre: the pixels on screen stay, the mode goes.
+    const free = setDockMode(pct, "free", 954, 1000);
+    assert.equal(dockMode(free), "free");
+    assert.equal(free.ref, undefined);
+    assert.equal(nodeAt(free.tree, [0]).sizes[3], 160);
+    // A free dock is never rebased.
+    assert.equal(rebaseDock(free, 100, 100), free);
+    // A save with a broken ref keeps pct and draws as free until rebased.
+    const odd = normalizeDock({ ...pct, ref: { w: 0, h: "x" } });
+    assert.equal(dockMode(odd), "pct");
+    assert.equal(odd.ref, undefined);
+    assert.deepEqual(fitDock(odd, 1000, 900).w, 1000);
+});
+
+test("Por %: splitters snap to 5 %", () => {
+    assert.equal(PCT_STEP, 5);
+    assert.equal(snapPct(312, 1000), 300);
+    assert.equal(snapPct(326, 1000), 350);
+    assert.equal(snapPct(324, 1000), 300);
+    assert.equal(snapPct(5, 1000), 50);
+    assert.equal(snapPct(999, 1000), 950);
+    assert.equal(snapPct(100, 0), 100);
 });

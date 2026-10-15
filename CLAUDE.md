@@ -357,7 +357,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   side of another (splits) or its middle (tabs), a click on the name opens
   "Mover para…", × puts it in the tray (the edit banner). While editing,
   every splitter shows its side's size in % of the split and a click on
-  that badge lets one type it (`Split` label/onPercent in kx.jsx, Dock.jsx). The Programa, the
+  that badge lets one type it (`Split` label/onPercent in kx.jsx, Dock.jsx). The banner's **Tamanhos: Livre | Por %** (owner 2026-10-15, Rodada D; per environment, per dock): Por % keeps `mode: "pct"` and `ref` (the box the sizes were made for) on the dock, `fitDock` scales the fixed sizes by the box on screen over `ref` so the proportions survive another window size (minimums and locked heights still win), and splitters snap to 5 % (`rebaseDock`, `setDockMode`, `snapPct` in dock.js, tested). The Programa, the
   Prévia and the Setlist never go to the tray; the player rides under the
   Programa until it is placed (× sends it home). The tray is this
   computer's (owner 2026-10-13): Ver's and Configurações › Console's module
