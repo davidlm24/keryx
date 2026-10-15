@@ -584,7 +584,6 @@ export default function Console() {
         const u = upd.update;
         if (!hasUpdate(u)) return;
         if (u.status === "available" || u.status === "error") upd.call("updateDownload").catch((err) => c.say(err.message));
-        setView(null);
         setOpen("update");
     }, [upd.update, upd.call, c]); // eslint-disable-line react-hooks/exhaustive-deps
     // Opening the bell reads what is in it.

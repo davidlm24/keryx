@@ -1737,7 +1737,7 @@ async function checkConsole(webContents, { live, outputs }) {
         await js("document.activeElement && document.activeElement.blur(); true");
 
         // Hover actions never reach the middle of a row, in every Biblioteca
-        // list, at the column's default width and at its 200 px minimum: a
+        // list, at the column's default width and at its 260 px minimum (MODULES.lib.minW): a
         // click there prepares the item (PR #38). Measured with the actions
         // forced visible; a list with no actions on its rows passes.
         result.rowActs = await js(`(async () => {
@@ -1750,7 +1750,7 @@ async function checkConsole(webContents, { live, outputs }) {
             const keep = box.getAttribute("style") || "";
             const tabs = [...panel.querySelectorAll(".kx-tabs button[role=tab]")];
             const out = {};
-            for (const width of [0, 200]) {
+            for (const width of [0, 260]) {
                 if (width) box.setAttribute("style", keep + ";flex:0 0 " + width + "px !important;width:" + width + "px !important;min-width:" + width + "px !important;max-width:" + width + "px !important");
                 for (const b of tabs) {
                     b.click();
@@ -1903,7 +1903,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // relayouts while it opens.
         const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .win-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
         const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
-        await waitFor(() => section("Temas"), 4000);
+        await waitFor(() => section("Temas e fundos"), 4000); // renamed in Rodada B (2026-10-14)
         await waitFor(() => press2("Novo tema…"), 4000);
         result.themeWindow = await waitFor(() => js("Boolean(document.querySelector('.console .win-dialog.is-editor .nv-frm input.pl-input'))"), 8000);
         await js(`(() => {
