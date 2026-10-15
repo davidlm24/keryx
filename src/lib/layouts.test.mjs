@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../shared/live-state.mjs";
 import {
     ELEMENT_TYPES, TEXT_TYPES, LOOK_TYPES, ELEMENT_GROUPS, FACTORY_LAYOUTS, normalizeElement, normalizeLayout, newElement, newLayout, duplicateLayout,
-    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, snapRect, resizeRect, moveRect, reorderElement, formatSpan,
+    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
 } from "./layouts.js";
 
 const T0 = Date.UTC(2026, 9, 12, 19, 30, 0);
@@ -40,6 +40,28 @@ test("normalizeElement: defaults from the type, clamps, unknown types dropped", 
     assert.equal(k.label, "Tom"); assert.equal(k.box, true); assert.equal(k.weight, "bold");
     const n = normalizeElement({ type: "next_items", props: { count: 99 } });
     assert.equal(n.props.count, 10);
+});
+
+test("hidden and opacity (Rodada C d2): kept, clamped, defaulted", () => {
+    const d = normalizeElement({ type: "clock" });
+    assert.equal(d.hidden, false); assert.equal(d.opacity, 1);
+    const e = normalizeElement({ type: "clock", hidden: true, opacity: 0.4 });
+    assert.equal(e.hidden, true); assert.equal(e.opacity, 0.4);
+    assert.equal(normalizeElement({ type: "clock", opacity: 0 }).opacity, 0.1, "never invisible by opacity: the eye hides");
+    assert.equal(normalizeElement({ type: "clock", opacity: 7 }).opacity, 1);
+    // An old design round-trips untouched.
+    assert.equal(normalizeElement({ type: "clock", hidden: "sim" }).hidden, false);
+});
+
+test("moveElement: dragged to a place in the stack; FONTS = the themes' eight", () => {
+    const els = ["clock", "date", "text"].map((t) => normalizeElement({ type: t, id: `e_${t}` }));
+    assert.deepEqual(moveElement(els, "e_clock", 2).map((e) => e.id), ["e_date", "e_text", "e_clock"]);
+    assert.deepEqual(moveElement(els, "e_text", 0).map((e) => e.id), ["e_text", "e_clock", "e_date"]);
+    assert.equal(moveElement(els, "e_date", 1), els, "same spot: untouched");
+    assert.equal(moveElement(els, "nope", 0), els);
+    assert.deepEqual(moveElement(els, "e_clock", 99).map((e) => e.id), ["e_date", "e_text", "e_clock"], "clamped to the end");
+    assert.equal(FONTS.length, 8, "the same families every theme offers");
+    for (const [id] of FONTS) assert.ok(normalizeElement({ type: "text", font: id }).font === id);
 });
 
 test("newElement lands centred on the spot, inside the canvas", () => {

@@ -9,7 +9,8 @@ import "@/components/network/net.css";
 import "./layout.css";
 
 const isUrl = (v) => typeof v === "string" && (v.startsWith("http") || v.startsWith("data:") || v.startsWith("/"));
-const FONT = { sans: FONT_MAP.sans, serif: FONT_MAP.serif, mono: 'ui-monospace, "Cascadia Mono", Consolas, monospace' };
+// Every family a theme offers (Rodada C, fase d2: the designs knew three).
+const FONT = { ...FONT_MAP, mono: 'ui-monospace, "Cascadia Mono", Consolas, monospace' };
 
 // A layout (src/lib/layouts.js) drawn on a screen: the Palco or Pastor
 // output, a network screen, the console's Prévia rail (`embed`) and the
@@ -39,7 +40,9 @@ export default function LayoutRenderer({ layout, live, screenState, nowMs, logoU
         <div className={`kl ${embed ? "kl-box" : "kl-fill"} ${ghost ? "is-ghost" : ""}`} style={style}>
             {image && <div className="kl-bg" style={{ backgroundImage: `url(${image})`, "--kl-dim": bg.dim }} />}
             {layout.elements.map((el) => {
-                const shown = elementVisible(el, ctx);
+                // A hidden element (its eye in the editor) is out of the
+                // drawing; the editor's ghost mode keeps it faint, pickable.
+                const shown = elementVisible(el, ctx) && !el.hidden;
                 if (!shown && !ghost) return null;
                 return <Element key={el.id} el={el} ctx={ctx} shown={shown} ghost={ghost} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
             })}
@@ -58,6 +61,9 @@ function Element({ el, ctx, shown, ghost, logoUrl, embed, transpose, setTranspos
         left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%`,
         "--s": el.size, fontFamily: FONT[el.font] || FONT.sans, fontWeight: el.weight === "bold" ? 700 : 400,
         ...(el.color ? { color: el.color } : {}),
+        // Its own opacity, only while it draws (hidden/ghost keep the
+        // faint class's).
+        ...(shown && has && Number(el.opacity) < 1 ? { opacity: el.opacity } : {}),
     };
     return (
         <div className={`kl-el kl-${el.type} kl-al-${el.align} kl-va-${el.valign} ${el.box ? "is-box" : ""} ${!shown || body === null ? "is-hidden" : ""}`} style={style} data-el={el.id}>

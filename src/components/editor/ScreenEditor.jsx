@@ -1,14 +1,14 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "../console/Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty } from "../console/kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "../console/kx";
 import { Switch } from "../console/settings/parts";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import OutputPrefCard from "../console/settings/OutputPrefCard";
 import { mainLayer } from "@shared/live-state.mjs";
 import {
     ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
-    normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, reorderElement,
+    normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, moveElement, FACTORY_LAYOUTS,
 } from "@/lib/layouts";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
 import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars } from "@/lib/outputPrefs";
@@ -16,8 +16,6 @@ import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, SAMPLE_ITEMS } from "../console/settings/sample";
 import { ConfirmContext } from "../console/ConfirmDialog";
 
-const DIMS = [["0.5", "Pouco"], ["0.72", "Médio"], ["0.9", "Muito"]];
-const COUNTS = [["1", "1"], ["2", "2"], ["3", "3"], ["5", "5"], ["8", "8"]];
 const HANDLES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // The screens the Editor edits (every page with settings; Transmissão has
@@ -45,7 +43,11 @@ const seedFor = (path) => {
 // opens straight into editing, the canvas seeded with that page's ready
 // design (owner 2026-10-13): the seed is the baseline, so only real edits
 // are "não salvo", and nothing is written until "Salvar a tela".
-export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true }) {
+// `hosted`: a page of THE window (Rodada C, fase d2) — the editor draws its
+// own WinBar (No ar | Exemplo as the bar's tool; Cancelar and Salvar a tela
+// as its actions; ⧉ Destacar via onDetach) and no footer; the middle column
+// splits into Desenho | Ajustes. Detached (/Editor) keeps header and footer.
+export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     const prefRows = useOutputPrefRows();
     const church = useChurch();
     const path = EDITOR_SCREENS.includes(screenPath) ? screenPath : "/Projection";
@@ -68,7 +70,15 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const [source, setSource] = useState("auto"); // "auto" | "sample"
     const [guides, setGuides] = useState([]);
     const [pickImage, setPickImage] = useState(false);
+    // The middle column's two halves (Rodada C, fase d2): the drawing, and
+    // the output's settings (which save at once, outside the draft).
+    const [tab, setTab] = useState("desenho");
+    const [starting, setStarting] = useState(null); // "model" | "copy": the pickers at the drawing's tail
+    const [pickBgImage, setPickBgImage] = useState(false);
+    const [dragRow, setDragRow] = useState(null); // the element row being dragged in the list
+    const [overRow, setOverRow] = useState(null);
     const fileRef = useRef(null);
+    const bgFileRef = useRef(null);
     const screenRef = useRef(null);
     const drag = useRef(null);
     const loaded = useRef(false);
@@ -203,7 +213,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     // instead (keys.js ESC_ORDER "window"), stepping out the same way; the
     // (x) ("all") leaves the whole stack through the guard. leaveRef is
     // the detached footer's guarded Fechar.
-    if (escRef) escRef.current = (mode) => { if (mode !== "esc") leave(mode === "all"); else if (adding) setAdding(false); else if (pickImage) setPickImage(false); else if (sel) setSel(null); else leave(); };
+    if (escRef) escRef.current = (mode) => { if (mode !== "esc") leave(mode === "all"); else if (adding) setAdding(false); else if (pickImage) setPickImage(false); else if (pickBgImage) setPickBgImage(false); else if (starting) setStarting(null); else if (sel) setSel(null); else leave(); };
     if (leaveRef) leaveRef.current = () => leave();
     const keysRef = useRef(null);
     keysRef.current = (e) => {
@@ -273,18 +283,32 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
         </div>
     );
 
-    return (
+    // A ready drawing in place of the current one: a factory model, or
+    // another screen's own design (Rodada C, fase d2 — the catalog's one
+    // useful door, without the catalog).
+    const applyDesign = async (label, layout) => {
+        if (dirty && askCtx && !(await askCtx({ title: "Substituir o desenho?", text: `O desenho atual de ${name} dá lugar a ${label}; nada é salvo sem "Salvar a tela".`, ok: "Substituir" }))) return;
+        setDraft(normalizeLayout({ ...duplicateLayout(layout), name: "", factory: false }));
+        setSel(null);
+        setStarting(null);
+    };
+    const copySources = EDITOR_SCREENS.filter((p) => p !== path && p !== "/StreamView").map((p) => {
+        const r = prefRows.find((x) => x.screen_path === p) || null;
+        return { path: p, name: outputLook(p, r).name, design: designOf(normalizePref(r), []) };
+    }).filter((s) => s.design);
+    const tabs = isStream ? null : <Seg small value={tab} onChange={setTab} label="Metade da coluna" options={[["desenho", "Desenho"], ["ajustes", "Ajustes"]]} />;
+
+    const body = (
         <>
             {screensMenu}
             <div className="kx-gap" />
             <div className="col nv-l" style={{ flex: "0 1 400px", minWidth: 340 }}>
-                <Panel title={<>Tela <span className="kx-count">· {name}{dirty ? " · não salvo" : ""}</span></>} actions={<>
-                    {draft && (own || dirty) && <Btn small kind={confirm === "reset" ? "air" : ""} onClick={resetToPage}>{confirm === "reset" ? "Voltar mesmo" : "Voltar à página padrão"}</Btn>}
-                </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel caption={isStream ? "Ajustes" : tabs} actions={!isStream && !hosted && <span className="kx-count">{name}{dirty ? " · não salvo" : ""}</span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
+                    <input ref={bgFileRef} type="file" hidden accept="image/*" onChange={(e) => { upload(e.target.files?.[0], (url) => { set({ background: { ...draft.background, image: url } }); setPickBgImage(false); }); e.target.value = ""; }} />
                     <div className="nv-scroll cfg">
                         {isStream && <div className="listhead"><span className="kx-meta">A Transmissão é uma legenda sobre a live, sem canvas: só os ajustes abaixo.</span></div>}
-                        {!isStream && draft && <>
+                        {!isStream && tab === "desenho" && draft && <>
                         <div className="frm nv-frm">
                             <span className="k">Fundo</span>
                             <span className="nv-inline">
@@ -292,7 +316,32 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                                 {draft.background.color && <Btn small onClick={() => set({ background: { ...draft.background, color: "" } })}>Cor padrão</Btn>}
                                 <Switch on={draft.background.song_image} onChange={(on) => set({ background: { ...draft.background, song_image: on } })} label="Imagem da música no fundo" />
                             </span>
-                            {draft.background.song_image && <><span className="k">Escurecer</span><Seg small value={String(draft.background.dim)} options={DIMS} onChange={(v) => set({ background: { ...draft.background, dim: Number(v) } })} /></>}
+                            {/* A picture of its own behind everything — the
+                                renderer always drew background.image; no UI
+                                until Rodada C, fase d2. The song's picture
+                                wins while one is on air. */}
+                            <span className="k">Imagem no fundo</span>
+                            <span className="nv-inline">
+                                {draft.background.image ? <span className="nv-chip" style={{ flex: 1 }}><Icon name="image" /><span>{nameOf(draft.background.image)}</span><IconBtn name="x" small title="Tirar a imagem do fundo" onClick={() => set({ background: { ...draft.background, image: "" } })} /></span> : null}
+                                <Btn small on={pickBgImage} onClick={() => setPickBgImage(!pickBgImage)}><Icon name="image" />{draft.background.image ? "Trocar…" : "Escolher…"}</Btn>
+                            </span>
+                            {pickBgImage && (
+                                <>
+                                    <span className="k" />
+                                    <div className="nv-pick">
+                                        <div className="listhead"><span className="kx-section">Imagem do fundo</span><span style={{ flex: 1 }} /><Btn small onClick={() => bgFileRef.current?.click()}><Icon name="folder" />Do computador…</Btn></div>
+                                        {!pictures.length && <div className="listhead"><span className="kx-meta">Nada na Mídia ainda · use Do computador…</span></div>}
+                                        {pictures.slice(0, 40).map((m) => <Row key={m.id} single icon="image" title={m.title} onClick={() => { set({ background: { ...draft.background, image: m.file_url } }); setPickBgImage(false); }} />)}
+                                    </div>
+                                </>
+                            )}
+                            {(draft.background.song_image || draft.background.image) && <>
+                                <span className="k">Escurecer</span>
+                                <span className="nv-inline">
+                                    <input type="range" className="le-range" min={0} max={95} step={1} value={Math.round(draft.background.dim * 100)} onChange={(e) => set({ background: { ...draft.background, dim: Number(e.target.value) / 100 } })} aria-label="Escurecer a imagem do fundo" />
+                                    <span className="kx-meta">{Math.round(draft.background.dim * 100)}%</span>
+                                </span>
+                            </>}
                         </div>
 
                         <div className="listhead"><span className="kx-section">Elementos <span className="kx-count">· {draft.elements.length}</span></span><span style={{ flex: 1 }} /><Btn small on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn></div>
@@ -307,15 +356,29 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                             </div>
                         )}
                         {!draft.elements.length && !adding && <div className="listhead"><span className="kx-meta">Nenhum elemento ainda · Adicionar põe um no meio da tela; arraste-o para onde quiser.</span></div>}
-                        {draft.elements.slice().reverse().map((el) => {
+                        {/* Topmost first; dragging a row changes who draws on
+                            top (moveElement); the eye hides the element
+                            without losing its place (Rodada C, fase d2). */}
+                        {draft.elements.slice().reverse().map((el, di) => {
                             const t = typeOf(el.type);
+                            const toIndex = (i) => draft.elements.length - 1 - i;
                             return (
-                                <Row key={el.id} single icon={t.icon} title={`${t.name}${el.label && el.label !== t.label ? ` · ${el.label}` : ""}`} className={sel === el.id ? "is-selected" : ""} onClick={() => setSel(el.id)}
+                                <Row key={el.id} single icon={t.icon} title={`${t.name}${el.label && el.label !== t.label ? ` · ${el.label}` : ""}`}
+                                    className={`${sel === el.id ? "is-selected" : ""} ${el.hidden ? "is-dim" : ""} ${dragRow === el.id ? "is-dragging" : ""} ${overRow === di && dragRow && dragRow !== el.id ? "is-dropbefore" : ""}`}
+                                    onClick={() => setSel(el.id)}
+                                    dragProps={{
+                                        draggable: true,
+                                        onDragStart: (e) => { setDragRow(el.id); e.dataTransfer.effectAllowed = "move"; },
+                                        onDragEnd: () => { setDragRow(null); setOverRow(null); },
+                                        onDragOver: (e) => { if (!dragRow) return; e.preventDefault(); setOverRow(di); },
+                                        onDrop: (e) => { e.preventDefault(); if (dragRow) set({ elements: moveElement(draft.elements, dragRow, toIndex(di)) }); setDragRow(null); setOverRow(null); },
+                                    }}
                                     actions={<>
-                                        <IconBtn name="chevron-up" small title="Trazer para a frente" onClick={(e) => { e.stopPropagation(); set({ elements: reorderElement(draft.elements, el.id, 1) }); }} />
-                                        <IconBtn name="chevron-down" small title="Enviar para trás" onClick={(e) => { e.stopPropagation(); set({ elements: reorderElement(draft.elements, el.id, -1) }); }} />
+                                        <IconBtn name={el.hidden ? "eye-off" : "eye"} small title={el.hidden ? "Mostrar o elemento" : "Esconder o elemento (ele fica no lugar)"} onClick={(e) => { e.stopPropagation(); setEl(el.id, { hidden: !el.hidden }); }} />
                                         <IconBtn name="x" small title="Tirar da tela" onClick={(e) => { e.stopPropagation(); remove(el.id); }} />
-                                    </>} />
+                                    </>}>
+                                    <span className="kx-glyph" title="Arraste para mudar quem desenha por cima" style={{ cursor: "grab" }}><Icon name="grip" /></span>
+                                </Row>
                             );
                         })}
 
@@ -338,8 +401,15 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                                     <select className="pl-input" value={selected.when} onChange={(e) => setEl(selected.id, { when: e.target.value })} aria-label="Quando aparece">
                                         {WHEN.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                                     </select>
+                                    {/* Every element takes these (the renderer
+                                        always drew the label; Rodada C d2). */}
+                                    <span className="k">Rótulo</span><Field icon={null} value={selected.label} onChange={(v) => setEl(selected.id, { label: v.slice(0, 24) })} placeholder="Ex.: Próximo (opcional)" />
+                                    <span className="k">Opacidade</span>
+                                    <span className="nv-inline">
+                                        <input type="range" className="le-range" min={10} max={100} step={1} value={Math.round((Number(selected.opacity) || 1) * 100)} onChange={(e) => setEl(selected.id, { opacity: Number(e.target.value) / 100 })} aria-label="Opacidade do elemento" />
+                                        <span className="kx-meta">{Math.round((Number(selected.opacity) || 1) * 100)}%</span>
+                                    </span>
                                     {LOOK_TYPES.has(selected.type) && <>
-                                        <span className="k">Rótulo</span><Field icon={null} value={selected.label} onChange={(v) => setEl(selected.id, { label: v.slice(0, 24) })} placeholder="Ex.: Próximo (opcional)" />
                                         <span className="k">Texto</span>
                                         <span className="nv-inline">
                                             <input type="range" className="le-range" min={SIZE_RANGE[0]} max={SIZE_RANGE[1]} step={0.2} value={selected.size} onChange={(e) => num(selected, "size", e.target.value, SIZE_RANGE[0], SIZE_RANGE[1])} aria-label="Tamanho do texto" />
@@ -362,11 +432,12 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                                     </>}
                                     {(selected.type === "monitor" || selected.type === "logo" || selected.type === "image") && <>
                                         <span className="k">Alinhar</span><Seg small value={selected.align} options={ALIGNS} onChange={(v) => setEl(selected.id, { align: v })} />
+                                        <span className="k">Vertical</span><Seg small value={selected.valign} options={VALIGNS} onChange={(v) => setEl(selected.id, { valign: v })} />
                                     </>}
                                     {selected.type === "clock" && <><span className="k">Segundos</span><Switch on={selected.props.seconds} onChange={(on) => setProp(selected.id, "seconds", on)} label="Mostrar os segundos" /></>}
                                     {selected.type === "title" && <><span className="k">Artista</span><Switch on={selected.props.artist} onChange={(on) => setProp(selected.id, "artist", on)} label="Mostrar o artista" /></>}
                                     {selected.type === "current" && <><span className="k">Cifra</span><span className="nv-inline"><Switch on={selected.props.chords} onChange={(on) => setProp(selected.id, "chords", on)} label="Cifra sobre a letra" /><span className="kx-meta">os acordes sobre as sílabas, quando a letra os tem</span></span></>}
-                                    {selected.type === "next_items" && <><span className="k">Quantos</span><Seg small value={String(selected.props.count)} options={COUNTS} onChange={(v) => setProp(selected.id, "count", Number(v))} /></>}
+                                    {selected.type === "next_items" && <><span className="k">Quantos</span><span className="nv-inline le-nums"><input className="pl-input le-num" type="number" min={0} max={10} step={1} value={selected.props.count} onChange={(e) => setProp(selected.id, "count", Math.max(0, Math.min(10, Math.round(Number(e.target.value) || 0))))} aria-label="Quantos itens" /><span className="kx-meta">0 a 10 itens</span></span></>}
                                     {selected.type === "text" && <><span className="k">Texto</span><textarea className="ed-text nv-sub" rows={2} value={selected.props.text} onChange={(e) => setProp(selected.id, "text", e.target.value.slice(0, 400))} aria-label="Texto fixo" /></>}
                                     {selected.type === "image" && <>
                                         <span className="k">Imagem</span>
@@ -385,13 +456,35 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                                 )}
                             </>
                         )}
+                        {/* The drawing's tail: ready starting points and the
+                            way back (Rodada C, fase d2 — the factory models
+                            had no door since the catalog died). */}
+                        <div className="listhead le-starts">
+                            <Btn small on={starting === "model"} onClick={() => setStarting(starting === "model" ? null : "model")}>Começar de um modelo…</Btn>
+                            {copySources.length > 0 && <Btn small on={starting === "copy"} onClick={() => setStarting(starting === "copy" ? null : "copy")}>Copiar de outra tela…</Btn>}
+                            <span style={{ flex: 1 }} />
+                            {draft && (own || dirty) && <Btn small kind={confirm === "reset" ? "air" : ""} onClick={resetToPage}>{confirm === "reset" ? "Voltar mesmo" : "Voltar à página padrão…"}</Btn>}
+                        </div>
+                        {starting === "model" && (
+                            <div className="nv-pick">
+                                {FACTORY_LAYOUTS.map((l) => <Row key={l.id} single icon="layers" title={l.name} onClick={() => applyDesign(`o modelo "${l.name}"`, l)} />)}
+                            </div>
+                        )}
+                        {starting === "copy" && (
+                            <div className="nv-pick">
+                                {copySources.map((s) => <Row key={s.path} single icon="monitor" title={s.name} meta="o desenho salvo dessa tela" onClick={() => applyDesign(`o desenho de ${s.name}`, s.design)} />)}
+                            </div>
+                        )}
                         </>}
-                        {/* The screen's visual settings, in the same window
-                            (content, Mostrar, theme, margins…). */}
-                        <div className="listhead"><span className="kx-section">Ajustes <span className="kx-count">· valem também para as telas na rede desta página</span></span></div>
-                        <OutputPrefCard inEditor output={{ key: path, label: name }} row={row} themes={themes} c={cLike} />
+                        {/* The output's visual settings (content, Mostrar,
+                            theme, margins…): they save at once, outside the
+                            drawing's draft — their own half since Rodada C. */}
+                        {(isStream || tab === "ajustes") && <>
+                            <div className="listhead"><span className="kx-section">Ajustes <span className="kx-count">· valem também para as telas na rede desta página</span></span></div>
+                            <OutputPrefCard inEditor output={{ key: path, label: name }} row={row} themes={themes} c={cLike} />
+                        </>}
                     </div>
-                    {draft && !isStream && (
+                    {draft && !isStream && !hosted && (
                         <div className="nv-foot">
                             <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
                             <Btn kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar a tela</Btn>
@@ -401,7 +494,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
             </div>
             <div className="kx-gap" />
             <div className="col center">
-                <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={<>
+                <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={!hosted && <>
                     <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {isStream || !draft ? (
@@ -433,6 +526,20 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                     )}
                 </Panel>
             </div>
+        </>
+    );
+
+    if (!hosted) return body;
+    return (
+        <>
+            <WinBar title="Editor da tela" sub={`${name}${dirty ? " · não salvo" : ""}`}
+                tools={!isStream && <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />}
+                actions={!isStream && <>
+                    <Btn small onClick={() => leave()}>Cancelar</Btn>
+                    <Btn small kind="brand" disabled={busy || !draft} onClick={save} title="Ctrl+S">Salvar a tela</Btn>
+                </>}
+                detach={onDetach} />
+            <div className="win-body is-ed">{body}</div>
         </>
     );
 }
