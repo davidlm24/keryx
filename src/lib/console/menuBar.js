@@ -1,7 +1,8 @@
-// The menu bar (owner 2026-10-15, Rodada D4, "Menus novos" = A): beside the
-// logo, before KERYX | Bíblia, as in Holyrics and desktop programs — Culto,
-// Música, Mídia, Telas, Ferramentas, Ver, Ajuda. On a narrow window it folds
-// into the logo's menu, as before. Everything here already has a place in
+// The menu bar (owner 2026-10-15, Rodada D4, "Menus novos" = A): after the
+// logo and KERYX | Bíblia, as in Holyrics and desktop programs — Culto,
+// Música, Mídia, Telas, Ferramentas. Ver stays the eye beside the bell and
+// Ajuda's items live in the logo's menu ("O topo", owner 2026-10-15). On a
+// narrow window the bar folds into the logo's menu, as before. Everything here already has a place in
 // the console; the bar puts it one click away. Pure: the console passes
 // what it knows (`ctx`) and its actions (`ctx.act`), the bar draws the result.
 //
@@ -13,7 +14,7 @@ const sep = { sep: true };
 const head = (text) => ({ head: text });
 const date = (d) => (d ? d.split("-").reverse().slice(0, 2).join("/") : "");
 
-export const MENU_IDS = ["culto", "musica", "midia", "telas", "ferramentas", "ver", "ajuda"];
+export const MENU_IDS = ["culto", "musica", "midia", "telas", "ferramentas"];
 
 // The source a song's automatic lyrics follow, in words.
 const FOLLOW_WORD = { video: "o vídeo", audio: "o playback", clock: "o relógio ao vivo" };
@@ -88,36 +89,12 @@ export function buildMenus(ctx) {
         { label: "Relatórios", icon: "history", onSelect: call("reports") },
     ];
 
-    const v = ctx.ver || {};
-    const ver = [
-        head("Módulos"),
-        ...(v.modules || []).map(([key, name, on]) => ({ label: name, checked: on, onSelect: call("toggleModule", key) })),
-        sep,
-        head("Densidade"),
-        ...(v.densities || []).map(([key, name, on]) => ({ label: name, checked: on, onSelect: call("density", key) })),
-        sep,
-        head("Disposição"),
-        ...(v.presets || []).map((p) => ({ label: `${p.name}${p.checked && p.dirty ? " · alterada" : ""}`, checked: p.checked, onSelect: call("preset", p.id) })),
-        sep,
-        { label: v.editing ? "Concluir a edição" : "Editar disposição", icon: "grip", checked: Boolean(v.editing), title: "Mudar os módulos de lugar, Livre | Por %, salvar disposições com nome · Esc conclui", onSelect: call("editLayout") },
-        { label: "Restaurar disposição", onSelect: call("restoreLayout") },
-    ];
-
-    const ajuda = [
-        { label: "Atalhos do teclado", icon: "keyboard", kbd: "?", onSelect: call("shortcuts") },
-        { label: "Novidades", icon: "star", onSelect: call("whatsNew") },
-        { label: "Sobre o KERYX…", icon: "info", onSelect: call("settings", "sobre") },
-        ...(ctx.update ? [sep, { label: ctx.update.label, icon: "download", kbd: ctx.update.kbd, onSelect: call("updateNow") }] : []),
-    ];
-
     return [
         { id: "culto", label: "Culto", items: culto },
         { id: "musica", label: "Música", items: musica },
         { id: "midia", label: "Mídia", items: midia },
         { id: "telas", label: "Telas", items: telas },
         { id: "ferramentas", label: "Ferramentas", items: ferramentas },
-        { id: "ver", label: "Ver", items: ver },
-        { id: "ajuda", label: "Ajuda", items: ajuda },
     ];
 }
 

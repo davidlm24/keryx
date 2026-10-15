@@ -838,9 +838,9 @@ async function checkConsole(webContents, { live, outputs }) {
             if (!g) return false;
             const bs = [...g.querySelectorAll("button")];
             const named = ["Tela preta", "Mostrar logo", "Limpar texto", "Encerrar a projeção"].every((t) => bs.some((b) => b.getAttribute("aria-label") === t && b.title));
-            const ver = document.querySelector(".topbar .tb-menus [data-menu=ver]"); // Ver is in the menu bar (Rodada D4)
+            const ver = document.querySelector(".topbar .tb-ver");
             const bell = document.querySelector(".topbar .tb-bell");
-            return named && bs.every((b) => !b.textContent.trim()) && Boolean(ver && bell);
+            return named && bs.every((b) => !b.textContent.trim()) && Boolean(ver && bell && ver.nextElementSibling === bell);
         })()`);
         const airIndex = () => (live.get().content ? live.get().content.index : null);
         const indexBefore = airIndex();
@@ -910,8 +910,8 @@ async function checkConsole(webContents, { live, outputs }) {
         {
             const groupOrder = () => js(`[...document.querySelectorAll(".console .dock .dock-group")].map((n) => n.dataset.dockMods).join(",")`);
             const orderBefore = await groupOrder();
-            await click(".topbar .tb-menus [data-menu=ver]");
-            await click(".mb-pop .kx-menu-item", "Editar disposição");
+            await click(".topbar .tb-ver");
+            await click(".pop .kx-menu-item", "Editar disposição");
             result.editBanner = await waitFor(() => js("Boolean(document.querySelector('.arr-banner [data-dock-tray]')) && [...document.querySelectorAll('.console .dock .dock-group')].every((g) => g.querySelector(':scope > .dock-bar'))"));
             const dragHint = await js(`(async () => {
                 const chip = document.querySelector('.dock-group[data-dock-mods="lib"] .dock-chip');
@@ -942,8 +942,8 @@ async function checkConsole(webContents, { live, outputs }) {
             await js("document.activeElement && document.activeElement.blur(); true");
             await press("Escape");
             result.editEsc = await waitFor(() => js("!document.querySelector('.arr-banner')")) && JSON.stringify(live.get().content || null) === airBefore;
-            await click(".topbar .tb-menus [data-menu=ver]");
-            await click(".mb-pop .kx-menu-item", "Editar disposição");
+            await click(".topbar .tb-ver");
+            await click(".pop .kx-menu-item", "Editar disposição");
             await click(".arr-banner button", "Restaurar posições");
             await click(".arr-banner button", "Concluir");
             result.editRestore = (await groupOrder()) === orderBefore;

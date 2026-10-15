@@ -58,7 +58,13 @@
 .console .topbar .kx-seg > button { white-space: nowrap; }
 /* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
 .console .envtabs { height: var(--topbar); border-bottom: 0; padding: 0; }
-.console .envtabs > button { font-weight: 500; letter-spacing: .02em; }
+/* KERYX | Bíblia are places, not commands (O topo, owner's pick B
+   2026-10-15): an icon, the name in bold, the gold underline on the one on
+   screen; the menu bar after the divider stays lighter. */
+.console .envtabs > button { font-weight: 600; letter-spacing: .02em; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.console .envtabs > button .kx-i { color: var(--fg-3); }
+.console .envtabs > button.is-on .kx-i { color: var(--brand); }
+.console .topbar .tb-div { flex: none; width: 1px; height: 18px; background: var(--line-strong); margin: 0 var(--space-1); }
 .console .envtabs > button { color: var(--fg-2); }
 .console .envtabs > button.is-on { color: var(--fg-1); }
 .console .envtabs > button.is-on::after { bottom: 8px; background: var(--brand); height: 2px; border-radius: 1px; }
@@ -75,7 +81,7 @@
    desktop program's; above the popover scrim, so pointing at another menu
    switches to it. It folds into the logo's menu on a narrow window. */
 .console .topbar .tb-menus { display: flex; align-items: center; gap: 0; position: relative; z-index: 26; margin: 0 var(--space-1) 0 2px; }
-.console .topbar .tb-menu { height: 28px; padding: 0 9px; border-radius: var(--radius-control); font-size: 13px; color: var(--fg-2); }
+.console .topbar .tb-menu { height: 28px; padding: 0 8px; border-radius: var(--radius-control); font-size: 12.5px; color: var(--fg-3); }
 .console .topbar .tb-menu:hover { background: var(--bg-1); color: var(--fg-1); }
 .console .topbar .tb-menu.is-on { background: var(--bg-2); color: var(--fg-1); }
 .console .mb-pop { min-width: 232px; max-height: calc(100% - var(--pop-top) - 12px); overflow: visible; }
@@ -85,7 +91,7 @@
 .console .mb-pop .kx-menu-item:disabled:hover { background: none; }
 .console .mb-pop .kx-menu-item.is-on { background: var(--bg-3); }
 .console .mb-pop .mb-sub { position: absolute; left: 100%; top: -6px; margin-left: 2px; min-width: 200px; z-index: 1; }
-@container topbar (max-width: 1240px) { .console .topbar .tb-menus { display: none; } }
+@container topbar (max-width: 1240px) { .console .topbar .tb-menus, .console .topbar .tb-div { display: none; } }
 @container topbar (max-width: 1400px) { .console .topbar .tb-svc-more { display: none; } }
 @container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
 @container topbar (max-width: 1200px) {
