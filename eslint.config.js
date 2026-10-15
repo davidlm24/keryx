@@ -23,6 +23,11 @@ export default [
     languageOptions: { sourceType: "module", ecmaVersion: 2022, globals: globals.node },
   },
   {
+    files: ["scripts/**/*.cjs"],
+    languageOptions: { sourceType: "commonjs", ecmaVersion: 2022, globals: globals.node },
+    rules: { "no-undef": "error" },
+  },
+  {
     files: [
       "src/components/**/*.{js,mjs,cjs,jsx}",
       "src/pages/**/*.{js,mjs,cjs,jsx}",
@@ -79,5 +84,27 @@ export default [
       // the rule is registered here.
       "react-hooks/exhaustive-deps": "warn",
     },
+  },
+  {
+    // Undefined names are errors in all app code (a leftover setView(null)
+    // threw at runtime in 0.2.17 and lint passed): the block above loses
+    // @eslint/js's rules when React's config is spread over it, and src/lib,
+    // src/api and the entry files had no rules at all.
+    files: ["src/**/*.{js,mjs,cjs,jsx}"],
+    ignores: ["src/components/ui/**/*"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: globals.browser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    plugins: { react: pluginReact },
+    // no-undef does not see JSX names (<Foo />); jsx-no-undef does.
+    rules: { "no-undef": "error", "react/jsx-no-undef": "error" },
+  },
+  {
+    // The tests run in node (npm test).
+    files: ["src/**/*.test.{js,mjs}"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 ];
