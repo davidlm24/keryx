@@ -12,6 +12,8 @@
 /* Side columns shrink down to their minimum (inline flex-basis/min-width
    from Console.jsx); the center keeps room for the monitors. */
 .console .main > .col.center { min-width: 480px; }
+/* The detached Editor (/Editor): its canvas gives way before the columns beside it leave the window (D5, 960 px). */
+.console.edw .main > .col.center { min-width: 320px; }
 /* Narrow tier: Biblioteca over Slides in one column. */
 .console .col.source > .kx-panel { flex: 1 1 0; }
 .console .col.source > .kx-panel.is-collapsed { flex: none; }
@@ -721,7 +723,9 @@
 @media (prefers-reduced-motion: reduce) { .console .win-dialog { transition: none; } .console .win-page { animation: none; } }
 /* The bar: the Configurações header, now every page's. */
 .console .win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
-.console .win-bar .win-title { flex: none; color: var(--fg-1); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The title gives way first (an ellipsis; its whole text is the page) so the
+   tools and actions never leave the bar (D5: Relatórios at 960 px). */
+.console .win-bar .win-title { flex: 0 1 auto; color: var(--fg-1); font-size: 12px; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .win-bar .kx-btn-back { height: 26px; margin-left: -6px; flex: none; }
 .console .win-bar .win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
 .console .win-bar .win-gap { flex: 1; }

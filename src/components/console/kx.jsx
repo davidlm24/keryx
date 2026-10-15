@@ -52,7 +52,7 @@ export function WinBar({ title, sub, tools, actions, detach }) {
                     <Icon name="arrow-left" />{w.back}
                 </button>
             )}
-            <span className="kx-section win-title">{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
+            <span className="kx-section win-title" title={sub ? `${title} · ${sub}` : title}>{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
             {tools && <span className="win-tools">{tools}</span>}
             <span className="win-gap" />
             {actions}
