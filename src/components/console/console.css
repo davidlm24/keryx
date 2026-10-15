@@ -58,12 +58,11 @@
 .console .topbar .kx-seg > button { white-space: nowrap; }
 /* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
 .console .envtabs { height: var(--topbar); border-bottom: 0; padding: 0; }
-/* KERYX | Bíblia are places, not commands (O topo, owner's pick B
-   2026-10-15): an icon, the name in bold, the gold underline on the one on
-   screen; the menu bar after the divider stays lighter. */
-.console .envtabs > button { font-weight: 600; letter-spacing: .02em; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-.console .envtabs > button .kx-i { color: var(--fg-3); }
-.console .envtabs > button.is-on .kx-i { color: var(--brand); }
+/* KERYX | BÍBLIA are places, not commands (O topo, owner's pick B
+   2026-10-15): both in bold caps (the label stays "Bíblia" in the code), no
+   icons, the gold underline on the one on screen; the menu bar after the
+   divider stays lighter. */
+.console .envtabs > button { font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: 13px; }
 .console .topbar .tb-div { flex: none; width: 1px; height: 18px; background: var(--line-strong); margin: 0 var(--space-1); }
 .console .envtabs > button { color: var(--fg-2); }
 .console .envtabs > button.is-on { color: var(--fg-1); }
