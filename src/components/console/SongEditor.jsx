@@ -42,7 +42,7 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 // song's video or playback with lyric timing on the right. Nothing here
 // changes what is on air. Opening a song keeps its saved slides; editing the
 // lyrics (or the split) redoes them, keeping timings by position.
-export default function SongEditor({ c, songId, themes = [], onClose, onSaved, escRef, active = true, onEditTheme = null, onSync = null }) {
+export default function SongEditor({ c, songId, themes = [], onClose, onSaved, escRef, active = true, onEditTheme = null, onSync = null, autoSync = false }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colDados = useWinCol("song.dados", { def: 340, min: 280, max: 560 });
     const colLetra = useWinCol("song.letra", { def: 480, min: 300, max: 900 });
@@ -275,6 +275,14 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     // the window pushed from here ("← Editor de música"); Aplicar brings them
     // back to this draft, Salvar keeps them. The same marks follow the video,
     // the playback or — no media — the live clock on air (content.follow).
+    // Música › Sincronizar a música… (the menu bar): the editor opens with
+    // Sincronizar on top of it, once the song is read.
+    const didAutoSync = useRef(false);
+    useEffect(() => {
+        if (!autoSync || didAutoSync.current || !song || !slides.length) return;
+        didAutoSync.current = true;
+        openSync();
+    });
     const openSync = () => onSync?.({
         title: song.title || "Música",
         slides: slides.map(({ text, label }) => ({ text, ...(label ? { label } : {}) })),

@@ -29,7 +29,7 @@ const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().inc
 // out (the files stay in the media folder). A click selects (Ctrl/Shift
 // for more), a double click or Enter sends to air, "Tocar todos"
 // plays the selection (or everything shown) one after the other.
-export default function MediaView({ c, media, onSend, onClose, escRef, active = true, askText = null }) {
+export default function MediaView({ c, media, onSend, onClose, escRef, active = true, askText = null, intent = null }) {
     const [cat, setCat] = useState("todas");
     const [category, setCategory] = useState("");
     const [view, setView] = useState(() => { try { return localStorage.getItem("keryx.media.view") || "grid"; } catch { return "grid"; } });
@@ -92,6 +92,15 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     };
     // Link do YouTube… (the Enviar menu): the url comes from one question
     // (PromptDialog), not a field always on screen (Rodada C, fase b).
+    // Opened from the menu bar (Mídia › Enviar arquivos… / Link do YouTube…):
+    // the page opens on that step, once.
+    const didIntent = useRef(false);
+    useEffect(() => {
+        if (didIntent.current || !intent) return;
+        didIntent.current = true;
+        if (intent === "upload") fileRef.current?.click();
+        else if (intent === "youtube") addLink();
+    });
     const addLink = async () => {
         const url = ((await askText?.({ title: "Link do YouTube", placeholder: "https://youtube.com/watch?v=…", ok: "Adicionar" })) || "").trim();
         if (!url) return;

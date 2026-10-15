@@ -18,14 +18,16 @@ import { Switch } from "./settings/parts";
 
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
-// The KERYX menu: pages that stay outside the console, the service picker,
-// Ver (modules) and the layout reset.
+// The KERYX menu (the logo): every page and the service picker in one list,
+// Ver (modules) and the layout reset — what the menu bar has, for a narrow
+// window where the bar folds away (Rodada D4).
 export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow, onWhatsNew }) {
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     if (open === "ver") {
         return (
-            // Under the top bar's Ver button, its right edge on the button's.
-            <div className="pop kx-pop" style={{ right: Math.max(8, Math.round(window.innerWidth - (document.querySelector(".topbar .tb-ver")?.getBoundingClientRect().right ?? window.innerWidth - 8))), top: "var(--pop-top)", width: 220 }}>
+            // From the logo's menu (Ver ›), where the menu bar folded on a
+            // narrow window; on a wide one Ver is the bar's own menu.
+            <div className="pop kx-pop" style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 220 }}>
                 <div className="kx-menu-h"><span className="kx-section">Ver</span></div>
                 {MODULES.map(([key, name]) => (
                     <MenuItem key={key} checked={!layout.hidden[key]} onClick={() => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } })}>{name}</MenuItem>
@@ -78,6 +80,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <MenuItem icon="book" onClick={() => { setOpen(null); onSchool?.(); }}>Escola bíblica</MenuItem>
             <MenuItem icon="history" onClick={() => { setOpen(null); onReports?.(); }}>Relatórios</MenuItem>
             <div className="kx-menu-sep" />
+            <MenuItem icon="eye" onClick={() => setOpen("ver")} title="Módulos, densidade e disposição">Ver<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
             <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Saídas</MenuItem>
             <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>
             <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>

@@ -17,6 +17,11 @@ import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService
 import { Panel, IconBtn, Measure, Seg, WinCtx } from "@/components/console/kx";
 import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
+import { MenuBarPop } from "@/components/console/MenuBar";
+import { buildMenus, songInHand } from "@/lib/console/menuBar";
+import { importSongFiles, SONG_FILE } from "@/components/console/importSongs";
+import { exportServiceToPdf } from "@/utils/servicePdfExport";
+import { useChurch } from "@/hooks/useChurch";
 import Library from "@/components/console/Library";
 import SlidesPanel, { handTitle, handIsPrev } from "@/components/console/SlidesPanel";
 import OnAirPanel, { onAirCount } from "@/components/console/OnAirPanel";
@@ -58,7 +63,7 @@ import TabsPanel from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
-import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier } from "@/lib/console/layout";
+import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, DENSITIES, densityOf, tierFor, shownDensity, panelHead, restoreEnv, switchTier } from "@/lib/console/layout";
 import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
@@ -211,8 +216,8 @@ export default function Console() {
         setCfg(section);
         setWin((s) => (winTopOf(s)?.page === "config" ? s : openStack({ page: "config" })));
     }, [setCfg]);
-    const openSong = useCallback((id) => { setOpen(null); setWin(openStack({ page: "song", props: { id } })); }, []);
-    const openMedia = useCallback(() => { setOpen(null); setWin(openStack({ page: "media" })); }, []);
+    const openSong = useCallback((id, more = {}) => { setOpen(null); setWin(openStack({ page: "song", props: { id, ...more } })); }, []);
+    const openMedia = useCallback((intent = null) => { setOpen(null); setWin(openStack({ page: "media", props: intent ? { intent } : {} })); }, []);
     const openNotice = useCallback((id) => { setOpen(null); setWin(openStack({ page: "notice", props: { id: id || "new" } })); }, []);
     // The Editor de temas e telas: every openEditor call lands in the
     // window — with `from` (the title of the page it came from) it pushes
@@ -1154,13 +1159,69 @@ export default function Console() {
 
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
+    // The menu bar (owner 2026-10-15, Rodada D4, "Menus novos" = A;
+    // src/lib/console/menuBar.js): Culto, Música, Mídia, Telas, Ferramentas,
+    // Ver and Ajuda beside the logo; every item is something the console
+    // already does. Música › Importar uma pasta… uses this hidden picker.
+    const church = useChurch();
+    const folderRef = useRef(null);
+    const barLayer = playerLayer(c.cur);
+    const menus = buildMenus({
+        services, serviceId, itemsCount: items.length, locked: c.locked, screen: c.cur?.screen,
+        songId: songInHand(c.prev, c.cur), follow: c.cur?.content?.follow || null,
+        playerOn: Boolean(barLayer), playing: Boolean(barLayer && !c.cur[barLayer]?.playback?.paused),
+        timers: timerChoices(data.timerPresets).map((t) => ({ minutes: t.minutes, label: minutesLabel(t.minutes) })),
+        update: hasUpdate(upd.update) ? { label: upd.update.status === "downloading" ? "Atualizando…" : "Atualizar agora", kbd: upd.update.status === "downloading" ? `${upd.update.percent}%` : upd.update.version } : null,
+        ver: {
+            modules: VER_LIST.map(([key, name]) => [key, name, !uiLayout.hidden[key]]),
+            densities: DENSITIES.map(([key, name]) => [key, name, densityOf(layout) === key]),
+            presets: [{ id: null, name: "Padrão" }, ...presets].map((p) => ({ id: p.id, name: p.name, checked: (preset?.id || null) === p.id, dirty: presetDirty })),
+            editing,
+        },
+        act: {
+            pickService: (id) => setServiceId(id),
+            planner: (id) => openPlanner(id),
+            settings: (section) => openSettings(section),
+            exportPdf: () => { if (service) exportServiceToPdf(service, items, church).then(() => c.say("PDF gerado.")).catch((err) => c.say(err?.message || "Não foi possível gerar o PDF.")); },
+            newSong: () => openSong("new"),
+            lyricsSearch: () => setOpen("lyrics"),
+            importFolder: () => folderRef.current?.click(),
+            syncSong: (id) => openSong(id, { sync: true }),
+            follow: (action) => c.callOp("content.follow", { action }).catch(() => {}),
+            media: (intent) => openMedia(intent),
+            playerToggle: () => { const op = playerOp(c.cur, barLayer, "toggle"); if (op) c.callOp(op[0], op[1]).catch(() => {}); },
+            outputs: () => setOpen("outs"),
+            lock: (on) => c.setLocked(on),
+            screen: (which) => c.toggleScreen(which),
+            clearText: () => c.clearText(),
+            verify: () => setOpen("verificar"),
+            notices: () => openNotices(),
+            newNotice: () => openNotice("new"),
+            quickAlert: async () => {
+                const t = await askText({ title: "Aviso rápido", placeholder: "Carro placa ABC-1234, procure a recepção", ok: "Enviar às telas", hint: "Vai direto às telas" });
+                if (t) c.callOp("alert.show", { message: t, type: "message" }).catch(() => {});
+            },
+            timer: (minutes) => { c.setPrev(stageFromTool("timer", { minutes })); c.say(`Timer de ${minutesLabel(minutes)} na Prévia · Enter envia.`); },
+            school: () => openSchool(),
+            reports: () => openReports(),
+            toggleModule: (key) => setUiLayout({ ...uiLayout, hidden: { ...uiLayout.hidden, [key]: !uiLayout.hidden[key] } }),
+            density: (key) => setLayout({ ...layout, density: key }),
+            preset: (id) => pickPreset(id),
+            editLayout: () => setEditing((v) => !v),
+            restoreLayout: () => restoreLayout(),
+            shortcuts: () => setOpen("atalhos"),
+            whatsNew: () => openWhatsNew(),
+            updateNow: () => updateNow(),
+        },
+    });
+
     return (
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
         <ConfirmContext.Provider value={askConfirm}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar c={c} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
+            <TopBar c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1219,9 +1280,9 @@ export default function Console() {
                         if (entry.page === "config") page = <SettingsView c={c} section={cfg || "igreja"} setSection={setCfg} onClose={onClose} escRef={escRef} active={active} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} onWhatsNew={openWhatsNew} />;
                         else if (entry.page === "planner") page = <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={onClose} escRef={escRef}
                             onEditSong={(id) => setWin((s) => winPush(s, { page: "song", props: { id } }, "Planejar o culto"))} />;
-                        else if (entry.page === "media") page = <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={onClose} escRef={escRef} active={active} askText={askText} />;
+                        else if (entry.page === "media") page = <MediaView c={c} intent={entry.props.intent || null} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={onClose} escRef={escRef} active={active} askText={askText} />;
                         else if (entry.page === "notice") page = <NoticeEditor c={c} noticeId={entry.props.id} logoUrl={logoUrl} media={data.media} onClose={onClose} onSaved={(row) => { if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active} />;
-                        else if (entry.page === "song") page = <SongEditor c={c} songId={entry.props.id} themes={data.themes} onClose={onClose} onSaved={(row) => { songSaved(row); if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active}
+                        else if (entry.page === "song") page = <SongEditor c={c} songId={entry.props.id} autoSync={Boolean(entry.props.sync)} themes={data.themes} onClose={onClose} onSaved={(row) => { songSaved(row); if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active}
                             onEditTheme={(id) => setWin((s) => winPush(s, { page: "theme", props: { id } }, "Editor de música"))}
                             onSync={(props) => setWin((s) => winPush(s, { page: "sync", props }, "Editor de música"))} />;
                         else if (entry.page === "sync") page = <SyncView {...entry.props} onClose={onClose} escRef={escRef} active={active} />;
@@ -1250,6 +1311,9 @@ export default function Console() {
                         onOpenOutput={openOutput} onClose={() => setOpen(null)} onSettings={openSettings} onOpenMedia={openMedia} />
                 </div>
             )}
+            <MenuBarPop menus={menus} open={open} setOpen={setOpen} />
+            <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept=".txt,.chordpro,.cho,.crd,.pro,.json,text/plain"
+                onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) importSongFiles(files, c.say); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
             <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} onWhatsNew={openWhatsNew} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />

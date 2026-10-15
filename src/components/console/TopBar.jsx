@@ -1,18 +1,21 @@
 import React from "react";
 import Icon from "./Icon";
 import { IconBtn } from "./kx";
+import { MenuBarButtons } from "./MenuBar";
 
-// The top bar, a menu bar: the KERYX menu (the mark), the environments
+// The top bar, a menu bar: the KERYX menu (the mark), the menu bar (Culto,
+// Música, Mídia, Telas, Ferramentas, Ver, Ajuda; Rodada D4 — it folds into
+// the mark's menu on a narrow window, console.css), the environments
 // KERYX | Bíblia as tabs, the search, the service clock (how long the
 // service has been running, from its scheduled time: serviceClock in
 // src/lib/console/timeline.js; a click opens Planejar o culto), a compact
-// clock, the outputs status, Ver and the bell, and the screen actions
+// clock, the outputs status and the bell, and the screen actions
 // (Tela preta, Logo, Limpar, Encerrar) as one chip of glyphs, named by
 // their tooltips and aria-labels (owner decision 2026-10-10). Nothing
 // wraps: as the window narrows the bar drops the service's end, then the
 // clock, then shortens the outputs label and the search (container queries
 // in console.css). Tela preta and Mostrar logo act even with the screens locked.
-export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsCount, outsState, logoUrl, unread = 0, svc, onPlanner }) {
+export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outsLabel, outsCount, outsState, logoUrl, unread = 0, svc, onPlanner }) {
     const { live, now } = c;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const toggle = (name) => setOpen(open === name ? null : name);
@@ -25,6 +28,7 @@ export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsC
                 <button type="button" className={`markbtn kx-t ${open === "menu" ? "is-on" : ""}`} onClick={() => toggle("menu")} aria-haspopup="menu" aria-expanded={open === "menu"} title="Menu" aria-label="Menu">
                     {logoUrl ? <img src={logoUrl} alt="" /> : <span className="kx-mark" />}
                 </button>
+                {menus.length > 0 && <MenuBarButtons menus={menus} open={open} setOpen={setOpen} />}
                 <div className="kx-tabs envtabs" role="tablist" aria-label="Ambiente">
                     {envTab("culto", "KERYX", "Projeção: músicas, mídia, setlist")}
                     {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
@@ -46,8 +50,6 @@ export default function TopBar({ c, env, setEnv, open, setOpen, outsLabel, outsC
                 <button type="button" className={`kx-status kx-t ${outsState ? `is-${outsState}` : ""}`} onClick={() => toggle("outs")} title={`Telas e saídas · ${outsLabel}`} aria-expanded={open === "outs"}>
                     <i className="kx-dot" /><span className="tb-outs-l">{outsLabel}</span><span className="tb-outs-s">Saídas · {outsCount}</span>
                 </button>
-                {/* Ver: the modules, the density and Restaurar layout; beside the bell. */}
-                <IconBtn name="eye" className="tb-ver" title="Ver · módulos, densidade e layout" on={open === "ver"} onClick={() => toggle("ver")} aria-haspopup="menu" aria-expanded={open === "ver"} />
                 <span className="tb-bell">
                     <IconBtn name="bell" title={unread ? `Notificações · ${unread} ${unread === 1 ? "nova" : "novas"}` : "Notificações"} on={open === "notifs"} onClick={() => toggle("notifs")} aria-expanded={open === "notifs"} />
                     {unread > 0 && open !== "notifs" && <i className="tb-bell-dot" aria-hidden="true" />}
