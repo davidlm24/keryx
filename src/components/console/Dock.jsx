@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Split } from "./kx";
-import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned } from "@/lib/console/dock";
+import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct } from "@/lib/console/dock";
 
 // Ver › Editar disposição for the culto environment (2026-10-13; the
 // prototype "Disposição do console", model Livre): the console as a tree of
@@ -260,6 +260,11 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
         );
     };
 
+    // Por % (Editar disposição, owner 2026-10-15): a splitter works on the
+    // sizes as drawn in this box (rebaseDock) and snaps to PCT_STEP %.
+    const pct = dock?.mode === "pct";
+    const base = () => (pct ? rebaseDock(dock, frame.w, frame.h) : dock);
+
     const node = (f) => {
         if (f.kind === "group") return group(f);
         const fi = f.children.findIndex((ch) => !ch.fixed);
@@ -290,18 +295,18 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             const size = f.children[owner].size;
             // A group of tabs made of several children: they all take the size.
             const { index, at = [index] } = f.children[owner];
-            const resizeAll = (v) => at.reduce((d, j) => resizeChild(d, f.path, j, v), dock);
             // While editing, the splitter says the owner's size in % of the
             // split, and a click lets one type it (owner 2026-10-14).
             const total = f.dir === "row" ? f.w : f.h;
-            const pct = total > 0 ? Math.round((size / total) * 100) : null;
+            const resizeAll = (v) => { const px = pct ? snapPct(v, total) : v; return at.reduce((d, j) => resizeChild(d, f.path, j, px), base()); };
+            const share = total > 0 ? Math.round((size / total) * 100) : null;
             out.push(
                 <Split key={`s${i}`} horizontal={f.dir === "col"} size={size} sign={sign}
                     onSize={(v) => onDock(resizeAll(v))}
                     onReset={() => { const d = defaultSize(dock, f.path, index); if (d !== null) onDock(resizeAll(d)); }}
                     clamp={(v) => Math.round(v)}
-                    label={editing && pct !== null ? `${pct}%` : null}
-                    onPercent={(p) => { if (Number.isFinite(p) && total > 0) onDock(resizeAll(Math.round((Math.max(1, Math.min(99, p)) / 100) * total))); }} />,
+                    label={editing && share !== null ? `${share}%` : null}
+                    onPercent={(n) => { if (Number.isFinite(n) && total > 0) onDock(resizeAll(Math.round((Math.max(1, Math.min(99, n)) / 100) * total))); }} />,
             );
         });
         return <div className={`dock-split is-${f.dir}`}>{out}</div>;

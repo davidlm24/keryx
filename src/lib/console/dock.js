@@ -85,8 +85,55 @@ const envOf = (id) => MODULES[id]?.env || "culto";
 export const envModules = (env) => Object.keys(MODULES).filter((id) => envOf(id) === env);
 export const dockEnv = (d) => (d?.env === "biblia" ? "biblia" : "culto");
 // A dock object for an environment (the culto's carries no env).
-const make = (env, tree, hidden) => (env === "culto" ? { tree, hidden } : { env, tree, hidden });
+// `from`: the dock it came from — its Livre | Por % mode rides along (modeOf).
+const make = (env, tree, hidden, from = null) => ({ ...(env === "culto" ? { tree, hidden } : { env, tree, hidden }), ...modeOf(from) });
 export const MODULE_IDS = envModules("culto");
+
+// ---------- Livre | Por % (owner 2026-10-15, Rodada D) ----------
+// Editar disposição sizes the panels either freely (pixels, as always) or
+// by percent: then the dock keeps `mode: "pct"` and `ref`, the box its sizes
+// were made for, and fitDock scales every fixed size by the box on screen
+// over `ref` — the proportions survive a smaller window or another monitor
+// (minimums and locked heights still win). Splitters snap in PCT_STEP.
+export const DOCK_MODES = ["free", "pct"];
+export const PCT_STEP = 5;
+export const dockMode = (d) => (d?.mode === "pct" ? "pct" : "free");
+const okRef = (r) => Number.isFinite(r?.w) && Number.isFinite(r?.h) && r.w > 0 && r.h > 0;
+// The mode fields a dock carries over (make): nothing in free mode.
+function modeOf(d) {
+    if (d?.mode !== "pct") return {};
+    return okRef(d.ref) ? { mode: "pct", ref: { w: Math.round(d.ref.w), h: Math.round(d.ref.h) } } : { mode: "pct" };
+}
+// Every fixed size times kx across a row, ky down a column.
+function scaleTree(node, kx, ky) {
+    if (!isSplit(node)) return node;
+    const k = node.dir === "row" ? kx : ky;
+    return { ...node, sizes: node.sizes.map((s) => (s === null ? null : Math.round(s * k))), children: node.children.map((c) => scaleTree(c, kx, ky)) };
+}
+// The tree as it is drawn in a w × h box (pct mode); the tree itself otherwise.
+const treeFor = (d, w, h) => (d?.mode === "pct" && okRef(d.ref) && w > 0 && h > 0 ? scaleTree(d.tree, w / d.ref.w, h / d.ref.h) : d?.tree);
+// A pct dock made for the w × h box on screen (its sizes are what is drawn
+// there), so a splitter's pixels apply to it as they are.
+export function rebaseDock(dock, w, h) {
+    if (dock?.mode !== "pct" || !dock.tree || !(w > 0 && h > 0)) return dock;
+    return { ...dock, tree: treeFor(dock, w, h), ref: { w: Math.round(w), h: Math.round(h) } };
+}
+// Livre ↔ Por %: what is on screen stays as it is, only how it follows the
+// box changes.
+export function setDockMode(dock, mode, w, h) {
+    if (!dock?.tree || !(w > 0 && h > 0)) return dock;
+    const now = rebaseDock(dock, w, h);
+    if (mode === "pct") return { ...now, mode: "pct", ref: { w: Math.round(w), h: Math.round(h) } };
+    const { mode: _m, ref: _r, ...free } = now; // eslint-disable-line no-unused-vars
+    return free;
+}
+// px along a split of `total` px, snapped to the nearest step of PCT_STEP %
+// (never 0 % or 100 %).
+export function snapPct(px, total, step = PCT_STEP) {
+    if (!(total > 0) || !Number.isFinite(px)) return px;
+    const p = Math.min(100 - step, Math.max(step, Math.round((px / total) * 100 / step) * step));
+    return Math.round((p / 100) * total);
+}
 export const ZONES = ["center", "left", "right", "top", "bottom"];
 
 export const isGroup = (n) => Boolean(n) && Array.isArray(n.tabs);
@@ -242,7 +289,7 @@ export function normalizeDock(saved) {
     for (const id of savedHidden) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
     // A module the save does not know (a newer KERYX) starts in the tray.
     for (const id of ids) if (trayable(id) && !hidden.includes(id)) hidden.push(id);
-    return make(env, tree, hidden);
+    return make(env, tree, hidden, saved);
 }
 
 // The band the No ar strip lives in (layout.onairSpan; owner 2026-10-14):
@@ -292,7 +339,7 @@ function withBand(tree, id, env, span = "columns") {
 export function moveBand(dock, span) {
     const d = normalizeDock(dock);
     if (!pathOf(d.tree, "onair") || bandOf(d.tree, "onair") === onairSpanOf(span)) return d;
-    return normalizeDock(make(dockEnv(d), withBand(d.tree, "onair", dockEnv(d), span), d.hidden));
+    return normalizeDock(make(dockEnv(d), withBand(d.tree, "onair", dockEnv(d), span), d.hidden, d));
 }
 
 export const isPinned = (id) => Boolean(MODULES[id]?.pinned);
@@ -416,7 +463,7 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
         if (target.kind === "home" && list.some((m) => !MODULES[m].home)) return d;
         const tree = clone(d.tree);
         strip(tree, list);
-        return normalizeDock(make(dockEnv(d), tree, [...d.hidden, ...list.filter((m) => !MODULES[m].home)]));
+        return normalizeDock(make(dockEnv(d), tree, [...d.hidden, ...list.filter((m) => !MODULES[m].home)], d));
     }
     if (target.kind === "edge") {
         const zone = ZONES.includes(target.zone) && target.zone !== "center" ? target.zone : "bottom";
@@ -427,7 +474,7 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
         const fresh = group(list);
         const size = pxOrNull(px) ?? NEW_PX;
         const next = split(axis, before ? [fresh, tree] : [tree, fresh], before ? [size, null] : [null, size]);
-        return normalizeDock(make(dockEnv(d), next, d.hidden.filter((m) => !list.includes(m))));
+        return normalizeDock(make(dockEnv(d), next, d.hidden.filter((m) => !list.includes(m)), d));
     }
     if (target.kind !== "group") return d;
     const tg = nodeAt(d.tree, target.path);
@@ -470,7 +517,7 @@ export function moveModules(dock, mods, target, { px = NEW_PX, share = true } = 
             else tree = wrapped;
         }
     }
-    return normalizeDock(make(dockEnv(d), tree, d.hidden.filter((m) => !list.includes(m))));
+    return normalizeDock(make(dockEnv(d), tree, d.hidden.filter((m) => !list.includes(m)), d));
 }
 
 export const hideModule = (dock, id) => moveModules(dock, [id], { kind: "tray" });
@@ -486,7 +533,7 @@ export function returnModule(dock, id, opts) {
     if (MODULES[id].pinned === "bottom") {
         const env = dockEnv(d);
         const tree = d.tree ? withBand(d.tree, id, env, opts?.onairSpan) : group([id]);
-        return normalizeDock(make(env, tree, d.hidden.filter((m) => m !== id)));
+        return normalizeDock(make(env, tree, d.hidden.filter((m) => m !== id), d));
     }
     const def = defaultDock({ ...opts, tier: "wide", env: dockEnv(d) }).tree;
     const onScreen = (m) => m !== id && pathOf(d.tree, m);
@@ -555,7 +602,7 @@ export function setActive(dock, path, id) {
     const n = nodeAt(tree, path);
     if (!isGroup(n) || !n.tabs.includes(id) || n.active === id) return d;
     n.active = id;
-    return make(dockEnv(d), tree, d.hidden);
+    return make(dockEnv(d), tree, d.hidden, d);
 }
 
 // A splitter moved: the fixed child at `index` of the split at `path` gets
@@ -571,7 +618,7 @@ export function resizeChild(dock, path, index, px) {
     if (!Number.isFinite(px)) return d;
     // A drag far past the edge (even below zero) stops at the minimum.
     sp.sizes[index] = Math.min(PX_MAX, Math.max(min, Math.round(px)));
-    return make(dockEnv(d), tree, d.hidden);
+    return make(dockEnv(d), tree, d.hidden, d);
 }
 
 // ---------- sizes and fitting ----------
@@ -644,7 +691,8 @@ export function allocate(sizes, mins, avail) {
 export function fitDock(dock, w, h, { gone = [], locked = {} } = {}) {
     if (!dock?.tree) return null;
     const folding = new Set(gone.filter((id) => MODULES[id]?.fold));
-    return fitNode(dock.tree, [], w, h, { ...contextOf(dock.tree), folding, locked });
+    const tree = treeFor(dock, w, h);
+    return fitNode(tree, [], w, h, { ...contextOf(tree), folding, locked });
 }
 
 // A node's locked height (fitDock's `locked`): a group of one module that has one.
