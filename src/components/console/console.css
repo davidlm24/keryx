@@ -69,6 +69,21 @@
 .console .markbtn .kx-mark::after { font-size: 13px; }
 .console .markbtn:hover img, .console .markbtn.is-on img { box-shadow: 0 0 0 2px var(--brand); }
 .console .markbtn:hover .kx-mark, .console .markbtn.is-on .kx-mark { box-shadow: 0 0 0 2px var(--brand-tint); }
+/* The menu bar (Rodada D4, MenuBar.jsx): plain words beside the logo, as a
+   desktop program's; above the popover scrim, so pointing at another menu
+   switches to it. It folds into the logo's menu on a narrow window. */
+.console .topbar .tb-menus { display: flex; align-items: center; gap: 0; position: relative; z-index: 26; margin: 0 var(--space-1) 0 2px; }
+.console .topbar .tb-menu { height: 28px; padding: 0 9px; border-radius: var(--radius-control); font-size: 13px; color: var(--fg-2); }
+.console .topbar .tb-menu:hover { background: var(--bg-1); color: var(--fg-1); }
+.console .topbar .tb-menu.is-on { background: var(--bg-2); color: var(--fg-1); }
+.console .mb-pop { min-width: 232px; max-height: calc(100% - var(--pop-top) - 12px); overflow: visible; }
+.console .mb-pop .mb-row { position: relative; }
+.console .mb-pop .mb-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .mb-pop .kx-menu-item:disabled { color: var(--fg-3); cursor: default; }
+.console .mb-pop .kx-menu-item:disabled:hover { background: none; }
+.console .mb-pop .kx-menu-item.is-on { background: var(--bg-3); }
+.console .mb-pop .mb-sub { position: absolute; left: 100%; top: -6px; margin-left: 2px; min-width: 200px; z-index: 1; }
+@container topbar (max-width: 1240px) { .console .topbar .tb-menus { display: none; } }
 @container topbar (max-width: 1400px) { .console .topbar .tb-svc-more { display: none; } }
 @container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
 @container topbar (max-width: 1200px) {

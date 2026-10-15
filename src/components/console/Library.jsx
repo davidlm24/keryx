@@ -7,8 +7,8 @@ import LinesPicker from "./LinesPicker";
 import { useContextMenu } from "./ContextMenu";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import AddMenu from "./AddMenu";
-import { songsFromFile } from "@/lib/songImport";
-import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
+import { importSongFiles as importSongs } from "./importSongs";
+import { usePrefs, updateUser } from "@/hooks/useUser";
 import { mediaFromYouTube } from "@/lib/mediaImport";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles } from "@/lib/mediaImport";
@@ -115,18 +115,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
     const pickImportCut = (v) => { updateUser({ import_lines: v }).catch(() => c.say("Não foi possível salvar.")); };
 
     // "+ › Do computador": song files (cifra, ChordPro, texto, JSON exportado).
-    const importSongFiles = async (files) => {
-        let made = 0;
-        const bad = [];
-        for (const file of files) {
-            try {
-                const rows = songsFromFile(file.name, await file.text(), { lines: getPrefs().import_lines });
-                for (const row of rows) { await keryx.entities.Song.create(row); made += 1; }
-                if (!rows.length) bad.push(file.name);
-            } catch (err) { bad.push(`${file.name} (${err?.message || "falhou"})`); }
-        }
-        c.say(made ? `${made} ${made === 1 ? "música importada" : "músicas importadas"}${bad.length ? ` · não deu: ${bad.join(", ")}` : ""}.` : `Nenhuma letra encontrada em ${bad.join(", ")}.`);
-    };
+    const importSongFiles = (files) => importSongs(files, c.say);
     // "+ › Exportar todas": the songs as the JSON the import reads back.
     const exportSongs = () => {
         const songs = data.songs.map(({ id: _id, created_date: _c, updated_date: _u, created_by_id: _b, ...rest }) => rest);
