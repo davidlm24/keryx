@@ -18,6 +18,7 @@ import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStag
 import { QuickAlert, ToolsPicker } from "./QuickTools";
 import { TabRow } from "./TabsPanel";
 import { setDragGhost, stageGhost } from "./dragGhost";
+import { isVideoUrl } from "@/lib/console/content";
 
 // A library row can be dragged onto the Prévia (prepares), the Programa
 // (sends) or the Setlist (adds the item there).
@@ -213,7 +214,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
                                 key={s.id}
                                 icon="music"
                                 title={s.title}
-                                meta={[s.artist, s.song_key, s.duration && mmss(s.duration), s.audio_url && "playback"].filter(Boolean).join(" · ")}
+                                meta={[s.artist, s.song_key, s.duration && mmss(s.duration), s.audio_url && (isVideoUrl(s.audio_url) ? "vídeo" : "playback"), (s.slides || []).some((x) => Number.isFinite(x?.start)) && "sincronizada"].filter(Boolean).join(" · ")}
                                 state={state(`song:${s.id}`)}
                                 onClick={() => onPrepare(stageFromSong(s, {}, data.themes))}
                                 onDoubleClick={onGo && (() => onGo(stageFromSong(s, {}, data.themes)))}

@@ -77,3 +77,45 @@ export function clock(seconds) {
     const s = Math.max(0, Math.floor(seconds || 0));
     return s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor((s % 3600) / 60))}:${two(s % 60)}` : `${Math.floor(s / 60)}:${two(s % 60)}`;
 }
+
+// ---------- Letra automática (owner 2026-10-15, Rodada D4) ----------
+// A song on air whose slides have marks follows its video, its playback (on
+// the audio channel) or the live clock (content.follow, live-state.mjs).
+
+// Whether the player's item is what the lyrics follow.
+export const followsItem = (follow, item) => Boolean(follow && item && follow.source !== "clock" && item.url === follow.url);
+
+// The chip's words: what the lyrics follow, or that following is paused.
+export function followLabel(follow) {
+    if (!follow) return "";
+    if (follow.source === "clock" && !follow.clock) return "Letra automática · esperando Iniciar";
+    if (follow.paused) return "Letra parada · clique para retomar";
+    return follow.source === "clock" ? "Relógio ao vivo" : follow.source === "video" ? "Letra segue o vídeo" : "Letra segue o playback";
+}
+
+// The chip's click (or the clock's Iniciar): the content.follow action.
+export function followAction(follow) {
+    if (!follow) return null;
+    if (follow.source === "clock" && !follow.clock) return "start";
+    return follow.paused ? "resume" : "pause";
+}
+
+// One tick per marked slide on a time bar of `duration` seconds, where the
+// slide comes in on that bar (its mark less the follow's offset). -> [{ i, pct, label }]
+export function followTicks(slides, follow, duration) {
+    if (!follow || !(duration > 0)) return [];
+    const off = follow.offset || 0;
+    return (slides || []).flatMap((it, i) => {
+        if (!Number.isFinite(it?.start)) return [];
+        const t = it.start - off;
+        if (t < 0 || t > duration) return [];
+        return [{ i, pct: Math.round((t / duration) * 10000) / 100, label: `${i + 1}${it.label ? ` · ${it.label}` : ""} · ${clock(t)}` }];
+    });
+}
+
+// The live clock's length: the song's duration, else a little past the last mark.
+export function clockLength(slides, follow) {
+    if (follow?.length > 0) return follow.length;
+    const last = Math.max(0, ...(slides || []).map((it) => (Number.isFinite(it?.start) ? it.start : 0)));
+    return last > 0 ? Math.ceil(last + 15) : null;
+}

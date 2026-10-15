@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked,
+    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked, followPosition, followIndex, slideAtTime, FOLLOW_SOURCES,
 } from "./live-state.mjs";
 
 const T0 = 1_000_000;
@@ -623,4 +623,93 @@ test("a generated background: the generator is checked, its numbers clamped and 
     assert.throws(() => applyOp(emptyState(T0), "background.set", { kind: "generator", value: "lava" }, T0), /Gerador inválido/);
     const plain = applyOp(emptyState(T0), "background.set", { kind: "generator", value: "clouds" }, T0);
     assert.equal(plain.background.gen.id, "clouds", "no gen at all is the defaults");
+});
+
+// Automatic lyrics (owner 2026-10-15, Rodada D4): the same marks follow a
+// video, a playback on the audio channel or a live clock.
+const timed = { title: "Canção", slides: [{ text: "intro" }, { text: "um", start: 10 }, { text: "dois", start: 20 }, { text: "três", start: 30 }] };
+const S = 1000;
+
+test("slides keep their start; a song with marks follows its source", () => {
+    assert.deepEqual(FOLLOW_SOURCES, ["video", "audio", "clock"]);
+    let s = run([["content.show", { ...timed, follow: { source: "audio", url: "/media/a.mp3", length: 200 } }]]);
+    assert.equal(s.content.slides[1].start, 10);
+    assert.deepEqual(s.content.follow, { source: "audio", paused: false, offset: 0, clock: null, pausedIndex: null, url: "/media/a.mp3", length: 200 });
+    // No marks: no follow, whatever was asked.
+    assert.equal(run([["content.show", { ...song, follow: { source: "clock" } }]]).content.follow, null);
+    assert.throws(() => run([["content.show", { ...timed, follow: { source: "radio" } }]]), LiveError);
+    assert.throws(() => run([["content.show", { ...timed, follow: { source: "video" } }]]), LiveError, "a media source needs its url");
+    assert.equal(slideAtTime(timed.slides, 5), -1);
+    assert.equal(slideAtTime(timed.slides, 20), 2);
+    assert.equal(slideAtTime(timed.slides, 99), 3);
+    // The audio channel plays it: the slide follows its position.
+    s = applyOp(s, "audio.show", { url: "/media/a.mp3" }, T0);
+    assert.equal(followPosition(s, T0 + 12 * S), 12);
+    assert.equal(followIndex(s, T0 + 5 * S), null, "before the first mark: left as it is");
+    assert.equal(followIndex(s, T0 + 21 * S), 2);
+    // Another file on the channel: nothing to follow.
+    assert.equal(followIndex(applyOp(s, "audio.show", { url: "/media/b.mp3" }, T0), T0 + 21 * S), null);
+    // The player's eye moves a video between layers: still followed.
+    let v = run([["content.show", { ...timed, follow: { source: "video", url: "/media/v.mp4" } }], ["video.show", { kind: "video", url: "/media/v.mp4" }]]);
+    assert.equal(followIndex(v, T0 + 31 * S), 3);
+    v = run([["media.show", { kind: "video", url: "/media/v.mp4" }], ["media.toAudio", {}]], v);
+    assert.equal(followPosition(v, T0 + 5 * S), 5);
+});
+
+test("the arrows re-sync the follow there, the follower's own moves do not", () => {
+    let s = run([["content.show", { ...timed, follow: { source: "audio", url: "/a.mp3" } }], ["audio.show", { url: "/a.mp3" }]]);
+    // At 12 s the operator jumps to "três" (30 s): from then on it follows 18 s ahead.
+    s = applyOp(s, "content.goTo", { index: 3 }, T0 + 12 * S);
+    assert.equal(s.content.follow.offset, 18);
+    assert.equal(s.content.follow.paused, false, "the arrows never turn it off");
+    assert.equal(followIndex(s, T0 + 12.5 * S), 3);
+    // The follower's own move (auto) keeps the offset.
+    s = applyOp(s, "content.goTo", { index: 1, auto: true }, T0 + 13 * S);
+    assert.equal(s.content.follow.offset, 18);
+    // content.next re-syncs too.
+    s = applyOp(s, "content.next", {}, T0 + 14 * S);
+    assert.equal(s.content.follow.offset, 6);
+});
+
+test("the live clock: waits for Iniciar, pauses, resumes from the slide moved to", () => {
+    let s = run([["content.show", { ...timed, follow: { source: "clock", length: 210 } }]]);
+    assert.equal(s.content.follow.paused, true, "waits for the operator");
+    assert.equal(followIndex(s, T0 + 50 * S), null);
+    s = applyOp(s, "content.follow", { action: "start" }, T0);
+    assert.deepEqual(s.content.follow.clock, { paused: false, position: 0, at: T0 });
+    assert.equal(followIndex(s, T0 + 11 * S), 1);
+    // Pause at 15 s: the clock stops there.
+    s = applyOp(s, "content.follow", { action: "pause" }, T0 + 15 * S);
+    assert.equal(followPosition(s, T0 + 60 * S), 15);
+    assert.equal(followIndex(s, T0 + 60 * S), null);
+    // Resumed without moving: the clock goes on from 15 s, no re-sync.
+    let r = applyOp(s, "content.follow", { action: "resume" }, T0 + 60 * S);
+    assert.equal(r.content.follow.offset, 0);
+    assert.equal(followPosition(r, T0 + 65 * S), 20);
+    // Moved to "três" while paused, then resumed: it goes on from there.
+    s = applyOp(s, "content.goTo", { index: 3 }, T0 + 30 * S);
+    r = applyOp(s, "content.follow", { action: "resume" }, T0 + 60 * S);
+    assert.equal(r.content.follow.offset, 15);
+    assert.equal(followIndex(r, T0 + 60.5 * S), 3);
+    // Starting from a later slide: the clock starts at its mark.
+    let t = run([["content.show", { ...timed, index: 2, follow: { source: "clock" } }], ["content.follow", { action: "start" }]]);
+    assert.equal(t.content.follow.clock.position, 20);
+    assert.throws(() => applyOp(run([["content.show", song]]), "content.follow", { action: "start" }, T0), (e) => e.status === 409);
+    assert.throws(() => applyOp(t, "content.follow", { action: "dance" }, T0), LiveError);
+    // Locked: the clock does not start.
+    assert.throws(() => run([["content.show", { ...timed, follow: { source: "clock" } }], ["screens.lock", { locked: true }], ["content.follow", { action: "start" }]]), (e) => e.status === 423);
+});
+
+test("saving the song on air keeps the follow running; a restart pauses it", () => {
+    let s = run([["content.show", { ...timed, follow: { source: "clock" } }], ["content.follow", { action: "start" }]]);
+    const moved = { ...timed.slides[1], start: 11 };
+    s = applyOp(s, "content.update", { slides: [timed.slides[0], moved, timed.slides[2], timed.slides[3]], follow: { source: "clock" } }, T0 + 5 * S);
+    assert.equal(s.content.follow.paused, false);
+    assert.equal(s.content.follow.clock.at, T0);
+    assert.equal(s.content.slides[1].start, 11);
+    // Marks gone: the follow goes.
+    assert.equal(applyOp(s, "content.update", { slides: ["a", "b"] }, T0).content.follow, null);
+    const back = restoreState(JSON.parse(JSON.stringify(s)), T0 + 99 * S);
+    assert.equal(back.content.follow.paused, true);
+    assert.equal(back.content.follow.clock.paused, true);
 });

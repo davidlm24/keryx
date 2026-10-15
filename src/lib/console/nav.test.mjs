@@ -56,9 +56,11 @@ test("keys are distinct, so hidden pages keep their state apart", () => {
     assert.notEqual(s[0].key, s[1].key);
 });
 
-test("every page has a title; only the editors take the big window", () => {
+test("every page has a title; only the editors (and Sincronizar) take the big window", () => {
     for (const page of Object.keys(PAGE_TITLES)) assert.ok(PAGE_TITLES[page].length > 2);
-    assert.deepEqual(Object.keys(PAGE_TITLES).filter(isEditorPage), ["theme", "screen"]);
+    assert.deepEqual(Object.keys(PAGE_TITLES).filter(isEditorPage), ["sync", "theme", "screen"]);
+    // Pushed from the song editor, the window grows to the Editor size.
+    assert.equal(winSize(push(openStack({ page: "song", props: { id: "s1" } }), { page: "sync" })), "editor");
     assert.throws(() => openStack({ page: "visual" }), /unknown window page/);
 });
 

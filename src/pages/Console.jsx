@@ -32,6 +32,7 @@ import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
 import LyricsSearch from "@/components/console/LyricsSearch";
 import SongEditor from "@/components/console/SongEditor";
+import SyncView from "@/components/console/SyncView";
 import ServicePlanner from "@/components/console/ServicePlanner";
 import MediaView from "@/components/console/MediaView";
 import NoticeEditor from "@/components/console/NoticeEditor";
@@ -406,7 +407,7 @@ export default function Console() {
         if (on?.kind !== "lyrics" || on.ref?.songId !== row.id) return;
         if (c.locked) { c.say("Telas travadas · a música no ar muda quando for enviada de novo."); return; }
         const s = stageFromSong(row, on.ref, data.themes);
-        try { await c.callOp("content.update", { slides: s.args.slides, stage: s.args.stage }); } catch { /* callOp said why */ }
+        try { await c.callOp("content.update", { slides: s.args.slides, stage: s.args.stage, follow: s.args.follow ?? null }); } catch { /* callOp said why */ }
     }, [c, data.themes]);
 
     const prepareItem = useCallback(async (item, index) => {
@@ -1221,7 +1222,9 @@ export default function Console() {
                         else if (entry.page === "media") page = <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={onClose} escRef={escRef} active={active} askText={askText} />;
                         else if (entry.page === "notice") page = <NoticeEditor c={c} noticeId={entry.props.id} logoUrl={logoUrl} media={data.media} onClose={onClose} onSaved={(row) => { if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active} />;
                         else if (entry.page === "song") page = <SongEditor c={c} songId={entry.props.id} themes={data.themes} onClose={onClose} onSaved={(row) => { songSaved(row); if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active}
-                            onEditTheme={(id) => setWin((s) => winPush(s, { page: "theme", props: { id } }, "Editor de música"))} />;
+                            onEditTheme={(id) => setWin((s) => winPush(s, { page: "theme", props: { id } }, "Editor de música"))}
+                            onSync={(props) => setWin((s) => winPush(s, { page: "sync", props }, "Editor de música"))} />;
+                        else if (entry.page === "sync") page = <SyncView {...entry.props} onClose={onClose} escRef={escRef} active={active} />;
                         else if (entry.page === "school") page = <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={onClose} escRef={escRef}
                             onEditMaterial={(id, kid) => setWin((s) => winPush(s, { page: "material", props: { id: id || null, classId: kid || "" } }, "Escola bíblica"))} />;
                         else if (entry.page === "material") page = <MaterialView c={c} materialId={entry.props.id} classId={entry.props.classId} media={data.media} onClose={onClose} escRef={escRef} active={active} />;
