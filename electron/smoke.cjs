@@ -1903,7 +1903,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // relayouts while it opens.
         const section = (title) => js(`(() => { const row = [...document.querySelectorAll(".console .win-dialog .kx-row")].find((n) => { const t = n.querySelector(".kx-row-title"); return t && t.textContent === ${JSON.stringify(title)}; }); if (row) row.click(); return Boolean(row); })()`);
         const press2 = (label) => js(`(() => { const b = [...document.querySelectorAll(".console .cfg button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return Boolean(b); })()`);
-        await waitFor(() => section("Temas"), 4000);
+        await waitFor(() => section("Temas e fundos"), 4000); // renamed in Rodada B (2026-10-14)
         await waitFor(() => press2("Novo tema…"), 4000);
         result.themeWindow = await waitFor(() => js("Boolean(document.querySelector('.console .win-dialog.is-editor .nv-frm input.pl-input'))"), 8000);
         await js(`(() => {
