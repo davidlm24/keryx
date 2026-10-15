@@ -517,7 +517,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     {onSync && <Btn small kind="outline" disabled={!slides.length} onClick={openSync} title="Marcar onde cada slide entra: com o vídeo, o playback ou, sem mídia, um relógio (para os músicos ao vivo)">Sincronizar…</Btn>}
                     <Btn small disabled={busy === "audio_url"} onClick={() => fileRef.current?.click()}>{busy === "audio_url" ? "Enviando…" : media ? "Trocar…" : "Vídeo ou playback…"}</Btn>
                     {media && <Btn small onClick={() => set({ audio_url: "" })} title="As marcas ficam: sem mídia, a letra segue o relógio ao vivo">Remover</Btn>}
-                </>} bodyStyle={{ display: "flex", gap: "var(--space-2)", padding: "0 var(--space-2) var(--space-2)", overflow: "hidden" }}>
+                </>} bodyStyle={{ display: "flex", flexDirection: media ? "row" : "column", gap: "var(--space-2)", padding: "0 var(--space-2) var(--space-2)", overflow: "hidden" }}>
                     <input ref={fileRef} type="file" accept="video/*,audio/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; upload(f, "audio_url"); }} />
                     {!media && <Empty icon="film" title="Sem vídeo nem playback">Um vídeo vai para as telas de vídeo junto com a letra; um playback toca no canal de áudio. Sem mídia, a letra pode seguir os músicos: marque em Sincronizar… e, no ar, aperte Iniciar letra automática.</Empty>}
                     {media && (
