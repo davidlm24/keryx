@@ -1190,8 +1190,9 @@ export default function Console() {
                         const onClose = (all = false) => leaveTop(Boolean(all));
                         let page = null;
                         if (entry.page === "config") page = <SettingsView c={c} section={cfg || "igreja"} setSection={setCfg} onClose={onClose} escRef={escRef} active={active} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} onWhatsNew={openWhatsNew} />;
-                        else if (entry.page === "planner") page = <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={onClose} escRef={escRef} />;
-                        else if (entry.page === "media") page = <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={onClose} escRef={escRef} active={active} />;
+                        else if (entry.page === "planner") page = <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={onClose} escRef={escRef}
+                            onEditSong={(id) => setWin((s) => winPush(s, { page: "song", props: { id } }, "Planejar o culto"))} />;
+                        else if (entry.page === "media") page = <MediaView c={c} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={onClose} escRef={escRef} active={active} askText={askText} />;
                         else if (entry.page === "notice") page = <NoticeEditor c={c} noticeId={entry.props.id} logoUrl={logoUrl} media={data.media} onClose={onClose} onSaved={(row) => { if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active} />;
                         else if (entry.page === "song") page = <SongEditor c={c} songId={entry.props.id} themes={data.themes} onClose={onClose} onSaved={(row) => { songSaved(row); if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active} />;
                         else if (entry.page === "school") page = <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={onClose} escRef={escRef} active={active} />;

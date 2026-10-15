@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Empty, WinBar } from "./kx";
+import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar } from "./kx";
 import { importMediaFiles, mediaFromYouTube } from "@/lib/mediaImport";
 import { stageFromMedia, stageFromMediaList, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
@@ -28,12 +28,12 @@ const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().inc
 // out (the files stay in the media folder). A click selects (Ctrl/Shift
 // for more), a double click or Enter sends to air, "Tocar todos"
 // plays the selection (or everything shown) one after the other.
-export default function MediaView({ c, media, onSend, onClose, escRef, active = true }) {
+export default function MediaView({ c, media, onSend, onClose, escRef, active = true, askText = null }) {
     const [cat, setCat] = useState("todas");
     const [category, setCategory] = useState("");
     const [view, setView] = useState(() => { try { return localStorage.getItem("keryx.media.view") || "grid"; } catch { return "grid"; } });
     const [q, setQ] = useState("");
-    const [yt, setYt] = useState("");
+    const [adding, setAdding] = useState(false); // the Enviar menu in the bar
     const [sel, setSel] = useState([]);
     const [anchor, setAnchor] = useState(null);
     const [renaming, setRenaming] = useState(null);
@@ -89,12 +89,14 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         c.say(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}${failed.length ? ` · falhou: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
         if (created.length) setSel(created.map((r) => r.id));
     };
+    // Link do YouTube… (the Enviar menu): the url comes from one question
+    // (PromptDialog), not a field always on screen (Rodada C, fase b).
     const addLink = async () => {
-        const url = yt.trim();
-        if (!/youtu\.?be/.test(url)) { c.say("Cole um link do YouTube primeiro."); return; }
+        const url = ((await askText?.({ title: "Link do YouTube", placeholder: "https://youtube.com/watch?v=…", ok: "Adicionar" })) || "").trim();
+        if (!url) return;
+        if (!/youtu\.?be/.test(url)) { c.say("Isso não parece um link do YouTube."); return; }
         try {
             const row = await mediaFromYouTube(url, { category: category || "other" });
-            setYt("");
             setSel([row.id]);
             setRenaming(row.id);
             c.say('Link adicionado como "Vídeo do YouTube" · dê um nome.');
@@ -147,7 +149,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     // to a dialog over the page (its own scrim does not count) and sleep
     // while another page covers this one; the console's B and L still
     // reach the screens.
-    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (renaming) setRenaming(null); else if (sel.length) setSel([]); else onClose(); };
+    if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (adding) setAdding(false); else if (renaming) setRenaming(null); else if (sel.length) setSel([]); else onClose(); };
     const keysRef = useRef(null);
     keysRef.current = (e) => {
         if (e.key === "Escape" || !active) return;
@@ -179,28 +181,31 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     return (
         <>
         <WinBar title="Mídia" sub={`${media.length} ${media.length === 1 ? "arquivo" : "arquivos"}${totalSize ? ` · ${bytes(totalSize)}` : ""}`}
-            tools={<div className="kx-tabs mv-cats" role="tablist">
-                {CATS.filter(([k]) => k !== "doc" || hasDocs).map(([k, label]) => <button type="button" role="tab" aria-selected={cat === k} key={k} className={`kx-t ${cat === k ? "is-on" : ""}`} onClick={() => setCat(k)}>{label}</button>)}
-            </div>}
-            actions={<>
-                <Btn small onClick={sequence} title="Toca os selecionados (ou todos os mostrados) um após o outro">Tocar todos</Btn>
-                <Btn small kind="outline" onClick={() => fileRef.current?.click()}><Icon name="plus" />Enviar arquivos</Btn>
-                <IconBtn name="layers" small on={view === "grid"} title="Grade" onClick={() => setView("grid")} />
-                <IconBtn name="list" small on={view === "list"} title="Lista" onClick={() => setView("list")} />
-            </>} />
+            tools={<Field value={q} onChange={setQ} placeholder="Pesquisar na biblioteca" style={{ flex: "0 1 280px", minWidth: 160 }} />}
+            actions={<span className="pl-popwrap">
+                <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Enviar</Btn>
+                {adding && <div className="kx-pop pl-pop">
+                    <Row single icon="folder" title="Do computador…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
+                    <Row single icon="film" title="Link do YouTube…" onClick={() => { setAdding(false); addLink(); }} />
+                </div>}
+            </span>} />
         <div className="win-body">
         <div className="col center mv">
             <Panel noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
                 <input ref={fileRef} type="file" multiple hidden accept="video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
                 <input ref={locateRef} type="file" hidden onChange={(e) => { located(e.target.files?.[0]); e.target.value = ""; }} />
                 <div className="mv-bar">
-                    <Field value={q} onChange={setQ} placeholder="Pesquisar na biblioteca" style={{ flex: 1, minWidth: 180 }} />
+                    <div className="kx-tabs mv-cats" role="tablist">
+                        {CATS.filter(([k]) => k !== "doc" || hasDocs).map(([k, label]) => <button type="button" role="tab" aria-selected={cat === k} key={k} className={`kx-t ${cat === k ? "is-on" : ""}`} onClick={() => setCat(k)}>{label}</button>)}
+                    </div>
                     <select className="pl-pick" value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Categoria">
                         <option value="">Todas as categorias</option>
                         {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                     </select>
-                    <Field icon="film" value={yt} onChange={setYt} placeholder="https://youtube.com/watch?v=…" style={{ flex: "0 1 340px", minWidth: 200 }} onKeyDown={(e) => { if (e.key === "Enter") addLink(); }} />
-                    <Btn onClick={addLink}>Adicionar link</Btn>
+                    <span style={{ flex: 1 }} />
+                    <Btn small onClick={sequence} title="Toca os selecionados (ou todos os mostrados) um após o outro">Tocar todos</Btn>
+                    <IconBtn name="layers" small on={view === "grid"} title="Grade" onClick={() => setView("grid")} />
+                    <IconBtn name="list" small on={view === "list"} title="Lista" onClick={() => setView("list")} />
                 </div>
                 {uploads && (
                     <div className="mv-up">

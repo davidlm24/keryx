@@ -32,7 +32,7 @@ const today = () => { const d = new Date(); const two = (n) => String(n).padStar
 // per item, totals and the end time; templates (which now keep each item's
 // content), duplicating the last culto, PDF. Everything saves as it changes;
 // nothing here touches the screens.
-export default function ServicePlanner({ c, services, serviceId, setServiceId, data, focusId = null, onClose, escRef }) {
+export default function ServicePlanner({ c, services, serviceId, setServiceId, data, focusId = null, onClose, escRef, onEditSong = null }) {
     const church = useChurch();
     const client = useQueryClient();
     const svc = services.find((s) => s.id === serviceId) || null;
@@ -174,12 +174,32 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     // projection from here.
     if (escRef) escRef.current = (mode) => { if (mode !== "esc") onClose(mode === "all"); else if (adding) setAdding(null); else if (pop) setPop(null); else onClose(); };
 
+    // The bar: the culto picker, and the Modelos menu that gathers the
+    // three template actions the setlist header used to spread out
+    // (Rodada C, fase b).
     const bar = (
         <WinBar title="Planejar o culto" tools={svc && form ? <>
             <select className="cfg-select pl-pick" value={serviceId} onChange={(e) => setServiceId(e.target.value)} aria-label="Escolher culto">
                 {services.map((s) => <option key={s.id} value={s.id}>{s.title}{s.date ? ` · ${s.date.split("-").reverse().slice(0, 2).join("/")}` : ""}</option>)}
             </select>
             <IconBtn name="plus" small title="Novo culto" onClick={newService} />
+        </> : null} actions={svc && form ? <>
+            <span className="pl-popwrap">
+                <Btn small on={pop === "tpl" || pop === "saveTpl"} onClick={() => setPop(pop ? null : "tpl")}>Modelos</Btn>
+                {pop === "tpl" && (
+                    <div className="kx-pop pl-pop">
+                        <div className="listhead"><span className="kx-section">Criar a partir de modelo</span></div>
+                        {templates.length
+                            ? templates.map((t) => <Row key={t.id} single icon="list" title={t.name} time={`${(t.items || []).length} itens`} onClick={() => { setPop(null); fromTemplate(t); }} />)
+                            : <div className="listhead"><span className="kx-meta">Nenhum modelo ainda: use Salvar como modelo.</span></div>}
+                        <div className="listhead"><span className="kx-section">Este culto</span></div>
+                        <Row single icon="save" title="Salvar como modelo…" meta={!items.length ? "a setlist está vazia" : undefined} onClick={() => { if (!items.length) return; setTplName(svc.title); setPop("saveTpl"); }} />
+                        <Row single icon="copy" title="Duplicar o culto anterior" meta={previous ? `copia a setlist de ${previous.title}` : "não há culto anterior"} onClick={() => { if (!previous) return; setPop(null); duplicatePrevious(); }} />
+                    </div>
+                )}
+                {pop === "saveTpl" && <div className="kx-pop pl-pop"><div className="pl-pad"><Field icon={null} value={tplName} onChange={setTplName} placeholder="Nome do modelo" inputProps={{ autoFocus: true }} onKeyDown={(e) => { if (e.key === "Enter") saveTemplate(); }} /><Btn small kind="outline" onClick={saveTemplate}>Salvar modelo</Btn></div></div>}
+            </span>
+            <Btn small kind="outline" disabled={!items.length} onClick={() => run(exportServiceToPdf({ ...svc, ...form }, items, church), "PDF gerado.")}>Exportar PDF</Btn>
         </> : null} />
     );
     if (!svc || !form) {
@@ -259,18 +279,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
             </div>
             <div className="kx-gap" />
             <div className="col center">
-                <Panel className="pl-setlist" title={<>Setlist <span className="kx-count">· {p.count} {p.count === 1 ? "item" : "itens"} · {total(p.seconds)} · termina às {clockAt(p.ends)}</span></>} actions={<span className="pl-acts">
-                    <span className="pl-popwrap">
-                        <Btn small on={pop === "tpl"} onClick={() => setPop(pop === "tpl" ? null : "tpl")}>Criar a partir de modelo</Btn>
-                        {pop === "tpl" && <div className="kx-pop pl-pop">{templates.length ? templates.map((t) => <Row key={t.id} single icon="list" title={t.name} time={`${(t.items || []).length} itens`} onClick={() => fromTemplate(t)} />) : <div className="listhead"><span className="kx-meta">Nenhum modelo ainda: use "Salvar como modelo".</span></div>}</div>}
-                    </span>
-                    <span className="pl-popwrap">
-                        <Btn small on={pop === "saveTpl"} disabled={!items.length} onClick={() => { setTplName(svc.title); setPop(pop === "saveTpl" ? null : "saveTpl"); }}>Salvar como modelo</Btn>
-                        {pop === "saveTpl" && <div className="kx-pop pl-pop"><div className="pl-pad"><Field icon={null} value={tplName} onChange={setTplName} placeholder="Nome do modelo" onKeyDown={(e) => { if (e.key === "Enter") saveTemplate(); }} /><Btn small kind="outline" onClick={saveTemplate}>Salvar modelo</Btn></div></div>}
-                    </span>
-                    <Btn small disabled={!previous} onClick={duplicatePrevious} title={previous ? `Copiar a setlist de ${previous.title}` : "Não há culto anterior"}>Duplicar o culto anterior</Btn>
-                    <Btn small kind="outline" disabled={!items.length} onClick={() => run(exportServiceToPdf({ ...svc, ...form }, items, church), "PDF gerado.")}>Exportar PDF</Btn>
-                </span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel className="pl-setlist" title={<>Setlist <span className="kx-count">· {p.count} {p.count === 1 ? "item" : "itens"} · {total(p.seconds)} · termina às {clockAt(p.ends)}</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="pl-list">
                         {!items.length && <Empty icon="list" title="Setlist vazia">Use os botões abaixo, um modelo, ou duplique o culto anterior.</Empty>}
                         {p.rows.map(({ item: it, at }, i) => {
@@ -311,6 +320,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                                 <textarea className="ed-text" style={{ height: 64 }} defaultValue={it.notes || ""} onBlur={(e) => { if (e.target.value !== (it.notes || "")) updateItem(it.id, { notes: e.target.value }); }} placeholder={it.type === "TEXT" ? "O texto que vai para a tela" : "Para o operador e o Palco (ex.: intro longa)"} />
                                             </div>
                                             <div className="pl-detail-acts">
+                                                {it.type === "SONG" && it.contentId && onEditSong && <Btn small onClick={() => onEditSong(it.contentId)} title="Letra, dados e estilo, na mesma janela · Voltar traz o culto de volta">Editar a música…</Btn>}
                                                 <Btn small onClick={() => updateItem(it.id, { enabled: it.enabled === false })}>{it.enabled === false ? "Ativar" : "Desativar"}</Btn>
                                                 <Btn small onClick={() => duplicate(it)}>Duplicar</Btn>
                                                 <Btn small kind={confirm === `item:${it.id}` ? "air" : ""} onClick={() => removeItem(it)}>{confirm === `item:${it.id}` ? "Tirar mesmo" : "Tirar da setlist"}</Btn>
