@@ -10,7 +10,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
-import { Panel, Btn, Seg, Empty } from "../console/kx";
+import { Panel, Btn, Seg, Empty, WinBar } from "../console/kx";
 import { Switch } from "../console/settings/parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import BgChip from "../console/library/BgChip";
@@ -37,7 +37,6 @@ const BOXES = [["", "Sem"], ["band", "Faixa"], ["block", "Bloco"]];
 const LINES = [["tight", "Justas"], ["", "Normais"], ["loose", "Largas"]];
 const H_ALIGNS = [["left", "Esq."], ["", "Centro"], ["right", "Dir."]];
 const V_POS = [["top", "Alto"], ["", "Meio"], ["bottom", "Baixo"]];
-const OPACITIES = [["", "100%"], ["0.85", "85%"], ["0.7", "70%"], ["0.5", "50%"]];
 // show_item_title is the theme's since the Rodada B 2026-10-14 (it was the
 // church's, Aparência): a new theme starts with it on; a theme from before
 // the field opens as on and saves the choice — prefs v3 already filled the
@@ -53,7 +52,11 @@ const FIELDS = Object.keys(BLANK);
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const pick = (row) => { const out = { ...BLANK }; for (const k of FIELDS) if (row?.[k] != null) out[k] = row[k]; return { ...out, ...bgFields(bgSpec(row)) }; };
 
-export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null, active = true }) {
+// `hosted`: a page of THE window (Rodada C, fase d) — the editor draws its
+// own WinBar (the Trocar de tema select as the bar's tool; Excluir,
+// Cancelar and Salvar tema as its actions; ⧉ Destacar via onDetach) and no
+// footer. Detached (/Editor) it keeps the panel header and the footer.
+export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["editor", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["editor", "themes"] })), [client]);
@@ -223,27 +226,39 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     };
     const endDrag = () => { drag.current = null; setDragging(false); };
 
-    if (error) return <div className="col center"><Panel title="Editor de tema"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div className="pl-pad"><Btn onClick={onClose}>Fechar</Btn></div></Panel></div>;
-    if (!draft) return <div className="col center"><Panel title="Editor de tema"><Empty title="Abrindo…" /></Panel></div>;
+    const wrap = (inner) => (hosted ? <><WinBar title="Editor de temas" sub="" detach={onDetach} /><div className="win-body is-ed">{inner}</div></> : inner);
+    if (error) return wrap(<div className="col center"><Panel noHead={hosted} title="Editor de tema"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div className="pl-pad"><Btn onClick={() => onClose()}>Fechar</Btn></div></Panel></div>);
+    if (!draft) return wrap(<div className="col center"><Panel noHead={hosted} title="Editor de tema"><Empty title="Abrindo…" /></Panel></div>);
 
     const num = (v) => (v == null || v === "" ? "" : String(v));
     const others = [...themes].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
     const band = draft.text_box === "band";
+    const themeTitle = draft.name || (savedId.current ? "Tema sem nome" : "Novo tema");
+    const pickTheme = (
+        <select className="pl-input le-use" value={savedId.current || ""} onChange={(e) => switchTo(e.target.value || "new")} aria-label="Trocar de tema" title="Editar outro tema">
+            {!savedId.current && <option value="">{themeTitle}</option>}
+            <option value="new">Novo tema…</option>
+            {others.map((t) => <option key={t.id} value={t.id}>{themeName(t)}</option>)}
+        </select>
+    );
+    const deleteBtn = Boolean(savedId.current) && <Btn small kind={confirm === "delete" ? "air" : ""} onClick={removeTheme}>{confirm === "delete" ? "Excluir mesmo" : "Excluir…"}</Btn>;
 
-    return (
+    const body = (
         <>
             <div className="col nv-l" style={{ flex: "0 1 400px", minWidth: 340 }}>
-                <Panel title={<>Tema <span className="kx-count">· {draft.name || (savedId.current ? "Tema sem nome" : "Novo tema")}{dirty ? " · não salvo" : ""}</span></>} actions={<>
-                    <select className="pl-input le-use" value={savedId.current || ""} onChange={(e) => switchTo(e.target.value || "new")} aria-label="Trocar de tema" title="Editar outro tema">
-                        {!savedId.current && <option value="">{draft.name || "Novo tema"}</option>}
-                        <option value="new">Novo tema…</option>
-                        {others.map((t) => <option key={t.id} value={t.id}>{themeName(t)}</option>)}
-                    </select>
-                    {Boolean(savedId.current) && <Btn small kind={confirm === "delete" ? "air" : ""} onClick={removeTheme}>{confirm === "delete" ? "Excluir mesmo" : "Excluir"}</Btn>}
-                </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+                <Panel noHead={hosted} title={<>Tema <span className="kx-count">· {themeTitle}{dirty ? " · não salvo" : ""}</span></>} actions={!hosted && <>{pickTheme}{deleteBtn}</>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-scroll">
                         <div className="frm nv-frm">
                             <span className="k">Nome</span><input className="pl-input" value={draft.name} placeholder="Nome do tema" maxLength={60} onChange={(e) => set({ name: e.target.value })} aria-label="Nome do tema" />
+                            {/* Tornar padrão lives in the form (Rodada C, fase d;
+                                it was the footer's): one transaction, never two
+                                defaults. */}
+                            {Boolean(savedId.current) && <>
+                                <span className="k">Tema padrão</span>
+                                {defaultTheme(themes)?.id === savedId.current
+                                    ? <span className="kx-meta" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="star" size={12} />é o tema padrão da igreja</span>
+                                    : <span className="nv-inline"><Btn small onClick={async () => { try { await keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, savedId.current)); say(`${draft.name || "O tema"} é o tema padrão.`); } catch (err) { say(err?.message || "Não foi possível."); } }}><Icon name="star" />Tornar padrão</Btn></span>}
+                            </>}
                             <span className="k">Fonte</span>
                             <span className="nv-inline">
                                 <select className="pl-input" style={{ width: "auto" }} value={draft.font_family} onChange={(e) => set({ font_family: e.target.value })} aria-label="Fonte do tema">
@@ -262,7 +277,12 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                                     : <Btn small onClick={() => set({ text_color_2: "#c9a25b" })} title="O texto em degradê de duas cores">Degradê</Btn>}
                             </span>
                             <span className="k">Opacidade</span>
-                            <Seg small value={num(draft.text_opacity)} options={OPACITIES} onChange={(v) => set({ text_opacity: v === "" ? "" : Number(v) })} />
+                            {/* Continuous (Rodada C, fase d): the model always
+                                took 20–100%; the UI offered four presets. */}
+                            <span className="nv-inline">
+                                <input type="range" className="le-range" min={20} max={100} step={1} value={Math.round((draft.text_opacity === "" ? 1 : Number(draft.text_opacity)) * 100)} onChange={(e) => { const v = Number(e.target.value); set({ text_opacity: v >= 100 ? "" : v / 100 }); }} aria-label="Opacidade do texto" />
+                                <span className="kx-meta">{Math.round((draft.text_opacity === "" ? 1 : Number(draft.text_opacity)) * 100)}%</span>
+                            </span>
                             <span className="k">Entrelinhas</span>
                             <span className="nv-inline">
                                 <Seg small value={draft.line_height || ""} options={LINES} onChange={(v) => set({ line_height: v })} />
@@ -273,6 +293,16 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                                 <Seg small value={draft.text_box || ""} options={BOXES} onChange={(v) => set({ text_box: v, ...(v ? { text_box_color: draft.text_box_color || "#000000", text_box_opacity: draft.text_box_opacity || 0.55 } : { text_box_color: "", text_box_opacity: "" }) })} />
                                 {draft.text_box && <input type="color" className="ed-color" value={draft.text_box_color || "#000000"} onChange={(e) => set({ text_box_color: e.target.value })} aria-label="Cor da caixa" title="Cor da caixa" />}
                             </span>
+                            {/* The box's opacity was fixed at 55% with no
+                                control (Rodada C, fase d); the renderer always
+                                took 0–90%. */}
+                            {draft.text_box && <>
+                                <span className="k">Opacidade da caixa</span>
+                                <span className="nv-inline">
+                                    <input type="range" className="le-range" min={0} max={90} step={1} value={Math.round((Number(draft.text_box_opacity) || 0.55) * 100)} onChange={(e) => set({ text_box_opacity: Number(e.target.value) / 100 })} aria-label="Opacidade da caixa" />
+                                    <span className="kx-meta">{Math.round((Number(draft.text_box_opacity) || 0.55) * 100)}%</span>
+                                </span>
+                            </>}
                         </div>
                         {/* Where the text sits: the same fields the canvas box writes. */}
                         <div className="listhead"><span className="kx-section">Texto na tela</span></div>
@@ -311,13 +341,25 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             {bg && bg.kind !== "color" && bg.kind !== "generator" && <>
                                 <span className="k">Ajuste do fundo</span>
                                 <Seg small value={bg.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => setBg({ fit: v === "cover" ? undefined : v })} />
+                                {/* Which part of the picture stays on screen
+                                    (the spec always carried it; no UI until
+                                    Rodada C, fase d). */}
+                                <span className="k">Posição do fundo</span>
+                                <Seg small value={bg.position || "center"} options={[["top", "Topo"], ["center", "Centro"], ["bottom", "Base"]]} onChange={(v) => setBg({ position: v === "center" ? undefined : v })} />
                             </>}
                             {bg && bg.kind !== "color" && <>
-                                <span className="k">{bg.kind === "generator" ? "Escurecer" : "Escurecer · desfoque"}</span>
+                                <span className="k">Escurecer</span>
                                 <span className="nv-inline">
-                                    <Seg small value={num(bg.dim ?? "")} options={bg.kind === "image" ? [["", "45%"], ["0", "0"], ["0.3", "30%"], ["0.7", "70%"]] : [["", "0"], ["0.3", "30%"], ["0.7", "70%"]]} onChange={(v) => setBg({ dim: v === "" ? undefined : Number(v) })} />
-                                    {bg.kind !== "generator" && <Seg small value={num(bg.blur ?? "")} options={[["", "Sem"], ["4", "Leve"], ["10", "Forte"]]} onChange={(v) => setBg({ blur: v === "" ? undefined : Number(v) })} />}
+                                    <input type="range" className="le-range" min={0} max={90} step={1} value={Math.round((bg.dim ?? (bg.kind === "image" ? 0.45 : 0)) * 100)} onChange={(e) => setBg({ dim: Number(e.target.value) / 100 })} aria-label="Escurecer o fundo" />
+                                    <span className="kx-meta">{Math.round((bg.dim ?? (bg.kind === "image" ? 0.45 : 0)) * 100)}%</span>
                                 </span>
+                                {bg.kind !== "generator" && <>
+                                    <span className="k">Desfoque</span>
+                                    <span className="nv-inline">
+                                        <input type="range" className="le-range" min={0} max={20} step={1} value={Number(bg.blur) || 0} onChange={(e) => setBg({ blur: Number(e.target.value) === 0 ? undefined : Number(e.target.value) })} aria-label="Desfoque do fundo" />
+                                        <span className="kx-meta">{Number(bg.blur) ? `${bg.blur} px` : "Sem"}</span>
+                                    </span>
+                                </>}
                             </>}
                             <span className="k">Transição</span>
                             <span className="nv-inline">
@@ -326,16 +368,13 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             </span>
                         </div>
                     </div>
-                    <div className="nv-foot">
-                        {/* Tornar padrão lives here too (as ThemeStudio had):
-                            one transaction, never two defaults. */}
-                        {Boolean(savedId.current) && (defaultTheme(themes)?.id === savedId.current
-                            ? <span className="kx-meta" style={{ marginRight: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="star" size={12} />tema padrão</span>
-                            : <Btn style={{ marginRight: "auto" }} onClick={async () => { try { await keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, savedId.current)); say(`${draft.name || "O tema"} é o tema padrão.`); } catch (err) { say(err?.message || "Não foi possível."); } }}><Icon name="star" />Tornar padrão</Btn>)}
-                        {!bg && <span className="kx-meta is-warn nv-hint"><Icon name="warn" size={12} />{NEEDS_BG}</span>}
-                        <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
-                        <Btn kind="brand" disabled={busy || !bg} onClick={save} title={bg ? "Ctrl+S" : NEEDS_BG}>Salvar tema</Btn>
-                    </div>
+                    {!hosted && (
+                        <div className="nv-foot">
+                            {!bg && <span className="kx-meta is-warn nv-hint" style={{ marginRight: "auto" }}><Icon name="warn" size={12} />{NEEDS_BG}</span>}
+                            <Btn onClick={leave}>{confirm === "discard" ? "Descartar mudanças" : "Cancelar"}</Btn>
+                            <Btn kind="brand" disabled={busy || !bg} onClick={save} title={bg ? "Ctrl+S" : NEEDS_BG}>Salvar tema</Btn>
+                        </div>
+                    )}
                 </Panel>
             </div>
             <div className="kx-gap" />
@@ -369,6 +408,21 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                     </div>
                 </Panel>
             </div>
+        </>
+    );
+
+    if (!hosted) return body;
+    return (
+        <>
+            <WinBar title="Editor de temas" sub={`${themeTitle}${dirty ? " · não salvo" : ""}`}
+                tools={pickTheme}
+                actions={<>
+                    {deleteBtn}
+                    <Btn small onClick={() => leave()}>Cancelar</Btn>
+                    <Btn small kind="brand" disabled={busy || !bg} onClick={save} title={bg ? "Ctrl+S" : NEEDS_BG}>Salvar tema</Btn>
+                </>}
+                detach={onDetach} />
+            <div className="win-body is-ed">{body}</div>
         </>
     );
 }
