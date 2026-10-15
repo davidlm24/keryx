@@ -115,20 +115,34 @@ export function useDockDrag({ dock, onDock }) {
     return { drag, start, justDragged };
 }
 
-// Where a dragged module would land, over the page.
+// Where a dragged module would land, over the page (owner 2026-10-15, Rodada
+// D: never a filled box or a border round the target): a thick gold line
+// on the edge it will dock against — a side of the panel, or under its
+// header to join as a tab — with what letting go does beside it.
+const LINE = 4;
 export function DockHint({ drag }) {
     const t = drag?.target;
     const ghost = drag && <div className="dock-ghost" style={{ left: drag.x + 14, top: drag.y + 12 }} aria-hidden="true"><Icon name="grip" />{drag.label}</div>;
     if (!t) return ghost || null;
     const r = t.el.getBoundingClientRect();
-    let { left, top, width, height } = r;
-    if (t.zone === "left") width /= 2;
-    if (t.zone === "right") { left += width / 2; width /= 2; }
-    if (t.zone === "top") height /= 2;
-    if (t.zone === "bottom") { top += height / 2; height /= 2; }
+    const inset = 6;
+    const head = Math.min(32, r.height / 3);
+    const line = {
+        left: { left: r.left, top: r.top + inset, width: LINE, height: r.height - inset * 2 },
+        right: { left: r.right - LINE, top: r.top + inset, width: LINE, height: r.height - inset * 2 },
+        top: { left: r.left + inset, top: r.top, width: r.width - inset * 2, height: LINE },
+        bottom: { left: r.left + inset, top: r.bottom - LINE, width: r.width - inset * 2, height: LINE },
+        center: { left: r.left + inset, top: r.top + head, width: r.width - inset * 2, height: LINE },
+    }[t.zone] || null;
+    if (!line) return ghost || null;
+    const vertical = t.zone === "left" || t.zone === "right";
+    const label = vertical
+        ? { left: t.zone === "left" ? line.left + LINE + 8 : undefined, right: t.zone === "right" ? window.innerWidth - line.left + 8 : undefined, top: line.top + line.height / 2 - 10 }
+        : { left: line.left + line.width / 2, top: t.zone === "bottom" ? line.top - 26 : line.top + LINE + 6, transform: "translateX(-50%)" };
     return (
         <>
-            <div className="dock-hint" style={{ left, top, width, height }} aria-hidden="true"><span>{t.label}</span></div>
+            <div className="dock-hint" style={line} aria-hidden="true" />
+            <span className="dock-hint-label" style={label} aria-hidden="true">{t.label}</span>
             {ghost}
         </>
     );

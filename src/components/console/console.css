@@ -141,7 +141,11 @@
 .prog-cap.is-rh .kx-mon-t { color: var(--rh-fg); }
 .prog-cap .prog-locked { flex: none; height: 20px; display: inline-flex; align-items: center; padding: 0 var(--space-2); border-radius: var(--radius-round); background: var(--rh-tint); color: var(--rh-fg); font: 600 11px/16px var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; }
 /* Dragging a library row over the Programa: what a drop does, on the screen. */
-.console .kx-drop-hint { position: absolute; inset: auto 0 0 0; z-index: 210; padding: var(--space-2); text-align: center; font-size: 13px; font-weight: 600; color: var(--on-state); background: var(--air-fill); }
+/* A drop over the Programa or the Prévia (owner 2026-10-15, Rodada D: never
+   a border): the screen dims and one pill says what letting go does. */
+.console .kx-drop-hint { position: absolute; inset: 0; z-index: 210; display: grid; place-items: center; pointer-events: none; background: color-mix(in srgb, var(--bg-0) 45%, transparent); }
+.console .kx-drop-hint > span { padding: 4px var(--space-3); border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-1); box-shadow: var(--popover); font: 600 12px/16px var(--font-sans); }
+.console .kx-drop-hint.is-air > span { background: var(--air-fill); color: var(--on-state); }
 /* Monitor frames are painted inside the box (a ::after on top), never as an
    outer shadow: an outer shadow is cut by the panel's overflow and the
    border vanished at the edges when the window was narrowed. */
@@ -316,8 +320,6 @@
 .console .kx-ovhead .kx-glyph { color: var(--fg-3); display: inline-flex; justify-content: center; width: 16px; }
 .console .kx-ovhead .kx-section { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .kx-ovhead .kx-count { font-weight: 400; color: var(--fg-3); }
-.console .kx-ovhead.is-dragging { opacity: .4; }
-.console .kx-ovhead.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
 .console .kx-layer.is-ov { grid-template-columns: 10px 20px 20px minmax(0, 1fr) 24px; width: auto; margin-left: 14px; padding-left: 6px; border-left: 2px solid var(--line-strong); }
 .console .kx-layer .kx-layer-name.is-ph { color: var(--fg-3); }
 .console .kx-layer .layer-edit { opacity: 0; transition: opacity .12s; }
@@ -403,8 +405,10 @@
 .console .dock-presets .dock-preset-name { color: var(--fg-1); font-weight: 600; }
 .console .dock-presets .dock-name { width: 200px; height: 26px; }
 .console .arr-banner { height: auto; min-height: var(--row); flex-wrap: wrap; row-gap: var(--space-1); padding-block: var(--space-1); }
-.console .dock-hint { position: fixed; z-index: 45; pointer-events: none; border: 2px solid var(--brand); border-radius: var(--radius-panel); background: color-mix(in srgb, var(--brand) 18%, transparent); }
-.console .dock-hint > span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 11px/16px var(--font-sans); white-space: nowrap; }
+/* Where a dragged module docks (Dock.jsx DockHint): a gold line on that edge
+   and its label beside it; never a filled box over the target. */
+.console .dock-hint { position: fixed; z-index: 45; pointer-events: none; border-radius: 2px; background: var(--brand); box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-0) 60%, transparent); }
+.console .dock-hint-label { position: fixed; z-index: 45; pointer-events: none; padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 11px/16px var(--font-sans); white-space: nowrap; }
 .console .dock-ghost { position: fixed; z-index: 46; pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font: 500 12px/16px var(--font-sans); }
 /* A media row's picture on hover (Library.jsx MediaPeek): beside the Biblioteca, 16:9, never under the mouse */
 .console .media-peek { position: fixed; z-index: 44; pointer-events: none; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: var(--popover); outline: 1px solid var(--line); }
@@ -489,8 +493,18 @@
 .console .toast { position: absolute; z-index: 50; left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
 .console .kx-row .kx-row-acts .kx-btn { color: var(--fg-1); }
 .console .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
-.console .kx-row.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
-.console .kx-row.is-dragging { opacity: .4; }
+/* Dragging in a list (owner 2026-10-15, Rodada D): the rows below slide
+   to open room where the item lands (useSortable.js) — never a border or a
+   line on a neighbour. Only while a drag hovers the list does a row
+   animate, so the order a drop leaves takes its place at once. */
+.console .is-sorting > [data-sort-row] { transition: transform .15s var(--ease-out), opacity .15s var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .console .is-sorting > [data-sort-row] { transition: none; } }
+.console [data-sort-row][draggable="true"] { cursor: grab; }
+.console [data-sort-row][draggable="true"]:active { cursor: grabbing; }
+/* The pill that follows the pointer (dragGhost.js); built on <body>, outside
+   .console, so it reads the tokens from :root. */
+.drag-ghost { position: fixed; top: -200px; left: -200px; z-index: 1000; display: inline-flex; align-items: center; gap: 6px; max-width: 280px; padding: 4px 10px; border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-1); box-shadow: var(--popover); font: 500 12px/16px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.drag-ghost .kx-i { flex: none; color: var(--brand); }
 /* UI rule (owner 2026-10-14): every list row in the console — Biblioteca,
    Setlist, the tabs panel, Camadas, Configurações' menu, the views — is a
    rounded card set in from its column, like the verses: the hover and the
@@ -509,9 +523,10 @@
 .console .kx-measure { display: flow-root; }
 /* Camadas' last card ends 4 px from the panel's bottom, as its sides do
    (the card's own 1 px margin plus this). */
-.console .kx-measure:has(> .kx-layer) { padding-bottom: calc(var(--space-1) - 1px); }
-.console .kx-layer.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
-.console .kx-layer.is-dragging { opacity: .4; }
+.console .kx-measure:has(> .kx-layers) { padding-bottom: calc(var(--space-1) - 1px); }
+/* Camadas' sortable lists (useSortable): block boxes that keep their cards'
+   margins inside, so the measured height stays exact. */
+.console :is(.kx-layers, .kx-ovgroup, .kx-ovlist) { display: flow-root; }
 .console .kx-transport .toca { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; justify-content: flex-start; }
 .console .kx-transport .kx-seek { min-width: 60px; cursor: pointer; }
 .console .meters { display: inline-flex; gap: 6px; align-items: center; flex: none; }
@@ -606,10 +621,8 @@
 
 /* Drag from the Biblioteca: the monitor under the pointer says what a drop
    does; the Setlist's tail takes a drop after the last item. */
-.console .kx-mon.is-dropover .kx-mon-screen { outline: 2px dashed var(--brand); outline-offset: -2px; }
 .console .rund { display: flex; flex-direction: column; min-height: 100%; }
 .console .rund-tail { flex: 1; min-height: 28px; }
-.console .rund-tail.is-dropend { box-shadow: inset 0 2px 0 var(--brand); }
 
 /* Fields: no gold ring while typing (the design system's focus ring is for
    keyboard navigation of buttons); a quiet inner line says where you type. */
@@ -844,7 +857,6 @@
 .console .pl-adder-list { flex: 1; min-height: 0; overflow: auto; }
 .console .pl-add { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-2); border-top: 1px solid var(--line); }
 .console .rund-sec { gap: 0; cursor: grab; }
-.console .rund-sec.is-dropbefore { box-shadow: inset 0 2px 0 var(--brand); }
 .console .rund-plan { display: flex; justify-content: center; padding: var(--space-2); }
 
 /* Biblioteca de mídia (canvas artboard "Biblioteca de mídia") */

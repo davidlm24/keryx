@@ -14,6 +14,7 @@ import { fundoNow } from "@/lib/console/defaultFundo";
 import { GENERATORS } from "@/lib/generators";
 import { useLibraryPicker, ALL_KINDS } from "./library/libraryContext";
 import { openEditor } from "@/lib/editorWindow";
+import useSortable from "./useSortable";
 
 // Camadas: what is on air as layers of the live state — Logo (live.logo), the
 // Sobreposições (live.overlays), Texto principal (content) and Fundo
@@ -69,10 +70,6 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     // Drag to reorder: the anchors (fixed layers, the Sobreposições group)
     // follow live.layerOrder (top first); rows inside the group reorder only
     // the overlays among themselves.
-    const [drag, setDrag] = useState(null);
-    const [over, setOver] = useState(null);
-    const [ovDrag, setOvDrag] = useState(null);
-    const [ovOver, setOvOver] = useState(null);
     const order = Array.isArray(cur?.layerOrder) && cur.layerOrder.length === LAYER_ORDER.length ? cur.layerOrder : LAYER_ORDER;
     const moveLayer = (fromKey, toIndex) => {
         const next = order.filter((k) => k !== fromKey);
@@ -214,31 +211,21 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
         bg: { title: "O que está no Fundo e onde trocar", run: (e) => menu(e, { title: fundoTitle(), items: fundoItems }) },
     };
 
-    // The drag of the layer order: the fixed rows, the group's heading and
-    // the single (or empty) overlay row are its anchors; oi is the key's
-    // place in `order`.
-    const layerDrag = (key, oi) => ({
-        draggable: true,
-        onDragStart: (e) => { setDrag(key); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", key); },
-        onDragEnd: () => { setDrag(null); setOver(null); },
-        onDragOver: (e) => { if (!drag) return; e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); setOver(e.clientY > r.top + r.height / 2 ? oi + 1 : oi); },
-        onDrop: (e) => { e.preventDefault(); if (drag) moveLayer(drag, over ?? oi); setDrag(null); setOver(null); },
-    });
-    const layerDropBefore = (key) => Boolean(drag) && drag !== key && over === order.indexOf(key);
-    // The drag inside the group: who draws on top among the overlays (the
-    // list's own order; r is the row's place, top first).
-    const ovDragProps = (o, r) => ({
-        draggable: true,
-        onDragStart: (e) => { setOvDrag(o.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(o.id)); },
-        onDragEnd: () => { setOvDrag(null); setOvOver(null); },
-        onDragOver: (e) => { if (!ovDrag) return; e.preventDefault(); const rect = e.currentTarget.getBoundingClientRect(); setOvOver(e.clientY > rect.top + rect.height / 2 ? r + 1 : r); },
-        onDrop: (e) => { e.preventDefault(); if (ovDrag) { const next = moveOverlayRow(overlays, ovDrag, ovOver ?? r); if (next !== overlays) setOverlays(next); } setOvDrag(null); setOvOver(null); },
-    });
+    // Dragging (owner 2026-10-15, Rodada D): the rows below slide to open
+    // room (useSortable). The layer order: one sortable row per entry of
+    // `order` — a fixed layer, the single (or empty) overlay row, or the
+    // whole Sobreposições group (dragged by its heading). Inside the group a
+    // second list reorders who draws on top among the overlays (r is the
+    // row's place, top first). Both drop at a slot (dropOrder.js), as
+    // moveLayer and moveOverlayRow take it.
+    const layerSort = useSortable({ onDrop: (from, over) => moveLayer(order[from], over) });
+    const ovSort = useSortable({ onDrop: (from, over) => { const id = ovRows[from]?.id; if (id == null) return; const next = moveOverlayRow(overlays, id, over); if (next !== overlays) setOverlays(next); } });
+    const layerDrag = (oi, label) => ({ ...layerSort.rowProps(oi, { label, icon: "layers" }), style: layerSort.rowStyle(oi) });
 
     const fixedRow = (L) => {
         const i = order.indexOf(L.key);
         return (
-            <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"} ${drag === L.key ? "is-dragging" : ""} ${layerDropBefore(L.key) ? "is-dropbefore" : ""}`}
+            <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"}`}
                 onClick={() => setSel(L.id)} role="button" tabIndex={0}
                 onContextMenu={(e) => menu(e, { title: L.id === "bg" ? fundoTitle() : L.name, items: [
                     { label: visible[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] ? "eye-off" : "eye", onSelect: () => toggleEye(L.id) },
@@ -247,9 +234,9 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                     { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
                     { label: "Descer", disabled: i === order.length - 1, onSelect: () => moveLayer(L.key, i + 2) },
                 ] })}
-                {...layerDrag(L.key, i)}
+                {...layerDrag(i, L.name)}
                 title="Arraste para mudar a ordem das camadas">
-                <span className="kx-glyph" style={{ cursor: "grab" }}><Icon name="grip" /></span>
+                <span className="kx-glyph"><Icon name="grip" /></span>
                 <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>
                 <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={locked[L.id] ? "Destravar" : "Travar"} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Destravar" : "Travar"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
                 <span className="kx-layer-name">{L.name}</span>
@@ -266,10 +253,9 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
         const name = overlayName(o);
         const oi = order.indexOf("overlays");
         const isLocked = Boolean(locked[o.id]);
-        const dragProps = anchor ? layerDrag("overlays", oi) : ovDragProps(o, r);
-        const dropBefore = anchor ? layerDropBefore("overlays") : Boolean(ovDrag) && ovDrag !== o.id && ovOver === r;
+        const dragProps = anchor ? layerDrag(oi, name || "Sobreposição") : { ...ovSort.rowProps(r, { label: name || "Sobreposição", icon: "text" }), style: ovSort.rowStyle(r) };
         return (
-            <div key={o.id} className={`kx-layer kx-t ${anchor ? "" : "is-ov"} ${sel === o.id ? "is-selected" : ""} ${on ? "" : "is-hidden"} ${(anchor ? drag === "overlays" : ovDrag === o.id) ? "is-dragging" : ""} ${dropBefore ? "is-dropbefore" : ""}`}
+            <div key={o.id} className={`kx-layer kx-t ${anchor ? "" : "is-ov"} ${sel === o.id ? "is-selected" : ""} ${on ? "" : "is-hidden"}`}
                 onClick={() => setSel(o.id)} role="button" tabIndex={0}
                 onContextMenu={(e) => menu(e, { title: name || "Sobreposição", items: [
                     { label: on ? "Ocultar" : "Mostrar", icon: on ? "eye-off" : "eye", onSelect: () => toggleOvEye(o) },
@@ -284,7 +270,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                 ] })}
                 {...dragProps}
                 title={anchor ? "Arraste para mudar a ordem das camadas" : "Arraste para mudar quem fica por cima, entre as sobreposições"}>
-                <span className="kx-glyph" style={{ cursor: "grab" }}><Icon name="grip" /></span>
+                <span className="kx-glyph"><Icon name="grip" /></span>
                 <button type="button" className={`kx-btn kx-t ${on ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleOvEye(o); }} aria-label={on ? "Ocultar" : "Mostrar"} title={on ? "Ocultar" : "Mostrar"}><Icon name={on ? "eye" : "eye-off"} /></button>
                 <button type="button" className="kx-btn kx-t" style={isLocked ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(o.id); }} aria-label={isLocked ? "Destravar" : "Travar"} title={isLocked ? "Destravar" : "Travar"}><Icon name={isLocked ? "lock" : "unlock"} /></button>
                 <span className={`kx-layer-name${name ? "" : " is-ph"}`}>{name || "Sobreposição"}</span>
@@ -298,16 +284,16 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     const emptyOverlayRow = () => {
         const oi = order.indexOf("overlays");
         return (
-            <div key="ov-empty" className={`kx-layer kx-t is-hidden ${sel === "ov" ? "is-selected" : ""} ${drag === "overlays" ? "is-dragging" : ""} ${layerDropBefore("overlays") ? "is-dropbefore" : ""}`}
+            <div key="ov-empty" className={`kx-layer kx-t is-hidden ${sel === "ov" ? "is-selected" : ""}`}
                 onClick={() => setSel("ov")} role="button" tabIndex={0}
                 onContextMenu={(e) => menu(e, { title: "Sobreposição", items: [
                     { label: "Mostrar", icon: "eye", onSelect: addOverlay },
                     { label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
                     { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) },
                 ] })}
-                {...layerDrag("overlays", oi)}
+                {...layerDrag(oi, "Sobreposição")}
                 title="Arraste para mudar a ordem das camadas">
-                <span className="kx-glyph" style={{ cursor: "grab" }}><Icon name="grip" /></span>
+                <span className="kx-glyph"><Icon name="grip" /></span>
                 <button type="button" className="kx-btn kx-t is-off" onClick={(e) => { e.stopPropagation(); addOverlay(); }} aria-label="Mostrar" title="Mostrar (cria a primeira sobreposição)"><Icon name="eye-off" /></button>
                 <button type="button" className="kx-btn kx-t" onClick={(e) => e.stopPropagation()} aria-label="Travar" title="Travar"><Icon name="unlock" /></button>
                 <span className="kx-layer-name is-ph">Sobreposição</span>
@@ -316,20 +302,25 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
         );
     };
 
-    // The group's thin heading, with 2+: the overlays' handle in the layer order.
-    const ovHead = () => {
+    // With 2+, the group is one row of the layer order: its thin heading is
+    // the handle (the whole group drags), its overlays a list of their own.
+    const ovGroup = () => {
         const oi = order.indexOf("overlays");
         return (
-            <div key="ovhead" className={`kx-ovhead kx-t ${drag === "overlays" ? "is-dragging" : ""} ${layerDropBefore("overlays") ? "is-dropbefore" : ""}`}
-                onContextMenu={(e) => menu(e, { title: "Sobreposições", items: [
-                    { label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
-                    { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) },
-                    { label: "Excluir todas…", icon: "x", onSelect: removeAllOverlays },
-                ] })}
-                {...layerDrag("overlays", oi)}
-                title="Arraste para mudar a ordem das camadas — o grupo inteiro">
-                <span className="kx-glyph"><Icon name="grip" /></span>
-                <span className="kx-section">Sobreposições<span className="kx-count"> · {ovRows.length}</span></span>
+            <div key="ovgroup" className="kx-ovgroup" {...layerDrag(oi, `Sobreposições · ${ovRows.length}`)}>
+                <div className="kx-ovhead kx-t"
+                    onContextMenu={(e) => menu(e, { title: "Sobreposições", items: [
+                        { label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
+                        { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) },
+                        { label: "Excluir todas…", icon: "x", onSelect: removeAllOverlays },
+                    ] })}
+                    title="Arraste para mudar a ordem das camadas — o grupo inteiro">
+                    <span className="kx-glyph"><Icon name="grip" /></span>
+                    <span className="kx-section">Sobreposições<span className="kx-count"> · {ovRows.length}</span></span>
+                </div>
+                <div className={`kx-ovlist ${ovSort.sorting ? "is-sorting" : ""}`} {...ovSort.listProps}>
+                    {ovRows.map((o, r) => overlayRow(o, r, false))}
+                </div>
             </div>
         );
     };
@@ -338,7 +329,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
         if (k !== "overlays") { const L = BY_KEY[k]; return L ? [fixedRow(L)] : []; }
         if (ovRows.length === 0) return [emptyOverlayRow()];
         if (ovRows.length === 1) return [overlayRow(ovRows[0], 0, true)];
-        return [ovHead(), ...ovRows.map((o, r) => overlayRow(o, r, false))];
+        return [ovGroup()];
     });
 
     const openLayer = LAYERS.find((l) => l.id === open);
@@ -348,7 +339,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
 
     return (
         <>
-            {rows}
+            <div className={`kx-layers ${layerSort.sorting ? "is-sorting" : ""}`} {...layerSort.listProps}>{rows}</div>
             {open && <div className="layerprops">
                 <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{sectionLabel}{disabled ? " · travada" : ""}</span>
                 {/* Texto principal: the look is the theme's, edited only in the
