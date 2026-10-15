@@ -8,7 +8,7 @@ import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
 import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName } from "@/lib/console/themes";
-import { layerLocked } from "@shared/live-state.mjs";
+import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { useUser, usePrefs } from "@/hooks/useUser";
 
@@ -108,6 +108,28 @@ export function useConsole() {
     // and never past Camadas' padlock.
     const liveRef = useRef(live);
     liveRef.current = live;
+    // Letra automática (owner 2026-10-15, Rodada D4): while the song on air
+    // follows its video, its playback or the live clock, the console moves
+    // the slide when the source passes a mark (content.goTo auto: the
+    // follower's own move never re-syncs). Only this window does it; locked,
+    // the screens keep their slide.
+    const follow = live?.content?.follow;
+    const following = Boolean(follow && !follow.paused) && !live?.locked;
+    useEffect(() => {
+        if (!following) return undefined;
+        let asked = null;
+        const tick = () => {
+            const cur = liveRef.current;
+            const i = followIndex(cur, keryx.live.now());
+            if (i === null || i === cur?.content?.index) { asked = null; return; }
+            if (i === asked) return;
+            asked = i;
+            keryx.live.call("content.goTo", { index: i, auto: true }).catch(() => {});
+        };
+        tick();
+        const id = setInterval(tick, 150);
+        return () => clearInterval(id);
+    }, [following, follow]);
     const seenPrefs = useRef(null);
     useEffect(() => {
         const prev = seenPrefs.current;
@@ -151,6 +173,8 @@ export function useConsole() {
         try {
             if (!live?.session) await projection.startSession(ref.serviceId || null);
             if (stage.video) await callOp("video.show", { kind: "video", url: stage.video, title: stage.title });
+            // A song's playback: the audio channel, with the player (Rodada D4).
+            if (stage.playback) await callOp("audio.show", { kind: "audio", url: stage.playback, title: stage.title });
             // The item's own background (its own, its theme's, the default
             // theme's) goes to the Fundo layer first, unless the padlock
             // holds it (backgroundSpec.js fundoOps).

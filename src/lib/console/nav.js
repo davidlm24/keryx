@@ -23,6 +23,8 @@ export const PAGE_TITLES = {
     media: "Mídia",
     notice: "Aviso",
     song: "Editor de música",
+    // Rodada D4: the song's marks, pushed from the Editor de música.
+    sync: "Sincronizar",
     school: "Escola bíblica",
     material: "Material",
     reports: "Relatórios",
@@ -32,7 +34,7 @@ export const PAGE_TITLES = {
 
 // The pages that take the larger Editor window (CSS .win-dialog.is-editor);
 // navigating between sizes animates the frame (console.css).
-const EDITOR_PAGES = new Set(["theme", "screen"]);
+const EDITOR_PAGES = new Set(["theme", "screen", "sync"]);
 export const isEditorPage = (page) => EDITOR_PAGES.has(page);
 // The window's size class follows the page on top.
 export const winSize = (stack) => (isEditorPage(top(stack)?.page) ? "editor" : "standard");

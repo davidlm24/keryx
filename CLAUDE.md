@@ -726,7 +726,25 @@ chords; `withChordedTwins` fills old saves from the lyrics). The editor
 inserts chords at the cursor (Acorde, the Tom's chips from `keyChords`) and
 transposes the whole song (Tom − / +). A new kind of element is an entry in
 `ELEMENT_TYPES` (with its `group`) plus its case in `elementText` or the
-renderer's `Body`. Generated backgrounds are the next step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa header, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
+renderer's `Body`. **Sincronizar e letra automática** (owner 2026-10-15, Rodada D4): a
+song's marks are `Song.slides[].start` (seconds), made in **Sincronizar**,
+a page of THE window (`SyncView.jsx`, nav page `sync`, Editor size) pushed
+from the Editor de música's "Sincronizar…" ("← Editor de música"): the
+media big with the slide playing over it, a time line with a draggable
+marker per slide, the slides with typed times, − / +, Aqui, ×; recording
+marks from the chosen slide on and never wipes the others; no media = a
+clock (Ao vivo); Aplicar takes the marks to the editor's draft, its Salvar
+keeps them (pure logic `src/lib/console/lyricSync.js`, tested). The same
+marks follow three sources on air — `content.follow` in
+`shared/live-state.mjs` (tested): the song's **video** (video channel),
+its **playback** (now sent to the **audio channel**, `stage.playback` →
+`audio.show`; `content.audio` is no longer sent) or the **live clock** the
+operator starts with "Iniciar letra automática" in the player. The console
+moves the slide (`useConsole`, `followIndex`, `content.goTo` with
+`auto`); **the arrows never turn it off**: any other `content.goTo`
+re-syncs `follow.offset` so it goes on from the new slide; the player's
+chip (`FollowChip`, `followLabel` in player.js) pauses/resumes on
+purpose. The Biblioteca says "sincronizada". Generated backgrounds are the next step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa header, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.

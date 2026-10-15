@@ -11,7 +11,8 @@ const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", media: 
 
 export function stageFromSong(song, ref = {}, themes = []) {
     const content = songContent(song, ref, themes);
-    return { kind: "lyrics", id: `song:${song.id}`, title: song.title || "", meta: [song.artist, song.song_key, song.bpm && `${song.bpm} bpm`].filter(Boolean).join(" · "), slides: content.slides, index: 0, op: "content.show", args: { ...content, kind: "lyrics" }, video: isVideoUrl(song.audio_url) ? song.audio_url : null };
+    return { kind: "lyrics", id: `song:${song.id}`, title: song.title || "", meta: [song.artist, song.song_key, song.bpm && `${song.bpm} bpm`].filter(Boolean).join(" · "), slides: content.slides, index: 0, op: "content.show", args: { ...content, kind: "lyrics" }, video: isVideoUrl(song.audio_url) ? song.audio_url : null,
+        playback: song.audio_url && !isVideoUrl(song.audio_url) ? song.audio_url : null };
 }
 
 export function stageFromPassage(passage, ref = {}) {

@@ -45,6 +45,11 @@ export const MEDIA_KINDS = ["video", "image", "gif", "pdf", "powerpoint", "youtu
 export const BACKGROUND_KINDS = ["image", "video", "color", "generator"];
 export const TOOL_MODES = ["clock", "stopwatch", "timer", "freetext"];
 export const ALERT_TYPES = ["alert", "message"];
+// What a song's automatic lyrics follow (owner 2026-10-15, Rodada D4): its
+// video, its playback on the audio channel, or a clock the operator starts
+// when the musicians play (no media at all).
+export const FOLLOW_SOURCES = ["video", "audio", "clock"];
+export const FOLLOW_ACTIONS = ["start", "pause", "resume"];
 // The text's look. The first ten are free text (as saved in songs and themes);
 // the rest (Camadas, 2026-10-10) are typed: a number in a range or a choice.
 export const STYLE_RANGES = { text_opacity: [0.2, 1], text_max_width: [40, 100], text_box_opacity: [0, 0.9], text_nudge: [-20, 20], transition_ms: [120, 600], background_dim: [0, 0.9], background_blur: [0, 20] };
@@ -229,6 +234,9 @@ function slide(value) {
     if (value.is_chorus) out.is_chorus = true;
     if (value.image_url) out.image_url = text(value.image_url, "Imagem do slide", { max: MAX_URL * 1024 });
     if (value.label) out.label = text(value.label, "Rótulo do slide", { max: 200 });
+    // Where the slide comes in, in seconds of the song (Sincronizar): what
+    // the automatic lyrics follow (content.follow).
+    if (value.start !== undefined && value.start !== null) out.start = count(value.start, "Início do slide");
     // A Bible chapter sent whole carries each verse's own reference.
     if (value.ref) out.ref = text(value.ref, "Referência do slide", { max: 200 });
     // A song part with a theme of its own (src/lib/console/songTheme.js):
@@ -241,6 +249,21 @@ function slide(value) {
 }
 
 const slides = (value, label = "Slides") => list(value ?? [], label, MAX_SLIDES).map(slide);
+
+// A song's automatic lyrics (content.follow): the slide on air follows the
+// source's position plus `offset` (the arrows re-sync it, never turn it
+// off: owner 2026-10-15). `clock`: the live clock's own playback, null until
+// the operator starts it. Only with slides that have a start.
+function followOf(value, items) {
+    if (value === undefined || value === null) return null;
+    if (!isPlainObject(value)) throw new LiveError("Letra automática inválida.");
+    const source = oneOf(value.source, FOLLOW_SOURCES, "Fonte da letra automática");
+    if (!items.some((it) => Number.isFinite(it.start))) return null;
+    const out = { source, paused: source === "clock", offset: 0, clock: null, pausedIndex: null };
+    if (source !== "clock") out.url = text(value.url, "Endereço da mídia", { max: MAX_URL, required: true });
+    if (value.length !== undefined && value.length !== null) out.length = count(value.length, "Duração");
+    return out;
+}
 
 function clampIndex(value, length) {
     const n = Math.trunc(Number(value) || 0);
@@ -342,6 +365,13 @@ function backgroundOf(a) {
     return background;
 }
 
+// The follow re-synced so the slide `at` is where the source is now.
+function resynced(s, f, at, now) {
+    const pos = followPosition({ ...s, content: { ...s.content, follow: f } }, now);
+    if (pos === null || !Number.isFinite(at?.start)) return f;
+    return { ...f, offset: Math.round((at.start - pos) * 100) / 100 };
+}
+
 const OPS = {
     "screen.set": (_s, { mode }) => ({ screen: oneOf(mode, SCREEN_MODES, "Modo da tela") }),
 
@@ -410,8 +440,10 @@ const OPS = {
                 index: clampIndex(a.index, items.length),
                 style: style(a.style),
                 stage: loose(a.stage, "Dados do palco") || {},
-                // A song's playback track, played by the main projector.
+                // A song's playback track, played by the main projector (rows
+                // sent before Rodada D4; a playback now goes to the audio channel).
                 audio: text(a.audio, "Áudio", { max: MAX_URL }) || null,
+                follow: followOf(a.follow, items),
                 startedAt: now,
             },
         };
@@ -427,15 +459,55 @@ const OPS = {
         if (a.stage !== undefined) next.stage = loose(a.stage, "Dados do palco") || {};
         if (a.audio !== undefined) next.audio = text(a.audio, "Áudio", { max: MAX_URL }) || null;
         next.index = clampIndex(a.index ?? current.index, next.slides.length);
+        // New marks (the song saved while on air): a follow still running keeps
+        // its clock and offset; one the song no longer has goes.
+        if (a.follow !== undefined) {
+            const f = followOf(a.follow, next.slides);
+            const keep = f && current.follow && current.follow.source === f.source && current.follow.url === f.url;
+            next.follow = keep ? { ...current.follow, ...(f.length !== undefined ? { length: f.length } : {}) } : f;
+        } else if (current.follow && !next.slides.some((it) => Number.isFinite(it.start))) next.follow = null;
         return { content: next };
     },
-    "content.goTo": (s, { index }) => {
+    // `auto`: the automatic lyrics moving on (useLyricFollow). Anyone else
+    // moving the slide of a song that follows re-syncs it there: from then
+    // on it follows from the new place (owner 2026-10-15, "continua seguindo").
+    "content.goTo": (s, { index, auto }, now) => {
         const current = need(s.content, "projetado");
         const i = clampIndex(index, current.slides.length);
-        return i === current.index ? null : { content: { ...current, index: i } };
+        if (i === current.index) return null;
+        const f = current.follow;
+        if (auto || !f || f.paused) return { content: { ...current, index: i } };
+        return { content: { ...current, index: i, follow: resynced(s, f, current.slides[i], now) } };
     },
-    "content.next": (s) => OPS["content.goTo"](s, { index: need(s.content, "projetado").index + 1 }),
-    "content.prev": (s) => OPS["content.goTo"](s, { index: need(s.content, "projetado").index - 1 }),
+    // Letra automática: start the live clock, pause following (the band
+    // repeated a chorus, a prayer in the middle) and resume it.
+    "content.follow": (s, { action }, now) => {
+        const current = need(s.content, "projetado");
+        const f = current.follow;
+        if (!f) throw new LiveError("Esta música não tem letra automática.", 409);
+        oneOf(action, FOLLOW_ACTIONS, "Comando da letra automática");
+        const at = current.slides[current.index];
+        let next;
+        if (action === "start" || (action === "resume" && f.source === "clock" && !f.clock)) {
+            // The live clock starts where the slide on air comes in (the
+            // first one: from 0, the introduction).
+            const position = current.index > 0 && Number.isFinite(at?.start) ? at.start : 0;
+            next = { ...f, paused: false, offset: 0, pausedIndex: null, clock: f.source === "clock" ? { paused: false, position, at: now } : f.clock };
+        } else if (action === "pause") {
+            if (f.paused) return null;
+            const clock = f.clock && !f.clock.paused ? { paused: true, position: livePosition(f.clock, now), at: now } : f.clock;
+            next = { ...f, paused: true, pausedIndex: current.index, clock };
+        } else {
+            if (!f.paused) return null;
+            const clock = f.clock && f.clock.paused ? { paused: false, position: f.clock.position, at: now } : f.clock;
+            const running = { ...f, paused: false, pausedIndex: null, clock };
+            // Moved while paused: it goes on from the slide on air.
+            next = f.pausedIndex !== null && f.pausedIndex !== current.index ? resynced(s, running, at, now) : running;
+        }
+        return { content: { ...current, follow: next } };
+    },
+    "content.next": (s, _a, now) => OPS["content.goTo"](s, { index: need(s.content, "projetado").index + 1 }, now),
+    "content.prev": (s, _a, now) => OPS["content.goTo"](s, { index: need(s.content, "projetado").index - 1 }, now),
     "content.clear": (s, _a, now) => (s.content ? { ...remember(s, now, "content"), content: null } : null),
 
     "media.show": (s, a, now) => ({
@@ -690,7 +762,7 @@ export function restoreState(saved, now = Date.now()) {
         screen: "black",
         session: layer(saved.session),
         background: layer(saved.background),
-        content: layer(saved.content),
+        content: restoredContent(layer(saved.content), now),
         media: paused(layer(saved.media)),
         video: paused(layer(saved.video)),
         audio: paused(layer(saved.audio)),
@@ -706,6 +778,15 @@ export function restoreState(saved, now = Date.now()) {
         defaultBackground: savedBackground(saved.defaultBackground),
         history: Array.isArray(saved.history) ? saved.history.filter((h) => isPlainObject(h) && isPlainObject(h.data)).slice(0, MAX_HISTORY) : [],
     };
+}
+
+// Content read back after a restart: automatic lyrics wait (a live clock
+// does not run on through the restart).
+function restoredContent(c, now) {
+    if (!c || !isPlainObject(c.follow)) return c;
+    const f = c.follow;
+    const clock = isPlainObject(f.clock) ? { ...f.clock, paused: true, position: Number(f.clock.position) || 0, at: now } : null;
+    return { ...c, follow: { ...f, paused: true, pausedIndex: Number.isInteger(c.index) ? c.index : null, clock } };
 }
 
 // A saved background, checked again (null when it no longer passes).
@@ -739,6 +820,39 @@ export function livePosition(playback, now) {
     if (!playback) return 0;
     if (playback.paused) return playback.position;
     return playback.position + Math.max(0, now - playback.at) / 1000;
+}
+
+// Seconds into what a song's automatic lyrics follow (content.follow): the
+// live clock, or the layer playing its file (the video channel, the audio
+// channel, or the projector — the player's eye moves it between them).
+// null when it is not there or the clock has not started.
+export function followPosition(state, now) {
+    const f = state?.content?.follow;
+    if (!f) return null;
+    if (f.source === "clock") return f.clock ? livePosition(f.clock, now) : null;
+    for (const k of ["video", "audio", "media"]) {
+        const l = state[k];
+        if (l && l.url === f.url && l.playback) return livePosition(l.playback, now);
+    }
+    return null;
+}
+
+// The last slide with a start at or before `t` seconds (-1: none yet).
+export function slideAtTime(slides, t) {
+    let at = -1;
+    (slides || []).forEach((it, i) => { if (Number.isFinite(it?.start) && it.start <= t + 1e-6) at = i; });
+    return at;
+}
+
+// The slide the automatic lyrics want on air now, or null to leave it.
+export function followIndex(state, now) {
+    const c = state?.content;
+    const f = c?.follow;
+    if (!f || f.paused) return null;
+    const pos = followPosition(state, now);
+    if (pos === null) return null;
+    const i = slideAtTime(c.slides, pos + (f.offset || 0));
+    return i < 0 ? null : i;
 }
 
 // What a <video> (or YouTube player) should do to follow the shared

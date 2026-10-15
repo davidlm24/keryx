@@ -8,8 +8,19 @@ import { withSongThemes, songTheme } from "./songTheme.js";
 import { bgSpec, bgArgs } from "./backgroundSpec.js";
 
 // A song's audio_url may be its video clip (sent to the video screen) or a
-// playback track (played by the main projector).
+// playback track (sent to the audio channel, Rodada D4: with the player's
+// transport, and the lyrics can follow it).
 export const isVideoUrl = (url) => Boolean(url) && (url.includes(".mp4") || url.includes("video") || url.startsWith("data:video"));
+
+// What a song's automatic lyrics follow (content.follow, owner 2026-10-15,
+// Rodada D4): its video, its playback, or — no media, the musicians play —
+// the live clock the operator starts. null when no slide has a start.
+export function songFollow(song, slides) {
+    if (!(slides || []).some((it) => Number.isFinite(it?.start))) return null;
+    const url = song.audio_url || "";
+    const length = Number.isFinite(song.duration) && song.duration > 0 ? song.duration : null;
+    return { source: !url ? "clock" : isVideoUrl(url) ? "video" : "audio", ...(url ? { url } : {}), ...(length ? { length } : {}) };
+}
 
 // What a Song row puts on screen (projection.showLyrics arguments). The
 // slides are stripped of inline chords (songSlidesFor); when the lyrics
@@ -25,7 +36,10 @@ export function songContent(song, ref = {}, themes = []) {
         title: song.title || "",
         artist: song.artist || "",
         slides: built.slides,
-        audio: isVideoUrl(song.audio_url) ? null : song.audio_url || null,
+        // The playback goes to the audio channel (stage.playback), never
+        // content.audio any more (it played on every output, untransported).
+        audio: null,
+        ...(songFollow(song, built.slides) ? { follow: songFollow(song, built.slides) } : {}),
         style: {
             font_size: song.font_size || "large",
             font_family: song.font_family || "sans",

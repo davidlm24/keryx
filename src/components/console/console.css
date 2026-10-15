@@ -572,6 +572,15 @@
 .console .player .pl-seek.is-live > i { background: var(--air); }
 .console .player .pl-seek > b { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--radius-round); background: var(--fg-1); opacity: 0; transition: opacity .12s; }
 .console .player .pl-seek:hover > b { opacity: 1; }
+/* Letra automática (Rodada D4): one tick per marked slide on the bar, and the
+   chip saying what the lyrics follow (a click pauses / resumes). */
+.console .player .pl-seek > .pl-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--fg-1); opacity: .55; pointer-events: auto; }
+.console .player .pl-follow { flex: 0 1 auto; min-width: 0; height: 24px; padding: 0 8px; gap: 5px; font-size: 11px; border-radius: 12px; background: var(--bg-3); color: var(--fg-2); }
+.console .player .pl-follow .lbl { overflow: hidden; text-overflow: ellipsis; }
+.console .player .pl-follow.is-on { color: var(--live); background: color-mix(in srgb, var(--live) 16%, transparent); }
+.console .player .pl-follow.is-paused { color: var(--warn); }
+.console .player .pl-follow-go { flex: none; height: 26px; gap: 5px; font-size: 12px; }
+@container player (max-width: 720px) { .console .player .pl-follow .lbl { display: none; } }
 .console .player .pl-seek.is-unknown, .console .player.is-idle .pl-seek { cursor: default; }
 .console .player .pl-left { flex: none; display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 12px; font-variant-numeric: tabular-nums; min-width: 40px; }
 .console .player .pl-left small { font-size: 10px; color: var(--fg-3); }
@@ -832,7 +841,10 @@
 .console .ed-media { flex: 0 1 260px; min-width: 160px; display: flex; flex-direction: column; gap: var(--space-1); }
 .console .ed-media video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--radius-control); }
 .console .ed-media audio { width: 100%; }
-.console .ed-marks { flex: 1; min-width: 0; overflow: auto; }
+/* What the marks do (Rodada D4: they are made in Sincronizar). */
+.console .ed-syncstat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); padding-top: var(--space-1); }
+.console .ed-syncn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.console .ed-syncn.is-on { color: var(--fg-1); }
 .console .ed-acts { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); padding: 0 2px; }
 /* A narrow left column: the PP…GGG seg breaks into two rows instead of
    scrolling (the !important beats the Seg's inline 24 px height). */
@@ -1296,3 +1308,42 @@
 /* The Editor da tela's drawing tail (Rodada C, fase d2): the ready starting
    points and the way back, one wrapping row. */
 .console .le-starts { height: auto; min-height: var(--row); flex-wrap: wrap; gap: var(--space-1); padding-block: var(--space-1); }
+
+/* ---------- Sincronizar (Rodada D4, SyncView.jsx) ---------- */
+/* The media big with the slide that plays over it, the time line with one
+   marker per slide, the slides with their times on the right. Gold = the
+   slide playing now (as on air), green = the next one Espaço marks. */
+.console .sync .sync-stage { position: relative; flex: 1 1 0; min-height: 160px; width: 100%; background: #000; border-radius: var(--radius-control); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.console .sync .sync-stage > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.console .sync .sync-lyric { position: relative; z-index: 1; max-width: 86%; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: #fff; font-size: clamp(14px, 2.4vw, 28px); line-height: 1.25; font-weight: 600; text-shadow: 0 2px 8px rgba(0, 0, 0, .9); }
+.console .sync .sync-stage.is-video .sync-lyric { align-self: flex-end; margin-bottom: 6%; }
+.console .sync .sync-src { position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--fg-2); background: rgba(0, 0, 0, .5); padding: 2px 8px; border-radius: 10px; }
+.console .sync .sync-now { position: absolute; right: 8px; top: 8px; z-index: 1; font-size: 11px; color: var(--live-fg); background: rgba(0, 0, 0, .55); padding: 2px 8px; border-radius: 10px; }
+.console .sync .sync-ctl { flex: none; display: flex; align-items: center; gap: 2px; }
+.console .sync .sync-skip { height: var(--row); padding: 0 6px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--fg-2); }
+.console .sync .sync-play { width: 32px; height: 32px; background: var(--bg-3); color: var(--fg-1); }
+.console .sync .sync-clock { margin-left: var(--space-2); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--fg-1); }
+.console .sync .sync-clock small { color: var(--fg-3); font-size: 11px; }
+.console .sync .sync-line { flex: none; position: relative; height: 30px; margin: 4px 8px 0; background: var(--bg-3); border-radius: var(--radius-control); cursor: pointer; touch-action: none; }
+.console .sync .sync-played { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--fg-2) 22%, transparent); border-radius: var(--radius-control) 0 0 var(--radius-control); pointer-events: none; }
+.console .sync .sync-mk { position: absolute; top: 4px; transform: translateX(-50%); min-width: 18px; height: 22px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-variant-numeric: tabular-nums; color: var(--fg-1); background: var(--bg-1); box-shadow: inset 0 0 0 1px var(--line-strong); border-radius: 4px; cursor: ew-resize; z-index: 1; }
+.console .sync .sync-mk::after { content: ""; position: absolute; left: 50%; bottom: -4px; width: 1px; height: 4px; background: var(--fg-2); }
+.console .sync .sync-mk.is-sel { box-shadow: inset 0 0 0 1px var(--fg-1); }
+.console .sync .sync-mk.is-air { background: var(--live-bg); color: var(--live-fg); box-shadow: inset 0 0 0 1px var(--live); }
+.console .sync .sync-head { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--air); border-radius: 1px; pointer-events: none; z-index: 2; }
+.console .sync .sync-scale { flex: none; position: relative; height: 14px; margin: 0 8px; font-size: 10px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
+.console .sync .sync-scale > span { position: absolute; transform: translateX(-50%); }
+.console .sync .sync-scale > span:first-child { transform: none; }
+.console .sync .sync-list { display: flex; flex-direction: column; gap: 2px; padding: var(--space-1); }
+.console .sync .sync-row { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: 2px 4px 2px 8px; border-radius: var(--radius-control); cursor: pointer; }
+.console .sync .sync-row:hover { background: var(--bg-2); }
+.console .sync .sync-row.is-sel { background: var(--bg-3); }
+.console .sync .sync-row.is-prev { background: var(--prev-bg); }
+.console .sync .sync-row.is-air { background: var(--live-bg); }
+.console .sync .sync-row .n { flex: none; width: 20px; text-align: right; font-size: 11px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
+.console .sync .sync-row .sync-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-1); }
+.console .sync .sync-row .sync-txt b { font-weight: 500; color: var(--fg-3); }
+.console .sync .sync-time { flex: none; width: 74px; height: 24px; padding: 0 6px; border: 0; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+.console .sync .sync-time.is-bad { box-shadow: inset 0 0 0 1px var(--warn); }
+.console .sync .sync-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; opacity: .35; }
+.console .sync .sync-row:hover .sync-acts, .console .sync .sync-row.is-sel .sync-acts, .console .sync .sync-row:focus-within .sync-acts { opacity: 1; }
