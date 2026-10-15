@@ -8,13 +8,15 @@ import OutputPrefCard from "../console/settings/OutputPrefCard";
 import { mainLayer } from "@shared/live-state.mjs";
 import {
     ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
-    normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, moveElement, FACTORY_LAYOUTS,
+    normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, FACTORY_LAYOUTS,
 } from "@/lib/layouts";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
 import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars } from "@/lib/outputPrefs";
 import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, SAMPLE_ITEMS } from "../console/settings/sample";
 import { ConfirmContext } from "../console/ConfirmDialog";
+import useSortable from "../console/useSortable";
+import { moveTo } from "@/lib/console/dropOrder";
 
 const HANDLES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -75,8 +77,11 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const [tab, setTab] = useState("desenho");
     const [starting, setStarting] = useState(null); // "model" | "copy": the pickers at the drawing's tail
     const [pickBgImage, setPickBgImage] = useState(false);
-    const [dragRow, setDragRow] = useState(null); // the element row being dragged in the list
-    const [overRow, setOverRow] = useState(null);
+    // The element list (top first, the reverse of the drawing order): the
+    // rows below slide to open room (useSortable, owner 2026-10-15).
+    const elSort = useSortable({
+        onDrop: (from, over) => setDraft((d) => ({ ...d, elements: moveTo(d.elements.slice().reverse(), from, over).slice().reverse() })),
+    });
     const fileRef = useRef(null);
     const bgFileRef = useRef(null);
     const screenRef = useRef(null);
@@ -357,30 +362,25 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                         )}
                         {!draft.elements.length && !adding && <div className="listhead"><span className="kx-meta">Nenhum elemento ainda · Adicionar põe um no meio da tela; arraste-o para onde quiser.</span></div>}
                         {/* Topmost first; dragging a row changes who draws on
-                            top (moveElement); the eye hides the element
+                            top (dropOrder.js moveTo); the eye hides the element
                             without losing its place (Rodada C, fase d2). */}
+                        <div className={`le-els ${elSort.sorting ? "is-sorting" : ""}`} {...elSort.listProps}>
                         {draft.elements.slice().reverse().map((el, di) => {
                             const t = typeOf(el.type);
-                            const toIndex = (i) => draft.elements.length - 1 - i;
                             return (
                                 <Row key={el.id} single icon={t.icon} title={`${t.name}${el.label && el.label !== t.label ? ` · ${el.label}` : ""}`}
-                                    className={`${sel === el.id ? "is-selected" : ""} ${el.hidden ? "is-dim" : ""} ${dragRow === el.id ? "is-dragging" : ""} ${overRow === di && dragRow && dragRow !== el.id ? "is-dropbefore" : ""}`}
+                                    className={`${sel === el.id ? "is-selected" : ""} ${el.hidden ? "is-dim" : ""}`}
                                     onClick={() => setSel(el.id)}
-                                    dragProps={{
-                                        draggable: true,
-                                        onDragStart: (e) => { setDragRow(el.id); e.dataTransfer.effectAllowed = "move"; },
-                                        onDragEnd: () => { setDragRow(null); setOverRow(null); },
-                                        onDragOver: (e) => { if (!dragRow) return; e.preventDefault(); setOverRow(di); },
-                                        onDrop: (e) => { e.preventDefault(); if (dragRow) set({ elements: moveElement(draft.elements, dragRow, toIndex(di)) }); setDragRow(null); setOverRow(null); },
-                                    }}
+                                    dragProps={{ ...elSort.rowProps(di, { label: t.name, icon: t.icon }), style: elSort.rowStyle(di) }}
                                     actions={<>
                                         <IconBtn name={el.hidden ? "eye-off" : "eye"} small title={el.hidden ? "Mostrar o elemento" : "Esconder o elemento (ele fica no lugar)"} onClick={(e) => { e.stopPropagation(); setEl(el.id, { hidden: !el.hidden }); }} />
                                         <IconBtn name="x" small title="Tirar da tela" onClick={(e) => { e.stopPropagation(); remove(el.id); }} />
                                     </>}>
-                                    <span className="kx-glyph" title="Arraste para mudar quem desenha por cima" style={{ cursor: "grab" }}><Icon name="grip" /></span>
+                                    <span className="kx-glyph" title="Arraste para mudar quem desenha por cima"><Icon name="grip" /></span>
                                 </Row>
                             );
                         })}
+                        </div>
 
                         {selected && type && (
                             <>

@@ -115,20 +115,21 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
     // A drop from the Biblioteca on the Programa sends.
     const dropProps = {
         onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (!dropOn) setDropOn(true); } },
-        onDragLeave: () => setDropOn(null),
+        onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOn(null); },
         onDrop: (e) => { const st = getDragStage(); setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "air"); },
     };
+    const dropHint = dropOn && <div className="kx-drop-hint is-air"><span>Solte para enviar ao ar</span></div>;
     return (
         <div className={`mons ${player ? "" : "no-player"}`} data-live-keys="" tabIndex={-1}>
             <div className="liveblock">
                 {multiview ? (
                     <MultiView live={cur} now={shownNow} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick} still={still}
-                        state={progState} className={dropOn ? "is-dropover" : ""} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
-                        {dropOn && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
+                        state={progState} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
+                        {dropHint}
                     </MultiView>
                 ) : (
-                    <Monitor className={`prog ${dropOn ? "is-dropover" : ""}`} state={progState} noCap live={cur} now={shownNow} logoUrl={logoUrl} motion={!still} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
-                        {dropOn && <div className="kx-drop-hint">Solte para enviar ao ar</div>}
+                    <Monitor className="prog" state={progState} noCap live={cur} now={shownNow} logoUrl={logoUrl} motion={!still} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
+                        {dropHint}
                     </Monitor>
                 )}
                 {player}
@@ -159,8 +160,8 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
     const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
     const railVars = prefVars(railPref);
     // The caption is a badge in the screen's top-left corner.
-    const capTitle = dropOn ? "Solte para preparar" : prev ? prev.title : "";
-    const capPos = !dropOn && prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "";
+    const capTitle = prev ? prev.title : "";
+    const capPos = prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "";
     const prevCap = (
         <span className={`kx-mon-badge kx-prog-cap ${locked ? "is-rh" : prev ? "is-prevcap" : "is-idle"}`}>
             <span className="kx-live-cap">{locked ? "Prévia · travado" : "Prévia"}</span>
@@ -171,13 +172,14 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
     // A drop from the Biblioteca on the Prévia prepares.
     const dropProps = {
         onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (!dropOn) setDropOn(true); } },
-        onDragLeave: () => setDropOn(null),
+        onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOn(null); },
         onDrop: (e) => { const st = getDragStage(); setDropOn(null); if (!st) return; e.preventDefault(); clearDragStage(); onDropStage?.(st, "prev"); },
     };
     return (
         <Panel bare className={`prev-panel ${className}`}>
-            <Monitor className={`${dropOn ? "is-dropover" : ""} ${railVars ? "kp-out" : ""}`} style={railVars || undefined} state={locked ? "rh" : prev ? "prev" : ""} noCap live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu, onDoubleClick: () => { if (prev && !locked) onSend?.(); } }}>
+            <Monitor className={railVars ? "kp-out" : ""} style={railVars || undefined} state={locked ? "rh" : prev ? "prev" : ""} noCap live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu, onDoubleClick: () => { if (prev && !locked) onSend?.(); } }}>
                 {prevCap}
+                {dropOn && <div className="kx-drop-hint"><span>Solte para preparar</span></div>}
                 {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                 {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
                 {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Telas e saídas › Mostrar)</div>}

@@ -15,6 +15,12 @@ const EXTRA = {
     pin:'<path d="M9.5 4.5h5l-.7 5 2.7 2.5v1.5H7.5V12l2.7-2.5z"/><path d="M12 13.5V20"/>',
 };
 
+// The glyph's SVG markup, for a node built outside React (the drag ghost).
+export const iconSvg = (name, size = 14) => {
+    const path = window.KERYX?.ICONS[name] || EXTRA[name];
+    return path ? `<svg class="kx-i" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>` : "";
+};
+
 export default function Icon({ name, size = 16, className = "" }) {
     const path = window.KERYX?.ICONS[name] || EXTRA[name];
     if (!path) return null;

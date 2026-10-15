@@ -17,12 +17,14 @@ import { noticeLabel, noticeIcon } from "@/lib/console/notice";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 import { QuickAlert, ToolsPicker } from "./QuickTools";
 import { TabRow } from "./TabsPanel";
+import { setDragGhost, stageGhost } from "./dragGhost";
 
 // A library row can be dragged onto the Prévia (prepares), the Programa
 // (sends) or the Setlist (adds the item there).
+// The pointer carries a small pill (its name), never a picture of the row.
 const dragProps = (stage) => ({
     draggable: true,
-    onDragStart: (e) => { setDragStage(stage); e.dataTransfer.setData(STAGE_MIME, stage.id || "1"); e.dataTransfer.effectAllowed = "copyMove"; },
+    onDragStart: (e) => { setDragStage(stage); e.dataTransfer.setData(STAGE_MIME, stage.id || "1"); e.dataTransfer.effectAllowed = "copyMove"; setDragGhost(e, stageGhost(stage)); },
     onDragEnd: () => clearDragStage(),
 });
 

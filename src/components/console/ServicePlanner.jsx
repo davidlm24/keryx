@@ -7,6 +7,8 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "./kx";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
+import useSortable from "./useSortable";
+import { moveTo } from "@/lib/console/dropOrder";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
 import { readChapter } from "@/lib/bibleText";
 import { bibleVersionWanted } from "./BibleEnv";
@@ -56,8 +58,8 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const [tplName, setTplName] = useState("");
     const [confirm, setConfirm] = useState(null);
     const ask = useConfirm();
-    const [drag, setDrag] = useState(null);
-    const [over, setOver] = useState(null);
+
+
     const [busy, setBusy] = useState("");
 
     useEffect(() => {
@@ -84,14 +86,8 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const renumber = async (list) => {
         for (const [i, it] of list.entries()) if (it.order !== i) await keryx.entities.ServiceItem.update(it.id, { order: i });
     };
-    const reorder = async (fromId, toIdx) => {
-        const list = items.slice();
-        const from = list.findIndex((i) => i.id === fromId);
-        if (from < 0) return;
-        const [moved] = list.splice(from, 1);
-        list.splice(toIdx > from ? toIdx - 1 : toIdx, 0, moved);
-        await run(renumber(list));
-    };
+    // A row dropped at a slot of the setlist (useSortable; dropOrder.js).
+    const sort = useSortable({ onDrop: (from, over) => { if (from >= 0) run(renumber(moveTo(items, from, over))); } });
     const updateItem = (id, patch) => run(keryx.entities.ServiceItem.update(id, patch));
     const duplicate = async (it) => {
         const at = items.findIndex((x) => x.id === it.id) + 1;
@@ -280,21 +276,16 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
             <div className="kx-gap" />
             <div className="col center">
                 <Panel className="pl-setlist" title={<>Setlist <span className="kx-count">· {p.count} {p.count === 1 ? "item" : "itens"} · {total(p.seconds)} · termina às {clockAt(p.ends)}</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                    <div className="pl-list">
+                    <div className={`pl-list ${sort.sorting ? "is-sorting" : ""}`} {...sort.listProps}>
                         {!items.length && <Empty icon="list" title="Setlist vazia">Use os botões abaixo, um modelo, ou duplique o culto anterior.</Empty>}
                         {p.rows.map(({ item: it, at }, i) => {
-                            const dragProps = {
-                                draggable: true,
-                                onDragStart: (e) => { setDrag(it.id); e.dataTransfer.effectAllowed = "move"; },
-                                onDragEnd: () => { setDrag(null); setOver(null); },
-                                onDragOver: (e) => { if (!drag) return; e.preventDefault(); setOver(i); },
-                                onDrop: (e) => { e.preventDefault(); if (drag) reorder(drag, i); setDrag(null); setOver(null); },
-                            };
-                            const stateCls = `${drag === it.id ? "is-dragging" : ""} ${over === i && drag && drag !== it.id ? "is-dropbefore" : ""}`;
+                            // The rows below slide to open room (useSortable,
+                            // owner 2026-10-15); an open item drags with its details.
+                            const dragProps = { ...sort.rowProps(i, { label: it.title || typeLabel(it.type), icon: isSection(it) ? "list" : typeIcon(it.type) }), style: sort.rowStyle(i) };
                             if (isSection(it)) {
                                 const sec = p.sections[i] || { count: 0, seconds: 0 };
                                 return (
-                                    <div key={it.id} className={`kx-row pl-sec ${stateCls} ${sel === it.id ? "is-selected" : ""}`} onClick={() => setSel(sel === it.id ? null : it.id)} {...dragProps}>
+                                    <div key={it.id} className={`kx-row pl-sec ${sel === it.id ? "is-selected" : ""}`} onClick={() => setSel(sel === it.id ? null : it.id)} {...dragProps}>
                                         <span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span>
                                         <span className="kx-section">{it.title}</span><span className="kx-count"> · {sec.count} {sec.count === 1 ? "item" : "itens"} · {total(sec.seconds)}</span>
                                         <span style={{ flex: 1 }} />
@@ -304,8 +295,8 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                             }
                             const open = sel === it.id;
                             return (
-                                <React.Fragment key={it.id}>
-                                    <div className={`kx-row pl-item ${stateCls} ${open ? "is-selected" : ""} ${it.enabled === false ? "is-done" : ""}`} onClick={() => setSel(open ? null : it.id)} {...dragProps}>
+                                <div key={it.id} className="pl-sortrow" {...dragProps}>
+                                    <div className={`kx-row pl-item ${open ? "is-selected" : ""} ${it.enabled === false ? "is-done" : ""}`} onClick={() => setSel(open ? null : it.id)}>
                                         <span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span>
                                         <span className="kx-glyph"><Icon name={typeIcon(it.type)} /></span>
                                         <div className="kx-row-main"><div className="kx-row-title">{it.title}</div><div className="kx-row-meta">{[typeLabel(it.type), it.enabled === false ? "desativado" : "", it.notes && it.type !== "TEXT" ? it.notes : ""].filter(Boolean).join(" · ")}</div></div>
@@ -327,10 +318,10 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                             </div>
                                         </div>
                                     )}
-                                </React.Fragment>
+                                </div>
                             );
                         })}
-                        {items.length > 0 && <div className={`rund-tail ${over === items.length ? "is-dropend" : ""}`} onDragOver={(e) => { if (!drag) return; e.preventDefault(); setOver(items.length); }} onDrop={(e) => { e.preventDefault(); if (drag) reorder(drag, items.length); setDrag(null); setOver(null); }} />}
+                        {items.length > 0 && <div className="rund-tail" data-sort-tail="" />}
                     </div>
                     {adding && (
                         <div className="pl-adder">

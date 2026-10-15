@@ -7,6 +7,7 @@ import { stageFromMedia, stageFromMediaList, stageFromAudioList, liveStageId } f
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 import { useConfirm } from "./ConfirmDialog";
+import { setDragGhost, stageGhost } from "./dragGhost";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
 const inCat = (m, cat) => cat === "todas" || (cat === "image" ? m.type === "image" || m.type === "gif" : cat === "doc" ? m.type === "pdf" || m.type === "powerpoint" : m.type === cat);
@@ -169,7 +170,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
 
     const drag = (m) => ({
         draggable: true,
-        onDragStart: (e) => { const s = stageFromMedia(m); setDragStage(s); e.dataTransfer.setData(STAGE_MIME, s.id); e.dataTransfer.effectAllowed = "copyMove"; },
+        onDragStart: (e) => { const s = stageFromMedia(m); setDragStage(s); e.dataTransfer.setData(STAGE_MIME, s.id); e.dataTransfer.effectAllowed = "copyMove"; setDragGhost(e, stageGhost(s)); },
         onDragEnd: () => clearDragStage(),
     });
     const state = (m) => `${sel.includes(m.id) ? "is-sel" : ""} ${airId === `media:${m.id}` || c.cur?.audio?.id === m.id ? "is-air" : ""} ${m.missing ? "is-warn" : ""}`;
