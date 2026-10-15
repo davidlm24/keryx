@@ -4,9 +4,10 @@ import { buildMenus, songInHand, nextMenu, MENU_IDS } from "./menuBar.js";
 
 const find = (menus, id, label) => menus.find((m) => m.id === id).items.find((it) => it.label === label);
 
-test("the bar: the seven menus of the owner's pick, in order (Rodada D4, A)", () => {
+test("the bar: the five menus of the owner's pick, in order (Rodada D4, A; O topo)", () => {
     const menus = buildMenus({});
-    assert.deepEqual(menus.map((m) => m.label), ["Culto", "Música", "Mídia", "Telas", "Ferramentas", "Ver", "Ajuda"]);
+    // Ver is the eye beside the bell, Ajuda is in the logo's menu (owner 2026-10-15).
+    assert.deepEqual(menus.map((m) => m.label), ["Culto", "Música", "Mídia", "Telas", "Ferramentas"]);
     assert.deepEqual(menus.map((m) => m.id), MENU_IDS);
     // Where each thing lives (the artifact's table).
     for (const [id, labels] of Object.entries({
@@ -15,8 +16,6 @@ test("the bar: the seven menus of the owner's pick, in order (Rodada D4, A)", ()
         midia: ["Biblioteca de mídia", "Enviar arquivos…", "Link do YouTube…", "Fundos"],
         telas: ["Saídas", "Travar telas", "Tela preta", "Logo", "Limpar texto", "Telas e saídas…", "Telas na rede…", "Verificar tudo"],
         ferramentas: ["Avisos", "Novo aviso", "Aviso rápido…", "Timers", "Escola bíblica", "Relatórios"],
-        ver: ["Editar disposição", "Restaurar disposição"],
-        ajuda: ["Atalhos do teclado", "Novidades", "Sobre o KERYX…"],
     })) for (const l of labels) assert.ok(find(menus, id, l), `${id} › ${l}`);
 });
 
@@ -28,8 +27,6 @@ test("items say their state and act through the console", () => {
         services: [{ id: "s1", title: "Culto de domingo", date: "2026-10-18" }, { id: "s2", title: "Quarta" }],
         timers: [{ minutes: 5, label: "5 min" }], playerOn: true, playing: true,
         follow: { source: "clock", paused: true, clock: null },
-        ver: { modules: [["lib", "Biblioteca", true]], densities: [["auto", "Automática", true]], presets: [{ id: null, name: "Padrão", checked: true, dirty: true }], editing: false },
-        update: { label: "Atualizar agora", kbd: "0.2.17" },
     });
     const sunday = find(menus, "culto", "Culto de domingo");
     assert.equal(sunday.checked, true);
@@ -41,8 +38,6 @@ test("items say their state and act through the console", () => {
     find(menus, "musica", "Sincronizar a música…").onSelect();
     find(menus, "midia", "Pausar o player").onSelect();
     find(menus, "ferramentas", "Timers").sub[0].onSelect();
-    assert.equal(find(menus, "ver", "Padrão · alterada").checked, true);
-    assert.ok(find(menus, "ajuda", "Atualizar agora"));
     // The live clock waits for Iniciar, refused while locked.
     const letra = find(menus, "musica", "Letra automática").sub;
     assert.equal(letra[0].label, "Segue o relógio ao vivo");
@@ -68,7 +63,7 @@ test("the song in hand and moving between menus", () => {
     assert.equal(songInHand({ id: "song:a1" }, null), "a1");
     assert.equal(songInHand({ id: "passage:x" }, { content: { kind: "lyrics", ref: { songId: "b2" } } }), "b2");
     assert.equal(songInHand(null, { content: { kind: "bible", ref: {} } }), null);
-    assert.equal(nextMenu("culto", -1), "ajuda");
-    assert.equal(nextMenu("ver", 1), "ajuda");
+    assert.equal(nextMenu("culto", -1), "ferramentas");
+    assert.equal(nextMenu("ferramentas", 1), "culto");
     assert.equal(nextMenu("x", 1), "culto");
 });

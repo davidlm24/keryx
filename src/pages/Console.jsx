@@ -63,7 +63,7 @@ import TabsPanel from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
-import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, DENSITIES, densityOf, tierFor, shownDensity, panelHead, restoreEnv, switchTier } from "@/lib/console/layout";
+import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier } from "@/lib/console/layout";
 import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
@@ -1160,8 +1160,8 @@ export default function Console() {
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
     // The menu bar (owner 2026-10-15, Rodada D4, "Menus novos" = A;
-    // src/lib/console/menuBar.js): Culto, Música, Mídia, Telas, Ferramentas,
-    // Ver and Ajuda beside the logo; every item is something the console
+    // src/lib/console/menuBar.js): Culto, Música, Mídia, Telas, Ferramentas
+    // after KERYX | Bíblia (Ver is the eye, Ajuda the logo's menu: O topo); every item is something the console
     // already does. Música › Importar uma pasta… uses this hidden picker.
     const church = useChurch();
     const folderRef = useRef(null);
@@ -1171,13 +1171,6 @@ export default function Console() {
         songId: songInHand(c.prev, c.cur), follow: c.cur?.content?.follow || null,
         playerOn: Boolean(barLayer), playing: Boolean(barLayer && !c.cur[barLayer]?.playback?.paused),
         timers: timerChoices(data.timerPresets).map((t) => ({ minutes: t.minutes, label: minutesLabel(t.minutes) })),
-        update: hasUpdate(upd.update) ? { label: upd.update.status === "downloading" ? "Atualizando…" : "Atualizar agora", kbd: upd.update.status === "downloading" ? `${upd.update.percent}%` : upd.update.version } : null,
-        ver: {
-            modules: VER_LIST.map(([key, name]) => [key, name, !uiLayout.hidden[key]]),
-            densities: DENSITIES.map(([key, name]) => [key, name, densityOf(layout) === key]),
-            presets: [{ id: null, name: "Padrão" }, ...presets].map((p) => ({ id: p.id, name: p.name, checked: (preset?.id || null) === p.id, dirty: presetDirty })),
-            editing,
-        },
         act: {
             pickService: (id) => setServiceId(id),
             planner: (id) => openPlanner(id),
@@ -1204,14 +1197,6 @@ export default function Console() {
             timer: (minutes) => { c.setPrev(stageFromTool("timer", { minutes })); c.say(`Timer de ${minutesLabel(minutes)} na Prévia · Enter envia.`); },
             school: () => openSchool(),
             reports: () => openReports(),
-            toggleModule: (key) => setUiLayout({ ...uiLayout, hidden: { ...uiLayout.hidden, [key]: !uiLayout.hidden[key] } }),
-            density: (key) => setLayout({ ...layout, density: key }),
-            preset: (id) => pickPreset(id),
-            editLayout: () => setEditing((v) => !v),
-            restoreLayout: () => restoreLayout(),
-            shortcuts: () => setOpen("atalhos"),
-            whatsNew: () => openWhatsNew(),
-            updateNow: () => updateNow(),
         },
     });
 

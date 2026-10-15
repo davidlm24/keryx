@@ -304,19 +304,21 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Chromium, the Geist license (read from `/fonts/Geist-OFL.txt`) and the
   notice that the Bibles are installed by each church. Updating stays in
   Backup e atualizações.
-  **The menu bar** (owner 2026-10-15, Rodada D4, "Menus novos" = A, as
-  Holyrics): Culto, Música, Mídia, Telas, Ferramentas, Ver, Ajuda beside
-  the logo, before KERYX | Bíblia (`MenuBar.jsx`; the model is
+  **The top bar's left side** (owner 2026-10-15, Rodada D4 + "O topo", pick
+  B): the logo, then **KERYX | Bíblia** (icon, bold, gold underline —
+  places, not commands), a divider, then **the menu bar**: Culto, Música,
+  Mídia, Telas, Ferramentas (`MenuBar.jsx`; the model is
   `src/lib/console/menuBar.js`, tested). Its open menu is the console's
   `open` (`"mb:<id>"`): Esc and the scrim close it, pointing at another
   menu switches, ← / → walk them. Every item is something the console
   already does (Música › Sincronizar a música… opens the song in the Prévia
   or on air with Sincronizar on top; Letra automática › Iniciar/Pausar/
   Retomar; Mídia › Enviar arquivos… / Link do YouTube… open the Mídia on
-  that step). **Ver is the bar's menu** (the eye icon is gone). Under 1240
-  px the bar folds away and the logo's menu (which keeps every page, plus
-  "Ver ›") has it all. A new top-level action goes in the bar's model, not
-  as another icon in the top bar.
+  that step). **Ver stays the eye beside the bell** and **Ajuda's items
+  (Atalhos, Novidades, Sobre, Atualizar) live in the logo's menu** — neither
+  goes back in the bar. Under 1240 px the bar folds away and the logo's
+  menu (every page) has it all. A new top-level action goes in the bar's
+  model, not as another icon in the top bar.
   Everything else
   is a page of **THE window** (Rodada C, owner's choice "uma janela, com
   Voltar", 2026-10-14; the `win` stack in Console.jsx fed by
