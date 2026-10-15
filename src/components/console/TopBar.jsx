@@ -4,8 +4,8 @@ import { IconBtn } from "./kx";
 import { MenuBarButtons } from "./MenuBar";
 
 // The top bar, a menu bar: the KERYX menu (the mark), the environments
-// KERYX | Bíblia right after it (icon, bold, the gold underline: places, not
-// commands — "O topo", owner's pick B 2026-10-15), then the menu bar (Culto,
+// KERYX | BÍBLIA right after it (bold caps, the gold underline: places, not
+// commands — "O topo", owner's pick B 2026-10-15; no icons), then the menu bar (Culto,
 // Música, Mídia, Telas, Ferramentas; Rodada D4 — it folds into the mark's
 // menu on a narrow window, console.css), the environments
 // KERYX | Bíblia as tabs, the search, the service clock (how long the
@@ -21,8 +21,8 @@ export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outs
     const { live, now } = c;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const toggle = (name) => setOpen(open === name ? null : name);
-    const envTab = (value, label, title, icon) => (
-        <button type="button" role="tab" aria-selected={env === value} className={`kx-t ${env === value ? "is-on" : ""}`} title={title} onClick={() => setEnv(value)}><Icon name={icon} />{label}</button>
+    const envTab = (value, label, title) => (
+        <button type="button" role="tab" aria-selected={env === value} className={`kx-t ${env === value ? "is-on" : ""}`} title={title} onClick={() => setEnv(value)}>{label}</button>
     );
     return (
         <div className="topbar">
@@ -31,8 +31,8 @@ export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outs
                     {logoUrl ? <img src={logoUrl} alt="" /> : <span className="kx-mark" />}
                 </button>
                 <div className="kx-tabs envtabs" role="tablist" aria-label="Ambiente">
-                    {envTab("culto", "KERYX", "Projeção: músicas, mídia, setlist", "projector")}
-                    {envTab("biblia", "Bíblia", "Bíblia · digite a referência", "book")}
+                    {envTab("culto", "KERYX", "Projeção: músicas, mídia, setlist")}
+                    {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
                 </div>
                 {menus.length > 0 && <><span className="tb-div" aria-hidden="true" /><MenuBarButtons menus={menus} open={open} setOpen={setOpen} /></>}
             </div>

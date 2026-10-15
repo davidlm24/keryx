@@ -305,8 +305,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   notice that the Bibles are installed by each church. Updating stays in
   Backup e atualizações.
   **The top bar's left side** (owner 2026-10-15, Rodada D4 + "O topo", pick
-  B): the logo, then **KERYX | Bíblia** (icon, bold, gold underline —
-  places, not commands), a divider, then **the menu bar**: Culto, Música,
+  B): the logo, then **KERYX | BÍBLIA** (bold caps, no icons, gold
+  underline — places, not commands), a divider, then **the menu bar**: Culto, Música,
   Mídia, Telas, Ferramentas (`MenuBar.jsx`; the model is
   `src/lib/console/menuBar.js`, tested). Its open menu is the console's
   `open` (`"mb:<id>"`): Esc and the scrim close it, pointing at another
