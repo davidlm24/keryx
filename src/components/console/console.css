@@ -678,8 +678,19 @@
    Voltar finds them as they were (scroll, search, section). */
 .console .win-scrim { z-index: 29; }
 .console .scrim.over-win { z-index: 31; } /* a popover opened over the window backdrops above it */
-.console .win-dialog { position: absolute; z-index: 30; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(1240px, calc(100% - 32px)); height: min(800px, calc(100% - var(--pop-top) - 16px)); display: flex; flex-direction: column; background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; transition: width .2s var(--ease-out), height .2s var(--ease-out); }
-.console .win-dialog.is-editor { width: min(1360px, calc(100% - 24px)); height: min(860px, calc(100% - var(--pop-top) - 12px)); }
+.console .win-dialog { position: absolute; z-index: 30; left: 50%; top: var(--pop-top); transform: translateX(-50%); width: min(var(--win-w, 1240px), calc(100% - 32px)); height: min(var(--win-h, 800px), calc(100% - var(--pop-top) - 16px)); display: flex; flex-direction: column; background: var(--bg-0); border-radius: var(--radius-panel); box-shadow: var(--dialog); overflow: hidden; transition: width .2s var(--ease-out), height .2s var(--ease-out); }
+.console .win-dialog.is-editor { width: min(var(--win-w, 1360px), calc(100% - 24px)); height: min(var(--win-h, 860px), calc(100% - var(--pop-top) - 12px)); }
+/* Stretched by its edges and corners (Rodada D3, winLayout.jsx WinEdges):
+   while it is somewhere of its own, it follows the pointer at once. */
+.console .win-dialog.is-sized { transition: none; }
+.console .win-edge { position: absolute; z-index: 5; touch-action: none; }
+.console .win-edge.is-n, .console .win-edge.is-s { left: 10px; right: 10px; height: 5px; cursor: ns-resize; }
+.console .win-edge.is-e, .console .win-edge.is-w { top: 10px; bottom: 10px; width: 5px; cursor: ew-resize; }
+.console .win-edge.is-n { top: 0; } .console .win-edge.is-s { bottom: 0; }
+.console .win-edge.is-e { right: 0; } .console .win-edge.is-w { left: 0; }
+.console .win-edge.is-ne, .console .win-edge.is-nw, .console .win-edge.is-se, .console .win-edge.is-sw { width: 12px; height: 12px; }
+.console .win-edge.is-ne { top: 0; right: 0; cursor: nesw-resize; } .console .win-edge.is-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.console .win-edge.is-nw { top: 0; left: 0; cursor: nwse-resize; } .console .win-edge.is-se { bottom: 0; right: 0; cursor: nwse-resize; }
 .console .win-page { flex: 1; min-height: 0; display: flex; flex-direction: column; animation: win-page-in .12s var(--ease-out); }
 .console .win-page[hidden] { display: none; }
 @keyframes win-page-in { from { opacity: 0; } }
@@ -695,10 +706,15 @@
    column is --win-label everywhere (.pl-frm, .nv-frm, .sv-frm, the song
    editor's .frm), where it used to be four widths. Configurações keeps
    its own wider 140 px grid (.cfg .frm). */
-.console .win-body { --win-label: 96px; flex: 1; min-height: 0; display: flex; align-items: stretch; gap: var(--gutter); padding: var(--gutter); }
+/* One spacing (Rodada D3, the Editor da tela's): no flex gap — between two
+   columns the splitter (or a kx-gap) IS the 6 px, as in the console; two
+   panels stacked in a column are 6 px apart too. */
+.console .win-body { --win-label: 96px; flex: 1; min-height: 0; display: flex; align-items: stretch; gap: 0; padding: var(--gutter); }
 .console .win-body > .col.center { min-width: 0; }
-/* The editors keep their kx-gap spacing (no flex gap), as in /Editor. */
-.console .win-body.is-ed { gap: 0; }
+.console .win-body .kx-gap { flex: none; width: var(--gutter); }
+/* Inside a column: 6 px between two things stacked, or the splitter itself. */
+.console .win-body .col { gap: 0; }
+.console .win-body .col > :not(.kx-split) + :not(.kx-split) { margin-top: var(--gutter); }
 
 /* ---------- Configurações (canvas artboard 20) ---------- */
 /* The config page: nav left, the section right, on bg-1 as its window
@@ -778,7 +794,7 @@
 .console .song-ed-l .frm .kx-seg { max-width: 100%; justify-self: start; }
 .console .song-ed-l .frm .kx-seg > button { padding: 0 7px; min-width: 0; }
 /* Three-column views at 1024 px: the middle column gives up the console's minimum. */
-.console .main > .col.center.song-ed-r, .console .main > .col.center.sv-center { min-width: 320px; }
+.console .win-body > .col.center.song-ed-r, .console .win-body > .col.center.sv-center { min-width: 320px; }
 .console .song-ed-l .cfg-select, .console .song-ed-r .cfg-select { height: 26px; width: 100%; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; }
 .console .ed-pad { padding: 0 var(--space-2) var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); }
 /* A song that follows a theme: what it follows, and the way out. */
@@ -1168,7 +1184,7 @@
 /* The Editor de temas e layouts window (/Editor, src/pages/Editor.jsx):
    the console's shell without its top bar; a one-line footer instead. */
 .console .edw-foot { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); font-size: 11px; color: var(--fg-3); }
-.console.edw .kx-gap, .console .win-body.is-ed .kx-gap { flex: none; width: var(--gutter); }
+.console.edw .kx-gap { flex: none; width: var(--gutter); }
 
 /* Biblioteca de temas e fundos (library/BackgroundLibrary.jsx): one window
    for every picker, above Configurações (it opens from there too), below the

@@ -10,6 +10,7 @@ import BgChip from "./library/BgChip";
 import { FONT_MAP } from "@/lib/deviceStyles";
 import { stageFromPiece } from "@/lib/console/stage";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
+import { useWinCol } from "./winLayout";
 
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "XG"]];
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["georgia", "Georgia"], ["times", "Times"], ["arial", "Arial"], ["verdana", "Verdana"], ["mono", "Monoespaçada"], ["cursive", "Cursiva"]];
@@ -25,6 +26,8 @@ const pickFields = (row) => Object.fromEntries(FIELDS.filter((k) => row[k] !== u
 // and a live 16:9 preview drawn by ScreenRenderer, so it is the screen.
 // Saving changes the library only; "Pôr na prévia do console" prepares it.
 export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved, escRef, active = true }) {
+    // The columns a splitter resizes, kept per page on this computer (Rodada D3).
+    const colAviso = useWinCol("notice.ajustes", { def: 420, min: 340, max: 720 });
     const chimeOn = usePrefs().chime_on;
     const isNew = noticeId === "new";
     const [draft, setDraft] = useState(() => (isNew ? newNotice("countdown") : null));
@@ -151,7 +154,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                 <Btn small kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar aviso</Btn>
             </>} />
             <div className="win-body">
-            <div className="col nv-l" style={{ flex: "0 1 420px", minWidth: 340 }}>
+            <div className="col nv-l" style={colAviso.style}>
                 <Panel noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden onChange={(e) => { fileChosen(e.target.files?.[0]); e.target.value = ""; }} />
                     <div className="nv-scroll">
@@ -232,7 +235,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                     </div>
                 </Panel>
             </div>
-            <div className="kx-gap" />
+            {colAviso.split}
             <div className="col center">
                 <Panel title={<>Prévia do aviso <span className="kx-count">· ao vivo · 16:9</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-stage">

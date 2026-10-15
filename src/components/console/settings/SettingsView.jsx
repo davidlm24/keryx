@@ -15,6 +15,7 @@ import CultoSection from "./CultoSection";
 import ConsoleSection from "./ConsoleSection";
 import DadosSection from "./DadosSection";
 import SobreSection from "./SobreSection";
+import { useWinCol } from "../winLayout";
 
 const BODIES = {
     sobre: SobreSection,
@@ -48,6 +49,8 @@ const FLASH_MS = 1600;
 // the section, the left column counts them, and Enter or a click opens the
 // section and lights the row up.
 export default function SettingsView({ c, section, setSection, onClose, escRef, active = true, layout, setLayout, restoreLayout, onOpenScreen, onWhatsNew }) {
+    // The columns a splitter resizes, kept per page on this computer (Rodada D3).
+    const colNav = useWinCol("config.secoes", { def: 240, min: 180, max: 400 });
     const current = sectionOf(section);
     const [q, setQ] = useState("");
     const [activeHit, setActiveHit] = useState(0);
@@ -158,7 +161,7 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
                 </span>
             } />
             <div className="cfg-dialog-b">
-                    <nav className="cfg-nav" aria-label="Seções">
+                    <nav className="cfg-nav" aria-label="Seções" style={colNav.style}>
                         {SECTIONS.map(({ id, icon, name }) => (
                             <Row key={id} single icon={icon} title={name} current={!searching && id === current.id ? "page" : undefined} state={`${!searching && id === current.id ? "is-selected" : ""} ${searching && !counts[id] ? "is-dim" : ""}`}
                                 onClick={() => { setQ(""); setSection(id); }}>
@@ -166,6 +169,7 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
                             </Row>
                         ))}
                     </nav>
+                    {colNav.split}
                     <div className="cfg">
                         <Panel title={searching ? `Resultados · ${hits.length}` : current.name} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "auto" }}>
                             {!searching && SCOPE_LABEL[SECTION_SCOPE[current.id]] && <div className="listhead"><span className="kx-meta">{SCOPE_LABEL[SECTION_SCOPE[current.id]]}</span></div>}

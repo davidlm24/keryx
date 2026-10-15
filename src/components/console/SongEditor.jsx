@@ -16,6 +16,7 @@ import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
 import { useContextMenu } from "./ContextMenu";
 import LinesPicker from "./LinesPicker";
 import { TEXT_SIZES, defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
+import { useWinCol } from "./winLayout";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
 const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["cursive", "Cursiva"], ["arial", "Arial"], ["georgia", "Georgia"], ["times", "Times"], ["verdana", "Verdana"]];
@@ -41,6 +42,10 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 // changes what is on air. Opening a song keeps its saved slides; editing the
 // lyrics (or the split) redoes them, keeping timings by position.
 export default function SongEditor({ c, songId, themes = [], onClose, onSaved, escRef, active = true, onEditTheme = null }) {
+    // The columns a splitter resizes, kept per page on this computer (Rodada D3).
+    const colDados = useWinCol("song.dados", { def: 340, min: 280, max: 560 });
+    const colLetra = useWinCol("song.letra", { def: 480, min: 300, max: 900 });
+    const rowSlides = useWinCol("song.slides", { def: 380, min: 140, max: 1200, horizontal: true });
     const [song, setSong] = useState(null);
     const [error, setError] = useState("");
     const [split, setSplit] = useState(0); // lines per slide, 0 = Estrofe
@@ -380,7 +385,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                 </>} />
             <div className="win-body" ref={bodyRef}>
             {(!narrow || fold === "dados") && (
-            <div className="col song-ed-l" style={narrow ? { flex: 1, minWidth: 0 } : { flex: "0 1 340px", minWidth: 280 }}>
+            <div className="col song-ed-l" style={narrow ? { flex: 1, minWidth: 0 } : colDados.style}>
                 <Panel title="Dados da música" bodyStyle={{ overflow: "auto" }}>
                     <div className="frm">
                         <span className="k">Título</span><Field icon={null} value={song.title} onChange={(v) => set({ title: v })} placeholder="Título da música" />
@@ -475,8 +480,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             </div>
             )}
             {(!narrow || fold === "letra") && <>
-            {!narrow && <div className="kx-gap" />}
-            <div className="col" style={narrow ? { flex: 1, minWidth: 0 } : { flex: "0 1 480px", minWidth: 300 }}>
+            {!narrow && colDados.split}
+            <div className="col" style={narrow ? { flex: 1, minWidth: 0 } : colLetra.style}>
                 <Panel title={<>Letra <span className="kx-count">· uma linha vazia separa estrofes</span></>} actions={<LinesPicker value={split} onChange={pickSplit} titles={{ stanza: "Uma estrofe por slide · a letra não muda, só os slides" }} />} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="ed-tools">
                         <Btn small kind="outline" onClick={() => addMarker("Verso")}>[Verso]</Btn>
@@ -499,9 +504,9 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                 </Panel>
             </div>
             </>}
-            <div className="kx-gap" />
-            <div className="col center song-ed-r" style={{ gap: "var(--gutter)" }}>
-                <Panel title={<>Slides <span className="kx-count">· {resplit ? "divisão ao vivo" : "slides salvos · editar a letra refaz"}</span></>} style={{ flex: 1.3 }} actions={<><Btn small on={showChords} onClick={() => setShowChords((v) => !v)} title="Mostra nos slides abaixo a cifra e o nome da parte, como o Palco os mostra (só aqui; as telas seguem os ajustes de cada uma)">Cifra e partes</Btn><Seg small value={thumbs} onChange={setThumbs} options={THUMBS} /></>} bodyStyle={{ overflow: "auto" }}>
+            {narrow ? <div className="kx-gap" /> : colLetra.split}
+            <div className="col center song-ed-r">
+                <Panel title={<>Slides <span className="kx-count">· {resplit ? "divisão ao vivo" : "slides salvos · editar a letra refaz"}</span></>} style={rowSlides.style} actions={<><Btn small on={showChords} onClick={() => setShowChords((v) => !v)} title="Mostra nos slides abaixo a cifra e o nome da parte, como o Palco os mostra (só aqui; as telas seguem os ajustes de cada uma)">Cifra e partes</Btn><Seg small value={thumbs} onChange={setThumbs} options={THUMBS} /></>} bodyStyle={{ overflow: "auto" }}>
                     {!slides.length && <Empty icon="list" title="Nenhum slide">Escreva a letra; cada estrofe vira um slide.</Empty>}
                     <div className={"ed-thumbs is-" + thumbs}>
                         {doc && slides.map((s, i) => {
@@ -520,7 +525,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         })}
                     </div>
                 </Panel>
-                <Panel className="ed-video" title="Vídeo e sincronização" style={{ flex: 1 }} actions={<>
+                {rowSlides.split}
+                <Panel className="ed-video" title="Vídeo e sincronização" style={{ flex: 1, minHeight: 120 }} actions={<>
                     {media && <Btn small kind={marking ? "rh" : "outline"} onClick={toggleMarking} title="Toca do início; Espaço marca a entrada de cada slide">{marking ? `Marcando · Espaço (${Math.min(marked + 1, slides.length)}/${slides.length})` : marked ? "Marcar de novo" : "Marcar tempos"}</Btn>}
                     <Btn small disabled={busy === "audio_url"} onClick={() => fileRef.current?.click()}>{busy === "audio_url" ? "Enviando…" : media ? "Trocar…" : "Vídeo ou playback…"}</Btn>
                     {media && <Btn small onClick={() => { set({ audio_url: "" }); setStarts([]); setMarking(false); }}>Remover</Btn>}

@@ -40,12 +40,13 @@ export function Btn({ kind = "", small, on, className = "", children, ...rest })
 // the (x) "Fechar · Esc" that closes the whole stack — and the page brings
 // its own title, context (`sub`, muted), tools (the page's search, filters)
 // and actions (Salvar, Cancelar). There is no "← Console" any more: the
-// first level's Esc and (x) just close.
+// first level's Esc and (x) just close. A double click on the bar's empty
+// area gives the window its default size back (onResetSize, Rodada D3).
 export const WinCtx = createContext(null);
 export function WinBar({ title, sub, tools, actions, detach }) {
     const w = useContext(WinCtx) || {};
     return (
-        <div className="win-bar">
+        <div className="win-bar" onDoubleClick={(e) => { if (e.target === e.currentTarget || e.target.classList?.contains("win-gap")) w.onResetSize?.(); }}>
             {w.back && (
                 <button type="button" className="kx-btn kx-btn-outline kx-btn-back kx-t" onClick={w.onBack} title={`Voltar a ${w.back} · Esc`}>
                     <Icon name="arrow-left" />{w.back}
