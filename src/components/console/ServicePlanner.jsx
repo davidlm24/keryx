@@ -18,6 +18,7 @@ import BgChip from "./library/BgChip";
 import ThemeChip from "./library/ThemeChip";
 import { lookOf, lookFields, lookForService, templateLookFields } from "@/lib/console/serviceLook";
 import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
+import { useWinCol } from "./winLayout";
 
 const ADD = [
     ["SONG", "music", "Música"], ["BIBLE", "book", "Bíblia"], ["VIDEO", "film", "Vídeo"], ["AUDIO", "volume", "Áudio"],
@@ -35,6 +36,8 @@ const today = () => { const d = new Date(); const two = (n) => String(n).padStar
 // content), duplicating the last culto, PDF. Everything saves as it changes;
 // nothing here touches the screens.
 export default function ServicePlanner({ c, services, serviceId, setServiceId, data, focusId = null, onClose, escRef, onEditSong = null }) {
+    // The columns a splitter resizes, kept per page on this computer (Rodada D3).
+    const colCulto = useWinCol("planner.culto", { def: 360, min: 300, max: 640 });
     const church = useChurch();
     const client = useQueryClient();
     const svc = services.find((s) => s.id === serviceId) || null;
@@ -238,7 +241,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         <>
             {bar}
             <div className="win-body">
-            <div className="col" style={{ flex: "0 1 360px", minWidth: 300, gap: "var(--gutter)" }}>
+            <div className="col" style={colCulto.style}>
                 <Panel title="Culto" style={{ flex: "none" }}>
                     <div className="frm pl-frm">
                         <span className="k">Nome</span><Field icon={null} {...f("title")} placeholder="Culto de domingo" />
@@ -273,7 +276,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                     </div>
                 </Panel>
             </div>
-            <div className="kx-gap" />
+            {colCulto.split}
             <div className="col center">
                 <Panel className="pl-setlist" title={<>Setlist <span className="kx-count">· {p.count} {p.count === 1 ? "item" : "itens"} · {total(p.seconds)} · termina às {clockAt(p.ends)}</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className={`pl-list ${sort.sorting ? "is-sorting" : ""}`} {...sort.listProps}>

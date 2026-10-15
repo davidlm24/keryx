@@ -38,6 +38,8 @@ import NoticeEditor from "@/components/console/NoticeEditor";
 import { openEditor, setEditorHost } from "@/lib/editorWindow";
 import ThemeEditor from "@/components/editor/ThemeEditor";
 import ScreenEditor from "@/components/editor/ScreenEditor";
+import { WinEdges, useWinState, setWinState } from "@/components/console/winLayout";
+import { withSize } from "@/lib/console/winLayout";
 import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams } from "@/lib/console/nav";
 import { setIdleMode } from "@/lib/console/idle";
 import SchoolView from "@/components/console/SchoolView";
@@ -133,6 +135,24 @@ export default function Console() {
     winStateRef.current = win;
     const winTop = winTopOf(win);
     const winOpen = win.length > 0;
+    // The window stretches by its edges and corners (owner 2026-10-15,
+    // Rodada D3): one size per kind (Padrão, Editor) kept on this computer
+    // (winLayout.js); where it was dragged to holds until the kind changes,
+    // the window closes or the console is resized. A double click on the
+    // bar's empty area brings the default size back.
+    const winKind = winOpen ? winSize(win) : null;
+    const winDialogRef = useRef(null);
+    const [winRect, setWinRect] = useState(null);
+    useEffect(() => { setWinRect(null); }, [winKind]);
+    useEffect(() => {
+        const off = () => setWinRect(null);
+        window.addEventListener("resize", off);
+        return () => window.removeEventListener("resize", off);
+    }, []);
+    const winSaved = useWinState().sizes[winKind];
+    const winStyle = winRect ? { left: winRect.x, top: winRect.y, width: winRect.w, height: winRect.h, transform: "none" }
+        : winSaved ? { "--win-w": `${winSaved.w}px`, "--win-h": `${winSaved.h}px` } : undefined;
+    const resetWinSize = () => { setWinRect(null); setWinState((st) => withSize(st, winKind, null)); };
     // One escRef per stack entry: pages under the top stay mounted (Voltar
     // finds them as they were), so each keeps its own request.
     const winRefs = useRef(new Map());
@@ -1188,7 +1208,8 @@ export default function Console() {
                 to leave, exactly as Esc does; the bar's (x) closes all. */}
             {winOpen && <div className="scrim is-dim win-scrim" onClick={() => winEsc("esc")} />}
             {winOpen && (
-                <div className={`win-dialog ${winSize(win) === "editor" ? "is-editor" : ""}`} role="dialog" aria-modal="true" aria-label={PAGE_TITLES[winTop.page]}>
+                <div ref={winDialogRef} style={winStyle} className={`win-dialog ${winKind === "editor" ? "is-editor" : ""} ${winRect ? "is-sized" : ""}`} role="dialog" aria-modal="true" aria-label={PAGE_TITLES[winTop.page]}>
+                    <WinEdges dialogRef={winDialogRef} onRect={setWinRect} onDone={(r) => setWinState((st) => withSize(st, winKind, { w: r.w, h: r.h }))} />
                     {win.map((entry, i) => {
                         const active = i === win.length - 1;
                         const escRef = winRef(entry.key);
@@ -1208,7 +1229,7 @@ export default function Console() {
                         else if (entry.page === "theme") page = <ThemeEditor hosted themeId={entry.props.id} say={c.say} now={c.now} onClose={onClose} onSaved={(row) => { if (row?.id && entry.props.id !== row.id) setWin((s) => winReplaceTop(s, { id: row.id }, { keep: true })); }} onSwitch={(id) => setWin((s) => winReplaceTop(s, { id: id || "new" }))} escRef={escRef} active={active} onDetach={() => detachEditor(entry)} />;
                         else if (entry.page === "screen") page = <ScreenEditor hosted screenPath={entry.props.path} media={data.media} themes={data.themes} say={c.say} live={c.cur} now={c.now} onClose={onClose} onSwitch={(path) => setWin((s) => winReplaceTop(s, { path: path || "/Projection" }))} escRef={escRef} active={active} onDetach={() => detachEditor(entry)} />;
                         return (
-                            <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all") }}>
+                            <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: resetWinSize }}>
                                 <div className="win-page" hidden={!active}>{page}</div>
                             </WinCtx.Provider>
                         );

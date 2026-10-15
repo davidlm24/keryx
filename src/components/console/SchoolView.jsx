@@ -8,6 +8,7 @@ import { stageFromMaterial, stageFromTool, liveStageId } from "@/lib/console/sta
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { AGE_GROUPS, ageLabel, materialIcon, materialMeta, dayOf, isPresent, toggleAttendance, attendanceNote, presentCount } from "@/lib/console/school";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
+import { useWinCol } from "./winLayout";
 
 const EMPTY = [];
 const CLASSES = ["console", "bibleClasses"];
@@ -20,6 +21,9 @@ const MATERIALS = ["console", "bibleMaterials"];
 // answer is the next slide (→). Materials are edited here; they also go
 // into the Setlist (planner, "Setlist" here) and the palette.
 export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, onClose, escRef, onEditMaterial = null }) {
+    // The columns a splitter resizes, kept per page on this computer (Rodada D3).
+    const colTurmas = useWinCol("school.turmas", { def: 340, min: 280, max: 600 });
+    const colMaterial = useWinCol("school.material", { def: 400, min: 300, max: 700, sign: -1 });
     const client = useQueryClient();
     useEffect(() => keryx.entities.BibleSchoolClass.subscribe(() => client.invalidateQueries({ queryKey: CLASSES })), [client]);
     useEffect(() => keryx.entities.BibleMaterial.subscribe(() => client.invalidateQueries({ queryKey: MATERIALS })), [client]);
@@ -99,7 +103,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         <>
             <WinBar title="Escola bíblica" />
             <div className="win-body">
-            <div className="col" style={{ flex: "0 1 340px", minWidth: 280 }}>
+            <div className="col" style={colTurmas.style}>
                 <Panel title={<>Turmas <span className="kx-count">· {classes.length}</span></>} actions={<><IconBtn name="plus" small title="Nova turma" onClick={newClass} /></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="sv-scroll">
                         {!classes.length && <Empty icon="user" title="Nenhuma turma">Crie uma turma com +. Os materiais funcionam mesmo sem turma.</Empty>}
@@ -138,7 +142,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                     </div>
                 </Panel>
             </div>
-            <div className="kx-gap" />
+            {colTurmas.split}
             <div className="col center sv-center">
                 <Panel title={<>Materiais da lição <span className="kx-count">· {onlyClass && cls ? cls.name : "todas as turmas"}</span></>} actions={<>
                         {cls && <Seg small value={onlyClass ? "turma" : "todos"} onChange={(v) => setOnlyClass(v === "turma")} options={[["turma", "Desta turma"], ["todos", "Todos"]]} />}
@@ -164,8 +168,8 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                         <div className="listhead sv-hint"><span className="kx-meta">Um clique prepara na Prévia · duplo clique ou Enter envia ao ar · no quiz, → revela a resposta.</span></div>
                     </Panel>
             </div>{/* the Material page (MaterialView.jsx) opens over this, "← Escola bíblica" */}
-            <div className="kx-gap" />
-            <div className="col" style={{ flex: "0 1 400px", minWidth: 300 }}>
+            {colMaterial.split}
+            <div className="col" style={colMaterial.style}>
                 <Panel title={<>Projetar <span className="kx-count">· o mesmo Programa e Prévia do console</span></>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "auto" }}>
                     <div className="sv-mons">
                         <Monitor state={locked ? "rh" : "air"} caption={captionOf(cur, locked ? "No ar · travado" : "No ar")} live={cur} now={now} logoUrl={logoUrl} motion />

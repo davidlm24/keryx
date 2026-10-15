@@ -319,7 +319,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   title, the page's tools and actions, the (x) "Fechar · Esc"; there is
   no "← Console" BackBtn any more), `.win-dialog` + `.win-scrim` in
   console.css, two sizes (Padrão, and `.is-editor` for the editors; the
-  frame animates between them). **Opening from inside navigates in the
+  frame animates between them). **The window stretches by its 4 edges and 4 corners** (owner
+  2026-10-15, Rodada D3; `WinEdges` in `src/components/console/winLayout.jsx`,
+  `dragRect`/`clampWin` in `src/lib/console/winLayout.js`, tested): min
+  760 × 480, never past the console, one size per kind kept on this computer
+  (localStorage `keryx.console.win`); a double click on the bar's empty area
+  restores the default. **Inside a page, columns (and the song editor's
+  Slides/Vídeo) are resized by splitters as in the console** (`useWinCol`,
+  size per page per computer; double click restores), and the spacing is the
+  Editor da tela's: 6 px between panels, side by side or stacked — `.win-body`
+  has no flex gap, the splitter IS the gap; don't add a gap beside one. **Opening from inside navigates in the
   same window**: `nav.js` push ("← Temas", "← Telas e saídas", "← Editor
   da tela"; `openEditor`'s `from` carries the label), Esc / the Voltar
   chip / the scrim pop ONE level (the first closes), the (x) closes the

@@ -23,6 +23,7 @@ import { themeBoxRect, rectToTheme, MIN_WIDTH } from "@/lib/console/themeBox";
 import { TRANSITIONS, TRANSITION_MS, NATURAL_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 import { ConfirmContext, deleteQuestion } from "../console/ConfirmDialog";
+import { useWinCol } from "@/components/console/winLayout";
 // The samples the canvas dresses (as ThemeStudio had them, folded in here
 // 2026-10-13): what the theme looks like on a song, a passage and a text,
 // with their own slides.
@@ -57,6 +58,8 @@ const pick = (row) => { const out = { ...BLANK }; for (const k of FIELDS) if (ro
 // Cancelar and Salvar tema as its actions; ⧉ Destacar via onDetach) and no
 // footer. Detached (/Editor) it keeps the panel header and the footer.
 export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
+    // The columns a splitter resizes, kept per page on this computer (Rodada D3).
+    const colAjustes = useWinCol("theme.ajustes", { def: 400, min: 340, max: 720 });
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["editor", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["editor", "themes"] })), [client]);
@@ -245,7 +248,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
 
     const body = (
         <>
-            <div className="col nv-l" style={{ flex: "0 1 400px", minWidth: 340 }}>
+            <div className="col nv-l" style={colAjustes.style}>
                 <Panel noHead={hosted} title={<>Tema <span className="kx-count">· {themeTitle}{dirty ? " · não salvo" : ""}</span></>} actions={!hosted && <>{pickTheme}{deleteBtn}</>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-scroll">
                         <div className="frm nv-frm">
@@ -377,7 +380,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                     )}
                 </Panel>
             </div>
-            <div className="kx-gap" />
+            {colAjustes.split}
             <div className="col center">
                 <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={<>
                     {/* The sample: a song, a passage or a text, with its slides. */}

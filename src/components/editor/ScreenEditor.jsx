@@ -17,6 +17,7 @@ import { sampleLive, SAMPLE_ITEMS } from "../console/settings/sample";
 import { ConfirmContext } from "../console/ConfirmDialog";
 import useSortable from "../console/useSortable";
 import { moveTo } from "@/lib/console/dropOrder";
+import { useWinCol } from "@/components/console/winLayout";
 
 const HANDLES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -50,6 +51,9 @@ const seedFor = (path) => {
 // as its actions; ⧉ Destacar via onDetach) and no footer; the middle column
 // splits into Desenho | Ajustes. Detached (/Editor) keeps header and footer.
 export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
+    // The columns a splitter resizes, kept per page on this computer (Rodada D3).
+    const colTelas = useWinCol("screen.telas", { def: 190, min: 160, max: 360 });
+    const colAjustes = useWinCol("screen.ajustes", { def: 400, min: 340, max: 720 });
     const prefRows = useOutputPrefRows();
     const church = useChurch();
     const path = EDITOR_SCREENS.includes(screenPath) ? screenPath : "/Projection";
@@ -277,7 +281,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const cLike = { say, now, live: liveState };
 
     const screensMenu = (
-        <div className="col" style={{ flex: "0 0 190px", minWidth: 170 }}>
+        <div className="col" style={colTelas.style}>
             <Panel title="Telas" bodyStyle={{ overflow: "auto" }}>
                 {EDITOR_SCREENS.map((p) => {
                     const r = prefRows.find((x) => x.screen_path === p) || null;
@@ -306,8 +310,8 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const body = (
         <>
             {screensMenu}
-            <div className="kx-gap" />
-            <div className="col nv-l" style={{ flex: "0 1 400px", minWidth: 340 }}>
+            {colTelas.split}
+            <div className="col nv-l" style={colAjustes.style}>
                 <Panel caption={isStream ? "Ajustes" : tabs} actions={!isStream && !hosted && <span className="kx-count">{name}{dirty ? " · não salvo" : ""}</span>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
                     <input ref={bgFileRef} type="file" hidden accept="image/*" onChange={(e) => { upload(e.target.files?.[0], (url) => { set({ background: { ...draft.background, image: url } }); setPickBgImage(false); }); e.target.value = ""; }} />
@@ -492,7 +496,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                     )}
                 </Panel>
             </div>
-            <div className="kx-gap" />
+            {colAjustes.split}
             <div className="col center">
                 <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={!hosted && <>
                     <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />
