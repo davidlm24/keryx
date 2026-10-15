@@ -24,6 +24,7 @@ export const PAGE_TITLES = {
     notice: "Aviso",
     song: "Editor de música",
     school: "Escola bíblica",
+    material: "Material",
     reports: "Relatórios",
     theme: "Editor de temas",
     screen: "Editor da tela",
