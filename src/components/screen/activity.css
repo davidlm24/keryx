@@ -38,6 +38,7 @@
 @keyframes ks-act-in { from { opacity: 0; } }
 @keyframes ks-act-pop { from { opacity: 0; transform: translateY(.35em) scale(.9); } }
 @media (prefers-reduced-motion: reduce) {
-    .ks-act-opt, .ks-act-opt > b { transition: none; }
-    .ks-act-opt > i, .ks-act-ref, .ks-word-in.is-new { animation: none; }
+    /* the console's monitors (.kx) only: an output plays the reveals for the audience */
+    .kx :is(.ks-act-opt, .ks-act-opt > b) { transition: none; }
+    .kx :is(.ks-act-opt > i, .ks-act-ref, .ks-word-in.is-new) { animation: none; }
 }

@@ -141,7 +141,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `transition` says `mix` (Tocar junto; no transition = the same, for
   senders that say nothing). The console adds `transition` and the exit
   `fade` in `liveOp` (`withTransitions`, `src/lib/console/transitions.js`,
-  tested; the projector window's own keys too); the live state never reads
+  tested; every output window's screen keys too, `useScreenKeys` → `screenKeyOp` in `src/lib/screenKeys.js`, tested: ← → PageUp/PageDown, B, L, C, Esc as on the console, no Space, no click-to-advance, desktop only); the live state never reads
   prefs. Never hush in `media.toAudio`/`audio.toMedia`, `content.show` or
   `clear` (the audio channel survives Esc); a list counts by the item it
   starts with, advances never hush, the Fundo's video is muted. Esc
