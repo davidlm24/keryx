@@ -38,6 +38,9 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
     const [pick, setPick] = useState(null); // "video" | "audio" | "files"
     const ask = useConfirm();
     const [busy, setBusy] = useState(false);
+    // One save at a time: a held Ctrl+S or a double click created a new
+    // aviso twice before the page swapped "new" for its id.
+    const saving = useRef(false);
     const fileRef = useRef(null);
     const fileKind = useRef(null);
 
@@ -69,6 +72,8 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         return { ...d, title, duration: Math.max(0, Number(d.duration) || 0) };
     };
     const save = async () => {
+        if (saving.current) return;
+        saving.current = true;
         setBusy(true);
         try {
             const row = isNew ? await keryx.entities.CommunicationVideo.create(payload()) : await keryx.entities.CommunicationVideo.update(noticeId, payload());
@@ -77,6 +82,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
             c.say("Aviso salvo na Biblioteca · Avisos.");
             onSaved?.(row);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
+        saving.current = false;
         setBusy(false);
     };
     const remove = async () => {
@@ -123,6 +129,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") || !active) return;
         if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
         e.preventDefault(); e.stopPropagation();
+        if (e.repeat || busy) return;
         if (draft) save();
     };
     useEffect(() => {
@@ -153,7 +160,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
             <WinBar title="Aviso" sub={`${isNew ? "Novo aviso" : draft.title}${dirty ? " · não salvo" : ""}`} actions={<>
                 {!isNew && <Btn small onClick={remove}>Excluir…</Btn>}
                 <Btn small onClick={() => leave()}>Cancelar</Btn>
-                <Btn small kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar aviso</Btn>
+                <Btn small kind="brand" disabled={busy} onClick={save} title="Ctrl+S">{busy ? "Salvando…" : "Salvar aviso"}</Btn>
             </>} />
             <div className="win-body">
             <div className="col nv-l" style={colAviso.style}>
@@ -163,7 +170,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                         <div className="listhead"><span className="kx-section">Tipo</span></div>
                         {NOTICE_TYPES.map(([t, icon, label]) => <Row key={t} single icon={icon} title={label} className={draft.type === t ? "is-selected" : ""} onClick={() => chooseType(t)} />)}
                         <div className="frm nv-frm">
-                            <span className="k">Título</span><Field icon={null} value={draft.text || ""} onChange={(v) => set({ text: v })} placeholder={timed ? "Ex.: O culto começa em" : "Ex.: Bem-vindos"} />
+                            <span className="k">Título</span><Field icon={null} value={draft.text || ""} onChange={(v) => set({ text: v })} placeholder={timed ? "Ex.: O culto começa em" : "Ex.: Bem-vindos"} inputProps={{ spellCheck: true }} />
                             <span className="k">Texto</span><textarea className="ed-text nv-sub" rows={2} value={draft.subtext || ""} onChange={(e) => set({ subtext: e.target.value })} placeholder="Linha de apoio (opcional)" aria-label="Texto" />
                             <span className="k">Duração</span>
                             <span className="nv-inline">
