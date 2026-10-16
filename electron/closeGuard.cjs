@@ -19,16 +19,16 @@ let ask = null;
 const setAsk = (fn) => { ask = fn; };
 const askClose = (dialog, win, onAir = false) => (ask ? ask() : dialog.showMessageBox(win, {
     type: "question",
-    buttons: [onAir ? "Continuar projetando" : "Cancelar", "Fechar o KERYX"],
-    defaultId: 0,
-    cancelId: 0,
+    buttons: ["Fechar o KERYX", onAir ? "Continuar projetando" : "Cancelar"],
+    defaultId: 1,
+    cancelId: 1,
     noLink: true,
     title: "KERYX",
     message: onAir ? "Há algo no ar." : "Fechar o KERYX?",
     detail: onAir
         ? "Fechar o KERYX tira tudo das telas, inclusive das telas na rede."
         : "As telas de projeção e as telas na rede também serão fechadas.",
-}).then(({ response }) => response === 1));
+}).then(({ response }) => response === 0));
 
 // A page with unsaved changes (the Editor) holds its window with its
 // beforeunload; Electron then keeps the window without a word (and a quit
@@ -39,14 +39,14 @@ let askLeaveFn = null;
 const setAskLeave = (fn) => { askLeaveFn = fn; };
 const askLeave = (dialog, win) => (askLeaveFn ? askLeaveFn() : dialog.showMessageBoxSync(win, {
     type: "question",
-    buttons: ["Continuar editando", "Descartar as mudanças"],
-    defaultId: 0,
-    cancelId: 0,
+    buttons: ["Descartar as mudanças", "Continuar editando"],
+    defaultId: 1,
+    cancelId: 1,
     noLink: true,
     title: "KERYX",
     message: "Há mudanças não salvas.",
     detail: "Se continuar, o que não foi salvo nesta janela se perde.",
-}) === 1);
+}) === 0);
 
 // What a window emits when the operator chose "Continuar editando".
 const KEPT_OPEN = "keryx:kept-open";
