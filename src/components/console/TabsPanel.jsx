@@ -121,7 +121,7 @@ export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, me
                 </div>
             )}
             {!fold?.on && <TabRow tabs={tabs} active={active} onPick={setActive} />}
-            <div className="kx-panel-b">
+            <div className="kx-panel-b" inert={fold?.on ? "" : undefined} style={strip ? { display: "none" } : undefined}>
                 {active === "notas" && <ItemNotes c={c} items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={onSaveNotes} />}
                 {active === "aviso" && <div className="tabs-pad"><QuickAlert c={c} data={data} /></div>}
                 {active === "timers" && <div className="tabs-pad"><OnAirTimer c={c} /><ReadyTimers c={c} data={data} onPrepare={onPrepare} onGo={onGo} /></div>}

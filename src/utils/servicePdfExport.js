@@ -1,6 +1,5 @@
 import { keryx } from "@/api/keryxClient";
 import { stripChords } from "../lib/chords.js";
-import { jsPDF } from "jspdf";
 import { plan, clockAt, span, total, typeLabel, isSection } from "@/lib/console/setlist";
 
 const dateBR = (iso) => (/^\d{4}-\d{2}-\d{2}$/.test(String(iso || "")) ? iso.split("-").reverse().join("/") : iso || "");
@@ -12,6 +11,9 @@ const dateBR = (iso) => (/^\d{4}-\d{2}-\d{2}$/.test(String(iso || "")) ? iso.spl
  */
 // church: { name, city } (Configurações › Igreja), a line over the title.
 export async function exportServiceToPdf(service, items, church = null) {
+    // jspdf (with its zip and image codecs, ~0.5 MB) loads only when a PDF is
+    // asked for, so it stays out of the console's first load.
+    const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();

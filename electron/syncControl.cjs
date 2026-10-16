@@ -68,7 +68,8 @@ async function joinMessage(result) {
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 
-function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = async () => null, openPath = null, describe = () => ({}), notify = null, dismiss = null, log = console.warn, now = () => new Date(), engineOptions = {} }) {
+// onStatus: told after every pass, too (main pushes the media still coming).
+function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = async () => null, openPath = null, describe = () => ({}), notify = null, dismiss = null, log = console.warn, now = () => new Date(), onStatus: told = null, engineOptions = {} }) {
     const config = () => {
         const c = settings.get(KEY, null);
         return c && typeof c === "object" ? c : {};
@@ -152,6 +153,11 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         if (state.state === "offline") offlineSince = offlineSince || now();
         else offlineSince = null;
         bell(state);
+        if (told) {
+            try {
+                told(state);
+            } catch { /* a listener's problem */ }
+        }
     }
 
     const engine = createSyncEngine({
@@ -333,6 +339,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         start: (opts) => engine.start(opts),
         stop: () => engine.stop(),
         poke: () => engine.poke(),
+        missing: () => engine.missing(),
     };
 }
 

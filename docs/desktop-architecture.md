@@ -869,6 +869,8 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    <folder>/sync/<pc>/changes-000001.jsonl   this computer's outbox entries,
                                              one JSON line each, appended only;
                                              a new file past 256 KB
+   <folder>/sync/<pc>/state.json             what it has read and the media it
+                                             uses (for the cleanup, below)
    <folder>/sync/media/<file>                the media its rows name, by uuid name
    ```
 
@@ -901,16 +903,55 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    synced entity (not after what a pass applied), when a folder is set in
    the electron settings (`"sync": { "folder": "…" }`, off by default;
    `engine.status()` is what the UI will show: state, last pass, sent,
-   received, missing media, the computers seen and when each last wrote).
+   received, missing media, media collected, the computers seen and when each last wrote).
    **The sync id is the computer's**: `applyPendingImport` (Importar,
    Restaurar um backup) gives the staged database the id of the one it
    replaces, else none (a new one), so a clone never writes another
    computer's folder. Restoring a backup on a computer that syncs does not
    push the restored rows to the others (they keep their newer copies):
    for PR 5/6.
+   **A file that has not come down yet** (the row arrived first): the
+   engine's `missing()` (the names in `sync.state.missing`; none with sync
+   off) reaches the windows through `keryx:sync:missing` (asked once by
+   preload's `sync.missing()`, pushed by main when the list changes) and
+   `keryx.pendingMedia` in the renderer (`src/lib/pendingMedia.js`, tested;
+   `usePendingMedia()`; empty on network screens). The Biblioteca and the
+   Mídia say "Baixando…" instead of "Arquivo não encontrado" (no Localizar…,
+   no broken still; `useMediaFiles` marks `syncing`/`posterSyncing`), the
+   background library keeps the tile with "Baixando…" and does not let it
+   be chosen, a theme whose background is coming shows "Baixando…" in Temas
+   and the library (`ThemeThumb`, `themePending`) and is not applied, the
+   Prévia says it over the screen, and the console refuses to send any
+   stage — or the theme that would dress it — naming a pending file
+   (`send` in useConsole.js, `PENDING_SAY`; a video's still does not
+   count). A file no row here names any more (its row deleted meanwhile)
+   leaves the list.
+   **The cleanup of `sync/media`** (it would only grow: a video deleted on
+   every computer held the Drive's space for ever). After each pass a
+   computer writes `<pc>/state.json` (temp + rename, only when it
+   changed): `read` (its cursors, by file), `refs` (every `keryx-media`
+   name its synced rows use) and `collected`. At most every 10 minutes
+   (`collect`) it looks at `sync/media`: a file that no row here and no
+   other computer's `refs` names becomes a candidate, with a mark of every
+   change file's size at that moment (`sync.state.gc`); it is deleted only
+   when it has stayed unused for 7 days and every computer seen (each
+   folder in `sync/`, this one included) has read past the mark in every
+   file but its own — so each had taken the deletes that freed it. A
+   computer with a folder and no `state.json` (an older KERYX, one never
+   run) holds every file; a computer that left the church holds them until
+   its folder is deleted (PR 5's Configurações can offer that). Only the
+   shared copy goes: no computer's media folder is ever touched. Safety
+   nets for a row that names a file again: a new outbox line copies its
+   files into `sync/media` again when they are not there (`shipMedia`), and
+   a computer that still uses a name another announced in `collected` (a
+   row edited while it was away) puts it back from its media folder. A file
+   merely absent from the shared folder is never copied back blindly (Drive
+   may still be bringing it). Deleting there sends the file to the Drive's
+   trash (30 days), outside KERYX.
    What only a real run with Drive can confirm: Drive's own temp and
    conflict names, files read while Drive downloads them, a video of
-   hundreds of MB copied while the console projects.
+   hundreds of MB copied while the console projects, the cleanup's
+   deletes reaching the other computers.
 4. **Pairing, "PCs verificados" (done):** whoever has the church's sync
    code syncs; nobody else counts.
    - **The code** (`shared/syncCode.mjs`, tested; shared by main and the
@@ -967,7 +1008,12 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      computers that should stay type the new code, the one left out keeps
      the old key, sees `mismatch`, and its lines no longer verify anywhere.
      A computer retired on purpose just leaves the sync (Sair da
-     sincronização); a dead one stays quiet in the list.
+     sincronização); a dead one stays quiet in the list — "Tirar" it, so it
+     no longer holds the cleanup of `sync/media` back.
+   - **The cleanup counts only computers with the code**: each
+     `state.json` is signed like a line; a computer whose files never
+     verified (no code, an old one) or that was taken out does not hold a
+     file back, and one with the code but no `state.json` yet still does.
 5. **Configurações › Sincronização and the first join (done; the owner's
    picks of 2026-10-16 on the decision page):**
    - **Main side** (`electron/syncControl.cjs`, tested in

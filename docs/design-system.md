@@ -377,7 +377,9 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
   2026-10-14) is Compacta on a grid under 820 px tall.
 - **One padding rule for panels** (owner 2026-10-16, Rodada F4: "some
   panels have inconsistent padding"): a panel's header is one line, 32 px
-  (28 in Compacta), its text 12 px (`space-3`) from the panel's edge;
+  (28 in Compacta), its text 12 px (`space-3`) from the panel's edge and
+  its last button 12 px from the right one (symmetric; the first row under
+  a header starts 4 px below it);
   whatever has a box of its own — list cards, verse cards, the Bíblia's
   book, chapter and verse cells, the Temas tiles, the search field, tabs,
   the No ar agora monitor — sits 4 px (`space-1`) in from the column, with
