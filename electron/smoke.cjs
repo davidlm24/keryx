@@ -1097,8 +1097,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(600);
         await dblclick(".kx-row", "Canto do console");
         result.lookDefault = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && !st.transition && st.transition_ms == null); }, 5000);
-        // "no ar há m:ss" in the Programa's pill while the item is on air.
-        result.airSince = await waitFor(() => js("/^no ar há \\d+:\\d\\d$/.test((document.querySelector('.prog-pill .kx-since') || {}).textContent || '')"), 5000);
+        // No "no ar há" in the Programa's pill any more (Rodada F1); lyrics
+        // keep their title there (the player does not name them).
+        result.pillNoSince = await waitFor(() => js("(() => { const p = document.querySelector('.prog-pill'); return Boolean(p) && !/no ar há/.test(p.textContent) && ((p.querySelector('.pp-title') || {}).textContent || '') === 'Canto do console'; })()"), 5000);
         // Títulos nas telas off: the song's name leaves the Programa (and every output).
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { show_item_title: false }])`);
         result.titleHidden = await waitFor(() => js("Boolean(document.querySelector('.kx-mon .ks-text')) && !document.querySelector('.kx-mon .ks-title')"), 5000);
@@ -1385,7 +1386,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Enter");
         result.audioOn = await waitFor(() => live.get().audio && live.get().audio.title === "Tom de teste");
         result.audioUnderSong = Boolean(live.get().content) && live.get().content.title === "Canto do console";
-        result.playerShows = await waitFor(() => js("Boolean(document.querySelector('.player:not(.is-idle)')) && document.querySelector('.player .pl-what').textContent.includes('Tom de teste')"));
+        // Its title, no kind word (Rodada F1: the icon says it); the pill keeps
+        // the song's title, which the player does not name.
+        result.playerShows = await waitFor(() => js("Boolean(document.querySelector('.player:not(.is-idle)')) && document.querySelector('.player .pl-what').textContent === 'Tom de teste' && ((document.querySelector('.prog-pill .pp-title') || {}).textContent || '') === 'Canto do console'"));
         const meterState = () => js("document.querySelector('.player .meters') && document.querySelector('.player .meters').dataset.state");
         await waitFor(async () => (await meterState()) !== "wait", 8000);
         result.meterState = await meterState();
@@ -1422,6 +1425,36 @@ async function checkConsole(webContents, { live, outputs }) {
         // The mute reached the element that actually plays, on the projector.
         result.projectorMuted = await waitFor(() => main && main.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.volume === 0 : null; })()").catch(() => null));
 
+        // The progress bar drags (Rodada F1): while the hand holds it only the
+        // console moves (the elapsed time and a tip over the thumb follow it),
+        // and the screens get ONE seek, on release, so the letra automática
+        // never walks the slides in between. Paused, so the times are exact
+        // (the tone lasts 20 s: three quarters of the bar is 0:15).
+        live.call("transport", { layer: "audio", action: "pause" });
+        live.call("transport", { layer: "audio", action: "seek", time: 2 });
+        {
+            const bar = await js(`(() => { const b = document.querySelector(".player .pl-seek.is-can"); if (!b) return null; b.scrollIntoView({ block: "nearest" }); const r = b.getBoundingClientRect(); return { left: r.left, width: r.width, y: Math.round(r.top + r.height / 2) }; })()`);
+            const seeks = [];
+            let last = live.get().audio?.playback?.position;
+            const offSeek = live.onChange((s) => { const p = s.audio && s.audio.playback; if (p && p.position !== last) { last = p.position; seeks.push(p.position); } });
+            if (bar) {
+                const x = (f) => Math.round(bar.left + bar.width * f);
+                webContents.sendInputEvent({ type: "mouseMove", x: x(0.25), y: bar.y });
+                webContents.sendInputEvent({ type: "mouseDown", x: x(0.25), y: bar.y, button: "left", clickCount: 1 });
+                for (const f of [0.35, 0.5, 0.65, 0.75]) {
+                    webContents.sendInputEvent({ type: "mouseMove", x: x(f), y: bar.y, modifiers: ["leftButtonDown"] });
+                    await sleep(60);
+                }
+                result.seekDragFollows = await waitFor(() => js("(() => { const t = document.querySelector('.player .pl-seek .pl-tip'); return Boolean(t) && /^0:1[45]$/.test(t.textContent) && /^0:1[45]$/.test(document.querySelector('.player .pl-time').textContent); })()"), 3000) && seeks.length === 0;
+                webContents.sendInputEvent({ type: "mouseUp", x: x(0.75), y: bar.y, button: "left", clickCount: 1 });
+                await waitFor(() => seeks.length > 0, 3000);
+                await sleep(400);
+            }
+            offSeek();
+            const tipGone = await js("!document.querySelector('.player .pl-seek .pl-tip')");
+            result.seekDragOnce = seeks.length === 1 && Math.abs(seeks[0] - 15) < 0.6 && tipGone ? true : { seeks, bar: Boolean(bar), tipGone };
+        }
+
         // The Encerrar button asks first; only "Encerrar" in the dialog ends.
         // The music is not a screen: it keeps playing until Parar.
         await pillClick("Encerrar a projeção", "Encerrar");
@@ -1430,11 +1463,17 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".dialog button", "Encerrar");
         result.ended = await waitFor(() => !live.get().content);
         result.audioSurvivesEnd = Boolean(live.get().audio);
+        // Only the sound left on air: the player names it, so the pill has no
+        // title (owner's pick A, Rodada F1), its dot still red.
+        result.pillTitleInPlayer = await waitFor(() => js("(() => { const p = document.querySelector('.prog-pill'); return Boolean(p) && !p.querySelector('.pp-title') && p.classList.contains('is-air'); })()"), 4000);
         await click(".player button", "Parar e tirar do ar");
         result.audioStopped = await waitFor(() => !live.get().audio);
+        result.pillNada = await waitCap(PROG, "Nada no ar", 4000);
         // The player is always visible under the Programa (owner's decision
-        // 2026-10-13): idle it dims, it never disappears.
+        // 2026-10-13): idle it dims, it never disappears, and says nothing —
+        // only its icon (Rodada F1: no "Nenhum áudio ou vídeo tocando").
         result.playerAlwaysThere = await js("(() => { const pl = document.querySelector('.pslot .player'); return Boolean(pl) && pl.className.includes('is-idle') && getComputedStyle(pl).visibility === 'visible'; })()");
+        result.playerIdleQuiet = await js("(() => { const w = document.querySelector('.pslot .player .pl-what'); return Boolean(w) && w.textContent.trim() === '' && Boolean(w.querySelector('.kx-i')); })()");
 
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
@@ -2639,7 +2678,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.prevTitle12 && result.progTitle13 && result.progOneTitle && result.progPill && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
         && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasCard && result.serviceThemeSent && result.bgPrefFollows
@@ -2648,7 +2687,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.unlocked && result.unlockedSends && /^Culto \d|^Sem culto|^Sem horário|^\d\d:\d\d · |^\d\d\/\d\d · \d\d:\d\d$/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
-        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped && result.playerAlwaysThere
+        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.seekDragFollows && result.seekDragOnce === true && result.audioSurvivesEnd && result.pillTitleInPlayer && result.audioStopped && result.pillNada && result.playerAlwaysThere && result.playerIdleQuiet
         && result.tlGone && result.forecastOff && result.forecastOn
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded && result.setlistRight === true && result.notesPanel && result.tabsMenu && result.quickTools && result.quickAlertOnce
         && result.colsFit && result.editBanner && result.editMove === true && result.editEsc && result.editRestore

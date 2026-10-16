@@ -50,6 +50,20 @@ test("the video/sound button: a video leaves the projector with its sound kept, 
     assert.equal(videoSwap(null, "media"), null);
 });
 
+test("the progress bar under the pointer (Rodada F1)", async () => {
+    const { seekAt, SEEK_KEY_SECONDS } = await import("./player.js");
+    const box = { left: 100, width: 200 };
+    assert.equal(seekAt(200, box, 60), 30, "the middle");
+    assert.equal(seekAt(150, box, 60), 15);
+    assert.equal(seekAt(40, box, 60), 0, "left of the bar: the start");
+    assert.equal(seekAt(900, box, 60), 60, "right of it: the end, never past");
+    assert.equal(seekAt(200, box, null), 0, "no length: nowhere to go");
+    assert.equal(seekAt(200, { left: 0, width: 0 }, 60), 0, "a bar not laid out yet");
+    assert.equal(SEEK_KEY_SECONDS, 5);
+    const onProjector = { media: { kind: "video", url: "v", playback: pb({ position: 58 }), shownAt: 1 } };
+    assert.deepEqual(playerOp(onProjector, "media", "seek", { pos: 58 + SEEK_KEY_SECONDS, duration: 60 }), ["transport", { layer: "media", action: "seek", time: 60 }], "a step past the end stops at the end");
+});
+
 test("clock", () => {
     assert.equal(clock(83), "1:23");
     assert.equal(clock(3725), "1:02:05");
