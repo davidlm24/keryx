@@ -25,11 +25,13 @@ export function Panel({ title, count, lead, caption, actions, fold, bare = false
                 {actions}
                 <FoldBtn fold={fold} />
             </div>}
-            <div className="kx-panel-b" style={fold?.on ? FOLDED_BODY : bodyStyle}>{children}</div>
+            <div className="kx-panel-b" style={strip ? FOLDED_BODY : bodyStyle} inert={fold?.on ? "" : undefined}>{children}</div>
         </div>
     );
 }
-// A folded body: hidden over any display a panel gives its body inline.
+// A body folded across a row (the strip): hidden over any display a panel
+// gives its body inline. Folded down a column it stays, inert and fading out
+// (console.css), so the panel closes over its content instead of emptying first.
 const FOLDED_BODY = { display: "none" };
 
 // Folded across a row: the panel is a strip (Panel, TabsPanel).

@@ -73,6 +73,14 @@ test("search merges the sources, LRCLIB first; one failing never hides the other
     await assert.rejects(() => all.search("a"), (e) => e.status === 400);
 });
 
+test("a source that never answers ends in time; the other's results still show", async () => {
+    const letras = fakeFetch([["solr.sscdn.co", { body: LETRAS }]]);
+    const fetchImpl = (url, opts) => (url.includes("lrclib.net") ? new Promise(() => {}) : letras(url, opts));
+    const r = await createLyrics({ fetchImpl, timeoutMs: 30 }).search("algo novo");
+    assert.equal(r.results.length, 2);
+    assert.match(r.errors.join(" "), /LRCLIB não respondeu a tempo/);
+});
+
 test("get: LRCLIB lyrics by id; letras.mus.br is pasted", async () => {
     const lyrics = createLyrics({ fetchImpl: fakeFetch([["lrclib.net/api/get/101", { body: LRCLIB_SONG }]]) });
     assert.equal((await lyrics.get("lrclib:101")).title, "Bondade de Deus");

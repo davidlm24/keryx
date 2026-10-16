@@ -14,6 +14,11 @@
 // API is down and no longer hands out keys.) Lyrics are copyrighted; the
 // dialog says so, as the Holyrics one does.
 
+const { withDeadline, TimeoutError } = require("./deadline.cjs");
+
+// Each source's answer, body included; the dialog never waits for ever.
+const LYRICS_TIMEOUT_MS = 15000;
+
 class LyricsError extends Error {
     constructor(message, status = 502) {
         super(message);
@@ -103,16 +108,19 @@ function parseLrclibSong(body) {
 
 // -- The service -----------------------------------------------------------------
 
-function createLyrics({ fetchImpl = fetch } = {}) {
+function createLyrics({ fetchImpl = fetch, timeoutMs = LYRICS_TIMEOUT_MS } = {}) {
     const getText = async (url, label) => {
-        let res;
         try {
-            res = await fetchImpl(url, { headers: { "User-Agent": UA, Accept: "application/json,text/javascript,*/*" } });
-        } catch {
+            return await withDeadline(async (signal) => {
+                const res = await fetchImpl(url, { headers: { "User-Agent": UA, Accept: "application/json,text/javascript,*/*" }, signal });
+                if (!res.ok) throw new LyricsError(`${label} indisponível agora (HTTP ${res.status}).`, 502);
+                return res.text();
+            }, timeoutMs);
+        } catch (err) {
+            if (err instanceof LyricsError) throw err;
+            if (err instanceof TimeoutError) throw new LyricsError(`${label} não respondeu a tempo.`, 504);
             throw new LyricsError(`${label}: sem conexão com a internet.`, 503);
         }
-        if (!res.ok) throw new LyricsError(`${label} indisponível agora (HTTP ${res.status}).`, 502);
-        return res.text();
     };
 
     // -> { results: [...], errors: ["…"] }
