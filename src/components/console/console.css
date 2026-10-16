@@ -872,6 +872,7 @@
 /* The title gives way first (an ellipsis; its whole text is the page) so the
    tools and actions never leave the bar (D5: Relatórios at 960 px). */
 .console .win-bar .win-title { flex: 0 1 auto; color: var(--fg-1); font-size: 12px; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .win-bar .win-title:focus { outline: none; } /* the focus parks here (C-12); it is not a control */
 .console .win-bar .kx-btn-back { height: 26px; margin-left: -6px; flex: none; }
 .console .win-bar .win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
 .console .win-bar .win-gap { flex: 1; }

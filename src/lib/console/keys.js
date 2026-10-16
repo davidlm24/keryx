@@ -34,7 +34,7 @@ const isAltGr = (e) => e.ctrlKey && e.altKey && typeof e.key === "string" && e.k
 // keeps its own Enter/Space, as before.
 //
 // -> "send" | "next" | "prev" | "selUp" | "selDown" | "black" | "logo" |
-//    "clear" | "end" | "blur" | "search" | "help" | "play" | null
+//    "clear" | "end" | "undo" | "blur" | "search" | "help" | "play" | null
 // ←/→ move what is on air; ↑/↓ move the selection (Holyrics): the selected
 // slide or verse turns green and goes out with Enter or a double click.
 export function liveAction(e) {
@@ -47,6 +47,9 @@ export function liveAction(e) {
         if (mod) return "send";
         return kind === "control" ? null : "send";
     }
+    // Ctrl+Z: Desfazer while the toast after Esc / Encerrar offers it (design
+    // audit C-13); in a text field (above) it stays the field's own undo.
+    if (mod && !e.shiftKey && !e.altKey && (e.key === "z" || e.key === "Z")) return "undo";
     if (mod || (e.altKey && !altGr)) return null;
     // Arrows belong to the control when it uses them itself: radio groups,
     // tab lists, menus, a splitter focused with Tab (it resizes) and the
@@ -85,6 +88,7 @@ export const SHORTCUTS = [
     { keys: "L", label: "Mostrar logo", action: "logo", probe: { key: "l" } },
     { keys: "C", label: "Limpar texto", action: "clear", probe: { key: "c" } },
     { keys: "Esc", label: "Tirar tudo do ar na hora (o aviso traz Desfazer) ou fechar o que está aberto", action: "end", probe: { key: "Escape" } },
+    { keys: "Ctrl+Z", label: "Desfazer o Esc ou o Encerrar (enquanto o aviso mostra Desfazer)", action: "undo", probe: { key: "z", ctrlKey: true } },
     { keys: "Letra", label: "Na Bíblia: digitar a referência (ex.: jo 3 16)", action: null, probe: null },
     { keys: "/", label: "Buscar em tudo (em Configurações: buscar nas configurações)", action: "search", probe: { key: "/" } },
     { keys: "?", label: "Esta lista", action: "help", probe: { key: "?" } },

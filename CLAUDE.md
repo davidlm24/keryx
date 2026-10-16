@@ -495,7 +495,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   page's own keys (Ctrl+S, Mídia's Enter/Delete) sleep while covered
   (prop `active`) and defer to `.scrim:not(.win-scrim)`. Pickers that
   answer (the background library, ConfirmDialog, menus) stay ON TOP,
-  never in the stack. While the window is open the Programa monitor and
+  never in the stack. **Focus** (design audit C-12): the console behind
+  the window is `inert`, Tab stays in the window or dialog on top
+  (`useDialogFocus`, rules in `src/lib/console/focusTrap.js`, tested), the
+  page shown takes the focus (`useWinPageFocus`: from the keyboard its first
+  control, with the mouse the bar's title, which holds no keys), and closing
+  gives it back to the opener only after a keyboard open. While the window is open the Programa monitor and
   the Multiview draw one still frame (`still` on CenterPanel — the air
   itself never pauses). The pages are one switch, `winPage` in
   `WinPages.jsx`, for both hosts below; a new page goes there.
@@ -782,7 +787,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Transições says (Rodada F2) (music on the audio channel keeps playing; the Fundo
   stays on screen, and the idle look shows only with no Fundo); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
-  `src/lib/console/restore.js`). Camadas' eyes on Texto principal and Fundo
+  `src/lib/console/restore.js`); Ctrl+Z runs it too (keys.js "undo", out of
+  text fields), and a plain toast waits behind it while its time stands
+  still under the pointer or the focus (`toastQueue.js`, `Toast.jsx`; C-13). Camadas' eyes on Texto principal and Fundo
   hide the layer and keep it on air (`layers.hide`/`layers.show`,
   `hiddenLayers`, `layerHidden`; hiding works locked): the next send shows
   the text again, choosing a Fundo shows the Fundo again. The Fundo hidden
