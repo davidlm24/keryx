@@ -57,6 +57,21 @@ export function airFor(doc, nowMs) {
     return s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor((s % 3600) / 60))}:${two(s % 60)}` : `${Math.floor(s / 60)}:${two(s % 60)}`;
 }
 
+// A title cut in two for a narrow caption (C-17): the head gives way with
+// its "…" and the tail — the part after the last " · " / " - ", else the last
+// word — stays whole, so "Canção de exemplo · Manhã" and "· Graça" still
+// differ when the start is clipped. Short titles, or a tail too long to be
+// worth keeping, stay one piece ({ head: title, tail: "" }).
+export function titleParts(title, { min = 16, maxTail = 16 } = {}) {
+    const t = String(title || "").trim();
+    if (t.length < min) return { head: t, tail: "" };
+    const sep = Math.max(t.lastIndexOf(" · "), t.lastIndexOf(" - "), t.lastIndexOf(" — "));
+    const at = sep > 0 ? sep + 3 : t.lastIndexOf(" ") + 1;
+    const tail = at > 0 ? t.slice(at).trim() : "";
+    if (!tail || tail.length > maxTail || at >= t.length) return { head: t, tail: "" };
+    return { head: t.slice(0, at).trimEnd(), tail };
+}
+
 // What a screen reader hears when what is on air changes (C-25): "No ar:
 // Hino · 1/3", "No ar: Tela preta", "Nada no ar". The words stay the same
 // while the same thing stays on air (no clock in them), so the console

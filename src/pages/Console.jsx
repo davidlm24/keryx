@@ -76,7 +76,7 @@ import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
-import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
+import { plan, playableItems, isSection, total, itemOnAir } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { readChapter } from "@/lib/bibleText";
@@ -427,7 +427,10 @@ export default function Console() {
     const projector = outputs.find((o) => o.key === "/Projection");
 
     // The live state says where the service is; the Prévia says what is next in hand.
+    // The session's item, and whether the screens still show it (after Esc it
+    // is only the last one sent: "último" in the Setlist, never red; C-08).
     const airItemId = c.cur?.session?.itemId || null;
+    const airNow = itemOnAir(c.cur, items);
     const prevItemId = c.prev?.args?.ref?.serviceItemId || null;
     const airIdx = items.findIndex((i) => i.id === airItemId);
     // Sections (Pré-culto, Culto…) are headers: never prepared, never next.
@@ -756,7 +759,7 @@ export default function Console() {
         };
         switch (action) {
             case "state":
-                return { ok: true, data: remoteState({ service, items, airItemId, nextItemId: nextItem?.id || null, live: c.cur }) };
+                return { ok: true, data: remoteState({ service, items, airItemId: airNow ? airItemId : null, nextItemId: nextItem?.id || null, live: c.cur }) };
             case "next": case "prev":
                 if (!c.cur?.content) return refuse("Nada com slides no ar.");
                 await c.callOp(action === "next" ? "content.next" : "content.prev");
@@ -1096,7 +1099,7 @@ export default function Console() {
     const setlistPanel = (
         <Panel title="Setlist" className={coverCls} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
             actions={<>{coverTag}<IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
-            <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
+            <Rundown service={service} items={items} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
         </Panel>
     );
     // Temas: its own module under Camadas (owner 2026-10-14); a click makes
@@ -1144,7 +1147,7 @@ export default function Console() {
     const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
     const tabsPanel = (
         <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
-            items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend} />
+            items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend} />
     );
     const libraryPanel = (
         <Panel title="Biblioteca" actions={<TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>

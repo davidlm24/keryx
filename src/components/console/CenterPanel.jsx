@@ -14,6 +14,7 @@ import { useOutputPref } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { pendingUrls } from "@/lib/pendingMedia";
+import ClipTitle from "./ClipTitle";
 
 // What the Prévia would look like on air: the stage applied with the live
 // state's own rules to a copy of the current look (background, logo,
@@ -97,7 +98,7 @@ export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHis
         <div className={`prog-pill is-${tone}`} role="group" aria-label="Programa">
             <span className={`kx-prog-cap prog-cap is-${tone}`} aria-label={`Programa · ${said}${locked ? " · travado" : ""}`}>
                 <i className="pp-dot" aria-hidden="true" />
-                {!inPlayer && <span className="kx-mon-t pp-title" title={shown}>{shown}</span>}
+                {!inPlayer && <span className="kx-mon-t pp-title" title={shown}><ClipTitle text={shown} /></span>}
                 {locked && <span className="prog-locked">Travado</span>}
                 {pos && <span className="kx-meta pp-pos">{pos}</span>}
             </span>
