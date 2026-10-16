@@ -14,20 +14,26 @@ export function restoreArgs(entry) {
     throw new Error(`Entrada de histórico desconhecida: ${entry.layer}`);
 }
 
-// Esc ends the projection at once (owner's decision 2026-10-10); its toast's
+// Esc ends the projection at once (owner's decision 2026-10-10; with the
+// exit fade of Transições since Rodada F2); its toast's
 // Desfazer puts back what the screens showed, from the live state just
 // before: the main layers bottom-up (each show takes down the layers above
 // it, so the top one goes last), the video channel, and Tela preta / Logo.
 // Media and videos start again from the beginning; the audio channel was
-// never taken down. -> [[op, args], ...], empty when nothing was on air.
+// never taken down. A sound put back never stops another (Transições, one
+// sound at a time: `mix`, so the music Esc left playing goes on) and comes
+// back at the volume it had. -> [[op, args], ...], empty when nothing was on air.
+const asItWas = ([op, args], data) => [op, { ...args, transition: { mode: "mix" }, ...(typeof data?.playback?.volume === "number" ? { volume: data.playback.volume } : {}) }];
 export function undoEndOps(before) {
     if (!before) return [];
     const ops = [];
     for (const layer of ["content", "media", "communication", "tool"]) {
-        if (before[layer]) ops.push(restoreArgs({ layer, data: before[layer] }));
+        if (!before[layer]) continue;
+        const op = restoreArgs({ layer, data: before[layer] });
+        ops.push(layer === "media" ? asItWas(op, before.media) : op);
     }
     const v = before.video;
-    if (v) ops.push(["video.show", { kind: v.kind, url: v.url, title: v.title, duration: v.duration, id: v.id }]);
+    if (v) ops.push(asItWas(["video.show", { kind: v.kind, url: v.url, title: v.title, duration: v.duration, id: v.id }], v));
     if (ops.length && (before.screen === "black" || before.screen === "logo")) ops.push(["screen.set", { mode: before.screen }]);
     // Esc may have put the papel de parede on the Fundo: the one the item was
     // shown over comes back first (not while the padlock holds the Fundo).

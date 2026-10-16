@@ -78,7 +78,10 @@ function Volume({ volume, onVolume, disabled }) {
             <input type="range" min={0} max={100} step={1} value={value} disabled={disabled} aria-label="Volume"
                 style={{ "--v": `${value}%` }}
                 onChange={(e) => { const v = Number(e.target.value); setDrag(v); send(v); }}
-                onPointerUp={() => { if (drag != null) { clearTimeout(pending.current); onVolume(drag / 100); } setDrag(null); }}
+                // Let go of the focus after a drag (even one that ended off the
+                // slider, when no click follows): the live keys, a clicker's
+                // PageDown included, are the console's again.
+                onPointerUp={(e) => { if (drag != null) { clearTimeout(pending.current); onVolume(drag / 100); } setDrag(null); const el = e.currentTarget; setTimeout(() => el.blur(), 0); }}
                 onKeyUp={() => setDrag(null)}
                 title={`Volume · ${value}%`} />
             <span className="pl-num">{value}%</span>

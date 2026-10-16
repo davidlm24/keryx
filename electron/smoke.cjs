@@ -2092,7 +2092,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".topbar .markbtn", "");
         await click(".kx-pop button", "Configurações");
         await waitFor(() => js("Boolean(document.querySelector('.console .win-dialog'))"));
-        await click(".console .win-bar button", "");
+        // The X by its name: the bar also has "Destacar em janela" (Rodada F5),
+        // first, and the first button would detach the page instead.
+        await click(".console .win-bar button", "Fechar");
         result.cfgX = await waitFor(() => js("!document.querySelector('.console .win-dialog')"));
 
         // Camadas › Fundo: a clip from Mídia plays as the background layer;
@@ -3157,8 +3159,9 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
             let editorAsked = false;
             let editorKept = false;
             try {
-                // A detached page (Destacar em janela, Rodada F5): /Janela.
-                const editor = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/Janela"));
+                // A detached page (Destacar em janela, Rodada F5): /Janela, the
+                // Editor de temas by its URL (never just the first /Janela).
+                const editor = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/Janela?page=theme"));
                 await webContents.executeJavaScript('window.open(location.origin + "/Janela?page=theme&theme=new", "keryx-janela-theme"); true');
                 for (let i = 0; i < 40 && !editor(); i += 1) await sleep(200);
                 // userGesture: the typing comes as an operator's would.

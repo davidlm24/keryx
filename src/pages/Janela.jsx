@@ -179,7 +179,9 @@ export default function Janela() {
         replaceTop: (props, opts) => setStack((s) => winReplaceTop(s, props, opts)),
         // Said here too: the console refuses it, but its toast is over there.
         sendNow: (s) => (s?.blocked ? (say(s.blocked), false) : toConsole("stage.send", { stage: s })),
-        sendStage: (s) => (s?.blocked ? (say(s.blocked), false) : toConsole("stage.send", { stage: s })),
+        // No stage (the Escola's Enviar ao ar button): what the console's
+        // Prévia holds goes, as Enter does — `stage: undefined` is no message.
+        sendStage: (s) => (!s ? toConsole("prev.send", {}) : s.blocked ? (say(s.blocked), false) : toConsole("stage.send", { stage: s })),
         songSaved: (row) => { if (row?.id) relaySend("janela", "song.saved", { song: row }); },
         addMaterial: (m) => toConsole("setlist.material", { material: { id: m.id, title: m.title || "Material" } }),
         cfg, setCfg, uiLayout: null, setUiLayout: () => {}, restoreLayout: () => {},

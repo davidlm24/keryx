@@ -67,6 +67,7 @@ import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { presentationBlock } from "@/lib/presentation";
 import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
@@ -101,6 +102,17 @@ export default function Console() {
     usePosterBackfill(allMedia);
     // Every PDF's pages as pictures (Media.pages): a presentation on air.
     usePagesBackfill(data.media);
+    // A PDF put in the Prévia before its pages were ready (stage.blocked):
+    // when they arrive the Prévia becomes the presentation, so Enter sends it
+    // without picking it again (a setlist item keeps its ref).
+    const { prev: cPrev, setPrev: cSetPrev } = c;
+    useEffect(() => {
+        if (!cPrev?.blocked || !cPrev.args?.id) return;
+        const row = data.media.find((m) => m.id === cPrev.args.id);
+        if (!row || presentationBlock(row)) return;
+        const s = stageFromMedia(row);
+        cSetPrev(cPrev.args.ref ? { ...s, args: { ...s.args, ref: { ...(s.args.ref || {}), ...cPrev.args.ref } } } : s);
+    }, [cPrev, cSetPrev, data.media]);
     const [profile, setProfile] = useState("");
     const [quick, setQuick] = useState(null);
     // The layer the player controls when several play (null: the newest).
@@ -852,10 +864,12 @@ export default function Console() {
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
-    // activation (detail 0) keeps focus, so Tab navigation still works.
+    // activation (detail 0) keeps focus, so Tab navigation still works. A
+    // slider too: one left focused kept PageUp/PageDown, so a presentation
+    // clicker moved the player's volume instead of the page.
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
-        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href]");
+        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href], input[type='range']");
         if (t && !t.closest(".dialog, .palette, .qj, .lyr, .addmenu")) setTimeout(() => t.blur?.(), 0);
     };
 

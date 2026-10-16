@@ -11,6 +11,8 @@ import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName } from 
 import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { withTransitions } from "@/lib/console/transitions";
+import { stageBlock } from "@/lib/presentation";
+import { pagesProgressOf } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs } from "@/hooks/useUser";
 
 // The console's own state around the live state. One console, always live:
@@ -114,10 +116,9 @@ export function useLiveOps(live, say, bgPrefs) {
         liveOp("screen.set", { mode: next }).catch(() => {});
     }, [live, liveOp]);
 
-    // Limpar texto: the text layers go; background, logo and media stay.
-    const clearText = useCallback(async () => {
-        for (const op of ["tool.clear", "communication.clear", "content.clear"]) await callOp(op).catch(() => {});
-    }, [callOp]);
+    // Limpar texto: the text layers go (one change, one fade: text.clear);
+    // background, logo and media stay.
+    const clearText = useCallback(() => callOp("text.clear").catch(() => {}), [callOp]);
 
     return { locked, liveOp, callOp, moveSlide, goTo, toggleScreen, clearText };
 }
@@ -205,8 +206,9 @@ export function useConsole() {
 
     const setPrev = useCallback((stage) => {
         if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
-        // A PowerPoint, or a PDF whose pages are being made (presentation.js).
-        else if (stage?.blocked) say(stage.blocked);
+        // A PowerPoint, or a PDF whose pages are being made — or could not
+        // be (presentation.js).
+        else if (stage?.blocked) say(stageBlock(stage, pagesProgressOf(stage.args?.id)));
         setPrevState(stage);
     }, [say]);
 
@@ -216,7 +218,7 @@ export function useConsole() {
         if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
-        if (stage.blocked) { say(stage.blocked); return false; }
+        if (stage.blocked) { say(stageBlock(stage, pagesProgressOf(stage.args?.id))); return false; }
         // A theme's example (Camadas › Temas, nothing on air): sending it uses
         // the theme — its background on the Fundo (not past the padlock) —
         // never the example text.
