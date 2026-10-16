@@ -16,6 +16,8 @@ const EXTRA = {
     cloud: '<path d="M7.5 18.5h9.5a3.75 3.75 0 0 0 .4-7.48 5.5 5.5 0 0 0-10.6 1.26A3.1 3.1 0 0 0 7.5 18.5z"/>',
     // Two ticks: select all (the Bíblia's verses).
     checks: '<path d="m3.5 12.5 3.5 3.5 7-8"/><path d="m11 15.5.5.5 8-9"/>',
+    // The set's undo, mirrored (Refazer in the editors).
+    redo: '<path d="M15.5 13.5 20 9l-4.5-4.5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H14"/>',
 };
 
 // The glyph's SVG markup, for a node built outside React (the drag ghost).

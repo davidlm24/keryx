@@ -451,7 +451,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   its search indexes every row in `settingsSearch.js` — a new `FormRow k`
   goes in the index, or `npm test` fails). **Sobre** is the last section
   (owner 2026-10-14, `SobreSection.jsx`; also the KERYX menu's "Sobre o
-  KERYX…", `openSettings("sobre")`): version (the `info` call of Backup;
+  KERYX", `openSettings("sobre")`): version (the `info` call of Backup;
   "Prévia de desenvolvimento" without the desktop), Ver novidades (the
   console's popover, not a second one), the church's name, Electron and
   Chromium, the Geist license (read from `/fonts/Geist-OFL.txt`) and the
@@ -519,7 +519,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   page's own keys (Ctrl+S, Mídia's Enter/Delete) sleep while covered
   (prop `active`) and defer to `.scrim:not(.win-scrim)`. Pickers that
   answer (the background library, ConfirmDialog, menus) stay ON TOP,
-  never in the stack. While the window is open the Programa monitor and
+  never in the stack. **Focus** (design audit C-12): the console behind
+  the window is `inert`, Tab stays in the window or dialog on top
+  (`useDialogFocus`, rules in `src/lib/console/focusTrap.js`, tested), the
+  page shown takes the focus (`useWinPageFocus`: from the keyboard its first
+  control, with the mouse the bar's title, which holds no keys), and closing
+  gives it back to the opener only after a keyboard open. While the window is open the Programa monitor and
   the Multiview draw one still frame (`still` on CenterPanel — the air
   itself never pauses). The pages are one switch, `winPage` in
   `WinPages.jsx`, for both hosts below; a new page goes there.
@@ -582,7 +587,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `layout.dock` (per computer; null = the one the old columns make,
   `fromArrangement`, so an old save keeps its look). Every module is built
   apart from where it goes (`modulePanels` in Console.jsx: Biblioteca,
-  Slides, Programa, `PreviaPanel`, the Painel de abas, Setlist, Camadas,
+  Slides, Programa, `PreviaPanel`, the Painel, Setlist, Camadas,
   No ar, `PlayerSlot`). Ver › Editar disposição: drag a module by its name to a
   side of another (splits) or its middle (tabs), a click on the name opens
   "Mover para…", × puts it in the tray (the edit banner). While editing,
@@ -825,7 +830,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Transições says (Rodada F2) (music on the audio channel keeps playing; the Fundo
   stays on screen, and the idle look shows only with no Fundo); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
-  `src/lib/console/restore.js`). Camadas' eyes on Texto principal and Fundo
+  `src/lib/console/restore.js`); Ctrl+Z runs it too (keys.js "undo", out of
+  text fields), and a plain toast waits behind it while its time stands
+  still under the pointer or the focus (`toastQueue.js`, `Toast.jsx`; C-13). Camadas' eyes on Texto principal and Fundo
   hide the layer and keep it on air (`layers.hide`/`layers.show`,
   `hiddenLayers`, `layerHidden`; hiding works locked): the next send shows
   the text again, choosing a Fundo shows the Fundo again. The Fundo hidden

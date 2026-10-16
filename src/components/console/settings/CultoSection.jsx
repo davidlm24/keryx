@@ -119,7 +119,7 @@ export default function CultoSection({ c }) {
                     {/* What the template brings to the culto (owner's review
                         2026-10-14): its papel de parede and its theme. */}
                     {!t.isDefault && <>
-                        <BgChip value={lookOf(t).background} title={`Papel de parede · ${t.name}`} empty="o de qualquer outro culto" noneLabel={lookOf(t).background ? "Sem papel de parede próprio" : undefined}
+                        <BgChip value={lookOf(t).background} title={`Papel de parede · ${t.name}`} empty="Qualquer outro culto" emptyHint="Sem papel de parede próprio: o culto usa o de qualquer outro culto" noneLabel={lookOf(t).background ? "Sem papel de parede próprio" : undefined}
                             onPick={(spec) => run(keryx.entities.ServiceTemplate.update(t.id, templateLookFields({ ...lookOf(t), background: spec })), "Papel de parede do modelo salvo.")} />
                         <ThemeChip value={lookOf(t).theme_id} title={`Tema do modelo ${t.name}`} empty="sem tema" now={c.now}
                             onPick={(id) => run(keryx.entities.ServiceTemplate.update(t.id, { theme_id: id }), id ? "Tema do modelo salvo." : "O modelo fica sem tema.")} />

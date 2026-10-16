@@ -16,6 +16,7 @@ import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates"
 import { byGroup, rowStatus } from "@/lib/console/outputs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { Switch } from "./settings/parts";
+import { useDialogFocus } from "./useDialogFocus";
 
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
@@ -46,7 +47,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             "sep",
             { label: editing ? "Concluir a edição" : "Editar disposição", icon: "grip", checked: editing, onSelect: onEditLayout, title: "Mudar os módulos de lugar, salvar disposições com nome · Esc conclui" },
             { label: "Restaurar disposição", onSelect: () => { restoreLayout(); setOpen(null); } },
-            { label: "Atalhos do teclado", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
+            { label: "Atalhos", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
         ];
         return (
             // Under the top bar's Ver button, its right edge on the button's.
@@ -68,7 +69,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
     const items = [
         { label: "Culto", icon: "list", kbd: <Icon name="chevron-right" />, onSelect: () => setOpen("cultos") },
         { label: "Planejar o culto", icon: "list", onSelect: go(() => onPlanner?.(serviceId)) },
-        { label: "Biblioteca de mídia", icon: "film", onSelect: go(onMedia) },
+        { label: "Mídia", icon: "film", onSelect: go(onMedia) },
         { label: "Avisos", icon: "megaphone", onSelect: go(onNotices) },
         { label: "Novo aviso", icon: "plus", onSelect: go(onNewNotice) },
         { label: "Escola bíblica", icon: "book", onSelect: go(onSchool) },
@@ -79,7 +80,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
         { label: "Atalhos", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
         { label: "Novidades", icon: "star", onSelect: () => onWhatsNew?.() },
         { label: "Configurações", icon: "sliders", onSelect: go(() => onSettings?.("telas")) },
-        { label: "Sobre o KERYX…", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
+        { label: "Sobre o KERYX", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
         hasUpdate(update) && { label: update.status === "downloading" ? "Atualizando…" : "Atualizar agora", icon: "download", kbd: update.status === "downloading" ? `${update.percent}%` : update.version, onSelect: () => onUpdateNow?.() },
     ];
     return <MenuList key="menu" className="pop kx-pop" label="Menu" items={items} closeOnPick={false} onClose={close} style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }} />;
@@ -178,8 +179,8 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             {/* Transmissão is an OBS Browser Source: until OBS connects, say where its address is. */}
             {!rows.some((r) => r.group === "transmissao") && (
                 <div className="kx-menu-h out-group" title="No OBS: Fonte de navegador com o endereço da Transmissão, 1920 × 1080">
-                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda para a live no OBS</span>
-                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço…</Btn>
+                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda da transmissão ao vivo</span>
+                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço</Btn>
                 </div>
             )}
             {!rows.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
@@ -197,8 +198,8 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             </div>
             <div className="kx-menu-sep" />
             <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}>
-                <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo…</Btn>
-                <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas…</Btn>
+                <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo</Btn>
+                <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas</Btn>
             </div>
         </div>
     );
@@ -257,11 +258,14 @@ export function History({ open, setOpen, history, onPick, anchor = null }) {
 export function EndDialog({ open, setOpen, onEnd }) {
     const goRef = useRef(null);
     useEffect(() => { if (open === "encerrar") setTimeout(() => goRef.current?.focus(), 0); }, [open]);
+    // Tab stays here; back to the pill's button after a keyboard open (C-12).
+    const boxRef = useRef(null);
+    useDialogFocus(boxRef, open === "encerrar");
     if (open !== "encerrar") return null;
     return (
-        <div className="dialog" role="alertdialog" aria-label="Encerrar a projeção">
+        <div ref={boxRef} className="dialog" role="alertdialog" aria-modal="true" aria-label="Encerrar a projeção" aria-describedby="end-dialog-text">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>Encerrar a projeção?</div>
-            <div>Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
+            <div id="end-dialog-text">Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
             <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta (B).</div>
             <div className="acts">
                 <button ref={goRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => { onEnd(); setOpen(null); }}>Encerrar</button>

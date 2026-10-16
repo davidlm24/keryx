@@ -11,15 +11,15 @@ test("the bar: the four menus of the owner's pick, in order (Rodada D4, A; O top
     assert.deepEqual(menus.map((m) => m.id), MENU_IDS);
     // Where each thing lives (the artifact's table).
     for (const [id, labels] of Object.entries({
-        culto: ["Planejar o culto", "Novo culto", "Modelos de culto…", "Exportar a setlist em PDF"],
-        musica: ["Nova música", "Buscar letras na internet…", "Importar uma pasta…", "Sincronizar a música…", "Letra automática", "Temas…"],
-        midia: ["Biblioteca de mídia", "Enviar arquivos…", "Link do YouTube…", "Fundos"],
+        culto: ["Planejar o culto", "Novo culto", "Modelos de culto", "Exportar a setlist em PDF"],
+        musica: ["Nova música", "Buscar letras na internet…", "Importar uma pasta…", "Sincronizar a música…", "Letra automática", "Temas"],
+        midia: ["Mídia", "Enviar arquivos…", "Link do YouTube…", "Fundos"],
         ferramentas: ["Avisos", "Novo aviso", "Aviso rápido…", "Timers", "Escola bíblica", "Relatórios"],
     })) for (const l of labels) assert.ok(find(menus, id, l), `${id} › ${l}`);
     // No Telas menu (owner 2026-10-16): the screens' actions are the top
     // bar's chip, the logo's menu and the Saídas popover, never the bar.
     const all = menus.flatMap((m) => m.items.map((it) => it.label));
-    for (const l of ["Saídas", "Travar telas", "Tela preta", "Logo", "Limpar texto", "Telas e saídas…", "Verificar tudo"]) assert.ok(!all.includes(l), l);
+    for (const l of ["Saídas", "Travar telas", "Tela preta", "Logo", "Limpar texto", "Telas e saídas", "Verificar tudo"]) assert.ok(!all.includes(l), l);
 });
 
 test("items say their state and act through the console", () => {

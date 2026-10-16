@@ -186,7 +186,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version: ver, book, chapter, onAir }), [verses, how, ver, book, chapter, onAir]);
     const picked = verses.filter((v) => sel.includes(v.number));
     const slides = useMemo(() => (sel.length > 1 ? groupVerses(picked, how) : picked.map((v) => ({ text: `${v.number} ${v.text}` }))), [picked, how, sel.length]);
-    const reference = sel.length ? `${book} ${chapter}:${rangeLabel(sel)}` : "";
+    // A chapter that cannot load has nothing selected (C-48), whatever was asked.
+    const reference = sel.length && !error ? `${book} ${chapter}:${rangeLabel(sel)}` : "";
     const stage = useMemo(() => stageFor(sel), [stageFor, sel]);
     // The console sends this stage on Enter / Ctrl+Enter in the Bible environment.
     useEffect(() => {
@@ -318,6 +319,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     // Abrev | Nomes: the books as short codes (default) or full names, remembered.
     const fullNames = prefs.bible_book_names === "full";
     const setBookNames = (v) => { updateUser({ bible_book_names: v }).catch(() => c.say("Não foi possível salvar.")); };
+    const namesInMenu = (e) => !e.currentTarget.closest(".kx-panel-h")?.querySelector(":scope > .kx-seg")?.offsetWidth;
     // The verse row in the band: the same selection as clicking the text
     // (Ctrl adds, Shift makes a range, a double click projects), and it
     // brings the verse into view in the reading.
@@ -368,6 +370,12 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 <IconBtn name="grid" small title="Mais: tema da Bíblia, tamanho das células" onClick={(e) => menu(e, { title: "Bíblia", items: [
                     { label: `Tema da Bíblia… · ${bibleTheme ? themeName(bibleTheme) : "estilo de fábrica"}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`, icon: "star", onSelect: chooseTheme },
                     "sep",
+                    // A narrow column hides Abrev | Nomes (console.css, C-47): then it is here.
+                    ...(namesInMenu(e) ? [
+                        { label: "Livros abreviados", icon: fullNames ? undefined : "check", onSelect: () => setBookNames("short") },
+                        { label: "Livros com o nome inteiro", icon: fullNames ? "check" : undefined, onSelect: () => setBookNames("full") },
+                        "sep",
+                    ] : []),
                     { label: "Células pequenas", icon: grid === "small" ? "check" : undefined, onSelect: () => setGrid?.("small") },
                     { label: "Células médias", icon: grid === "medium" ? "check" : undefined, onSelect: () => setGrid?.("medium") },
                     { label: "Células grandes", icon: grid === "large" ? "check" : undefined, onSelect: () => setGrid?.("large") },
@@ -468,20 +476,20 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     {/* No header (owner 2026-10-16): the screen sits on top, and
                         its pill is the Programa's with icons only — the state's
                         dot and the screen actions (they left the top bar, Rodada E1). */}
-                    <div className={`kx-mon ${c.locked ? "is-rh" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview />
+                    <div className={`kx-mon ${c.locked ? "is-rh" : airIdle ? "" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview />
                         <div className={`prog-pill scr-pill is-${airTone}`} role="group" aria-label={`No ar · ${airSaid}`} title={airSaid}><i className="pp-dot" aria-hidden="true" /><ScreenActions c={c} onEnd={onEnd} /></div>
                     </div></div>
                 </div>
                 <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
-                    <span className="kx-section">Selecionado <span className="kx-count">· {sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>
-                    {sel.length > 1 && (
+                    <span className="kx-section">Selecionado <span className="kx-count">· {error ? `${book} ${chapter} indisponível nesta versão` : sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>
+                    {reference && sel.length > 1 && (
                         <div className="kx-seg is-small">
                             {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} onClick={() => setHow(v)} title={v === "auto" ? "Pelo tamanho do texto" : `${v} por slide`}>{l}</button>)}
                         </div>
                     )}
                 </div>
                 <div className="vgroup" style={{ overflow: "auto", flex: 1, minHeight: 0 }}>
-                    {!slides.length && <Empty title="Nenhum versículo selecionado">Clique num versículo ou use ↑ ↓. Enter projeta.</Empty>}
+                    {!slides.length && <Empty title="Nenhum versículo selecionado">{error ? null : "Clique num versículo ou use ↑ ↓. Enter projeta."}</Empty>}
                     {slides.map((s, i) => <div key={i} className="vslide"><b>{i + 1}</b><span>{s.text}</span></div>)}
                 </div>
                 {oneVerse && (
@@ -493,7 +501,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 )}
                 <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-1)", flexWrap: "wrap", borderTop: "1px solid var(--line)" }}>
                     <Btn kind="prev" className="kx-btn-live" disabled={!stage || c.locked} onClick={() => onSend(stage)} title={sendTip(c.locked)}>{SEND_LABEL}</Btn>
-                    <Btn disabled={!sel.length} onClick={addToService}>Adicionar à setlist</Btn>
+                    <Btn disabled={!reference} onClick={addToService}>Adicionar à setlist</Btn>
                     <Btn kind="icon" on={notesApi.isFavorite(reference)} disabled={!reference} onClick={toggleFav} title={notesApi.isFavorite(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
                 </div>
             </Panel>

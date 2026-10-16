@@ -1055,10 +1055,10 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".mx-toggle");
         result.mvOff = await waitFor(() => js("!document.querySelector('.mx-grid') && Boolean(document.querySelector('.kx-mon.prog .ks'))"));
 
-        // Verificar is a panel on demand now: Saídas -> "Verificar tudo…".
+        // Verificar is a panel on demand now: Saídas -> "Verificar tudo".
         // Esc closes the overlay and leaves the projection alone.
         await click(".kx-status", "");
-        result.outsPopover = await waitText(webContents, "Verificar tudo…");
+        result.outsPopover = await waitText(webContents, "Verificar tudo");
         // Top-bar popovers open under their own button, inside the window.
         result.outsAnchored = await js("(() => { const p = document.querySelector('.pop-outs'); const b = document.querySelector('.topbar .kx-status'); if (!p || !b) return false; const pr = p.getBoundingClientRect(), br = b.getBoundingClientRect(); return pr.left >= 0 && pr.right <= innerWidth + 1 && Math.abs(pr.right - br.right) <= 2; })()");
         await click(".kx-pop button", "Verificar tudo");
@@ -2106,7 +2106,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // (Fechar, no Usar), over Configurações.
         await section("Temas e fundos");
         result.fundosMoved = await waitFor(() => js("!document.querySelector('.console .cfg .cfg-tabs') && [...document.querySelectorAll('.console .cfg .kx-section')].some((n) => n.textContent.startsWith('Fundos'))"), 4000);
-        await waitFor(() => press2("Abrir a biblioteca…"), 4000);
+        await waitFor(() => press2("Abrir a biblioteca de fundos"), 4000);
         result.fundosInTemas = await waitFor(() => js("Boolean(document.querySelector('.console .lib-dialog')) && [...document.querySelectorAll('.lib-foot button')].some((b) => b.textContent === 'Fechar')"), 4000);
         await js("(() => { const b = [...document.querySelectorAll('.lib-foot button')].find((x) => x.textContent === 'Fechar'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("!document.querySelector('.console .lib-dialog')"), 3000);
@@ -2365,7 +2365,7 @@ async function checkConsole(webContents, { live, outputs }) {
         mvRows.push(await mk({ title: "Foto um", type: "image", file_url: "keryx-media://bundled/backgrounds/1557672172-298e090bd0f1.webp", duration: 5 }));
         mvRows.push(await mk({ title: "Foto dois", type: "image", file_url: "keryx-media://bundled/backgrounds/1506905925346-21bda4d32df4.webp", duration: 5 }));
         await click(".topbar .markbtn", "");
-        await click(".kx-pop button", "Biblioteca de mídia");
+        await click(".kx-pop button", "Mídia");
         result.mvOpen = await waitFor(() => js("Boolean(document.querySelector('.console .mv .mv-grid'))"));
         result.mvMissing = await waitFor(() => js("[...document.querySelectorAll('.mv-cell')].some((n) => n.textContent.includes('Arquivo sumido') && n.textContent.includes('Arquivo não encontrado') && n.textContent.includes('Localizar'))"), 6000);
         const thumb = async (name, modifiers = []) => {
@@ -2377,9 +2377,9 @@ async function checkConsole(webContents, { live, outputs }) {
             await sleep(200);
             return true;
         };
-        // The YouTube link comes from the bar's Enviar menu + one question
+        // The YouTube link comes from the bar's Adicionar menu + one question
         // (PromptDialog), not a field always on screen (Rodada C, fase b).
-        await click(".win-bar button", "Enviar");
+        await click(".win-bar button", "Adicionar");
         await click(".pl-pop .kx-row", "Link do YouTube…");
         await waitFor(() => js("Boolean(document.querySelector('.confirm-dialog .kx-field input'))"), 4000);
         await setVal(".confirm-dialog .kx-field input", "https://youtu.be/dQw4w9WgXcQ");

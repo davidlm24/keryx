@@ -4,7 +4,7 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
 import { CfgKey } from "./parts";
-import { ThemeThumb, NoBgMark } from "../library/BackgroundLibrary";
+import { ThemeThumb, FactoryThumb, NoBgMark } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 import { THEME_FONTS, TEXT_SIZES, defaultTheme, defaultChanges, themeForKind, THEME_KINDS, KIND_FIELD, themeName, themeHasBackground } from "@/lib/console/themes";
@@ -49,7 +49,7 @@ function KindThemes({ c, themes, setDefault }) {
                     return (
                         <button type="button" key={kind} className="kx-t fg-tile tmg-tile" onClick={() => choose(kind, name)} aria-label={`Tema padrão de ${name}: ${what}`} title={`${name} · clique para escolher o tema`}>
                             <span className="tmg-kind">{name}</span>
-                            <span className="fg-img">{t ? <ThemeThumb theme={t} now={c.now} /> : <span className="tmg-plus" />}</span>
+                            <span className="fg-img">{t ? <ThemeThumb theme={t} now={c.now} /> : <FactoryThumb now={c.now} />}</span>
                             <span className="fg-name">{what}</span>
                             <span className="kx-meta tmg-meta">{same ? "o mesmo das músicas" : kind === "lyrics" ? "" : "próprio"}</span>
                         </button>
@@ -125,13 +125,13 @@ export default function TemasSection({ c }) {
                     </button>
                 ))}
             </div>
-            {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Use "Novo tema…", ou ajuste o texto em Camadas e salve como novo.</Empty>}
+            {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Use "Novo tema…": o tema se monta no Editor de temas.</Empty>}
             {/* The backgrounds live in the library (BackgroundLibrary, manage
                 mode); this is its door in Configurações — it was Aparência's
                 until the section dissolved (Rodada B 2026-10-14). The
                 categories are edited in the library too (owner 2026-10-16):
                 the row opens it on them. */}
-            <CfgKey k="Fundos" className="listhead"><span className="kx-section">Fundos <span className="kx-count">· imagens, vídeos, gerados e cores para temas e papéis de parede</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca…</Btn></CfgKey>
+            <CfgKey k="Fundos" className="listhead"><span className="kx-section">Fundos <span className="kx-count">· imagens, vídeos, gerados e cores para temas e papéis de parede</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca de fundos</Btn></CfgKey>
             <CfgKey k="Categorias de fundos" className="kx-row">
                 <span className="kx-glyph"><Icon name="image" /></span>
                 <span className="kx-row-main"><span className="kx-row-title">Categorias de fundos</span><span className="kx-row-meta">{categoryList(storedCats).join(" · ")}</span></span>

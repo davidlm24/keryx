@@ -41,7 +41,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const [category, setCategory] = useState("");
     const [view, setView] = useState(() => { try { return localStorage.getItem("keryx.media.view") || "grid"; } catch { return "grid"; } });
     const [q, setQ] = useState("");
-    const [adding, setAdding] = useState(false); // the Enviar menu in the bar
+    const [adding, setAdding] = useState(false); // the Adicionar menu in the bar
     const [sel, setSel] = useState([]);
     const [anchor, setAnchor] = useState(null);
     const [lead, setLead] = useState(null); // where the arrows move from (C-72)
@@ -123,7 +123,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         c.say(importSummary(result));
         if (created.length) setSel(created.map((r) => r.id));
     };
-    // Link do YouTube… (the Enviar menu): the url comes from one question
+    // Link do YouTube… (the Adicionar menu): the url comes from one question
     // (PromptDialog), not a field always on screen (Rodada C, fase b).
     // Opened from the menu bar (Mídia › Enviar arquivos… / Link do YouTube…):
     // the page opens on that step, once.
@@ -198,7 +198,8 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     // The Voltar chip ("back") and the (x) ("all") leave at once — nothing
     // to guard, the Mídia saves as it goes.
     // The other keys stay the page's own: Enter sends one selected file;
-    // Delete asks to take it out; Ctrl+A selects what is shown. They defer
+    // Delete asks to take it out (Backspace never does: on Windows it is
+    // not a delete key, audit C-11); Ctrl+A selects what is shown. They defer
     // to a dialog over the page (its own scrim does not count) and sleep
     // while another page covers this one; the console's B and L still
     // reach the screens.
@@ -210,7 +211,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         const field = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if (field) return;
         if (e.key === "Enter" && picked.length === 1) { e.preventDefault(); e.stopPropagation(); send(picked[0]); }
-        else if ((e.key === "Delete" || e.key === "Backspace") && picked.length) { e.preventDefault(); e.stopPropagation(); remove(); }
+        else if (e.key === "Delete" && picked.length) { e.preventDefault(); e.stopPropagation(); remove(); }
         else if (e.key === "a" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); setSel(shown.map((m) => m.id)); }
         else if (e.key === "F2" && picked.length === 1) { e.preventDefault(); setRenaming(picked[0].id); }
         else if (!e.ctrlKey && !e.metaKey && !e.altKey && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key) && step(e)) { e.preventDefault(); e.stopPropagation(); }
@@ -235,11 +236,11 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     return (
         <>
         <WinBar title="Mídia" sub={`${media.length} ${media.length === 1 ? "arquivo" : "arquivos"}${totalSize ? ` · ${bytes(totalSize)}` : ""}`}
-            tools={<Field value={q} onChange={setQ} placeholder="Pesquisar na biblioteca" style={{ flex: "0 1 280px", minWidth: 160 }} />}
+            tools={<Field value={q} onChange={setQ} placeholder="Pesquisar na Mídia" style={{ flex: "0 1 280px", minWidth: 160 }} />}
             actions={<span className="pl-popwrap">
-                <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Enviar</Btn>
+                <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn>
                 {adding && <div className="kx-pop pl-pop">
-                    <Row single icon="folder" title="Do computador…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
+                    <Row single icon="folder" title="Enviar arquivos…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
                     <Row single icon="film" title="Link do YouTube…" onClick={() => { setAdding(false); addLink(); }} />
                 </div>}
             </span>} />
@@ -290,7 +291,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                     </div>
                 )}
                 <div className="mv-body" onClick={(e) => { if (e.target === e.currentTarget) setSel([]); }}>
-                    {!shown.length && <Empty icon="film" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Enviar arquivos (vídeos, áudios, imagens, PDF, PowerPoint) ou adicione um link do YouTube."}</Empty>}
+                    {!shown.length && <Empty icon="film" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Enviar arquivos… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
                     {view === "grid" && shown.length > 0 && (
                         <div className="mv-grid" ref={gridRef}>
                             {shown.map((m) => (

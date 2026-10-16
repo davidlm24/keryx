@@ -179,7 +179,7 @@ window minimum; one arrangement kept per tier, `switchTier`):
   centre is the **Programa** on top (the monitor or the Multiview, and the
   player under it, always visible) and one row under it ending at the
   centre's edge — the **Prévia** (44 % of the centre at first; its width is
-  the operator's) and the **Painel de abas** (Notas, Aviso rápido, Timers,
+  the operator's) and the **Painel** (Notas, Aviso rápido, Timers,
   Ferramentas, Esteve no ar). The right column is **Camadas, Temas and the
   Setlist**, full height. The **No ar** strip runs under the Biblioteca, the
   Slides and the centre, the Setlist's column reaching the bottom beside it
@@ -374,6 +374,30 @@ open the Programa monitor draws one still frame (the air never pauses).
   never gets the gold ring while it holds the caret: its focus is a quiet
   inset 1 px line in `fg-3`, grey, at least 3:1 against the field (owner
   2026-10-16), so the operator sees where they type without a gold cue.
+- **Fields** (audit C-21): one look for every text field and select,
+  `kx-input` / `kx-select` (and `kx-field`, an input with a glyph — the
+  `Field` component) in `bundle.css`: 28 px, **24 px with `is-small`**
+  (Configurações' selects, inline renames, the planner's service pick),
+  `bg-2`, a 1 px `line-strong` line on hover, and focus as the quiet 1 px
+  `fg-3` line (5.5:1 on `bg-2`, 4.9:1 on `bg-3`, ≥ 3:1 as WCAG 1.4.11 asks).
+  It is an outline, so a Windows contrast theme keeps it. Disabled dims
+  (`--dim`); `[aria-invalid="true"]` (and the Sincronizar time's `is-bad`)
+  draws the line in `warn`. Textareas are `kx-input` with their own height.
+  The console's older field classes (`pl-input`, `ed-text`, `cfg-select`,
+  `cfg-inline`, `pl-pick`, `fg-input`, `mv-rename`, `qt-min`, `sync-time`,
+  the notes, the Camadas and Bíblia version selects) wear it from one
+  `:where()` block in `console.css` and keep only their width or ground; a
+  new field takes `kx-input` / `kx-select`, never a class of its own. Big
+  search fields keep their size (the palette 40 px, the lyrics search
+  36 px, the quick jump 40 px) and the same states.
+- **Live fill buttons** (audit C-22): *Enviar ao ar* (`kx-btn-prev`),
+  *Destravar* (`kx-btn-rh`) and *Encerrar* / *Excluir* (`kx-btn-air`) step
+  **darker** on hover and when pressed (`--prev-fill-hover`/`-pressed`,
+  `--rh-fill-…`, `--air-fill-…`: white stays 5.6–7.4:1; a lighter shade
+  would drop under 4.5:1). Disabled goes neutral like the gold button
+  (`bg-3`, `fg-3`) and never lights on hover; the focus ring is the gold
+  button's (light `fg-1`, 2 px outside the fill). *Destravar* on the lock
+  banner is 24 px, like every banner button.
 - **Cursor.** Buttons keep the Windows arrow cursor (owner 2026-10-16), as
   in a desktop program; the pointer hand is for links only. Text fields
   show the text cursor, splitters and window edges their resize cursors.

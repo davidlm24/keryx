@@ -18,8 +18,13 @@ import { ConfirmContext } from "../console/ConfirmDialog";
 import useSortable from "../console/useSortable";
 import { moveTo } from "@/lib/console/dropOrder";
 import { useWinCol } from "@/components/console/winLayout";
+import useDraftHistory from "@/hooks/useDraftHistory";
+import { historyKey, hasOwnUndo } from "@/lib/editorHistory";
+import UndoRedo from "./UndoRedo";
 
 const HANDLES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
+// Arrow presses this close together are one Desfazer step.
+const NUDGE_WINDOW = 1000;
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // The screens the Editor edits (every page with settings; Transmissão has
 // no canvas, only its settings). Each starts from its page's ready design
@@ -66,6 +71,10 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
 
     const [draft, setDraft] = useState(null);
     const [saved, setSaved] = useState(null);
+    // Desfazer / Refazer over the drawing (audit C-33): a load, Salvar and
+    // Voltar à página padrão empty it; another screen remounts the editor.
+    const history = useDraftHistory(draft, setDraft);
+    const resetHistory = history.reset; // one identity for the editor's life
     const [own, setOwn] = useState(false); // the row has a design of its own
     const [sel, setSel] = useState(null);
     const [adding, setAdding] = useState(false);
@@ -108,10 +117,11 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
             const start = base ? normalizeLayout({ ...base, factory: false }) : seedFor(path);
             setDraft(start);
             setSaved(start);
+            resetHistory(start);
             setOwn(Boolean(base));
-        }).catch(() => { if (!alive) return; loaded.current = true; const seed = seedFor(path); setDraft(seed); setSaved(seed); });
+        }).catch(() => { if (!alive) return; loaded.current = true; const seed = seedFor(path); setDraft(seed); setSaved(seed); resetHistory(seed); });
         return () => { alive = false; };
-    }, [path, isStream]);
+    }, [path, isStream, resetHistory]);
 
     const dirty = useMemo(() => !sameJson(designFields(draft), designFields(saved)), [draft, saved]);
     const set = (patch) => { setConfirm(null); setDraft((d) => ({ ...d, ...patch })); };
@@ -144,6 +154,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
             const fields = { design: designFields(draft), layout_id: "" };
             const next = row ? await keryx.entities.OutputPref.update(row.id, fields) : await keryx.entities.OutputPref.create({ screen_path: path, ...fields });
             setSaved(normalizeLayout({ ...draft }));
+            history.reset();
             setOwn(true);
             say(`${name} salva. A janela e as telas na rede já mudaram.`);
             setBusy(false);
@@ -161,7 +172,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
         try {
             if (row && own) await keryx.entities.OutputPref.update(row.id, { design: null, layout_id: "" });
             const seed = seedFor(path);
-            setDraft(seed); setSaved(seed); setSel(null); setOwn(false);
+            setDraft(seed); setSaved(seed); history.reset(seed); setSel(null); setOwn(false);
             say(`${name} voltou à página padrão.`);
         } catch (err) { say(err?.message || "Não foi possível."); }
     };
@@ -202,6 +213,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
         setSel(el.id);
         e.currentTarget.setPointerCapture?.(e.pointerId);
         drag.current = { id: el.id, handle, from: pct(e), rect0: { x: el.x, y: el.y, w: el.w, h: el.h }, moved: false };
+        history.begin(`drag:${el.id}:${Date.now()}`); // the whole drag is one step
     };
     const onMove = (e) => {
         const d = drag.current;
@@ -216,9 +228,12 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
         setGuides(snapped.guides);
         setEl(d.id, snapped.rect);
     };
-    const endDrag = () => { if (drag.current?.moved) setConfirm(null); drag.current = null; setGuides([]); };
+    const endDrag = () => { if (drag.current?.moved) setConfirm(null); if (drag.current) history.end(); drag.current = null; setGuides([]); };
 
-    // Keys: arrows nudge, Delete removes, Ctrl+D duplicates, Ctrl+S saves;
+    // Keys: arrows nudge, Delete removes (Backspace never does: on Windows
+    // it is not a delete key, audit C-11), Ctrl+D duplicates, Ctrl+S saves,
+    // Ctrl+Z undoes and Ctrl+Y / Ctrl+Shift+Z redo (a text field keeps its
+    // own while it has the focus, audit C-33);
     // Esc steps out (field, picker, selection, then the window). Hosted in
     // the console's window (escRef set), Esc comes routed from the console
     // instead (keys.js ESC_ORDER "window"), stepping out the same way; the
@@ -238,6 +253,8 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
         if (document.querySelector(".console .ctx-scrim, .console .confirm-scrim")) return;
         const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft) save(); return; }
+        const hk = draft ? historyKey(e, hasOwnUndo(e.target)) : null;
+        if (hk) { e.preventDefault(); e.stopPropagation(); setConfirm(null); history[hk](); return; }
         if (e.key === "Escape") {
             if (escRef) return; // the console routes it
             e.preventDefault(); e.stopPropagation();
@@ -251,8 +268,8 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
         if (typing || !selected) return;
         const step = e.shiftKey ? 5 : 1;
         const nudge = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
-        if (nudge) { e.preventDefault(); e.stopPropagation(); setConfirm(null); setEl(selected.id, moveRect(selected, nudge[0], nudge[1])); return; }
-        if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); e.stopPropagation(); remove(selected.id); return; }
+        if (nudge) { e.preventDefault(); e.stopPropagation(); setConfirm(null); history.mark(`nudge:${selected.id}`, NUDGE_WINDOW); setEl(selected.id, moveRect(selected, nudge[0], nudge[1])); return; }
+        if (e.key === "Delete") { e.preventDefault(); e.stopPropagation(); remove(selected.id); return; }
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") { e.preventDefault(); e.stopPropagation(); duplicateEl(selected); }
     };
     useEffect(() => {
@@ -333,7 +350,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
                     <input ref={bgFileRef} type="file" hidden accept="image/*" onChange={(e) => { upload(e.target.files?.[0], (url) => { set({ background: { ...draft.background, image: url } }); setPickBgImage(false); }); e.target.value = ""; }} />
                     <div className="nv-scroll cfg">
-                        {isStream && <div className="listhead"><span className="kx-meta">A Transmissão é uma legenda sobre a live, sem canvas: só os ajustes abaixo.</span></div>}
+                        {isStream && <div className="listhead"><span className="kx-meta">A Transmissão é uma legenda sobre a transmissão ao vivo, sem canvas: só os ajustes abaixo.</span></div>}
                         {!isStream && tab === "desenho" && draft && <>
                         <div className="frm nv-frm">
                             <span className="k">Fundo</span>
@@ -542,7 +559,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                     )}
                     {draft && !isStream && (
                         <div className="listhead nv-note">
-                            <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã. Elementos escondidos agora aparecem esmaecidos.{path === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o desenho." : ""}</span>
+                            <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã, Delete tira o elemento, Ctrl+Z desfaz. Elementos escondidos agora aparecem esmaecidos.{path === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o desenho." : ""}</span>
                         </div>
                     )}
                 </Panel>
@@ -556,6 +573,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
             <WinBar title="Editor da tela" sub={`${name}${dirty ? " · não salvo" : ""}`}
                 tools={!isStream && <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />}
                 actions={!isStream && <>
+                    <UndoRedo history={history} />
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={busy || !draft} onClick={save} title="Ctrl+S">Salvar a tela</Btn>
                 </>}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { remember, forget, localId } from "@/lib/console/outputs";
-import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
+import { bundledBackgrounds } from "@/lib/backgrounds";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { backgroundList, sourceOf } from "@/lib/console/backgroundPrefs";
 import { useUser } from "@/hooks/useUser";
@@ -88,8 +88,7 @@ export function useLibrary() {
 // (BackgroundPref, src/lib/console/backgroundPrefs.js): the ones that ship
 // with KERYX by factory category, then the church's own backgrounds (Media
 // rows of category "background": sent or brought in through the library).
-const BUNDLED = [...new Set(Object.values(BACKGROUNDS).flat())]
-    .map((id) => ({ id, url: backgroundUrl(id), category: Object.keys(BACKGROUNDS).find((k) => BACKGROUNDS[k].includes(id)) }));
+const BUNDLED = bundledBackgrounds();
 // Whether the church wants the forecast of the service's end and the delay
 // ("termina ~", "passou N min"): Configurações › Culto, off by default.
 export function useShowForecast() {
