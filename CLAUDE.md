@@ -253,7 +253,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   materials `inherit` like songs.
   Deleting from a right-click menu ("Excluir…": songs, media, avisos,
   themes) always asks first through `useConfirm()` (`ConfirmDialog.jsx`;
-  Esc answers no, before anything else). The Prévia's width is the
+  Esc answers no, before anything else). **A question that cannot be
+  taken back opens on Cancelar** (audit C-10, `focusesCancel` in
+  `src/lib/console/confirm.js`, tested): Excluir and Descartar by their
+  verb, any other action with `danger: true` (Trocar o código, Juntar,
+  Substituir, Voltar ao padrão, Tirar da turma), so Enter — the
+  operator's send reflex — answers no; the action is Tab or a click. The
+  others (Tirar da setlist, Remover saída, Sair…) open on the action.
+  Encerrar (`EndDialog`) keeps its action focused: it has Desfazer. The Prévia's width is the
   operator's (`layout.prevPct`, the splitter beside it; the Programa gives
   way, `--prev` in console.css); the Próximo sits beside it.
   **Temas** (owner's reviews 2026-10-14, as Holyrics' theme column): a
@@ -774,7 +781,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   element from the window's pool by url (`src/lib/mediaPool.js`, tested),
   so the player that unmounts hands it to the one that mounts in the same
   commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
-  a test); a mouse click must not leave focus on a control, Esc closes the
+  a test); a mouse click must not leave focus on a control (a select
+  gives it back on the `change` that ends a mouse pick, never on the
+  click, which would close its list: `blurSelectsAfterPick` in
+  `src/lib/console/selectPick.js`, tested, in the console and `/Janela`).
+  **A focused select is a control, never text** (audit C-03: as text it
+  took every live key, and typing a reference switched the Bíblia's
+  edition): it keeps ↑/↓, PageUp/PageDown, Space and the letters the
+  console does not use (its type-ahead); Enter, ←/→, B/L/C, Esc, / and
+  the Bíblia's quick jump are the console's, which prevents the select's
+  own default where it acts on one. Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background
   library, a popover, then THE window — one level of its stack, routed to
   the top page's close request — then the Camadas drawer) and with nothing
