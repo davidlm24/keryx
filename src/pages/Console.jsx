@@ -1316,7 +1316,7 @@ export default function Console() {
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
                 <div className="kx-banner is-warn" role="alert">
-                    <span className="kx-alert-title">{health.banner.row.key === "/Projection" ? "Projetor" : health.banner.row.name} · Reconectando… tentativa {tries}</span>
+                    <span className="kx-alert-title">{health.banner.row.name} · Reconectando… tentativa {tries}</span>
                     <span className="kx-sub">ATENÇÃO · {health.banner.row.key === "/Projection" ? `última conexão boa às ${hhmm(lastOkAt)} · ` : ""}o monitor escolhido não está ligado</span>
                     <span className="kx-spacer" />
                     <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("black")}>Tela preta</button>

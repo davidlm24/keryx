@@ -9,7 +9,7 @@ export const churchLine = (name, city) => [clean(name), clean(city)].filter(Bool
 
 // The window's (or the browser tab's) title: the console is the church's
 // KERYX; a screen on the network says which screen it is, and where.
-//   screen: that page's name (Palco, Tela do pastor, ...) or "" for the console.
+//   screen: that page's name (Palco, Pastor, ...) or "" for the console.
 export function windowTitle({ name = "", screen = "" } = {}) {
     const church = clean(name);
     if (screen) return `${screen} · ${church || "KERYX"}`;

@@ -69,7 +69,7 @@ export function createPreviewBridge() {
         },
         async set(key, a) {
             if (a && a.removed === true) {
-                if (key === "/Projection") return { error: { message: "A Projeção principal não pode ser removida.", status: 400 } };
+                if (key === "/Projection") return { error: { message: "A Projeção não pode ser removida.", status: 400 } };
                 removedKeys.add(key);
                 windows.get(key)?.close();
                 windows.delete(key);

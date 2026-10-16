@@ -185,7 +185,7 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
     // restores the same screen and "Abrir ao iniciar".
     function setAssignment(key, assignment) {
         if (!outputForKey(key)) throw new Error(`Saída desconhecida: ${key}`);
-        if (assignment && assignment.removed === true && !canRemove(key)) throw new Error("A Projeção principal não pode ser removida.");
+        if (assignment && assignment.removed === true && !canRemove(key)) throw new Error("A Projeção não pode ser removida.");
         const next = normalizeAssignment({ ...assignmentFor(key), ...(assignment || {}) });
         settings.set(SETTINGS_KEY, { ...assignments(), [key]: next });
         const win = windows.get(key);

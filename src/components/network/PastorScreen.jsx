@@ -38,7 +38,7 @@ export default function PastorScreen({ live, nowMs, logo, upcoming = [], hasServ
           <div className="net-pastor">
             <header className="np-h">
                 <div className="np-who">
-                    <b>{church?.name || "Tela do pastor"}</b>
+                    <b>{church?.name || "Pastor"}</b>
                     <span>{upperFirst(now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }))}{church?.city ? ` · ${church.city}` : ""}</span>
                 </div>
                 {show.clock && <div className="np-time">

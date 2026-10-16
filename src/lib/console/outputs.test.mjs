@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { remember, forget, outputHealth, rowStatus, netId, localId, showsOn, byGroup, groupOf } from "./outputs.js";
 
-const proj = (open, missing = false) => ({ key: "/Projection", label: "Projeção principal", open, placement: { mode: "fullscreen", displayId: 2, missing } });
+const proj = (open, missing = false) => ({ key: "/Projection", label: "Projeção", open, placement: { mode: "fullscreen", displayId: 2, missing } });
 const stage = (open) => ({ key: "/StageView", label: "Palco", open, placement: { mode: "window", displayId: null, missing: false } });
 const tv = { ip: "::ffff:192.168.0.24", screen: "/LyricProjection", label: "Letras", agent: "SmartTV", since: "a" };
 const at = (h, m) => new Date(2026, 9, 9, h, m).getTime();
@@ -66,7 +66,7 @@ test("an output window that closes is Fechada with Reabrir; it clears when reope
     let h = outputHealth({ outputs: [proj(false)], seen });
     assert.equal(h.rows[0].state, "closed");
     assert.equal(h.banner.kind, "closed");
-    assert.equal(h.banner.title, "Projeção principal fechada às 19:30");
+    assert.equal(h.banner.title, "Projeção fechada às 19:30");
     assert.deepEqual(h.onAir, { text: "em nenhuma tela", short: "nenhuma tela", warn: true });
     seen = remember(seen, { outputs: [proj(true)] }, at(19, 31));
     h = outputHealth({ outputs: [proj(true)], seen });
@@ -151,7 +151,7 @@ test("outputs group by what they are for: Público, Palco, Transmissão", () => 
     const h = outputHealth({ outputs: [proj(true), stage(true)], seen, air: "Canto" });
     const groups = byGroup(h.rows, (r) => (r.local ? r.key : r.screen));
     assert.deepEqual(groups.map((g) => [g.label, g.items.map((r) => r.name)]), [
-        ["Público", ["Projeção principal", "Letras"]],
+        ["Público", ["Projeção", "Letras"]],
         ["Palco", ["Palco"]],
         ["Transmissão", ["Transmissão"]],
     ]);
