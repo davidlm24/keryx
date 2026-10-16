@@ -260,7 +260,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Substituir, Voltar ao padrão, Tirar da turma), so Enter — the
   operator's send reflex — answers no; the action is Tab or a click. The
   others (Tirar da setlist, Remover saída, Sair…) open on the action.
-  Encerrar (`EndDialog`) keeps its action focused: it has Desfazer. The Prévia's width is the
+  Encerrar (`EndDialog`) keeps its action focused: it has Desfazer.
+  **Buttons in Windows order** (audit C-74): the action, then Cancelar on
+  the right — ConfirmDialog, PromptDialog, Encerrar, the background
+  library and the native close guard (`closeGuard.cjs`, safe answer the
+  default and Esc), as the import/restore questions already were. The Prévia's width is the
   operator's (`layout.prevPct`, the splitter beside it; the Programa gives
   way, `--prev` in console.css); the Próximo sits beside it.
   **Temas** (owner's reviews 2026-10-14, as Holyrics' theme column): a
