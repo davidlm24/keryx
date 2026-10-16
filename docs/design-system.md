@@ -381,6 +381,17 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
   the left padding, so the text keeps its place. One rule in
   `console.css`. A list goes edge to edge only when the owner asks for it
   (the Slides column and No ar, to gain room).
+- **Dragging in a list** (owner 2026-10-16, Rodada E2: "bigger dragging
+  cards… a slight card highlight where it will drop"): the pointer carries
+  a card the size of the row, `bg-3`, its icon in `brand`, title and time,
+  lifted (scale 1.03, a deep shadow). Where it will land a slot lights up:
+  a card-shaped placeholder, `brand` at 16 % over `bg-1` with an inset
+  line of `brand` at 60 % — the dragged row itself, moved there, or a
+  placeholder of a row's height for a song from the Biblioteca. The rows
+  around it glide (180 ms, `ease-out`); on the drop the card settles into
+  the slot (180 ms) before the list re-renders. A drop onto the Prévia or
+  the Programa lets the card fade. Reduced motion: the same states, no
+  animation.
 - Slides and verses are **cards** in the console (owner 2026-10-14;
   `console.css` over `bundle.css`'s `kx-slide` and `kx-verse` rows): a
   `bg-2` card with `radius-control`, 4 px apart, and the state is the
