@@ -22,6 +22,9 @@ function fakeWindow() {
         isFocused: () => false,
         setFullScreen: (v) => { calls.push(["setFullScreen", v]); win.fullScreen = v; },
         setSkipTaskbar: (v) => calls.push(["setSkipTaskbar", v]),
+        onTop: false,
+        setAlwaysOnTop: (v, level) => { calls.push(["setAlwaysOnTop", v, level]); win.onTop = v; },
+        isAlwaysOnTop: () => win.onTop,
         setBounds: (b) => { calls.push(["setBounds"]); win.bounds = b; },
         getBounds: () => win.bounds,
         showInactive: () => calls.push(["showInactive"]),
@@ -55,6 +58,21 @@ test("outputs stay out of the taskbar, full screen or in a window", () => {
     const one = manager({ monitors: [display(1, 0, true)] });
     assert.deepEqual(one.outputs.windowOptions("/Projection"), { skipTaskbar: true, type: "toolbar" });
     assert.deepEqual(one.outputs.windowOptions("/StageView"), { skipTaskbar: true, type: "toolbar" });
+});
+
+test("a full-screen output stays on top on its own monitor, never over the console (0.2.18)", () => {
+    // Two monitors, the console on the primary: the projector on the second stays on top.
+    const two = manager({ monitors: [display(1, 0, true), display(2, 1920, false)] });
+    assert.equal(two.outputs.windowOptions("/Projection").alwaysOnTop, true, "on creation");
+    two.outputs.open("/Projection");
+    const [{ win }] = two.opened;
+    assert.ok(win.calls.some((c) => c[0] === "setAlwaysOnTop" && c[1] === true && c[2] === "screen-saver"));
+    assert.equal(two.outputs.trackedWindows()[0].alwaysOnTop, true);
+    // One monitor: a window, never on top (it would hide the console).
+    const one = manager({ monitors: [display(1, 0, true)] });
+    assert.equal(one.outputs.windowOptions("/Projection").alwaysOnTop, undefined);
+    one.outputs.open("/Projection");
+    assert.equal(one.opened[0].win.calls.some((c) => c[0] === "setAlwaysOnTop" && c[1] === true), false);
 });
 
 test("open passes skipTaskbar at creation; track sets it before full screen", () => {

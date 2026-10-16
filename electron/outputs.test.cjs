@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
-    OUTPUTS, outputForKey, outputKeyForUrl, displayRef, findDisplay, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
+    OUTPUTS, staysOnTop, outputForKey, outputKeyForUrl, displayRef, findDisplay, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
 } = require("./outputs.cjs");
 
 const display = (id, x, { primary = false, label = `Monitor ${id}`, width = 1920, height = 1080 } = {}) => ({
@@ -98,4 +98,13 @@ test("removed is kept only when exactly true; the rest of the entry stays", () =
 test("the main projection cannot be removed; every other output can", () => {
     assert.equal(canRemove("/Projection"), false);
     for (const o of OUTPUTS) if (o.key !== "/Projection") assert.equal(canRemove(o.key), true, o.key);
+});
+
+test("an output stays on top only full screen off the console's monitor (0.2.18)", () => {
+    const tv = { id: 2 };
+    assert.equal(staysOnTop({ mode: "fullscreen", display: tv }, 1), true);
+    assert.equal(staysOnTop({ mode: "fullscreen", display: tv }, 2), false, "the console's own monitor: never over it");
+    assert.equal(staysOnTop({ mode: "window" }, 1), false);
+    assert.equal(staysOnTop({ mode: "window", missing: true }, 1), false);
+    assert.equal(staysOnTop(null, 1), false);
 });

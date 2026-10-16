@@ -100,6 +100,9 @@ export function backgroundLook(prefs, url) {
 //                  fundo (the item's background for the Fundo layer, a
 //                  picture or a clip) -> fundo.dim/blur
 //   background.set a picture or a clip     -> dim/blur
+//   background.default the papel de parede Esc puts back -> its dim/blur,
+//                  so Esc brings it back as it was (0.2.18: without them
+//                  the renderer's 45 % fallback darkened it after Esc)
 //   communication.show  an aviso's (or each of a sequence's) background_image
 //                  -> its background_dim/_blur
 //   idle.set       the wallpaper (url)     -> dim/blur (idle.set keeps a given look)
@@ -128,6 +131,10 @@ export function withBackgroundDefaults(op, args, prefs) {
         return style === args.style && fundo === args.fundo ? args : { ...args, style, ...(fundo ? { fundo } : {}) };
     }
     if (op === "background.set") return fillBg(args);
+    if (op === "background.default" && args.background) {
+        const background = fillBg(args.background);
+        return background === args.background ? args : { ...args, background };
+    }
     if (op === "communication.show") {
         const item = fill(args.item, "background_image");
         const playlist = Array.isArray(args.playlist) ? args.playlist.map((p) => fill(p, "background_image")) : args.playlist;

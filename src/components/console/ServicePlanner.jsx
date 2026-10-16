@@ -7,6 +7,7 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "./kx";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
+import { takeOut, takeOutQuestion } from "./setlistActions";
 import useSortable from "./useSortable";
 import { moveTo } from "@/lib/console/dropOrder";
 import { parseReference, formatReference } from "@/lib/bibleBooks";
@@ -59,7 +60,6 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const [pick, setPick] = useState("");
     const [pop, setPop] = useState(null); // "tpl" | "saveTpl"
     const [tplName, setTplName] = useState("");
-    const [confirm, setConfirm] = useState(null);
     const ask = useConfirm();
 
 
@@ -100,11 +100,12 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
         list.splice(at, 0, copy);
         await run(renumber(list), "Item duplicado.");
     };
+    // Tirar da setlist: the same question and action as the console's
+    // Setlist (setlistActions.js, 0.2.18).
     const removeItem = async (it) => {
-        if (confirm !== `item:${it.id}`) { setConfirm(`item:${it.id}`); c.say(`Clique de novo para tirar "${it.title}" da setlist.`); return; }
-        setConfirm(null);
+        if (!(await ask(takeOutQuestion(it)))) return;
         setSel(null);
-        await run(keryx.entities.ServiceItem.delete(it.id).then(() => renumber(items.filter((x) => x.id !== it.id))), "Item removido.");
+        await run(takeOut(it), isSection(it) ? "Seção tirada da setlist." : "Item tirado da setlist.");
     };
 
     // The Bible button: a reference ("Jo 3:16-21") becomes a passage item.
@@ -292,7 +293,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                         <span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span>
                                         <span className="kx-section">{it.title}</span><span className="kx-count"> · {sec.count} {sec.count === 1 ? "item" : "itens"} · {total(sec.seconds)}</span>
                                         <span style={{ flex: 1 }} />
-                                        <span className="kx-row-acts"><IconBtn name="x" small title="Tirar a seção" onClick={(e) => { e.stopPropagation(); removeItem(it); }} /></span>
+                                        <span className="kx-row-acts"><IconBtn name="x" small title="Tirar a seção…" onClick={(e) => { e.stopPropagation(); removeItem(it); }} /></span>
                                     </div>
                                 );
                             }
@@ -317,7 +318,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                                 {it.type === "SONG" && it.contentId && onEditSong && <Btn small onClick={() => onEditSong(it.contentId)} title="Letra, dados e estilo, na mesma janela · Voltar traz o culto de volta">Editar a música…</Btn>}
                                                 <Btn small onClick={() => updateItem(it.id, { enabled: it.enabled === false })}>{it.enabled === false ? "Ativar" : "Desativar"}</Btn>
                                                 <Btn small onClick={() => duplicate(it)}>Duplicar</Btn>
-                                                <Btn small kind={confirm === `item:${it.id}` ? "air" : ""} onClick={() => removeItem(it)}>{confirm === `item:${it.id}` ? "Tirar mesmo" : "Tirar da setlist"}</Btn>
+                                                <Btn small onClick={() => removeItem(it)}>Tirar da setlist…</Btn>
                                             </div>
                                         </div>
                                     )}
