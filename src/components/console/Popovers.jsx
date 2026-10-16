@@ -146,7 +146,7 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
                     // no taskbar button). Network rows have no switch: the
                     // console cannot reopen a tablet.
                     <div key={r.id} className={`kx-out is-tall ${r.local ? "has-sw" : ""} ${TONE_CLS[st.tone]}`}>
-                        {r.local && <Switch on={Boolean(st.switchOn)} onChange={(on) => (on ? onOpen(r.key) : onClose(r.key))} label={`${st.switchOn ? "Fechar" : "Abrir"} ${r.name}`} />}
+                        {r.local && <Switch on={Boolean(st.switchOn)} onChange={(on) => (on ? onOpen(r.key) : onClose(r.key))} label={st.switchOn ? `Fechar ${r.name} · Ctrl+W na própria saída` : `Abrir ${r.name}`} />}
                         <span className="kx-glyph"><Icon name={icon} /></span>
                         <div style={{ minWidth: 0 }}>
                             {r.local && st.switchOn
@@ -264,8 +264,8 @@ export function EndDialog({ open, setOpen, onEnd }) {
             <div>Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
             <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta (B).</div>
             <div className="acts">
-                <Btn onClick={() => setOpen(null)}>Cancelar</Btn>
                 <button ref={goRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => { onEnd(); setOpen(null); }}>Encerrar</button>
+                <Btn onClick={() => setOpen(null)}>Cancelar</Btn>
             </div>
         </div>
     );

@@ -68,6 +68,7 @@ import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, ZONE_LABEL }
 import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, nameProblem } from "@/lib/console/dockPresets";
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
+import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
@@ -84,6 +85,10 @@ import { remoteState, remoteSay, passagePreview } from "@/lib/console/remote";
 // church's old preference (console_hidden_modules) only seeds a console
 // whose arrangement was never changed.
 const VER_MODULES = VER_LIST.map(([id]) => id);
+
+// Where a control keeps the focus after a mouse click: overlays that run
+// their own keys (a question, the palette, the quick jump…).
+const KEEPS_FOCUS = ".dialog, .palette, .qj, .lyr, .addmenu";
 
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
 const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LOG_KEY(serviceId)) || "{}"); } catch { return {}; } };
@@ -856,9 +861,11 @@ export default function Console() {
                 if (env === "biblia") bibleApiRef.current?.move(d);
                 else selectSlide(d);
             }
-            else if (action === "black") c.toggleScreen("black");
-            else if (action === "logo") c.toggleScreen("logo");
-            else if (action === "clear") c.clearText();
+            // B, L and C prevent their default: a select focused with Tab
+            // would also jump to its option starting with that letter.
+            else if (action === "black") { e.preventDefault(); c.toggleScreen("black"); }
+            else if (action === "logo") { e.preventDefault(); c.toggleScreen("logo"); }
+            else if (action === "clear") { e.preventDefault(); c.clearText(); }
             else if (action === "end") {
                 e.preventDefault();
                 c.end(); // nothing open (escapeTarget above); its toast offers Desfazer
@@ -880,12 +887,14 @@ export default function Console() {
     // would then belong to that control (the "keys don't work" bug). Keyboard
     // activation (detail 0) keeps focus, so Tab navigation still works. A
     // slider too: one left focused kept PageUp/PageDown, so a presentation
-    // clicker moved the player's volume instead of the page.
+    // clicker moved the player's volume instead of the page. A select gives
+    // it back after a mouse pick, on its change (selectPick.js, audit C-03).
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
         const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href], input[type='range']");
-        if (t && !t.closest(".dialog, .palette, .qj, .lyr, .addmenu")) setTimeout(() => t.blur?.(), 0);
+        if (t && !t.closest(KEEPS_FOCUS)) setTimeout(() => t.blur?.(), 0);
     };
+    useEffect(() => blurSelectsAfterPick(window, { skip: KEEPS_FOCUS }), []);
 
     // Where the culto environment's modules go (Ver › Editar disposição;
     // src/lib/console/dock.js): the operator's tree, or, until they change
