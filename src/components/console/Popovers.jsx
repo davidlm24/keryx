@@ -2,6 +2,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { versionsBetween, parseNotes } from "@/lib/console/releaseNotes";
 import { RELEASE_NOTES } from "@/lib/console/releaseNotesData";
 import ShortcutList from "./ShortcutList";
+import { keyHint } from "@/lib/console/keys";
+import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
 import { MenuList, useFocusFirst } from "./Menu";
@@ -25,6 +27,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 // Ajuda — Atalhos, Novidades, Sobre, Atualizar (O topo, 2026-10-15). Ver is
 // the eye beside the bell.
 export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow, onWhatsNew }) {
+    const helpKey = keyHint("help", usePrefs().letter_keys);
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     // Every list here is the console's one menu (Menu.jsx MenuList): it takes
     // the focus, the arrows walk it, Esc and Tab close it (C-14, C-15).
@@ -47,7 +50,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             "sep",
             { label: editing ? "Concluir a edição" : "Editar disposição", icon: "grip", checked: editing, onSelect: onEditLayout, title: "Mudar os módulos de lugar, salvar disposições com nome · Esc conclui" },
             { label: "Restaurar disposição", onSelect: () => { restoreLayout(); setOpen(null); } },
-            { label: "Atalhos", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
+            { label: "Atalhos", icon: "keyboard", kbd: helpKey, onSelect: () => setOpen("atalhos") },
         ];
         return (
             // Under the top bar's Ver button, its right edge on the button's.
@@ -77,7 +80,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
         "sep",
         { label: "Saídas", icon: "monitor", onSelect: () => setOpen("outs") },
         { label: "Verificar tudo", icon: "check", onSelect: () => setOpen("verificar") },
-        { label: "Atalhos", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
+        { label: "Atalhos", icon: "keyboard", kbd: helpKey, onSelect: () => setOpen("atalhos") },
         { label: "Novidades", icon: "star", onSelect: () => onWhatsNew?.() },
         { label: "Configurações", icon: "sliders", onSelect: go(() => onSettings?.("telas")) },
         { label: "Sobre o KERYX", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
@@ -257,6 +260,7 @@ export function History({ open, setOpen, history, onPick, anchor = null }) {
 // is the immediate emergency action and never asks.
 export function EndDialog({ open, setOpen, onEnd }) {
     const goRef = useRef(null);
+    const blackKey = keyHint("black", usePrefs().letter_keys);
     useEffect(() => { if (open === "encerrar") setTimeout(() => goRef.current?.focus(), 0); }, [open]);
     // Tab stays here; back to the pill's button after a keyboard open (C-12).
     const boxRef = useRef(null);
@@ -266,7 +270,7 @@ export function EndDialog({ open, setOpen, onEnd }) {
         <div ref={boxRef} className="dialog" role="alertdialog" aria-modal="true" aria-label="Encerrar a projeção" aria-describedby="end-dialog-text">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>Encerrar a projeção?</div>
             <div id="end-dialog-text">Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
-            <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta (B).</div>
+            <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta{blackKey ? ` (${blackKey})` : ""}.</div>
             <div className="acts">
                 <button ref={goRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => { onEnd(); setOpen(null); }}>Encerrar</button>
                 <Btn onClick={() => setOpen(null)}>Cancelar</Btn>

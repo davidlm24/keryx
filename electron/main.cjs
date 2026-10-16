@@ -19,6 +19,7 @@ const { createLive, loadLiveRules } = require("./live.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
+const { createConsoleZoom, zoomCommand } = require("./consoleZoom.cjs");
 const windowState = require("./windowState.cjs");
 const schema = require("./db/schema.json");
 
@@ -98,6 +99,8 @@ let sync = null;
 // for the close guard (electron/closeGuard.cjs).
 let liveRules = null;
 let appSettings = null;
+// The console's zoom (Ctrl+= / Ctrl+− / Ctrl+0, electron/consoleZoom.cjs).
+let consoleZoom = null;
 // The bell, set once the notifications exist (a window can crash before then).
 let notify = () => {};
 // A quit already decided (app.quit: the updater, the menu, the guard's
@@ -216,6 +219,16 @@ function guardWindow(win) {
         if (isAppUrl(url)) return;
         event.preventDefault();
         if (/^https?:/i.test(url)) shell.openExternal(url);
+    });
+
+    // No free zoom in any window (audit C-91): pinch stays at 100 % (Electron's
+    // default, pinned), and should Chromium zoom on its own (the page blocks
+    // Ctrl+wheel, src/main.jsx) the console goes back to its saved step and
+    // any other window to 100 % — the projector never zooms.
+    webContents.on("did-finish-load", () => { webContents.setVisualZoomLevelLimits(1, 1).catch(() => {}); });
+    webContents.on("zoom-changed", () => {
+        if (win === mainWindow && consoleZoom) consoleZoom.apply(win);
+        else if (!win.isDestroyed()) webContents.setZoomFactor(1);
     });
 
     webContents.on("did-create-window", (child, details) => {
@@ -359,9 +372,18 @@ function createMainWindow(settings) {
         ...(process.platform === "win32"
             ? { titleBarStyle: "hidden", titleBarOverlay: { color: BG, symbolColor: TITLEBAR_SYMBOLS, height: TITLEBAR_HEIGHT } }
             : {}),
-        webPreferences,
+        // Zoom per window, never per host: every output is on the same
+        // 127.0.0.1, and the default mode would zoom the projector with the
+        // console (electron/consoleZoom.cjs).
+        webPreferences: { ...webPreferences, zoomMode: "isolated", zoomFactor: consoleZoom ? consoleZoom.get() : 1 },
     });
     guardWindow(mainWindow);
+    mainWindow.webContents.on("before-input-event", (event, input) => {
+        const cmd = consoleZoom && zoomCommand(input);
+        if (!cmd) return;
+        event.preventDefault();
+        consoleZoom.command(cmd);
+    });
     mainWindow.once("ready-to-show", () => {
         if (placement.maximized) mainWindow.maximize();
         mainWindow.show();
@@ -473,6 +495,11 @@ app.whenReady().then(async () => {
 
     const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
     appSettings = settings;
+    consoleZoom = createConsoleZoom({
+        settings,
+        getWindow: () => mainWindow,
+        notify: (z) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("keryx:zoom", z); },
+    });
     // First run: the main projector opens with the app (the operator can
     // turn it off in Telas e saídas). Smoke runs manage outputs themselves.
     if (!SMOKE && settings.get("outputs") === undefined) {
@@ -528,7 +555,7 @@ app.whenReady().then(async () => {
         settings.set("lastVersion", version);
         settings.set("pendingNotes", null);
     }
-    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, syncInfo: () => (sync ? sync.status() : null) });
+    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, consoleZoom, syncInfo: () => (sync ? sync.status() : null) });
     try {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }

@@ -14,6 +14,8 @@ import { useOutputPref } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { pendingUrls } from "@/lib/pendingMedia";
+import { keyHint } from "@/lib/console/keys";
+import { usePrefs } from "@/hooks/useUser";
 import ClipTitle from "./ClipTitle";
 
 // What the Prévia would look like on air: the stage applied with the live
@@ -122,11 +124,14 @@ export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHis
 // left the top bar).
 export function ScreenActions({ c, onEnd, className = "" }) {
     const { live } = c;
+    // The keys as the church's "Teclas de uma letra" say (keys.js keyHint).
+    const letters = usePrefs().letter_keys;
+    const k = (action) => { const h = keyHint(action, letters); return h ? ` · ${h}` : ""; };
     return (
         <span className={`pp-screens ${className}`} role="group" aria-label="Telas: ações que mudam o que o público vê">
-            {btn({ className: live?.screen === "black" ? "is-on" : "", "aria-pressed": live?.screen === "black", "aria-label": "Tela preta", title: "Tela preta · B · nas telas, na hora", onClick: () => c.toggleScreen("black") }, "black")}
-            {btn({ className: live?.screen === "logo" ? "is-on" : "", "aria-pressed": live?.screen === "logo", "aria-label": "Mostrar logo", title: "Mostrar logo · L · nas telas", onClick: () => c.toggleScreen("logo") }, "logo")}
-            {btn({ "aria-label": "Limpar texto", title: "Limpar texto · C", onClick: c.clearText }, "eraser")}
+            {btn({ className: live?.screen === "black" ? "is-on" : "", "aria-pressed": live?.screen === "black", "aria-label": "Tela preta", title: `Tela preta${k("black")} · nas telas, na hora`, onClick: () => c.toggleScreen("black") }, "black")}
+            {btn({ className: live?.screen === "logo" ? "is-on" : "", "aria-pressed": live?.screen === "logo", "aria-label": "Mostrar logo", title: `Mostrar logo${k("logo")} · nas telas`, onClick: () => c.toggleScreen("logo") }, "logo")}
+            {btn({ "aria-label": "Limpar texto", title: `Limpar texto${k("clear")}`, onClick: c.clearText }, "eraser")}
             {onEnd && btn({ "aria-label": "Encerrar a projeção", title: "Encerrar a projeção (pergunta antes) · Esc encerra na hora", onClick: onEnd }, "stop")}
         </span>
     );

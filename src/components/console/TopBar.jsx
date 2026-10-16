@@ -1,7 +1,9 @@
 import React from "react";
 import Icon from "./Icon";
-import { IconBtn } from "./kx";
+import { IconBtn, onTabsKey } from "./kx";
 import { MenuBarButtons } from "./MenuBar";
+import { keyHint } from "@/lib/console/keys";
+import { usePrefs } from "@/hooks/useUser";
 
 // The top bar, a menu bar: the KERYX menu (the mark), the environments
 // KERYX | BÍBLIA right after it (bold caps, the gold underline: places, not
@@ -18,11 +20,12 @@ import { MenuBarButtons } from "./MenuBar";
 // Nothing wraps: as the window narrows the bar drops the service's end,
 // then the clock, then shortens the search (container queries in console.css).
 export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svc, onPlanner, sync = null, onSync, menuKeysOff = false, inert = false }) {
+    const searchKey = keyHint("search", usePrefs().letter_keys);
     const { now } = c;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const toggle = (name) => setOpen(open === name ? null : name);
     const envTab = (value, label, title) => (
-        <button type="button" role="tab" aria-selected={env === value} className={`kx-t ${env === value ? "is-on" : ""}`} title={title} onClick={() => setEnv(value)}>{label}</button>
+        <button type="button" role="tab" aria-selected={env === value} tabIndex={env === value ? 0 : -1} className={`kx-t ${env === value ? "is-on" : ""}`} title={title} onClick={() => setEnv(value)}>{label}</button>
     );
     return (
         <div className="topbar" inert={inert ? "" : undefined}>
@@ -30,7 +33,7 @@ export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outs
                 <button type="button" className={`markbtn kx-t ${open === "menu" ? "is-on" : ""}`} onClick={() => toggle("menu")} aria-haspopup="menu" aria-expanded={open === "menu"} title="Menu" aria-label="Menu">
                     {logoUrl ? <img src={logoUrl} alt="" /> : <span className="kx-mark" />}
                 </button>
-                <div className="kx-tabs envtabs" role="tablist" aria-label="Ambiente">
+                <div className="kx-tabs envtabs" role="tablist" aria-label="Ambiente" onKeyDown={onTabsKey}>
                     {envTab("culto", "KERYX", "Projeção: músicas, mídia, setlist")}
                     {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
                 </div>
@@ -38,8 +41,8 @@ export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outs
             </div>
             <div className="tb-c">
                 {/* A real button (C-27): Enter and Space open the search; it only looks like a field. */}
-                <button type="button" className="kx-field kx-t tb-search" onClick={() => setOpen("palette")} title="Buscar ou comandar · /" aria-label="Buscar em tudo" aria-keyshortcuts="/" aria-haspopup="dialog">
-                    <Icon name="search" /><span className="tb-search-ph" aria-hidden="true">Buscar em tudo</span><kbd aria-hidden="true">/</kbd>
+                <button type="button" className="kx-field kx-t tb-search" onClick={() => setOpen("palette")} title={`Buscar ou comandar · ${searchKey}`} aria-label="Buscar em tudo" aria-keyshortcuts={searchKey === "/" ? "/ Control+F" : "Control+F"} aria-haspopup="dialog">
+                    <Icon name="search" /><span className="tb-search-ph" aria-hidden="true">Buscar em tudo</span><kbd aria-hidden="true">{searchKey}</kbd>
                 </button>
             </div>
             <div className="tb-r">

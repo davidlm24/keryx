@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Row, Empty, FoldBtn, FoldStrip, foldStrip } from "./kx";
+import { Row, Empty, FoldBtn, FoldStrip, foldStrip, onTabsKey, tabStop } from "./kx";
 import { TeacherNotes } from "./CenterPanel";
 import { QuickAlert, ReadyTimers, OnAirTimer, ToolsPicker } from "./QuickTools";
 import { restoreArgs } from "@/lib/projection";
@@ -10,9 +10,10 @@ import { stageFromHistory } from "@/lib/console/stage";
 // Prévia): only the tabs that show. Which ones is the (+) in the panel's
 // header (TabsPlus).
 export function TabRow({ tabs, active, onPick }) {
+    const anyOn = tabs.some((t) => t.id === active);
     return (
-        <div className="kx-tabs tabrow" role="tablist">
-            {tabs.map((t) => <button type="button" role="tab" aria-selected={active === t.id} key={t.id} className={`kx-t ${active === t.id ? "is-on" : ""}`} onClick={() => onPick(t.id)}>{t.name}</button>)}
+        <div className="kx-tabs tabrow" role="tablist" onKeyDown={onTabsKey}>
+            {tabs.map((t, i) => <button type="button" role="tab" aria-selected={active === t.id} tabIndex={tabStop(i, active === t.id, anyOn)} key={t.id} className={`kx-t ${active === t.id ? "is-on" : ""}`} onClick={() => onPick(t.id)}>{t.name}</button>)}
         </div>
     );
 }

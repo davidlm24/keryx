@@ -91,6 +91,11 @@
       "enum": ["auto", "comfortable", "compact"],
       "description": "Densidade das listas do console (Ver › Densidade): auto = compacta em telas baixas. Nulo = auto"
     },
+    "letter_keys": {
+      "type": "string",
+      "enum": ["on", "shift", "off"],
+      "description": "Teclas de uma letra do console (B, L, C, / e ?; Configurações › Console): on = sozinhas, shift = só com Shift, off = desligadas. Nulo = on"
+    },
     "console_hidden_modules": {
       "type": "array",
       "items": { "type": "string" },

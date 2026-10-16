@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import Icon from "./Icon";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import { tabStep } from "@/lib/console/tablist";
+export { tabStop } from "@/lib/console/tablist";
 
 // The kx- components of docs/design-system/components/bundle.css as React
 // pieces: a module, its header, buttons, a field, a row, a monitor, a
@@ -143,6 +145,20 @@ export const RowLabel = createContext(null);
 
 // A radio group: the arrows move the choice when it has the keyboard focus
 // (the console leaves arrows to radio groups, keys.js); label names it.
+// A tab list's keys (src/lib/console/tablist.js, the ARIA tabs pattern):
+// put it on the role="tablist" element; ←/→ (Home/End) move the focus to
+// the next tab and choose it — a keyboard click (detail 0), so the console
+// leaves the focus there.
+export function onTabsKey(e) {
+    const list = e.currentTarget;
+    const tabs = [...list.querySelectorAll("[role='tab']")].filter((t) => !t.disabled && t.closest("[role='tablist']") === list);
+    const next = tabStep(tabs.indexOf(e.target.closest?.("[role='tab']")), tabs.length, e.key);
+    if (next === null) return;
+    e.preventDefault();
+    tabs[next].focus();
+    if (tabs[next].getAttribute("aria-selected") !== "true") tabs[next].click();
+}
+
 export function Seg({ value, options, onChange, mode, className = "", small, label }) {
     const onKeyDown = (e) => {
         const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;

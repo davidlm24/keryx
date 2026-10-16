@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Btn, Empty, IconBtn, SrState } from "./kx";
+import { Btn, Empty, IconBtn, SrState, onTabsKey } from "./kx";
 import { useContextMenu } from "./ContextMenu";
-import useKeepInView from "./useKeepInView";
+import useKeepInView, { useFocusFollows } from "./useKeepInView";
 import ClipTitle from "./ClipTitle";
 import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { lyricsOnAir } from "@/lib/console/dock";
@@ -42,6 +42,9 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
     // The slide in hand (or on air) and its neighbours stay in view: the
     // column moves at the next-to-last card (0.2.18, useKeepInView).
     useKeepInView(listRef, hand ? ".is-prev" : ".is-air", [index, slides, hand]);
+    // A slide focused with Tab follows the green selection (↑/↓), so Enter
+    // prepares the one highlighted.
+    useFocusFollows(listRef, ".kx-slide", hand ? ".kx-slide.is-prev" : ".kx-slide.is-air", [index, hand]);
 
     const airWord = "is-air";
     const pos = slides.length ? `${hand ? "prévia" : "no ar"} ${index + 1}/${slides.length}` : "";
@@ -59,11 +62,11 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
     return (
         <>
             {twoItems && (
-                <div className="dock-tabs slides-tabs" role="tablist" aria-label="O que a coluna mostra">
-                    <button type="button" role="tab" aria-selected={showAir} className={`dock-tab ${showAir ? "is-on" : ""}`} onClick={() => setSide("air")} title={`No ar: ${air.title || "Sem título"} · ${air.index + 1}/${air.slides.length}`} aria-label={`No ar: ${air.title || "Sem título"}, slide ${air.index + 1} de ${air.slides.length}`}>
+                <div className="dock-tabs slides-tabs" role="tablist" aria-label="O que a coluna mostra" onKeyDown={onTabsKey}>
+                    <button type="button" role="tab" aria-selected={showAir} tabIndex={showAir ? 0 : -1} className={`dock-tab ${showAir ? "is-on" : ""}`} onClick={() => setSide("air")} title={`No ar: ${air.title || "Sem título"} · ${air.index + 1}/${air.slides.length}`} aria-label={`No ar: ${air.title || "Sem título"}, slide ${air.index + 1} de ${air.slides.length}`}>
                         <span className="slides-dot is-air" aria-hidden="true" /><span className="slides-tab-w" aria-hidden="true">No ar</span><ClipTitle className="slides-tab-t" text={air.title || "Sem título"} /><span className="slides-tab-n">{air.index + 1}/{air.slides.length}</span>
                     </button>
-                    <button type="button" role="tab" aria-selected={!showAir} className={`dock-tab ${showAir ? "" : "is-on"}`} onClick={() => setSide("prev")} title={`Na prévia: ${prev.title || "Sem título"}`} aria-label={`Na prévia: ${prev.title || "Sem título"}`}>
+                    <button type="button" role="tab" aria-selected={!showAir} tabIndex={showAir ? -1 : 0} className={`dock-tab ${showAir ? "" : "is-on"}`} onClick={() => setSide("prev")} title={`Na prévia: ${prev.title || "Sem título"}`} aria-label={`Na prévia: ${prev.title || "Sem título"}`}>
                         <span className="slides-dot is-prev" aria-hidden="true" /><span className="slides-tab-w" aria-hidden="true">Prévia</span><ClipTitle className="slides-tab-t" text={prev.title || "Sem título"} />
                     </button>
                 </div>

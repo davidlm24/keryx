@@ -78,6 +78,8 @@ export const SETTINGS_INDEX = [
     e("console", "Módulos", "Biblioteca, Slides, Camadas, Temas, No ar e Setlist · deste computador", ["biblioteca", "slides", "camadas", "temas", "no ar", "setlist", "mostrar", "esconder", "ocultar"]),
     e("console", "Densidade", "automática, confortável ou compacta · da igreja, viaja no backup", ["automática", "compacta", "confortável", "linhas", "altura", "notebook", "tela pequena"]),
     e("console", "Disposição", "restaurar os módulos, a densidade e as colunas · deste computador", ["escopo","restaurar disposição", "layout", "colunas", "tamanhos", "padrão"]),
+    e("console", "Teclas de uma letra", "B, L, C, / e ?: ligadas, com Shift ou desligadas · da igreja", ["teclas", "letras", "shift", "atalho", "tela preta", "ditado", "voz", "acessibilidade", "desligar"]),
+    e("console", "Zoom", "aumentar ou diminuir tudo no console (Ctrl+= Ctrl+− Ctrl+0) · deste computador", ["zoom", "tamanho", "texto", "letra maior", "aumentar", "diminuir", "ampliar", "acessibilidade", "escala"]),
     e("console", "Ao fechar", "perguntar antes de fechar o KERYX", ["fechar", "sair", "confirmar", "perguntar"]),
     e("console", "Iniciar com o Windows", "abrir o KERYX quando o computador liga", ["windows", "iniciar", "ligar", "automático", "inicialização"]),
     e("console", "Atalhos", "as teclas do console: Enter, setas, B, L, C, Esc", ["teclado", "teclas", "atalho", "enter", "esc"]),

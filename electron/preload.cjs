@@ -56,6 +56,14 @@ ipcRenderer.on("keryx:notifications", (_event, list) => {
     }
 });
 
+// The console's zoom changed (Ctrl+= / Ctrl+− / Ctrl+0, electron/consoleZoom.cjs).
+const zoomListeners = new Set();
+ipcRenderer.on("keryx:zoom", (_event, zoom) => {
+    for (const listener of zoomListeners) {
+        try { listener(zoom); } catch (err) { console.error("[keryx] zoom listener failed:", err); }
+    }
+});
+
 // Sync between the church's computers: media files rows name that have not
 // come down yet (electron/sync.cjs), as keryx-media names.
 const syncMissingListeners = new Set();
@@ -170,6 +178,10 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         onNotifications(listener) {
             notificationListeners.add(listener);
             return () => notificationListeners.delete(listener);
+        },
+        onZoom(listener) {
+            zoomListeners.add(listener);
+            return () => zoomListeners.delete(listener);
         },
     },
     media: {

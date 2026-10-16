@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar } from "./kx";
+import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar, onTabsKey, tabStop } from "./kx";
 import { importMediaFiles, importSummary, mediaFromYouTube } from "@/lib/mediaImport";
 import { playsInSequence } from "@/lib/presentation";
 import PagesMeta from "./PagesMeta";
@@ -250,8 +250,8 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                 <input ref={fileRef} type="file" multiple hidden accept="video/*,audio/*,image/*,.gif,.pdf,.ppt,.pptx" onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
                 <input ref={locateRef} type="file" hidden onChange={(e) => { located(e.target.files?.[0]); e.target.value = ""; }} />
                 <div className="mv-bar">
-                    <div className="kx-tabs mv-cats" role="tablist">
-                        {CATS.filter(([k]) => k !== "doc" || hasDocs).map(([k, label]) => <button type="button" role="tab" aria-selected={cat === k} key={k} className={`kx-t ${cat === k ? "is-on" : ""}`} onClick={() => setCat(k)}>{label}</button>)}
+                    <div className="kx-tabs mv-cats" role="tablist" aria-label="Tipo de mídia" onKeyDown={onTabsKey}>
+                        {CATS.filter(([k]) => k !== "doc" || hasDocs).map(([k, label], i, shown) => <button type="button" role="tab" aria-selected={cat === k} tabIndex={tabStop(i, cat === k, shown.some(([x]) => x === cat))} key={k} className={`kx-t ${cat === k ? "is-on" : ""}`} onClick={() => setCat(k)}>{label}</button>)}
                     </div>
                     <select className="pl-pick" value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Categoria">
                         <option value="">Todas as categorias</option>

@@ -61,6 +61,9 @@ export const PREF_FIELDS = {
     // Manter as duas): pairKeys "a|b" (shared/syncDuplicates.mjs).
     song_duplicates_kept: { default: [], normalize: (v) => (Array.isArray(v) ? v.filter((k) => typeof k === "string" && /^[^|]{1,100}\|[^|]{1,100}$/.test(k)).slice(0, 5000) : []) },
     console_density: { default: "auto", normalize: oneOf(DENSITY_KEYS, "auto") },
+    // Teclas de uma letra (keys.js LETTER_KEYS): B, L, C, / and ? alone, only
+    // with Shift, or never.
+    letter_keys: { default: "on", normalize: oneOf(["on", "shift", "off"], "on") },
     console_hidden_modules: {
         default: [],
         normalize: (v) => (Array.isArray(v) ? [...new Set(v.filter((k) => MODULE_KEYS.includes(k)))] : []),

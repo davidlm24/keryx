@@ -70,7 +70,8 @@ import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presets
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import Toast from "@/components/console/Toast";
 import { useDialogFocus, useWinPageFocus } from "@/components/console/useDialogFocus";
-import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
+import { liveAction, quickJumpKey, escapeTarget, keyHint } from "@/lib/console/keys";
+import { wheelZoomStep } from "@/lib/wheelZoom";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
@@ -826,8 +827,33 @@ export default function Console() {
         });
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Ctrl+= / Ctrl+− / Ctrl+0 zoom the console (main process,
+    // electron/consoleZoom.cjs): say where it stands. Ctrl+wheel (and a
+    // touchpad's pinch) steps the same zoom (audit C-91; src/main.jsx keeps
+    // Chromium's own wheel zoom off).
+    useEffect(() => {
+        const sys = window.keryxDesktop?.system;
+        if (!sys?.onZoom) return undefined;
+        const off = sys.onZoom((z) => c.say(`Zoom do console: ${Math.round(z * 100)} %${z === 1 ? "" : " · Ctrl+0 volta a 100 %"}`));
+        let acc = 0;
+        let idle = null;
+        const onWheel = (e) => {
+            if (!e.ctrlKey) return;
+            clearTimeout(idle);
+            idle = setTimeout(() => { acc = 0; }, 300);
+            const step = wheelZoomStep(acc, e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY);
+            acc = step.acc;
+            if (step.dir) sys.call("zoomStep", { dir: step.dir }).catch(() => {});
+        };
+        window.addEventListener("wheel", onWheel, { passive: true });
+        return () => { off(); clearTimeout(idle); window.removeEventListener("wheel", onWheel); };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const searchBibleFor = (text) => { setBibleRequest({ search: text, at: Date.now() }); setOpen(null); setEnv("biblia"); };
 
+    // The church's "Teclas de uma letra" (B, L, C, / and ?: ligadas, com
+    // Shift or desligadas; keys.js LETTER_KEYS).
+    const letters = prefs.letter_keys;
     // Keys (src/lib/console/keys.js). A mouse click never leaves focus on a
     // control (see onMouseClick), so after clicking a song Enter sends it, as
     // in Holyrics; a control focused with Tab keeps its own Enter/Space.
@@ -838,10 +864,10 @@ export default function Console() {
     useEffect(() => {
         const onKey = (e) => {
             if (env === "biblia" && !open && quick === null && !winOpen) {
-                const ch = quickJumpKey(e);
+                const ch = quickJumpKey(e, letters);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
-            const action = liveAction(e);
+            const action = liveAction(e, letters);
             if (!action) return;
             if (action === "blur") { e.target.blur?.(); return; }
             // Esc closes the topmost thing open (src/lib/console/keys.js,
@@ -906,7 +932,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, letters]);
     useEffect(() => { if (winOpen) setEditing(false); }, [winOpen]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -1087,7 +1113,7 @@ export default function Console() {
     const setlistMenu = (e) => {
         const at = menuAt(e);
         openMenu(e, { title: "Adicionar à setlist", items: [
-            { label: "Buscar música, versículo, mídia…", icon: "search", kbd: "/", onSelect: () => setOpen("palette") },
+            { label: "Buscar música, versículo, mídia…", icon: "search", kbd: keyHint("search", letters), onSelect: () => setOpen("palette") },
             "sep",
             { label: "Seção…", icon: "list", onSelect: async () => { const t = await askText({ title: "Seção da setlist", placeholder: "Pré-culto, Louvor, Palavra…", ok: "Adicionar" }); if (t) addRowToSetlist({ type: "SECTION", title: t, duration: 0 }); } },
             { label: "Texto…", icon: "text", onSelect: async () => { const t = await askText({ title: "Texto na setlist", placeholder: "O texto que vai às telas", ok: "Adicionar", multiline: true, hint: "Ctrl+Enter adiciona" }); if (t) addRowToSetlist({ type: "TEXT", title: t.split("\n")[0].slice(0, 60), notes: t, duration: 60 }); } },
@@ -1187,9 +1213,9 @@ export default function Console() {
     // The Programa's menu: its right click and the pill's "…" (which holds
     // what a folded pill leaves out, Camadas included while in the tray).
     const progMenu = (e) => openMenu(e, { title: "Programa", items: [
-        { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
-        { label: c.cur?.screen === "logo" ? "Tirar o logo" : "Mostrar logo", icon: "logo", kbd: "L", onSelect: () => c.toggleScreen("logo") },
-        { label: "Limpar texto", icon: "eraser", kbd: "C", onSelect: c.clearText },
+        { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: keyHint("black", letters), onSelect: () => c.toggleScreen("black") },
+        { label: c.cur?.screen === "logo" ? "Tirar o logo" : "Mostrar logo", icon: "logo", kbd: keyHint("logo", letters), onSelect: () => c.toggleScreen("logo") },
+        { label: "Limpar texto", icon: "eraser", kbd: keyHint("clear", letters), onSelect: c.clearText },
         { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
         !camadasOn && { label: drawer ? "Fechar Camadas" : "Camadas…", icon: "layers", onSelect: () => setDrawer((d) => !d) },
         { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },

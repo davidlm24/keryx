@@ -20,7 +20,7 @@ import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 import { useLibraryPicker } from "./library/libraryContext";
 import { useThemes } from "./useConsoleData";
 import { themeForKind, themeName } from "@/lib/console/themes";
-import useKeepInView from "./useKeepInView";
+import useKeepInView, { useFocusFollows } from "./useKeepInView";
 import { ScreenActions } from "./CenterPanel";
 import { captionParts, airInPlayer } from "@/lib/console/caption";
 
@@ -181,6 +181,11 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const airKey = airHere ? `${book} ${chapter}:${airVerseNums.join(",")}` : "";
     useKeepInView(readingRef, ".kx-verse.is-air", [airKey, mode]);
     useKeepInView(cellsRef, "button.is-air", [airKey]);
+    // A verse (row or cell) focused with Tab follows the green selection
+    // (↑/↓), so Enter acts on the one highlighted.
+    const selKey = sel.join(",");
+    useFocusFollows(readingRef, ".kx-verse", ".kx-verse.is-prev", [selKey, mode]);
+    useFocusFollows(cellsRef, "button", "button.is-prev", [selKey]);
 
     const verseStage = useCallback((n) => stageFromVerses({ verses, nums: [n], version: ver, book, chapter, onAir }), [verses, ver, book, chapter, onAir]);
     const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version: ver, book, chapter, onAir }), [verses, how, ver, book, chapter, onAir]);
