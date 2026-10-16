@@ -1,4 +1,5 @@
 import { mainLayer } from "../../../shared/live-state.mjs";
+import { playerLayers } from "./player.js";
 
 // What a screen shows, as a title and its position ("2/6" or ""): the parts
 // of a monitor's caption.
@@ -15,6 +16,22 @@ export const captionParts = (doc) => {
     if (layer === "tool") return { title: { clock: "Relógio", stopwatch: "Cronômetro", timer: "Timer", freetext: "Texto livre" }[doc.tool.mode], pos: "" };
     return { title: "nada", pos: "" };
 };
+
+// Whether what is on air is what the player plays (owner's pick A, Rodada
+// F1): a video-channel clip, a video, YouTube link or audio file on the
+// projector, or a sound with nothing on the screens. The player names it,
+// so the Programa's pill leaves the title out. Lyrics, a passage, text, a
+// picture, a presentation, a tool, an aviso, Tela preta and Logo keep it —
+// a playback or music under them included.
+export function airInPlayer(doc) {
+    if (!doc) return false;
+    const layer = mainLayer(doc);
+    if (layer === "black" || layer === "logo") return false;
+    const playing = playerLayers(doc);
+    if (doc.video) return playing.includes("video");
+    if (layer === "media") return playing.includes("media");
+    return layer === "none" && playing.includes("audio");
+}
 
 // When the item on air went on air (the live clock, ms), or null when there is
 // no item to count: Tela preta, Logo, nothing, or a tool (a clock or timer

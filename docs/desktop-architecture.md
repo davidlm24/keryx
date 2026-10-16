@@ -821,6 +821,55 @@ Recorded so the decision is not lost (2026-10-08; nothing built):
 - `supabase/` (migrations, Edge Functions) is kept, unused, as the starting
   point for that.
 
+### Sincronização entre computadores (owner 2026-10-16; being built)
+
+The owner chose **two-way sync through a shared folder** (as Holyrics'
+Drive sync): every verified computer edits, and each one writes to and reads
+from one folder that Google Drive para computador (or OneDrive, Dropbox)
+keeps in sync. No sign-in inside KERYX, no server, nothing to pay, and it
+syncs whenever Drive does. Conflict rule: last edit wins per row
+(`updated_date`, the computer's id breaking ties). Planned PRs:
+
+1. **Groundwork (done):** what travels is `electron/db/syncScope.cjs` —
+   `SYNC_ENTITIES` (the church's content) and `LOCAL_ENTITIES` (Bibles
+   installed per computer, OutputPref, the live and retired tables); every
+   entity is in exactly one (`npm test`). The profile travels without this
+   computer's fields (`LOCAL_USER_FIELDS`: who operates it, `prefs_version`,
+   the console density; `syncRow`). Deleting a synced row leaves a
+   tombstone (`_tombstone`: entity, id, deleted_at; `store.tombstones(since)`,
+   `pruneTombstones(before)`), cleared when the row exists again.
+2. **Outbox and inbox, store side (done):** each database has a stable
+   computer id (`_meta.pc_id`, `store.pcId`). Every create, update and
+   delete of a synced entity made through the store's operations is
+   recorded in `_outbox` (seq, entity, id, op `upsert|delete`, row, at,
+   pc) in the same transaction as the write — `syncRow` shapes the row; a
+   delete is at its tombstone's date; `importRows` records nothing.
+   `store.outbox(after, limit)` reads it, `pruneOutbox(seq)` forgets what
+   the transport wrote. `store.applyRemote(changes)` takes the other
+   computers' entries: last edit wins per row against the version here
+   (`_version`: at + pc of the edit the row holds, else the row's
+   `updated_date` or its tombstone's `deleted_at`), the greater computer
+   id winning a tie; upserts go through the `importRows` path (ids and
+   timestamps kept), deletes leave a tombstone even when the row was never
+   here. **The profile syncs field by field** (one row of independent
+   preferences): its outbox entries carry only the church fields the write
+   set, each field has its own version (`local.<field>`), a write of only
+   this computer's fields (`LOCAL_USER_FIELDS`) records nothing, and
+   remote copies never touch them. What is taken emits the usual change
+   event (windows refresh); nothing applied from elsewhere is recorded in
+   the outbox (no echo). Returns `{ applied, skipped, failed }`; a change
+   that fails is rolled back alone (a savepoint). Known edges for later
+   PRs: a backup restored on another computer brings the same `pc_id`
+   (give the restored copy a new one), and an entity this version does not
+   know is skipped, not kept for a newer version.
+3. The folder: `sync/<pc>/changes-<n>.jsonl` (append-only), `sync/media/`
+   (files by their uuid name), cursors per computer, tolerant of
+   half-written files and Drive's conflict copies.
+4. Pairing: a church sync code; files signed with a key from it, so only
+   verified computers count.
+5. Configurações › Sincronização; the first join merges (never replaces) and
+   flags likely duplicate songs.
+
 ## 9. Project layout after the change
 
 ```

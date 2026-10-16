@@ -7,7 +7,7 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { stageOp } from "@/lib/console/stage";
 import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
-import { captionParts, airFor } from "@/lib/console/caption";
+import { captionParts, airInPlayer } from "@/lib/console/caption";
 import { OUTPUT_VIEWS } from "@/lib/network/views";
 import { prefState, prefVars, stageHidden, alertOf } from "@/lib/outputPrefs";
 import { useOutputPref } from "@/hooks/useOutputPref";
@@ -71,31 +71,33 @@ const btn = ({ className = "", ...props }, icon) => <button type="button" classN
 // controls are one pill in the screen's bottom-right corner, so the screen's
 // top lines up with the panels beside it. A dot in the colour of the state
 // (red on air, blue locked with the "Travado" word, amber when an output
-// failed, grey with nothing on air), the title, the slide (2/6), how long it
-// has been on air, on how many screens (`where`: outputHealth's onAir), then
-// Voltar ao anterior, the Camadas drawer (`camadas`, only while Camadas is in
-// the tray), Multiview and the screen actions (owner's pick B: Tela preta,
-// Logo, Limpar, Encerrar left the top bar for here). On a small screen it
-// folds (container queries on the screen, console.css) to the dot, the
-// slide, Multiview and a "…" that opens the Programa's menu (`onMore`, the
-// same as its right click), which holds every action the pill dropped.
-// Inside the screen, so it rides the Multiview too.
+// failed, grey with nothing on air), the title — only when the player does
+// not name it already (owner's pick A, Rodada F1: a video or a sound playing
+// there has its name in the player; `airInPlayer`) —, the slide (2/6), on
+// how many screens (`where`: outputHealth's onAir), then Voltar ao anterior,
+// the Camadas drawer (`camadas`, only while Camadas is in the tray),
+// Multiview and the screen actions (owner's pick B: Tela preta, Logo,
+// Limpar, Encerrar left the top bar for here). No "no ar há" (Rodada F1).
+// On a small screen it folds once (container queries on the screen,
+// console.css): first "2 telas" goes, then every button but Multiview goes
+// into a "…" that opens the Programa's menu (`onMore`, the same as its
+// right click), which holds every action the pill dropped. Inside the
+// screen, so it rides the Multiview too.
 export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHist, multiviewOn, onMultiview, onMore, onEnd }) {
     const { cur, locked } = c;
     const { title, pos } = captionParts(cur);
-    // How long this item has been on air (the live clock: every window agrees).
-    const since = airFor(cur, c.now);
-    const idle = title === "nada";
+    const inPlayer = airInPlayer(cur);
+    const idle = title === "nada" && !inPlayer;
     const shown = idle ? "Nada no ar" : title;
     const tone = projectorDown ? "warn" : locked ? "rh" : idle ? "idle" : "air";
+    const said = inPlayer ? "no ar, no player" : idle ? "nada no ar" : title;
     return (
         <div className={`prog-pill is-${tone}`} role="group" aria-label="Programa">
-            <span className={`kx-prog-cap prog-cap is-${tone}`} aria-label={`Programa · ${idle ? "nada no ar" : title}${locked ? " · travado" : ""}`}>
+            <span className={`kx-prog-cap prog-cap is-${tone}`} aria-label={`Programa · ${said}${locked ? " · travado" : ""}`}>
                 <i className="pp-dot" aria-hidden="true" />
-                <span className="kx-mon-t pp-title" title={shown}>{shown}</span>
+                {!inPlayer && <span className="kx-mon-t pp-title" title={shown}>{shown}</span>}
                 {locked && <span className="prog-locked">Travado</span>}
                 {pos && <span className="kx-meta pp-pos">{pos}</span>}
-                {since && <span className="kx-meta kx-since" title="Há quanto tempo este item está no ar">no ar há {since}</span>}
             </span>
             {where && <span className={`kx-meta prog-where ${where.warn ? "kx-warn" : ""}`} title={`O Programa está ${where.text} agora · detalhes em Saídas`}>{where.short}</span>}
             <span className="pp-sep pp-full" aria-hidden="true" />

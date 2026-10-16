@@ -75,7 +75,14 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).
-  `npm test` fails if schema.json and the jsonc drift apart.
+  `npm test` fails if schema.json and the jsonc drift apart. A new entity
+  also goes in `SYNC_ENTITIES` or `LOCAL_ENTITIES`
+  (`electron/db/syncScope.cjs`, sync between the church's computers,
+  desktop-architecture.md §8b), and a User field that belongs to one
+  computer in `LOCAL_USER_FIELDS`; `npm test` checks the entity. Only
+  writes through the store's operations reach the sync outbox (`_outbox`;
+  `importRows` and `applyRemote` record nothing, so remote changes never
+  echo back).
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by
@@ -468,13 +475,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   owner 2026-10-13, which replaced the two-band centre of #136/#138):
   Biblioteca and Slides are whole columns; the **centre** (`live`) is the
   Programa on top (CenterPanel: the monitor or the Multiview, and the
-  player **always visible**, dimmed while idle, **in two rows** — Rodada E1,
-  owner 2026-10-16, "o necessário, de forma responsiva": what plays, the
-  transport, the time and the progress bar with the row's room; under them
-  the layer it controls, the letra automática, where the sound goes, the
-  volume and the meters; 64 px, `.pslot` and dock.js `PLAYER_SLOT` 72;
-  narrowing drops the kind, −10/+10, the volume number, then the position
-  and the labels, never the bar, the remaining time or Tocar) and below it one row that
+  player **always visible**, dimmed while idle — only its icon then, **no
+  placeholder words** — **in two rows** (Rodada F1, owner 2026-10-16): the
+  first is what plays (the file icon, the title — floor `min(110px, 34cqw)`,
+  cap 46cqw — and "n/m" in a list; **no kind word**, the icon says it), the
+  elapsed time, the progress bar and the remaining time; the second is the
+  controls: ⏮ −10 ⏯ +10 ⏭, the eye, Parar, the layer switch (2+ layers), the
+  letra automática, where the sound goes, then the volume and the meters;
+  64 px, `.pslot` and dock.js `PLAYER_SLOT` 72; narrowing folds row 2 (the
+  volume %, −10/+10, the where/chip labels down to icons, a narrower volume,
+  then the meters and where; Tocar, the eye, Parar and the mute always
+  stay). **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
+  capture, a 16 px hit area, a time tip over the thumb): while the hand
+  holds it only the console moves, and the screens get **one seek, on
+  release** (`seekAt` in player.js, tested), so the letra automática never
+  walks the slides in between; Tab gives it the focus and ←/→ step 5 s
+  (`SEEK_KEY_SECONDS`; keys.js leaves a focused `[role=slider]` its arrows,
+  tested) — a mouse press never focuses it; the live clock (no media) has
+  no seek) and below it one row that
   **ends at the centre's edge**: the Prévia (44 % of the centre at first),
   then the **tabs panel**
   (`TabsPanel.jsx`); under the Biblioteca, the Slides and the centre the **No ar**
@@ -496,15 +514,22 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   children so it rides the Multiview too): a dot in the state's colour
   (red on air, blue locked with the "Travado" word, amber when an output
   failed, grey "Nada no ar"), the title (in that colour, **no "Programa"
-  word**, owner 2026-10-14), the slide "2/6", "no ar há m:ss", "2 telas"
-  (`health.onAir.short`), then Voltar ao anterior (its popover opens above
-  the pill), the Camadas drawer (only while Camadas is in the tray),
-  Multiview and the screen actions Tela preta, Logo, Limpar, Encerrar
-  (owner's pick B). As the screen narrows (container queries on the screen,
-  `prog-screen`) it drops how long, then the count with Voltar and
-  Camadas, then the screen actions, folding them into a "…" that opens the
-  Programa's menu (the same as its right click, Camadas included); over
-  the Multiview it is always folded. dock.js gives the Programa `minH` 172:
+  word**, owner 2026-10-14) **only when the player does not name the item**
+  (owner's pick A, Rodada F1, `airInPlayer` in caption.js, tested: a video
+  or audio playing in the player — the video channel, the projector's
+  media, a sound with nothing on the screens — has no title in the pill;
+  lyrics, Bíblia, text, a picture, a presentation, a tool, an aviso, Tela
+  preta and Logo keep it), the slide "2/6", "2 telas"
+  (`health.onAir.short`) — **no "no ar há"** (Rodada F1) — then Voltar ao
+  anterior (its popover opens above the pill), the Camadas drawer (only
+  while Camadas is in the tray), Multiview and the screen actions Tela
+  preta, Logo, Limpar, Encerrar (owner's pick B). As the screen narrows
+  (container queries on the screen, `prog-screen`) it **folds once**: at
+  560 px only "2 telas" goes; at 480 every `.pp-full` button (Voltar,
+  Camadas, the screen actions) goes into a "…" that opens the Programa's
+  menu (the same as its right click, Camadas included) — the "…" never
+  beside the buttons it holds; over the Multiview it is always folded.
+  dock.js gives the Programa `minH` 172:
   the header it lost pays for the player's second row;
   the Prévia is its screen, its caption a badge inside the top-left corner
   (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
@@ -616,7 +641,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/components/screen/ScreenRenderer.jsx` — one component, sized in
   container units — so a preview is the output; the Programa monitor plays
   videos muted (`motion`). The player's eye ("Tirar o vídeo · o som
-  continua", as in Holyrics) moves a video off the projector into the
+  continua", as in Holyrics; while the video plays as sound only it is
+  pressed and red, `is-sound`, Rodada F1) moves a video off the projector into the
   audio channel at the same second (`media.toAudio`; "Mostrar o vídeo" is
   `audio.toMedia`; `videoSwap` in `src/lib/console/player.js`, no
   YouTube) in the same `<video>`, without a gap: `LiveVideo` takes its
