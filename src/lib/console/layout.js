@@ -8,19 +8,11 @@ import { DEFAULT_TILES, normalizeTiles } from "./multiview.js";
 import { DEFAULT_TABS, normalizeTabs } from "./panelTabs.js";
 import { normalizeDock, onairSpanOf, canFoldModule, envModules } from "./dock.js";
 import { normalizePresets } from "./dockPresets.js";
+// Ver's module switches and the densities (layoutChoices.js: plain data the
+// church's preferences read without loading the dock).
+import { MODULES, DENSITIES } from "./layoutChoices.js";
 
-// Camadas is a section above the Setlist in the wide tier's right column
-// (owner's request, 2026-10-10; back there 2026-10-13); narrower, it is a
-// drawer opened from the Programa. The Setlist is not a module: it is
-// always on screen (the right column, else beside the Prévia). No ar, the
-// strip of what is on air (2026-10-14), is one more switch.
-export const MODULES = [
-    ["lib", "Biblioteca"],
-    ["slides", "Slides"],
-    ["camadas", "Camadas"],
-    ["temas", "Temas"],
-    ["onair", "No ar"],
-];
+export { MODULES, DENSITIES };
 
 // The console's width tiers, measured on its grid (.main), not the window:
 // wide shows Biblioteca | Slides | Programa | Camadas over Setlist; medium puts the
@@ -31,12 +23,8 @@ export const TIER_WIDE = 1400;
 export const TIER_MEDIUM = 1100;
 export const tierFor = (width) => (width >= TIER_WIDE ? "wide" : width >= TIER_MEDIUM ? "medium" : "narrow");
 
-// List density (Ver › Densidade): confortável, 32 px rows with titles up to
-// two lines; compacta, 28 px single lines and 28 px panel headers;
-// automática (the default since 2026-10-14, the small-screen review):
-// compacta when the console's grid is shorter than AUTO_COMPACT_H (a
-// notebook), confortável otherwise. Saved with the layout.
-export const DENSITIES = [["auto", "Automática"], ["comfortable", "Confortável"], ["compact", "Compacta"]];
+// List density (Ver › Densidade, DENSITIES): automática is compacta when
+// the console's grid is shorter than AUTO_COMPACT_H (a notebook).
 export const AUTO_COMPACT_H = 820;
 // The density the console shows for a grid `height` px tall.
 export const shownDensity = (layout, height) => {

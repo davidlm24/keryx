@@ -1092,3 +1092,13 @@ so a release follows these rules. The steps and commands are in README ›
   Público, Palco, Transmissão). `/StreamView` (Transmissão) is network only:
   an OBS Browser Source, a transparent lower third, text only
   (`src/lib/streamCaption.js`); it is not an output window.
+  **Every page is a lazy chunk** (Codex audit 2026-10-16): `lazy()` with
+  its Suspense fallback (an output black, Transmissão transparent, the
+  console's ground elsewhere — never a spinner), so an output loads the
+  renderer and never the console's code. `scripts/bundle-budget.cjs` (a
+  Vite plugin, tested) fails the build when an output's JS passes its
+  budget or a stylesheet leaves the entry: every stylesheet is imported in
+  App.jsx's list, in the old bundle's order (Tailwind last), so splitting
+  changed no cascade. A new network page goes in its `OUTPUT_PAGES` too
+  (`npm test` checks it against `NETWORK_SCREENS`); a heavy library the
+  console needs only on demand is a dynamic `import()` (jspdf, pdf.js).
