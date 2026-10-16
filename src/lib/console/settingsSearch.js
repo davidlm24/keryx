@@ -49,9 +49,9 @@ export const SETTINGS_INDEX = [
     e("temas", "Todos os temas", "estilos prontos de texto e fundo; clicar abre o Editor",
         ["tema padrão", "presets", "estilo", "fonte", "efeito", "cor", "caixa do texto", "transição", "esmaecer", "deslizar", "corte", "duração", "animação", "fundo", "alinhamento", "posição do texto", "Tornar padrão", "Novo tema", "editor de temas",
             "título do item", "nome da música no slide", "mostrar o título"]),
-    e("temas", "Fundos", "a biblioteca de fundos: imagens, vídeos, gerados e cores; nome, categoria, escurecer, desfoque, ocultar",
-        ["imagens", "vídeos", "gerados", "enviar do computador", "Categoria", "Escurecer", "Desfoque", "Nas galerias", "favorito", "oculto", "biblioteca", "aparência"]),
-    e("temas", "Categorias de fundos", "criar, renomear, ordenar e excluir as categorias da biblioteca de fundos",
+    e("temas", "Fundos", "a biblioteca de fundos: imagens, vídeos, gerados e cores; nome, categoria, escurecer, desfoque, excluir",
+        ["imagens", "vídeos", "gerados", "enviar do computador", "Categoria", "Escurecer", "Desfoque", "favorito", "oculto", "ocultar", "excluir fundo", "excluídos", "restaurar", "fundos do keryx", "biblioteca", "aparência"]),
+    e("temas", "Categorias de fundos", "criar, renomear, ordenar e excluir as categorias; abre a biblioteca de fundos",
         ["categoria", "categorias", "nova categoria", "renomear", "ordem", "excluir categoria", "outros", "fundos", "galerias"]),
 
     e("biblia", "Livros e importação", "livros abreviados e o corte das letras importadas", ["livros", "importar", "estrofe"]),
