@@ -13,12 +13,22 @@
 
 const crypto = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
-const { isSynced } = require("./syncScope.cjs");
+const { isSynced, syncRow, LOCAL_USER_FIELDS } = require("./syncScope.cjs");
 
 // Deletes of synced entities leave a mark (entity, id, when) so the delete can
 // travel to the church's other computers instead of the row coming back from
 // one that still has it. Not an entity: nothing in the app reads it.
 const TOMBSTONES = "_tombstone";
+// Sync bookkeeping (docs/desktop-architecture.md §8b), none of it an entity:
+//   _meta     this database's own values (pc_id: the computer's stable id)
+//   _outbox   every change to a synced entity made HERE, in order (seq), for
+//             the transport to carry to the other computers
+//   _version  the version (at, pc) each synced row is at, so a remote change
+//             is compared with the edit it would overwrite, the computer's id
+//             breaking ties
+const META = "_meta";
+const OUTBOX = "_outbox";
+const VERSIONS = "_version";
 
 const SYSTEM_FIELDS = new Set(["id", "created_date", "updated_date", "created_by", "created_by_id"]);
 const SQL_TYPES = { text: "TEXT", real: "REAL", integer: "INTEGER", boolean: "INTEGER", json: "TEXT" };
@@ -137,6 +147,16 @@ function createStore({ file, schema, log = console.warn }) {
         }
     }
     db.exec(`CREATE TABLE IF NOT EXISTS ${quote(TOMBSTONES)} (entity TEXT NOT NULL, id TEXT NOT NULL, deleted_at TEXT NOT NULL, PRIMARY KEY (entity, id))`);
+    db.exec(`CREATE TABLE IF NOT EXISTS ${quote(META)} (key TEXT PRIMARY KEY, value TEXT)`);
+    db.exec(`CREATE TABLE IF NOT EXISTS ${quote(OUTBOX)} (seq INTEGER PRIMARY KEY AUTOINCREMENT, entity TEXT NOT NULL, id TEXT NOT NULL, op TEXT NOT NULL, row TEXT, at TEXT NOT NULL, pc TEXT NOT NULL)`);
+    db.exec(`CREATE TABLE IF NOT EXISTS ${quote(VERSIONS)} (entity TEXT NOT NULL, id TEXT NOT NULL, at TEXT NOT NULL, pc TEXT NOT NULL, PRIMARY KEY (entity, id))`);
+
+    // This computer's id: made once, kept in the database.
+    let pcId = db.prepare(`SELECT value FROM ${quote(META)} WHERE key = 'pc_id'`).get()?.value;
+    if (!pcId) {
+        pcId = crypto.randomUUID();
+        db.prepare(`INSERT INTO ${quote(META)} (key, value) VALUES ('pc_id', ?)`).run(pcId);
+    }
 
     const entityDef = (entity) => {
         const def = schema.entities[entity];
@@ -211,6 +231,60 @@ function createStore({ file, schema, log = console.warn }) {
             .run(...names.map((n) => row[n]), String(id));
         if (result.changes === 0) throw new StoreError("Registro não encontrado.", 404);
         return getRow(def, id);
+    }
+
+    // -- Sync: outbox and versions ---------------------------------------------
+
+    // The profile's church fields a write sets. The profile is one row of
+    // independent preferences, so it syncs field by field: each field has its
+    // own version (`local.<field>` in _version) and travels alone.
+    const churchFields = (def, data) => Object.keys(data || {})
+        .filter((key) => def.columns[key] && data[key] !== undefined && !SYSTEM_FIELDS.has(key) && !LOCAL_USER_FIELDS.has(key));
+    const fieldKey = (field) => `${PROFILE_ID}.${field}`;
+
+    function setVersion(entity, id, at, pc) {
+        prepare(`INSERT OR REPLACE INTO ${quote(VERSIONS)} (entity, id, at, pc) VALUES (?, ?, ?, ?)`).run(entity, String(id), at, pc);
+    }
+
+    const getVersion = (entity, id) => {
+        const v = prepare(`SELECT at, pc FROM ${quote(VERSIONS)} WHERE entity = ? AND id = ?`).get(entity, String(id));
+        return v ? { at: v.at, pc: v.pc } : null;
+    };
+
+    // A local change, in the same transaction as the write itself: `data` is
+    // what the write set (the whole row for a create). A profile write that
+    // touches only this computer's fields (a new density) records nothing.
+    function record(entity, def, op, row, at, data = row) {
+        if (!isSynced(entity)) return;
+        let body = null;
+        if (entity === "User") {
+            const fields = churchFields(def, data);
+            if (!fields.length) return;
+            body = { id: row.id };
+            for (const field of fields) {
+                body[field] = row[field];
+                setVersion(entity, fieldKey(field), at, pcId);
+            }
+        } else {
+            if (op === "upsert") body = syncRow(entity, row);
+            setVersion(entity, row.id, at, pcId);
+        }
+        prepare(`INSERT INTO ${quote(OUTBOX)} (entity, id, op, row, at, pc) VALUES (?, ?, ?, ?, ?, ?)`)
+            .run(entity, String(row.id), op, body && JSON.stringify(body), at, pcId);
+    }
+
+    // a is newer than b: later, or as late from a computer with a greater id.
+    const newer = (a, b) => a.at > b.at || (a.at === b.at && a.pc > b.pc);
+
+    // The version a row (or its delete) is at here. The recorded one wins a
+    // tie with the row's own date (a remote change keeps its computer); a
+    // later date on the row is a write that bypassed the outbox (importRows).
+    function localVersion(entity, id, row) {
+        let best = getVersion(entity, id);
+        const mark = prepare(`SELECT deleted_at FROM ${quote(TOMBSTONES)} WHERE entity = ? AND id = ?`).get(entity, id);
+        const dated = [row && { at: toIso(row.updated_date) || "", pc: pcId }, mark && { at: mark.deleted_at, pc: pcId }];
+        for (const v of dated) if (v && (!best || v.at > best.at)) best = v;
+        return best;
     }
 
     // -- Reads ----------------------------------------------------------------
@@ -359,18 +433,30 @@ function createStore({ file, schema, log = console.warn }) {
             return row;
         },
         create(entity, def, [data]) {
-            const row = insert(entity, def, data);
+            const row = transaction(() => {
+                const created = insert(entity, def, data);
+                record(entity, def, "upsert", created, created.updated_date);
+                return created;
+            });
             emit([event(entity, "create", row)]);
             return row;
         },
         bulkCreate(entity, def, [rows]) {
             if (!Array.isArray(rows)) throw new StoreError("bulkCreate precisa de uma lista.", 400);
-            const created = transaction(() => rows.map((data) => insert(entity, def, data)));
+            const created = transaction(() => rows.map((data) => {
+                const row = insert(entity, def, data);
+                record(entity, def, "upsert", row, row.updated_date);
+                return row;
+            }));
             emit(created.map((row) => event(entity, "create", row)));
             return created;
         },
         update(entity, def, [id, data]) {
-            const row = update(entity, def, id, data);
+            const row = transaction(() => {
+                const updated = update(entity, def, id, data);
+                record(entity, def, "upsert", updated, updated.updated_date, data);
+                return updated;
+            });
             emit([event(entity, "update", row)]);
             return row;
         },
@@ -379,7 +465,9 @@ function createStore({ file, schema, log = console.warn }) {
             const updated = transaction(() => rows.map((r) => {
                 if (!isPlainObject(r) || r.id == null) throw new StoreError("Cada item precisa de um id.", 400);
                 const { id, ...changes } = r;
-                return update(entity, def, id, changes);
+                const row = update(entity, def, id, changes);
+                record(entity, def, "upsert", row, row.updated_date, changes);
+                return row;
             }));
             emit(updated.map((row) => event(entity, "update", row)));
             return updated;
@@ -390,8 +478,10 @@ function createStore({ file, schema, log = console.warn }) {
                 transaction(() => {
                     prepare(`DELETE FROM ${quote(def.table)} WHERE id = ?`).run(String(id));
                     if (isSynced(entity)) {
+                        const now = new Date().toISOString();
                         prepare(`INSERT OR REPLACE INTO ${quote(TOMBSTONES)} (entity, id, deleted_at) VALUES (?, ?, ?)`)
-                            .run(entity, String(id), new Date().toISOString());
+                            .run(entity, String(id), now);
+                        record(entity, def, "delete", old, now);
                     }
                 });
                 emit([event(entity, "delete", old)]);
@@ -409,7 +499,7 @@ function createStore({ file, schema, log = console.warn }) {
     }
 
     // Import keeps ids and timestamps so cross-references survive; re-running
-    // replaces rows with the same id. Emits no events.
+    // replaces rows with the same id. Emits no events and records nothing.
     function importRows(entity, rows) {
         const def = entityDef(entity);
         return transaction(() => rows.map((data) => insert(entity, def, data, { keepSystem: true, replace: true }))).length;
@@ -442,6 +532,101 @@ function createStore({ file, schema, log = console.warn }) {
         return Number(prepare(`DELETE FROM ${quote(TOMBSTONES)} WHERE deleted_at < ?`).run(until).changes);
     }
 
+    // This computer's changes after `after` (a seq; none = all), oldest
+    // first, at most `limit`: { seq, entity, id, op: upsert|delete, row, at, pc }.
+    function outbox(after = 0, limit) {
+        const n = Math.floor(Number(limit));
+        const sql = `SELECT seq, entity, id, op, row, at, pc FROM ${quote(OUTBOX)} WHERE seq > ? ORDER BY seq`
+            + (n > 0 ? " LIMIT ?" : "");
+        return prepare(sql).all(Math.floor(Number(after)) || 0, ...(n > 0 ? [n] : []))
+            .map((r) => ({ ...r, row: r.row === null ? null : JSON.parse(r.row) }));
+    }
+
+    // Forgets the changes up to `seq` (the transport has written them).
+    function pruneOutbox(seq) {
+        const upTo = Math.floor(Number(seq));
+        if (!Number.isFinite(upTo)) throw new StoreError("Sequência inválida.", 400);
+        return Number(prepare(`DELETE FROM ${quote(OUTBOX)} WHERE seq <= ?`).run(upTo).changes);
+    }
+
+    // One remote change, inside applyRemote's transaction. Returns false when
+    // it is not taken (unknown, ours, or not newer than what is here), else
+    // { event } (null when a delete found nothing to delete).
+    function applyOne(change) {
+        if (!isPlainObject(change)) return false;
+        const { entity, op } = change;
+        if (!isSynced(entity) || !schema.entities[entity]) return false;
+        if (op !== "upsert" && op !== "delete") return false;
+        const at = toIso(change.at);
+        const pc = change.pc == null ? "" : String(change.pc);
+        if (!at || !pc || pc === pcId || change.id == null || change.id === "") return false;
+        const def = entityDef(entity);
+        if (entity === "User") return applyProfile(def, change, at, pc);
+        const id = String(change.id);
+        const old = getRow(def, id);
+        const here = localVersion(entity, id, old);
+        if (here && !newer({ at, pc }, here)) return false;
+
+        if (op === "delete") {
+            if (old) prepare(`DELETE FROM ${quote(def.table)} WHERE id = ?`).run(id);
+            prepare(`INSERT OR REPLACE INTO ${quote(TOMBSTONES)} (entity, id, deleted_at) VALUES (?, ?, ?)`).run(entity, id, at);
+            setVersion(entity, id, at, pc);
+            return { event: old ? event(entity, "delete", old) : null };
+        }
+
+        if (!isPlainObject(change.row)) return false;
+        const row = insert(entity, def, { ...syncRow(entity, change.row), id, updated_date: at }, { keepSystem: true, replace: true });
+        setVersion(entity, id, at, pc);
+        return { event: event(entity, old ? "update" : "create", row) };
+    }
+
+    // The profile, field by field: each church field the change carries is
+    // taken when it is newer than that field here; this computer's fields are
+    // never touched (even when a sender's copy carries them), and every
+    // computer's profile is the one local row, never deleted.
+    function applyProfile(def, change, at, pc) {
+        if (change.op !== "upsert" || !isPlainObject(change.row)) return false;
+        const taken = {};
+        for (const field of churchFields(def, change.row)) {
+            const here = getVersion("User", fieldKey(field));
+            if (here && !newer({ at, pc }, here)) continue;
+            taken[field] = change.row[field];
+            setVersion("User", fieldKey(field), at, pc);
+        }
+        if (!Object.keys(taken).length) return false;
+        return { event: event("User", "update", update("User", def, PROFILE_ID, taken)) };
+    }
+
+    // Changes from the other computers (their outbox entries). Last edit wins
+    // per row against the local row's date or delete, the computer's id
+    // breaking ties; what is taken emits its change event so open windows
+    // refresh, and is never recorded in this computer's outbox (no echo).
+    // A change that fails is rolled back alone and counted.
+    function applyRemote(changes) {
+        if (!Array.isArray(changes)) throw new StoreError("applyRemote precisa de uma lista.", 400);
+        const result = { applied: 0, skipped: 0, failed: 0 };
+        const events = transaction(() => changes.flatMap((change) => {
+            db.exec("SAVEPOINT keryx_remote");
+            try {
+                const done = applyOne(change);
+                db.exec("RELEASE keryx_remote");
+                if (!done) {
+                    result.skipped += 1;
+                    return [];
+                }
+                result.applied += 1;
+                return done.event ? [done.event] : [];
+            } catch (err) {
+                db.exec("ROLLBACK TO keryx_remote; RELEASE keryx_remote");
+                result.failed += 1;
+                log(`[keryx-db] alteração remota ignorada (${change?.entity} ${change?.id}): ${err.message}`);
+                return [];
+            }
+        }));
+        emit(events);
+        return result;
+    }
+
     // A consistent copy of the whole database while it is in use (VACUUM INTO
     // takes its own read transaction); the target must not exist.
     function backupTo(target) {
@@ -454,6 +639,10 @@ function createStore({ file, schema, log = console.warn }) {
         countBy,
         tombstones,
         pruneTombstones,
+        outbox,
+        pruneOutbox,
+        applyRemote,
+        pcId,
         backupTo,
         onChange(listener) {
             listeners.add(listener);
