@@ -209,6 +209,57 @@ test("importRows keeps ids and timestamps, replaces on re-run, emits nothing", (
     assert.equal(events.length, 0);
 });
 
+test("every entity is either synced or local, never both", () => {
+    const { SYNC_ENTITIES, LOCAL_ENTITIES, LOCAL_USER_FIELDS } = require("./syncScope.cjs");
+    for (const name of Object.keys(schema.entities)) {
+        assert.ok(SYNC_ENTITIES.has(name) !== LOCAL_ENTITIES.has(name), `${name}: add it to SYNC_ENTITIES or LOCAL_ENTITIES in syncScope.cjs`);
+    }
+    for (const name of [...SYNC_ENTITIES, ...LOCAL_ENTITIES]) assert.ok(schema.entities[name], `${name} is not an entity`);
+    for (const field of LOCAL_USER_FIELDS) assert.ok(schema.entities.User.columns[field], `User.${field} does not exist`);
+});
+
+test("syncRow: local entities stay, the profile travels without this computer's fields", () => {
+    const { syncRow } = require("./syncScope.cjs");
+    assert.equal(syncRow("OutputPref", { id: "x" }), null);
+    assert.equal(syncRow("BibleVerse", { id: "x" }), null);
+    const song = { id: "s", title: "A" };
+    assert.deepEqual(syncRow("Song", song), song);
+    assert.notEqual(syncRow("Song", song), song, "a copy");
+    const me = syncRow("User", { id: PROFILE_ID, logo_url: "l", church_name: "Gerar", full_name: "Ana", prefs_version: 2, console_density: "compact" });
+    assert.deepEqual(me, { id: PROFILE_ID, logo_url: "l", church_name: "Gerar" });
+});
+
+test("deleting a synced row leaves a tombstone; local entities leave none", () => {
+    const s = fresh();
+    const a = s.call("Song", "create", [{ title: "A" }]);
+    const pref = s.call("OutputPref", "create", [{ page: "/Projection" }]);
+    s.call("Song", "delete", [a.id]);
+    s.call("Song", "delete", [a.id]);
+    s.call("OutputPref", "delete", [pref.id]);
+    s.call("Song", "delete", ["never-existed"]);
+    const marks = s.tombstones();
+    assert.equal(marks.length, 1);
+    assert.equal(marks[0].entity, "Song");
+    assert.equal(marks[0].id, a.id);
+    assert.ok(Date.parse(marks[0].deleted_at) >= Date.parse(a.created_date));
+});
+
+test("tombstones: since filters, a row back clears its mark, prune forgets old ones", () => {
+    const s = fresh();
+    const [a, b] = s.call("Song", "bulkCreate", [[{ title: "A" }, { title: "B" }]]);
+    s.call("Song", "delete", [a.id]);
+    const first = s.tombstones()[0].deleted_at;
+    s.call("Song", "delete", [b.id]);
+    assert.equal(s.tombstones().length, 2);
+    assert.ok(s.tombstones(first).every((m) => m.deleted_at > first));
+    s.importRows("Song", [{ ...a }]);
+    assert.deepEqual(s.tombstones().map((m) => m.id), [b.id], "restored row is no longer deleted");
+    assert.equal(s.pruneTombstones("2000-01-01"), 0);
+    assert.equal(s.pruneTombstones(new Date(Date.now() + 60_000)), 1);
+    assert.equal(s.tombstones().length, 0);
+    assert.throws(() => s.pruneTombstones("nope"), { status: 400 });
+});
+
 test("schema upgrade adds new columns to an existing database", () => {
     const fs = require("node:fs");
     const os = require("node:os");
