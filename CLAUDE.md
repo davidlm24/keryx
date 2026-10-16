@@ -48,6 +48,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and the states never run edge to edge. One rule in `console.css`; don't
   override it per list. Edge to edge only where the owner asks (the Slides
   column and No ar, to gain room). docs/design-system.md has it too.
+- **Windows contrast themes** (forced colours; design audit C-05,
+  2026-10-16): the states and controls that are backgrounds or shadows get
+  system-colour cues in ONE `@media (forced-colors: active)` block at the
+  end of `bundle.css` and of `console.css` — on air = `Highlight` filling
+  the row (still its background), Prévia = a dashed `LinkText` ring, next =
+  a dotted ring, chosen/pressed/open = a solid `Highlight` ring, switches,
+  fields and buttons with `ButtonText`/`FieldText` borders — and nothing in
+  the normal look changes. What the congregation sees never takes the
+  theme: `forced-color-adjust: none` on every output document
+  (`html.ks-output-doc`, set by App.jsx), the renderer roots (screen.css)
+  and the console's monitors and stills (`.kx-mon-screen`, `.cfg-prev`). A
+  new state or control drawn as a background gets its line there;
+  `src/lib/forcedColors.test.mjs` checks the blocks (system colours only).
 - **One padding rule for panels** (owner 2026-10-16, Rodada F4): a panel's
   header text sits 12 px (`--space-3`) from its edge and its last button
   12 px from the right one (symmetric, owner 2026-10-16 after the Bíblia
