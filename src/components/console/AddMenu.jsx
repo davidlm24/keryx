@@ -1,50 +1,24 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { IconBtn, MenuItem } from "./kx";
+import React, { useRef } from "react";
+import { MenuButton } from "./Menu";
 
 // The "+" beside a search field: what can be added there. An item either
 // runs (onClick) or picks files (accept + onFiles; several at once;
-// directory: a whole folder).
-// items: [{ label, icon, onClick } | { label, icon, accept, onFiles } |
+// directory: a whole folder). The console's one menu draws it (Menu.jsx):
+// the keyboard walks it, disabled items stay disabled, and after it closes
+// the + keeps no focus unless the keyboard opened it (audit C-15, C-56).
+// items: [{ label, icon, onClick, disabled? } | { label, icon, accept, onFiles } |
 //         { label, node }] — node rows just hold a control (a setting).
 export default function AddMenu({ title = "Adicionar", items }) {
-    const [open, setOpen] = useState(false);
-    const box = useRef(null);
-    const pop = useRef(null);
     const inputs = useRef([]);
-    // The pop hangs from the +'s right edge; with the + near the window's
-    // left (the Biblioteca's and Livros' place) that falls off screen, so
-    // it hangs from the left edge instead.
-    useLayoutEffect(() => {
-        if (!open || !pop.current) return;
-        pop.current.classList.toggle("is-flip", pop.current.getBoundingClientRect().left < 4);
-    }, [open]);
-    useEffect(() => {
-        if (!open) return undefined;
-        const away = (e) => { if (!box.current?.contains(e.target)) setOpen(false); };
-        const esc = (e) => { if (e.key === "Escape") { e.stopPropagation(); setOpen(false); } };
-        window.addEventListener("mousedown", away);
-        window.addEventListener("keydown", esc, true);
-        return () => { window.removeEventListener("mousedown", away); window.removeEventListener("keydown", esc, true); };
-    }, [open]);
+    const list = items.map((it, i) => (it.node
+        ? { node: <div key={it.label} className="kx-menu-h addmenu-row">{it.node}</div> }
+        : { label: it.label, icon: it.icon, disabled: it.disabled, title: it.title, onSelect: () => (it.onFiles ? inputs.current[i]?.click() : it.onClick?.()) }));
     return (
-        <span className="addmenu" ref={box}>
-            <IconBtn name="plus" title={title} on={open} onClick={() => setOpen((o) => !o)} />
-            {open && (
-                <div ref={pop} className="kx-pop addmenu-pop" role="menu">
-                    {items.map((it, i) => (it.node ? (
-                        <div key={it.label} className="kx-menu-h addmenu-row">{it.node}</div>
-                    ) : (
-                        <MenuItem key={it.label} icon={it.icon} role="menuitem" onClick={() => {
-                            if (it.onFiles) inputs.current[i]?.click();
-                            else { setOpen(false); it.onClick?.(); }
-                        }}>{it.label}</MenuItem>
-                    )))}
-                </div>
-            )}
+        <MenuButton title={title} items={list}>
             {items.map((it, i) => it.onFiles && (
                 <input key={it.label} ref={(el) => { inputs.current[i] = el; }} type="file" multiple accept={it.accept} hidden {...(it.directory ? { webkitdirectory: "" } : {})}
-                    onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; setOpen(false); if (files.length) it.onFiles(files); }} />
+                    onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; if (files.length) it.onFiles(files); }} />
             ))}
-        </span>
+        </MenuButton>
     );
 }
