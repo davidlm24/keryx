@@ -14,7 +14,7 @@ import '@/components/screen/screen.css'
 import '@/components/screen/activity.css'
 import '@/components/screen/layout.css'
 import '@/components/screen/output-prefs.css'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useLayoutEffect } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
@@ -86,6 +86,17 @@ function ScreenTitle({ pathname }) {
   return null;
 }
 
+// An output's whole document keeps its colours under a Windows contrast
+// theme (forced-color-adjust, screen.css): the congregation never sees this
+// computer's accessibility settings. Before the first paint, so the black
+// fallback is never repainted either.
+function OutputDocument() {
+  const { pathname } = useLocation();
+  const output = TITLED.has(pathname);
+  useLayoutEffect(() => { document.documentElement.classList.toggle('ks-output-doc', output); }, [output]);
+  return null;
+}
+
 // Development only: the network start page in the browser preview, with the
 // screens electron/lan.cjs lists (NETWORK_SCREENS), to check its layout.
 const PREVIEW_SCREENS = [
@@ -110,6 +121,7 @@ function App() {
       <Router>
         {import.meta.env.DEV && keryx.isPreview && <PreviewBanner />}
         <WindowTitle />
+        <OutputDocument />
         <ErrorBoundary>
           {keryx.isNetworkScreen ? (
             <>
