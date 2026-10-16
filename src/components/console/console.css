@@ -230,6 +230,10 @@
    the level of its title like every module's + (Rodada E1). The panel
    beside the Prévia got a thin header of its own for it ("Painel"). */
 .console .kx-panel-h > .tabs-plus { flex: none; width: 24px; height: 24px; }
+/* A header is symmetric (owner 2026-10-16): its title sits 12 px from the
+   left edge and its last button 12 px from the right one. The bare panels
+   keep their own. */
+.console .kx-panel:not(.kx-panel-bare) > .kx-panel-h { padding-right: var(--space-3); }
 /* Too many tabs for the width: the row breaks into a second line (owner
    2026-10-14, the Biblioteca review), never a cut title. Only a single tab
    wider than the whole panel still shortens. */
@@ -491,7 +495,10 @@
    side widths are the operator's (Ver › Editar layout). Each picker card
    scrolls on its own; Versículos takes what is left. */
 .console .bible-center { container: bible / inline-size; }
-.console .bpick-books .bsrc { display: flex; height: 20px; padding: 0 var(--space-3); }
+/* The band under Livros' header is the same row as Recentes under the text's
+   (4 + 24 + 4 and a separator), so both columns start their lists at the
+   same height. */
+.console .bpick-books .bsrc { display: flex; box-sizing: border-box; height: 33px; padding: 0 var(--space-3); border-bottom: 1px solid var(--line); }
 /* Livros' header carries the version, Abrev | Nomes, the install +, the
    view menu and the fold chevron beside its title (Rodada F4): the
    controls sit tighter, so the title still reads at the column's 300 px. */
@@ -515,11 +522,11 @@
 /* The text panel's search field (Buscar; a reference opens the chapter). */
 .console .bread-search { flex: 0 4 240px; min-width: 140px; }
 .console .bread-search .kx-field { width: 100%; }
-.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: 0 var(--space-1) var(--space-1); }
+.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: var(--space-1); }
 .console .bpick-books.names-full .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-.console .bpick-chapters .bchap { border-top: 0; padding: 0 var(--space-1) var(--space-1); }
+.console .bpick-chapters .bchap { border-top: 0; padding: var(--space-1); }
 .console .bpick-chapters .chapters { max-height: none; overflow: visible; }
-.console .bpick-verses .bverses { padding: 0 var(--space-1) var(--space-1); }
+.console .bpick-verses .bverses { padding: var(--space-1); }
 /* The text column: recent chapters, favourites and notes on top, the
    reading (or Buscar, Comparar) below, scrolling. */
 /* Its header is one line at the density's height, like every panel's
