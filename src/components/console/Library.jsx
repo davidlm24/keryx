@@ -194,14 +194,14 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
 
             <div className="searchrow">
                 <Field value={q} onChange={setQ} placeholder="Buscar…" />
-                {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} onClick={() => setFavOnly((f) => !f)} />}
+                {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} aria-label="Só favoritas" onClick={() => setFavOnly((f) => !f)} />}
                 <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
             </div>
 
             {tab === "letras" && (() => {
                 const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, stripChords(s.lyrics || "")));
                 return (
-                    <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
+                    <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
                         {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
                         {songs.map((s) => (
                             <Row
@@ -223,9 +223,9 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                 ] })}
                                 dragProps={dragProps(stageFromSong(s, {}, data.themes), s.duration ? mmss(s.duration) : "")}
                                 actions={<>
-                                    <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
-                                    {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música" aria-label="Editar"><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>}
-                                    {onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist" aria-label="Adicionar"><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar</span></Btn>}
+                                    <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} aria-label={`Favorita: ${s.title}`} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
+                                    {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música" aria-label={`Editar ${s.title}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>}
+                                    {onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist" aria-label={`Adicionar ${s.title} à setlist`}><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar</span></Btn>}
                                 </>}
                             />
                         ))}
@@ -264,7 +264,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         ] })}
                         dragProps={dragProps(stageFromMedia(m), m.duration ? mmss(m.duration) : "")}
                         {...rowProps(m)}
-                        actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label="Telas de vídeo"><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
+                        item
+                        actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label={`${m.title}: pôr na prévia para as telas de vídeo`}><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
                     />
                 );
                 return (
@@ -281,7 +282,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         {audios.length > 1 && (
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}
-                        <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
+                        <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
                             {!media.length && <Empty icon={{ imagens: "image", audios: "music" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
                             {media.map(mediaRow)}
                         </div>
@@ -302,17 +303,17 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         <ToolsPicker c={c} data={data} onPrepare={onPrepare} onGo={onGo} />
                         </>}
                         <div className="listhead"><span className="kx-section">Todos os avisos <span className="kx-count">· {pieces.length}</span></span><span style={{ flex: 1 }} />{pieces.length > 1 && <Btn small onClick={() => onPrepare(stageFromPieceList(pieces))} title="Pôr na prévia todos os avisos desta lista, um depois do outro, em loop">Tocar todos</Btn>}</div>
-                        <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
+                        <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
                             {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (
-                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")}
+                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")} item
                                     onContextMenu={(e) => menu(e, { title: p.title || p.text, items: [
                                         { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromPiece(p)) },
                                         onEditNotice && { label: "Editar", icon: "edit", onSelect: () => onEditNotice(p.id) },
                                         { label: "Excluir…", icon: "trash", onSelect: () => removeRow("CommunicationVideo", p, "o aviso", p.title || p.text || "sem título", "Aviso excluído.") },
                                         onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromPiece(p)) },
                                     ] })}
-                                    actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso" aria-label="Editar"><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>} />
+                                    actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso" aria-label={`Editar ${p.title || p.text}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>} />
                             ))}
                         </div>
                     </>

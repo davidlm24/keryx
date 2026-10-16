@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Btn, Empty, IconBtn } from "./kx";
+import { Btn, Empty, IconBtn, SrState } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import useKeepInView from "./useKeepInView";
 import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
@@ -75,12 +75,12 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
                     else cls = i === index ? airWord : i === index + 1 ? "is-next" : "";
                     const onAir = cls.includes(airWord);
                     return (
-                        <button type="button" key={i} className={`kx-slide kx-t ${cls}`} onClick={() => pick(i)} onDoubleClick={() => go(i)}
+                        <button type="button" key={i} className={`kx-slide kx-t ${cls}`} aria-current={onAir ? "true" : undefined} onClick={() => pick(i)} onDoubleClick={() => go(i)}
                             onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
                                 { label: "Pôr na prévia", icon: "eye", disabled: !hand && i === index, onSelect: () => pick(i) },
                                 { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
                             ] })} title={`${onAir ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || sl.label || ""}`}>
-                            <span className="kx-slide-n">{i + 1}</span>
+                            <span className="kx-slide-n">{i + 1}</span><SrState cls={cls} />
                             <SlideText slide={sl} />
                         </button>
                     );

@@ -270,7 +270,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                 {sel?.kind === "generator" && <>
                                     <GeneratorPanel background={bgArgs(sel, "")} op={(_op, args) => setSel(cleanSpec(args))} />
                                     <span className="k">Escurecer</span>
-                                    <Seg small value={String(sel.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => setSel(cleanSpec({ ...sel, dim: Number(v) }))} />
+                                    <Seg small label="Escurecer" value={String(sel.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => setSel(cleanSpec({ ...sel, dim: Number(v) }))} />
                                 </>}
                                 {sel?.kind !== "generator" && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Um fundo que as telas calculam: escolha um gerador, depois as cores e o movimento.</span>}
                             </div>

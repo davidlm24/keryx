@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { airSince, airFor, airInPlayer } from "./caption.js";
+import { airSince, airFor, airInPlayer, airAnnouncement } from "./caption.js";
 
 const song = { content: { title: "Hino", slides: [{ text: "a" }], index: 0, startedAt: 10_000 } };
 
@@ -50,4 +50,14 @@ test("the pill's title only when the player does not name what is on air (Rodada
     assert.equal(airInPlayer({ screen: "logo", audio: music }), false, "Logo");
     assert.equal(airInPlayer({}), false, "nothing: \"Nada no ar\"");
     assert.equal(airInPlayer(null), false);
+});
+
+test("what a screen reader hears when the air changes (C-25)", () => {
+    const hino = { content: { title: "Hino", slides: [{ text: "a" }, { text: "b" }, { text: "c" }], index: 0, startedAt: 1 } };
+    assert.equal(airAnnouncement(hino), "No ar: Hino · 1/3");
+    assert.equal(airAnnouncement({ content: { ...hino.content, index: 2 } }), "No ar: Hino · 3/3", "each slide is a change");
+    assert.equal(airAnnouncement({ content: { ...hino.content, startedAt: 99 } }), "No ar: Hino · 1/3", "time is never in the words");
+    assert.equal(airAnnouncement({ screen: "black", content: hino.content }), "No ar: Tela preta");
+    assert.equal(airAnnouncement(null), "Nada no ar");
+    assert.equal(airAnnouncement({}), "Nada no ar");
 });
