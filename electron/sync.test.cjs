@@ -37,6 +37,11 @@ const songs = (pc) => pc.store.call("Song", "list", [])
     .sort((a, b) => (a.id < b.id ? -1 : 1));
 
 const tick = () => new Promise((r) => setTimeout(r, 5));
+// Waits for a condition (a pass on a timer), at most `ms`.
+async function until(cond, ms = 3000) {
+    const end = Date.now() + ms;
+    while (!cond() && Date.now() < end) await new Promise((r) => setTimeout(r, 10));
+}
 
 async function rounds(pcs, n = 3) {
     for (let i = 0; i < n; i++) {
@@ -335,14 +340,14 @@ test("a pass runs at a time; local changes ask for one; remote ones do not echo"
     let passes = 0;
     const counted = createSyncEngine({ store: b.store, mediaDir: b.mediaDir, getFolder: () => folder, getPairing: () => CHURCH, log: () => {}, onStatus: () => { passes += 1; } });
     counted.start({ intervalMs: 60000, debounce: 10 });
-    await new Promise((r) => setTimeout(r, 60));
+    await until(() => passes >= 1);
     assert.equal(passes, 1, "the first pass after start");
     assert.equal(songs(b).length, 1);
     await new Promise((r) => setTimeout(r, 60));
     assert.equal(passes, 1, "what the pass applied does not ask for another");
     b.store.call("Song", "create", [{ title: "Outra" }]);
     b.store.call("OutputPref", "create", [{ page: "/Projection" }]);
-    await new Promise((r) => setTimeout(r, 60));
+    await until(() => passes >= 2);
     assert.equal(passes, 2);
     assert.equal(b.store.outbox().length, 0);
     counted.stop();
