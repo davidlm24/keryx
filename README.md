@@ -189,7 +189,7 @@ the QR code) in the tablet's or TV's browser, on the same Wi-Fi. Windows asks
 once whether KERYX may use the network: allow it on private networks. An
 optional PIN keeps other devices on the Wi-Fi out. Screens can only view: the
 console is never served to the network, and screens cannot write. Available:
-Projeção principal, Letras, Palco, Vídeo, Avisos, Tela do pastor. The console
+Projeção, Letras, Palco, Vídeo, Avisos, Pastor, Transmissão. The console
 lists the screens connected right now in the Saídas popover.
 
 ### Bible text
