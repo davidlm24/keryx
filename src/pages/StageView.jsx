@@ -36,7 +36,7 @@ export default function StageView() {
     if (pref.content) return <OutputScreen page="/StageView" live={live} prefs={{ pref, theme }} now={nowMs} logoUrl={church.logo} audio={false} />;
     // The Aviso rápido while a song is on air, in the Palco's own look
     // (Rodada E3: the same bar as every screen).
-    const alert = live?.content ? alertOf(live, pref) : null;
+    const alert = live?.content ? alertOf(live, pref, "/StageView") : null;
     if (layout) return <LayoutRenderer layout={layout} live={live} alert={alert} nowMs={nowMs} logoUrl={church.logo} upcoming={upcoming} hasService={hasService} church={church} scale={pref.scale} />;
     // The bar rides beside the StageScreen, not in it: .net-stage puts its
     // children in the column's flow.

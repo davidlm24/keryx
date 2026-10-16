@@ -282,7 +282,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const screenState = renderer ? prefState(path, live, pref, ctxTheme) : undefined;
     // The Aviso rápido over the whole drawing, in this screen's look, as the
     // page draws it (OutputScreen, StageView); the Pastor's draws none.
-    const canvasAlert = renderer ? screenState?.alert ?? null : path === "/StageView" ? (live.content ? alertOf(live, pref) : null) : undefined;
+    const canvasAlert = renderer ? screenState?.alert ?? null : path === "/StageView" ? (live.content ? alertOf(live, pref, path) : null) : undefined;
 
     const upload = async (file, apply) => {
         if (!file) return;

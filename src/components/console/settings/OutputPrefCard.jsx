@@ -122,7 +122,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
     // own look; a change shows the example on the Editor's canvas.
     const alertShown = !isStream && showsAlert(output.key, pref);
     const alertHidden = pref.hidden.includes("alert");
-    const alertLook = alertOptions(pref);
+    const alertLook = alertOptions(pref, output.key);
     const saveAlert = (k, v) => { saveOpt(`alert_${k}`, v); onAlertSample?.(true); };
     const alertColoursDefault = alertLook.bg === ALERT_DEFAULTS.bg && alertLook.fg === ALERT_DEFAULTS.fg;
     const resetAlertColours = () => {

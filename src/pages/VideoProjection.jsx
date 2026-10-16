@@ -30,7 +30,7 @@ export default function VideoProjection() {
         <div style={{ position: "fixed", inset: 0, background: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {video.title && <div className="net-vtitle">{video.title}</div>}
             <LiveVideo item={video} meter="video" className="w-full h-screen" onEnded={() => { if (keryx.isDesktop) projection.clearVideo().catch(() => {}); }} />
-            <AlertLayer alert={alertOf(live, prefs.pref)} />
+            <AlertLayer alert={alertOf(live, prefs.pref, "/VideoProjection")} />
         </div>
     );
 }
