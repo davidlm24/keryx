@@ -35,8 +35,8 @@ const clamp = (v, [lo, hi]) => {
 //          that row, the Mídia keeps the file
 export const ORIGINS = ["keryx", "own", "media"];
 
-// Every background with its settings: bundled ({ id, url, category }) then
-// the church's images and videos ({ id, url, title, origin? }), each
+// Every background with its settings: bundled ({ id, url, category, name? })
+// then the church's images and videos ({ id, url, title, origin? }), each
 // { source, url, name, category, dim (0-0.9 or null), blur (px or null),
 // hidden (excluído), favorite, pref, origin, mediaId }.
 export function backgroundList({ bundled = [], images = [], videos = [], prefs = [] }) {
@@ -55,7 +55,7 @@ export function backgroundList({ bundled = [], images = [], videos = [], prefs =
         };
     };
     const all = [
-        ...bundled.map((b, i) => entry(`bundled:${b.id}`, b.url, `Fundo ${i + 1}`, b.category || "Outros", "image", "keryx")),
+        ...bundled.map((b, i) => entry(`bundled:${b.id}`, b.url, b.name || `Fundo ${i + 1}`, b.category || "Outros", "image", "keryx")),
         ...images.map((m) => entry(sourceOf(m.url), m.url, m.title || "Imagem", OWN_IMAGES, "image", m.origin || "own", m.id ?? null)),
         // The church's own clips (local files): the Fundo layer plays them
         // looping and muted; never the idle screen or an item's own

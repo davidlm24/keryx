@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
-const { app, BrowserWindow, Menu, dialog, ipcMain, powerMonitor, safeStorage, screen, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, powerMonitor, safeStorage, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
@@ -20,6 +20,7 @@ const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
 const { createConsoleZoom, zoomCommand } = require("./consoleZoom.cjs");
+const windowState = require("./windowState.cjs");
 const schema = require("./db/schema.json");
 
 // A projection window covered by another window is still projecting. Windows
@@ -28,6 +29,10 @@ const schema = require("./db/schema.json");
 // the projector. No window of this app is ever background.
 app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
 app.commandLine.appendSwitch("disable-background-media-suspend");
+// The app speaks pt-BR whatever the system's language: Chromium's own
+// strings (spelling, form validation, media controls) and what it tells
+// Narrator follow this, with <html lang="pt-BR"> in index.html.
+app.commandLine.appendSwitch("lang", "pt-BR");
 
 const HOST = "127.0.0.1";
 // KERYX_PORT=0 picks a free port; smoke runs do, so a test never collides with
@@ -39,6 +44,10 @@ const PORT = process.env.KERYX_PORT !== undefined ? Number(process.env.KERYX_POR
 const BG = "#0d0d0c";
 const TITLEBAR_SYMBOLS = "#bbb6ac"; // --fg-2
 const TITLEBAR_HEIGHT = 32;
+// A detached page's bar (.win-bar in console.css, 40 px with its 1 px line
+// under it) is its title bar: the system's buttons sit at its right end,
+// down to that line.
+const JANELA_BAR_HEIGHT = 39;
 
 // KERYX_DEV_URL: a running Vite dev server (npm run desktop:dev).
 // KERYX_DATA_DIR: where the database and media live (tests use a temp dir).
@@ -187,14 +196,17 @@ function guardWindow(win) {
     webContents.setWindowOpenHandler(({ url }) => {
         if (isAppUrl(url) || url === "about:blank") {
             // Outputs (projector, stage, ...) land on the display the operator
-            // chose; any other popup opens where the page asked.
+            // chose; a detached page (/Janela) where it was left; any other
+            // popup opens where the page asked.
             const key = outputKeyForUrl(url, appOrigin);
+            const kind = !key && windowState.janelaKind(url, appOrigin);
             return {
                 action: "allow",
                 overrideBrowserWindowOptions: {
                     backgroundColor: "#000000",
                     autoHideMenuBar: true,
                     ...(key && outputs ? outputs.windowOptions(key) : {}),
+                    ...(kind ? janelaWindowOptions(kind) : {}),
                     webPreferences,
                 },
             };
@@ -222,6 +234,11 @@ function guardWindow(win) {
     webContents.on("did-create-window", (child, details) => {
         guardWindow(child);
         if (outputs) outputs.track(child, details.url);
+        const kind = windowState.janelaKind(details.url, appOrigin);
+        if (kind) {
+            if (janelaPlacement(kind).maximized) child.maximize();
+            child.on("close", () => keepJanelaPlacement(child, kind));
+        }
     });
 
     // A page with unsaved changes (the Editor) holds its window with
@@ -286,12 +303,65 @@ function openOutputWindow(url, placement) {
     return win;
 }
 
-function createMainWindow() {
+// Where the console opens (windowState.cjs): as it was left on this computer
+// when that fits a monitor connected now, else maximized on the primary one.
+// Smoke runs keep the fixed size their checks resize from.
+function consolePlacement(settings) {
+    if (SMOKE) return { bounds: { ...windowState.DEFAULT }, maximized: false };
+    const primaryId = screen.getPrimaryDisplay().id;
+    const displays = screen.getAllDisplays().map((d) => ({ primary: d.id === primaryId, bounds: d.bounds, workArea: d.workArea }));
+    return windowState.restoreWindow(settings.get(windowState.SETTINGS_KEY, null), displays);
+}
+
+// Kept when the console closes: its normal bounds and whether it was maximized.
+function keepConsolePlacement(win, settings) {
+    if (SMOKE || win.isDestroyed()) return;
+    const previous = settings.get(windowState.SETTINGS_KEY, null);
+    const state = windowState.windowStateToSave({ normal: win.getNormalBounds(), maximized: win.isMaximized() || win.isFullScreen(), minimized: win.isMinimized() }, previous);
+    if (state) settings.set(windowState.SETTINGS_KEY, state);
+}
+
+// A detached page (/Janela, one window per kind of page): the console's
+// chrome — no native bar, the system's buttons over the page's own bar (its
+// WinBar, which leaves them room and drops its ×) — at least 760 × 480, where
+// that kind was left on this computer, else its default size centred on the
+// console's monitor (windowState.cjs).
+function janelaPlacement(kind) {
+    const saved = (appSettings?.get(windowState.JANELA_KEY, {}) || {})[kind] || null;
+    let home = null;
+    try {
+        if (mainWindow && !mainWindow.isDestroyed()) home = screen.getDisplayMatching(mainWindow.getBounds()).id;
+    } catch { /* the primary below */ }
+    if (home === null) home = screen.getPrimaryDisplay().id;
+    const displays = screen.getAllDisplays().map((d) => ({ primary: d.id === home, bounds: d.bounds, workArea: d.workArea }));
+    return windowState.restoreWindow(saved, displays, windowState.JANELA);
+}
+
+function janelaWindowOptions(kind) {
+    return {
+        ...janelaPlacement(kind).bounds,
+        minWidth: windowState.JANELA.min.width,
+        minHeight: windowState.JANELA.min.height,
+        backgroundColor: BG,
+        ...(process.platform === "win32"
+            ? { titleBarStyle: "hidden", titleBarOverlay: { color: BG, symbolColor: TITLEBAR_SYMBOLS, height: JANELA_BAR_HEIGHT } }
+            : {}),
+    };
+}
+
+function keepJanelaPlacement(win, kind) {
+    if (SMOKE || !appSettings || win.isDestroyed()) return;
+    const all = appSettings.get(windowState.JANELA_KEY, {}) || {};
+    const state = windowState.windowStateToSave({ normal: win.getNormalBounds(), maximized: win.isMaximized(), minimized: win.isMinimized() }, all[kind]);
+    if (state) appSettings.set(windowState.JANELA_KEY, { ...all, [kind]: state });
+}
+
+function createMainWindow(settings) {
+    const placement = consolePlacement(settings);
     mainWindow = new BrowserWindow({
-        width: 1440,
-        height: 900,
-        minWidth: 960,
-        minHeight: 600,
+        ...placement.bounds,
+        minWidth: windowState.MIN.width,
+        minHeight: windowState.MIN.height,
         show: false,
         backgroundColor: BG,
         title: "KERYX",
@@ -314,7 +384,10 @@ function createMainWindow() {
         event.preventDefault();
         consoleZoom.command(cmd);
     });
-    mainWindow.once("ready-to-show", () => mainWindow.show());
+    mainWindow.once("ready-to-show", () => {
+        if (placement.maximized) mainWindow.maximize();
+        mainWindow.show();
+    });
     // Closing the console closes KERYX. The outputs are not in the taskbar, so
     // otherwise the app could keep running unseen (and the network server up).
     // "close" (not "closed"): the import restart's app.exit() destroys windows
@@ -325,6 +398,7 @@ function createMainWindow() {
     // close before the quit: one with unsaved changes asks, and "Continuar
     // editando" keeps KERYX open, console and all.
     mainWindow.on("close", (event) => {
+        keepConsolePlacement(mainWindow, settings);
         if (quitting) return; // a quit already decided closes every window
         event.preventDefault();
         const enabled = closeGuard.machinePrefs(appSettings?.get(closeGuard.MACHINE_KEY, {})).confirmClose;
@@ -359,6 +433,11 @@ app.on("child-process-gone", (_e, details) => logger.error(`child-process-gone: 
 app.whenReady().then(async () => {
     if (!gotLock) return;
     Menu.setApplicationMenu(null);
+    // KERYX is dark only (the owner's decision): Windows draws the title bars
+    // of the detached pages and windowed outputs, the text fields' Recortar /
+    // Copiar / Colar menu and the native dialogs dark too, whatever the
+    // system's own theme.
+    nativeTheme.themeSource = "dark";
     logger.info(`KERYX ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
     if (importOutcome && importOutcome.error) {
         dialog.showErrorBox("Importação não aplicada", `Os dados anteriores foram mantidos.\n\n${importOutcome.error}`);
@@ -627,7 +706,7 @@ app.whenReady().then(async () => {
     sync.start();
     powerMonitor.on("resume", () => sync.poke());
 
-    const win = createMainWindow();
+    const win = createMainWindow(settings);
     // Outputs set to "Abrir ao iniciar" in Telas e saídas.
     win.once("ready-to-show", () => outputs.openAtLaunch());
     if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, settings, network, live, dataDir, importOutcome });

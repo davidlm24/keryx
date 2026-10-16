@@ -50,7 +50,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             "sep",
             { label: editing ? "Concluir a edição" : "Editar disposição", icon: "grip", checked: editing, onSelect: onEditLayout, title: "Mudar os módulos de lugar, salvar disposições com nome · Esc conclui" },
             { label: "Restaurar disposição", onSelect: () => { restoreLayout(); setOpen(null); } },
-            { label: "Atalhos do teclado", icon: "keyboard", kbd: helpKey, onSelect: () => setOpen("atalhos") },
+            { label: "Atalhos", icon: "keyboard", kbd: helpKey, onSelect: () => setOpen("atalhos") },
         ];
         return (
             // Under the top bar's Ver button, its right edge on the button's.
@@ -72,7 +72,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
     const items = [
         { label: "Culto", icon: "list", kbd: <Icon name="chevron-right" />, onSelect: () => setOpen("cultos") },
         { label: "Planejar o culto", icon: "list", onSelect: go(() => onPlanner?.(serviceId)) },
-        { label: "Biblioteca de mídia", icon: "film", onSelect: go(onMedia) },
+        { label: "Mídia", icon: "film", onSelect: go(onMedia) },
         { label: "Avisos", icon: "megaphone", onSelect: go(onNotices) },
         { label: "Novo aviso", icon: "plus", onSelect: go(onNewNotice) },
         { label: "Escola bíblica", icon: "book", onSelect: go(onSchool) },
@@ -83,7 +83,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
         { label: "Atalhos", icon: "keyboard", kbd: helpKey, onSelect: () => setOpen("atalhos") },
         { label: "Novidades", icon: "star", onSelect: () => onWhatsNew?.() },
         { label: "Configurações", icon: "sliders", onSelect: go(() => onSettings?.("telas")) },
-        { label: "Sobre o KERYX…", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
+        { label: "Sobre o KERYX", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
         hasUpdate(update) && { label: update.status === "downloading" ? "Atualizando…" : "Atualizar agora", icon: "download", kbd: update.status === "downloading" ? `${update.percent}%` : update.version, onSelect: () => onUpdateNow?.() },
     ];
     return <MenuList key="menu" className="pop kx-pop" label="Menu" items={items} closeOnPick={false} onClose={close} style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }} />;
@@ -182,8 +182,8 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             {/* Transmissão is an OBS Browser Source: until OBS connects, say where its address is. */}
             {!rows.some((r) => r.group === "transmissao") && (
                 <div className="kx-menu-h out-group" title="No OBS: Fonte de navegador com o endereço da Transmissão, 1920 × 1080">
-                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda para a live no OBS</span>
-                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço…</Btn>
+                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda da transmissão ao vivo</span>
+                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço</Btn>
                 </div>
             )}
             {!rows.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
@@ -191,18 +191,18 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             {/* Travar telas: rehearse with the screens frozen (shared/live-state.mjs, WHILE_LOCKED). */}
             <div className="kx-menu-h" title="Com as telas travadas o console prepara normalmente; nada novo vai ao ar. Tela preta, Logo, Limpar e Esc continuam valendo.">
                 <span className="kx-section">Travar telas</span><span style={{ flex: 1 }} />
-                <Seg small value={locked ? "on" : "off"} onChange={(v) => onLock?.(v === "on")} options={[["off", "Destravadas"], ["on", "Travadas"]]} />
+                <Seg small label="Travar telas" value={locked ? "on" : "off"} onChange={(v) => onLock?.(v === "on")} options={[["off", "Destravadas"], ["on", "Travadas"]]} />
             </div>
             <div className="kx-menu-h"><span className="kx-section">Tela ociosa</span><span style={{ flex: 1 }} />
                 {/* Logo or Preto when nothing is on air and there is no Fundo; a
                     picture for those moments is the papel de parede. */}
-                <Seg small value={idle === "black" ? "black" : "logo"} onChange={(m) => onIdle(m)}
+                <Seg small label="Tela ociosa" value={idle === "black" ? "black" : "logo"} onChange={(m) => onIdle(m)}
                     options={[["logo", "Logo da igreja"], ["black", "Preto"]]} />
             </div>
             <div className="kx-menu-sep" />
             <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}>
-                <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo…</Btn>
-                <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas…</Btn>
+                <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo</Btn>
+                <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas</Btn>
             </div>
         </div>
     );
@@ -336,7 +336,7 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
                     <React.Fragment key={g.name}>
                         <div className="kx-menu-h"><span className="kx-section">{g.name}</span></div>
                         {g.list.map((r) => { n += 1; const i = n; return (
-                            <Row key={`${g.name}${i}`} icon={r.icon} title={r.title} meta={r.meta} state={i === idx ? "is-selected" : ""} onClick={() => run(i, false)} actions={<><Btn onClick={(e) => { e.stopPropagation(); run(i, false); }} title={`${r.act || "Pôr na prévia"} · Enter`}>{r.act || "Pôr na prévia"}</Btn>{r.add && <Btn onClick={(e) => { e.stopPropagation(); run(i, true); }} title="Adicionar à setlist · Shift+Enter">Adicionar à setlist</Btn>}</>} />
+                            <Row key={`${g.name}${i}`} icon={r.icon} title={r.title} meta={r.meta} state={i === idx ? "is-selected" : ""} onClick={() => run(i, false)} actions={<><Btn onClick={(e) => { e.stopPropagation(); run(i, false); }} title={`${r.act || "Pôr na prévia"} · Enter`} aria-label={`${r.act || "Pôr na prévia"}: ${r.title}`}>{r.act || "Pôr na prévia"}</Btn>{r.add && <Btn onClick={(e) => { e.stopPropagation(); run(i, true); }} title="Adicionar à setlist · Shift+Enter" aria-label={`Adicionar ${r.title} à setlist`}>Adicionar à setlist</Btn>}</>} />
                         ); })}
                     </React.Fragment>
                 ))}
