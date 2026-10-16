@@ -933,7 +933,14 @@ export default function Console() {
     // The Bíblia's own dock (BibleEnv.jsx draws its modules), the same way.
     const bibleDock = useMemo(() => (layout.bibleDock ? normalizeDock({ ...layout.bibleDock, env: "biblia" }) : fromBibleArrangement(layout)),
         [layout.bibleDock, layout.order, layout.stacks, layout.bibleSelW, layout.bibleAirW]); // eslint-disable-line react-hooks/exhaustive-deps
-    const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h, { folded: folded ? folded.split(",") : [], head: PANEL_HEAD }), [bibleDock, mainSize.w, mainSize.h, folded, PANEL_HEAD]);
+    // Capítulos as tall as its cells (owner 2026-10-16), like Camadas, up
+    // to 40 % of the column: past it (Salmos' 150) it scrolls.
+    const [chaptersFitH, setChaptersFitH] = useState(0);
+    const chaptersH = chaptersFitH ? PANEL_HEAD + Math.min(chaptersFitH, Math.round(mainSize.h * 0.4)) : 0;
+    const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h, {
+        locked: chaptersH ? { chapters: chaptersH } : {},
+        folded: folded ? folded.split(",") : [], head: PANEL_HEAD,
+    }), [bibleDock, mainSize.w, mainSize.h, folded, PANEL_HEAD, chaptersH]);
     const setBibleDock = (next) => setLayout({ ...layout, bibleDock: next });
     // Editing moves the modules of the environment on screen.
     const envDock = env === "biblia" ? bibleDock : dock;
@@ -1341,7 +1348,7 @@ export default function Console() {
             )}
             <div className="main" ref={mainRef}>
                 {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
-                    grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })}
+                    grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold }} />}
                 {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} />}
             </div>
