@@ -143,6 +143,28 @@
       "type": "boolean",
       "description": "Telas: esconder a faixa de titulo e canal que o YouTube poe sobre o video (o player fica mais alto que a tela e as faixas ficam fora dela). Nulo = sim"
     },
+    "media_transition": {
+      "type": "string",
+      "enum": ["cut", "fade", "mix"],
+      "description": "Transicoes, entre audios e videos: quando um comeca, o que tocava para de corte (cut) ou suave (fade), ou toca junto (mix). Nulo = fade"
+    },
+    "media_transition_ms": {
+      "type": "integer",
+      "description": "Transicoes, entre audios e videos: a duracao do suave em ms (500, 1000 ou 2000). Nulo = 500"
+    },
+    "clear_transition": {
+      "type": "string",
+      "enum": ["cut", "fade"],
+      "description": "Transicoes, ao tirar da tela (Esc e Limpar): de corte (cut) ou suave (fade). Nulo = fade"
+    },
+    "clear_transition_ms": {
+      "type": "integer",
+      "description": "Transicoes, ao tirar da tela: a duracao do suave em ms (300, 600 ou 1000). Nulo = 300"
+    },
+    "screen_transition": {
+      "type": "boolean",
+      "description": "Transicoes: Tela preta e Logo entram e saem com a transicao de Ao tirar da tela. Nulo = sim"
+    },
     "standby_background": {
       "type": "string",
       "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido). Antigo: lido quando default_background esta vazio"

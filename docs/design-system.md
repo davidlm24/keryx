@@ -372,7 +372,33 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
 - Density (Ver › Densidade, saved with the layout): **Confortável** is the
   default (user decision 2026-10-09): 32 px list rows (`row-comfortable`),
   14 px titles up to two lines, 14 px slide text. **Compacta** keeps 28 px
-  single lines. Headers, controls and the live column do not change.
+  single lines and 28 px panel headers (32 otherwise); controls and the
+  live column do not change. **Automática** (the default since
+  2026-10-14) is Compacta on a grid under 820 px tall.
+- **One padding rule for panels** (owner 2026-10-16, Rodada F4: "some
+  panels have inconsistent padding"): a panel's header is one line, 32 px
+  (28 in Compacta), its text 12 px (`space-3`) from the panel's edge;
+  whatever has a box of its own — list cards, verse cards, the Bíblia's
+  book, chapter and verse cells, the Temas tiles, the search field, tabs,
+  the No ar agora monitor — sits 4 px (`space-1`) in from the column, with
+  its text at 12 px; listheads and sub-titles (Recentes, Selecionado, the
+  Temas heading at the end of Camadas) at 12 px, a band like Recentes with
+  a 1 px `line` under it. A header never wraps into a taller block: the
+  Bíblia's Texto drops its hint, then *Selecionar todos* and *Limpar*, and
+  its search field gives way first. No panel gets an inset of its own.
+- **Folding a panel** (owner 2026-10-16, Rodada F4, pick A): every panel
+  but the Programa, the Prévia and the player has a chevron right of its
+  header's +, pointing up while open ("Dobrar"), turned while folded
+  ("Abrir"). Folded down a column, the panel is its header and its
+  neighbours take the room; folded across a row (the Biblioteca, the
+  Slides, the Painel de abas, the Bíblia's Texto and No ar agora), a 28 px
+  strip on `bg-1`: the chevron at the header's height over the module's
+  name standing up (`writing-mode: vertical-rl`, the `section` style), the
+  whole strip a button that opens it (hover `bg-2`). A split always keeps
+  one panel open: the last one's chevron stays, at `dim`, inert, with the
+  tooltip "Um painel da coluna fica sempre aberto". Folds are this
+  computer's and survive a restart; while editing the arrangement every
+  panel is open. The size eases (180 ms, none with reduced motion).
 - **List rows are inset cards** (UI rule, owner 2026-10-14): every
   `kx-row` and `kx-layer` in the console (Biblioteca, Setlist, the tabs
   panel, Camadas, Configurações' menu, the views) sits 4 px in from its
