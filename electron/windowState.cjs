@@ -3,13 +3,19 @@
 // else maximized on the primary monitor — a fixed 1440 × 900 was bigger than
 // a 1366 × 768 notebook. Kept in the electron settings (settings.json, per
 // computer) under SETTINGS_KEY, written when the console closes.
+// A detached page (/Janela, one window per kind of page) is kept the same
+// way, per kind, under JANELA_KEY; with nothing kept it opens at its default
+// size, centred on the console's monitor and trimmed to it, not maximized.
 // Pure: main.cjs gives it the displays and applies the answer.
 
 const SETTINGS_KEY = "consoleWindow";
+const JANELA_KEY = "janelaWindows";
 // The console's own minimum (BrowserWindow minWidth/minHeight in main.cjs).
 const MIN = { width: 960, height: 600 };
 // The size it asks for when it is not maximized and nothing was kept.
 const DEFAULT = { width: 1440, height: 900 };
+// A detached page: the console's floating window's minimum (winLayout.js).
+const JANELA = { min: { width: 760, height: 480 }, size: { width: 1280, height: 820 }, maximize: false };
 // How much of the window's top strip (where the console's bar is, the one the
 // operator drags it by) must lie on a monitor for the place to count: the
 // whole width given here, half the height.
@@ -34,16 +40,16 @@ function overlap(a, b) {
 const areaOf = (d) => d.workArea || d.bounds;
 const primaryOf = (displays) => displays.find((d) => d.primary) || displays[0] || null;
 
-// The primary monitor's work area, the default size centred in it (never
-// larger than the area), maximized.
-function onPrimary(displays) {
+// The primary monitor's work area ("primary": the display the caller calls
+// home), the default size centred in it (never larger than the area).
+function onPrimary(displays, { size, maximize }) {
     const primary = primaryOf(displays);
-    const area = primary ? areaOf(primary) : { x: 0, y: 0, ...DEFAULT };
-    const width = Math.min(DEFAULT.width, area.width);
-    const height = Math.min(DEFAULT.height, area.height);
+    const area = primary ? areaOf(primary) : { x: 0, y: 0, ...size };
+    const width = Math.min(size.width, area.width);
+    const height = Math.min(size.height, area.height);
     return {
         bounds: { x: area.x + Math.round((area.width - width) / 2), y: area.y + Math.round((area.height - height) / 2), width, height },
-        maximized: true,
+        maximized: maximize,
     };
 }
 
@@ -53,21 +59,24 @@ function onPrimary(displays) {
 // The kept place counts when its top strip is on a monitor (GRIP); the size
 // is then trimmed to that monitor's work area and the window pulled inside it,
 // so a window kept on a big monitor never spills off a notebook. Too small
-// for the minimum, or on no monitor: maximized on the primary one.
-function restoreWindow(saved, displays = []) {
+// for the minimum, or on no monitor: the default on the primary one
+// (maximized for the console). opts: { min, size, maximize } (JANELA).
+function restoreWindow(saved, displays = [], opts = {}) {
+    const min = opts.min || MIN;
+    const fallback = () => onPrimary(displays, { size: opts.size || DEFAULT, maximize: opts.maximize !== false });
     const state = normalizeWindowState(saved);
-    if (!state || state.width < MIN.width || state.height < MIN.height || !displays.length) return onPrimary(displays);
+    if (!state || state.width < min.width || state.height < min.height || !displays.length) return fallback();
     const grip = { x: state.x, y: state.y, width: state.width, height: GRIP.height };
     let best = null;
     for (const d of displays) {
         const o = overlap(grip, areaOf(d));
         if (o && o.width >= GRIP.width && o.height >= GRIP.height / 2 && (!best || o.width > best.o.width)) best = { d, o };
     }
-    if (!best) return onPrimary(displays);
+    if (!best) return fallback();
     const area = areaOf(best.d);
     const width = Math.min(state.width, area.width);
     const height = Math.min(state.height, area.height);
-    if (width < MIN.width || height < MIN.height) return onPrimary(displays);
+    if (width < min.width || height < min.height) return fallback();
     const x = Math.min(Math.max(state.x, area.x), area.x + area.width - width);
     const y = Math.min(Math.max(state.y, area.y), area.y + area.height - height);
     return { bounds: { x, y, width, height }, maximized: state.maximized };
@@ -83,4 +92,17 @@ function windowStateToSave({ normal, maximized, minimized }, previous) {
     return state;
 }
 
-module.exports = { SETTINGS_KEY, MIN, DEFAULT, normalizeWindowState, restoreWindow, windowStateToSave };
+// The kind of page a detached window shows (/Janela?page=…; the old
+// /Editor lands there too), or "" for any other URL of the app.
+function janelaKind(url, origin) {
+    try {
+        const u = new URL(url);
+        if (u.origin !== origin || !/^\/(Janela|Editor)\/?$/i.test(u.pathname)) return "";
+        const page = (u.searchParams.get("page") || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 32);
+        return page || (u.searchParams.get("screen") ? "screen" : "theme");
+    } catch {
+        return "";
+    }
+}
+
+module.exports = { SETTINGS_KEY, JANELA_KEY, MIN, DEFAULT, JANELA, normalizeWindowState, restoreWindow, windowStateToSave, janelaKind };

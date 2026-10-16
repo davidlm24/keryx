@@ -28,6 +28,10 @@ const schema = require("./db/schema.json");
 // the projector. No window of this app is ever background.
 app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
 app.commandLine.appendSwitch("disable-background-media-suspend");
+// The app speaks pt-BR whatever the system's language: Chromium's own
+// strings (spelling, form validation, media controls) and what it tells
+// Narrator follow this, with <html lang="pt-BR"> in index.html.
+app.commandLine.appendSwitch("lang", "pt-BR");
 
 const HOST = "127.0.0.1";
 // KERYX_PORT=0 picks a free port; smoke runs do, so a test never collides with
@@ -39,6 +43,10 @@ const PORT = process.env.KERYX_PORT !== undefined ? Number(process.env.KERYX_POR
 const BG = "#0d0d0c";
 const TITLEBAR_SYMBOLS = "#bbb6ac"; // --fg-2
 const TITLEBAR_HEIGHT = 32;
+// A detached page's bar (.win-bar in console.css, 40 px with its 1 px line
+// under it) is its title bar: the system's buttons sit at its right end,
+// down to that line.
+const JANELA_BAR_HEIGHT = 39;
 
 // KERYX_DEV_URL: a running Vite dev server (npm run desktop:dev).
 // KERYX_DATA_DIR: where the database and media live (tests use a temp dir).
@@ -133,14 +141,17 @@ function guardWindow(win) {
     webContents.setWindowOpenHandler(({ url }) => {
         if (isAppUrl(url) || url === "about:blank") {
             // Outputs (projector, stage, ...) land on the display the operator
-            // chose; any other popup opens where the page asked.
+            // chose; a detached page (/Janela) where it was left; any other
+            // popup opens where the page asked.
             const key = outputKeyForUrl(url, appOrigin);
+            const kind = !key && windowState.janelaKind(url, appOrigin);
             return {
                 action: "allow",
                 overrideBrowserWindowOptions: {
                     backgroundColor: "#000000",
                     autoHideMenuBar: true,
                     ...(key && outputs ? outputs.windowOptions(key) : {}),
+                    ...(kind ? janelaWindowOptions(kind) : {}),
                     webPreferences,
                 },
             };
@@ -158,6 +169,11 @@ function guardWindow(win) {
     webContents.on("did-create-window", (child, details) => {
         guardWindow(child);
         if (outputs) outputs.track(child, details.url);
+        const kind = windowState.janelaKind(details.url, appOrigin);
+        if (kind) {
+            if (janelaPlacement(kind).maximized) child.maximize();
+            child.on("close", () => keepJanelaPlacement(child, kind));
+        }
     });
 
     // A page with unsaved changes (the Editor) holds its window with
@@ -229,6 +245,41 @@ function keepConsolePlacement(win, settings) {
     const previous = settings.get(windowState.SETTINGS_KEY, null);
     const state = windowState.windowStateToSave({ normal: win.getNormalBounds(), maximized: win.isMaximized() || win.isFullScreen(), minimized: win.isMinimized() }, previous);
     if (state) settings.set(windowState.SETTINGS_KEY, state);
+}
+
+// A detached page (/Janela, one window per kind of page): the console's
+// chrome — no native bar, the system's buttons over the page's own bar (its
+// WinBar, which leaves them room and drops its ×) — at least 760 × 480, where
+// that kind was left on this computer, else its default size centred on the
+// console's monitor (windowState.cjs).
+function janelaPlacement(kind) {
+    const saved = (appSettings?.get(windowState.JANELA_KEY, {}) || {})[kind] || null;
+    let home = null;
+    try {
+        if (mainWindow && !mainWindow.isDestroyed()) home = screen.getDisplayMatching(mainWindow.getBounds()).id;
+    } catch { /* the primary below */ }
+    if (home === null) home = screen.getPrimaryDisplay().id;
+    const displays = screen.getAllDisplays().map((d) => ({ primary: d.id === home, bounds: d.bounds, workArea: d.workArea }));
+    return windowState.restoreWindow(saved, displays, windowState.JANELA);
+}
+
+function janelaWindowOptions(kind) {
+    return {
+        ...janelaPlacement(kind).bounds,
+        minWidth: windowState.JANELA.min.width,
+        minHeight: windowState.JANELA.min.height,
+        backgroundColor: BG,
+        ...(process.platform === "win32"
+            ? { titleBarStyle: "hidden", titleBarOverlay: { color: BG, symbolColor: TITLEBAR_SYMBOLS, height: JANELA_BAR_HEIGHT } }
+            : {}),
+    };
+}
+
+function keepJanelaPlacement(win, kind) {
+    if (SMOKE || !appSettings || win.isDestroyed()) return;
+    const all = appSettings.get(windowState.JANELA_KEY, {}) || {};
+    const state = windowState.windowStateToSave({ normal: win.getNormalBounds(), maximized: win.isMaximized(), minimized: win.isMinimized() }, all[kind]);
+    if (state) appSettings.set(windowState.JANELA_KEY, { ...all, [kind]: state });
 }
 
 function createMainWindow(settings) {

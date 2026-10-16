@@ -5,8 +5,9 @@
 // window of its own instead (/Janela, src/pages/Janela.jsx — the console's ⧉
 // "Destacar em janela" goes through nav.js detachSpec for every page): on the
 // desktop a real window (main.cjs's window-open handler gives any app-origin
-// page the preload and IPC; non-output paths are not tracked, so it keeps
-// its frame and taskbar button); in the browser preview a tab. One window
+// page the preload and IPC, and a /Janela the console's chrome and its
+// place on this computer; non-output paths are not tracked, so it keeps its
+// taskbar button); in the browser preview a tab. One window
 // per editor: the name makes a second open navigate the first (its
 // unsaved-changes guard still asks), and focus() brings it forward.
 import { janelaName } from "./console/nav.js";

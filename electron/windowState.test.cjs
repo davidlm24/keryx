@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizeWindowState, restoreWindow, windowStateToSave } = require("./windowState.cjs");
+const { normalizeWindowState, restoreWindow, windowStateToSave, janelaKind, JANELA } = require("./windowState.cjs");
 
 // A 1366 × 768 notebook (taskbar 48 px) and a 1920 × 1080 monitor to its right.
 const notebook = { primary: true, bounds: { x: 0, y: 0, width: 1366, height: 768 }, workArea: { x: 0, y: 0, width: 1366, height: 720 } };
@@ -61,4 +61,29 @@ test("closing keeps the normal bounds; minimized keeps the maximized flag it had
     assert.deepEqual(windowStateToSave({ normal, maximized: false, minimized: true }, null), { ...normal, maximized: false });
     const prev = { ...normal, maximized: false };
     assert.deepEqual(windowStateToSave({ normal: null, maximized: false, minimized: false }, prev), prev, "nothing readable: the old one stays");
+});
+
+test("a detached page: its default fits the console's monitor, not maximized", () => {
+    // The console on the big monitor: that one is "home" for its pages.
+    const home = [{ ...notebook, primary: false }, { ...monitor, primary: true }];
+    assert.deepEqual(restoreWindow(null, home, JANELA), { bounds: { x: 1686, y: 110, width: 1280, height: 820 }, maximized: false });
+    assert.deepEqual(restoreWindow(null, [notebook], JANELA), { bounds: { x: 43, y: 0, width: 1280, height: 720 }, maximized: false }, "820 px trimmed to a 768 px screen");
+});
+
+test("a detached page: kept per kind, with its own minimum", () => {
+    assert.deepEqual(restoreWindow({ x: 100, y: 50, width: 800, height: 500 }, [notebook], JANELA), { bounds: { x: 100, y: 50, width: 800, height: 500 }, maximized: false }, "under the console's minimum, over its own");
+    assert.equal(restoreWindow({ x: 100, y: 50, width: 700, height: 500 }, [notebook], JANELA).bounds.width, 1280, "under 760 px wide: the default");
+    assert.equal(restoreWindow({ x: 100, y: 50, width: 900, height: 600, maximized: true }, [notebook], JANELA).maximized, true, "kept maximized");
+});
+
+test("which page a window is: /Janela?page=…, the old /Editor too", () => {
+    const o = "http://127.0.0.1:7700";
+    assert.equal(janelaKind(`${o}/Janela?page=song&song=abc`, o), "song");
+    assert.equal(janelaKind(`${o}/Janela?page=theme&theme=1`, o), "theme");
+    assert.equal(janelaKind(`${o}/Editor?screen=/StageView`, o), "screen");
+    assert.equal(janelaKind(`${o}/Editor?theme=1`, o), "theme");
+    assert.equal(janelaKind(`${o}/Janela?page=../x`, o), "x", "only a plain name");
+    assert.equal(janelaKind(`${o}/Projection`, o), "", "an output");
+    assert.equal(janelaKind("https://example.com/Janela?page=song", o), "", "another origin");
+    assert.equal(janelaKind("not a url", o), "");
 });
