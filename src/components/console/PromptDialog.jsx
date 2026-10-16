@@ -5,7 +5,8 @@ import { useDialogFocus } from "./useDialogFocus";
 // One question with a text field, asked by the panels' + menus (a section's
 // name, a free text, an aviso rápido; Console.jsx askText). Enter answers
 // (Ctrl+Enter in a multiline one), Cancelar, the scrim or Esc (the console's
-// key order: it closes before anything else) answer null.
+// key order: it closes before anything else) answer null. Windows order:
+// the action, then Cancelar (audit C-74, as ConfirmDialog).
 export default function PromptDialog({ ask, onAnswer }) {
     const [value, setValue] = useState("");
     const ref = useRef(null);
@@ -29,8 +30,8 @@ export default function PromptDialog({ ask, onAnswer }) {
                     : <Field icon={null} inputRef={ref} value={value} onChange={setValue} placeholder={ask.placeholder} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }} />}
                 {ask.hint && <span className="kx-meta">{ask.hint}</span>}
                 <div style={{ display: "flex", gap: "var(--space-2)", justifyContent: "flex-end" }}>
-                    <Btn onClick={() => onAnswer(null)}>Cancelar</Btn>
                     <Btn kind="brand" disabled={!value.trim()} onClick={submit}>{ask.ok || "OK"}</Btn>
+                    <Btn onClick={() => onAnswer(null)}>Cancelar</Btn>
                 </div>
             </div>
         </>

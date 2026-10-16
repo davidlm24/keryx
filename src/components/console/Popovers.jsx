@@ -281,8 +281,8 @@ export function EndDialog({ open, setOpen, onEnd }) {
             <div id="end-dialog-text">Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
             <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta (B).</div>
             <div className="acts">
-                <Btn onClick={() => setOpen(null)}>Cancelar</Btn>
                 <button ref={goRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => { onEnd(); setOpen(null); }}>Encerrar</button>
+                <Btn onClick={() => setOpen(null)}>Cancelar</Btn>
             </div>
         </div>
     );

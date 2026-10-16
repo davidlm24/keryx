@@ -85,6 +85,32 @@ test("a presentation clicker's PageDown / PageUp move what is on air, as → / �
     assert.equal(key("PageDown", nothing, { ctrlKey: true }), null, "Ctrl+PageDown is not a slide");
 });
 
+test("a focused select is a control: it keeps ↑/↓, the console the live keys (audit C-03)", () => {
+    // As text it took every key: B was dead and typing "a" switched the Bíblia's edition.
+    const select = el("SELECT", ["select"], ["select"]);
+    const option = el("OPTION", [], ["select"]);
+    assert.equal(focusKind(select), "control");
+    for (const k of ["ArrowUp", "ArrowDown", "PageUp", "PageDown"]) assert.equal(key(k, select), null, `${k} walks it`);
+    assert.equal(key(" ", select), null, "Space opens its list");
+    assert.equal(key("Home", select), null);
+    assert.equal(key("a", select), null, "a letter the console does not use is its type-ahead");
+    assert.equal(key("Enter", select), "send", "a closed select does nothing with Enter on Windows");
+    assert.equal(key("Enter", select, { ctrlKey: true }), "send");
+    assert.equal(key("ArrowRight", select), "next", "←/→ move the air, not the select");
+    assert.equal(key("ArrowLeft", select), "prev");
+    assert.equal(key("b", select), "black");
+    assert.equal(key("l", select), "logo");
+    assert.equal(key("c", select), "clear");
+    assert.equal(key("Escape", select), "end", "as from a button: it is not a field to leave");
+    assert.equal(key("/", select), "search");
+    assert.equal(key("ArrowDown", option), null, "an option is its select");
+    assert.equal(jump("a", select), "a", "the Bíblia's quick jump, never the type-ahead");
+    assert.equal(jump("j", select), "j");
+    assert.equal(jump("b", select), null, "B stays Tela preta");
+    assert.equal(jump("j", select, { ctrlKey: true }), null);
+    assert.equal(key("Enter", button), null, "a button keeps its own Enter, as before");
+});
+
 test("a splitter focused with Tab keeps the arrows: nothing moves on air", () => {
     // <div class="kx-split" role="separator" tabindex="0">
     const splitter = el("DIV", ["[tabindex]:not([data-live-keys])", "[role='separator']"]);

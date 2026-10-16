@@ -1287,8 +1287,13 @@ async function checkConsole(webContents, { live, outputs }) {
             await js("document.activeElement && document.activeElement.blur(); true");
             result.bibleSplit = focused && w1 > w0 && w2 === w0 ? true : focused && w1 === w0 && !BrowserWindow.getFocusedWindow() ? verdict("bibleSplit", "outro programa na frente") : { focused, w0, w1, w2 };
         }
+        // A select left with the focus (a Tab, or a list closed without a
+        // pick) never takes the live keys (audit C-03): "j" still opens the
+        // quick jump, and the edition stays.
+        const edition = await js("(() => { const s = document.querySelector('.bpick-books .bver select'); if (s) s.focus(); return s && document.activeElement === s ? s.value : null; })()");
         await press("j");
         result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
+        result.selectLeavesJump = edition !== null && result.quickOpened && await js(`(document.querySelector(".bpick-books .bver select") || {}).value === ${JSON.stringify(edition)}`);
         await type("o 3 16");
         result.quickRead = await js("[...document.querySelectorAll('.qj-step b')].map((n) => n.textContent).join('|')");
         // Space completed the book: the field holds the full name. The
@@ -1897,6 +1902,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await rightClick("Apagar smoke");
         await click(".console .ctx-menu button", "Excluir…");
         result.deleteAsks = await waitFor(() => js("Boolean(document.querySelector('.console .confirm-dialog'))"), 3000);
+        // It opens on Cancelar (audit C-10): a reflex Enter never deletes;
+        // the action is a click (below) or Tab away.
+        result.deleteSafeFocus = await waitFor(() => js("(document.activeElement || {}).textContent === 'Cancelar' && Boolean(document.activeElement.closest('.confirm-dialog'))"), 3000);
         await press("Escape");
         result.deleteKept = await waitFor(() => js("!document.querySelector('.console .confirm-dialog')"), 3000) && await songLeft();
         await rightClick("Apagar smoke");
@@ -2735,10 +2743,10 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
-        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasCard && result.serviceThemeSent && result.bgPrefFollows
+        && result.deleteAsks && result.deleteSafeFocus && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasCard && result.serviceThemeSent && result.bgPrefFollows
         && result.libBig && result.libEscClosed && result.padraoKept && result.padraoAfterEsc && result.padraoService && result.serviceFundoButton
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
-        && result.unlocked && result.unlockedSends && /^Culto \d|^Sem culto|^Sem horário|^\d\d:\d\d · |^\d\d\/\d\d · \d\d:\d\d$/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
+        && result.unlocked && result.unlockedSends && /^Culto \d|^Sem culto|^Sem horário|^\d\d:\d\d · |^\d\d\/\d\d · \d\d:\d\d$/.test(result.serviceClock) && result.quickOpened && result.selectLeavesJump && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.seekDragFollows && result.seekDragOnce === true && result.audioSurvivesEnd && result.pillTitleInPlayer && result.audioStopped && result.pillNada && result.playerAlwaysThere && result.playerIdleQuiet
