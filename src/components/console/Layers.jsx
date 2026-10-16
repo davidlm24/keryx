@@ -387,7 +387,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                 </>)}
                 {openIsOv && (<>
                     <span className="k">Texto</span>
-                    <input ref={ovInput} value={openOv?.content || ""} disabled={disabled || !openOv} onChange={(e) => openOv && setOverlays(overlays.map((o) => (o === openOv ? { ...o, content: e.target.value } : o)))} aria-label="Texto da sobreposição" style={{ height: 24, background: "var(--bg-2)", border: 0, borderRadius: 4, color: "var(--fg-1)", padding: "0 6px", font: "inherit", minWidth: 0 }} />
+                    <input ref={ovInput} value={openOv?.content || ""} disabled={disabled || !openOv} onChange={(e) => openOv && setOverlays(overlays.map((o) => (o === openOv ? { ...o, content: e.target.value } : o)))} aria-label="Texto da sobreposição" style={{ minWidth: 0 }} />
                     <span className="k">Posição</span><Seg small label="Posição" value={openOv ? (openOv.y > 50 ? (openOv.x > 30 ? "bc" : "bl") : "tl") : "bl"} options={[["bl", "Baixo esq."], ["bc", "Baixo centro"], ["tl", "Alto esq."]]} onChange={(v) => { if (!openOv || disabled) return; const pos = { bl: { x: 4, y: 86 }, bc: { x: 30, y: 86 }, tl: { x: 4, y: 4 } }[v]; setOverlays(overlays.map((o) => (o === openOv ? { ...o, ...pos } : o))); }} />
                     <span className="layeracts" style={{ gridColumn: "1 / -1" }}><Btn small disabled={disabled || !openOv} onClick={() => openOv && removeOverlay(openOv)} title="Apaga esta sobreposição">Excluir…</Btn></span>
                 </>)}

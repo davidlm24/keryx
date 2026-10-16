@@ -274,10 +274,37 @@ internet* (amber) or *não disponível* (amber), and a missing edition offers
 Bible's place.
 
 **Other app departures (2026-10-07):** text fields show no gold focus ring
-while typing (a quiet inner `--line-strong` line instead; the gold ring stays
-for keyboard focus on buttons). Monitor frames are drawn inside the box, so
+while typing (a quiet 1 px line instead — `--fg-3` since 2026-10-16, below;
+the gold ring stays for keyboard focus on buttons). Monitor frames are drawn inside the box, so
 narrowing the window never cuts them. The player's seek is a 6 px progress
 bar (red while live) with the remaining time and the length beside it.
+
+**Fields (owner 2026-10-16, audit C-21):** one look for every text field
+and select, `kx-input` / `kx-select` (and `kx-field`, an input with a
+glyph — the `Field` component) in `bundle.css`: 28 px, **24 px with
+`is-small`** (Configurações' selects, inline renames, the planner's
+service pick), `bg-2`, a 1 px `line-strong` line on hover, and focus as a
+**quiet 1 px `fg-3` line** (5.5:1 on `bg-2`, 4.9:1 on `bg-3`, ≥3:1 as
+WCAG 1.4.11 asks; never gold while typing). It is an outline, so a
+Windows contrast theme keeps it. Disabled dims (`--dim`);
+`[aria-invalid="true"]` (and the Sincronizar time's `is-bad`) draws the
+line in `warn`. Textareas are `kx-input` with their own height. The
+console's older field classes (`pl-input`, `ed-text`, `cfg-select`,
+`cfg-inline`, `pl-pick`, `fg-input`, `mv-rename`, `qt-min`, `sync-time`,
+the notes, the Camadas and Bíblia version selects) wear it from one
+`:where()` block in `console.css` and keep only their width or ground; a
+new field takes `kx-input` / `kx-select`, never a class of its own.
+Big search fields keep their size (the palette 40 px, the lyrics search
+36 px, the quick jump 40 px) and the same states.
+
+**Live fill buttons (owner 2026-10-16, audit C-22):** *Enviar ao ar*
+(`kx-btn-prev`), *Destravar* (`kx-btn-rh`) and *Encerrar* / *Excluir*
+(`kx-btn-air`) step **darker** on hover and when pressed
+(`--prev-fill-hover`/`-pressed`, `--rh-fill-…`, `--air-fill-…`: white
+stays 5.6–7.4:1; a lighter shade would drop under 4.5:1). Disabled goes
+neutral like the gold button (`bg-3`, `fg-3`) and never lights on hover;
+the focus ring is the gold button's (light `fg-1`, 2 px outside the fill).
+*Destravar* on the lock banner is 24 px, like every banner button.
 
 **Windows contrast themes (2026-10-16, design audit C-05):** under forced
 colours Chromium repaints backgrounds and borders in the system's colours and

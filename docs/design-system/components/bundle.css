@@ -62,9 +62,18 @@
 .kx-btn:disabled { opacity: var(--dim); background: none; color: var(--fg-2); }
 .kx-btn.kx-btn-icon { width: var(--row); padding: 0; }
 .kx-btn.kx-btn-prev { background: var(--prev-fill); color: var(--on-state); font-weight: 500; padding: 0 var(--space-3); }
-.kx-btn.kx-btn-prev:hover { background: var(--prev); }
 .kx-btn.kx-btn-rh { background: var(--rh-fill); color: var(--on-state); font-weight: 500; padding: 0 var(--space-3); }
 .kx-btn.kx-btn-air { background: var(--air-fill); color: var(--on-state); font-weight: 500; padding: 0 var(--space-3); }
+/* The state fills step DARKER on hover and pressed (a lighter green, blue or red would take white under 4.5:1);
+   disabled goes neutral like the gold one, at the same specificity and after the hover, so it never lights up;
+   the focus ring is the gold button's: light, 2px outside the fill. */
+.kx-btn.kx-btn-prev:hover { background: var(--prev-fill-hover); color: var(--on-state); }
+.kx-btn.kx-btn-prev:active { background: var(--prev-fill-pressed); color: var(--on-state); }
+.kx-btn.kx-btn-rh:hover { background: var(--rh-fill-hover); color: var(--on-state); }
+.kx-btn.kx-btn-rh:active { background: var(--rh-fill-pressed); color: var(--on-state); }
+.kx-btn.kx-btn-air:hover { background: var(--air-fill-hover); color: var(--on-state); }
+.kx-btn.kx-btn-air:active { background: var(--air-fill-pressed); color: var(--on-state); }
+.kx-btn:is(.kx-btn-prev, .kx-btn-rh, .kx-btn-air):disabled { background: var(--bg-3); color: var(--fg-3); opacity: 1; }
 .kx-btn.kx-btn-outline { box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-1); }
 /* Gold: Salvar, Novo culto, Importar… never Enviar ao ar, Ao vivo, Ensaio or a warning. Disabled goes neutral
    (a dimmed gold reads as brown); the focus ring turns light so it shows on the fill. */
@@ -72,7 +81,7 @@
 .kx-btn.kx-btn-brand:hover { background: var(--brand-hover); color: var(--on-brand); }
 .kx-btn.kx-btn-brand:active { background: var(--brand-pressed); color: var(--on-brand); }
 .kx-btn.kx-btn-brand:disabled { background: var(--bg-3); color: var(--fg-3); opacity: 1; }
-.kx .kx-btn.kx-btn-brand:focus-visible { outline-color: var(--fg-1); outline-offset: 2px; }
+.kx .kx-btn:is(.kx-btn-brand, .kx-btn-prev, .kx-btn-rh, .kx-btn-air):focus-visible { outline-color: var(--fg-1); outline-offset: 2px; }
 .kx-btn.kx-btn-outline:hover { background: var(--bg-2); }
 
 /* ---- Segmented switch ---- */
@@ -89,11 +98,26 @@
 :is(.kx-panel-h, .win-bar, .kx-menu-h) .kx-seg.is-small { height: 24px; padding: 0; }
 .kx-dot { width: 6px; height: 6px; border-radius: var(--radius-round); background: currentColor; flex: none; display: inline-block; }
 
-/* ---- Field (search / command) ---- */
+/* ---- Fields: kx-input (text, number, date, textarea), kx-select, and kx-field (an input with a glyph) ----
+   One look: 28px (24 with is-small), bg-2, a line-strong line on hover, and a QUIET focus: a 1px fg-3 line
+   (5.5:1 on bg-2, 4.9:1 on bg-3), never the gold ring while typing. An outline, so forced colours keep it.
+   Disabled dims; [aria-invalid="true"] draws the line in warn (focus included). */
+.kx-input, .kx-select { height: var(--row); min-width: 0; box-sizing: border-box; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control);
+  background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 12px; line-height: 16px; color-scheme: dark; outline: none; }
+:is(.kx-input, .kx-select).is-small { height: 24px; padding: 0 6px; }
+textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px; resize: vertical; }
+.kx-input::placeholder { color: var(--fg-3); }
+:is(.kx-input, .kx-select):hover:not(:disabled, :focus-visible, [aria-invalid="true"]) { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.kx :is(.kx-input, .kx-select):focus-visible { box-shadow: none; outline: 1px solid var(--fg-3); outline-offset: -1px; }
+:is(.kx-input, .kx-select):disabled { opacity: var(--dim); }
+.kx :is(.kx-input, .kx-select)[aria-invalid="true"] { box-shadow: inset 0 0 0 1px var(--warn); outline-color: var(--warn); }
 .kx-field { height: var(--row); display: flex; align-items: center; gap: 6px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-3); min-width: 0; }
 .kx-field:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
-.kx-field:focus-within { box-shadow: none; outline: var(--bar) solid var(--brand); outline-offset: -1px; }
+.kx-field:focus-within { box-shadow: none; outline: 1px solid var(--fg-3); outline-offset: -1px; }
+.kx-field:has(input:disabled) { opacity: var(--dim); box-shadow: none; }
+.kx-field:has(input[aria-invalid="true"]) { box-shadow: inset 0 0 0 1px var(--warn); outline-color: var(--warn); }
 .kx-field input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; padding: 0; color: var(--fg-1); }
+.kx .kx-field input:focus-visible { outline: 0; }
 .kx-field input::placeholder { color: var(--fg-3); }
 .kx-field kbd { font: inherit; font-size: 11px; color: var(--fg-3); }
 
@@ -188,7 +212,7 @@
 .kx-banner .kx-spacer { flex: 1; }
 .kx-banner.is-rh { background: var(--rh-tint); color: var(--rh-fg); box-shadow: inset 0 var(--bar) 0 var(--rh); }
 .kx-banner.is-warn { background: var(--warn-tint); color: var(--warn-fg); box-shadow: inset 0 var(--bar) 0 var(--warn); }
-.kx-banner .kx-btn { height: 22px; padding: 0 var(--space-2); }
+.kx-banner .kx-btn { height: 24px; padding: 0 var(--space-2); }
 
 /* ---- Popover, menu, tooltip ---- */
 .kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--shadow-popover); padding: 6px; min-width: 180px; }
