@@ -552,10 +552,10 @@
 .console .bpick-verses .bverses { padding: var(--space-1); }
 /* The title never gives way (audit C-47: "LIVR…" at 1366): when the
    header cannot hold it all, Abrev | Nomes leaves it and lives in the view
-   menu (BibleEnv's grid button lists it while the Seg is hidden). 276 px is
-   what the header holds — title 57, select 52, Seg 87, + and grid 24 each,
-   four 8 px gaps — so the column's default 300 px keeps the Seg; a change
-   to those widths changes this number. */
+   menu (BibleEnv's grid button lists it while the Seg is hidden). The header
+   needs 272 px — title 57, select 52, Seg 83, + and grid 24 each, four 8 px
+   gaps — so the column's default 300 px (276 inside) keeps the Seg; a
+   change to those widths changes this number. */
 .console .bpick-books > .kx-panel-h { container: bbooks-h / inline-size; }
 .console .bpick-books > .kx-panel-h > .kx-section { flex: 1 0 auto; }
 @container bbooks-h (width < 276px) { .console .bpick-books > .kx-panel-h > .kx-seg { display: none; } }
