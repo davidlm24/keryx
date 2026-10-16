@@ -92,7 +92,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
     }
 
     // What has gone back and forth since KERYX opened, and the bell.
-    const since = { sent: 0, applied: 0, skipped: 0, failed: 0, rejected: 0 };
+    const since = { sent: 0, applied: 0, skipped: 0, failed: 0, rejected: 0, collected: 0 };
     let offlineSince = null;
     let belled = null;
     function bell(state) {
@@ -149,6 +149,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             since.sent += state.sent || 0;
             for (const k of ["applied", "skipped", "failed"]) since[k] += state.received?.[k] || 0;
             since.rejected += state.rejected || 0;
+            since.collected += state.collectedMedia || 0;
         }
         if (state.state === "offline") offlineSince = offlineSince || now();
         else offlineSince = null;
