@@ -19,6 +19,7 @@ const { createLive, loadLiveRules } = require("./live.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
+const { createConsoleZoom, zoomCommand } = require("./consoleZoom.cjs");
 const schema = require("./db/schema.json");
 
 // A projection window covered by another window is still projecting. Windows
@@ -89,6 +90,8 @@ let sync = null;
 // for the close guard (electron/closeGuard.cjs).
 let liveRules = null;
 let appSettings = null;
+// The console's zoom (Ctrl+= / Ctrl+− / Ctrl+0, electron/consoleZoom.cjs).
+let consoleZoom = null;
 // A quit already decided (app.quit: the updater, the menu, the guard's
 // "Fechar o KERYX"): the console's X no longer asks.
 let quitting = false;
@@ -228,9 +231,18 @@ function createMainWindow() {
         ...(process.platform === "win32"
             ? { titleBarStyle: "hidden", titleBarOverlay: { color: BG, symbolColor: TITLEBAR_SYMBOLS, height: TITLEBAR_HEIGHT } }
             : {}),
-        webPreferences,
+        // Zoom per window, never per host: every output is on the same
+        // 127.0.0.1, and the default mode would zoom the projector with the
+        // console (electron/consoleZoom.cjs).
+        webPreferences: { ...webPreferences, zoomMode: "isolated", zoomFactor: consoleZoom ? consoleZoom.get() : 1 },
     });
     guardWindow(mainWindow);
+    mainWindow.webContents.on("before-input-event", (event, input) => {
+        const cmd = consoleZoom && zoomCommand(input);
+        if (!cmd) return;
+        event.preventDefault();
+        consoleZoom.command(cmd);
+    });
     mainWindow.once("ready-to-show", () => mainWindow.show());
     // Closing the console closes KERYX. The outputs are not in the taskbar, so
     // otherwise the app could keep running unseen (and the network server up).
@@ -329,6 +341,11 @@ app.whenReady().then(async () => {
 
     const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
     appSettings = settings;
+    consoleZoom = createConsoleZoom({
+        settings,
+        getWindow: () => mainWindow,
+        notify: (z) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("keryx:zoom", z); },
+    });
     // First run: the main projector opens with the app (the operator can
     // turn it off in Telas e saídas). Smoke runs manage outputs themselves.
     if (!SMOKE && settings.get("outputs") === undefined) {
@@ -383,7 +400,7 @@ app.whenReady().then(async () => {
         settings.set("lastVersion", version);
         settings.set("pendingNotes", null);
     }
-    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, syncInfo: () => (sync ? sync.status() : null) });
+    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, consoleZoom, syncInfo: () => (sync ? sync.status() : null) });
     try {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }

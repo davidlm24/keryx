@@ -42,6 +42,7 @@ import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { PAGE_TITLES, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
 import { resolveSection } from "@/lib/console/settings";
 import { liveAction, escapeTarget } from "@/lib/console/keys";
+import { usePrefs } from "@/hooks/useUser";
 
 // The theme in use, as the console keeps it on this computer (localStorage):
 // what a song or a material in this window is dressed with in its previews.
@@ -195,9 +196,10 @@ export default function Janela() {
     // Logo work on every page, as behind the console's window; the Escola
     // bíblica is the projecting page, so there every live key works — Enter
     // sends the console's Prévia, ↑/↓ walk it, ←/→ move what is on air, C clears.
+    const letters = usePrefs().letter_keys;
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        const action = liveAction(e);
+        const action = liveAction(e, letters);
         if (!action) return;
         if (action === "blur") { e.target.blur?.(); return; }
         if (action === "end") {

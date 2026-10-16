@@ -2,6 +2,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { versionsBetween, parseNotes } from "@/lib/console/releaseNotes";
 import { RELEASE_NOTES } from "@/lib/console/releaseNotesData";
 import ShortcutList from "./ShortcutList";
+import { keyHint } from "@/lib/console/keys";
+import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
@@ -23,6 +25,7 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 // Ajuda — Atalhos, Novidades, Sobre, Atualizar (O topo, 2026-10-15). Ver is
 // the eye beside the bell.
 export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow, onWhatsNew }) {
+    const helpKey = keyHint("help", usePrefs().letter_keys);
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
     if (open === "ver") {
         return (
@@ -49,7 +52,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                 <div className="kx-menu-sep" />
                 <MenuItem icon="grip" checked={editing} onClick={onEditLayout} title="Mudar os módulos de lugar, salvar disposições com nome · Esc conclui">{editing ? "Concluir a edição" : "Editar disposição"}</MenuItem>
                 <MenuItem onClick={() => { restoreLayout(); setOpen(null); }}>Restaurar disposição</MenuItem>
-                <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos do teclado</MenuItem>
+                <MenuItem icon="keyboard" kbd={helpKey} onClick={() => setOpen("atalhos")}>Atalhos do teclado</MenuItem>
             </div>
         );
     }
@@ -269,13 +272,14 @@ export function History({ open, setOpen, history, onPick, anchor = null }) {
 // is the immediate emergency action and never asks.
 export function EndDialog({ open, setOpen, onEnd }) {
     const goRef = useRef(null);
+    const blackKey = keyHint("black", usePrefs().letter_keys);
     useEffect(() => { if (open === "encerrar") setTimeout(() => goRef.current?.focus(), 0); }, [open]);
     if (open !== "encerrar") return null;
     return (
         <div className="dialog" role="alertdialog" aria-label="Encerrar a projeção">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>Encerrar a projeção?</div>
             <div>Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
-            <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta (B).</div>
+            <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta{blackKey ? ` (${blackKey})` : ""}.</div>
             <div className="acts">
                 <Btn onClick={() => setOpen(null)}>Cancelar</Btn>
                 <button ref={goRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => { onEnd(); setOpen(null); }}>Encerrar</button>

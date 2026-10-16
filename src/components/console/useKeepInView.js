@@ -50,3 +50,19 @@ export default function useKeepInView(ref, selector, deps) {
         if (horizontal) box.scrollLeft = target; else box.scrollTop = target;
     }, deps); // eslint-disable-line react-hooks/exhaustive-deps
 }
+
+// A row focused with Tab follows the selection (audit A11Y-18, C-60): ↑/↓
+// move the green selection and Enter acts on the focused row, so while the
+// focus is on a row of this list (`rowSel`) it moves to the selected one
+// (`selectedSel`). A mouse click never leaves focus on a row (Console.jsx
+// onMouseClick), so this only ever follows the keyboard. The scrolling stays
+// useKeepInView's.
+export function useFocusFollows(ref, rowSel, selectedSel, deps) {
+    useEffect(() => {
+        const root = ref.current;
+        const at = typeof document !== "undefined" ? document.activeElement : null;
+        if (!root || !at || !root.contains(at) || !at.matches(rowSel)) return;
+        const to = root.querySelector(selectedSel);
+        if (to && to !== at) to.focus({ preventScroll: true });
+    }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+}

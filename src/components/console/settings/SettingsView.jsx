@@ -3,7 +3,8 @@ import { Panel, Row, Field, Empty, WinBar } from "../kx";
 import { SECTIONS, SECTION_SCOPE, SCOPE_LABEL, sectionOf } from "@/lib/console/settings";
 import { searchSettings, groupHits, countBySection } from "@/lib/console/settingsSearch";
 import { searchTerms, highlightParts } from "@/lib/bibleSearch";
-import { focusKind } from "@/lib/console/keys";
+import { liveAction, keyHint } from "@/lib/console/keys";
+import { usePrefs } from "@/hooks/useUser";
 import { useLibrary } from "../useConsoleData";
 import { CfgFlash } from "./parts";
 import IgrejaSection from "./IgrejaSection";
@@ -69,18 +70,20 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
     useEffect(() => setActiveHit(0), [q]);
     useEffect(() => { document.querySelector(".cfg-results .is-selected")?.scrollIntoView({ block: "nearest" }); }, [activeHit]);
 
-    // "/" goes to the search, as on the console (not while typing elsewhere,
-    // and not while another page of the window covers this one).
+    // "/" (or Ctrl+F, as the church's letter keys say) goes to the search, as
+    // on the console (not while typing elsewhere, and not while another page
+    // of the window covers this one).
+    const letters = usePrefs().letter_keys;
     useEffect(() => {
         if (!active) return undefined;
         const onKey = (e) => {
-            if (e.key !== "/" || e.ctrlKey || e.metaKey || focusKind(e.target) === "text") return;
+            if (liveAction(e, letters) !== "search") return;
             e.preventDefault();
             inputRef.current?.focus();
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [active]);
+    }, [active, letters]);
 
     // After a jump: wait for the section to draw the row (some read the
     // computer first), bring it into view and light it up.
@@ -159,7 +162,7 @@ export default function SettingsView({ c, section, setSection, onClose, escRef, 
         <CfgFlash.Provider value={flash}>
             <WinBar title="Configurações" tools={
                 <span className="cfg-search">
-                    <Field value={q} onChange={setQ} placeholder="Buscar nas configurações" inputRef={inputRef} onKeyDown={onSearchKey} kbd={q ? null : "/"} />
+                    <Field value={q} onChange={setQ} placeholder="Buscar nas configurações" inputRef={inputRef} onKeyDown={onSearchKey} kbd={q ? null : keyHint("search", letters)} />
                 </span>
             } />
             <div className="cfg-dialog-b">

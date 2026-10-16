@@ -774,7 +774,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   element from the window's pool by url (`src/lib/mediaPool.js`, tested),
   so the player that unmounts hands it to the one that mounts in the same
   commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
-  a test); a mouse click must not leave focus on a control, Esc closes the
+  a test); **B, L, C, / and ? follow the church's "Teclas de uma letra"**
+  (`User.letter_keys`: ligadas / com Shift / desligadas, Configurações ›
+  Console; `liveAction(e, letters)`, `shortcutsFor`, `keyHint` for every
+  menu or tooltip that names one; Ctrl+F searches in every choice); tab
+  lists use `onTabsKey` + `tabStop` (kx.jsx, ARIA tabs: roving tabindex,
+  ←/→ Home End). **The console's zoom** (Ctrl+= / Ctrl+− / Ctrl+0,
+  Configurações › Console › Zoom, 90–150 %, settings.json per computer:
+  `electron/consoleZoom.cjs`) runs in the main window's `zoomMode:
+  "isolated"`: Chromium's default zoom is per host and every output is on
+  the same 127.0.0.1, so never zoom without it — the projector would zoom too; a mouse click must not leave focus on a control, Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background
   library, a popover, then THE window — one level of its stack, routed to
   the top page's close request — then the Camadas drawer) and with nothing

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Split } from "./kx";
+import { Split, onTabsKey } from "./kx";
 import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct } from "@/lib/console/dock";
 
 // Ver › Editar disposição for the culto environment (2026-10-13; the
@@ -246,9 +246,9 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             );
         } else if (f.tabs.length > 1) {
             head = (
-                <div className="dock-tabs" role="tablist">
+                <div className="dock-tabs" role="tablist" onKeyDown={onTabsKey}>
                     {f.tabs.map((id) => (
-                        <button key={id} type="button" role="tab" aria-selected={id === active} className={`dock-tab ${id === active ? "is-on" : ""}`} onClick={() => pick(id)}>{nameOf(id)}</button>
+                        <button key={id} type="button" role="tab" aria-selected={id === active} tabIndex={id === active ? 0 : -1} className={`dock-tab ${id === active ? "is-on" : ""}`} onClick={() => pick(id)}>{nameOf(id)}</button>
                     ))}
                 </div>
             );

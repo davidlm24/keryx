@@ -73,7 +73,7 @@ function syncQuestion(kind, { day = "", others = 0 } = {}) {
 
 // syncInfo() -> the sync's status (syncControl.status), or null: whether
 // this computer syncs, and with how many others.
-function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications = null, syncInfo = null }) {
+function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications = null, consoleZoom = null, syncInfo = null }) {
     const dataSize = cachedSize();
     const autoUpdates = () => Boolean((settings.get(UPDATES_KEY, {}) || {}).auto);
     const updateState = () => ({ ...updater.state(), auto: autoUpdates() });
@@ -187,6 +187,8 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         const login = app.isPackaged && app.getLoginItemSettings ? app.getLoginItemSettings({ path: process.execPath }) : null;
         return {
             ...closeGuard.machinePrefs(settings.get(closeGuard.MACHINE_KEY, {})),
+            // The console's zoom (electron/consoleZoom.cjs), this computer's.
+            ...(consoleZoom ? { zoom: consoleZoom.get() } : {}),
             login: { available: Boolean(login), on: Boolean(login?.openAtLogin), blocked: Boolean(login?.openAtLogin && login.executableWillLaunchAtLogin === false) },
         };
     }
@@ -371,9 +373,10 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
             backupNow: async () => { backupNow("manual"); return info(); },
             // Configurações › Console: this computer's choices.
             machineGet: async () => machineInfo(),
-            machineSet: async (_event, { confirmClose } = {}) => {
+            machineSet: async (_event, { confirmClose, zoom } = {}) => {
                 const cur = settings.get(closeGuard.MACHINE_KEY, {}) || {};
                 if (confirmClose !== undefined) settings.set(closeGuard.MACHINE_KEY, { ...cur, confirmClose: Boolean(confirmClose) });
+                if (zoom !== undefined && consoleZoom) consoleZoom.set(zoom);
                 return machineInfo();
             },
             loginSet: async (_event, { on } = {}) => {

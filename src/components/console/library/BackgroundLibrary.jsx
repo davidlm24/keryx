@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "../Icon";
-import { Btn, IconBtn, Seg } from "../kx";
+import { Btn, IconBtn, Seg, onTabsKey, tabStop } from "../kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import GeneratorPanel, { GeneratorTiles } from "../GeneratorPanel";
 import { FundoDetail, useSaveBackgroundPref } from "../settings/FundosGallery";
@@ -184,8 +184,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
             <div className="lib-dialog" role="dialog" aria-label={title}>
                 <div className="win-bar">
                     <span className="kx-section win-title">{title}</span>
-                    <div className="kx-tabs lib-tabs" role="tablist">
-                        {tabs.map(([k, name]) => <button type="button" key={k} role="tab" aria-selected={tab === k} className={`kx-t ${tab === k ? "is-on" : ""}`} onClick={() => setTab(k)}>{name}</button>)}
+                    <div className="kx-tabs lib-tabs" role="tablist" aria-label="Biblioteca de fundos" onKeyDown={onTabsKey}>
+                        {tabs.map(([k, name], i) => <button type="button" key={k} role="tab" aria-selected={tab === k} tabIndex={tabStop(i, tab === k, tabs.some(([x]) => x === tab))} className={`kx-t ${tab === k ? "is-on" : ""}`} onClick={() => setTab(k)}>{name}</button>)}
                     </div>
                     <span className="win-gap" />
                     {(kinds.includes("image") || kinds.includes("video")) && <>

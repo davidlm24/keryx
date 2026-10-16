@@ -1840,6 +1840,9 @@
         "console_density": {
           "type": "text"
         },
+        "letter_keys": {
+          "type": "text"
+        },
         "console_hidden_modules": {
           "type": "json"
         },

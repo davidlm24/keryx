@@ -8,13 +8,13 @@ const schema = require("./db/schema.json");
 const { cachedSize, createSystem, loginItemArgs, syncQuestion } = require("./system.cjs");
 
 // A system over a temp data folder, with settings in memory.
-function sys(initial = {}) {
+function sys(initial = {}, extra = {}) {
     const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "keryx-sys-"));
     const store = createStore({ file: path.join(dataDir, "keryx.db"), schema, log: () => {} });
     const saved = { ...initial };
     const settings = { get: (k, d) => (k in saved ? saved[k] : d), set: (k, v) => { saved[k] = v; } };
     const quiet = { info() {}, warn() {}, error() {} };
-    const system = createSystem({ app: { getVersion: () => "0.0.0", isPackaged: false }, dialog: {}, shell: {}, BrowserWindow: {}, store, dataDir, mediaDir: path.join(dataDir, "media"), settings, outputs: null, updater: { state: () => ({ status: "disabled" }), enabled: () => false }, logger: quiet, screen: {} });
+    const system = createSystem({ app: { getVersion: () => "0.0.0", isPackaged: false }, dialog: {}, shell: {}, BrowserWindow: {}, store, dataDir, mediaDir: path.join(dataDir, "media"), settings, outputs: null, updater: { state: () => ({ status: "disabled" }), enabled: () => false }, logger: quiet, screen: {}, ...extra });
     return { system, saved, store, dataDir };
 }
 
@@ -71,6 +71,18 @@ test("Console: confirm on close is on unless turned off; login only when install
     assert.equal(saved.machine.confirmClose, false);
     await assert.rejects(() => system.ops.loginSet(null, { on: true }), /instalado/);
     assert.deepEqual(loginItemArgs(true, "C:/KERYX.exe"), { openAtLogin: true, path: "C:/KERYX.exe" });
+    store.close();
+});
+
+test("Console: the zoom is this computer's, through the console's zoom", async () => {
+    const { createConsoleZoom } = require("./consoleZoom.cjs");
+    const holder = {};
+    const { system, saved, store } = sys({}, { consoleZoom: { get: () => holder.zoom.get(), set: (z) => holder.zoom.set(z) } });
+    holder.zoom = createConsoleZoom({ settings: { get: (k, d) => (k in saved ? saved[k] : d), set: (k, v) => { saved[k] = v; } }, getWindow: () => null });
+    assert.equal((await system.ops.machineGet()).zoom, 1);
+    assert.equal((await system.ops.machineSet(null, { zoom: 1.25 })).zoom, 1.25);
+    assert.equal(saved.consoleZoom, 1.25);
+    assert.equal((await system.ops.machineSet(null, { confirmClose: false })).zoom, 1.25, "the other choice leaves it");
     store.close();
 });
 

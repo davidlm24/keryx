@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { liveAction, focusKind, quickJumpKey, escapeTarget, ESC_ORDER, SHORTCUTS } from "./keys.js";
+import { liveAction, focusKind, quickJumpKey, escapeTarget, ESC_ORDER, SHORTCUTS, shortcutsFor, LETTER_KEYS, letterKeys, keyHint, LETTER_KEYS_HINT } from "./keys.js";
 
 // A stand-in element: its own selector matches and those of its ancestors.
 const el = (tagName, self = [], ancestors = []) => ({
@@ -8,8 +8,8 @@ const el = (tagName, self = [], ancestors = []) => ({
     matches: (sel) => sel.split(",").some((s) => self.includes(s.trim())),
     closest: (sel) => (sel.split(",").some((s) => self.includes(s.trim()) || ancestors.includes(s.trim())) ? {} : null),
 });
-const key = (k, target, mods = {}) => liveAction({ key: k, target, ctrlKey: false, metaKey: false, altKey: false, ...mods });
-const jump = (k, target, mods = {}) => quickJumpKey({ key: k, target, ctrlKey: false, metaKey: false, altKey: false, ...mods });
+const key = (k, target, mods = {}, letters) => liveAction({ key: k, target, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...mods }, letters);
+const jump = (k, target, mods = {}, letters) => quickJumpKey({ key: k, target, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...mods }, letters);
 
 const nothing = el("BODY");
 const button = el("BUTTON", ["button"]);
@@ -148,20 +148,89 @@ test("Esc closes the topmost thing open, one per press; with nothing open it end
     assert.equal(escapeTarget({ window: true, drawer: true, edit: true }), "window");
 });
 
-test("the shortcut list and the keys never drift apart", () => {
+test("Teclas de uma letra: ligadas (Holyrics), com Shift, desligadas", () => {
+    assert.deepEqual(LETTER_KEYS.map(([k]) => k), ["on", "shift", "off"]);
+    assert.equal(letterKeys(null), "on", "null = ligadas, the default");
+    assert.equal(letterKeys("bogus"), "on");
+    // Ligadas: as always, Shift or not, and Caps Lock.
+    for (const [k, a] of [["b", "black"], ["B", "black"], ["l", "logo"], ["c", "clear"], ["/", "search"], ["?", "help"]]) {
+        assert.equal(key(k, nothing), a, k);
+        assert.equal(key(k, nothing, {}, "on"), a, k);
+    }
+    // Com Shift: only Shift+B/L/C; "?" is Shift+/ already; "/" has no key.
+    assert.equal(key("b", nothing, {}, "shift"), null, "a stray b does nothing");
+    assert.equal(key("B", nothing, {}, "shift"), null, "Caps Lock is not Shift");
+    assert.equal(key("B", nothing, { shiftKey: true }, "shift"), "black");
+    assert.equal(key("L", nothing, { shiftKey: true }, "shift"), "logo");
+    assert.equal(key("C", button, { shiftKey: true }, "shift"), "clear", "from a focused button too");
+    assert.equal(key("C", input, { shiftKey: true }, "shift"), null, "typing a capital C");
+    assert.equal(key("?", nothing, { shiftKey: true }, "shift"), "help");
+    assert.equal(key("/", nothing, {}, "shift"), null);
+    // Desligadas: no letter acts.
+    for (const k of ["b", "B", "l", "L", "c", "C", "/", "?"]) {
+        assert.equal(key(k, nothing, {}, "off"), null, k);
+        assert.equal(key(k, nothing, { shiftKey: true }, "off"), null, `Shift ${k}`);
+    }
+    // The rest never changes.
+    for (const letters of ["on", "shift", "off"]) {
+        assert.equal(key("Escape", nothing, {}, letters), "end");
+        assert.equal(key("Enter", nothing, {}, letters), "send");
+        assert.equal(key("ArrowRight", nothing, {}, letters), "next");
+        assert.equal(key(" ", nothing, {}, letters), "play");
+        assert.equal(key("f", nothing, { ctrlKey: true }, letters), "search", "Ctrl+F searches in every choice");
+        assert.equal(key("f", input, { ctrlKey: true }, letters), null, "not from a text field");
+    }
+    assert.equal(key("f", nothing), null, "a plain f is nothing");
+    assert.equal(key("f", nothing, { ctrlKey: true, shiftKey: true }), null);
+});
+
+test("the keys named in menus and tooltips follow the choice", () => {
+    assert.equal(keyHint("black"), "B");
+    assert.equal(keyHint("logo", "shift"), "Shift+L");
+    assert.equal(keyHint("clear", "off"), null);
+    assert.equal(keyHint("search"), "/");
+    assert.equal(keyHint("search", "shift"), "Ctrl+F");
+    assert.equal(keyHint("search", "off"), "Ctrl+F");
+    assert.equal(keyHint("help", "shift"), "?");
+    assert.equal(keyHint("help", "off"), null);
+    assert.equal(keyHint("send"), null);
+    for (const [k] of LETTER_KEYS) assert.ok(LETTER_KEYS_HINT[k], k);
+});
+
+test("Bible quick jump: com Shift, Shift+B/L/C are the screen keys", () => {
+    assert.equal(jump("L", nothing, { shiftKey: true }), "L", "ligadas: L starts Lucas");
+    assert.equal(jump("L", nothing, { shiftKey: true }, "shift"), null);
+    assert.equal(jump("C", nothing, { shiftKey: true }, "shift"), null);
+    assert.equal(jump("l", nothing, {}, "shift"), "l", "a plain l types");
+    assert.equal(jump("J", nothing, { shiftKey: true }, "shift"), "J");
+    assert.equal(jump("l", nothing, {}, "off"), "l");
+});
+
+test("the shortcut list and the keys never drift apart, for every choice of the letter keys", () => {
     const body = { tagName: "BODY", closest: () => null };
-    const press = (probe) => liveAction({ target: body, ctrlKey: false, metaKey: false, altKey: false, ...probe });
-    const listed = new Set();
-    for (const s of SHORTCUTS) {
-        for (const [action, probe] of [[s.action, s.probe], ...(s.also || [])]) {
-            if (!probe) continue;
-            assert.equal(press(probe), action, `${s.keys}: ${action}`);
-            listed.add(action);
+    for (const [letters] of LETTER_KEYS) {
+        const press = (probe) => liveAction({ target: body, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...probe }, letters);
+        const listed = new Set();
+        for (const s of shortcutsFor(letters)) {
+            for (const [action, probe] of [[s.action, s.probe], ...(s.also || [])]) {
+                if (!probe) continue;
+                assert.equal(press(probe), action, `${letters}: ${s.keys}: ${action}`);
+                listed.add(action);
+            }
         }
+        // Every action the console handles is in the list ("blur" is only
+        // leaving a text field): sweep the keys.
+        const handled = new Set();
+        for (const k of ["Enter", "Escape", " ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "b", "B", "l", "L", "c", "C", "/", "?", "f"]) {
+            for (const mods of [{}, { shiftKey: true }, { ctrlKey: true }]) {
+                const a = press({ key: k, ...mods });
+                if (a) handled.add(a);
+            }
+        }
+        for (const action of handled) assert.ok(listed.has(action), `${letters}: ${action} is not in the shortcut list`);
+        if (letters === "on") for (const a of ["send", "next", "prev", "selUp", "selDown", "black", "logo", "clear", "end", "search", "help", "play"]) assert.ok(handled.has(a), a);
+        if (letters === "off") for (const a of ["black", "logo", "clear", "help"]) assert.ok(!listed.has(a), `off: ${a} listed`);
     }
-    // Every action the console handles is in the list ("blur" is only
-    // leaving a text field).
-    for (const action of ["send", "next", "prev", "selUp", "selDown", "black", "logo", "clear", "end", "search", "help", "play"]) {
-        assert.ok(listed.has(action), `${action} is not in the shortcut list`);
-    }
+    assert.deepEqual(SHORTCUTS, shortcutsFor("on"));
+    assert.ok(shortcutsFor("on").some((s) => s.keys.startsWith("Ctrl+=")), "the console's zoom is listed");
 });
