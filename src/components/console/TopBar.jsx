@@ -17,7 +17,7 @@ import { MenuBarButtons } from "./MenuBar";
 // Encerrar) live in the Programa's pill since Rodada E1 (owner's pick B).
 // Nothing wraps: as the window narrows the bar drops the service's end,
 // then the clock, then shortens the search (container queries in console.css).
-export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svc, onPlanner, sync = null, onSync }) {
+export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svc, onPlanner, sync = null, onSync, menuKeysOff = false }) {
     const { now } = c;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const toggle = (name) => setOpen(open === name ? null : name);
@@ -34,7 +34,7 @@ export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outs
                     {envTab("culto", "KERYX", "Projeção: músicas, mídia, setlist")}
                     {envTab("biblia", "Bíblia", "Bíblia · digite a referência")}
                 </div>
-                {menus.length > 0 && <><span className="tb-div" aria-hidden="true" /><MenuBarButtons menus={menus} open={open} setOpen={setOpen} /></>}
+                {menus.length > 0 && <><span className="tb-div" aria-hidden="true" /><MenuBarButtons menus={menus} open={open} setOpen={setOpen} blocked={menuKeysOff} /></>}
             </div>
             <div className="tb-c">
                 {/* A real button (C-27): Enter and Space open the search; it only looks like a field. */}

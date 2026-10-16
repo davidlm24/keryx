@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Row, Seg, Empty, Measure, SrState } from "./kx";
+import { Panel, Btn, IconBtn, Seg, Empty, Measure, SrState } from "./kx";
 import DockView from "./Dock";
 import { useContextMenu } from "./ContextMenu";
 import AddMenu from "./AddMenu";
+import { MenuButton } from "./Menu";
 import BibleSearchPanel, { useBibleSearch } from "./BibleSearchPanel";
 import BibleCompareView from "./BibleCompareView";
 import { useBibleNotes } from "./useBibleNotes";
@@ -64,27 +65,14 @@ export const bibleVersionWanted = () => getPrefs().bible_version;
 // list, at its top, never on the button (owner 2026-10-16).
 const countOf = (n, [one, many]) => `${n} ${n === 1 ? one : many}`;
 function ListMenu({ icon, label, unit, empty, rows }) {
-    const [open, setOpen] = useState(false);
-    const box = useRef(null);
-    useEffect(() => {
-        if (!open) return undefined;
-        const away = (e) => { if (!box.current?.contains(e.target)) setOpen(false); };
-        const esc = (e) => { if (e.key === "Escape") { e.stopPropagation(); setOpen(false); } };
-        window.addEventListener("mousedown", away);
-        window.addEventListener("keydown", esc, true);
-        return () => { window.removeEventListener("mousedown", away); window.removeEventListener("keydown", esc, true); };
-    }, [open]);
+    const items = [
+        { node: <div key="h" className="blist-h"><span className="kx-section">{label}</span><span className="kx-meta">{countOf(rows.length, unit)}</span></div> },
+        ...(rows.length ? rows.map((r) => ({ label: r.title, meta: r.meta, icon: r.icon, onSelect: r.onPick })) : [{ node: <div key="e" className="be-hint kx-meta">{empty}</div> }]),
+    ];
+    // The console's one menu (Menu.jsx): the keyboard walks the list.
     return (
-        <span className="addmenu" ref={box}>
-            <button type="button" className={`bchip kx-t ${open ? "is-on" : ""}`} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu"><Icon name={icon} size={12} />{label}<Icon name="chevron-down" size={12} /></button>
-            {open && (
-                <div className="kx-pop addmenu-pop blist-pop" role="menu">
-                    <div className="blist-h"><span className="kx-section">{label}</span><span className="kx-meta">{countOf(rows.length, unit)}</span></div>
-                    {!rows.length && <div className="be-hint kx-meta">{empty}</div>}
-                    {rows.map((r) => <Row key={r.key} single={!r.meta} icon={r.icon} title={r.title} meta={r.meta} onClick={() => { setOpen(false); r.onPick(); }} />)}
-                </div>
-            )}
-        </span>
+        <MenuButton label={label} items={items} popClass="blist-pop" flip={false}
+            trigger={(open, toggle) => <button type="button" className={`bchip kx-t ${open ? "is-on" : ""}`} onClick={toggle} aria-expanded={open} aria-haspopup="menu"><Icon name={icon} size={12} />{label}<Icon name="chevron-down" size={12} /></button>} />
     );
 }
 
@@ -372,7 +360,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         books: (
             <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={<>
                 <span className="bver" title={badge ? badge.text : "Versão da Bíblia"}>
-                    <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label={badge ? `Versão: ${badge.text}` : "Versão"} style={{ background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
+                    <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label={badge ? `Versão: ${badge.text}` : "Versão"}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
                     {badge && <i className="bver-dot" aria-hidden="true" />}
                 </span>
                 <Seg small label="Nomes dos livros" value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
@@ -489,8 +477,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
                     <span className="kx-section">Selecionado <span className="kx-count">· {sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>
                     {sel.length > 1 && (
-                        <div className="kx-seg" style={{ height: 22, padding: 1 }} role="group" aria-label="Versículos por slide">
-                            {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} style={{ height: 20, padding: "0 7px", fontSize: 11 }} aria-pressed={how === v} onClick={() => setHow(v)} title={v === "auto" ? "Pelo tamanho do texto" : `${v} por slide`}>{l}</button>)}
+                        <div className="kx-seg is-small" role="group" aria-label="Versículos por slide">
+                            {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} aria-pressed={how === v} onClick={() => setHow(v)} title={v === "auto" ? "Pelo tamanho do texto" : `${v} por slide`}>{l}</button>)}
                         </div>
                     )}
                 </div>

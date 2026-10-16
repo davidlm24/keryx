@@ -63,8 +63,15 @@ export default function MaterialView({ c, materialId = null, classId = "", media
     const [slidesText, setSlidesText] = useState(null);
     useEffect(() => { if (draft && slidesText === null) setSlidesText(textFromSlides(draft.slides)); }, [draft, slidesText]);
 
+    // One save at a time: a held Ctrl+S or a double click created a new
+    // material twice before the page closed.
+    const [busy, setBusy] = useState(false);
+    const saving = useRef(false);
     const save = async () => {
         if (!draft.title.trim()) { c.say("Dê um título ao material."); return; }
+        if (saving.current) return;
+        saving.current = true;
+        setBusy(true);
         const { id, created_date: _c, updated_date: _u, created_by_id: _b, ...row } = draft;
         const klass = classes.find((k) => k.id === row.class_id);
         const data = { ...row, title: row.title.trim(), class_name: klass?.name || "", age_group: klass?.age_group || "all" };
@@ -76,6 +83,8 @@ export default function MaterialView({ c, materialId = null, classId = "", media
             orig.current = JSON.stringify(draft);
             onClose();
         } catch (err) { c.say(err?.message || "Não foi possível."); }
+        saving.current = false;
+        setBusy(false);
     };
     const remove = async () => {
         if (!(await ask(deleteQuestion("o material", draft.title || "Novo material")))) return;
@@ -96,6 +105,7 @@ export default function MaterialView({ c, materialId = null, classId = "", media
         if (!(draft && active && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s")) return;
         if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
         e.preventDefault(); e.stopPropagation();
+        if (e.repeat || busy) return;
         save();
     };
     useEffect(() => {
@@ -109,7 +119,7 @@ export default function MaterialView({ c, materialId = null, classId = "", media
             {draft.id && <Btn small onClick={remove}>Excluir…</Btn>}
             <Btn small onClick={() => c.setPrev(stageFromMaterial({ ...draft, id: draft.id || "rascunho" }))} title="Ver como fica, na Prévia do console">Pôr na prévia</Btn>
             <Btn small onClick={() => leave()}>Cancelar</Btn>
-            <Btn small kind="brand" onClick={save} title="Ctrl+S">Salvar material</Btn>
+            <Btn small kind="brand" disabled={busy} onClick={save} title="Ctrl+S">{busy ? "Salvando…" : "Salvar material"}</Btn>
         </> : null} />
     );
     if (!draft) return <>{bar("Abrindo…")}<div className="win-body" /></>;
@@ -155,8 +165,8 @@ export default function MaterialView({ c, materialId = null, classId = "", media
     );
     const extras = (value, onExplain, onNotes, explainHint) => (
         <div className="sv-q-sub">
-            <Field icon={null} value={value.explain || ""} onChange={onExplain} placeholder={explainHint} />
-            <Field icon={null} value={value.notes || ""} onChange={onNotes} placeholder="Nota do professor · só no console e no palco" />
+            <Field icon={null} value={value.explain || ""} onChange={onExplain} placeholder={explainHint} inputProps={{ spellCheck: true }} />
+            <Field icon={null} value={value.notes || ""} onChange={onNotes} placeholder="Nota do professor · só no console e no palco" inputProps={{ spellCheck: true }} />
         </div>
     );
     const verseNames = { blanks: ["a frase", "Frase", "O versículo ou a frase"], memorize: ["o versículo", "Versículo", "O versículo"], discussion: ["a pergunta", "Pergunta", "A pergunta para a turma discutir"] };
@@ -213,11 +223,11 @@ export default function MaterialView({ c, materialId = null, classId = "", media
                                             const dropOpt = (k) => setQ(i, { options: opts.filter((_, j) => j !== k), correct: correct === k ? 0 : correct > k ? correct - 1 : correct });
                                             return (
                                                 <div key={i} className="sv-q">
-                                                    <div className="sv-q-head"><b className="kx-meta">{i + 1}.</b><Field icon={null} value={q.question || ""} onChange={(v) => setQ(i, { question: v })} placeholder="A pergunta" style={{ flex: 1 }} />{tools("quiz_questions", qs, i, "a pergunta")}</div>
+                                                    <div className="sv-q-head"><b className="kx-meta">{i + 1}.</b><Field icon={null} value={q.question || ""} onChange={(v) => setQ(i, { question: v })} placeholder="A pergunta" style={{ flex: 1 }} inputProps={{ spellCheck: true }} />{tools("quiz_questions", qs, i, "a pergunta")}</div>
                                                     {opts.map((o, k) => (
                                                         <div key={k} className="nv-inline sv-opt">
                                                             <button type="button" className={`sv-right kx-t ${correct === k ? "is-on" : ""}`} onClick={() => setQ(i, { correct: k })} title="Marcar como a resposta certa" aria-pressed={correct === k}>{LETTERS[k]}</button>
-                                                            <Field icon={null} value={o || ""} onChange={(v) => setOpt(k, v)} placeholder={`Opção ${LETTERS[k]}`} style={{ flex: 1 }} />
+                                                            <Field icon={null} value={o || ""} onChange={(v) => setOpt(k, v)} placeholder={`Opção ${LETTERS[k]}`} style={{ flex: 1 }} inputProps={{ spellCheck: true }} />
                                                             {opts.length > 2 && <IconBtn name="x" small title="Tirar a opção" onClick={() => dropOpt(k)} />}
                                                         </div>
                                                     ))}
@@ -237,7 +247,7 @@ export default function MaterialView({ c, materialId = null, classId = "", media
                                     <div className="sv-quiz">
                                         {qs.map((q, i) => (
                                             <div key={i} className="sv-q">
-                                                <div className="sv-q-head"><b className="kx-meta">{i + 1}.</b><Field icon={null} value={q.question || ""} onChange={(v) => setQ(i, { question: v })} placeholder="A afirmação" style={{ flex: 1 }} />{tools("quiz_questions", qs, i, "a afirmação")}</div>
+                                                <div className="sv-q-head"><b className="kx-meta">{i + 1}.</b><Field icon={null} value={q.question || ""} onChange={(v) => setQ(i, { question: v })} placeholder="A afirmação" style={{ flex: 1 }} inputProps={{ spellCheck: true }} />{tools("quiz_questions", qs, i, "a afirmação")}</div>
                                                 <div className="nv-inline sv-tf"><span className="kx-meta">A resposta</span><Seg small label="A resposta" value={Number(q.correct) === 1 ? "F" : "V"} onChange={(v) => setQ(i, { correct: v === "F" ? 1 : 0 })} options={[["V", "Verdadeiro"], ["F", "Falso"]]} /></div>
                                                 {extras(q, (v) => setQ(i, { explain: v }), (v) => setQ(i, { notes: v }), "Referência ou explicação · na tela ao revelar")}
                                             </div>
@@ -279,7 +289,7 @@ export default function MaterialView({ c, materialId = null, classId = "", media
                                                             <Field icon={null} value={v.ref || ""} onChange={(x) => setV(i, { ref: x })} placeholder={draft.type === "discussion" ? "Texto base (opcional) · ex.: Efésios 2:8" : "Referência · ex.: João 3:16"} style={{ flex: 1 }} />
                                                             {draft.type !== "discussion" && <IconBtn name="book" small title="Trazer o texto da Bíblia, pela referência" onClick={() => fromBible(i)} />}
                                                         </span>
-                                                        <Field icon={null} value={v.notes || ""} onChange={(x) => setV(i, { notes: x })} placeholder="Nota do professor · só no console e no palco" />
+                                                        <Field icon={null} value={v.notes || ""} onChange={(x) => setV(i, { notes: x })} placeholder="Nota do professor · só no console e no palco" inputProps={{ spellCheck: true }} />
                                                     </div>
                                                 </div>
                                             );
