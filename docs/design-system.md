@@ -349,7 +349,7 @@ Capítulo / Versículo captions over the typed text and the candidate books.
   Identificar), Mídia do roteiro (*Mídia da setlist* in the app) (Localizar…),
   Áudio (Testar), Fontes do tema, Bíblia (installed for offline use), Internet; a
   summary ("Tudo pronto" / "N itens precisam de atenção"). In the app it is an
-  overlay from Saídas › *Verificar tudo…*.
+  overlay from Saídas › *Verificar tudo*.
 
 **To relabel in the canvas** (an external artifact; not edited from here):
 artboards 8–15 as "Histórico · 2026-10-07"; "Roteiro" → "Setlist"; the
@@ -405,7 +405,7 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
   header's +, pointing up while open ("Dobrar"), turned while folded
   ("Abrir"). Folded down a column, the panel is its header and its
   neighbours take the room; folded across a row (the Biblioteca, the
-  Slides, the Painel de abas, the Bíblia's Texto and No ar agora), a 28 px
+  Slides, the Painel, the Bíblia's Texto and No ar agora), a 28 px
   strip on `bg-1`: the chevron at the header's height over the module's
   name standing up (`writing-mode: vertical-rl`, the `section` style), the
   whole strip a button that opens it (hover `bg-2`). A split always keeps

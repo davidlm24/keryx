@@ -427,7 +427,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   its search indexes every row in `settingsSearch.js` — a new `FormRow k`
   goes in the index, or `npm test` fails). **Sobre** is the last section
   (owner 2026-10-14, `SobreSection.jsx`; also the KERYX menu's "Sobre o
-  KERYX…", `openSettings("sobre")`): version (the `info` call of Backup;
+  KERYX", `openSettings("sobre")`): version (the `info` call of Backup;
   "Prévia de desenvolvimento" without the desktop), Ver novidades (the
   console's popover, not a second one), the church's name, Electron and
   Chromium, the Geist license (read from `/fonts/Geist-OFL.txt`) and the
@@ -558,7 +558,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `layout.dock` (per computer; null = the one the old columns make,
   `fromArrangement`, so an old save keeps its look). Every module is built
   apart from where it goes (`modulePanels` in Console.jsx: Biblioteca,
-  Slides, Programa, `PreviaPanel`, the Painel de abas, Setlist, Camadas,
+  Slides, Programa, `PreviaPanel`, the Painel, Setlist, Camadas,
   No ar, `PlayerSlot`). Ver › Editar disposição: drag a module by its name to a
   side of another (splits) or its middle (tabs), a click on the name opens
   "Mover para…", × puts it in the tray (the edit banner). While editing,

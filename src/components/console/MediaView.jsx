@@ -39,7 +39,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const [category, setCategory] = useState("");
     const [view, setView] = useState(() => { try { return localStorage.getItem("keryx.media.view") || "grid"; } catch { return "grid"; } });
     const [q, setQ] = useState("");
-    const [adding, setAdding] = useState(false); // the Enviar menu in the bar
+    const [adding, setAdding] = useState(false); // the Adicionar menu in the bar
     const [sel, setSel] = useState([]);
     const [anchor, setAnchor] = useState(null);
     const [renaming, setRenaming] = useState(null);
@@ -98,7 +98,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         c.say(importSummary(result));
         if (created.length) setSel(created.map((r) => r.id));
     };
-    // Link do YouTube… (the Enviar menu): the url comes from one question
+    // Link do YouTube… (the Adicionar menu): the url comes from one question
     // (PromptDialog), not a field always on screen (Rodada C, fase b).
     // Opened from the menu bar (Mídia › Enviar arquivos… / Link do YouTube…):
     // the page opens on that step, once.
@@ -199,11 +199,11 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     return (
         <>
         <WinBar title="Mídia" sub={`${media.length} ${media.length === 1 ? "arquivo" : "arquivos"}${totalSize ? ` · ${bytes(totalSize)}` : ""}`}
-            tools={<Field value={q} onChange={setQ} placeholder="Pesquisar na biblioteca" style={{ flex: "0 1 280px", minWidth: 160 }} />}
+            tools={<Field value={q} onChange={setQ} placeholder="Pesquisar na Mídia" style={{ flex: "0 1 280px", minWidth: 160 }} />}
             actions={<span className="pl-popwrap">
-                <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Enviar</Btn>
+                <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn>
                 {adding && <div className="kx-pop pl-pop">
-                    <Row single icon="folder" title="Do computador…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
+                    <Row single icon="folder" title="Enviar arquivos…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
                     <Row single icon="film" title="Link do YouTube…" onClick={() => { setAdding(false); addLink(); }} />
                 </div>}
             </span>} />
@@ -254,7 +254,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                     </div>
                 )}
                 <div className="mv-body" onClick={(e) => { if (e.target === e.currentTarget) setSel([]); }}>
-                    {!shown.length && <Empty icon="film" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Enviar arquivos (vídeos, áudios, imagens, PDF, PowerPoint) ou adicione um link do YouTube."}</Empty>}
+                    {!shown.length && <Empty icon="film" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Enviar arquivos… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
                     {view === "grid" && shown.length > 0 && (
                         <div className="mv-grid">
                             {shown.map((m) => (

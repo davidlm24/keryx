@@ -58,7 +58,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
             const type = String(it.type || "").toUpperCase();
             if (MEDIA_TYPES.includes(type)) {
                 const m = data.media.find((x) => x.id === it.contentId);
-                if (m && !m.missing && presentationBlock(m)) docs.push(line(it.title || m.title || "Apresentação", m.type === "powerpoint" ? "PowerPoint · não vai ao ar: salve como PDF e envie o PDF" : "PDF · as páginas ainda estão sendo preparadas", "warn", { label: "Abrir a biblioteca", run: () => onOpenMedia?.() }, "film"));
+                if (m && !m.missing && presentationBlock(m)) docs.push(line(it.title || m.title || "Apresentação", m.type === "powerpoint" ? "PowerPoint · não vai ao ar: salve como PDF e envie o PDF" : "PDF · as páginas ainda estão sendo preparadas", "warn", { label: "Abrir a Mídia", run: () => onOpenMedia?.() }, "film"));
                 files.push({ title: it.title || m?.title || "Mídia", what: m ? "Arquivo" : "Item sem mídia na biblioteca", url: m?.file_url || "" });
             } else if (type === "SONG") {
                 const s = data.songs.find((x) => x.id === it.contentId);
@@ -71,7 +71,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
         await Promise.all(files.map(async (f) => {
             const st = await fileState(f.url);
             if (st === "net") net.push(line(f.title, `${f.what} · ${isYouTube(f.url) ? "YouTube" : "na internet"} · precisa de internet durante o culto`, navigator.onLine ? "ok" : "warn", null, "external"));
-            else media.push(line(f.title, st === "ok" ? `${f.what} · encontrado` : `${f.what} · Arquivo não encontrado`, st === "ok" ? "ok" : "miss", st === "ok" ? null : { label: "Abrir a biblioteca", run: () => onOpenMedia?.() }, "film"));
+            else media.push(line(f.title, st === "ok" ? `${f.what} · encontrado` : `${f.what} · Arquivo não encontrado`, st === "ok" ? "ok" : "miss", st === "ok" ? null : { label: "Abrir a Mídia", run: () => onOpenMedia?.() }, "film"));
         }));
         media.push(...docs);
         out.push({ name: "Mídia da setlist", lines: media.length ? media : [line("Nenhum arquivo na setlist", "Músicas, leituras e avisos não dependem de arquivos", "info", null, "film")] });

@@ -8,7 +8,7 @@ const g = (...tabs) => group(tabs);
 // columns band, the default, has its own test below.
 const W = { onairSpan: "window" };
 // The console of the 2026-10-13 audit: Biblioteca | Slides | Programa over
-// Prévia · Painel de abas | Camadas, Temas and the Setlist, and under all of them,
+// Prévia · Painel | Camadas, Temas and the Setlist, and under all of them,
 // edge to edge, the No ar strip (2026-10-14).
 const fourColumns = () => split("col", [split("row", [
     g("lib"), g("slides"),

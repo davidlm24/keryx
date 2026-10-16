@@ -49,7 +49,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                 <div className="kx-menu-sep" />
                 <MenuItem icon="grip" checked={editing} onClick={onEditLayout} title="Mudar os módulos de lugar, salvar disposições com nome · Esc conclui">{editing ? "Concluir a edição" : "Editar disposição"}</MenuItem>
                 <MenuItem onClick={() => { restoreLayout(); setOpen(null); }}>Restaurar disposição</MenuItem>
-                <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos do teclado</MenuItem>
+                <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos</MenuItem>
             </div>
         );
     }
@@ -74,7 +74,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
         <div className="pop kx-pop" style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }}>
             <MenuItem icon="list" onClick={() => setOpen("cultos")}>Culto<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
             <MenuItem icon="list" onClick={() => { setOpen(null); onPlanner?.(serviceId); }}>Planejar o culto</MenuItem>
-            <MenuItem icon="film" onClick={() => { setOpen(null); onMedia?.(); }}>Biblioteca de mídia</MenuItem>
+            <MenuItem icon="film" onClick={() => { setOpen(null); onMedia?.(); }}>Mídia</MenuItem>
             <MenuItem icon="megaphone" onClick={() => { setOpen(null); onNotices?.(); }}>Avisos</MenuItem>
             <MenuItem icon="plus" onClick={() => { setOpen(null); onNewNotice?.(); }}>Novo aviso</MenuItem>
             <MenuItem icon="book" onClick={() => { setOpen(null); onSchool?.(); }}>Escola bíblica</MenuItem>
@@ -82,10 +82,10 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             <div className="kx-menu-sep" />
             <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Saídas</MenuItem>
             <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>
-            <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>
+            <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos</MenuItem>
             <MenuItem icon="star" onClick={() => onWhatsNew?.()}>Novidades</MenuItem>
             <MenuItem icon="sliders" onClick={() => { setOpen(null); onSettings?.("telas"); }}>Configurações</MenuItem>
-            <MenuItem icon="info" onClick={() => { setOpen(null); onSettings?.("sobre"); }}>Sobre o KERYX…</MenuItem>
+            <MenuItem icon="info" onClick={() => { setOpen(null); onSettings?.("sobre"); }}>Sobre o KERYX</MenuItem>
             {hasUpdate(update) && (
                 <MenuItem icon="download" onClick={() => onUpdateNow?.()}>
                     <span style={{ flex: 1 }}>{update.status === "downloading" ? "Atualizando…" : "Atualizar agora"}</span>
@@ -188,8 +188,8 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             {/* Transmissão is an OBS Browser Source: until OBS connects, say where its address is. */}
             {!rows.some((r) => r.group === "transmissao") && (
                 <div className="kx-menu-h out-group" title="No OBS: Fonte de navegador com o endereço da Transmissão, 1920 × 1080">
-                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda para a live no OBS</span>
-                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço…</Btn>
+                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda da transmissão ao vivo</span>
+                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço</Btn>
                 </div>
             )}
             {!rows.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
@@ -207,8 +207,8 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             </div>
             <div className="kx-menu-sep" />
             <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}>
-                <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo…</Btn>
-                <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas…</Btn>
+                <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo</Btn>
+                <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas</Btn>
             </div>
         </div>
     );

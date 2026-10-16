@@ -23,7 +23,7 @@ import { useWinCol } from "./winLayout";
 
 const ADD = [
     ["SONG", "music", "Música"], ["BIBLE", "book", "Bíblia"], ["VIDEO", "film", "Vídeo"], ["AUDIO", "volume", "Áudio"],
-    ["IMAGE", "image", "Imagem"], ["ANNOUNCEMENT", "megaphone", "Aviso"], ["TEXT", "text", "Texto"], ["TIMER", "clock", "Timer"], ["MATERIAL", "book", "EBD"], ["SECTION", "list", "Seção"],
+    ["IMAGE", "image", "Imagem"], ["ANNOUNCEMENT", "megaphone", "Aviso"], ["TEXT", "text", "Texto"], ["TIMER", "clock", "Timer"], ["MATERIAL", "book", "Escola bíblica"], ["SECTION", "list", "Seção"],
 ];
 const MEDIA_FOR = { VIDEO: ["video"], AUDIO: ["audio"], IMAGE: ["image", "gif", "pdf", "powerpoint"] };
 const MEDIA_TYPE = { video: "VIDEO", audio: "AUDIO", image: "IMAGE", gif: "IMAGE", pdf: "PDF", powerpoint: "POWERPOINT" };
@@ -256,7 +256,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
                         <span className="k">Papel de parede</span>
                         <div className="pl-wall">
-                            <BgChip value={look.background} title="Papel de parede do culto" empty="o de qualquer outro culto" noneLabel={look.background ? "Sem papel de parede próprio (o de qualquer outro culto)" : undefined}
+                            <BgChip value={look.background} title="Papel de parede do culto" empty="Qualquer outro culto" emptyHint="Sem papel de parede próprio: o culto usa o de qualquer outro culto (Configurações › Culto)" noneLabel={look.background ? "Sem papel de parede próprio (o de qualquer outro culto)" : undefined}
                                 onPick={(spec) => saveSvc(lookFields({ ...look, background: spec }), spec ? "Papel de parede do culto salvo." : "O culto volta ao papel de parede da igreja.")} />
                         </div>
                         <span className="k">Tema do culto</span>
@@ -345,8 +345,9 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                             </div>
                         </div>
                     )}
-                    <div className="pl-add">
-                        {ADD.map(([t, icon, label]) => <Btn key={t} kind={t === "SONG" ? "outline" : ""} on={adding === t} onClick={() => { setAdding(adding === t ? null : t); setPick(""); }}><Icon name={icon} />{label}</Btn>)}
+                    <div className="pl-add" role="group" aria-label="Adicionar à setlist">
+                        <span className="kx-meta pl-add-k">Adicionar:</span>
+                        {ADD.map(([t, icon, label]) => <Btn key={t} on={adding === t} onClick={() => { setAdding(adding === t ? null : t); setPick(""); }}><Icon name={icon} />{label}</Btn>)}
                     </div>
                 </Panel>
             </div>

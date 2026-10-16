@@ -333,7 +333,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
                     <input ref={bgFileRef} type="file" hidden accept="image/*" onChange={(e) => { upload(e.target.files?.[0], (url) => { set({ background: { ...draft.background, image: url } }); setPickBgImage(false); }); e.target.value = ""; }} />
                     <div className="nv-scroll cfg">
-                        {isStream && <div className="listhead"><span className="kx-meta">A Transmissão é uma legenda sobre a live, sem canvas: só os ajustes abaixo.</span></div>}
+                        {isStream && <div className="listhead"><span className="kx-meta">A Transmissão é uma legenda sobre a transmissão ao vivo, sem canvas: só os ajustes abaixo.</span></div>}
                         {!isStream && tab === "desenho" && draft && <>
                         <div className="frm nv-frm">
                             <span className="k">Fundo</span>

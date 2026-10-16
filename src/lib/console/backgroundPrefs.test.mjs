@@ -4,6 +4,7 @@ import {
     sourceOf, backgroundList, visibleBackgrounds, backgroundActions, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults,
     CATEGORY_SUGGESTIONS, normalizeCategories, categoryList, managedCategories, addCategory, renameCategory, removeCategory, moveCategory, inCategory,
 } from "./backgroundPrefs.js";
+import { bundledBackgrounds, bundledBackgroundId } from "../backgrounds.js";
 
 test("a bundled background has one key whatever serves it", () => {
     assert.equal(sourceOf("http://127.0.0.1:7700/media/bundled/backgrounds/1557672172-298e090bd0f1.webp"), "bundled:1557672172-298e090bd0f1");
@@ -33,6 +34,16 @@ test("the list: settings over the factory names and categories", () => {
     assert.deepEqual(visibleBackgrounds(list, { only: "Natureza" }).map((b) => b.source), ["bundled:a"]);
     assert.deepEqual(visibleBackgrounds(list, { except: "Suas imagens" }).map((b) => b.source), ["bundled:b", "bundled:a"]);
     assert.deepEqual(categoriesOf([...list, { category: "Páscoa" }, { category: "Batismo" }]), ["Natureza", "Cruz e igreja", "Batismo", "Páscoa", "Suas imagens"]);
+});
+
+test("a factory photo goes by its own name; the portrait left the set (audit C-44)", () => {
+    const list = backgroundList({ bundled: [{ id: "a", url: "u/a", name: "Nebulosa" }, { id: "b", url: "u/b" }], prefs: [{ source: "bundled:1507003211169-0a1dd7228f2d", name: "Retrato" }] });
+    assert.deepEqual(list.map((b) => b.name), ["Nebulosa", "Fundo 2"], "a settings row for a photo out of the set is skipped");
+    const factory = bundledBackgrounds();
+    assert.ok(!factory.some((b) => b.id.startsWith("1507003211169")));
+    assert.ok(factory.every((b) => b.name && b.category), "every factory photo has a name and a category");
+    assert.equal(new Set(factory.map((b) => b.name)).size, factory.length, "names tell them apart");
+    assert.equal(bundledBackgroundId("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920"), "1507003211169-0a1dd7228f2d", "an imported row keeps its file");
 });
 
 test("the church's categories: a stored list, the suggestions until it edits one", () => {
