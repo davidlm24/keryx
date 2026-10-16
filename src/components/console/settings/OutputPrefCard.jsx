@@ -243,7 +243,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
             </>}
             {isPastor && !pref.content && !design && <>
             <FormRow k="Relógio">
-                <Switch on={pastor.clock} onChange={(on) => saveOpt("clock", on)} label="Relógio na Tela do pastor" />
+                <Switch on={pastor.clock} onChange={(on) => saveOpt("clock", on)} label="Relógio no Pastor" />
                 <span className="kx-meta">a hora e o tempo de culto</span>
             </FormRow>
             <FormRow k="Próximos itens">
