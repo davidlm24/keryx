@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { transposeChords, transposeChord } from "@/utils/chordTranspose";
 import ChordedLines, { chordedOf, Transpose } from "./ChordedLines";
+import { stageLines } from "@/lib/activity";
 import "@/components/network/net.css";
 
 const two = (n) => String(n).padStart(2, "0");
@@ -51,6 +52,10 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
     const elapsed = Math.max(0, Math.floor((nowMs - content.startedAt) / 1000));
     // The current slide with its chords, when the lyrics carry them.
     const chorded = show.chords ? chordedOf(song, index, current.text) : null;
+    // An Escola bíblica question: the teacher sees the answer here, and the
+    // question's own note (content.stage.slide_notes).
+    const answer = stageLines(current.activity);
+    const slideNote = content.stage?.slide_notes?.[index] || "";
 
     return (
         <div className={cls} style={style}>
@@ -69,8 +74,9 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
                 </div>
             </header>
             {song.musician_notes && show.notes && <div className="ns-notes">{song.musician_notes}</div>}
+            {slideNote && show.notes && <div className="ns-notes">{slideNote}</div>}
             <main className="ns-main">
-                <div className="ns-cur">{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (current.text || "")}</div>
+                <div className="ns-cur">{chorded ? <ChordedLines chorded={chorded} transpose={transpose} /> : (current.text || "")}{answer.length > 0 && <span className="ns-answer">{answer.map((l) => <span key={l} className={l.startsWith("✓") || l.startsWith("Resposta") ? "is-right" : ""}>{l}</span>)}</span>}</div>
                 {chorded && !embed && (
                     <aside className="ns-trans" aria-label="Transposição">
                         <Transpose value={transpose} onChange={setTranspose} />

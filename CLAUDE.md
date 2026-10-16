@@ -71,8 +71,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   by `ScreenRenderer` (look, background, logo, chime; arithmetic in
   `src/lib/console/notice.js`); outputs move a "Tocar todos" sequence on
   with `useNoticeAdvance`. Escola bíblica materials go on air as ordinary
-  stages (`stageFromMaterial`; a quiz is question + answer slides; teacher
-  notes ride in `content.stage`, never on the projector). What a song or
+  stages (`stageFromMaterial`; teacher notes ride in `content.stage` —
+  each question's in `stage.slide_notes` (`materialStage`) — never on the
+  projector). **Activities** (owner 2026-10-16, Rodada E4): a slide may
+  carry `activity` (`ACTIVITY_KINDS` in `shared/live-state.mjs`: choice —
+  a quiz question, its 2–8 options as cards —, truefalse, blanks —
+  Complete a frase, word positions —, memorize, discussion — a timer),
+  built by `materialSlides` in school.js (types in `MATERIAL_TYPES`;
+  quiz/truefalse keep `quiz_questions`, the verse types `slides`) and drawn
+  by `ActivityView.jsx` (theme font/colour; the right card green with ✓);
+  how far each slide was revealed is `content.revealed`, walked by
+  `content.reveal` on the SAME slide (refused locked, like goTo) — and →/←
+  (`content.next`/`.prev`, so keys, outputs and the controle remoto) step
+  through it before changing slide; the word logic is `src/lib/activity.js`
+  (tested), the Palco shows the answer (`stageLines`). The Escola has the
+  Revelar button and the material's question list; there is no "Resposta"
+  slide any more. Slides keep their pictures by text when edited
+  (`slidesFromEdit`), never by position. What a song or
   passage puts on screen is `src/lib/console/content.js`; the default theme
   dresses one with no look of its own when it is sent (`stamp` in
   useConsole.js, `withThemeDefaults` in themes.js), never what is on air. A song can

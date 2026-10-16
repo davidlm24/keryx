@@ -4,7 +4,7 @@
 // (title, slides, a start index). Pure: no I/O, no React.
 import { songContent, passageContent, isVideoUrl } from "@/lib/console/content";
 import { noticeLabel } from "@/lib/console/notice";
-import { materialSlides, materialMeta } from "@/lib/console/school";
+import { materialStage, materialMeta } from "@/lib/console/school";
 import { passageOf, chapterOf, chapterOnAir } from "@/lib/console/bibleVerses";
 
 const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
@@ -89,10 +89,11 @@ export function stageFromTool(mode, { text = "", minutes = 5 } = {}) {
 }
 
 // An Escola bíblica material (BibleMaterial, src/lib/console/school.js):
-// slides, text and quizzes as slides (a quiz's answer is the slide after its
-// question), video and image through the media layer. The teacher's notes
-// ride along for the console and the stage screen (content.stage.notes),
-// never the projector.
+// slides, text and the activities as slides (a quiz question carries its
+// options and answer, revealed on the same slide: content.reveal), video and
+// image through the media layer. The teacher's notes ride along for the
+// console and the stage screen (content.stage.notes, and each question's in
+// content.stage.slide_notes), never the projector.
 export function stageFromMaterial(m) {
     const notes = String(m.description || "").trim();
     const meta = materialMeta(m);
@@ -102,12 +103,12 @@ export function stageFromMaterial(m) {
         const s = stageFromMedia({ id: m.id, type: m.type, file_url: url, title: m.title || "" });
         return { ...s, id: `material:${m.id}`, meta, notes };
     }
-    const slides = materialSlides(m);
+    const { slides, slideNotes } = materialStage(m);
     const style = { text_color: m.text_color || "", background_image: m.background_image || "", background_color: m.background_image ? "" : (m.background_color || "") };
     // The Texto theme fills what the material leaves at the factory look.
     const ownBg = Boolean(m.background_image || m.background_color);
-    const args = { kind: "text", ref: { materialId: m.id }, title: m.title || "", slides: slides.length ? slides : [{ text: m.title || "" }], style, stage: notes ? { notes, musician_notes: notes, material: m.title || "" } : {}, inherit: { look: !m.text_color || m.text_color.toLowerCase() === "#ffffff", background: !ownBg } };
-    return { kind: "text", lesson: true, id: `material:${m.id}`, title: m.title || "", meta, slides: args.slides, index: 0, op: "content.show", args, notes };
+    const args = { kind: "text", ref: { materialId: m.id }, title: m.title || "", slides: slides.length ? slides : [{ text: m.title || "" }], style, stage: notes || slideNotes.length ? { notes, musician_notes: notes, material: m.title || "", ...(slideNotes.length ? { slide_notes: slideNotes } : {}) } : {}, inherit: { look: !m.text_color || m.text_color.toLowerCase() === "#ffffff", background: !ownBg } };
+    return { kind: "text", lesson: true, id: `material:${m.id}`, title: m.title || "", meta, slides: args.slides, index: 0, op: "content.show", args, notes, slideNotes };
 }
 
 // A history entry (live.history[i]) back as a stage, for "Voltar ao anterior".

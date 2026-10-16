@@ -50,6 +50,16 @@ export const ALERT_TYPES = ["alert", "message"];
 // when the musicians play (no media at all).
 export const FOLLOW_SOURCES = ["video", "audio", "clock"];
 export const FOLLOW_ACTIONS = ["start", "pause", "resume"];
+// Escola bíblica activities (owner 2026-10-16, Rodada E4): a slide may carry
+// one (slide.activity), drawn by the renderer instead of plain text, and
+// content.reveal walks it without changing slide — a quiz's right card
+// (choice), the V or F (truefalse), the next word of a phrase to complete
+// (blanks), more words of a verse to memorize gone (memorize), a
+// discussion's timer started (discussion).
+export const ACTIVITY_KINDS = ["choice", "truefalse", "blanks", "memorize", "discussion"];
+export const MAX_OPTIONS = 8;
+export const MEMORIZE_ROUNDS = [1, 12];
+export const DISCUSSION_MINUTES = [0.5, 60];
 // The text's look. The first ten are free text (as saved in songs and themes);
 // the rest (Camadas, 2026-10-10) are typed: a number in a range or a choice.
 export const STYLE_RANGES = { text_opacity: [0.2, 1], text_max_width: [40, 100], text_box_opacity: [0, 0.9], text_nudge: [-20, 20], transition_ms: [120, 600], background_dim: [0, 0.9], background_blur: [0, 20] };
@@ -226,6 +236,68 @@ function style(value) {
     return out;
 }
 
+// Word positions (src/lib/activity.js counts the words of the slide's text):
+// whole numbers, each once, in the order given.
+const MAX_WORDS = 2000;
+const wordList = (value, label) => [...new Set(list(value ?? [], label, MAX_WORDS).map((n) => Math.trunc(count(n, label))))];
+
+// A slide's activity (ACTIVITY_KINDS), checked. `explain`: a reference or a
+// line of explanation under it (a quiz shows it once revealed).
+function activityOf(value) {
+    if (!isPlainObject(value)) throw new LiveError("Atividade inválida.");
+    const kind = oneOf(value.kind, ACTIVITY_KINDS, "Atividade");
+    const out = { kind };
+    const explain = text(value.explain, "Explicação", { max: 500 });
+    if (explain) out.explain = explain;
+    if (kind === "choice") {
+        out.options = list(value.options ?? [], "Opções", MAX_OPTIONS).map((o) => text(o, "Opção", { max: 500 }));
+        if (out.options.length < 2) throw new LiveError("O quiz precisa de pelo menos duas opções.");
+        out.correct = clampIndex(value.correct, out.options.length);
+    } else if (kind === "truefalse") {
+        out.correct = oneOf(Number(value.correct ?? 0), [0, 1], "Resposta");
+    } else if (kind === "blanks") {
+        out.blanks = wordList(value.blanks, "Lacunas").sort((a, b) => a - b);
+        if (!out.blanks.length) throw new LiveError("Escolha ao menos uma palavra para completar.");
+    } else if (kind === "memorize") {
+        out.order = wordList(value.order, "Ordem das palavras");
+        out.rounds = Math.round(ranged(value.rounds ?? 4, MEMORIZE_ROUNDS, "Rodadas"));
+    } else {
+        out.minutes = ranged(value.minutes ?? 5, DISCUSSION_MINUTES, "Minutos");
+    }
+    return out;
+}
+
+// How many reveals a slide's activity has (0: none): one for a quiz, a V or
+// F and a discussion's timer, a word at a time for blanks, the rounds of a
+// verse to memorize.
+export function activitySteps(slide) {
+    const a = slide?.activity;
+    if (!a) return 0;
+    if (a.kind === "blanks") return a.blanks?.length || 0;
+    if (a.kind === "memorize") return a.rounds || 0;
+    return 1;
+}
+// How far the slide `index` (the one on air by default) was revealed, and
+// since when (content.revealed: each slide keeps it, so going back to a
+// question finds it as it was left).
+export const revealOf = (content, index = content?.index) => content?.revealed?.[index] || null;
+export const revealStep = (content, index) => revealOf(content, index)?.step || 0;
+function revealedWith(revealed, index, step, now) {
+    const next = { ...(revealed || {}) };
+    if (step > 0) next[index] = { step, at: now };
+    else delete next[index];
+    return next;
+}
+// After a live edit: only what still fits the slides now.
+function revealedFor(revealed, items) {
+    const out = {};
+    for (const [k, r] of Object.entries(revealed || {})) {
+        const max = activitySteps(items[Number(k)]);
+        if (max && r?.step > 0) out[k] = { ...r, step: Math.min(r.step, max) };
+    }
+    return out;
+}
+
 function slide(value) {
     if (typeof value === "string") return { text: text(value, "Texto do slide") };
     if (!isPlainObject(value)) throw new LiveError("Slide inválido.");
@@ -245,6 +317,7 @@ function slide(value) {
         const own = style(value.style);
         if (Object.keys(own).length) out.style = own;
     }
+    if (value.activity !== undefined && value.activity !== null) out.activity = activityOf(value.activity);
     return out;
 }
 
@@ -444,6 +517,8 @@ const OPS = {
                 // sent before Rodada D4; a playback now goes to the audio channel).
                 audio: text(a.audio, "Áudio", { max: MAX_URL }) || null,
                 follow: followOf(a.follow, items),
+                // How far each slide's activity was revealed (content.reveal).
+                revealed: {},
                 startedAt: now,
             },
         };
@@ -459,6 +534,7 @@ const OPS = {
         if (a.stage !== undefined) next.stage = loose(a.stage, "Dados do palco") || {};
         if (a.audio !== undefined) next.audio = text(a.audio, "Áudio", { max: MAX_URL }) || null;
         next.index = clampIndex(a.index ?? current.index, next.slides.length);
+        if (a.slides !== undefined && current.revealed) next.revealed = revealedFor(current.revealed, next.slides);
         // New marks (the song saved while on air): a follow still running keeps
         // its clock and offset; one the song no longer has goes.
         if (a.follow !== undefined) {
@@ -506,8 +582,32 @@ const OPS = {
         }
         return { content: { ...current, follow: next } };
     },
-    "content.next": (s, _a, now) => OPS["content.goTo"](s, { index: need(s.content, "projetado").index + 1 }, now),
-    "content.prev": (s, _a, now) => OPS["content.goTo"](s, { index: need(s.content, "projetado").index - 1 }, now),
+    // Revelar (Escola bíblica): the activity of slide `index` (the one on air
+    // by default) one step on (`by` 1, the default), back (-1) or to `step`;
+    // the slide stays. Like moving the slide, refused while locked.
+    "content.reveal": (s, { index, step, by }, now) => {
+        const current = need(s.content, "projetado");
+        const i = index === undefined || index === null ? current.index : clampIndex(index, current.slides.length);
+        const max = activitySteps(current.slides[i]);
+        if (!max) throw new LiveError("Este slide não tem nada para revelar.", 409);
+        const at = revealStep(current, i);
+        const to = step !== undefined && step !== null ? Math.trunc(count(step, "Passo")) : at + Math.trunc(Number(by ?? 1) || 0);
+        const next = Math.max(0, Math.min(max, to));
+        return next === at ? null : { content: { ...current, revealed: revealedWith(current.revealed, i, next, now) } };
+    },
+    // → and ← (keys, the outputs, the controle remoto): a slide with an
+    // activity is walked a step at a time before moving on (→ reveals the
+    // answer, then goes to the next question; ← hides it again first).
+    "content.next": (s, _a, now) => {
+        const current = need(s.content, "projetado");
+        if (revealStep(current) < activitySteps(currentSlide(current))) return OPS["content.reveal"](s, { by: 1 }, now);
+        return OPS["content.goTo"](s, { index: current.index + 1 }, now);
+    },
+    "content.prev": (s, _a, now) => {
+        const current = need(s.content, "projetado");
+        if (revealStep(current) > 0) return OPS["content.reveal"](s, { by: -1 }, now);
+        return OPS["content.goTo"](s, { index: current.index - 1 }, now);
+    },
     "content.clear": (s, _a, now) => (s.content ? { ...remember(s, now, "content"), content: null } : null),
 
     "media.show": (s, a, now) => ({

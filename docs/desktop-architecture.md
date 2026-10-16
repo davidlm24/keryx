@@ -395,7 +395,9 @@ the times; the top bar's service clock stays.)
   right, the console's own Programa and Prévia. Materials go on air like
   any stage (`stageFromMaterial`, `src/lib/console/school.js`, tested):
   slides and text as `content` slides (a slide's image is drawn above its
-  text), a quiz as a question slide then its answer slide (→ reveals), video
+  text), the activities (quiz, Verdadeiro ou falso, Complete a frase,
+  Memorizar, Discussão; Rodada E4) as slides carrying `activity`, revealed
+  on the same slide (`content.reveal`, → / ←; `content.revealed`), video
   and image through the media layer. The teacher's notes travel in
   `content.stage` (the stage screen's notes banner) and show in the
   console's Prévia column; the projector never draws them. Materials join

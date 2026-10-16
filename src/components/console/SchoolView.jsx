@@ -4,10 +4,12 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, Monitor, WinBar } from "./kx";
 import { previewDoc, captionOf, TeacherNotes } from "./CenterPanel";
-import { stageFromMaterial, stageFromTool, liveStageId } from "@/lib/console/stage";
+import { stageFromMaterial, stageFromTool, liveStageId, stageAt } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
-import { AGE_GROUPS, ageLabel, materialIcon, materialMeta, dayOf, isPresent, toggleAttendance, attendanceNote, presentCount } from "@/lib/console/school";
+import { AGE_GROUPS, ageLabel, materialIcon, materialMeta, dayOf, isPresent, toggleAttendance, attendanceNote, presentCount, revealAction, revealNote } from "@/lib/console/school";
+import { currentSlide, activitySteps, revealStep } from "@shared/live-state.mjs";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
+import { LOCKED_SAY } from "./useConsole";
 import { useWinCol } from "./winLayout";
 
 const EMPTY = [];
@@ -17,9 +19,12 @@ const MATERIALS = ["console", "bibleMaterials"];
 // Escola bíblica (canvas artboard "Escola bíblica"), a view inside the
 // console: turmas and their students (attendance for today), the lesson
 // materials, and on the right the console's own Programa and Prévia — a
-// click prepares a material, Enter or a double click sends it, a quiz's
-// answer is the next slide (→). Materials are edited here; they also go
-// into the Setlist (planner, "Setlist" here) and the palette.
+// click prepares a material, Enter or a double click sends it. An activity
+// (a quiz, Verdadeiro ou falso, Complete a frase, Memorizar, Discussão;
+// Rodada E4) is revealed on its own slide: the Revelar button or → (← hides
+// it again), and the material's list of questions jumps to one. Materials
+// are edited here; they also go into the Setlist (planner, "Setlist" here)
+// and the palette.
 export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, onClose, escRef, onEditMaterial = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colTurmas = useWinCol("school.turmas", { def: 340, min: 280, max: 600 });
@@ -33,7 +38,6 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     const [showForm, setShowForm] = useState(false);
     const [student, setStudent] = useState("");
     const [onlyClass, setOnlyClass] = useState(true);
-    const [confirm, setConfirm] = useState(null); // "st:<i>": a student about to leave the class
     const ask = useConfirm();
     const [minutes, setMinutes] = useState(5);
     const today = dayOf();
@@ -69,9 +73,10 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         saveClass({ students: [...(cls.students || []), { name, age: 0, parent_phone: "", attendance: [] }] });
     };
     const togglePresence = (i) => saveClass({ students: cls.students.map((s, k) => (k === i ? toggleAttendance(s, today) : s)) });
-    const removeStudent = (i) => {
-        if (confirm !== `st:${i}`) { setConfirm(`st:${i}`); c.say(`Clique de novo para tirar ${cls.students[i].name} da turma.`); return; }
-        setConfirm(null);
+    // "Tirar", never "Excluir" (copy rules): the student leaves this class.
+    const removeStudent = async (i) => {
+        const name = cls.students[i].name;
+        if (!(await ask({ title: "Tirar da turma?", text: `"${name}" sai da turma ${cls.name}, com as presenças registradas.`, ok: "Tirar" }))) return;
         saveClass({ students: cls.students.filter((_, k) => k !== i) });
     };
 
@@ -95,9 +100,24 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     const pdoc = useMemo(() => previewDoc(prev, cur, madeAt, stamp), [prev, cur, madeAt, stamp]);
     const airId = liveStageId(cur);
     const stateOf = (m) => (airId === `material:${m.id}` || (cur?.media?.id === m.id && !cur?.content) ? "is-air" : prev?.id === `material:${m.id}` ? "is-prev" : "");
-    const airSlide = cur?.content?.slides?.[cur.content.index];
-    const nextSlide = cur?.content?.slides?.[cur.content.index + 1];
-    const reveal = cur?.content?.ref?.materialId && /^Pergunta/.test(airSlide?.label || "") && /^Resposta/.test(nextSlide?.label || "");
+    // Revelar: the activity of the slide on air, a step at a time.
+    const airSlide = cur?.content ? currentSlide(cur.content) : null;
+    const reveal = revealAction(airSlide?.activity, revealStep(cur?.content), activitySteps(airSlide));
+    const doReveal = () => {
+        if (locked) { c.say(LOCKED_SAY); return; }
+        c.callOp("content.reveal", { step: reveal.to }).catch(() => {});
+    };
+    // The material's questions (or slides): the one on air, else the one in
+    // the Prévia (a material of one slide has no list). A click goes to that
+    // question on air, or picks where the Prévia starts (a double click
+    // sends it from there).
+    const airMaterial = cur?.content?.ref?.materialId ? cur.content : null;
+    const list = airMaterial?.slides.length > 1
+        ? { air: true, title: airMaterial.title, slides: airMaterial.slides, index: airMaterial.index, type: materials.find((m) => m.id === airMaterial.ref.materialId)?.type }
+        : prev?.lesson && prev.slides?.length > 1 ? { air: false, title: prev.title, slides: prev.slides, index: prev.index, type: materials.find((m) => `material:${m.id}` === prev.id)?.type } : null;
+    const listName = { quiz: "Perguntas", truefalse: "Afirmações", blanks: "Frases", memorize: "Versículos", discussion: "Perguntas" }[list?.type] || "Slides";
+    const pickSlide = (i) => (list.air ? c.goTo(i) : c.setPrev(stageAt(prev, i)));
+    const sendSlide = (i) => { if (list.air) { c.goTo(i); return; } const st = stageAt(prev, i); c.setPrev(st); onSend(st); };
 
     return (
         <>
@@ -110,7 +130,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                         {classes.map((k) => (
                             <Row key={k.id} icon="user" title={k.name} className={cls?.id === k.id ? "is-selected" : ""}
                                 meta={[ageLabel(k.age_group), `${(k.students || []).length} alunos`, k.room, presentCount(k, today) ? `${presentCount(k, today)} presentes hoje` : ""].filter(Boolean).join(" · ")}
-                                onClick={() => { setClassId(k.id); setConfirm(null); }} />
+                                onClick={() => setClassId(k.id)} />
                         ))}
                         {cls && (
                             <>
@@ -133,7 +153,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                                         <span className="kx-glyph"><Icon name={isPresent(s, today) ? "check" : "dot"} /></span>
                                         <div className="kx-row-main"><div className="kx-row-title">{s.name}</div></div>
                                         <span className="kx-meta kx-hide-on-hover">{attendanceNote(s, today)}</span>
-                                        <span className="kx-row-acts"><IconBtn name="x" small title={confirm === `st:${i}` ? "Clique de novo para tirar" : "Tirar da turma"} on={confirm === `st:${i}`} onClick={(e) => { e.stopPropagation(); removeStudent(i); }} /></span>
+                                        <span className="kx-row-acts"><IconBtn name="x" small title="Tirar da turma…" onClick={(e) => { e.stopPropagation(); removeStudent(i); }} /></span>
                                     </div>
                                 ))}
                                 <div className="pl-pad"><Field icon="plus" value={student} onChange={setStudent} placeholder="Nome do aluno · Enter adiciona" onKeyDown={(e) => { if (e.key === "Enter") addStudent(); }} /></div>
@@ -165,7 +185,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                                 </React.Fragment>
                             ))}
                         </div>
-                        <div className="listhead sv-hint"><span className="kx-meta">Um clique prepara na Prévia · duplo clique ou Enter envia ao ar · no quiz, → revela a resposta.</span></div>
+                        <div className="listhead sv-hint"><span className="kx-meta">Um clique prepara na Prévia · duplo clique ou Enter envia ao ar · nas atividades, Revelar ou → mostra a resposta.</span></div>
                     </Panel>
             </div>{/* the Material page (MaterialView.jsx) opens over this, "← Escola bíblica" */}
             {colMaterial.split}
@@ -181,8 +201,30 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                         <Btn kind="prev" className="kx-btn-send" disabled={!prev || locked} onClick={() => onSend()} title={sendTip(locked)}>{SEND_LABEL}</Btn>
                         <IconBtn name="chevron-left" title="Slide anterior · ←" onClick={() => c.moveSlide(-1)} />
                         <IconBtn name="chevron-right" title="Próximo slide · →" onClick={() => c.moveSlide(1)} />
-                        <span className="kx-meta">{reveal ? "A resposta é o próximo slide: → revela." : "Enter envia · ←→ no ar"}</span>
+                        <span className="kx-meta">{reveal ? "→ revela · ← volta um passo" : "Enter envia · ←→ no ar"}</span>
                     </div>
+                    {reveal && (
+                        <div className="sv-reveal">
+                            <Btn kind={reveal.done ? "" : "brand"} className="sv-reveal-btn" disabled={locked} onClick={doReveal} title={locked ? LOCKED_SAY : reveal.done ? "Volta ao começo, no mesmo slide" : "No mesmo slide · →"}><Icon name={reveal.done ? "undo" : "eye"} />{reveal.label}</Btn>
+                        </div>
+                    )}
+                    {list && (
+                        <div className="sv-qlist">
+                            <div className="listhead"><span className="kx-section">{listName} <span className="kx-count">· {list.title} · {list.air ? "no ar" : "na prévia"}</span></span></div>
+                            {list.slides.map((sl, i) => {
+                                const note = list.air ? revealNote(sl.activity, revealStep(airMaterial, i), activitySteps(sl)) : "";
+                                const here = i === list.index;
+                                return (
+                                    <div key={i} className={`kx-row kx-row-1 kx-t sv-qrow ${here ? (list.air ? "is-air" : "is-prev") : ""}`} role="button" tabIndex={0} title={list.air ? "Clique vai a este no ar" : "Clique escolhe por onde a Prévia começa · duplo clique envia"}
+                                        onClick={() => pickSlide(i)} onDoubleClick={() => sendSlide(i)} onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) { e.preventDefault(); e.stopPropagation(); pickSlide(i); } }}>
+                                        <span className="sv-qn">{i + 1}</span>
+                                        <div className="kx-row-main"><div className="kx-row-title">{sl.text || sl.label || "Imagem"}</div></div>
+                                        {(note || (here && list.air)) && <span className="kx-meta">{[here && list.air ? "no ar" : "", note].filter(Boolean).join(" · ")}</span>}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                     <div className="sv-notes"><TeacherNotes prev={prev} cur={cur} /></div>
                     <div className="kx-row kx-t sv-timer">
                         <span className="kx-glyph"><Icon name="clock" /></span>

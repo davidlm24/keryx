@@ -62,6 +62,10 @@
 .ns-notes { flex: none; padding: 1.4cqmin 2cqmin; border-radius: 1.4cqmin; background: var(--warn-tint); box-shadow: inset 3px 0 0 var(--warn); font-size: 2.4cqmin; line-height: 1.35; color: var(--fg-1); }
 .ns-main { flex: 1; min-height: 0; display: flex; gap: 2.5cqmin; }
 .ns-cur { flex: 1; min-width: 0; display: grid; place-items: center; text-align: center; font-size: calc(7.4cqmin * var(--kp-text, 1)); line-height: 1.2; font-weight: 700; white-space: pre-line; text-shadow: 0 .4cqmin 2cqmin #000000b3; overflow: hidden; }
+/* An Escola bíblica question's options under it, the right one marked (StageScreen). */
+.ns-cur:has(> .ns-answer) { align-content: center; gap: 4cqmin; }
+.ns-answer { display: flex; flex-wrap: wrap; justify-content: center; gap: .4em 1.2em; font-size: .5em; font-weight: 500; color: var(--fg-2); }
+.ns-answer .is-right { color: var(--prev-fg, #4fd08a); font-weight: 700; }
 /* Inline chords: each syllable with its chord riding above it; wrapping
    happens between segments. Chord-less lines render plain, saving height. */
 .ns-chorded { display: block; width: 100%; }

@@ -4,7 +4,11 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, WinBar } from "./kx";
 import { stageFromMaterial } from "@/lib/console/stage";
-import { MATERIAL_TYPES, quizQuestions, slidesFromText, textFromSlides, blankMaterial } from "@/lib/console/school";
+import { MATERIAL_TYPES, VERSE_TYPES, MAX_OPTIONS, MEMORIZE_ROUNDS, DISCUSSION_MINUTES, quizQuestions, textFromSlides, slidesFromEdit, materialSlides, blankMaterial, blankQuestion, blankVerse, moveItem, remapBlanks } from "@/lib/console/school";
+import { wordsOf, LETTERS } from "@/lib/activity";
+import { parseReference, formatReference } from "@/lib/bibleBooks";
+import { readChapter } from "@/lib/bibleText";
+import { bibleVersionWanted } from "./BibleEnv";
 import BgChip from "./library/BgChip";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 
@@ -15,9 +19,14 @@ const MATERIALS = ["console", "bibleMaterials"];
 // A material of the Escola bíblica, as a page of THE window (Rodada C,
 // fase c: it used to swap the Escola's middle column and Esc dropped the
 // draft in silence): "← Escola bíblica" goes back to the list, the bar
-// holds Salvar/Cancelar/Excluir, and leaving with changes asks. The kind,
-// title, lesson and class, the content of that kind, the teacher's notes
-// and the colours; saving puts it in the Prévia and goes back.
+// holds Salvar/Cancelar/Excluir, and leaving with changes asks. The kind
+// (cards that say what each one does), title, lesson and class, the content
+// of that kind — slides, or the activities of Rodada E4: quiz questions with
+// up to 8 options, Verdadeiro ou falso, a verse with blanks chosen word by
+// word, a verse to memorize, discussion questions with their timer; each
+// question with its own explanation (on screen) and note (the teacher's),
+// reordered with ↑ ↓ — the teacher's notes and the colours; saving puts it
+// in the Prévia and goes back.
 export default function MaterialView({ c, materialId = null, classId = "", media, onClose, escRef, active = true }) {
     const client = useQueryClient();
     useEffect(() => keryx.entities.BibleSchoolClass.subscribe(() => client.invalidateQueries({ queryKey: CLASSES })), [client]);
@@ -105,11 +114,50 @@ export default function MaterialView({ c, materialId = null, classId = "", media
 
     const qs = draft.quiz_questions || [];
     const setQ = (i, patch) => set({ quiz_questions: qs.map((q, k) => (k === i ? { ...q, ...patch } : q)) });
+    const vs = draft.slides || [];
+    const setV = (i, patch) => set({ slides: vs.map((v, k) => (k === i ? { ...v, ...patch } : v)) });
     const files = media.filter((m) => !m.missing && (draft.type === "video" ? m.type === "video" : m.type === "image" || m.type === "gif"));
     const upload = async (file) => {
         if (!file) return;
         try { const { file_url } = await keryx.integrations.Core.UploadFile({ file }); set(draft.type === "video" ? { video_url: file_url } : { image_url: file_url }); } catch (err) { c.say(err?.message || "Não foi possível copiar o arquivo."); }
     };
+    // Switching to Slides or Texto shows the slides as they are now.
+    const setType = (type) => {
+        set({ type });
+        if (type === "slides" || type === "text") setSlidesText(textFromSlides(draft.slides));
+    };
+    // The text from the slides' blocks: each picture stays with its slide
+    // (slidesFromEdit matches the text, not the position).
+    const editSlides = (text) => { setSlidesText(text); set({ slides: slidesFromEdit(draft.slides, text) }); };
+    const pictures = vs.filter((s) => s && (String(s.text || "").trim() || s.image_url)).map((s, i) => ({ s, n: i + 1 })).filter(({ s }) => s.image_url);
+    const dropPicture = (s) => set({ slides: String(s.text || "").trim() ? vs.map((x) => (x === s ? { ...x, image_url: "" } : x)) : vs.filter((x) => x !== s) });
+    // A verse's text from the Bíblia (the edition chosen there), by its reference.
+    const fromBible = async (i) => {
+        const r = parseReference(vs[i]?.ref);
+        if (!r) { c.say("Escreva a referência primeiro, como João 3:16."); return; }
+        try {
+            const got = await readChapter(bibleVersionWanted(), r.book, r.chapter);
+            const verses = r.verseStart ? got.verses.filter((v) => v.number >= r.verseStart && v.number <= (r.verseEnd || r.verseStart)) : got.verses;
+            if (!verses.length) throw new Error(`${formatReference(r)} não existe na ${got.version}.`);
+            const text = verses.map((v) => v.text).join(" ");
+            setV(i, { text, ref: formatReference(r), ...(draft.type === "blanks" ? { blanks: remapBlanks(vs[i].text, text, vs[i].blanks) } : {}) });
+        } catch (err) { c.say(err?.message || "Não foi possível buscar o versículo."); }
+    };
+    // Moving, taking out: the same small tools on every list.
+    const tools = (listKey, list, i, what) => (
+        <>
+            <IconBtn name="chevron-up" small title={`Subir ${what}`} disabled={i === 0} onClick={() => set({ [listKey]: moveItem(list, i, -1) })} />
+            <IconBtn name="chevron-down" small title={`Descer ${what}`} disabled={i === list.length - 1} onClick={() => set({ [listKey]: moveItem(list, i, 1) })} />
+            <IconBtn name="x" small title={`Tirar ${what}`} onClick={() => set({ [listKey]: list.filter((_, k) => k !== i) })} />
+        </>
+    );
+    const extras = (value, onExplain, onNotes, explainHint) => (
+        <div className="sv-q-sub">
+            <Field icon={null} value={value.explain || ""} onChange={onExplain} placeholder={explainHint} />
+            <Field icon={null} value={value.notes || ""} onChange={onNotes} placeholder="Nota do professor · só no console e no palco" />
+        </div>
+    );
+    const verseNames = { blanks: ["a frase", "Frase", "O versículo ou a frase"], memorize: ["o versículo", "Versículo", "O versículo"], discussion: ["a pergunta", "Pergunta", "A pergunta para a turma discutir"] };
 
     return (
         <>
@@ -119,7 +167,15 @@ export default function MaterialView({ c, materialId = null, classId = "", media
                 <Panel noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="sv-scroll">
                         <div className="frm sv-frm sv-ed">
-                            <span className="k">Tipo</span><Seg small value={draft.type} onChange={(v) => set({ type: v })} options={MATERIAL_TYPES.map(([k, l]) => [k, l])} />
+                            <span className="k">Tipo</span>
+                            <div className="sv-types" role="radiogroup" aria-label="Tipo do material">
+                                {MATERIAL_TYPES.map(([k, label, icon, hint]) => (
+                                    <button key={k} type="button" role="radio" aria-checked={draft.type === k} className={`sv-type kx-t ${draft.type === k ? "is-on" : ""}`} onClick={() => setType(k)} title={hint}>
+                                        <b><Icon name={icon} size={14} />{label}</b>
+                                        <small>{hint}</small>
+                                    </button>
+                                ))}
+                            </div>
                             <span className="k">Título</span><Field icon={null} value={draft.title} onChange={(v) => set({ title: v })} placeholder="Ex.: Pergunta · o filho pródigo" inputProps={{ autoFocus: !draft.id }} />
                             <span className="k">Lição</span><Field icon={null} value={draft.subject || ""} onChange={(v) => set({ subject: v })} placeholder="Ex.: Lição 12 · Parábolas" />
                             <span className="k">Turma</span>
@@ -128,8 +184,19 @@ export default function MaterialView({ c, materialId = null, classId = "", media
                                 <>
                                     <span className="k">{draft.type === "text" ? "Texto" : "Slides"}</span>
                                     <div>
-                                        <textarea className="ed-text sv-slides" value={slidesText ?? ""} onChange={(e) => { setSlidesText(e.target.value); set({ slides: slidesFromText(e.target.value).map((s, i) => ({ ...s, image_url: draft.slides?.[i]?.image_url || "" })) }); }} placeholder={"Cada bloco é um slide.\n\nDeixe uma linha em branco entre eles."} aria-label="Slides" />
-                                        <span className="kx-meta">{(draft.slides || []).length} {(draft.slides || []).length === 1 ? "slide" : "slides"} · uma linha em branco separa os slides</span>
+                                        <textarea className="ed-text sv-slides" value={slidesText ?? ""} onChange={(e) => editSlides(e.target.value)} placeholder={"Cada bloco é um slide.\n\nDeixe uma linha em branco entre eles."} aria-label="Slides" />
+                                        <span className="kx-meta">{materialSlides(draft).length} {materialSlides(draft).length === 1 ? "slide" : "slides"} · uma linha em branco separa os slides</span>
+                                        {pictures.length > 0 && (
+                                            <div className="sv-imgs">
+                                                {pictures.map(({ s, n }) => (
+                                                    <div key={`${n}${s.image_url}`} className="nv-inline">
+                                                        <Icon name="image" size={14} />
+                                                        <span className="kx-meta">Slide {n} · {String(s.text || "").trim() ? `imagem com "${String(s.text).trim().split("\n")[0].slice(0, 40)}"` : "só a imagem"}</span>
+                                                        <IconBtn name="x" small title={String(s.text || "").trim() ? "Tirar a imagem do slide" : "Tirar o slide"} onClick={() => dropPicture(s)} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -137,19 +204,86 @@ export default function MaterialView({ c, materialId = null, classId = "", media
                                 <>
                                     <span className="k">Perguntas</span>
                                     <div className="sv-quiz">
+                                        {qs.map((q, i) => {
+                                            const opts = (q.options || []).length >= 2 ? q.options : [...(q.options || []), "", ""].slice(0, 2);
+                                            const correct = Number(q.correct) || 0;
+                                            const setOpt = (k, v) => { const o = [...opts]; o[k] = v; setQ(i, { options: o }); };
+                                            const dropOpt = (k) => setQ(i, { options: opts.filter((_, j) => j !== k), correct: correct === k ? 0 : correct > k ? correct - 1 : correct });
+                                            return (
+                                                <div key={i} className="sv-q">
+                                                    <div className="sv-q-head"><b className="kx-meta">{i + 1}.</b><Field icon={null} value={q.question || ""} onChange={(v) => setQ(i, { question: v })} placeholder="A pergunta" style={{ flex: 1 }} />{tools("quiz_questions", qs, i, "a pergunta")}</div>
+                                                    {opts.map((o, k) => (
+                                                        <div key={k} className="nv-inline sv-opt">
+                                                            <button type="button" className={`sv-right kx-t ${correct === k ? "is-on" : ""}`} onClick={() => setQ(i, { correct: k })} title="Marcar como a resposta certa" aria-pressed={correct === k}>{LETTERS[k]}</button>
+                                                            <Field icon={null} value={o || ""} onChange={(v) => setOpt(k, v)} placeholder={`Opção ${LETTERS[k]}`} style={{ flex: 1 }} />
+                                                            {opts.length > 2 && <IconBtn name="x" small title="Tirar a opção" onClick={() => dropOpt(k)} />}
+                                                        </div>
+                                                    ))}
+                                                    {opts.length < MAX_OPTIONS && <div className="sv-opt"><Btn small onClick={() => setQ(i, { options: [...opts, ""] })}><Icon name="plus" />Opção</Btn></div>}
+                                                    {extras(q, (v) => setQ(i, { explain: v }), (v) => setQ(i, { notes: v }), "Referência ou explicação · na tela ao revelar")}
+                                                </div>
+                                            );
+                                        })}
+                                        <Btn small onClick={() => set({ quiz_questions: [...qs, blankQuestion("quiz")] })}><Icon name="plus" />Pergunta</Btn>
+                                        <span className="kx-meta">Cada pergunta é um slide com as opções em cartões. Revelar (ou →) acende a certa no mesmo slide.</span>
+                                    </div>
+                                </>
+                            )}
+                            {draft.type === "truefalse" && (
+                                <>
+                                    <span className="k">Afirmações</span>
+                                    <div className="sv-quiz">
                                         {qs.map((q, i) => (
                                             <div key={i} className="sv-q">
-                                                <div className="nv-inline"><b className="kx-meta">{i + 1}.</b><Field icon={null} value={q.question || ""} onChange={(v) => setQ(i, { question: v })} placeholder="A pergunta" style={{ flex: 1 }} /><IconBtn name="x" small title="Tirar a pergunta" onClick={() => set({ quiz_questions: qs.filter((_, k) => k !== i) })} /></div>
-                                                {[0, 1, 2, 3].map((k) => (
-                                                    <div key={k} className="nv-inline sv-opt">
-                                                        <button type="button" className={`sv-right kx-t ${Number(q.correct) === k ? "is-on" : ""}`} onClick={() => setQ(i, { correct: k })} title="Marcar como a resposta certa">{"ABCD"[k]}</button>
-                                                        <Field icon={null} value={(q.options || [])[k] || ""} onChange={(v) => { const o = [...(q.options || [])]; o[k] = v; while (o.length && !o[o.length - 1]) o.pop(); setQ(i, { options: o }); }} placeholder={k < 2 ? `Opção ${"ABCD"[k]}` : `Opção ${"ABCD"[k]} (opcional)`} style={{ flex: 1 }} />
-                                                    </div>
-                                                ))}
+                                                <div className="sv-q-head"><b className="kx-meta">{i + 1}.</b><Field icon={null} value={q.question || ""} onChange={(v) => setQ(i, { question: v })} placeholder="A afirmação" style={{ flex: 1 }} />{tools("quiz_questions", qs, i, "a afirmação")}</div>
+                                                <div className="nv-inline sv-tf"><span className="kx-meta">A resposta</span><Seg small value={Number(q.correct) === 1 ? "F" : "V"} onChange={(v) => setQ(i, { correct: v === "F" ? 1 : 0 })} options={[["V", "Verdadeiro"], ["F", "Falso"]]} /></div>
+                                                {extras(q, (v) => setQ(i, { explain: v }), (v) => setQ(i, { notes: v }), "Referência ou explicação · na tela ao revelar")}
                                             </div>
                                         ))}
-                                        <Btn small onClick={() => set({ quiz_questions: [...qs, { question: "", options: [], correct: 0 }] })}><Icon name="plus" />Pergunta</Btn>
-                                        <span className="kx-meta">Cada pergunta vira dois slides: a pergunta e, logo depois, a resposta certa (→ revela).</span>
+                                        <Btn small onClick={() => set({ quiz_questions: [...qs, blankQuestion("truefalse")] })}><Icon name="plus" />Afirmação</Btn>
+                                        <span className="kx-meta">Cada afirmação é um slide com V e F. Revelar (ou →) acende a resposta.</span>
+                                    </div>
+                                </>
+                            )}
+                            {VERSE_TYPES.includes(draft.type) && (
+                                <>
+                                    <span className="k">{verseNames[draft.type][1]}s</span>
+                                    <div className="sv-quiz">
+                                        {vs.map((v, i) => {
+                                            const words = wordsOf(v.text);
+                                            const blanks = v.blanks || [];
+                                            return (
+                                                <div key={i} className="sv-q">
+                                                    <div className="sv-q-head"><b className="kx-meta">{i + 1}.</b><span style={{ flex: 1 }} />{tools("slides", vs, i, verseNames[draft.type][0])}</div>
+                                                    <div className="sv-tf">
+                                                        <textarea className="ed-text" rows={draft.type === "discussion" ? 2 : 3} value={v.text || ""} placeholder={verseNames[draft.type][2]} aria-label={verseNames[draft.type][2]}
+                                                            onChange={(e) => setV(i, { text: e.target.value, ...(draft.type === "blanks" ? { blanks: remapBlanks(v.text, e.target.value, blanks) } : {}) })} />
+                                                    </div>
+                                                    {draft.type === "blanks" && (
+                                                        <>
+                                                            <div className="sv-words" aria-label="Palavras">
+                                                                {words.map((w, k) => (
+                                                                    <button key={k} type="button" className={`sv-word kx-t ${blanks.includes(k) ? "is-on" : ""}`} aria-pressed={blanks.includes(k)}
+                                                                        onClick={() => setV(i, { blanks: blanks.includes(k) ? blanks.filter((x) => x !== k) : [...blanks, k].sort((a, b) => a - b) })}>{w}</button>
+                                                                ))}
+                                                            </div>
+                                                            <span className="kx-meta sv-tf">{blanks.length ? `${blanks.length} ${blanks.length === 1 ? "lacuna" : "lacunas"} · cada clique em Revelar traz uma de volta` : "Clique nas palavras que a turma vai completar."}</span>
+                                                        </>
+                                                    )}
+                                                    {draft.type === "memorize" && <div className="nv-inline sv-tf"><span className="kx-meta">Cliques até sumir tudo</span><Seg small value={String(v.rounds || 4)} onChange={(n) => setV(i, { rounds: Number(n) })} options={MEMORIZE_ROUNDS.map((n) => [String(n), String(n)])} /></div>}
+                                                    {draft.type === "discussion" && <div className="nv-inline sv-tf"><span className="kx-meta">Timer</span><Seg small value={String(v.minutes || 5)} onChange={(n) => setV(i, { minutes: Number(n) })} options={DISCUSSION_MINUTES.map((n) => [String(n), `${n} min`])} /></div>}
+                                                    <div className="sv-q-sub">
+                                                        <span className="nv-inline" style={{ flexWrap: "nowrap" }}>
+                                                            <Field icon={null} value={v.ref || ""} onChange={(x) => setV(i, { ref: x })} placeholder={draft.type === "discussion" ? "Texto base (opcional) · ex.: Efésios 2:8" : "Referência · ex.: João 3:16"} style={{ flex: 1 }} />
+                                                            {draft.type !== "discussion" && <IconBtn name="book" small title="Trazer o texto da Bíblia, pela referência" onClick={() => fromBible(i)} />}
+                                                        </span>
+                                                        <Field icon={null} value={v.notes || ""} onChange={(x) => setV(i, { notes: x })} placeholder="Nota do professor · só no console e no palco" />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        <Btn small onClick={() => set({ slides: [...vs, blankVerse(draft.type)] })}><Icon name="plus" />{verseNames[draft.type][1]}</Btn>
+                                        <span className="kx-meta">{{ blanks: "Na tela, as palavras escolhidas viram lacunas; Revelar (ou →) traz uma de cada vez.", memorize: "Na tela, o versículo inteiro; cada Revelar (ou →) apaga mais algumas palavras, até a turma dizer de cor.", discussion: "Na tela, a pergunta com o timer embaixo; Revelar (ou →) inicia o timer, e o sino toca no fim." }[draft.type]}</span>
                                     </div>
                                 </>
                             )}

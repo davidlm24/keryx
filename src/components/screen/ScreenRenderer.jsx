@@ -1,6 +1,7 @@
 import React from "react";
 import "./screen.css";
 import GeneratorBackground from "./GeneratorBackground";
+import ActivityView from "./ActivityView";
 import { mainLayer, currentSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
@@ -46,7 +47,9 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
             <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>
             <div className="ks-z" style={{ zIndex: z("content") }}>
                 {layer === "none" && !fundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
-                {layer === "content" && !layerHidden(state, "content") && <Content content={state.content} showTitle={showTitle} still={preview && !motion} />}
+                {layer === "content" && !layerHidden(state, "content") && (currentSlide(state.content)?.activity
+                    ? <ActivityView content={state.content} now={now} audio={audio} look={activityLook(state.content, showTitle, preview && !motion)} />
+                    : <Content content={state.content} showTitle={showTitle} still={preview && !motion} />)}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
                 {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={audio} />}
                 {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} />)}
@@ -290,6 +293,17 @@ function Content({ content, showTitle = true, still = false }) {
     );
 }
 
+// The theme's look for an Escola bíblica activity (ActivityView.jsx): the
+// same font, colour, effect, size, title and transition as the text.
+function activityLook(content, showTitle, still) {
+    const style = slideStyle(content);
+    const size = SIZES.includes(style.font_size) ? style.font_size : "large";
+    return {
+        text: textStyle(style), font: { fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }, color: style.text_color || "#ffffff", size: SIZE_CQW[size],
+        titled: style.title === "hide" ? false : style.title === "show" ? true : showTitle, upper: style.text_case === "upper",
+        anim: still ? "" : ANIM[style.transition ?? "fade"] ?? "ks-anim-fade",
+    };
+}
 
 function Tool({ tool, now }) {
     const style = tool.style || {};

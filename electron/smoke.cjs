@@ -2483,7 +2483,8 @@ async function checkConsole(webContents, { live, outputs }) {
 
         // Escola bíblica in the console: a student's presence for today, a
         // quiz prepared with its teacher's notes (console only), Enter sends
-        // the question and → reveals the answer; a new material saved with
+        // the question (one slide, its options as cards), → reveals the answer
+        // on the same slide and the Revelar button hides it; a new material saved with
         // Ctrl+S; "Setlist" adds it as a MATERIAL item; Esc goes back.
         const db = async (entity, op, args) => (await js(`window.keryxDesktop.db.call(${JSON.stringify(entity)}, ${JSON.stringify(op)}, ${JSON.stringify(args)})`)).data;
         svClass = await db("BibleSchoolClass", "create", [{ name: "Turma do smoke", age_group: "adults", students: [{ name: "Ana Smoke", attendance: [] }, { name: "Bia Smoke", attendance: [] }] }]);
@@ -2501,11 +2502,13 @@ async function checkConsole(webContents, { live, outputs }) {
         result.svNotes = await waitText(webContents, "Nota do professor smoke");
         await js("document.activeElement && document.activeElement.blur(); true");
         await press("Enter");
-        result.svSent = await waitFor(() => { const ct = live.get().content; return Boolean(ct && ct.ref?.materialId === svRows[0].id && ct.slides.length === 2 && ct.index === 0 && ct.slides[0].label === "Pergunta"); });
+        result.svSent = await waitFor(() => { const ct = live.get().content; return Boolean(ct && ct.ref?.materialId === svRows[0].id && ct.slides.length === 1 && ct.index === 0 && ct.slides[0].label === "Pergunta" && ct.slides[0].activity?.kind === "choice"); });
         result.svNotesOffAir = live.get().content?.stage?.notes === "Nota do professor smoke"
             && !(await (main && !main.isDestroyed() ? main.webContents.executeJavaScript("document.body.innerText").catch(() => "") : "")).includes("Nota do professor smoke");
         await press("ArrowRight");
-        result.svReveal = await waitFor(() => { const ct = live.get().content; return ct?.index === 1 && ct.slides[1].text.includes("✓ B) Noé"); });
+        result.svReveal = await waitFor(() => { const ct = live.get().content; return ct?.index === 0 && ct.revealed?.[0]?.step === 1 && ct.slides[0].activity.correct === 1; });
+        await js("(() => { const b = document.querySelector('.console .sv-reveal-btn'); if (b) b.click(); return Boolean(b); })()");
+        result.svHide = await waitFor(() => { const ct = live.get().content; return ct?.index === 0 && !ct.revealed?.[0]; });
         // The Escola floats (.win-dialog): its buttons are not under .main.
         await js("(() => { const b = [...document.querySelectorAll('.console .win-dialog button')].find((x) => x.getAttribute('title') === 'Novo material'); if (b) b.click(); return Boolean(b); })()");
         await waitFor(() => js("Boolean(document.querySelector('.sv-ed'))"));
@@ -2637,7 +2640,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted && result.timerChips && result.timerKept && result.timerListed && result.timerPrepared && result.timerOn && result.timerAdjusted && result.timerDeleted && result.mvOn && result.mvShows && result.mvPicked && result.mvOff
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
         && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch && result.paletteClear && result.paletteRefHere && result.paletteRefAdded
-        && result.svOpen && result.svPresence && result.svPrepared && result.svNotes && result.svSent && result.svNotesOffAir && result.svReveal && result.svEdited && result.svSetlist && result.svClosed
+        && result.svOpen && result.svPresence && result.svPrepared && result.svNotes && result.svSent && result.svNotesOffAir && result.svReveal && result.svHide && result.svEdited && result.svSetlist && result.svClosed
         && result.rpOpen && result.rpTop && result.rpCcli && result.rpCopied && result.rpClosed);
     return result;
 }
