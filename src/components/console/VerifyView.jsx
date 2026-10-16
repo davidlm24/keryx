@@ -42,7 +42,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
 
         // Saídas: the windows the main process places, then the network screens.
         const outs = outputs.map((o) => {
-            if (o.placement.missing) return line(o.label, "O monitor escolhido não está ligado · mostrando numa janela", "warn", { label: "Telas e saídas", run: () => onSettings?.("telas") }, "monitor");
+            if (o.placement.missing) return line(o.label, "A tela está desligada · a saída aparece quando ela ligar", "warn", { label: "Telas e saídas", run: () => onSettings?.("telas") }, "monitor");
             if (!o.open) return line(o.label, "Fechada", o.key === "/Projection" ? "warn" : "info", { label: "Abrir", run: () => onOpenOutput(o.key) }, "monitor");
             return line(o.label, o.placement.mode === "fullscreen" ? `Tela cheia · tela ${o.placement.displayId ?? ""}`.trim() : "Numa janela", "ok", { label: "Identificar", run: onIdentify }, "monitor");
         });

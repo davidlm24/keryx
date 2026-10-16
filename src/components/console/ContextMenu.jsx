@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import Icon from "./Icon";
+import { MenuList } from "./Menu";
 import { placeMenu, orderItems } from "@/lib/console/contextMenu";
 
 // Right-click menus across the console. A list asks for one with
@@ -12,7 +12,8 @@ import { placeMenu, orderItems } from "@/lib/console/contextMenu";
 //    separator (orderItems);
 //  - after an item runs, the keys go back to the console (no control keeps
 //    the focus), as after any mouse click.
-// items: { label, icon, onSelect, air?, disabled?, kbd? } or "sep".
+// items: { label, icon, onSelect, air?, disabled?, kbd? } or "sep" — the
+// console's one menu (Menu.jsx MenuList) draws them.
 
 const MenuCtx = createContext(() => {});
 export const ContextMenuProvider = MenuCtx.Provider;
@@ -32,10 +33,8 @@ export function ContextMenuLayer({ menu, onClose }) {
         setPos(placeMenu({ x: menu.x, y: menu.y, w: r.width, h: r.height, vw: window.innerWidth, vh: window.innerHeight }));
     }, [menu]);
 
-    // Keyboard: the first item takes the focus, so ↑/↓ and Enter work in it.
     useEffect(() => {
         if (!menu || !pos) return undefined;
-        ref.current?.querySelector("button:not(:disabled)")?.focus({ preventScroll: true });
         const close = () => onClose();
         window.addEventListener("resize", close);
         window.addEventListener("blur", close);
@@ -44,45 +43,17 @@ export function ContextMenuLayer({ menu, onClose }) {
 
     if (!menu) return null;
 
-    const run = (item) => {
-        onClose();
-        document.activeElement?.blur?.();
-        item.onSelect?.();
-    };
-    const onKeyDown = (e) => {
-        const buttons = [...(ref.current?.querySelectorAll("button:not(:disabled)") || [])];
-        const at = buttons.indexOf(document.activeElement);
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-            e.preventDefault(); e.stopPropagation();
-            const next = buttons[(at + (e.key === "ArrowDown" ? 1 : buttons.length - 1)) % buttons.length];
-            next?.focus();
-        } else if (e.key === "Escape" || e.key === "Tab") {
-            e.preventDefault(); e.stopPropagation();
-            onClose();
-            document.activeElement?.blur?.();
-        } else if (e.key === "Enter" || e.key === " ") {
-            // The focused item's own click runs it; keep the console's keys out.
-            e.stopPropagation();
-        }
-    };
+    const done = () => { onClose(); document.activeElement?.blur?.(); };
+    const run = (item) => { done(); item.onSelect?.(); };
 
     return (
         <>
             <div className="scrim ctx-scrim" onMouseDown={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
-            <div ref={ref} className="kx-pop ctx-menu" role="menu" aria-label={menu.title || "Ações"} onKeyDown={onKeyDown}
+            {/* The first item takes the focus once placed (hidden, it could not). */}
+            <MenuList listRef={ref} key={`${menu.x},${menu.y}`} className="kx-pop ctx-menu" label={menu.title || "Ações"} autoFocus={Boolean(pos)}
+                items={[...(menu.title ? [{ head: menu.title }] : []), ...menu.items]} onPick={run} onClose={done}
                 style={pos ? { left: pos.left, top: pos.top } : { left: menu.x, top: menu.y, visibility: "hidden" }}
-                onContextMenu={(e) => e.preventDefault()}>
-                {menu.title && <div className="kx-menu-h"><span className="kx-section">{menu.title}</span></div>}
-                {menu.items.map((item, i) => (item === "sep"
-                    ? <div key={`sep${i}`} className="kx-menu-sep" role="separator" />
-                    : (
-                        <button key={item.label} type="button" role="menuitem" className={`kx-menu-item kx-t ${item.air ? "is-air" : ""}`} disabled={item.disabled} onClick={() => run(item)}>
-                            <span className="kx-glyph">{item.icon ? <Icon name={item.icon} /> : null}</span>
-                            <span className="ctx-l">{item.label}</span>
-                            {item.kbd && <span className="kx-kbd">{item.kbd}</span>}
-                        </button>
-                    )))}
-            </div>
+                onContextMenu={(e) => e.preventDefault()} />
         </>
     );
 }
