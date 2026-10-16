@@ -7,7 +7,7 @@ import { FundoDetail, useSaveBackgroundPref } from "../settings/FundosGallery";
 import { useBackgrounds, useLibrary, useThemes } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "../settings/sample";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { importMediaFiles } from "@/lib/mediaImport";
+import { failureReason, importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { usePrefs } from "@/hooks/useUser";
 import { visibleBackgrounds, categoriesOf, sourceOf } from "@/lib/console/backgroundPrefs";
@@ -92,7 +92,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
         setUploading(true);
         try {
             const { created, failed } = await importMediaFiles(files, { category: "background" });
-            c.say(`${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
+            const why = failureReason(failed);
+            c.say(`${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}${why ? ` · ${why}` : "."}`);
             const first = created.find((m) => (m.type === "image" || m.type === "video") && kinds.includes(m.type));
             if (first) { setTab(first.type); setSel({ kind: first.type, value: first.file_url }); }
         } catch (err) { c.say(err?.message || "Não foi possível enviar."); }

@@ -165,7 +165,10 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     },
     media: {
         // Files picked from disk are copied by path in the main process, so a
-        // large video never travels over IPC; anything else is sent as bytes.
+        // large video never travels over IPC; anything else is sent as bytes,
+        // up to the main process's limit: past it the file is not even read,
+        // and the main process answers with the refusal
+        // (electron/mediaImport.cjs).
         async importFile(file) {
             let sourcePath = "";
             try {
@@ -174,6 +177,7 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
                 sourcePath = "";
             }
             if (sourcePath) return ipcRenderer.invoke("keryx:media-import", { sourcePath, name: file.name });
+            if (file.size > config.mediaImportMaxBytes) return ipcRenderer.invoke("keryx:media-import", { size: file.size, name: file.name });
             const bytes = new Uint8Array(await file.arrayBuffer());
             return ipcRenderer.invoke("keryx:media-import", { bytes, name: file.name });
         },
