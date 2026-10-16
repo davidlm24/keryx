@@ -108,7 +108,7 @@ export function rowStatus(row, { locked = false } = {}) {
         if (row.state === "disconnected") return { switchOn: null, text: `Desconectada às ${hhmm(row.droppedAt)}`, tone: "warn", hint: "A tela volta sozinha quando a rede voltar." };
         return { switchOn: null, text: "Conectada", tone: locked ? "rh" : "ok", hint: null };
     }
-    if (row.state === "reconnecting") return { switchOn: true, text: "Tela desligada", tone: "warn", hint: "mostrando numa janela até ela ligar" };
+    if (row.state === "reconnecting") return { switchOn: true, text: "Tela desligada", tone: "warn", hint: "volta sozinha quando ela ligar" };
     if (row.state === "connected") return { switchOn: true, text: locked ? "Aberta · travada" : "Aberta", tone: locked ? "rh" : "ok", hint: null };
     if (row.state === "closed") return { switchOn: false, text: "Fechada", tone: "off", hint: `caiu às ${hhmm(row.droppedAt)}` };
     return { switchOn: false, text: "Fechada", tone: "off", hint: null };
@@ -135,7 +135,7 @@ export function outputHealth({ outputs = [], seen = {}, locked = false, air = ""
             problem: state === "reconnecting" || state === "closed",
             droppedAt: mem?.droppedAt || null,
             shows: state === "connected" || state === "reconnecting" ? showsOn(o.key, air) : null,
-            meta: state === "reconnecting" ? "A tela escolhida está desligada · abre numa janela até ligar"
+            meta: state === "reconnecting" ? "A tela está desligada · a saída volta quando ela ligar"
                 : o.placement?.mode === "fullscreen" ? `Tela ${o.placement.displayId ?? ""}`.trim() : "Janela",
         });
     }

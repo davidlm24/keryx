@@ -88,6 +88,8 @@ export const SHORTCUTS = [
     { keys: "Letra", label: "Na Bíblia: digitar a referência (ex.: jo 3 16)", action: null, probe: null },
     { keys: "/", label: "Buscar em tudo (em Configurações: buscar nas configurações)", action: "search", probe: { key: "/" } },
     { keys: "?", label: "Esta lista", action: "help", probe: { key: "?" } },
+    // Pressed in the output's own window (electron/outputs-manager.cjs), not in the console.
+    { keys: "Ctrl+W", label: "Numa saída (projetor, palco…): fechar essa saída", action: null, probe: null },
 ];
 
 // Esc closes the topmost thing open over the console, one per press, and
