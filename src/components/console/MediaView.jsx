@@ -10,6 +10,7 @@ import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
 import { useConfirm } from "./ConfirmDialog";
 import { setDragGhost, stageGhost } from "./dragGhost";
+import { PENDING_SAY } from "@/lib/pendingMedia";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
 const inCat = (m, cat) => cat === "todas" || (cat === "image" ? m.type === "image" || m.type === "gif" : cat === "doc" ? m.type === "pdf" || m.type === "powerpoint" : m.type === cat);
@@ -20,7 +21,7 @@ const catLabel = (c) => CATEGORY.find(([k]) => k === c)?.[1] || "Outros";
 const isYouTube = (m) => m.type === "video" && /youtu/.test(m.file_url || "");
 // A thumbnail with a picture: the image itself, a local video's frame, or a
 // PDF's first page once its pages are made (Rodada F3).
-const hasPoster = (m) => !m.missing && (m.type === "image" || m.type === "gif" || (m.type === "video" && !isYouTube(m)) || (m.type === "pdf" && Boolean(m.thumbnail_url)));
+const hasPoster = (m) => !m.missing && (m.type === "image" || m.type === "gif" || (m.type === "video" && !isYouTube(m)) || (m.type === "pdf" && Boolean(m.thumbnail_url) && !m.posterSyncing));
 const isDoc = (m) => m.type === "pdf" || m.type === "powerpoint";
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const bytes = (n) => (n >= 1e9 ? `${(n / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} GB` : n >= 1e6 ? `${Math.round(n / 1e6)} MB` : n > 0 ? `${Math.max(1, Math.round(n / 1e3))} KB` : "");
@@ -72,6 +73,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         setAnchor(m.id);
     };
     const send = (m) => {
+        if (m.syncing) { c.say(PENDING_SAY); return; }
         if (m.missing) { c.say(`Arquivo não encontrado: ${m.title}. Use Localizar… primeiro.`); return; }
         onSend(stageFromMedia(m));
     };
@@ -188,7 +190,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         onDragStart: (e) => { const s = stageFromMedia(m); setDragStage(s); e.dataTransfer.setData(STAGE_MIME, s.id); e.dataTransfer.effectAllowed = "copyMove"; setDragGhost(e, stageGhost(s)); },
         onDragEnd: () => clearDragStage(),
     });
-    const state = (m) => `${sel.includes(m.id) ? "is-sel" : ""} ${airId === `media:${m.id}` || c.cur?.audio?.id === m.id ? "is-air" : ""} ${m.missing ? "is-warn" : ""}`;
+    const state = (m) => `${sel.includes(m.id) ? "is-sel" : ""} ${airId === `media:${m.id}` || c.cur?.audio?.id === m.id ? "is-air" : ""} ${m.missing && !m.syncing ? "is-warn" : ""}`;
     const renameField = (m) => (
         <input className="mv-rename" defaultValue={m.title} autoFocus aria-label="Renomear" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => { if (e.key === "Enter") rename(m, e.currentTarget.value); if (e.key === "Escape") { e.stopPropagation(); setRenaming(null); } }} onBlur={(e) => rename(m, e.currentTarget.value)} />
@@ -259,20 +261,20 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                 <div key={m.id} className="mv-cell">
                                     <button type="button" className={`mv-th kx-t ${state(m)}`} title={m.title} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} {...drag(m)}>
                                         {(m.type === "image" || m.type === "gif") && !m.missing && <img src={m.file_url} alt="" loading="lazy" />}
-                                        {m.type === "video" && !isYouTube(m) && !m.missing && (m.thumbnail_url && m.duration > 0
+                                        {m.type === "video" && !isYouTube(m) && !m.missing && (m.thumbnail_url && m.duration > 0 && !m.posterSyncing
                                             ? <img src={m.thumbnail_url} alt="" loading="lazy" />
                                             : <video src={`${m.file_url}#t=1`} preload="metadata" muted onLoadedMetadata={(e) => learn(m, e.currentTarget.duration)} />)}
                                         {m.type === "audio" && !m.missing && <audio src={m.file_url} preload="metadata" onLoadedMetadata={(e) => learn(m, e.currentTarget.duration)} />}
-                                        {m.type === "pdf" && !m.missing && m.thumbnail_url && <img src={m.thumbnail_url} alt="" loading="lazy" />}
+                                        {m.type === "pdf" && !m.missing && m.thumbnail_url && !m.posterSyncing && <img src={m.thumbnail_url} alt="" loading="lazy" />}
                                         {!hasPoster(m) && (
-                                            <span className={`mv-th-t ${m.missing ? "is-warn" : ""}`}>{m.missing ? "Arquivo não encontrado" : <><Icon name={ICON[m.type] || "film"} size={22} />{isYouTube(m) ? "YouTube" : KIND[m.type]}</>}</span>
+                                            <span className={`mv-th-t ${m.missing && !m.syncing ? "is-warn" : ""}`}>{m.syncing ? <><Icon name="download" size={22} />Baixando…</> : m.missing ? "Arquivo não encontrado" : <><Icon name={ICON[m.type] || "film"} size={22} />{isYouTube(m) ? "YouTube" : KIND[m.type]}</>}</span>
                                         )}
                                         <span className="mv-lab">{isYouTube(m) ? "YouTube" : KIND[m.type] || m.type}</span>
                                         {(m.duration > 0 || isYouTube(m)) && <span className="mv-n">{isYouTube(m) ? "link" : mmss(m.duration)}</span>}
                                     </button>
                                     {renaming === m.id ? renameField(m) : <span className="mv-title" onDoubleClick={() => setRenaming(m.id)}>{m.title}</span>}
                                     {isDoc(m) && !m.missing && <span className="kx-meta mv-sub"><PagesMeta row={m} /></span>}
-                                    {m.missing && <Btn small kind="outline" onClick={() => locate(m)}>Localizar…</Btn>}
+                                    {m.missing && !m.syncing && <Btn small kind="outline" onClick={() => locate(m)}>Localizar…</Btn>}
                                 </div>
                             ))}
                         </div>
@@ -282,11 +284,11 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             <span className="kx-glyph"><Icon name={ICON[m.type] || "film"} /></span>
                             <div className="kx-row-main">
                                 {renaming === m.id ? renameField(m) : <div className="kx-row-title">{m.title}</div>}
-                                <div className={`kx-row-meta ${m.missing ? "kx-warn" : ""}`}>{m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : [isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}</div>
+                                <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : [isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}</div>
                             </div>
                             <span className="kx-row-time kx-hide-on-hover">{m.duration ? mmss(m.duration) : ""}</span>
                             <span className="kx-row-acts">
-                                {m.missing ? <Btn onClick={(e) => { e.stopPropagation(); locate(m); }}>Localizar…</Btn> : <>
+                                {m.syncing ? null : m.missing ? <Btn onClick={(e) => { e.stopPropagation(); locate(m); }}>Localizar…</Btn> : <>
                                     <Btn onClick={(e) => { e.stopPropagation(); setSel([m.id]); setRenaming(m.id); }}>Renomear</Btn>
                                     <Btn onClick={(e) => { e.stopPropagation(); send(m); }} title="Enviar ao ar">Tocar</Btn>
                                 </>}

@@ -4,6 +4,7 @@
 
 import { ClientError } from "../errors";
 import { createLiveClient } from "../liveClient";
+import { createPendingMedia } from "../../lib/pendingMedia";
 
 // The database stores media as keryx-media://<file>, independent of the
 // local server's host and port; windows get a URL they can load. Pages test
@@ -169,5 +170,9 @@ export function createDesktopBackend(bridge) {
     // database, so each window and network screen gets URLs it can load.
     const live = createLiveClient(bridge.live, { toStore, fromStore });
 
-    return { entities, auth, integrations, appLogs, live };
+    // Media files the sync has not brought yet (src/lib/pendingMedia.js);
+    // none on a network screen, which has no sync of its own.
+    const pendingMedia = createPendingMedia(bridge.sync, mediaBase);
+
+    return { entities, auth, integrations, appLogs, live, pendingMedia };
 }

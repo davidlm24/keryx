@@ -1425,6 +1425,10 @@
 .console .nobg-mark { position: absolute; top: 3px; right: 3px; z-index: 2; width: 14px; height: 14px; border-radius: 50%; background: var(--warn); color: var(--on-warn); display: grid; place-items: center; pointer-events: none; }
 .console .nobg-label { position: absolute; left: 4px; bottom: 4px; z-index: 2; padding: 0 5px; border-radius: 3px; background: #000000b3; color: var(--warn-fg); font-size: 10px; line-height: 16px; pointer-events: none; }
 .console .bgchip-l { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* A file the sync between the church's computers has not brought yet
+   (SyncWait in library/BackgroundLibrary.jsx): said in place of the picture. */
+.console .sync-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: var(--space-1); background: var(--bg-2); color: var(--fg-2); font-size: 11px; pointer-events: none; }
+.console .lib-thumb.is-wait { background: var(--bg-2); }
 /* Temas (ThemeStrip.jsx): the pinned themes as small screens inside
    Camadas › Fundo (presets, as in Holyrics). */
 .console .tm { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
