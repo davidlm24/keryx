@@ -1,7 +1,9 @@
 import React, { useEffect } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { ThemeThumb, NoBgMark, NO_BG_HINT } from "./library/BackgroundLibrary";
+import { ThemeThumb, NoBgMark, NO_BG_HINT, themePending, SYNC_WAIT_HINT } from "./library/BackgroundLibrary";
+import { usePendingMedia } from "@/hooks/usePendingMedia";
+import { PENDING_SAY } from "@/lib/pendingMedia";
 import { consoleThemes, defaultTheme, defaultChanges, themeName, themeHasBackground } from "@/lib/console/themes";
 import { bgFields } from "@/lib/console/backgroundSpec";
 import { pickTheme, applyThemeOnAir, songInHand } from "./themeActions";
@@ -47,7 +49,14 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
     // only seeds it when the culto is chosen.
     const cultoTheme = serviceTheme(service);
     const named = (t) => (themeName(t, "") ? `Tema ${themeName(t)}` : "Tema");
-    const inUse = (t) => { pickTheme(c, t); c.say(`${named(t)} em uso.`); };
+    // A theme whose background the sync has not brought yet waits for it:
+    // applied now, the screens would show a broken picture.
+    const pending = usePendingMedia();
+    const inUse = (t) => {
+        if (themePending(t, pending)) { c.say(PENDING_SAY); return; }
+        pickTheme(c, t);
+        c.say(`${named(t)} em uso.`);
+    };
     const setForCulto = async (t) => {
         try {
             const sid = service?.id || await ensureService?.();
@@ -83,7 +92,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
         run(keryx.entities.ProjectionTheme.delete(t.id), "Tema excluído.");
     };
     const themeMenu = (e, t) => menu(e, { title: themeName(t), items: [
-        { label: "Aplicar no ar", icon: "play", onSelect: () => applyThemeOnAir(c, t) },
+        { label: "Aplicar no ar", icon: "play", onSelect: () => (themePending(t, pending) ? c.say(PENDING_SAY) : applyThemeOnAir(c, t)) },
         { label: "Editar tema…", icon: "edit", onSelect: () => edit(t.id) },
         ...(themeHasBackground(t) ? [] : [{ label: "Escolher fundo…", icon: "image", onSelect: () => chooseBg(t) }]),
         ...(song ? [song.theme_id === t.id
@@ -126,7 +135,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
             <div className={`tm-grid is-${thumb}`} role="list" aria-label="Temas">
                 {slots.map((t, k) => (t ? (
                     <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={themeName(t)}
-                        title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""}${themeHasBackground(t) ? "" : ` · ${NO_BG_HINT}`} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
+                        title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""}${themeHasBackground(t) ? "" : ` · ${NO_BG_HINT}`}${themePending(t, pending) ? ` · fundo ${SYNC_WAIT_HINT}` : ""} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
                         onClick={() => inUse(t)} onDoubleClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                         <span className="fg-img"><ThemeThumb theme={t} now={c.now} /><NoBgMark theme={t} /></span>
                         {names && (t.id === def?.id || themeName(t, "")) && <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{themeName(t, "")}</span>}

@@ -4,7 +4,9 @@
 // through prefsOf(): null or a bad value is the default here, never a
 // default in the jsonc. What belongs to this computer (window sizes, the
 // outputs, the network PIN) stays out: localStorage or settings.json.
-import { DENSITIES, MODULES } from "../console/layout.js";
+// The plain lists, not layout.js: every output reads these preferences and
+// must not load the console's dock with them.
+import { DENSITIES, MODULES } from "../console/layoutChoices.js";
 import { normalizeCategories } from "../console/backgroundPrefs.js";
 
 const oneOf = (list, fallback) => (v) => (list.includes(v) ? v : fallback);

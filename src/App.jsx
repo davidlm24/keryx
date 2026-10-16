@@ -1,13 +1,24 @@
+// Every stylesheet loads with the entry, in the order the single bundle had
+// before the pages were split (Tailwind last, main.jsx): a page's code now
+// loads apart, but a tie between a console rule and a Tailwind utility still
+// resolves as it did. A new stylesheet goes in this list too: the build
+// refuses CSS outside the entry (scripts/bundle-budget.cjs).
 import './App.css'
 // The design system's tokens for every page (the console, the screens on the
 // network); projected content uses only its own screen-* styles.
 import '@ds/tokens.css'
-import { Toaster } from "@/components/ui/toaster"
+import '@/components/network/net.css'
+import '@ds/components/bundle.css'
+import '@/components/console/console.css'
+import '@/components/screen/screen.css'
+import '@/components/screen/activity.css'
+import '@/components/screen/layout.css'
+import '@/components/screen/output-prefs.css'
+import { lazy, Suspense } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import NetworkHome from '@/components/network/NetworkHome';
 import NetStatus from '@/components/network/NetStatus';
 import DesktopOnly from '@/components/DesktopOnly';
 import PreviewBanner from '@/components/PreviewBanner';
@@ -15,16 +26,28 @@ import { keryx } from '@/api/keryxClient';
 import { useWindowTitle } from '@/hooks/useChurch';
 import { outputMeta } from '@/lib/outputPrefs';
 
-import Console from './pages/Console';
-import Janela from './pages/Janela';
-import Projection from './pages/Projection';
-import LyricProjection from './pages/LyricProjection';
-import StageView from './pages/StageView';
-import VideoProjection from './pages/VideoProjection';
-import CommunicationProjection from './pages/CommunicationProjection';
-import PastorView from './pages/PastorView';
-import StreamView from './pages/StreamView';
-import RemoteView from './pages/RemoteView';
+// Every page is a chunk of its own: an output window or a screen on the
+// church network loads the entry, its page and the renderer, never the
+// console's code (scripts/bundle-budget.cjs holds them to a budget). While a
+// page's code loads, an output stays black (never a spinner on the
+// projector), Transmissão stays transparent (OBS lays it over the camera) and
+// the console, a detached page, the phone and the network's start page show
+// the console's ground.
+const Console = lazy(() => import('./pages/Console'));
+const Janela = lazy(() => import('./pages/Janela'));
+const Projection = lazy(() => import('./pages/Projection'));
+const LyricProjection = lazy(() => import('./pages/LyricProjection'));
+const StageView = lazy(() => import('./pages/StageView'));
+const VideoProjection = lazy(() => import('./pages/VideoProjection'));
+const CommunicationProjection = lazy(() => import('./pages/CommunicationProjection'));
+const PastorView = lazy(() => import('./pages/PastorView'));
+const StreamView = lazy(() => import('./pages/StreamView'));
+const RemoteView = lazy(() => import('./pages/RemoteView'));
+const NetworkHome = lazy(() => import('@/components/network/NetworkHome'));
+
+const BLACK = <div className="fixed inset-0 bg-black" />;
+const GROUND = <div className="fixed inset-0" style={{ background: 'var(--bg-0)' }} />;
+const page = (Page, fallback, props) => <Suspense fallback={fallback}><Page {...props} /></Suspense>;
 
 // The screens every output shows (the projector, the stage, the video
 // screens…): opened by the console or the main process on this computer,
@@ -32,13 +55,13 @@ import RemoteView from './pages/RemoteView';
 // these, NETWORK_SCREENS).
 const screens = (
   <>
-    <Route path="/Projection" element={<Projection />} />
-    <Route path="/LyricProjection" element={<LyricProjection />} />
-    <Route path="/StageView" element={<StageView />} />
-    <Route path="/VideoProjection" element={<VideoProjection />} />
-    <Route path="/CommunicationProjection" element={<CommunicationProjection />} />
-    <Route path="/PastorView" element={<PastorView />} />
-    <Route path="/StreamView" element={<StreamView />} />
+    <Route path="/Projection" element={page(Projection, BLACK)} />
+    <Route path="/LyricProjection" element={page(LyricProjection, BLACK)} />
+    <Route path="/StageView" element={page(StageView, BLACK)} />
+    <Route path="/VideoProjection" element={page(VideoProjection, BLACK)} />
+    <Route path="/CommunicationProjection" element={page(CommunicationProjection, BLACK)} />
+    <Route path="/PastorView" element={page(PastorView, BLACK)} />
+    <Route path="/StreamView" element={page(StreamView, null)} />
   </>
 );
 
@@ -95,29 +118,28 @@ function App() {
                 {screens}
                 {/* The phone that conducts the service: the network server
                     serves it only while it is on, behind its own code. */}
-                <Route path="/Remote" element={<RemoteView />} />
-                <Route path="*" element={<NetworkHome />} />
+                <Route path="/Remote" element={page(RemoteView, GROUND)} />
+                <Route path="*" element={page(NetworkHome, GROUND)} />
               </Routes>
             </>
           ) : (
             <Routes>
-              <Route path="/Console" element={<Console />} />
+              <Route path="/Console" element={page(Console, GROUND)} />
               {/* A page of the console's window, detached ("Destacar em
                   janela", src/pages/Janela.jsx); /Editor is the old detached
                   Editor de temas e telas, which lands there too. Never a
                   network screen (lan.cjs serves only NETWORK_SCREENS, so it
                   stays off the network). */}
-              <Route path="/Janela" element={<Janela />} />
-              <Route path="/Editor" element={<Janela />} />
+              <Route path="/Janela" element={page(Janela, GROUND)} />
+              <Route path="/Editor" element={page(Janela, GROUND)} />
               {screens}
-              {import.meta.env.DEV && keryx.isPreview && <Route path="/Rede" element={<NetworkHome screens={PREVIEW_SCREENS} />} />}
-              {import.meta.env.DEV && keryx.isPreview && <Route path="/Remote" element={<RemoteView />} />}
+              {import.meta.env.DEV && keryx.isPreview && <Route path="/Rede" element={page(NetworkHome, GROUND, { screens: PREVIEW_SCREENS })} />}
+              {import.meta.env.DEV && keryx.isPreview && <Route path="/Remote" element={page(RemoteView, GROUND)} />}
               <Route path="*" element={<Navigate to="/Console" replace />} />
             </Routes>
           )}
         </ErrorBoundary>
       </Router>
-      <Toaster />
     </QueryClientProvider>
   )
 }

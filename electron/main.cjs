@@ -475,6 +475,7 @@ app.whenReady().then(async () => {
     // (electron/sync.cjs), set up in Configurações › Sincronização
     // (electron/syncControl.cjs): off until a folder is chosen and the
     // church's code typed. A pass every 30 s and 3 s after a local change.
+    let missingSent = "";
     sync = createSyncControl({
         store,
         mediaDir,
@@ -493,6 +494,13 @@ app.whenReady().then(async () => {
         notify: (n) => notifications.add(n),
         dismiss: (key) => notifications.remove((n) => n.key === key),
         log: (m) => logger.warn(m),
+        onStatus: () => {
+            const names = sync ? sync.missing() : [];
+            const key = names.join("|");
+            if (key === missingSent) return;
+            missingSent = key;
+            broadcast("keryx:sync:missing", names);
+        },
     });
 
     registerDataIpc({
@@ -517,6 +525,12 @@ app.whenReady().then(async () => {
         settings.set("syncAfterImport", null);
         if (importOutcome && !importOutcome.error) sync.afterImport(afterImport.mode);
     }
+    // The windows hear which media files rows name that have not come down
+    // yet ("Baixando…", and the console refuses to send them): asked once,
+    // then pushed when the list changes (syncControl's onStatus, above).
+    ipcMain.handle("keryx:sync:missing", (event) => (isAppUrl(event.senderFrame && event.senderFrame.url)
+        ? { data: sync.missing() }
+        : { error: { message: "Origem não autorizada.", status: 403 } }));
     sync.start();
     powerMonitor.on("resume", () => sync.poke());
 

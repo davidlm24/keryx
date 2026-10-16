@@ -14,6 +14,8 @@ import { withTransitions } from "@/lib/console/transitions";
 import { stageBlock } from "@/lib/presentation";
 import { pagesProgressOf } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs } from "@/hooks/useUser";
+import { usePendingMedia } from "@/hooks/usePendingMedia";
+import { pendingUrls, PENDING_SAY } from "@/lib/pendingMedia";
 
 // The console's own state around the live state. One console, always live:
 // every operation goes to the live state (shared/live-state.mjs).
@@ -30,6 +32,8 @@ import { useUser, usePrefs } from "@/hooks/useUser";
 // The theme in use, on this computer (localStorage, like the arrangement).
 export const THEME_IN_USE_KEY = "keryx.themeInUse";
 export const LOCKED_SAY = "Telas travadas: nada vai ao ar. Destrave em Saídas.";
+// A video's still is not what goes on air: a send never waits for it.
+const PENDING_SKIP = { skip: ["poster", "thumbnail_url"] };
 
 // The look every op is stamped with (withThemeDefaults, the Bíblia's
 // display preferences, each background's own settings): the console and a
@@ -127,6 +131,9 @@ export function useConsole() {
     const live = useLiveState();
     const now = useLiveNow(1000);
     const [prev, setPrevState] = useState(null);
+    // Media files the sync between the church's computers has not brought
+    // yet: an item that needs one is not sent (src/lib/pendingMedia.js).
+    const pending = usePendingMedia();
     // The theme in use (owner's decisions 2026-10-13/14): the one last
     // clicked in Camadas › Temas. It dresses everything sent until someone
     // changes it (Música in themeForKind); choosing a culto with a theme of
@@ -205,18 +212,20 @@ export function useConsole() {
     }, [bgPrefs]);
 
     const setPrev = useCallback((stage) => {
-        if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
+        if (stage && pendingUrls(stage, pending, PENDING_SKIP).length) say(`${stage.title || "O arquivo"} ainda está baixando da sincronização · vai ao ar quando terminar.`);
+        else if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
         // A PowerPoint, or a PDF whose pages are being made — or could not
         // be (presentation.js).
         else if (stage?.blocked) say(stageBlock(stage, pagesProgressOf(stage.args?.id)));
         setPrevState(stage);
-    }, [say]);
+    }, [say, pending]);
 
     // Send: the Prévia (or the stage given) goes to the screens. Resolves
     // true when it went.
     const send = useCallback(async (stage = prev) => {
         if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
+        if (pendingUrls(stage, pending, PENDING_SKIP).length) { say(PENDING_SAY); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
         if (stage.blocked) { say(stageBlock(stage, pagesProgressOf(stage.args?.id))); return false; }
         // A theme's example (Camadas › Temas, nothing on air): sending it uses
@@ -232,6 +241,8 @@ export function useConsole() {
         }
         const [op, stageArgs] = stageOp(stage);
         const args = stamp(op, stageArgs);
+        // The theme that dresses it may bring a background still coming.
+        if (pendingUrls(args, pending, PENDING_SKIP).length) { say(PENDING_SAY); return false; }
         const ref = stage.args?.ref || {};
         try {
             if (!live?.session) await projection.startSession(ref.serviceId || null);
@@ -248,7 +259,7 @@ export function useConsole() {
         }
         setPrevState(null);
         return true;
-    }, [prev, locked, live, callOp, say, stamp, setThemeId]);
+    }, [prev, locked, live, callOp, say, stamp, setThemeId, pending]);
 
     // Desfazer (the toast after Esc / Encerrar): what the screens showed goes
     // straight back (src/lib/console/restore.js). Not while locked: putting

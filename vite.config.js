@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { bundleBudget } from './scripts/bundle-budget.cjs'
 
 // The browser preview (dev only): `npm run dev` mounts the real store and live
 // engine on sample data (scripts/preview/server.cjs) so a plain browser —
@@ -56,7 +57,9 @@ function pdfjsAssets() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), keryxPreview(), pdfjsAssets()],
+  // bundleBudget: the outputs' JS within budget, every stylesheet in the
+  // entry (scripts/bundle-budget.cjs); a build past it fails.
+  plugins: [react(), keryxPreview(), pdfjsAssets(), bundleBudget()],
   // The side-panel preview passes a free port in PORT (.claude/launch.json,
   // autoPort); without it Vite keeps its default.
   server: process.env.PORT ? { port: Number(process.env.PORT), strictPort: true } : {},

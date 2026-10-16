@@ -7,7 +7,7 @@ import { FundoDetail, useSaveBackgroundPref } from "../settings/FundosGallery";
 import { useBackgrounds, useLibrary, useThemes } from "../useConsoleData";
 import { SAMPLE_SLIDES } from "../settings/sample";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { importMediaFiles } from "@/lib/mediaImport";
+import { failureReason, importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { usePrefs } from "@/hooks/useUser";
 import { visibleBackgrounds, categoriesOf, sourceOf } from "@/lib/console/backgroundPrefs";
@@ -17,6 +17,8 @@ import { GENERATORS } from "@/lib/generators";
 import { ALL_KINDS } from "./libraryContext";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
+import { usePendingMedia } from "@/hooks/usePendingMedia";
+import { pendingUrls, PENDING_SAY } from "@/lib/pendingMedia";
 
 // Biblioteca de temas e fundos (owner's request 2026-10-12, as in Holyrics):
 // one window for every picker of a background or a theme — Camadas, the
@@ -71,6 +73,9 @@ export default function BackgroundLibrary({ c, request, onDone }) {
         ] });
     };
     const list = useBackgrounds();
+    // A file the sync between the church's computers is still bringing: its
+    // tile says Baixando… and cannot be chosen yet.
+    const pending = usePendingMedia();
     const [fromMedia, setFromMedia] = useState(false);
     const save = useSaveBackgroundPref(c.say);
     const withBg = useMemo(() => themes.filter((t) => { const s = bgSpec(t); return s && kinds.includes(s.kind); }), [themes, kinds.join()]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -92,7 +97,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
         setUploading(true);
         try {
             const { created, failed } = await importMediaFiles(files, { category: "background" });
-            c.say(`${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
+            const why = failureReason(failed);
+            c.say(`${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}${why ? ` · ${why}` : "."}`);
             const first = created.find((m) => (m.type === "image" || m.type === "video") && kinds.includes(m.type));
             if (first) { setTab(first.type); setSel({ kind: first.type, value: first.file_url }); }
         } catch (err) { c.say(err?.message || "Não foi possível enviar."); }
@@ -163,7 +169,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                     const on = themeMode ? selTheme?.id === t.id : sameBg(sel, bgSpec(t));
                                     return (
                                         <button type="button" key={t.id} className={`kx-t fg-tile ${on ? "is-on" : ""}`} aria-pressed={on} title={`${themeName(t)}${t.pinned ? " · fixado no console" : ""}`}
-                                            onClick={() => (themeMode ? setSelTheme(t) : setSel(bgSpec(t)))} onDoubleClick={() => (themeMode ? takeTheme(t) : take(bgSpec(t)))}
+                                            onClick={() => (themePending(t, pending) ? c.say(PENDING_SAY) : themeMode ? setSelTheme(t) : setSel(bgSpec(t)))}
+                                            onDoubleClick={() => { if (!themePending(t, pending)) (themeMode ? takeTheme(t) : take(bgSpec(t))); }}
                                             onContextMenu={(e) => menu(e, { title: themeName(t), items: [
                                                 { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }).catch(() => {}) },
                                             ] })}>
@@ -198,10 +205,11 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                             <div className="lib-grid">
                                 {shown.map((b) => {
                                     const on = sel?.kind === b.kind && sourceOf(sel.value) === b.source;
+                                    const waiting = pending.has(b.url);
                                     return (
-                                        <button type="button" key={b.source} className={`kx-t fg-tile ${on ? "is-on" : ""} ${b.hidden ? "is-hidden" : ""}`} aria-pressed={on} aria-label={b.name} title={b.name}
-                                            onClick={() => setSel({ kind: b.kind, value: b.url })} onDoubleClick={() => take({ kind: b.kind, value: b.url })} onContextMenu={(e) => tileMenu(e, b)}>
-                                            <span className="fg-img">{b.kind === "video" ? <video src={b.url} preload="metadata" muted /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}</span>
+                                        <button type="button" key={b.source} className={`kx-t fg-tile ${on ? "is-on" : ""} ${b.hidden ? "is-hidden" : ""}`} aria-pressed={on} aria-label={b.name} title={waiting ? `${b.name} · ${SYNC_WAIT_HINT}` : b.name}
+                                            onClick={() => (waiting ? c.say(PENDING_SAY) : setSel({ kind: b.kind, value: b.url }))} onDoubleClick={() => { if (!waiting) take({ kind: b.kind, value: b.url }); }} onContextMenu={(e) => tileMenu(e, b)}>
+                                            <span className="fg-img">{waiting ? <SyncWait /> : b.kind === "video" ? <video src={b.url} preload="metadata" muted /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}</span>
                                             <span className="fg-name">{b.favorite && <Icon name="star" size={12} />}{b.name}</span>
                                         </button>
                                     );
@@ -267,9 +275,22 @@ export function NoBgMark({ theme, label = false }) {
         : <span className="nobg-mark" title={NO_BG_HINT}><Icon name="warn" size={10} /></span>;
 }
 
+// A file the sync between the church's computers has not brought yet
+// (usePendingMedia): said in place of its picture, inside the .fg-img.
+export const SYNC_WAIT_HINT = "baixando da sincronização";
+export function SyncWait() {
+    return <span className="sync-wait" title={`Arquivo ${SYNC_WAIT_HINT}`}><Icon name="download" size={14} />Baixando…</span>;
+}
+
+// Whether a theme's background is a file still coming (Temas does not apply
+// it until it arrives).
+export const themePending = (theme, pending) => pendingUrls(themeBackgroundArgs(theme), pending).length > 0;
+
 // A theme as a small screen: its text look over its background (the
 // library's Temas tab and the console's Temas card).
 export function ThemeThumb({ theme, now }) {
-    const doc = useMemo(() => sampleDoc(now, themeBackgroundArgs(theme), themeStyle(theme)), [theme]); // eslint-disable-line react-hooks/exhaustive-deps
+    const waiting = themePending(theme, usePendingMedia());
+    const doc = useMemo(() => (waiting ? null : sampleDoc(now, themeBackgroundArgs(theme), themeStyle(theme))), [theme, waiting]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (waiting) return <span className="lib-thumb is-wait"><SyncWait /></span>;
     return doc ? <span className="lib-thumb"><ScreenRenderer state={doc} now={now} preview /></span> : null;
 }

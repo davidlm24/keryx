@@ -49,7 +49,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   override it per list. Edge to edge only where the owner asks (the Slides
   column and No ar, to gain room). docs/design-system.md has it too.
 - **One padding rule for panels** (owner 2026-10-16, Rodada F4): a panel's
-  header text sits 12 px (`--space-3`) from its edge; anything with a box
+  header text sits 12 px (`--space-3`) from its edge and its last button
+  12 px from the right one (symmetric, owner 2026-10-16 after the Bíblia
+  review; the first row under a header — cells, the edition line — starts
+  4 px below it); anything with a box
   of its own — list cards, verse cards, the cells of Livros/Capítulos/
   Versículos, the Temas tiles, the search field, tabs, the No ar agora
   monitor — sits 4 px (`--space-1`) in from the column, with its text at
@@ -1112,3 +1115,13 @@ so a release follows these rules. The steps and commands are in README ›
   Público, Palco, Transmissão). `/StreamView` (Transmissão) is network only:
   an OBS Browser Source, a transparent lower third, text only
   (`src/lib/streamCaption.js`); it is not an output window.
+  **Every page is a lazy chunk** (Codex audit 2026-10-16): `lazy()` with
+  its Suspense fallback (an output black, Transmissão transparent, the
+  console's ground elsewhere — never a spinner), so an output loads the
+  renderer and never the console's code. `scripts/bundle-budget.cjs` (a
+  Vite plugin, tested) fails the build when an output's JS passes its
+  budget or a stylesheet leaves the entry: every stylesheet is imported in
+  App.jsx's list, in the old bundle's order (Tailwind last), so splitting
+  changed no cascade. A new network page goes in its `OUTPUT_PAGES` too
+  (`npm test` checks it against `NETWORK_SCREENS`); a heavy library the
+  console needs only on demand is a dynamic `import()` (jspdf, pdf.js).

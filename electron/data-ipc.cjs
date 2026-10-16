@@ -1,9 +1,9 @@
 // Bridges the renderer to the local store and media library.
 //   keryx:db            invoke  { entity, op, args } -> { data } | { error }
 //   keryx:db-change     event   store change, sent to every window
-//   keryx:media-import  invoke  { sourcePath | bytes, name } -> { fileName }
+//   keryx:media-import  invoke  { sourcePath | bytes | size, name } -> { fileName } (electron/mediaImport.cjs)
 //   keryx:media-info    invoke  { names } -> { [name]: { exists, size } } files in the media folder
-//   keryx:config        sync    { mediaBaseUrl }
+//   keryx:config        sync    { mediaBaseUrl, mediaImportMaxBytes }
 //   keryx:displays:*    invoke  list / set / open / close / identify for output windows
 //   keryx:bible:*       invoke  installed versions, install from the web or a file, one online chapter
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
@@ -18,16 +18,11 @@
 //   keryx:audio-level   send    a number 0..1: the level of the PC's sound output, measured by
 //                               the console, relayed to the other windows (audio-reactive backgrounds)
 
-const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { BrowserWindow, dialog, ipcMain } = require("electron");
 const bible = require("./bible.cjs");
-
-function safeExtension(name) {
-    const ext = path.extname(String(name || "")).toLowerCase();
-    return /^\.[a-z0-9]{1,8}$/.test(ext) ? ext : "";
-}
+const { importMedia, MAX_IMPORT_BYTES } = require("./mediaImport.cjs");
 
 function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
@@ -44,24 +39,14 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
         }
     });
 
+    // Size, free space and the partial file: electron/mediaImport.cjs.
     ipcMain.handle("keryx:media-import", async (event, payload) => {
         if (!isTrustedSender(event)) return reject;
-        const { sourcePath, bytes, name } = payload || {};
+        const { sourcePath, bytes, name, size } = payload || {};
         try {
-            const fileName = crypto.randomUUID() + safeExtension(name || sourcePath);
-            const target = path.join(mediaDir, fileName);
-            if (sourcePath) {
-                const stat = await fs.promises.stat(sourcePath);
-                if (!stat.isFile()) throw new Error("não é um arquivo");
-                await fs.promises.copyFile(sourcePath, target);
-            } else if (bytes) {
-                await fs.promises.writeFile(target, Buffer.from(bytes));
-            } else {
-                return { error: { message: "Nenhum arquivo fornecido.", status: 400 } };
-            }
-            return { data: { fileName } };
+            return await importMedia({ mediaDir, sourcePath, bytes, name, size }, { log });
         } catch (err) {
-            log(`[keryx-media] import failed: ${err && err.message}`);
+            log(`[keryx-media] import failed: ${err && err.stack}`);
             return { error: { message: `Não foi possível salvar o arquivo: ${err && err.message}`, status: 500 } };
         }
     });
@@ -257,7 +242,7 @@ function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, 
     });
 
     ipcMain.on("keryx:config", (event) => {
-        event.returnValue = { mediaBaseUrl };
+        event.returnValue = { mediaBaseUrl, mediaImportMaxBytes: MAX_IMPORT_BYTES };
     });
 
     // Every window hears every change, including the one that made it:
