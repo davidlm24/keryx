@@ -93,7 +93,9 @@ export default [
     files: ["src/**/*.{js,mjs,cjs,jsx}"],
     ignores: ["src/components/ui/**/*"],
     languageOptions: {
-      ecmaVersion: 2022,
+      // 2025: import attributes (the JSON both main and pages read,
+      // shared/outputNames.json, is imported `with { type: "json" }`).
+      ecmaVersion: 2025,
       sourceType: "module",
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },

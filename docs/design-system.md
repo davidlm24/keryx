@@ -424,6 +424,20 @@ open the Programa monitor draws one still frame (the air never pauses).
   returns or the operator says *Esquecer*.
 - Projected screens are not styled by these tokens: they use the church's
   themes and backgrounds (user data) and only the `screen-*` styles.
+- **Screen readers** (audit batch 4, 2026-10-16; kx.jsx). A state shown by a
+  background (on air, Prévia) is also `aria-current` plus words in a
+  `.kx-sr` span ("no ar", "na prévia": `stateWords`/`SrState`), never a
+  glyph — the owner keeps on air vs Prévia colour only. A `Row` with actions
+  is a `listitem` (its list `role="list"`) with sibling buttons named by
+  their target ("Ir para João 3:16-17", "Ocultar o Fundo"); without actions
+  it is one button. `Panel` is a region whose title is a level-2 heading; the
+  dock is the page's `<main>`. Toasts and what goes on air are said by one
+  always-mounted polite region (`useLiveRegion`), never by a `role="status"`
+  that mounts with its text. A field or `Seg` beside a visible label is named
+  by it (`label`, or `FormRow`'s `RowLabel`), never by its placeholder.
+  `Seg`'s chosen option has a 1 px `fg-3` inset (≥3:1) besides its fill; a
+  done Setlist row dims its glyph and title only, its meta and time stay
+  `fg-3`.
 
 ## Outputs and screens on the network
 

@@ -38,7 +38,7 @@ function TimeField({ value, onCommit }) {
 // Keys: Espaço marks the next slide (recording) or plays / pauses,
 // Backspace undoes the last mark, ← / → go back / ahead 2 s, [ / ] speed.
 export default function SyncView({ title = "", slides = [], media = "", duration: songDuration = null, starts: initial = [], onApply, onClose, escRef, active = true }) {
-    const col = useWinCol("sync.slides", { def: 440, min: 340, max: 760, sign: -1 });
+    const col = useWinCol("sync.slides", { name: "Slides", def: 440, min: 340, max: 760, sign: -1 });
     const ask = useConfirm();
     const n = slides.length;
     const [starts, setStarts] = useState(() => Array.from({ length: n }, (_, i) => (isMark(initial[i]) ? initial[i] : null)));

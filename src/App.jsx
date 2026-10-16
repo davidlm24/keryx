@@ -25,6 +25,7 @@ import PreviewBanner from '@/components/PreviewBanner';
 import { keryx } from '@/api/keryxClient';
 import { useWindowTitle } from '@/hooks/useChurch';
 import { outputMeta } from '@/lib/outputPrefs';
+import { OUTPUT_NAMES } from '@/lib/network/views';
 
 // Every page is a chunk of its own: an output window or a screen on the
 // church network loads the entry, its page and the renderer, never the
@@ -100,13 +101,13 @@ function OutputDocument() {
 // Development only: the network start page in the browser preview, with the
 // screens electron/lan.cjs lists (NETWORK_SCREENS), to check its layout.
 const PREVIEW_SCREENS = [
-  { path: '/Projection', label: 'Projeção principal', hint: 'O mesmo que o projetor: letras, Bíblia, mídia e avisos' },
-  { path: '/LyricProjection', label: 'Letras', hint: 'Tablet ou TV com a letra da música' },
-  { path: '/StageView', label: 'Palco', hint: 'Monitor do palco: letra atual, próxima e relógio' },
-  { path: '/VideoProjection', label: 'Vídeo', hint: 'Recebe os vídeos enviados pelo operador' },
-  { path: '/CommunicationProjection', label: 'Avisos', hint: 'Contagens regressivas e avisos' },
-  { path: '/PastorView', label: 'Tela do pastor', hint: 'O que está projetado, relógio e tempo do culto' },
-  { path: '/StreamView', label: 'Transmissão', hint: 'Legenda para a live: no OBS, Fonte de navegador 1920 × 1080, fundo transparente' },
+  { path: '/Projection', label: OUTPUT_NAMES['/Projection'], hint: 'O mesmo que o projetor: letras, Bíblia, mídia e avisos' },
+  { path: '/LyricProjection', label: OUTPUT_NAMES['/LyricProjection'], hint: 'Tablet ou TV com a letra da música' },
+  { path: '/StageView', label: OUTPUT_NAMES['/StageView'], hint: 'Monitor do palco: letra atual, próxima e relógio' },
+  { path: '/VideoProjection', label: OUTPUT_NAMES['/VideoProjection'], hint: 'Recebe os vídeos enviados pelo operador' },
+  { path: '/CommunicationProjection', label: OUTPUT_NAMES['/CommunicationProjection'], hint: 'Contagens regressivas e avisos' },
+  { path: '/PastorView', label: OUTPUT_NAMES['/PastorView'], hint: 'O que está projetado, relógio e tempo do culto' },
+  { path: '/StreamView', label: OUTPUT_NAMES['/StreamView'], hint: 'Legenda para a live: no OBS, Fonte de navegador 1920 × 1080, fundo transparente' },
 ];
 
 // KERYX is the desktop app (docs/desktop-architecture.md): the operator

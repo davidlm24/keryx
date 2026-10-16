@@ -133,16 +133,16 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
     return (
         <div className="tm" style={{ gridColumn: "1 / -1" }}>
             <div className={`tm-grid is-${thumb}`} role="list" aria-label="Temas">
-                {slots.map((t, k) => (t ? (
-                    <button type="button" key={t.id} role="listitem" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={themeName(t)}
+                {slots.map((t, k) => <span key={t ? t.id : `empty-${k}`} role="listitem" className="tm-slot">{t ? (
+                    <button type="button" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={themeName(t)}
                         title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""}${themeHasBackground(t) ? "" : ` · ${NO_BG_HINT}`}${themePending(t, pending) ? ` · fundo ${SYNC_WAIT_HINT}` : ""} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
                         onClick={() => inUse(t)} onDoubleClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                         <span className="fg-img"><ThemeThumb theme={t} now={c.now} /><NoBgMark theme={t} /></span>
                         {names && (t.id === def?.id || themeName(t, "")) && <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
                     </button>
                 ) : (
-                    <button type="button" key={`empty-${k}`} className="kx-t tm-empty" onClick={() => newTheme(c)} title="Novo tema · na biblioteca, o clique direito fixa um tema aqui" aria-label="Novo tema"><Icon name="plus" /></button>
-                )))}
+                    <button type="button" className="kx-t tm-empty" onClick={() => newTheme(c)} title="Novo tema · na biblioteca, o clique direito fixa um tema aqui" aria-label="Novo tema"><Icon name="plus" /></button>
+                )}</span>)}
             </div>
         </div>
     );

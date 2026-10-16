@@ -21,7 +21,8 @@ export const useWinState = () => useSyncExternalStore(subscribe, current);
 // `sign`: -1 when the column is right of (or under) its splitter.
 // -> { px, style, split }: the column's flex style and the splitter that
 // goes between it and its neighbour (it IS the 6 px gap).
-export function useWinCol(key, { def, min, max = 900, sign = 1, horizontal = false }) {
+// `name`: what the splitter resizes, said by a screen reader (C-62).
+export function useWinCol(key, { def, min, max = 900, sign = 1, horizontal = false, name }) {
     const s = useWinState();
     const px = clampCol(s.cols[key] ?? def, min, max);
     const onSize = useCallback((v) => setWinState((st) => withCol(st, key, v)), [key]);
@@ -29,7 +30,8 @@ export function useWinCol(key, { def, min, max = 900, sign = 1, horizontal = fal
     const clamp = useCallback((v) => clampCol(v, min, max), [min, max]);
     // A narrow window still shrinks the column (flex-shrink), never under its minimum.
     const style = horizontal ? { flex: `0 1 ${px}px`, minHeight: Math.min(min, px) } : { flex: `0 1 ${px}px`, minWidth: Math.min(min, px) };
-    return { px, style, split: <Split horizontal={horizontal} size={px} sign={sign} onSize={onSize} onReset={onReset} clamp={clamp} /> };
+    return { px, style, split: <Split horizontal={horizontal} size={px} sign={sign} onSize={onSize} onReset={onReset} clamp={clamp}
+        name={name && `${horizontal ? "Altura" : "Largura"} · ${name}`} min={min} max={max} valueText={`${Math.round(px)} px`} /> };
 }
 
 const EDGES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];

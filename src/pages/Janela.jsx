@@ -25,7 +25,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import "@ds/tokens.css";
 import "@ds/components/bundle.css";
 import "@/components/console/console.css";
-import { WinCtx } from "@/components/console/kx";
+import { WinCtx, useLiveRegion } from "@/components/console/kx";
 import { winPage } from "@/components/console/WinPages";
 import { useStamp, useToast, useLiveOps, THEME_IN_USE_KEY } from "@/components/console/useConsole";
 import { useLibrary, useRundown, pickDefaultService } from "@/components/console/useConsoleData";
@@ -98,6 +98,9 @@ const firstStack = () => {
 
 export default function Janela() {
     const c = useJanelaConsole();
+    // The toasts, said by one polite region that is always there (C-25).
+    const [liveRegion, announce] = useLiveRegion();
+    useEffect(() => { if (c.toast) announce(c.toast); }, [c.toast, announce]);
     const data = useLibrary();
     const logoUrl = useChurchLogo();
     const [stack, setStack] = useState(firstStack);
@@ -240,7 +243,7 @@ export default function Janela() {
     // back after a mouse pick (selectPick.js, audit C-03).
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
-        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href]");
+        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='listitem'][tabindex], a[href]");
         if (t && !t.closest(KEEPS_FOCUS)) setTimeout(() => t.blur?.(), 0);
     };
     useEffect(() => blurSelectsAfterPick(window, { skip: KEEPS_FOCUS }), []);
@@ -272,6 +275,7 @@ export default function Janela() {
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             <PromptDialog ask={ask} onAnswer={answerAsk} />
             <Toast c={c} />
+            {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={() => setCtxMenu(null)} />
         </div>
         </ConfirmContext.Provider>
