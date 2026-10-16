@@ -467,6 +467,8 @@ async function checkLayers(webContents, { live, outputs }) {
     // Outputs are not in the taskbar (only the console is), both open here.
     const openNow = outputs.trackedWindows().filter((w) => !w.destroyed);
     result.offTaskbar = openNow.length >= 2 && openNow.every((w) => w.skipTaskbar === true);
+    // While an output is open Windows must not turn the displays off (WIN-01).
+    result.keepsAwake = outputs.keepsAwake();
     try {
         live.call("tool.show", { mode: "freetext", text: "Texto livre de teste" });
         result.freetext = await waitText(main, "Texto livre de teste");
@@ -605,7 +607,7 @@ async function checkLayers(webContents, { live, outputs }) {
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.hiddenFundoAviso && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.partThemeOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
+        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.partThemeOk && result.openAtLaunch && result.keptTarget && result.offTaskbar && result.keepsAwake;
     return result;
 }
 

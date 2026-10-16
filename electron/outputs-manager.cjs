@@ -6,9 +6,9 @@
 // KERYX starts). Either way it is tracked (track) and moved when monitors
 // change or the operator reassigns it.
 
-const { BrowserWindow } = require("electron");
+const { BrowserWindow, powerSaveBlocker } = require("electron");
 const {
-    OUTPUTS, staysOnTop, outputForKey, outputKeyForUrl, displayRef, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
+    OUTPUTS, staysOnTop, inPlace, outputForKey, outputKeyForUrl, displayRef, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
 } = require("./outputs.cjs");
 
 const SETTINGS_KEY = "outputs";
@@ -29,9 +29,18 @@ function createReloadLimiter({ max = 3, windowMs = 60000, now = Date.now } = {})
     };
 }
 
-// BrowserWindow is injectable for tests (in plain Node, require("electron") is a path).
-function createOutputManager({ screen, settings, getOrigin, openWindow = null, operatorWindow = () => null, log = console.warn, BrowserWindow: Win = BrowserWindow }) {
+// BrowserWindow and powerSaveBlocker are injectable for tests (in plain
+// Node, require("electron") is a path, and both are undefined).
+function createOutputManager({
+    screen, settings, getOrigin, openWindow = null, operatorWindow = () => null, log = console.warn,
+    BrowserWindow: Win = BrowserWindow, powerSaveBlocker: blocker = powerSaveBlocker,
+}) {
     const windows = new Map(); // output key -> BrowserWindow
+    // What present (or track) last made of each window: "fullscreen",
+    // "window" or "hidden". One that went full screen on a monitor waits for
+    // it when the monitor leaves (resolvePlacement's waiting).
+    const shown = new WeakMap();
+    const waiting = (win) => Boolean(win && !win.isDestroyed() && (shown.get(win) === "fullscreen" || shown.get(win) === "hidden"));
     // Windows this manager took off the taskbar (Electron has no getter).
     const offTaskbar = new WeakSet();
     // Outputs are not in the taskbar (as in Holyrics): only the console is.
@@ -79,15 +88,67 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
 
     const assignments = () => settings.get(SETTINGS_KEY, {});
     const assignmentFor = (key) => normalizeAssignment(assignments()[key]);
-    const placementFor = (key) => resolvePlacement(outputForKey(key), displays(), assignmentFor(key));
+    const placementFor = (key) => resolvePlacement(outputForKey(key), displays(), assignmentFor(key), { waiting: waiting(windows.get(key)) });
+
+    // Windows turns the displays off after a few idle minutes, and sleeps
+    // later; Chromium holds a wake lock only while a video plays. A verse on
+    // air through a 30-minute sermon went black (audit WIN-01): while any
+    // output is open (hidden waiting for its monitor too) the displays and
+    // the PC stay awake. One blocker, started with the first output and
+    // stopped after the last.
+    let awakeId = null;
+    const keepAwake = () => {
+        if (!blocker) return;
+        const any = [...windows.values()].some((w) => !w.isDestroyed());
+        try {
+            if (any && awakeId === null) awakeId = blocker.start("prevent-display-sleep");
+            else if (!any && awakeId !== null) {
+                blocker.stop(awakeId);
+                awakeId = null;
+            }
+        } catch (err) {
+            log(`[keryx-outputs] não foi possível manter as telas ligadas: ${err.message}`);
+        }
+    };
+
+    // Nobody sits at a projector: no pointer over an output full screen (or
+    // hidden, on its way back to full screen). Over a window the pointer is
+    // back. The CSS goes with each page load, so did-finish-load puts it back.
+    const noPointer = new WeakSet();
+    const pointerCss = new WeakMap(); // win -> promise of the insertCSS key
+    const syncPointer = (win) => {
+        if (win.isDestroyed()) return;
+        const { webContents } = win;
+        const css = pointerCss.get(win);
+        if (noPointer.has(win) && !css) pointerCss.set(win, webContents.insertCSS(HIDE_CURSOR_CSS).catch(() => null));
+        else if (!noPointer.has(win) && css) {
+            pointerCss.delete(win);
+            css.then((key) => { if (key && !win.isDestroyed()) webContents.removeInsertedCSS(key).catch(() => {}); });
+        }
+    };
+    const setPointer = (win, hidden) => {
+        if (hidden) noPointer.add(win); else noPointer.delete(win);
+        syncPointer(win);
+    };
+
+    // An output never keeps the keyboard: the operator's keys (arrows,
+    // Enter, Esc) belong to the console. Back to the window that opened it,
+    // else the operator's main window.
+    const giveBack = (win, opener = null) => {
+        const back = opener && opener !== win && !opener.isDestroyed() ? opener : operatorWindow();
+        if (back && back !== win && !back.isDestroyed() && !win.isDestroyed() && win.isFocused()) back.focus();
+    };
 
     // Extra BrowserWindow options for an output, whichever way it opens
     // (a page's window.open, or open). Never in the taskbar nor in Alt+Tab,
     // full screen or not: skipTaskbar covers the taskbar, and type "toolbar"
     // makes the window a Windows tool window (WS_EX_TOOLWINDOW), which Alt+Tab
     // does not list. It can only be set at creation.
+    // An output whose monitor is off (Abrir ao iniciar before the projector
+    // is on) is made hidden, and frameless as it will be full screen.
     function windowOptions(key) {
         const placement = placementFor(key);
+        if (placement.mode === "hidden") return { show: false, frame: false, backgroundColor: "#000000", autoHideMenuBar: true, skipTaskbar: true, type: "toolbar" };
         if (placement.mode !== "fullscreen") return { skipTaskbar: true, type: "toolbar" };
         const { x, y, width, height } = placement.display.bounds;
         return { x, y, width, height, frame: false, backgroundColor: "#000000", autoHideMenuBar: true, skipTaskbar: true, type: "toolbar", ...(onTop(placement) ? { alwaysOnTop: true } : {}) };
@@ -96,60 +157,87 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
     function present(win, placement) {
         if (win.isDestroyed()) return;
         if (placement.mode === "fullscreen") {
-            if (win.isFullScreen()) win.setFullScreen(false);
-            win.setBounds(placement.display.bounds);
-            hideFromTaskbar(win);
-            win.setFullScreen(true);
+            const current = { fullScreen: win.isFullScreen(), visible: win.isVisible(), bounds: win.getBounds() };
+            if (!inPlace(placement, current)) {
+                if (win.isFullScreen()) win.setFullScreen(false);
+                win.setBounds(placement.display.bounds);
+                hideFromTaskbar(win);
+                // Back from waiting: shown where its monitor is (never on the
+                // console's first), then full screen, the keyboard untouched.
+                if (!current.visible) win.showInactive();
+                win.setFullScreen(true);
+                if (!current.visible) setTimeout(() => giveBack(win), 50);
+            }
+            setPointer(win, true);
+        } else if (placement.mode === "hidden") {
+            // Hidden first (Windows has moved it onto the console's monitor).
+            // On Windows, leaving full screen shows a hidden window again, at
+            // its bounds from before (on the monitor that left): hide it once
+            // more after. Off the top too (applyOnTop, below).
+            win.hide();
+            if (win.isFullScreen()) {
+                win.setFullScreen(false);
+                if (win.isVisible()) win.hide();
+            }
+            setPointer(win, true);
         } else {
             if (win.isFullScreen()) win.setFullScreen(false);
             win.setBounds(windowedBounds(displays()));
             hideFromTaskbar(win);
+            if (!win.isVisible()) win.showInactive();
+            setPointer(win, false);
         }
+        shown.set(win, placement.mode);
         applyOnTop(win, placement);
     }
 
     function track(win, url) {
         const key = outputKeyForUrl(url, getOrigin());
         if (!key) return null;
+        // The new one first, so the old one closing never leaves the output
+        // without a window (nor the displays without their blocker).
         const previous = windows.get(key);
-        if (previous && previous !== win && !previous.isDestroyed()) previous.close();
         windows.set(key, win);
+        if (previous && previous !== win && !previous.isDestroyed()) previous.close();
         // Forget it as soon as it starts closing, so opening the output again
         // right away makes a new window instead of focusing the closing one.
         const forget = () => {
             if (windows.get(key) === win) windows.delete(key);
+            keepAwake();
         };
         win.on("close", forget);
         win.on("closed", forget);
+        keepAwake();
         // Whatever path created it (the options may not have said so).
         hideFromTaskbar(win);
 
-        // An output never keeps the keyboard: the operator's keys (arrows,
-        // Enter, Esc) belong to the console. Opening one (and going full
-        // screen) activates it on Windows, so focus goes back to the window
-        // that opened it, or the operator's main window, once it is up.
+        // Opening one (and going full screen) activates it on Windows, so
+        // the keyboard goes back (giveBack) once it is up.
         const opener = Win.getFocusedWindow();
-        const giveBack = () => {
-            const back = opener && opener !== win && !opener.isDestroyed() ? opener : operatorWindow();
-            if (back && back !== win && !back.isDestroyed() && !win.isDestroyed() && win.isFocused()) back.focus();
-        };
-        win.once("ready-to-show", () => setTimeout(giveBack, 50));
-        win.once("show", () => setTimeout(giveBack, 50));
-        win.once("enter-full-screen", () => setTimeout(giveBack, 50));
+        const back = () => setTimeout(() => giveBack(win, opener), 50);
+        win.once("ready-to-show", back);
+        win.once("show", back);
+        win.once("enter-full-screen", back);
         // A windowed output has no full-screen event after the page loads.
-        win.webContents.once("did-finish-load", () => setTimeout(giveBack, 50));
-        setTimeout(giveBack, 1000);
+        win.webContents.once("did-finish-load", back);
+        setTimeout(() => giveBack(win, opener), 1000);
 
         const placement = placementFor(key);
         const { webContents } = win;
         if (placement.mode === "fullscreen") {
             win.setFullScreen(true);
             applyOnTop(win, placement);
-            // Nobody sits at a projector: no pointer, and nothing to click.
-            const hideCursor = () => webContents.insertCSS(HIDE_CURSOR_CSS).catch(() => {});
-            webContents.on("did-finish-load", hideCursor);
-            hideCursor();
+        } else if (placement.mode === "hidden") {
+            // Its monitor is off already: made hidden (windowOptions), it
+            // waits; one made visible elsewhere is hidden here.
+            if (win.isVisible()) win.hide();
         }
+        shown.set(win, placement.mode);
+        webContents.on("did-finish-load", () => {
+            pointerCss.delete(win);
+            syncPointer(win);
+        });
+        setPointer(win, placement.mode !== "window");
         // An output has no title bar to close it by: Ctrl+W, or Fechar in Settings.
         webContents.on("before-input-event", (event, input) => {
             if (input.type === "keyDown" && input.control && !input.shift && !input.alt && input.key.toLowerCase() === "w") {
@@ -179,9 +267,9 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
         return {
             displays: current.map((d) => ({ ...displayRef(d), primary: d.primary, bounds: d.bounds, scaleFactor: d.scaleFactor })),
             outputs: OUTPUTS.map((o) => {
-                const placement = resolvePlacement(o, current, assignmentFor(o.key));
                 const win = windows.get(o.key);
                 const assignment = assignmentFor(o.key);
+                const placement = resolvePlacement(o, current, assignment, { waiting: waiting(win) });
                 return {
                     key: o.key,
                     label: o.label,
@@ -225,8 +313,11 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
             existing = null;
         }
         if (existing && !existing.isDestroyed()) {
-            existing.showInactive();
-            existing.moveTop();
+            // Waiting for its monitor, it stays hidden: the banner says so.
+            if (placementFor(key).mode !== "hidden") {
+                existing.showInactive();
+                existing.moveTop();
+            }
             return list();
         }
         if (!openWindow) throw new Error("Abrir saídas não está disponível.");
@@ -281,9 +372,11 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
         close,
         identify,
         // For tests and the smoke run.
+        keepsAwake: () => awakeId !== null && (!blocker.isStarted || blocker.isStarted(awakeId)),
         trackedWindows: () => [...windows].map(([key, win]) => ({
             key,
             fullScreen: win.isFullScreen(),
+            visible: win.isVisible(),
             bounds: win.getBounds(),
             destroyed: win.isDestroyed(),
             skipTaskbar: offTaskbar.has(win),
