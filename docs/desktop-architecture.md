@@ -858,13 +858,59 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    remote copies never touch them. What is taken emits the usual change
    event (windows refresh); nothing applied from elsewhere is recorded in
    the outbox (no echo). Returns `{ applied, skipped, failed }`; a change
-   that fails is rolled back alone (a savepoint). Known edges for later
-   PRs: a backup restored on another computer brings the same `pc_id`
-   (give the restored copy a new one), and an entity this version does not
-   know is skipped, not kept for a newer version.
-3. The folder: `sync/<pc>/changes-<n>.jsonl` (append-only), `sync/media/`
-   (files by their uuid name), cursors per computer, tolerant of
-   half-written files and Drive's conflict copies.
+   that fails is rolled back alone (a savepoint). Known edge for later
+   PRs: an entity this version does not know is skipped, not kept for a
+   newer version.
+3. **The folder, main-process side (done):** `electron/sync.cjs`
+   (`createSyncEngine`, pure Node, tested with three temp stores and one
+   folder). The folder chosen holds:
+
+   ```
+   <folder>/sync/<pc>/changes-000001.jsonl   this computer's outbox entries,
+                                             one JSON line each, appended only;
+                                             a new file past 256 KB
+   <folder>/sync/media/<file>                the media its rows name, by uuid name
+   ```
+
+   A pass writes the outbox to this computer's folder (lines appended
+   whole and fsync'd, then `pruneOutbox` only what is on disk; two
+   entries for the same row at the same millisecond become one line — the
+   later one, the profile's merged), copying each `keryx-media://<file>`
+   the rows name into `sync/media/` (temp name + rename, never over an
+   existing file; `bundled/…` never travels; the line says each file's
+   size). Then it reads every other computer's folder from its cursor —
+   a byte offset per file, in `_meta` `sync.state` with the folder, the
+   writer's file number and the media still missing (never synced) — and
+   hands the entries to `applyRemote` in batches of 500. What Drive and
+   friends do is harmless: a last line without its newline is left for the
+   next pass (the cursor never passes it); conflict copies
+   (`changes-000003 (1).jsonl`, OneDrive's `-PC`, Dropbox's "conflicted
+   copy") and late or out-of-order files are just more files (entries are
+   idempotent); a file shorter than its cursor is read again; a complete
+   line that is not JSON is skipped once a later line or a pass without
+   growth shows it was not still arriving; an entry naming another computer
+   than its folder is ignored; a computer's folder deleted stops nothing,
+   and this computer's own deleted folder starts at the next file number
+   (never reused, so no other cursor points into a new file). Media comes
+   in before its row is applied when it is there whole (the size the line
+   says); else the row goes in anyway and the file is retried every pass,
+   across restarts. The database keeps `keryx-media://` urls. No folder =
+   off; a folder that is not there (Drive not running, a drive not
+   mounted) = status `offline`, nothing created, the outbox kept. The main
+   process runs a pass every 30 s and 3 s after a local change to a
+   synced entity (not after what a pass applied), when a folder is set in
+   the electron settings (`"sync": { "folder": "…" }`, off by default;
+   `engine.status()` is what the UI will show: state, last pass, sent,
+   received, missing media, the computers seen and when each last wrote).
+   **The sync id is the computer's**: `applyPendingImport` (Importar,
+   Restaurar um backup) gives the staged database the id of the one it
+   replaces, else none (a new one), so a clone never writes another
+   computer's folder. Restoring a backup on a computer that syncs does not
+   push the restored rows to the others (they keep their newer copies):
+   for PR 5/6.
+   What only a real run with Drive can confirm: Drive's own temp and
+   conflict names, files read while Drive downloads them, a video of
+   hundreds of MB copied while the console projects.
 4. Pairing: a church sync code; files signed with a key from it, so only
    verified computers count.
 5. Configurações › Sincronização; the first join merges (never replaces) and

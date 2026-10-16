@@ -456,3 +456,15 @@ test("schema upgrade adds new columns to an existing database", () => {
     assert.deepEqual(row.slides, [{ text: "x" }]);
     s.close();
 });
+
+test("meta: this database's own bookkeeping, JSON values, the computer's id not settable", () => {
+    const s = fresh();
+    assert.equal(s.getMeta("sync.state"), null);
+    s.setMeta("sync.state", { folder: "G:/KERYX", cursors: { "a/changes-000001.jsonl": 120 } });
+    assert.deepEqual(s.getMeta("sync.state"), { folder: "G:/KERYX", cursors: { "a/changes-000001.jsonl": 120 } });
+    s.setMeta("sync.state", null);
+    assert.equal(s.getMeta("sync.state"), null);
+    assert.throws(() => s.setMeta("pc_id", "x"), { status: 400 });
+    assert.equal(s.getMeta("pc_id"), null, "a plain string id is not JSON");
+    assert.equal(s.outbox().length, 0, "nothing in the outbox");
+});

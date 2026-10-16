@@ -233,11 +233,45 @@ function hasPendingImport(dataDir) {
     return fs.existsSync(path.join(dataDir, PENDING, "keryx.db"));
 }
 
+// The computer's sync id (_meta.pc_id, store.cjs) belongs to the computer,
+// not to the data: an export imported on another computer, or a backup
+// restored there, would otherwise bring the first one's id and both would
+// write the same folder of the sync (docs/desktop-architecture.md §8b). The
+// staged database takes the id of the database it replaces; with none here,
+// it loses its own and the store makes a new one. Returns "kept" | "new".
+function keepComputerId(stagedDb, liveDb) {
+    let liveId = null;
+    if (fs.existsSync(liveDb)) {
+        let db;
+        try {
+            db = new DatabaseSync(liveDb, { readOnly: true });
+            liveId = db.prepare("SELECT value FROM _meta WHERE key = 'pc_id'").get()?.value || null;
+        } catch { /* no _meta yet (before 0.2.18): a new id */ } finally {
+            if (db) db.close();
+        }
+    }
+    const db = new DatabaseSync(stagedDb);
+    try {
+        db.exec("CREATE TABLE IF NOT EXISTS _meta (key TEXT PRIMARY KEY, value TEXT)");
+        if (liveId) db.prepare("INSERT OR REPLACE INTO _meta (key, value) VALUES ('pc_id', ?)").run(liveId);
+        else db.prepare("DELETE FROM _meta WHERE key = 'pc_id'").run();
+    } finally {
+        db.close();
+    }
+    return liveId ? "kept" : "new";
+}
+
 // Call at startup, before the database is opened. Returns null when nothing
-// is pending, else { archived }.
+// is pending, else { archived, pcId: "kept" | "new" | "failed" }.
 function applyPendingImport(dataDir, now = new Date()) {
     const staging = path.join(dataDir, PENDING);
     if (!hasPendingImport(dataDir)) return null;
+    let pcId;
+    try {
+        pcId = keepComputerId(path.join(staging, "keryx.db"), path.join(dataDir, "keryx.db"));
+    } catch {
+        pcId = "failed"; // the import still goes ahead; main logs it
+    }
 
     const archived = path.join(dataDir, `before-import-${stamp(now)}`);
     fs.mkdirSync(archived, { recursive: true });
@@ -268,7 +302,7 @@ function applyPendingImport(dataDir, now = new Date()) {
         throw err;
     }
     fs.rmSync(staging, { recursive: true, force: true });
-    return { archived };
+    return { archived, pcId };
 }
 
 module.exports = { ArchiveError, FORMAT, exportAll, stageImport, stageRestore, applyPendingImport, discardPendingImport, hasPendingImport };
