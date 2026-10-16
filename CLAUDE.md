@@ -54,7 +54,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   also goes in `SYNC_ENTITIES` or `LOCAL_ENTITIES`
   (`electron/db/syncScope.cjs`, sync between the church's computers,
   desktop-architecture.md §8b), and a User field that belongs to one
-  computer in `LOCAL_USER_FIELDS`; `npm test` checks the entity.
+  computer in `LOCAL_USER_FIELDS`; `npm test` checks the entity. Only
+  writes through the store's operations reach the sync outbox (`_outbox`;
+  `importRows` and `applyRemote` record nothing, so remote changes never
+  echo back).
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by
