@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { airSince, airFor } from "./caption.js";
+import { airSince, airFor, airInPlayer } from "./caption.js";
 
 const song = { content: { title: "Hino", slides: [{ text: "a" }], index: 0, startedAt: 10_000 } };
 
@@ -25,4 +25,29 @@ test("other layers count from when they went on air; nothing to count says nothi
         assert.equal(airSince(doc), null);
         assert.equal(airFor(doc, 50_000), "");
     }
+});
+
+test("the pill's title only when the player does not name what is on air (Rodada F1, pick A)", () => {
+    const pb = { paused: false, position: 0, at: 0 };
+    const clip = { kind: "video", url: "v", title: "Abertura", playback: pb, shownAt: 1 };
+    const music = { kind: "audio", url: "a", title: "Hino 42", playback: pb, shownAt: 2 };
+    // In the player: the title is there already.
+    assert.equal(airInPlayer({ video: clip }), true, "a video-channel clip");
+    assert.equal(airInPlayer({ video: clip, content: song.content }), true, "the clip covers the lyrics");
+    assert.equal(airInPlayer({ media: clip }), true, "a video on the projector");
+    assert.equal(airInPlayer({ media: { ...clip, kind: "youtube" } }), true, "a YouTube link");
+    assert.equal(airInPlayer({ media: music }), true, "an audio file on the projector");
+    assert.equal(airInPlayer({ audio: music }), true, "music with nothing on the screens");
+    assert.equal(airInPlayer({ audio: { ...clip, kind: "video" } }), true, "a video playing as sound only");
+    // Not in the player: the pill says what it is.
+    assert.equal(airInPlayer({ content: song.content }), false, "lyrics, a passage, text");
+    assert.equal(airInPlayer({ content: song.content, audio: music }), false, "lyrics over their playback");
+    assert.equal(airInPlayer({ media: { kind: "image", url: "i", title: "Batismo" } }), false, "a picture");
+    assert.equal(airInPlayer({ media: { kind: "presentation", url: "p", title: "Missões" } }), false, "a presentation");
+    assert.equal(airInPlayer({ tool: { mode: "timer" }, audio: music }), false, "a timer over music");
+    assert.equal(airInPlayer({ communication: { item: { title: "Aviso" } } }), false, "an aviso");
+    assert.equal(airInPlayer({ screen: "black", video: clip }), false, "Tela preta");
+    assert.equal(airInPlayer({ screen: "logo", audio: music }), false, "Logo");
+    assert.equal(airInPlayer({}), false, "nothing: \"Nada no ar\"");
+    assert.equal(airInPlayer(null), false);
 });

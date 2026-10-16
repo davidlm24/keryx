@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -334,6 +334,62 @@ test("locked heights: the console's, exact, with no splitter, only down a column
     // A locked child that was the flexible one: the largest free one takes the rest.
     const flex = normalizeDock({ tree: split("col", [g("camadas"), split("row", [g("programa"), g("previa"), g("setlist")], [null, 300, 300])], [null, 400]), hidden: ["temas", "onair"] });
     assert.deepEqual(fitDock(flex, 1600, 900, { locked: { camadas: 152 } }).children.map((c) => c.size), [152, 742]);
+});
+
+test("folded panels (Rodada F4): a header down a column, a strip across a row, one open child kept", () => {
+    const d = defaultDock(W);
+    const at = (f) => f.children.map((c) => [c.frame.tabs?.[0], c.size, Boolean(c.locked), Boolean(c.folded)]);
+    // The right column (890 px under the 104 px strip): Camadas folded to its
+    // header — the fold wins over its measured height — Temas measured, the
+    // Setlist the rest.
+    const f = fitDock(d, 1908, 1000, { folded: ["camadas"], locked: { camadas: 152, temas: 220 }, head: 28 });
+    const side = f.children[0].frame.children[3].frame;
+    assert.deepEqual(at(side), [["camadas", 28, true, true], ["temas", 220, true, false], ["setlist", 890 - 28 - 220 - 12, false, false]]);
+    assert.deepEqual(side.children.map((c) => c.frame.fold), [{ dir: "col", on: true, can: true }, { dir: "col", on: false, can: true }, { dir: "col", on: false, can: true }]);
+    // Across a row: the Biblioteca a 28 px strip, the Programa's column grows.
+    const r = fitDock(d, 1908, 1000, { folded: ["lib"] }).children[0].frame;
+    assert.deepEqual(r.children.map((c) => c.size), [FOLD_STRIP, 300, 1890 - FOLD_STRIP - 300 - 320, 320]);
+    assert.deepEqual([r.children[0].locked, r.children[0].folded, r.children[0].frame.fold], [true, true, { dir: "row", on: true, can: true }]);
+    // The Setlist and Temas folded: Camadas is the last open one — its
+    // chevron cannot fold it, and it takes the rest instead of its list's height.
+    const last = fitDock(d, 1908, 1000, { folded: ["setlist", "temas"], locked: { camadas: 152, temas: 220 } }).children[0].frame.children[3].frame;
+    assert.deepEqual(at(last), [["camadas", 890 - 64 - 12, false, false], ["temas", 32, true, true], ["setlist", 32, true, true]]);
+    assert.deepEqual(last.children[0].frame.fold, { dir: "col", on: false, can: false });
+    // All three folded (a save from another width): the flexible one stays open.
+    const all = fitDock(d, 1908, 1000, { folded: ["camadas", "temas", "setlist"] }).children[0].frame.children[3].frame;
+    assert.deepEqual(at(all), [["camadas", 32, true, true], ["temas", 32, true, true], ["setlist", 890 - 64 - 12, false, false]]);
+    assert.deepEqual(all.children[2].frame.fold, { dir: "col", on: false, can: false });
+    // The No ar strip folded is its header; gone (no lyrics on air), no room at all.
+    assert.deepEqual(fitDock(d, 1908, 1000, { folded: ["onair"], locked: { onair: 150 }, head: 28 }).children.map((c) => c.size), [1000 - 6 - 28, 28]);
+    assert.deepEqual(fitDock(d, 1908, 1000, { folded: ["onair"], gone: ["onair"] }).children.map((c) => c.size), [1000, 0]);
+    // The Programa, the Prévia and the player never fold; as a tab beside
+    // another module, or alone at the root, a module has no fold either.
+    assert.deepEqual(["programa", "previa", "player", "lib", "setlist", "reading", "air"].map(canFoldModule), [false, false, false, true, true, true, true]);
+    const plain = fitDock(d, 1908, 1000);
+    assert.equal(JSON.stringify(fitDock(d, 1908, 1000, { folded: ["programa", "previa"] })), JSON.stringify(plain));
+    const live = plain.children[0].frame.children[2].frame;
+    assert.equal(live.children[0].frame.fold, undefined, "the Programa has no chevron");
+    const tab = moveModules(d, ["camadas"], { kind: "group", path: pathOf(d.tree, "setlist"), zone: "center" });
+    const tabSide = fitDock(tab, 1908, 1000, { folded: ["camadas", "setlist"] }).children[0].frame.children[3].frame;
+    assert.deepEqual(tabSide.children[1].frame.tabs, ["setlist", "camadas"]);
+    assert.equal(tabSide.children[1].frame.fold, undefined);
+    assert.equal(tabSide.children[1].folded, undefined);
+    assert.equal(fitDock(normalizeDock({ tree: g("programa", "previa", "setlist") }), 800, 600, { folded: ["setlist"] }).fold, undefined);
+    // Nothing folded: the frames are the same as before, but for `fold`.
+    assert.equal(JSON.stringify(plain).includes('"folded"'), false);
+});
+
+test("folded panels in the Bíblia: the text a strip, No ar agora takes the room", () => {
+    const d = defaultDock({ env: "biblia" });
+    const f = fitDock(d, 1908, 1000, { folded: ["reading"] });
+    assert.deepEqual(f.children.map((c) => [c.size, c.fixed]), [[300, true], [FOLD_STRIP, true], [1908 - 12 - 300 - FOLD_STRIP, false]]);
+    assert.deepEqual(f.children[1].frame.fold, { dir: "row", on: true, can: true });
+    // The pickers' column: Versículos folded to its header, Livros (the largest) takes the rest.
+    const p = fitDock(d, 1908, 1000, { folded: ["verses"], head: 28 }).children[0].frame;
+    assert.deepEqual(p.children.map((c) => c.size), [1000 - 200 - 28 - 12, 200, 28]);
+    // Both the text and No ar agora: the pickers' column, the last one open in the row, takes the rest.
+    const both = fitDock(d, 1908, 1000, { folded: ["reading", "air"] });
+    assert.deepEqual(both.children.map((c) => c.size), [1908 - 12 - 2 * FOLD_STRIP, FOLD_STRIP, FOLD_STRIP]);
 });
 
 test("the No ar strip is as tall as the slide with the most lines", () => {

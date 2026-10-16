@@ -63,7 +63,7 @@ import TabsPanel, { TabsPlus } from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
-import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier } from "@/lib/console/layout";
+import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier, toggleFolded, foldedList } from "@/lib/console/layout";
 import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
@@ -883,14 +883,20 @@ export default function Console() {
     // panel header it gives (28 or 32 px).
     const density = shownDensity(layout, mainSize.h);
     const PANEL_HEAD = panelHead(density);
-    // Minimized (its header's chevron, as Holyrics' strip): only its header.
-    const onAirH = layout.onairMin ? PANEL_HEAD : onAirHeight(c.cur?.content?.slides, PANEL_HEAD);
+    const onAirH = onAirHeight(c.cur?.content?.slides, PANEL_HEAD);
     const [camadasFitH, setCamadasFitH] = useState(0);
     const [temasFitH, setTemasFitH] = useState(0);
+    // The panels folded with their header's chevron (owner 2026-10-16,
+    // Rodada F4; layout.folded, this computer's): down a column a header,
+    // across a row a strip (fitDock's `folded`, the fold winning over the
+    // heights above). While editing the arrangement every panel is open.
+    const folded = editing ? "" : foldedList(layout.folded).join();
+    const onFold = (id) => setLayout({ ...layout, folded: toggleFolded(layout.folded, id) });
     const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h, {
         gone: gone ? gone.split(",") : [],
         locked: { onair: onAirH, ...(camadasFitH ? { camadas: PANEL_HEAD + camadasFitH } : {}), ...(temasFitH ? { temas: PANEL_HEAD + temasFitH } : {}) },
-    }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH, temasFitH]);
+        folded: folded ? folded.split(",") : [], head: PANEL_HEAD,
+    }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH, temasFitH, folded, PANEL_HEAD]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
     const playerDocked = !onScreen("player");
     const setDock = (next) => setLayout({ ...layout, dock: next });
@@ -905,7 +911,7 @@ export default function Console() {
     // The Bíblia's own dock (BibleEnv.jsx draws its modules), the same way.
     const bibleDock = useMemo(() => (layout.bibleDock ? normalizeDock({ ...layout.bibleDock, env: "biblia" }) : fromBibleArrangement(layout)),
         [layout.bibleDock, layout.order, layout.stacks, layout.bibleSelW, layout.bibleAirW]); // eslint-disable-line react-hooks/exhaustive-deps
-    const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h), [bibleDock, mainSize.w, mainSize.h]);
+    const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h, { folded: folded ? folded.split(",") : [], head: PANEL_HEAD }), [bibleDock, mainSize.w, mainSize.h, folded, PANEL_HEAD]);
     const setBibleDock = (next) => setLayout({ ...layout, bibleDock: next });
     // Editing moves the modules of the environment on screen.
     const envDock = env === "biblia" ? bibleDock : dock;
@@ -1080,8 +1086,7 @@ export default function Console() {
     );
     // What is on air, slide by slide, whatever the Slides column holds.
     const onAirPanel = (
-        <Panel title="No ar" count={onAirCount(c, layout.onairMin) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
-            collapsed={Boolean(layout.onairMin)} onToggle={() => setLayout({ ...layout, onairMin: !layout.onairMin })}>
+        <Panel title="No ar" count={onAirCount(c, Boolean(layout.folded?.onair)) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <OnAirPanel c={c} />
         </Panel>
     );
@@ -1149,7 +1154,7 @@ export default function Console() {
         lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, abas: tabsPanel, setlist: setlistPanel, camadas: camadasPanel, temas: temasPanel, onair: onAirPanel,
         player: <Panel title="Player" className="player-panel">{playerSlot}</Panel>,
     };
-    const renderModule = (id) => (modulePanels[id] ? React.cloneElement(modulePanels[id], { key: id }) : null);
+    const renderModule = (id, fold) => (modulePanels[id] ? React.cloneElement(modulePanels[id], { key: id, fold }) : null);
 
     // The service clock in the top bar, and how late the item on air runs.
     const playAirIdx = playable.findIndex((i) => i.id === airItemId);
@@ -1243,8 +1248,8 @@ export default function Console() {
             <div className="main" ref={mainRef}>
                 {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })}
-                    dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu }} />}
-                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
+                    dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold }} />}
+                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} />}
             </div>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
 
