@@ -343,3 +343,33 @@ test("fewer kept: the oldest go at the next backup", () => {
     assert.deepEqual(listBackups(dir).map((b) => b.name), ["keryx-2026-10-07.db", "keryx-2026-10-06.db", "keryx-2026-10-05.db"]);
     store.close();
 });
+
+// The sync id is the computer's (docs/desktop-architecture.md §8b): an export
+// imported elsewhere, or a backup restored there, must not bring it along.
+test("an imported or restored database keeps this computer's sync id, or gets a new one", async () => {
+    const source = tmp();
+    const store = openAt(source);
+    store.call("Song", "create", [{ title: "Da outra igreja" }]);
+    const sourceId = store.pcId;
+    const zipFile = path.join(tmp(), "export.zip");
+    await exportAll({ store, mediaDir: path.join(source, "media"), target: zipFile });
+    store.close();
+
+    const dest = tmp();
+    const before = openAt(dest);
+    const destId = before.pcId;
+    before.close();
+    await stageImport({ zipFile, dataDir: dest });
+    assert.equal(applyPendingImport(dest).pcId, "kept");
+    const after = openAt(dest);
+    assert.equal(after.pcId, destId);
+    assert.equal(titles(after), "Da outra igreja");
+    after.close();
+
+    const empty = tmp();
+    await stageImport({ zipFile, dataDir: empty });
+    assert.equal(applyPendingImport(empty).pcId, "new");
+    const fresh = openAt(empty);
+    assert.notEqual(fresh.pcId, sourceId);
+    fresh.close();
+});
