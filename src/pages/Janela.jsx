@@ -248,6 +248,11 @@ export default function Janela() {
     };
     useEffect(() => blurSelectsAfterPick(window, { skip: KEEPS_FOCUS }), []);
 
+    // On the desktop (Windows) the system draws its buttons over the page
+    // (main.cjs titleBarOverlay): the WinBar is then the title bar and its
+    // own × would be a second close button.
+    const systemFrame = typeof navigator !== "undefined" && Boolean(navigator.windowControlsOverlay?.visible);
+
     return (
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
@@ -259,7 +264,7 @@ export default function Janela() {
                         const active = i === stack.length - 1;
                         const page = winPage(entry, { active, escRef: winRef(entry.key), onClose: (all = false) => leaveTop(Boolean(all)) }, host);
                         return (
-                            <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: null, onDetach: null, detached: true }}>
+                            <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: null, onDetach: null, detached: true, systemFrame }}>
                                 <div className="win-page" hidden={!active}>{page}</div>
                             </WinCtx.Provider>
                         );
