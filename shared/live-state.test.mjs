@@ -804,3 +804,119 @@ test("a presentation (Rodada F3): a PDF's pages as picture slides, walked like a
     assert.equal(s.content.index, 0);
     assert.throws(() => applyOp(s, "content.show", { kind: "slides", slides: pages }, T0), LiveError, "unknown kinds are still refused");
 });
+
+// One sound at a time (owner 2026-10-16, Rodada F2): the console adds the
+// church's transition to the ops that start a sound.
+const FADE = { mode: "fade", ms: 500 };
+const CUT = { mode: "cut" };
+const MUSIC = { url: "keryx-media://ofertorio.mp3", title: "Ofertório" };
+const CLIP = { kind: "video", url: "keryx-media://clipe.mp4", title: "Clipe" };
+
+test("one sound at a time: a video over an audio stops the audio, fading it out", () => {
+    const s = run([["audio.show", MUSIC, T0], ["video.show", { ...CLIP, transition: FADE }, T0 + 10_000]]);
+    assert.equal(s.audio, null, "the music stops");
+    assert.equal(s.video.url, CLIP.url);
+    assert.equal(s.leaving.length, 1);
+    const [e] = s.leaving;
+    assert.deepEqual([e.layer, e.item.url, e.at, e.until], ["audio", MUSIC.url, T0 + 10_000, T0 + 10_500], "it rides in leaving until it is silent");
+    assert.equal(e.item.playback.paused, false, "still playing while it fades");
+    assert.ok(!("playlist" in e.item), "without its list");
+    // The other way round: an audio over a video on the projector takes the
+    // video off (into the history), and a cut leaves nothing behind.
+    const v = run([["content.show", song], ["media.show", CLIP, T0], ["audio.show", { ...MUSIC, transition: CUT }, T0 + 1000]]);
+    assert.equal(v.media, null);
+    assert.equal(mainLayer(v), "content", "the screen shows what was under the video");
+    assert.equal(v.history[0].layer, "media", "Voltar ao anterior can bring it back");
+    assert.deepEqual(v.leaving, []);
+    assert.equal(v.audio.url, MUSIC.url);
+    // A video on the projector over a clip on the video channel.
+    const both = run([["video.show", CLIP, T0], ["media.show", { kind: "youtube", url: "https://youtu.be/x", transition: CUT }, T0 + 1]]);
+    assert.equal(both.video, null);
+    assert.equal(both.media.kind, "youtube");
+});
+
+test("one sound at a time: a song's playback over a playing audio crossfades on the audio channel", () => {
+    const s = run([["audio.playlist", { items: [MUSIC, { url: "keryx-media://b.mp3" }] }, T0], ["content.show", song, T0 + 1], ["audio.show", { kind: "audio", url: "keryx-media://playback.mp3", title: "Grande é o Senhor", transition: FADE }, T0 + 2000]]);
+    assert.equal(s.audio.url, "keryx-media://playback.mp3");
+    assert.deepEqual(s.leaving.map((e) => [e.layer, e.item.url, e.until]), [["audio", MUSIC.url, T0 + 2500]]);
+    assert.ok(s.content, "the song stays on screen");
+    const cut = run([["audio.show", MUSIC, T0], ["audio.show", { url: "keryx-media://playback.mp3", transition: CUT }, T0 + 1]]);
+    assert.deepEqual(cut.leaving, [], "a cut replaces it, as before");
+    const list = run([["video.show", CLIP, T0], ["audio.playlist", { items: [MUSIC], transition: FADE }, T0 + 1]]);
+    assert.equal(list.video, null, "a list of audios starts with sound too");
+});
+
+test("one sound at a time: nothing is hushed by silence, by Tocar junto or by the player's swap", () => {
+    const playing = run([["audio.show", MUSIC, T0]]);
+    // Tocar junto (mix), or a sender that says nothing: both play, as before.
+    assert.ok(applyOp(playing, "video.show", { ...CLIP, transition: { mode: "mix", ms: 500 } }, T0 + 1).audio);
+    assert.ok(applyOp(playing, "video.show", CLIP, T0 + 1).audio);
+    // A muted video, a video at volume 0, a picture: nothing to hear.
+    const muted = applyOp(playing, "video.show", { ...CLIP, muted: true, transition: FADE }, T0 + 1);
+    assert.ok(muted.audio);
+    assert.equal(muted.video.playback.volume, 0);
+    assert.ok(applyOp(playing, "media.show", { ...CLIP, volume: 0, transition: FADE }, T0 + 1).audio);
+    assert.ok(applyOp(playing, "media.show", { kind: "image", url: "i.jpg", transition: FADE }, T0 + 1).audio, "pictures over music");
+    assert.ok(applyOp(playing, "media.playlist", { items: [{ kind: "image", url: "i.jpg" }, CLIP], transition: FADE }, T0 + 1).audio, "a list counts by the item it starts with");
+    // A layer at volume 0 is not heard, so it stays.
+    const quiet = applyOp(run([["video.show", CLIP, T0]]), "transport", { layer: "video", action: "volume", volume: 0 }, T0);
+    assert.ok(applyOp(quiet, "audio.show", { ...MUSIC, transition: FADE }, T0 + 1).video);
+    // The lyrics (content.show) keep the music under them.
+    const lyrics = applyOp(playing, "content.show", song, T0 + 1);
+    assert.ok(lyrics.audio);
+    assert.deepEqual(lyrics.leaving, []);
+    // A video on the Fundo (an animated papel de parede) is muted: it never hushes.
+    const fundo = applyOp(playing, "background.set", { kind: "video", value: "keryx-media://fundo.mp4" }, T0 + 1);
+    assert.ok(fundo.audio);
+    assert.ok(applyOp(fundo, "audio.show", { ...MUSIC, transition: CUT }, T0 + 2).background, "and is never hushed");
+    // Tirar o vídeo · o som continua: the swap never hushes anything.
+    const s = run([["video.show", CLIP, T0], ["media.show", { kind: "video", url: "keryx-media://v.mp4" }, T0]]);
+    const swapped = applyOp(s, "media.toAudio", {}, T0 + 1000);
+    assert.ok(swapped.video, "the clip on the video channel plays on");
+    assert.deepEqual(swapped.leaving, []);
+    const back = applyOp(swapped, "audio.toMedia", {}, T0 + 2000);
+    assert.ok(back.video);
+    assert.deepEqual(back.leaving, []);
+});
+
+test("one sound at a time: Esc never hushes the audio channel; leaving entries go once they are over", () => {
+    const s = run([["audio.show", MUSIC, T0], ["video.show", { ...CLIP, transition: FADE }, T0 + 100], ["media.show", { kind: "image", url: "i.jpg" }, T0 + 200]]);
+    assert.equal(s.leaving.length, 1, "still fading");
+    const later = applyOp(s, "content.show", song, T0 + 700);
+    assert.deepEqual(later.leaving, [], "the next change drops what finished leaving");
+    const music = run([["content.show", song], ["audio.show", MUSIC, T0]]);
+    const end = applyOp(music, "clear", { fade: 300 }, T0 + 1000);
+    assert.ok(end.audio, "Esc leaves the music playing");
+    assert.deepEqual(end.leaving, []);
+    assert.throws(() => applyOp(music, "video.show", { ...CLIP, transition: { mode: "loud" } }, T0), LiveError);
+    assert.throws(() => applyOp(music, "video.show", { ...CLIP, transition: "fade" }, T0), LiveError);
+    assert.equal(applyOp(music, "video.show", { ...CLIP, transition: { mode: "fade", ms: 99_999 } }, T0).leaving[0].until, T0 + 5000, "the fade is clamped");
+    // Nothing of it survives a restart.
+    assert.deepEqual(restoreState(JSON.parse(JSON.stringify(s)), T0 + 9999).leaving, []);
+});
+
+test("the exit fade: Esc, Limpar, Tela preta and Logo carry how long what leaves fades out", () => {
+    const s = run([["content.show", song], ["tool.show", { mode: "clock" }, T0]]);
+    const esc = applyOp(s, "clear", { fade: 300 }, T0 + 50);
+    assert.deepEqual(esc.fade, { ms: 300, at: T0 + 50 }, "at = the change's updatedAt");
+    assert.equal(esc.updatedAt, esc.fade.at);
+    assert.equal(applyOp(s, "clear", {}, T0 + 50).fade, null, "no fade: a cut");
+    assert.equal(applyOp(s, "clear", { fade: 0 }, T0 + 50).fade, null);
+    assert.equal(applyOp(s, "clear", { fade: 9999 }, T0).fade.ms, 3000, "clamped");
+    assert.throws(() => applyOp(s, "clear", { fade: "suave" }, T0), LiveError);
+    // Limpar is three ops; each says how its layer goes.
+    const tool = applyOp(s, "tool.clear", { fade: 600 }, T0 + 1);
+    assert.deepEqual(tool.fade, { ms: 600, at: T0 + 1 });
+    assert.deepEqual(applyOp(tool, "content.clear", { fade: 600 }, T0 + 2).fade, { ms: 600, at: T0 + 2 });
+    const notice = run([["communication.show", { item: { type: "announcement", text: "Bem-vindos" } }]]);
+    assert.deepEqual(applyOp(notice, "communication.clear", { fade: 1000 }, T0 + 3).fade, { ms: 1000, at: T0 + 3 });
+    assert.equal(applyOp(tool, "tool.clear", { fade: 600 }, T0 + 4), tool, "nothing to take off: no change");
+    // Tela preta and Logo, in and out.
+    const black = applyOp(s, "screen.set", { mode: "black", fade: 300 }, T0 + 5);
+    assert.deepEqual([black.screen, black.fade], ["black", { ms: 300, at: T0 + 5 }]);
+    assert.equal(applyOp(black, "screen.set", { mode: "show" }, T0 + 6).fade, null);
+    // Locked, Esc and Tela preta still work, with their fade.
+    const locked = applyOp(s, "screens.lock", { locked: true }, T0);
+    assert.equal(applyOp(locked, "clear", { fade: 300 }, T0 + 7).fade.ms, 300);
+    assert.equal(restoreState(JSON.parse(JSON.stringify(esc)), T0 + 9999).fade, null);
+});

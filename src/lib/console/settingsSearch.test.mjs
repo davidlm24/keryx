@@ -51,6 +51,8 @@ test("search: accents and case do not matter, every word must match", () => {
     const labels = (q) => searchSettings(q).map((h) => h.label);
     assert.ok(labels("transicao").includes("Todos os temas"), "the transition is the theme's alone (audit 2026-10-14)");
     assert.ok(!labels("transicao").some((l) => l === "Transição entre slides"), "the old Aparência row is gone");
+    for (const row of ["Entre áudios e vídeos", "Ao tirar da tela", "Tela preta e Logo"]) assert.ok(labels("transição").includes(row), `the Transições rows (Rodada F2): ${row}`);
+    assert.ok(labels("tocar junto").includes("Entre áudios e vídeos"));
     assert.ok(labels("FUNDO de espera").includes("Qualquer outro culto"), "the old name still finds the wallpaper's fallback row");
     assert.ok(labels("papel de parede").some((l) => l === "Qualquer outro culto"), "the new word finds it too");
     assert.deepEqual(labels("pin"), ["PIN"]);

@@ -8,22 +8,56 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 
 // `bare`: no card (kx-panel-bare), the module sits on the console's ground
 // (the Programa, the Prévia); with nothing for it, the header is left out.
-export function Panel({ title, count, lead, caption, actions, collapsed, onToggle, bare = false, noHead = false, className = "", style, children, bodyStyle }) {
+// `fold`: the dock's (Dock.jsx; dock.js fitDock, owner 2026-10-16, Rodada
+// F4) — the chevron right of the header's +; folded down a column the panel
+// is its header, across a row a strip with its name standing (FoldStrip).
+// Folded, the body stays mounted, hidden, so it comes back as it was.
+export function Panel({ title, count, lead, caption, actions, fold, bare = false, noHead = false, className = "", style, children, bodyStyle }) {
     // `noHead`: the card without its header line — a window page whose
     // title and tools ride the win-bar (Rodada C).
-    const head = !noHead && (!bare || title || caption || actions || lead || onToggle);
+    const head = !noHead && (!bare || title || caption || actions || lead || fold);
+    const strip = foldStrip(fold);
     return (
-        <div className={`kx-panel ${bare ? "kx-panel-bare" : ""} ${collapsed ? "is-collapsed" : ""} ${className}`} style={style}>
-            {head && <div className="kx-panel-h">
+        <div className={`kx-panel ${bare ? "kx-panel-bare" : ""} ${fold?.on ? "is-collapsed" : ""} ${strip ? "kx-strip" : ""} ${className}`} style={style}>
+            {strip ? <FoldStrip fold={fold} /> : head && <div className="kx-panel-h">
                 {lead}
                 {caption ? <span className="kx-panel-cap">{caption}</span> : <span className="kx-section">{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>}
                 {actions}
-                {onToggle && (
-                    <IconBtn name={collapsed ? "chevron-right" : "chevron-down"} title={collapsed ? "Expandir" : "Recolher"} onClick={onToggle} small />
-                )}
+                <FoldBtn fold={fold} />
             </div>}
-            <div className="kx-panel-b" style={bodyStyle}>{children}</div>
+            <div className="kx-panel-b" style={fold?.on ? FOLDED_BODY : bodyStyle}>{children}</div>
         </div>
+    );
+}
+// A folded body: hidden over any display a panel gives its body inline.
+const FOLDED_BODY = { display: "none" };
+
+// Folded across a row: the panel is a strip (Panel, TabsPanel).
+export const foldStrip = (fold) => Boolean(fold?.on && fold.dir === "row");
+
+// A panel's fold chevron (Rodada F4): up while open, turned while folded.
+// The last open panel of a split keeps it, inert, with the reason (a
+// disabled button would hide its tooltip).
+const FOLD_LAST = { col: "Um painel da coluna fica sempre aberto", row: "Um painel da linha fica sempre aberto" };
+export function FoldBtn({ fold }) {
+    if (!fold) return null;
+    const stuck = !fold.on && !fold.can;
+    return (
+        <IconBtn name="chevron-up" small className={`kx-fold ${fold.on ? "is-folded" : ""} ${stuck ? "is-stuck" : ""}`}
+            title={stuck ? FOLD_LAST[fold.dir] || FOLD_LAST.col : fold.on ? "Abrir" : "Dobrar"} aria-expanded={!fold.on} aria-disabled={stuck || undefined}
+            onClick={stuck ? undefined : fold.onFold} />
+    );
+}
+
+// A panel folded across a row (.kx-strip, dock.js FOLD_STRIP px wide): in
+// its header's place, the chevron over the module's name standing up; a
+// click anywhere on it opens the panel.
+export function FoldStrip({ fold }) {
+    return (
+        <button type="button" className="kx-strip-b kx-t" onClick={fold.onFold} title="Abrir" aria-label={`Abrir ${fold.name || "o painel"}`} aria-expanded="false">
+            <span className="kx-fold is-folded"><Icon name="chevron-up" /></span>
+            <span className="kx-strip-name kx-section">{fold.name}</span>
+        </button>
     );
 }
 

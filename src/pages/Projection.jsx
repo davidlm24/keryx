@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import TabletVideoReceiver from "@/components/projection/TabletVideoReceiver";
 import LiveVideo from "@/components/projection/LiveVideo";
 import OutputScreen from "@/components/screen/OutputScreen";
@@ -8,6 +8,9 @@ import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { mainLayer } from "@shared/live-state.mjs";
 import { useNoticeAdvance } from "@/hooks/useNoticeAdvance";
+import { usePrefs } from "@/hooks/useUser";
+import { withTransitions } from "@/lib/console/transitions";
+import { leavingAudio } from "@/lib/exitFade";
 
 // The main projector: the live state (shared/live-state.mjs) rendered full
 // screen by ScreenRenderer, the same component the console's monitors use,
@@ -55,21 +58,23 @@ export default function Projection() {
 
     // If the operator clicked the projector window, the screen keys still
     // work there, as on the console: Esc takes everything down, B and L
-    // toggle Tela preta and the logo.
+    // toggle Tela preta and the logo — with the church's Transições.
     const screenMode = live?.screen || "show";
+    const prefs = usePrefs();
     useEffect(() => {
         if (!keryx.isDesktop) return undefined;
         const fail = (err) => console.error("[keryx] screen:", err);
         const onKey = (e) => {
             if (e.ctrlKey || e.metaKey || e.altKey) return;
             const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-            if (k === "Escape") { e.preventDefault(); projection.clear().catch(fail); }
-            else if (k === "b") projection.setScreen(screenMode === "black" ? "show" : "black").catch(fail);
-            else if (k === "l") projection.setScreen(screenMode === "logo" ? "show" : "logo").catch(fail);
+            const screen = (mode) => projection.setScreen(mode, withTransitions("screen.set", {}, prefs)).catch(fail);
+            if (k === "Escape") { e.preventDefault(); projection.clear(withTransitions("clear", {}, prefs)).catch(fail); }
+            else if (k === "b") screen(screenMode === "black" ? "show" : "black");
+            else if (k === "l") screen(screenMode === "logo" ? "show" : "logo");
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [screenMode]);
+    }, [screenMode, prefs]);
 
     // Avisos in a sequence ("Tocar todos"): at the end of each piece the
     // projector moves the live state on (communication.advance ignores the
@@ -80,15 +85,31 @@ export default function Projection() {
     // network showing this page stays silent), in whatever the screen shows.
     const audio = live?.audio || null;
     const audioIndex = audio?.playlistIndex ?? 0;
-    const audioPlayer = audio && keryx.isDesktop && !keryx.isNetworkScreen ? (
+    const playsAudio = keryx.isDesktop && !keryx.isNetworkScreen;
+    const audioPlayer = audio && playsAudio ? (
         <div className="hidden" aria-hidden="true">
             <LiveVideo item={audio} meter="audio" onEnded={() => { if (audio.playlist) projection.advanceAudio(audioIndex).catch(() => {}); }} />
         </div>
     ) : null;
+    // One sound at a time (Transições): what a new sound stopped on the audio
+    // channel with a fade plays on here until it is silent, then goes.
+    const fading = playsAudio ? leavingAudio(live, keryx.live.now()) : [];
+    const [, setTick] = useState(0);
+    const lastUntil = Math.max(0, ...fading.map((e) => e.until));
+    useEffect(() => {
+        if (!lastUntil) return undefined;
+        const id = setTimeout(() => setTick((t) => t + 1), Math.max(0, lastUntil - keryx.live.now()) + 50);
+        return () => clearTimeout(id);
+    }, [lastUntil]);
 
     return (
         <>
             {audioPlayer}
+            {fading.map((e) => (
+                <div key={`${e.at}:${e.item.url}`} className="hidden" aria-hidden="true">
+                    <LiveVideo item={e.item} fadeOut={{ at: e.at, until: e.until }} />
+                </div>
+            ))}
             <TabletVideoReceiver />
             <OutputScreen page="/Projection" live={live} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />
         </>

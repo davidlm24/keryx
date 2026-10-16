@@ -6,7 +6,7 @@
 import { DEFAULT_ORDER, DEFAULT_STACKS, normalizeArrangement } from "./arrange.js";
 import { DEFAULT_TILES, normalizeTiles } from "./multiview.js";
 import { DEFAULT_TABS, normalizeTabs } from "./panelTabs.js";
-import { normalizeDock , onairSpanOf } from "./dock.js";
+import { normalizeDock, onairSpanOf, canFoldModule, envModules } from "./dock.js";
 import { normalizePresets } from "./dockPresets.js";
 
 // Camadas is a section above the Setlist in the wide tier's right column
@@ -77,8 +77,12 @@ export const DEFAULT_LAYOUT = {
     // church's big monitor never squeezes a notebook.
     dockTier: null,
     tierDocks: {},
-    // The No ar strip minimized to its header (its chevron, as Holyrics').
-    onairMin: false,
+    // The panels folded with their header's chevron (owner 2026-10-16,
+    // Rodada F4): { [moduleId]: true }, both environments (their ids differ).
+    // Down a column a folded panel is its header, across a row a strip
+    // (dock.js fitDock's `folded`). The No ar strip's old `onairMin` is its
+    // entry here.
+    folded: {},
     // Its band (dock.js ONAIR_SPANS; Editar disposição › No ar): under the
     // columns beside the Setlist's, or the whole window.
     onairSpan: "columns",
@@ -103,17 +107,37 @@ export const DEFAULT_LAYOUT = {
     mvTiles: DEFAULT_TILES,
 };
 
+// layout.folded made safe: only modules that fold, only `true`; a save from
+// before carries the No ar strip's `onairMin` instead.
+export function normalizeFolded(saved, onairMin = false) {
+    const out = {};
+    if (saved && typeof saved === "object" && !Array.isArray(saved)) {
+        for (const [id, on] of Object.entries(saved)) if (on === true && canFoldModule(id)) out[id] = true;
+    }
+    if (onairMin === true) out.onair = true;
+    return out;
+}
+// A panel's chevron: folded ↔ open.
+export function toggleFolded(folded, id) {
+    if (!canFoldModule(id)) return folded || {};
+    const { [id]: was, ...rest } = folded || {};
+    return was ? rest : { ...rest, [id]: true };
+}
+export const foldedList = (folded) => Object.keys(folded || {}).filter((id) => folded[id] === true);
+
 // One environment's arrangement back to the console's own (Padrão, the edit
-// banner's Restaurar posições), the other's left as it is.
+// banner's Restaurar posições), the other's left as it is; its panels open.
 const ENV_KEYS = {
     culto: { keys: ["dock", "dockPreset", "libW", "slidesW", "rightW", "camadasH", "prevPct"], order: "culto", stacks: ["side", "source"], also: { trayFromChurch: false } },
     biblia: { keys: ["bibleDock", "bibleDockPreset", "bibleSelW", "bibleAirW"], order: "biblia", stacks: ["picker"] },
 };
 export function restoreEnv(layout, env) {
     const k = ENV_KEYS[env] || ENV_KEYS.culto;
+    const mine = envModules(env === "biblia" ? "biblia" : "culto");
     return {
         ...layout,
         ...Object.fromEntries(k.keys.map((key) => [key, DEFAULT_LAYOUT[key]])),
+        folded: Object.fromEntries(Object.entries(layout.folded || {}).filter(([id]) => !mine.includes(id))),
         order: { ...layout.order, [k.order]: DEFAULT_LAYOUT.order[k.order] },
         stacks: { ...layout.stacks, ...Object.fromEntries(k.stacks.map((s) => [s, DEFAULT_LAYOUT.stacks[s]])) },
         ...(k.also || {}),
@@ -157,8 +181,8 @@ export function loadLayout(profile) {
     try {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
-        const saved = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), onairMin: saved.onairMin === true, onairSpan: onairSpanOf(saved.onairSpan), bibleGrid: ["small", "large"].includes(saved.bibleGrid) ? saved.bibleGrid : "medium", temasThumb: saved.temasThumb === "large" ? "large" : "small", temasNames: saved.temasNames !== false, dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
+        const { onairMin, ...saved } = JSON.parse(raw);
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), folded: normalizeFolded(saved.folded, onairMin), onairSpan: onairSpanOf(saved.onairSpan), bibleGrid: ["small", "large"].includes(saved.bibleGrid) ? saved.bibleGrid : "medium", temasThumb: saved.temasThumb === "large" ? "large" : "small", temasNames: saved.temasNames !== false, dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }

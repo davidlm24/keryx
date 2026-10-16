@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, densityOf, shownDensity, panelHead, loadLayout, restoreEnv, switchTier } from "./layout.js";
+import { tierFor, MODULES, TIER_WIDE, TIER_MEDIUM, DENSITIES, DEFAULT_LAYOUT, densityOf, shownDensity, panelHead, loadLayout, restoreEnv, switchTier, normalizeFolded, toggleFolded, foldedList } from "./layout.js";
 import { DEFAULT_ORDER, DEFAULT_STACKS } from "./arrange.js";
 import { DEFAULT_TILES } from "./multiview.js";
 import { DEFAULT_TABS } from "./panelTabs.js";
@@ -145,4 +145,28 @@ test("one culto arrangement per width tier: the big monitor's never squeezes the
         assert.deepEqual(Object.keys(l.tierDocks).sort(), ["medium", "wide"], "the bogus tier is dropped");
         assert.equal(l.tierDocks.wide.dockPreset, "p1");
     });
+});
+
+test("folded panels (Rodada F4): per computer, cleaned, the No ar strip's old minimize migrated", () => {
+    assert.deepEqual(DEFAULT_LAYOUT.folded, {});
+    // An old save minimized the No ar strip: it is the strip's fold now, and onairMin is gone.
+    const old = withStore({ libW: 300, onairMin: true }, () => loadLayout("x"));
+    assert.deepEqual(old.folded, { onair: true });
+    assert.equal("onairMin" in old, false);
+    assert.deepEqual(withStore({ onairMin: false }, () => loadLayout("x")).folded, {});
+    // Only modules that fold, only true: the Programa, the Prévia and the player never; unknown ids go.
+    const mine = withStore({ folded: { lib: true, reading: true, programa: true, previa: true, player: true, zz: true, slides: "yes", setlist: false } }, () => loadLayout("x"));
+    assert.deepEqual(mine.folded, { lib: true, reading: true });
+    assert.deepEqual(normalizeFolded(["lib"]), {});
+    assert.deepEqual(normalizeFolded(null, true), { onair: true });
+    // The chevron: folded and back; a module that never folds stays as it is.
+    const f = toggleFolded({}, "camadas");
+    assert.deepEqual(f, { camadas: true });
+    assert.deepEqual(toggleFolded(f, "camadas"), {});
+    assert.deepEqual(toggleFolded(f, "programa"), f);
+    assert.deepEqual(foldedList({ lib: true, books: true, x: false }), ["lib", "books"]);
+    // Restaurar posições opens the panels of the environment on screen, not the other's.
+    const both = { ...DEFAULT_LAYOUT, folded: { lib: true, setlist: true, books: true, reading: true } };
+    assert.deepEqual(restoreEnv(both, "culto").folded, { books: true, reading: true });
+    assert.deepEqual(restoreEnv(both, "biblia").folded, { lib: true, setlist: true });
 });

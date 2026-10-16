@@ -47,6 +47,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and the states never run edge to edge. One rule in `console.css`; don't
   override it per list. Edge to edge only where the owner asks (the Slides
   column and No ar, to gain room). docs/design-system.md has it too.
+- **One padding rule for panels** (owner 2026-10-16, Rodada F4): a panel's
+  header text sits 12 px (`--space-3`) from its edge; anything with a box
+  of its own — list cards, verse cards, the cells of Livros/Capítulos/
+  Versículos, the Temas tiles, the search field, tabs, the No ar agora
+  monitor — sits 4 px (`--space-1`) in from the column, with its text at
+  12 px; listheads and sub-titles (Recentes, "Selecionado", a Temas
+  heading inside Camadas) at 12 px; every panel header is 32 px, 28 in
+  Compacta (`panelHead`), one line — a header never wraps into a taller
+  block (the Bíblia's Texto drops its hint, then Selecionar todos/Limpar,
+  container queries). Don't give one panel its own inset.
+- **Every panel folds** (owner 2026-10-16, Rodada F4): a chevron right of
+  the header's + (`FoldBtn` in kx.jsx; "Dobrar"/"Abrir"), on every module
+  but the Programa, the Prévia and the player (`noFold` in dock.js
+  `MODULES`). The state is `layout.folded` (`{ [moduleId]: true }`, per
+  computer, both environments; `normalizeFolded` migrates the old
+  `onairMin`). `fitDock`'s `folded` (dock.js, tested) locks a folded module
+  alone in a split: down a column to its header (`head`, the density's),
+  across a row to a 28 px strip (`FOLD_STRIP`; `FoldStrip`, its name
+  standing, a click opens it); the fold wins over Camadas'/Temas' measured
+  heights. A split keeps one open child: the last open one's chevron is
+  inert ("Um painel da coluna fica sempre aberto"), and when only measured
+  heights stay open the last of them takes the rest. As a tab beside
+  others, or while editing the arrangement, nothing folds. The body stays
+  mounted, hidden. Don't confuse it with the dock frames' `collapsed`
+  (joined as tabs) or No ar's `fold`/`gone` (no lyrics on air).
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).
@@ -72,7 +97,33 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/lib/projection.js` (its stages, `src/lib/console/stage.js`); outputs
   read it with `useLiveState()`. A new kind of content is a new op in
   `shared/live-state.mjs` with a test there, not a new sync table or
-  postMessage type (both are gone). Every output renders it; outputs can be
+  postMessage type (both are gone). **One sound at a time, and the fades**
+  (owner 2026-10-16, Rodada F2; Configurações › Telas e saídas ›
+  Transições: User `media_transition`/`_ms`, `clear_transition`/`_ms`,
+  `screen_transition`): an op that starts an item with sound (`video.show`,
+  `audio.show`, `audio.playlist`, `media.show`, `media.playlist`; a video,
+  audio or YouTube not at volume 0, `heard`) stops the other sound layers
+  (`hush`), cut or fading out — the stopped item rides in `live.leaving`
+  (`{ layer, item, at, until }`, dropped by the next change) — unless its
+  `transition` says `mix` (Tocar junto; no transition = the same, for
+  senders that say nothing). The console adds `transition` and the exit
+  `fade` in `liveOp` (`withTransitions`, `src/lib/console/transitions.js`,
+  tested; the projector window's own keys too); the live state never reads
+  prefs. Never hush in `media.toAudio`/`audio.toMedia`, `content.show` or
+  `clear` (the audio channel survives Esc); a list counts by the item it
+  starts with, advances never hush, the Fundo's video is muted. Esc
+  (`clear`), Limpar (`content.clear`/`tool.clear`/`communication.clear`)
+  and Tela preta/Logo (`screen.set`, while the switch is on) take a `fade`
+  (ms) kept as `live.fade = { ms, at }` (`at` = that change's updatedAt),
+  so every output, network screens included, draws the same fade: the
+  renderer keeps the screen drawn before as a ghost going transparent over
+  the one now (`useExitGhost`, `screenExitMs`/`videoExitMs` in
+  `src/lib/exitFade.js`, tested; `.ks-ghost`), its video still playing as
+  its volume comes down (`LiveVideo fadeOut`, the element handed over by
+  the pool); the projector plays `leaving` audio out the same way. Outputs
+  ignore reduced motion (the audience sees them), the Programa monitor
+  honours it, still previews cut. The slide-to-slide transition stays the
+  theme's. Every output renders the live state; outputs can be
   opened by the main process (`keryx:displays:open`, "Abrir ao iniciar").
   Avisos (CommunicationVideo) are the `communication` layer, drawn in full
   by `ScreenRenderer` (look, background, logo, chime; arithmetic in
@@ -450,13 +501,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   owner 2026-10-13, which replaced the two-band centre of #136/#138):
   Biblioteca and Slides are whole columns; the **centre** (`live`) is the
   Programa on top (CenterPanel: the monitor or the Multiview, and the
-  player **always visible**, dimmed while idle, **in two rows** — Rodada E1,
-  owner 2026-10-16, "o necessário, de forma responsiva": what plays, the
-  transport, the time and the progress bar with the row's room; under them
-  the layer it controls, the letra automática, where the sound goes, the
-  volume and the meters; 64 px, `.pslot` and dock.js `PLAYER_SLOT` 72;
-  narrowing drops the kind, −10/+10, the volume number, then the position
-  and the labels, never the bar, the remaining time or Tocar) and below it one row that
+  player **always visible**, dimmed while idle — only its icon then, **no
+  placeholder words** — **in two rows** (Rodada F1, owner 2026-10-16): the
+  first is what plays (the file icon, the title — floor `min(110px, 34cqw)`,
+  cap 46cqw — and "n/m" in a list; **no kind word**, the icon says it), the
+  elapsed time, the progress bar and the remaining time; the second is the
+  controls: ⏮ −10 ⏯ +10 ⏭, the eye, Parar, the layer switch (2+ layers), the
+  letra automática, where the sound goes, then the volume and the meters;
+  64 px, `.pslot` and dock.js `PLAYER_SLOT` 72; narrowing folds row 2 (the
+  volume %, −10/+10, the where/chip labels down to icons, a narrower volume,
+  then the meters and where; Tocar, the eye, Parar and the mute always
+  stay). **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
+  capture, a 16 px hit area, a time tip over the thumb): while the hand
+  holds it only the console moves, and the screens get **one seek, on
+  release** (`seekAt` in player.js, tested), so the letra automática never
+  walks the slides in between; Tab gives it the focus and ←/→ step 5 s
+  (`SEEK_KEY_SECONDS`; keys.js leaves a focused `[role=slider]` its arrows,
+  tested) — a mouse press never focuses it; the live clock (no media) has
+  no seek) and below it one row that
   **ends at the centre's edge**: the Prévia (44 % of the centre at first),
   then the **tabs panel**
   (`TabsPanel.jsx`); under the Biblioteca, the Slides and the centre the **No ar**
@@ -478,15 +540,22 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   children so it rides the Multiview too): a dot in the state's colour
   (red on air, blue locked with the "Travado" word, amber when an output
   failed, grey "Nada no ar"), the title (in that colour, **no "Programa"
-  word**, owner 2026-10-14), the slide "2/6", "no ar há m:ss", "2 telas"
-  (`health.onAir.short`), then Voltar ao anterior (its popover opens above
-  the pill), the Camadas drawer (only while Camadas is in the tray),
-  Multiview and the screen actions Tela preta, Logo, Limpar, Encerrar
-  (owner's pick B). As the screen narrows (container queries on the screen,
-  `prog-screen`) it drops how long, then the count with Voltar and
-  Camadas, then the screen actions, folding them into a "…" that opens the
-  Programa's menu (the same as its right click, Camadas included); over
-  the Multiview it is always folded. dock.js gives the Programa `minH` 172:
+  word**, owner 2026-10-14) **only when the player does not name the item**
+  (owner's pick A, Rodada F1, `airInPlayer` in caption.js, tested: a video
+  or audio playing in the player — the video channel, the projector's
+  media, a sound with nothing on the screens — has no title in the pill;
+  lyrics, Bíblia, text, a picture, a presentation, a tool, an aviso, Tela
+  preta and Logo keep it), the slide "2/6", "2 telas"
+  (`health.onAir.short`) — **no "no ar há"** (Rodada F1) — then Voltar ao
+  anterior (its popover opens above the pill), the Camadas drawer (only
+  while Camadas is in the tray), Multiview and the screen actions Tela
+  preta, Logo, Limpar, Encerrar (owner's pick B). As the screen narrows
+  (container queries on the screen, `prog-screen`) it **folds once**: at
+  560 px only "2 telas" goes; at 480 every `.pp-full` button (Voltar,
+  Camadas, the screen actions) goes into a "…" that opens the Programa's
+  menu (the same as its right click, Camadas included) — the "…" never
+  beside the buttons it holds; over the Multiview it is always folded.
+  dock.js gives the Programa `minH` 172:
   the header it lost pays for the player's second row;
   the Prévia is its screen, its caption a badge inside the top-left corner
   (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
@@ -562,8 +631,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tiers, or the tray), while lyrics are on air and another item is in the
   Prévia, the Slides column has two tabs, No ar · Prévia (`airTabs` in
   SlidesPanel.jsx): the tab only changes what the column shows, the keys
-  do as always. The strip's header chevron minimizes it to its header
-  (`layout.onairMin`, per computer; its count adds the slide's part).
+  do as always. The strip's header chevron folds it to its header, like
+  every panel (`layout.folded.onair`; its count adds the slide's part).
   **Densidade Automática** is the default (`shownDensity`, layout.js):
   Compacta when the console's grid is under `AUTO_COMPACT_H` (820 px; a
   notebook), with 28 px panel headers (`panelHead`, which the locked
@@ -598,7 +667,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/components/screen/ScreenRenderer.jsx` — one component, sized in
   container units — so a preview is the output; the Programa monitor plays
   videos muted (`motion`). The player's eye ("Tirar o vídeo · o som
-  continua", as in Holyrics) moves a video off the projector into the
+  continua", as in Holyrics; while the video plays as sound only it is
+  pressed and red, `is-sound`, Rodada F1) moves a video off the projector into the
   audio channel at the same second (`media.toAudio`; "Mostrar o vídeo" is
   `audio.toMedia`; `videoSwap` in `src/lib/console/player.js`, no
   YouTube) in the same `<video>`, without a gap: `LiveVideo` takes its

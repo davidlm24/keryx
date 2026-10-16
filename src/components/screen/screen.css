@@ -143,6 +143,16 @@
 .ks-vidcover-v { width: 100%; height: 100%; }
 .ks-vidcover-v video, .ks-vidcover-v > div { width: 100%; height: 100%; object-fit: contain; }
 
+/* Transições (Rodada F2): the screen before a change, on top of the one now,
+   going transparent over the live state's duration (inline). Above the look
+   layers, under the video channel's cover and the Aviso rápido. Not under the
+   reduced-motion rule: the audience sees it (the console decides for its own
+   monitors). .ks-fade-out is the same fade for a clip over a page. */
+.ks-ghost { position: absolute; inset: 0; z-index: 70; pointer-events: none; animation: ks-out linear forwards; }
+.ks-ghost > * { pointer-events: none; }
+.ks-fade-out { animation: ks-out linear forwards; pointer-events: none; }
+@keyframes ks-out { to { opacity: 0; } }
+
 /* One box per look layer, stacked by live.layerOrder (inline z-index). */
 .ks-z { position: absolute; inset: 0; pointer-events: none; }
 .ks-z > * { pointer-events: auto; }

@@ -12,7 +12,7 @@ const TEXT = "input, textarea, select, [contenteditable='true'], [contenteditabl
 const CONTROL = "button, a[href], [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='option'], [role='slider'], summary, [tabindex]:not([data-live-keys])";
 // Areas whose focus means "aimed at what goes on air": Enter sends there.
 const LIVE_AREA = "[data-live-keys]";
-const ARROW_CONTROLS = "[role='radiogroup'], [role='tablist'], [role='menu'], [role='separator']";
+const ARROW_CONTROLS = "[role='radiogroup'], [role='tablist'], [role='menu'], [role='separator'], [role='slider']";
 
 const isElement = (t) => Boolean(t && typeof t.closest === "function" && t.tagName);
 
@@ -49,7 +49,8 @@ export function liveAction(e) {
     }
     if (mod || (e.altKey && !altGr)) return null;
     // Arrows belong to the control when it uses them itself: radio groups,
-    // tab lists, menus, and a splitter focused with Tab (it resizes).
+    // tab lists, menus, a splitter focused with Tab (it resizes) and the
+    // player's progress bar focused with Tab (5 s a press, Rodada F1).
     const ownsArrows = kind === "control" && e.target.closest(ARROW_CONTROLS);
     if (ARROWS[e.key]) {
         const vertical = VERTICAL.has(e.key);

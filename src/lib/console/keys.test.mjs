@@ -90,6 +90,19 @@ test("a splitter focused with Tab keeps the arrows: nothing moves on air", () =>
     assert.equal(key("Escape", splitter), "end");
 });
 
+test("the player's progress bar focused with Tab keeps the arrows: the slide on air stays (Rodada F1)", () => {
+    // <span class="pl-seek" role="slider" tabindex="0">
+    const seek = el("SPAN", ["[tabindex]:not([data-live-keys])", "[role='slider']"]);
+    assert.equal(focusKind(seek), "control");
+    for (const k of ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"]) assert.equal(key(k, seek), null, k);
+    assert.equal(key(" ", seek), null, "Space is the control's");
+    assert.equal(key("Enter", seek), null, "a focused control never sends");
+    assert.equal(key("b", seek), "black", "the screen keys still work");
+    assert.equal(key("Escape", seek), "end");
+    // A child of the bar (the thumb, a tick) is the bar.
+    assert.equal(key("ArrowRight", el("B", [], ["[tabindex]:not([data-live-keys])", "[role='slider']"])), null);
+});
+
 test("AltGr (Ctrl+Alt with a character) is typing, not a shortcut", () => {
     assert.equal(key("/", nothing, { ctrlKey: true, altKey: true }), "search", "ABNT2: AltGr+Q gives /");
     assert.equal(key("?", nothing, { ctrlKey: true, altKey: true }), "help");

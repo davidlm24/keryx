@@ -196,10 +196,12 @@ export function DockPresetsBar({ preset, changed, onSave, onSaveAs, onDelete, pr
     );
 }
 
-// The console's modules where the dock puts them. `render(id)`: the module's
-// panel; `playerDocked`: the player rides the Programa (a chip of its own
-// while editing).
-export default function DockView({ frame, dock, onDock, render, editing, dnd, onChipMenu, playerDocked }) {
+// The console's modules where the dock puts them. `render(id, fold)`: the
+// module's panel, with its fold chevron (`fold`: the frame's, with the
+// module's name and `onFold`, null while editing; Panel); `onFold(id)`: a
+// chevron or strip clicked (layout.folded, Rodada F4); `playerDocked`: the
+// player rides the Programa (a chip of its own while editing).
+export default function DockView({ frame, dock, onDock, render, editing, dnd, onChipMenu, playerDocked, onFold }) {
     // The tab in front of a group made of a split that does not fit (it is
     // not in the dock: a bigger screen splits it again).
     const [shown, setShown] = useState({});
@@ -251,11 +253,12 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
                 </div>
             );
         }
+        const fold = !editing && f.fold && onFold ? { ...f.fold, name: nameOf(active), onFold: () => onFold(active) } : null;
         return (
             <div className={`dock-group ${f.collapsed ? "is-tabs" : ""}`} data-dock-group={key(f.collapsed ? f.target : f.path)} data-dock-collapsed={f.collapsed ? "1" : undefined}
-                data-dock-mods={f.tabs.join(" ")} {...(live ? { "data-live-keys": "", tabIndex: -1 } : {})}>
+                data-dock-mods={f.tabs.join(" ")} data-dock-folded={fold?.on ? fold.dir : undefined} {...(live ? { "data-live-keys": "", tabIndex: -1 } : {})}>
                 {head}
-                {render(active)}
+                {render(active, fold)}
             </div>
         );
     };
@@ -272,7 +275,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
         f.children.forEach((ch, i) => {
             // A folding module (the No ar strip) eases in and out of its
             // place; gone, it takes no room and has no splitter beside it.
-            const cls = `${ch.fold ? ` dock-fold${ch.gone ? " is-gone" : ""}` : ""}${ch.locked ? " dock-locked" : ""}`;
+            const cls = `${ch.fold ? ` dock-fold${ch.gone ? " is-gone" : ""}` : ""}${ch.locked ? " dock-locked" : ""}${ch.folded ? " dock-folded" : ""}`;
             out.push(
                 <div key={firstOf(ch.frame)} className={`dock-cell${cls}`} aria-hidden={ch.gone || undefined} inert={ch.gone ? "" : undefined}
                     style={ch.fixed ? { flex: `0 0 ${Math.round(ch.size)}px` } : { flex: "1 1 0" }}>
@@ -284,9 +287,9 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             // One splitter per gap, owned by the fixed child on the side away
             // from the flexible one (dragging toward the flexible one grows it).
             const owner = i < fi ? i : next;
-            // A locked height (the No ar strip, Camadas) is the console's:
-            // the gap it owns stays, without a handle (owner 2026-10-14);
-            // a neighbour's splitter still moves it, whole.
+            // A locked height (the No ar strip, Camadas, a folded panel) is
+            // the console's: the gap it owns stays, without a handle (owner
+            // 2026-10-14); a neighbour's splitter still moves it, whole.
             if (f.children[owner].locked) {
                 out.push(<div key={`g${i}`} className={`dock-gap is-${f.dir}`} aria-hidden="true" />);
                 return;
