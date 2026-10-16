@@ -9,7 +9,7 @@ import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { captionParts, airFor } from "@/lib/console/caption";
 import { OUTPUT_VIEWS } from "@/lib/network/views";
-import { prefState, prefVars, stageHidden } from "@/lib/outputPrefs";
+import { prefState, prefVars, stageHidden, alertOf } from "@/lib/outputPrefs";
 import { useOutputPref } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
 
@@ -154,6 +154,14 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
     // air there is no frame: the red lives in the pill's dot and title and on
     // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
     const progState = projectorDown ? "warn" : locked ? "rh" : "";
+    // The Programa draws the live state raw, but the Aviso rápido in the look
+    // the Projeção chose (Editor › Ajustes › Aviso rápido; Rodada E3): only
+    // the look, never its Mostrar — the Programa still shows the aviso.
+    const { pref: projPref } = useOutputPref(OUTPUT_VIEWS[0].key);
+    const progDoc = useMemo(() => {
+        const alert = alertOf(cur, projPref && { options: projPref.options });
+        return alert === (cur?.alert ?? null) ? cur : { ...cur, alert };
+    }, [cur, projPref]);
     // A drop from the Biblioteca on the Programa sends.
     const dropProps = {
         onDragOver: (e) => { if (getDragStage()) { e.preventDefault(); if (!dropOn) setDropOn(true); } },
@@ -171,7 +179,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
                         {dropHint}
                     </MultiView>
                 ) : (
-                    <Monitor className="prog" state={progState} noCap live={cur} now={shownNow} logoUrl={logoUrl} motion={!still} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
+                    <Monitor className="prog" state={progState} noCap live={progDoc} now={shownNow} logoUrl={logoUrl} motion={!still} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
                         {pill}
                         {dropHint}
                     </Monitor>
