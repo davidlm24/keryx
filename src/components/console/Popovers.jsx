@@ -47,7 +47,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
             "sep",
             { label: editing ? "Concluir a edição" : "Editar disposição", icon: "grip", checked: editing, onSelect: onEditLayout, title: "Mudar os módulos de lugar, salvar disposições com nome · Esc conclui" },
             { label: "Restaurar disposição", onSelect: () => { restoreLayout(); setOpen(null); } },
-            { label: "Atalhos do teclado", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
+            { label: "Atalhos", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
         ];
         return (
             // Under the top bar's Ver button, its right edge on the button's.
@@ -69,7 +69,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
     const items = [
         { label: "Culto", icon: "list", kbd: <Icon name="chevron-right" />, onSelect: () => setOpen("cultos") },
         { label: "Planejar o culto", icon: "list", onSelect: go(() => onPlanner?.(serviceId)) },
-        { label: "Biblioteca de mídia", icon: "film", onSelect: go(onMedia) },
+        { label: "Mídia", icon: "film", onSelect: go(onMedia) },
         { label: "Avisos", icon: "megaphone", onSelect: go(onNotices) },
         { label: "Novo aviso", icon: "plus", onSelect: go(onNewNotice) },
         { label: "Escola bíblica", icon: "book", onSelect: go(onSchool) },
@@ -80,7 +80,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
         { label: "Atalhos", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
         { label: "Novidades", icon: "star", onSelect: () => onWhatsNew?.() },
         { label: "Configurações", icon: "sliders", onSelect: go(() => onSettings?.("telas")) },
-        { label: "Sobre o KERYX…", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
+        { label: "Sobre o KERYX", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
         hasUpdate(update) && { label: update.status === "downloading" ? "Atualizando…" : "Atualizar agora", icon: "download", kbd: update.status === "downloading" ? `${update.percent}%` : update.version, onSelect: () => onUpdateNow?.() },
     ];
     return <MenuList key="menu" className="pop kx-pop" label="Menu" items={items} closeOnPick={false} onClose={close} style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }} />;
@@ -179,8 +179,8 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             {/* Transmissão is an OBS Browser Source: until OBS connects, say where its address is. */}
             {!rows.some((r) => r.group === "transmissao") && (
                 <div className="kx-menu-h out-group" title="No OBS: Fonte de navegador com o endereço da Transmissão, 1920 × 1080">
-                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda para a live no OBS</span>
-                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço…</Btn>
+                    <span className="kx-section">Transmissão</span><span className="kx-meta" style={{ flex: 1, minWidth: 0 }}>· legenda da transmissão ao vivo</span>
+                    <Btn small onClick={() => { setOpen(null); onSettings?.("rede"); }}>Endereço</Btn>
                 </div>
             )}
             {!rows.length && <Empty icon="monitor" title="Nenhuma saída">No navegador as telas abrem em abas; no computador do culto, em Telas e saídas.</Empty>}
@@ -198,8 +198,8 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             </div>
             <div className="kx-menu-sep" />
             <div style={{ display: "flex", gap: "var(--space-1)", padding: "0 var(--space-1) var(--space-1)" }}>
-                <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo…</Btn>
-                <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas…</Btn>
+                <Btn kind="outline" onClick={() => setOpen("verificar")} title="A lista de prontidão antes do culto: saídas, mídia, fontes, Bíblia, internet">Verificar tudo</Btn>
+                <Btn onClick={() => { setOpen(null); onSettings?.("telas"); }}>Telas e saídas</Btn>
             </div>
         </div>
     );

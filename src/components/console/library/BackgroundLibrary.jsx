@@ -213,7 +213,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                         </button>
                                     );
                                 })}
-                                {!(themeMode ? themes : withBg).length && <span className="kx-meta">Nenhum tema ainda. Crie em Configurações › Temas, ou salve o que está no ar em Camadas.</span>}
+                                {!(themeMode ? themes : withBg).length && <span className="kx-meta">Nenhum tema ainda. Crie um em Configurações › Temas e fundos › Novo tema…</span>}
                             </div>
                         )}
                         {(tab === "image" || tab === "video") && view === "categories" && <FundoCategories c={c} entries={list} onDone={() => setView("grid")} />}
@@ -329,6 +329,13 @@ export const themePending = (theme, pending) => pendingUrls(themeBackgroundArgs(
 
 // A theme as a small screen: its text look over its background (the
 // library's Temas tab and the console's Temas card).
+// The factory look (no theme): the example text as the renderer draws it
+// with nothing chosen, for the Temas padrão boxes (audit C-43).
+export function FactoryThumb({ now }) {
+    const doc = useMemo(() => sampleDoc(now), []); // eslint-disable-line react-hooks/exhaustive-deps
+    return doc ? <span className="lib-thumb"><ScreenRenderer state={doc} now={now} preview /></span> : null;
+}
+
 export function ThemeThumb({ theme, now }) {
     const waiting = themePending(theme, usePendingMedia());
     const doc = useMemo(() => (waiting ? null : sampleDoc(now, themeBackgroundArgs(theme), themeStyle(theme))), [theme, waiting]); // eslint-disable-line react-hooks/exhaustive-deps

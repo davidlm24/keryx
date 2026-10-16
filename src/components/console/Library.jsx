@@ -167,24 +167,24 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
         : tab === "imagens"
             ? [
                 { label: "Do computador…", icon: "folder", accept: shownIds.includes("apresentacoes") ? "image/*,.gif" : "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
-                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
         : tab === "audios"
             ? [
                 { label: "Do computador…", icon: "folder", accept: "audio/*", onFiles: importMedia },
                 { label: "Uma pasta inteira…", icon: "folder", accept: "audio/*", directory: true, onFiles: (files) => importMedia(files.filter((f) => f.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(f.name))) },
-                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
         : tab === "apresentacoes"
             ? [
                 { label: "Do computador…", icon: "folder", accept: ".pdf,.ppt,.pptx", onFiles: importMedia },
-                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
         : tab === "videos"
             ? [
                 { label: "Do computador…", icon: "folder", accept: shownIds.includes("audios") ? "video/*" : "video/*,audio/*", onFiles: importMedia },
                 { label: "Link do YouTube", icon: "film", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
-                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
             : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => onEditNotice?.("new") }];
 
@@ -258,7 +258,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         onContextMenu={(e) => menu(e, { title: m.title, items: [
                             { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromMedia(m)) },
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
-                            onOpenMedia && { label: "Abrir a biblioteca de mídia", icon: "film", onSelect: () => onOpenMedia() },
+                            onOpenMedia && { label: "Abrir a Mídia", icon: "film", onSelect: () => onOpenMedia() },
                             { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Media", m, MEDIA_WORD[m.type] || "o arquivo", m.title || "sem título", "Excluído da Mídia.") },
                             onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
                         ] })}
@@ -278,7 +278,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             <Btn onClick={saveYt} title="Salvar o link na lista de Vídeos, para a setlist e os cultos">Salvar</Btn>
                         </div>
                         </>}
-                        <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a biblioteca de mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir a Mídia…</Btn>}</div>
+                        <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a Mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir a Mídia</Btn>}</div>
                         {audios.length > 1 && (
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}

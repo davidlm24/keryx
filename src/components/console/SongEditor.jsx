@@ -372,9 +372,10 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                 tools={<>
                     <IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} aria-label="Favorita" onClick={() => set({ is_favorite: !song.is_favorite })} />
                     {narrow && <Seg small value={fold} onChange={setFold} label="O que a coluna mostra" options={[["dados", "Dados"], ["letra", "Letra"]]} />}
+                    {/* At the left, apart from Cancelar and Salvar (audit C-40). */}
+                    {songId !== "new" && <Btn small onClick={remove} title="Excluir esta música · pergunta antes">Excluir…</Btn>}
                 </>}
                 actions={<>
-                    {songId !== "new" && <Btn small onClick={remove}>Excluir…</Btn>}
                     <Btn small onClick={() => printSong({ ...song, duration: parseDuration(durationText) }, slides)} disabled={!slides.length}>Imprimir</Btn>
                     <Btn small onClick={() => close()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={busy === "save"} onClick={save} title="Salvar · Ctrl+S">{busy === "save" ? "Salvando…" : "Salvar"}</Btn>
@@ -409,28 +410,28 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         </div>
                     )}
                     <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => set({ chords: e.target.value })} aria-label="Cifra" placeholder="Acordes para o Palco (opcional)" /></div>
-                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Estilo desta música</span></div>
+                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Tema desta música</span></div>
                     <div className="frm">
-                        <span className="k">Estilo</span>
-                        <select className="cfg-select" aria-label="Estilo da música"
+                        <span className="k">Tema</span>
+                        <select className="cfg-select" aria-label="Tema desta música"
                             value={look.theme || look.missing ? `t:${song.theme_id}` : following ? "default" : "own"}
                             onChange={(e) => { const v = e.target.value; if (v.startsWith("t:")) set({ theme_id: v.slice(2) }); else if (v === "default") set({ theme_id: "", style_mode: "theme" }); else setLook({ theme_id: "" }); }}
-                            title="Tema padrão: vai ao ar com o tema padrão (Configurações › Temas e fundos). Um tema: a música segue esse tema inteiro. Próprio: o estilo abaixo">
-                            <option value="default">{def ? `Tema padrão · ${def.name}` : "Tema padrão (estilo de fábrica)"}</option>
-                            {themes.filter((t) => !def || t.id !== def.id).map((t) => <option key={t.id} value={`t:${t.id}`}>Tema · {themeName(t)}</option>)}
-                            {def && <option value={`t:${def.id}`}>Tema · {def.name} (sempre este)</option>}
+                            title="O mesmo das músicas: vai ao ar com o tema das músicas (Configurações › Temas e fundos). Um tema: a música segue esse tema inteiro. Só desta música: a fonte, as cores e o fundo abaixo">
+                            <option value="default">{def ? `O mesmo das músicas · ${themeName(def)}` : "O mesmo das músicas"}</option>
+                            {themes.filter((t) => !def || t.id !== def.id).map((t) => <option key={t.id} value={`t:${t.id}`}>{themeName(t)}</option>)}
+                            {def && <option value={`t:${def.id}`}>{themeName(def)} (sempre este)</option>}
                             {look.missing && <option value={`t:${song.theme_id}`} disabled>(tema excluído)</option>}
-                            <option value="own">Próprio</option>
+                            <option value="own">Só desta música</option>
                         </select>
                     </div>
                     {look.theme && (
                         <div className="ed-pad ed-linked">
                             <span className="kx-meta">Segue o tema <b>{themeName(look.theme)}</b>: mudar o tema muda esta música.</span>
                             {onEditTheme && <Btn small onClick={() => onEditTheme(look.theme.id)} title="Abrir este tema no Editor de temas, na mesma janela · Voltar traz a música de volta">Editar tema…</Btn>}
-                            <Btn small onClick={() => { applyTheme(look.theme.id); set({ theme_id: "" }); }} title="Traz a fonte, as cores e o fundo do tema para o visual próprio, para ajustar aqui">Copiar para o visual próprio</Btn>
+                            <Btn small onClick={() => { applyTheme(look.theme.id); set({ theme_id: "" }); }} title="Traz a fonte, as cores e o fundo do tema para esta música (Só desta música), para ajustar aqui">Ajustar só nesta música</Btn>
                         </div>
                     )}
-                    {look.missing && <div className="ed-pad"><span className="kx-meta kx-warn">O tema desta música foi excluído: ela usa o visual próprio abaixo.</span></div>}
+                    {look.missing && <div className="ed-pad"><span className="kx-meta kx-warn">O tema desta música foi excluído: ela vai ao ar só com o tema dela, abaixo.</span></div>}
                     {!look.theme && <>
                     <div className="frm">
                         <span className="k">Fonte</span>
@@ -495,8 +496,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         {keyChords(song.song_key).map((ch) => <Btn key={ch} small kind="outline" className="ed-chip" onClick={() => insertChord(ch)} title={`Põe [${ch}] no cursor`}>{ch}</Btn>)}
                         {!keyChords(song.song_key).length && <span className="kx-meta">Preencha o Tom para ter os acordes dele aqui.</span>}
                     </div>
+                    <p className="kx-meta ed-help">[G] dentro da linha é acorde; [Refrão] sozinho na linha é o nome da parte. Cada tela mostra a cifra e o nome da parte se estiverem ligados nela (Configurações › Telas e saídas); o Palco já vem com os dois.</p>
                     <div className="ed-lyrics"><textarea ref={lyricsRef} className="ed-text" value={song.lyrics || ""} onChange={(e) => setLyrics(e.target.value)} aria-label="Letra" placeholder={"[Verso 1]\nPrimeira linha\nsegunda linha\n\n[Refrão]\n…"} spellCheck={false} /></div>
-                    <div className="listhead"><span className="kx-meta">[G] dentro da linha é acorde; [Refrão] sozinho na linha é o nome da parte. Cada tela mostra a cifra e o nome da parte se estiverem ligados nela (Configurações › Telas e saídas); o Palco já vem com os dois.</span></div>
                 </Panel>
             </div>
             </>}
