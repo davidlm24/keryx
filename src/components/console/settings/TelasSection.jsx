@@ -167,7 +167,7 @@ export default function TelasSection({ c, onOpenScreen }) {
     };
     const status = (o) => {
         const p = o.placement || {};
-        if (p.missing) return "A tela escolhida está desligada · abre numa janela até ligar";
+        if (p.missing) return "A tela está desligada · a saída aparece quando ela ligar";
         if (p.mode === "fullscreen") return number(p.displayId) ? `Tela cheia na Tela ${number(p.displayId)}` : "Tela cheia";
         return "Abre numa janela";
     };

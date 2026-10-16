@@ -156,3 +156,12 @@
 /* One box per look layer, stacked by live.layerOrder (inline z-index). */
 .ks-z { position: absolute; inset: 0; pointer-events: none; }
 .ks-z > * { pointer-events: auto; }
+
+/* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
+   what the congregation sees never takes this computer's contrast theme.
+   An output's whole document opts out (App.jsx marks it ks-output-doc),
+   and so does every root that draws an output anywhere else — the
+   renderer, a screen's design, the Palco, the Pastor, the Aviso rápido
+   beside them, the Transmissão band — so the console's stills match the
+   outputs (its monitors opt out in bundle.css). */
+html.ks-output-doc, .ks, .kl, .ks-alert-layer, .net-stage, .net:has(> .net-pastor), .kx-stream-band { forced-color-adjust: none; }
