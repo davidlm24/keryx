@@ -1058,6 +1058,8 @@
 .console .ed-chords .ed-chip { min-width: 30px; justify-content: center; font-variant-numeric: tabular-nums; }
 .console .ed-key { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .console .ed-key .kx-field { flex: 1; min-width: 0; }
+/* The lyrics syntax help wraps above the textarea, never cut (audit C-38). */
+.console .ed-help { flex: none; margin: 0; padding: 0 var(--space-2) var(--space-1); line-height: 16px; }
 .console .ed-lyrics { flex: 1; min-height: 0; display: flex; padding: 0 var(--space-2) var(--space-2); }
 .console .ed-lyrics .ed-text { flex: 1; font-size: 14px; line-height: 21px; }
 .console .ed-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-2); }
@@ -1100,6 +1102,8 @@
 .console .pl-danger { display: flex; justify-content: flex-end; padding: 0 var(--space-2) var(--space-2); }
 .console .cfg-wall { width: 48px; height: 27px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
 .console .pl-wall { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+/* "Qualquer outro culto" whole at 1366 (audit C-42): the planner's column is narrow. */
+.console .pl-wall .bgchip { gap: var(--space-1); }
 .console .pl-acts { display: flex; gap: var(--space-1); flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 /* The Setlist header keeps its count, length and end time readable: when the
    four buttons do not fit beside it, they drop to a second line. */
@@ -1120,6 +1124,7 @@
 .console .pl-adder .pl-pad { padding-top: 0; }
 .console .pl-adder-list { flex: 1; min-height: 0; overflow: auto; }
 .console .pl-add { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-2); border-top: 1px solid var(--line); }
+.console .pl-add-k { align-self: center; margin-right: var(--space-1); }
 .console .rund-sec { gap: 0; cursor: grab; }
 .console .rund-plan { display: flex; justify-content: center; padding: var(--space-2); }
 
@@ -1575,7 +1580,6 @@
 .console .cfg .tmg { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); }
 .console .cfg .tmg-meta { font-size: 11px; }
 .console .cfg .tmg-new .fg-img { display: grid; place-items: center; box-shadow: inset 0 0 0 1px var(--line-strong); background: transparent; }
-.console .cfg .tmg-plus { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--fg-2); font-size: 12px; }
 /* Temas padrão: the same tile size as "Todos os temas" (one grid, one size). */
 .console .cfg .tmg-kind { font-size: 11px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .06em; }
 /* Bíblia e músicas: its form aligns with the section's other forms (no
