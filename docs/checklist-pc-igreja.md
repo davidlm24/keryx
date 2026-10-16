@@ -37,7 +37,7 @@ Use o **KERYX instalado**, não o modo de desenvolvimento: alguns itens só exis
 ## 5. Pergunta ao fechar com algo no ar
 
 1. Coloque um slide no ar.
-2. Clique no X do console. O KERYX deve perguntar: **Continuar projetando** ou **Fechar o KERYX**.
+2. Clique no X do console. O KERYX deve perguntar: **Fechar o KERYX** ou **Continuar projetando**, com **Continuar projetando** já selecionado (Enter não fecha).
 3. Escolha **Continuar projetando**: o KERYX deve continuar aberto e as telas, como estavam.
 4. Tire tudo do ar (tecla **Esc** ou Limpar) e clique no X de novo: agora deve fechar sem perguntar.
 5. Em Configurações › Console, desligue **Perguntar antes de fechar com algo no ar**, se a igreja preferir.
