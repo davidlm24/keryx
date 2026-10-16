@@ -47,14 +47,19 @@ export const captionOf = (doc, word) => {
 // what is on air (content.stage.notes). Only in the console and on the
 // stage screen, never on the projector.
 export function TeacherNotes({ prev, cur }) {
-    const fromPrev = prev?.notes ? { title: prev.title, notes: prev.notes } : null;
-    const air = cur?.content?.stage?.notes ? { title: cur.content.title, notes: cur.content.stage.notes } : null;
+    // The material's notes, and the note of the question in hand (Rodada E4:
+    // content.stage.slide_notes, the Prévia's selected slide or the one on air).
+    const slideNote = (list, i, slides) => (list?.[i] ? { label: slides?.[i]?.label || `Slide ${i + 1}`, text: list[i] } : null);
+    const fromPrev = prev?.notes || prev?.slideNotes?.[prev.index] ? { title: prev.title, notes: prev.notes, slide: slideNote(prev.slideNotes, prev.index, prev.slides) } : null;
+    const st = cur?.content?.stage;
+    const air = st?.notes || st?.slide_notes?.[cur.content.index] ? { title: cur.content.title, notes: st.notes, slide: slideNote(st.slide_notes, cur.content.index, cur.content.slides) } : null;
     const n = fromPrev || air;
     if (!n) return null;
     return (
         <div className="tnotes">
             <span className="kx-section">Notas do professor <span className="kx-count">· {n.title} · só no console e no palco</span></span>
-            <p>{n.notes}</p>
+            {n.slide && <p><b>{n.slide.label}:</b> {n.slide.text}</p>}
+            {n.notes && <p>{n.notes}</p>}
         </div>
     );
 }

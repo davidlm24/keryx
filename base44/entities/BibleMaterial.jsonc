@@ -13,10 +13,14 @@
         "quiz",
         "video",
         "image",
-        "text"
+        "text",
+        "truefalse",
+        "blanks",
+        "memorize",
+        "discussion"
       ],
       "default": "slides",
-      "description": "Tipo: slides did\u00e1ticos, quiz, v\u00eddeo b\u00edblico, imagem ou texto"
+      "description": "Tipo: slides did\u00e1ticos, quiz, v\u00eddeo b\u00edblico, imagem, texto, verdadeiro ou falso, complete a frase, versículo para memorizar ou discussão com timer"
     },
     "class_id": {
       "type": "string",
@@ -53,6 +57,29 @@
           "image_url": {
             "type": "string",
             "description": "Imagem ilustrativa do slide (opcional)"
+          },
+          "ref": {
+            "type": "string",
+            "description": "Referência do versículo (complete a frase, memorizar, discussão)"
+          },
+          "blanks": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Complete a frase: as palavras (posição, a partir de 0) que viram lacunas"
+          },
+          "rounds": {
+            "type": "number",
+            "description": "Memorizar: cliques até apagar todas as palavras"
+          },
+          "minutes": {
+            "type": "number",
+            "description": "Discussão: minutos do timer"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Nota do professor deste slide (só no console e no palco)"
           }
         }
       },
@@ -88,7 +115,16 @@
             }
           },
           "correct": {
-            "type": "number"
+            "type": "number",
+            "description": "A opção certa (0-based); no verdadeiro ou falso, 0 = verdadeiro, 1 = falso"
+          },
+          "explain": {
+            "type": "string",
+            "description": "Referência ou explicação, na tela ao revelar"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Nota do professor desta pergunta (só no console e no palco)"
           }
         }
       },

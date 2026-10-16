@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
     applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked, followPosition, followIndex, slideAtTime, FOLLOW_SOURCES,
+    activitySteps, revealStep, revealOf,
 } from "./live-state.mjs";
 
 const T0 = 1_000_000;
@@ -720,4 +721,68 @@ test("saving the song on air keeps the follow running; a restart pauses it", () 
     const back = restoreState(JSON.parse(JSON.stringify(s)), T0 + 99 * S);
     assert.equal(back.content.follow.paused, true);
     assert.equal(back.content.follow.clock.paused, true);
+});
+
+test("Escola bíblica: a slide's activity is revealed without changing slide; → walks it, ← hides it again", () => {
+    const quiz = { kind: "text", title: "Quiz", slides: [
+        { text: "Quem construiu a arca?", label: "Pergunta 1", activity: { kind: "choice", options: ["Moisés", "Noé", "Abraão"], correct: 1, explain: "Gênesis 6" } },
+        { text: "A arca tinha três andares.", label: "Afirmação", activity: { kind: "truefalse", correct: 0 } },
+        { text: "Porque Deus amou o mundo", activity: { kind: "blanks", blanks: [4, 1, 4] } },
+        { text: "fim" },
+    ] };
+    let s = run([["content.show", quiz]]);
+    assert.deepEqual(s.content.slides[0].activity, { kind: "choice", explain: "Gênesis 6", options: ["Moisés", "Noé", "Abraão"], correct: 1 });
+    assert.deepEqual(s.content.slides[2].activity.blanks, [1, 4], "blanks sorted, each once");
+    assert.deepEqual(s.content.revealed, {});
+    assert.equal(activitySteps(s.content.slides[2]), 2);
+    assert.equal(activitySteps(s.content.slides[3]), 0);
+    // Revelar: same slide, the step recorded with its time.
+    s = applyOp(s, "content.reveal", {}, T0 + 1);
+    assert.equal(s.content.index, 0);
+    assert.deepEqual(revealOf(s.content), { step: 1, at: T0 + 1 });
+    assert.equal(applyOp(s, "content.reveal", {}, T0 + 2), s, "already revealed: no change");
+    // → goes on once revealed; ← comes back to it revealed, then hides it.
+    s = applyOp(s, "content.next", {}, T0);
+    assert.equal(s.content.index, 1);
+    s = applyOp(s, "content.next", {}, T0);
+    assert.equal(s.content.index, 1, "→ reveals the V or F first");
+    assert.equal(revealStep(s.content, 1), 1);
+    s = applyOp(s, "content.next", {}, T0);
+    s = applyOp(s, "content.next", {}, T0);
+    assert.equal(revealStep(s.content), 1, "blanks: one word at a time");
+    s = applyOp(s, "content.prev", {}, T0);
+    assert.equal(revealStep(s.content), 0);
+    assert.equal(s.content.index, 2);
+    s = applyOp(s, "content.goTo", { index: 0 }, T0);
+    assert.equal(revealStep(s.content), 1, "a question keeps what was revealed");
+    s = applyOp(s, "content.prev", {}, T0);
+    assert.equal(revealStep(s.content), 0, "← hides it first");
+    assert.equal(s.content.index, 0);
+    // By step, to a slide that is not on air, and back to nothing.
+    s = applyOp(s, "content.reveal", { index: 2, step: 9 }, T0);
+    assert.equal(revealStep(s.content, 2), 2, "clamped to the activity's steps");
+    s = applyOp(s, "content.reveal", { index: 2, step: 0 }, T0);
+    assert.equal(revealOf(s.content, 2), null);
+    assert.throws(() => applyOp(applyOp(s, "content.goTo", { index: 3 }, T0), "content.reveal", {}, T0), (e) => e.status === 409);
+    // A live edit keeps only what still fits.
+    s = applyOp(s, "content.reveal", { index: 1 }, T0);
+    const edited = applyOp(s, "content.update", { slides: quiz.slides.slice(0, 1) }, T0);
+    assert.deepEqual(edited.content.revealed, {});
+    // Locked: refused, like moving the slide.
+    assert.throws(() => applyOp(applyOp(s, "screens.lock", { locked: true }, T0), "content.reveal", { index: 0 }, T0), (e) => e.status === 423);
+    // A plain song still walks as before.
+    assert.equal(applyOp(run([["content.show", song]]), "content.next", {}, T0).content.index, 1);
+});
+
+test("Escola bíblica: activities are checked", () => {
+    const show = (activity) => run([["content.show", { kind: "text", slides: [{ text: "x", activity }] }]]).content.slides[0].activity;
+    assert.throws(() => show({ kind: "choice", options: ["só uma"] }), LiveError);
+    assert.throws(() => show({ kind: "choice", options: Array.from({ length: 9 }, (_, i) => `o${i}`) }), LiveError, "eight options at most");
+    assert.equal(show({ kind: "choice", options: ["a", "b"], correct: 7 }).correct, 1);
+    assert.throws(() => show({ kind: "truefalse", correct: 2 }), LiveError);
+    assert.throws(() => show({ kind: "blanks", blanks: [] }), LiveError);
+    assert.throws(() => show({ kind: "quiz" }), LiveError);
+    assert.deepEqual(show({ kind: "memorize", order: [2, 0, 1, 0], rounds: 40 }), { kind: "memorize", order: [2, 0, 1], rounds: 12 });
+    assert.deepEqual(show({ kind: "discussion", minutes: 3 }), { kind: "discussion", minutes: 3 });
+    assert.equal(activitySteps({ activity: show({ kind: "memorize", order: [], rounds: 3 }) }), 3);
 });
