@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { Empty } from "./kx";
 import { useContextMenu } from "./ContextMenu";
+import useKeepInView from "./useKeepInView";
 import { SlideText } from "./SlidesPanel";
 import { stageAirSlide, liveStageId } from "@/lib/console/stage";
 
@@ -23,10 +24,9 @@ export default function OnAirPanel({ c }) {
     const prevIndex = air && prev && (prev.airSlide || prev.id === airId) ? prev.index : -1;
     const listRef = useRef(null);
 
-    useEffect(() => {
-        const el = listRef.current?.querySelector(".is-air");
-        el?.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }, [index, slides]);
+    // The card on air and its neighbours stay in view, across or down
+    // (0.2.18, useKeepInView): the strip moves at the next-to-last card.
+    useKeepInView(listRef, ".is-air", [index, slides]);
 
     const pick = (i) => { if (air && i !== index) c.setPrev(stageAirSlide(air, i, airId)); };
     const go = (i) => { if (air) c.goTo(i); };

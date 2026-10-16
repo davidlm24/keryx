@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
 import { Btn, Empty } from "./kx";
 import { useContextMenu } from "./ContextMenu";
+import useKeepInView from "./useKeepInView";
 import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { lyricsOnAir } from "@/lib/console/dock";
 
@@ -37,10 +38,9 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
     const airIndex = hand && air && (prev.airSlide || prev.id === airId) ? air.index : -1;
     const listRef = useRef(null);
 
-    useEffect(() => {
-        const el = listRef.current?.querySelector(".is-prev, .is-air");
-        el?.scrollIntoView({ block: "nearest" });
-    }, [index, slides]);
+    // The slide in hand (or on air) and its neighbours stay in view: the
+    // column moves at the next-to-last card (0.2.18, useKeepInView).
+    useKeepInView(listRef, hand ? ".is-prev" : ".is-air", [index, slides, hand]);
 
     const airWord = "is-air";
     const pos = slides.length ? `${hand ? "prévia" : "no ar"} ${index + 1}/${slides.length}` : "";

@@ -19,6 +19,7 @@ import { usePrefs, getPrefs, updateUser } from "@/hooks/useUser";
 import { useLibraryPicker } from "./library/libraryContext";
 import { useThemes } from "./useConsoleData";
 import { themeForKind, themeName } from "@/lib/console/themes";
+import useKeepInView from "./useKeepInView";
 
 // Book groups, by position in the canon, for the colour bar of each book.
 const GROUPS = [[0, 4, "#b08a5a"], [5, 16, "#9a7a4a"], [17, 21, "#8d8a6a"], [22, 38, "#8a6a9a"], [39, 43, "#5a8ab0"], [44, 64, "#6a9a7a"], [65, 65, "#7a9a5a"]];
@@ -183,6 +184,13 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const airHere = Boolean(onAir && (airIsChapter || String(onAir.ref?.reference || onAir.title).startsWith(`${book} ${chapter}:`)));
     const airSlideText = onAir ? String(onAir.slides[onAir.index]?.text || "") : "";
     const airVerseNums = useMemo(() => verseNumbers(airSlideText), [airSlideText]);
+    // The verse on air follows ←/→ in the list and in the grid (0.2.18): the
+    // list moves at the next-to-last verse, as the Slides column does
+    // (useKeepInView; several verses on one slide count as one span).
+    const cellsRef = useRef(null);
+    const airKey = airHere ? `${book} ${chapter}:${airVerseNums.join(",")}` : "";
+    useKeepInView(readingRef, ".kx-verse.is-air", [airKey, mode]);
+    useKeepInView(cellsRef, "button.is-air", [airKey]);
 
     const verseStage = useCallback((n) => stageFromVerses({ verses, nums: [n], version: ver, book, chapter, onAir }), [verses, ver, book, chapter, onAir]);
     const stageFor = useCallback((nums) => stageFromVerses({ verses, nums, how, version: ver, book, chapter, onAir }), [verses, how, ver, book, chapter, onAir]);
@@ -398,7 +406,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         verses: (
             <Panel className="bpick-verses" title="Versículos" count={`${book} ${chapter}`}>
                 {!error && verses.length > 0 && (
-                    <div className="bverses"><div className={`verse-cells is-${grid}`} role="group" aria-label={`Versículos de ${book} ${chapter}`}>
+                    <div className="bverses"><div ref={cellsRef} className={`verse-cells is-${grid}`} role="group" aria-label={`Versículos de ${book} ${chapter}`}>
                         {verses.map((v) => (
                             <button type="button" key={v.number}
                                 className={`kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`}

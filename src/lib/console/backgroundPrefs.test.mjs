@@ -98,3 +98,16 @@ test("a background's whole look: dim, blur, fit and position, filled into the Fu
     const gen = { kind: "generator", value: "fluid" };
     assert.equal(withBackgroundDefaults("background.set", gen, prefs), gen);
 });
+
+test("the papel de parede Esc puts back carries its own look (0.2.18)", () => {
+    const url = "keryx-media://bundled/backgrounds/1557672172-298e090bd0f1.webp";
+    // Escurecer 0 % in the library: an explicit 0, not "padrão".
+    const prefs = [{ source: "bundled:1557672172-298e090bd0f1", dim_pct: 0 }];
+    const def = withBackgroundDefaults("background.default", { background: { kind: "image", value: url } }, prefs);
+    assert.equal(def.background.dim, 0, "the same 0 the Fundo on screen got");
+    assert.equal(withBackgroundDefaults("background.set", { kind: "image", value: url }, prefs).dim, 0);
+    const none = { background: null };
+    assert.equal(withBackgroundDefaults("background.default", none, prefs), none);
+    const color = { background: { kind: "color", value: "#000000" } };
+    assert.equal(withBackgroundDefaults("background.default", color, prefs), color);
+});

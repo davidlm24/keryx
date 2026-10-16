@@ -12,6 +12,7 @@ import { serviceTheme, lookFields, lookOf } from "@/lib/console/serviceLook";
 import { themeInUseSeed, defaultTheme, themeName } from "@/lib/console/themes";
 import { hiddenList, hiddenMap } from "@/lib/prefs/schema";
 import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
+import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
 import { Panel, IconBtn, Measure, Seg, WinCtx } from "@/components/console/kx";
@@ -360,7 +361,11 @@ export default function Console() {
         if (seed !== undefined) c.setThemeId(seed);
     }, [serviceId, cultoTheme]); // eslint-disable-line react-hooks/exhaustive-deps
     const churchRow = useUser();
-    const fundoPadrao = useMemo(() => defaultFundoArgs(defaultFundo({ service, user: churchRow })), [service, churchRow]);
+    // The papel de parede with its own look from the library (dim, blur, fit,
+    // position): the settings load after the console, so the look is part of
+    // the key — when they arrive or change, Esc's copy follows (0.2.18: Esc
+    // used to bring it back at the renderer's 45 % fallback).
+    const fundoPadrao = useMemo(() => withBackgroundDefaults("background.set", defaultFundoArgs(defaultFundo({ service, user: churchRow })), c.bgPrefs), [service, churchRow, c.bgPrefs]);
     const padraoKey = JSON.stringify(fundoPadrao);
     const padraoSent = useRef(undefined);
     const liveReady = Boolean(c.live);
@@ -1015,7 +1020,7 @@ export default function Console() {
     const setlistPanel = (
         <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
             actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
-            <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} />
+            <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
         </Panel>
     );
     // Temas: its own module under Camadas (owner 2026-10-14); a click makes
