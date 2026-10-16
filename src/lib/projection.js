@@ -74,9 +74,10 @@ export const projection = {
     // { visible, corner: "top-left" | "top-right" | "bottom-left" | "bottom-right", size: "small" | "medium" | "large" }
     setLogo: op("logo.set"),
 
-    // "show" | "black" | "logo"
-    setScreen: (mode) => keryx.live.call("screen.set", { mode }),
-    // Encerrar: takes down content, media, video, tools and communication.
+    // "show" | "black" | "logo"; `fade` (ms): it comes and goes with the exit fade.
+    setScreen: (mode, { fade } = {}) => keryx.live.call("screen.set", { mode, fade }),
+    // Encerrar: takes down content, media, video, tools and communication
+    // ({ fade }: fading out, src/lib/console/transitions.js).
     clear: op("clear"),
 
     startSession: (serviceId = null) => keryx.live.call("session.start", { serviceId }),

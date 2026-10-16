@@ -65,7 +65,33 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/lib/projection.js` (its stages, `src/lib/console/stage.js`); outputs
   read it with `useLiveState()`. A new kind of content is a new op in
   `shared/live-state.mjs` with a test there, not a new sync table or
-  postMessage type (both are gone). Every output renders it; outputs can be
+  postMessage type (both are gone). **One sound at a time, and the fades**
+  (owner 2026-10-16, Rodada F2; Configurações › Telas e saídas ›
+  Transições: User `media_transition`/`_ms`, `clear_transition`/`_ms`,
+  `screen_transition`): an op that starts an item with sound (`video.show`,
+  `audio.show`, `audio.playlist`, `media.show`, `media.playlist`; a video,
+  audio or YouTube not at volume 0, `heard`) stops the other sound layers
+  (`hush`), cut or fading out — the stopped item rides in `live.leaving`
+  (`{ layer, item, at, until }`, dropped by the next change) — unless its
+  `transition` says `mix` (Tocar junto; no transition = the same, for
+  senders that say nothing). The console adds `transition` and the exit
+  `fade` in `liveOp` (`withTransitions`, `src/lib/console/transitions.js`,
+  tested; the projector window's own keys too); the live state never reads
+  prefs. Never hush in `media.toAudio`/`audio.toMedia`, `content.show` or
+  `clear` (the audio channel survives Esc); a list counts by the item it
+  starts with, advances never hush, the Fundo's video is muted. Esc
+  (`clear`), Limpar (`content.clear`/`tool.clear`/`communication.clear`)
+  and Tela preta/Logo (`screen.set`, while the switch is on) take a `fade`
+  (ms) kept as `live.fade = { ms, at }` (`at` = that change's updatedAt),
+  so every output, network screens included, draws the same fade: the
+  renderer keeps the screen drawn before as a ghost going transparent over
+  the one now (`useExitGhost`, `screenExitMs`/`videoExitMs` in
+  `src/lib/exitFade.js`, tested; `.ks-ghost`), its video still playing as
+  its volume comes down (`LiveVideo fadeOut`, the element handed over by
+  the pool); the projector plays `leaving` audio out the same way. Outputs
+  ignore reduced motion (the audience sees them), the Programa monitor
+  honours it, still previews cut. The slide-to-slide transition stays the
+  theme's. Every output renders the live state; outputs can be
   opened by the main process (`keryx:displays:open`, "Abrir ao iniciar").
   Avisos (CommunicationVideo) are the `communication` layer, drawn in full
   by `ScreenRenderer` (look, background, logo, chime; arithmetic in

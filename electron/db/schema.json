@@ -1873,6 +1873,21 @@
         "youtube_hide_title": {
           "type": "boolean"
         },
+        "media_transition": {
+          "type": "text"
+        },
+        "media_transition_ms": {
+          "type": "integer"
+        },
+        "clear_transition": {
+          "type": "text"
+        },
+        "clear_transition_ms": {
+          "type": "integer"
+        },
+        "screen_transition": {
+          "type": "boolean"
+        },
         "standby_background": {
           "type": "text"
         },

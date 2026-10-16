@@ -14,6 +14,8 @@ import { refLine } from "@/lib/bibleDisplay";
 import { fitScale } from "@/lib/console/lyricFit";
 import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
 import ActivityView from "./ActivityView";
+import { useExitGhost } from "@/hooks/useExitGhost";
+import { screenExitMs } from "@/lib/exitFade";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
@@ -23,20 +25,54 @@ import ActivityView from "./ActivityView";
 // audio silent. `motion` is the console's Programa monitor: still a muted
 // preview, but videos (the media layer and the video channel) really play,
 // in step with the screens, so the monitor mirrors the projector.
-export default function ScreenRenderer({ state, now, logoUrl = "", preview = false, motion = false, fill = false, audio = !preview, className = "" }) {
+//
+// Transições (owner 2026-10-16, Rodada F2): what leaves the screen fades
+// out over what is under it — Esc and Limpar, Tela preta and Logo coming
+// and going, a video a new sound stopped — for as long as the live state
+// says (src/lib/exitFade.js). The screen drawn before stays on top as a
+// ghost going transparent, its video still playing as its volume comes down.
+// The outputs always fade (the audience sees them, whatever this computer's
+// reduced-motion setting); the console's Programa monitor fades unless the
+// operator asked for less motion; a still preview cuts.
+export default function ScreenRenderer(props) {
+    const { state, logoUrl = "", preview = false, motion = false, fill = false, className = "" } = props;
     const cls = `ks ${fill ? "ks-fill" : "ks-box"} ${className}`;
+    const ghost = useExitGhost(state, state?.rev, screenExitMs, !preview || (motion && !calmComputer()));
+    if (!state) return <div className={cls}><Idle logoUrl={logoUrl} /></div>;
+    return (
+        <div className={cls}>
+            <Screen {...props} />
+            {ghost && (
+                <div key={ghost.key} className="ks-ghost" style={{ animationDuration: `${ghost.ms}ms` }} aria-hidden="true">
+                    <Screen {...props} state={ghost.from} ghost={ghost} under={state} />
+                </div>
+            )}
+        </div>
+    );
+}
+
+const calmComputer = () => typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+
+// One screen of a live-state view. As a ghost (the screen before a change,
+// fading out over `under`, the screen now) it starts nothing of its own — no
+// entrance transition, no chime or track, no playlist moving on — and leaves
+// out what the screen under it draws the same way (its Fundo, its Aviso
+// rápido); its media keeps playing, its volume going down with the fade.
+function Screen({ state, now, logoUrl = "", preview = false, motion = false, audio = !preview, ghost = null, under = null }) {
     // The item's title on top of the slide: the item's choice (style.title),
     // else the theme's, stamped at send; this legacy church pref is only the
     // fallback for content no theme dressed (Rodada B 2026-10-14).
     const showTitle = usePrefs().show_item_title;
-    if (!state) return <div className={cls}><Idle logoUrl={logoUrl} /></div>;
-
     const layer = mainLayer(state);
-    if (layer === "black") return <div className={cls}><div className="ks-black" /></div>;
-    if (layer === "logo") {
-        return <div className={cls}><div className="ks-logo-screen">{logoUrl && <img src={logoUrl} alt="" />}</div></div>;
-    }
+    if (layer === "black") return <div className="ks-black" />;
+    if (layer === "logo") return <div className="ks-logo-screen">{logoUrl && <img src={logoUrl} alt="" />}</div>;
 
+    const still = (preview && !motion) || Boolean(ghost);
+    const sound = audio && !ghost;
+    const underLayer = under ? mainLayer(under) : null;
+    const covered = underLayer === "black" || underLayer === "logo";
+    const sameFundo = Boolean(ghost) && !covered && bgKey(state, layer) === bgKey(under, underLayer);
+    const fadeOut = ghost ? { at: ghost.at, until: ghost.until } : null;
     // The look layers stack as the operator ordered them (Camadas): top first.
     const order = Array.isArray(state.layerOrder) && state.layerOrder.length === LAYER_ORDER.length ? state.layerOrder : LAYER_ORDER;
     const z = (k) => 10 * (order.length - order.indexOf(k));
@@ -44,34 +80,52 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
     // and the media, not the Fundo); the idle look only when there is none.
     const fundo = Boolean(state.background) && !layerHidden(state, "background");
     return (
-        <div className={cls}>
-            <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>
+        <>
+            {!sameFundo && <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>}
             <div className="ks-z" style={{ zIndex: z("content") }}>
-                {layer === "none" && !fundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
+                {layer === "none" && !fundo && !sameFundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
                 {layer === "content" && !layerHidden(state, "content") && (currentSlide(state.content)?.activity
-                    ? <ActivityView content={state.content} now={now} audio={audio} look={activityLook(state.content, showTitle, preview && !motion)} />
-                    : <Content content={state.content} showTitle={showTitle} still={preview && !motion} />)}
+                    ? <ActivityView content={state.content} now={now} audio={sound} look={activityLook(state.content, showTitle, still)} />
+                    : <Content content={state.content} showTitle={showTitle} still={still} />)}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
-                {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={audio} />}
-                {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} />)}
+                {layer === "communication" && <Communication comm={state.communication} now={now} logoUrl={logoUrl} preview={preview} motion={motion} audio={sound} />}
+                {layer === "media" && (preview ? <MediaPoster media={state.media} motion={motion} /> : <LiveMediaView media={state.media} fadeOut={fadeOut} />)}
             </div>
-            {!preview && layer === "content" && state.content.audio && (
+            {!preview && sound && layer === "content" && state.content.audio && (
                 <audio key={state.content.startedAt} src={state.content.audio} autoPlay className="hidden" />
             )}
             {/* An output that hides the song's words (OutputPref Mostrar) still plays its track. */}
-            {!preview && state.track?.src && !(layer === "content" && state.content?.audio) && (
+            {!preview && sound && state.track?.src && !(layer === "content" && state.content?.audio) && (
                 <audio key={state.track.startedAt} src={state.track.src} autoPlay className="hidden" />
             )}
             {state.logo?.visible && logoUrl && layer !== "media" && (
                 <div className="ks-z" style={{ zIndex: z("logo") }}><img className={`ks-logo ks-${state.logo.size} ks-${state.logo.corner}`} style={logoLook(state.logo)} src={logoUrl} alt="" /></div>
             )}
-            {preview && motion && state.video && (
+            {preview && motion && state.video && !(ghost && under?.video?.shownAt === state.video.shownAt && !covered) && (
                 <div className="ks-vidcover"><LiveVideo item={state.video} muted className="ks-vidcover-v" /></div>
             )}
             <Overlays overlays={state.overlays} z={z("overlays")} />
-            <AlertBar alert={state.alert} />
-        </div>
+            {(!ghost || covered) && <AlertBar alert={ghost && state.alert ? { ...state.alert, look: { ...(state.alert.look || {}), entrance: "none" } } : state.alert} />}
+        </>
     );
+}
+
+// What a view draws under its main layer (Background, and the idle look with
+// nothing on air), as a key: a ghost leaves it out when the screen under it
+// draws the same (a video Fundo would start over in the ghost).
+function bgKey(state, layer) {
+    if (!state) return "";
+    if (layer === "media") return "black";
+    const hidden = layerHidden(state, "background");
+    if (layer === "none") return state.background && !hidden ? `fundo:${JSON.stringify(state.background)}` : `idle:${state.idle}:${state.idleUrl}:${state.idleDim}:${state.idleBlur}`;
+    if (hidden && layer === "content") return "black";
+    const cs = layer === "content" ? slideStyle(state.content) : null;
+    const own = layer === "content" ? (layerLocked(state, "background") ? null : cs.background_image || cs.background_color)
+        : layer === "tool" ? state.tool.style?.background_image
+        : (state.communication.item.background_image || state.communication.item.background_color);
+    if (own) return `own:${own}:${cs?.background_dim ?? ""}:${cs?.background_blur ?? ""}`;
+    if (hidden) return "black";
+    return state.background ? `fundo:${JSON.stringify(state.background)}` : "default";
 }
 
 // Nothing on air: the operator's wallpaper (cover, no logo over it: it was

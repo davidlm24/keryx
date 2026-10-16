@@ -11,8 +11,10 @@ const IMAGE_SECONDS = 5;
  * PowerPoint from the Mídia library, alone or as a looping playlist.
  * A playlist moves on when an item ends; the projector on the KERYX computer
  * reports that (media.advance, which ignores duplicate reports).
+ * fadeOut ({ at, until }): the media is leaving (ScreenRenderer's ghost,
+ * Transições): it plays on, quieter and quieter, and moves nothing on.
  */
-export default function LiveMediaView({ media }) {
+export default function LiveMediaView({ media, fadeOut = null }) {
     // An image's name over it only when the church wants titles (the legacy pref; the item title is the theme's since the Rodada B 2026-10-14).
     const showTitle = usePrefs().show_item_title;
     const inPlaylist = Boolean(media.playlist);
@@ -20,7 +22,7 @@ export default function LiveMediaView({ media }) {
     // A playlist moves on; a single video that ends leaves the screen (the
     // frozen-last-frame bug). Loops belong to the background layer.
     const advance = () => {
-        if (!keryx.isDesktop) return;
+        if (!keryx.isDesktop || fadeOut) return;
         const done = inPlaylist ? projection.advanceMedia(index) : projection.clearMedia();
         done.catch((err) => console.error("[keryx] mídia:", err));
     };
@@ -28,7 +30,7 @@ export default function LiveMediaView({ media }) {
     // Images in a playlist stay up for a few seconds, counted from when the
     // item went up (the same moment on every screen).
     useEffect(() => {
-        if (!inPlaylist || (media.kind !== "image" && media.kind !== "gif")) return undefined;
+        if (fadeOut || !inPlaylist || (media.kind !== "image" && media.kind !== "gif")) return undefined;
         const seconds = media.duration || IMAGE_SECONDS;
         const left = Math.max(0, media.shownAt + seconds * 1000 - keryx.live.now());
         const id = setTimeout(advance, left);
@@ -46,7 +48,7 @@ export default function LiveMediaView({ media }) {
             <div className="min-h-screen bg-black flex items-center justify-center relative">
                 {counter}
                 {/* Ends -> the playlist moves on, a single video leaves the screen. */}
-                <LiveVideo item={media} onEnded={advance} meter="media" className="w-full h-screen" />
+                <LiveVideo item={media} onEnded={advance} meter={fadeOut ? null : "media"} fadeOut={fadeOut} className="w-full h-screen" />
             </div>
         );
     }
