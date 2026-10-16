@@ -318,6 +318,10 @@ app.whenReady().then(async () => {
     appUrl = DEV_URL || serverUrl;
     appOrigin = new URL(appUrl).origin;
 
+    // The spellchecker reads Portuguese whatever the PC's language: on an
+    // English Windows "palavrra" offered "palabra" and "palaver".
+    try { session.defaultSession.setSpellCheckerLanguages(["pt-BR"]); } catch (err) { console.warn("[keryx] spellchecker:", err?.message || err); }
+
     // The console's level meters read the sound the PC is putting out
     // (system loopback, Windows), so measuring can never disturb playback.
     // getDisplayMedia needs a video source; the page is given its own frame
