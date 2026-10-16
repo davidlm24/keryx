@@ -627,6 +627,25 @@ function createStore({ file, schema, log = console.warn }) {
         return result;
     }
 
+    // This database's own bookkeeping (_meta, never synced): the transport's
+    // cursors and file numbers. Values are JSON; null removes the key. The
+    // computer's id is not settable.
+    function getMeta(key) {
+        const value = prepare(`SELECT value FROM ${quote(META)} WHERE key = ?`).get(String(key))?.value;
+        if (value == null) return null;
+        try {
+            return JSON.parse(value);
+        } catch {
+            return null;
+        }
+    }
+
+    function setMeta(key, value) {
+        if (String(key) === "pc_id") throw new StoreError("pc_id não pode ser alterado.", 400);
+        if (value == null) prepare(`DELETE FROM ${quote(META)} WHERE key = ?`).run(String(key));
+        else prepare(`INSERT OR REPLACE INTO ${quote(META)} (key, value) VALUES (?, ?)`).run(String(key), JSON.stringify(value));
+    }
+
     // A consistent copy of the whole database while it is in use (VACUUM INTO
     // takes its own read transaction); the target must not exist.
     function backupTo(target) {
@@ -643,6 +662,8 @@ function createStore({ file, schema, log = console.warn }) {
         pruneOutbox,
         applyRemote,
         pcId,
+        getMeta,
+        setMeta,
         backupTo,
         onChange(listener) {
             listeners.add(listener);
