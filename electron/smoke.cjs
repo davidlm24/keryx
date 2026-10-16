@@ -445,6 +445,8 @@ async function checkLayers(webContents, { live, outputs }) {
     // Outputs are not in the taskbar (only the console is), both open here.
     const openNow = outputs.trackedWindows().filter((w) => !w.destroyed);
     result.offTaskbar = openNow.length >= 2 && openNow.every((w) => w.skipTaskbar === true);
+    // While an output is open Windows must not turn the displays off (WIN-01).
+    result.keepsAwake = outputs.keepsAwake();
     try {
         live.call("tool.show", { mode: "freetext", text: "Texto livre de teste" });
         result.freetext = await waitText(main, "Texto livre de teste");
@@ -583,7 +585,7 @@ async function checkLayers(webContents, { live, outputs }) {
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.hiddenFundoAviso && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.partThemeOk && result.openAtLaunch && result.keptTarget && result.offTaskbar;
+        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.partThemeOk && result.openAtLaunch && result.keptTarget && result.offTaskbar && result.keepsAwake;
     return result;
 }
 
@@ -1285,8 +1287,13 @@ async function checkConsole(webContents, { live, outputs }) {
             await js("document.activeElement && document.activeElement.blur(); true");
             result.bibleSplit = focused && w1 > w0 && w2 === w0 ? true : focused && w1 === w0 && !BrowserWindow.getFocusedWindow() ? verdict("bibleSplit", "outro programa na frente") : { focused, w0, w1, w2 };
         }
+        // A select left with the focus (a Tab, or a list closed without a
+        // pick) never takes the live keys (audit C-03): "j" still opens the
+        // quick jump, and the edition stays.
+        const edition = await js("(() => { const s = document.querySelector('.bpick-books .bver select'); if (s) s.focus(); return s && document.activeElement === s ? s.value : null; })()");
         await press("j");
         result.quickOpened = await waitFor(() => js("Boolean(document.querySelector('.qj'))"));
+        result.selectLeavesJump = edition !== null && result.quickOpened && await js(`(document.querySelector(".bpick-books .bver select") || {}).value === ${JSON.stringify(edition)}`);
         await type("o 3 16");
         result.quickRead = await js("[...document.querySelectorAll('.qj-step b')].map((n) => n.textContent).join('|')");
         // Space completed the book: the field holds the full name. The
@@ -1895,6 +1902,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await rightClick("Apagar smoke");
         await click(".console .ctx-menu button", "Excluir…");
         result.deleteAsks = await waitFor(() => js("Boolean(document.querySelector('.console .confirm-dialog'))"), 3000);
+        // It opens on Cancelar (audit C-10): a reflex Enter never deletes;
+        // the action is a click (below) or Tab away.
+        result.deleteSafeFocus = await waitFor(() => js("(document.activeElement || {}).textContent === 'Cancelar' && Boolean(document.activeElement.closest('.confirm-dialog'))"), 3000);
         await press("Escape");
         result.deleteKept = await waitFor(() => js("!document.querySelector('.console .confirm-dialog')"), 3000) && await songLeft();
         await rightClick("Apagar smoke");
@@ -2509,14 +2519,21 @@ async function checkConsole(webContents, { live, outputs }) {
         // a quoted phrase; Comparar side by side; a note and a favourite as
         // BibleNote rows; the palette's "Buscar … na Bíblia".
         await click(".envtabs button", "Bíblia");
-        // Buscar is the text panel's header field (owner 2026-10-14): a word
-        // searches the installed Bíblia, a reference opens the chapter.
-        const SEARCH = ".bread > .kx-panel-h .bread-search input";
-        const focusSearch = () => js(`(() => { const i = document.querySelector(${JSON.stringify(SEARCH)}); if (i) i.focus(); return Boolean(i); })()`);
-        await setVal(SEARCH, "versiculo TESTE");
-        await focusSearch();
-        await press("Enter");
-        result.bsOpen = await waitFor(() => js(`Boolean(document.querySelector('.bs-bar')) && document.activeElement === document.querySelector(${JSON.stringify(SEARCH)})`));
+        // The Bíblia has no search field of its own (owner 2026-10-16): the
+        // console's search (the palette) searches it by word — in the Bíblia
+        // its first row is "Buscar … na Bíblia".
+        const PALETTE = ".palette input";
+        const searchBible = async (text) => {
+            await js("document.activeElement && document.activeElement.blur(); true");
+            await press("/");
+            await waitFor(() => js(`Boolean(document.querySelector(${JSON.stringify(PALETTE)}))`));
+            await setVal(PALETTE, text);
+            await waitFor(() => js("[...document.querySelectorAll('.palette .kx-row')].some((n) => n.textContent.includes('na Bíblia'))"));
+            await js(`document.querySelector(${JSON.stringify(PALETTE)}).focus(); true`);
+            await press("Enter");
+        };
+        await searchBible("versiculo TESTE");
+        result.bsOpen = await waitFor(() => js("Boolean(document.querySelector('.bs-bar')) && !document.querySelector('.palette')"));
         result.bsFound = await waitFor(() => js("document.querySelectorAll('.bs-hit').length === 5 && [...document.querySelectorAll('.bs-hit mark')].some((m) => m.textContent === 'versículo')"), 6000);
         await js("document.activeElement && document.activeElement.blur(); true");
         // A click on the first result selects it; ↓ walks to the next one.
@@ -2526,9 +2543,7 @@ async function checkConsole(webContents, { live, outputs }) {
         result.bsWalked = await waitFor(() => js("(document.querySelector('.bs-hit.is-prev .bs-ref') || {}).textContent === 'João 3:15'"));
         await press("Enter");
         result.bsSent = await waitFor(() => { const ct = live.get().content; return Boolean(ct && ct.ref?.wholeChapter && ct.ref.book === "João" && ct.index === 1); });
-        await setVal(SEARCH, '"versículo 17"');
-        await focusSearch();
-        await press("Enter");
+        await searchBible('"versículo 17"');
         result.bsPhrase = await waitFor(() => js("document.querySelectorAll('.bs-hit').length === 1 && document.querySelector('.bs-hit .bs-ref').textContent === 'João 3:17'"), 6000);
         result.shotSearch = await shot("biblia-busca");
         await js("document.activeElement && document.activeElement.blur(); true");
@@ -2728,10 +2743,10 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
-        && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasCard && result.serviceThemeSent && result.bgPrefFollows
+        && result.deleteAsks && result.deleteSafeFocus && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasCard && result.serviceThemeSent && result.bgPrefFollows
         && result.libBig && result.libEscClosed && result.padraoKept && result.padraoAfterEsc && result.padraoService && result.serviceFundoButton
         && result.resent && result.locked && result.lockKeptAir && result.lockRefusedMain && result.lockBlackWorks
-        && result.unlocked && result.unlockedSends && /^Culto \d|^Sem culto|^Sem horário|^\d\d:\d\d · |^\d\d\/\d\d · \d\d:\d\d$/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
+        && result.unlocked && result.unlockedSends && /^Culto \d|^Sem culto|^Sem horário|^\d\d:\d\d · |^\d\d\/\d\d · \d\d:\d\d$/.test(result.serviceClock) && result.quickOpened && result.selectLeavesJump && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
         && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.seekDragFollows && result.seekDragOnce === true && result.audioSurvivesEnd && result.pillTitleInPlayer && result.audioStopped && result.pillNada && result.playerAlwaysThere && result.playerIdleQuiet

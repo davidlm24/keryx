@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Row, Seg, Empty } from "./kx";
+import { Panel, Btn, IconBtn, Row, Seg, Empty, Measure } from "./kx";
 import DockView from "./Dock";
 import { useContextMenu } from "./ContextMenu";
 import AddMenu from "./AddMenu";
@@ -21,6 +21,7 @@ import { useThemes } from "./useConsoleData";
 import { themeForKind, themeName } from "@/lib/console/themes";
 import useKeepInView from "./useKeepInView";
 import { ScreenActions } from "./CenterPanel";
+import { captionParts, airInPlayer } from "@/lib/console/caption";
 
 // Book groups, by position in the canon, for the colour bar of each book.
 const GROUPS = [[0, 4, "#b08a5a"], [5, 16, "#9a7a4a"], [17, 21, "#8d8a6a"], [22, 38, "#8a6a9a"], [39, 43, "#5a8ab0"], [44, 64, "#6a9a7a"], [65, 65, "#7a9a5a"]];
@@ -58,9 +59,11 @@ export const bibleVersionWanted = () => getPrefs().bible_version;
 //     the whole chapter (one verse per slide) starting there, so ←/→ keep
 //     walking the chapter; a range picked on purpose (Shift/Ctrl+click) goes
 //     out as that passage, grouped 1/2/3/Auto per slide.
-// Favoritos and Anotações: a button with a dropdown list (the selector band
-// stays one line high).
-function ListMenu({ icon, label, count, empty, rows }) {
+// Recentes, Favoritos and Anotações: a button with a dropdown list, side by
+// side on the left (the band stays one line high). The count is inside the
+// list, at its top, never on the button (owner 2026-10-16).
+const countOf = (n, [one, many]) => `${n} ${n === 1 ? one : many}`;
+function ListMenu({ icon, label, unit, empty, rows }) {
     const [open, setOpen] = useState(false);
     const box = useRef(null);
     useEffect(() => {
@@ -73,9 +76,10 @@ function ListMenu({ icon, label, count, empty, rows }) {
     }, [open]);
     return (
         <span className="addmenu" ref={box}>
-            <button type="button" className={`bchip kx-t ${open ? "is-on" : ""}`} onClick={() => setOpen((o) => !o)} aria-expanded={open}><Icon name={icon} size={12} />{label} · {count}</button>
+            <button type="button" className={`bchip kx-t ${open ? "is-on" : ""}`} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu"><Icon name={icon} size={12} />{label}<Icon name="chevron-down" size={12} /></button>
             {open && (
                 <div className="kx-pop addmenu-pop blist-pop" role="menu">
+                    <div className="blist-h"><span className="kx-section">{label}</span><span className="kx-meta">{countOf(rows.length, unit)}</span></div>
                     {!rows.length && <div className="be-hint kx-meta">{empty}</div>}
                     {rows.map((r) => <Row key={r.key} single={!r.meta} icon={r.icon} title={r.title} meta={r.meta} onClick={() => { setOpen(false); r.onPick(); }} />)}
                 </div>
@@ -84,7 +88,7 @@ function ListMenu({ icon, label, count, empty, rows }) {
     );
 }
 
-export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, onEnd, dockProps, grid = "medium", setGrid }) {
+export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, onEnd, dockProps, grid = "medium", setGrid, onChaptersH }) {
     const [mem, setMem] = useState(load);
     const [version, setVersion] = useState(null);
     const [book, setBook] = useState(mem.book || "João");
@@ -96,13 +100,11 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const setHow = (v) => { updateUser({ bible_verses_per_slide: v }).catch(() => c.say("Não foi possível salvar.")); };
     const [verses, setVerses] = useState([]);
     const [error, setError] = useState("");
-    const [q, setQ] = useState("");
     const [anchor, setAnchor] = useState(null);
     const [mode, setMode] = useState("ler");
     const modeRef = useRef(mode);
     modeRef.current = mode;
     const readingRef = useRef(null);
-    const searchInputRef = useRef(null);
     const bookRow = bibleBooks.find((b) => b.name === book) || bibleBooks[42];
     const notesApi = useBibleNotes();
 
@@ -144,13 +146,13 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const ver = chapterVersion || version;
     const search = useBibleSearch(version || wanted, book);
 
-    // A reference from the palette, the quick jump or the top field; or a
-    // word search from the palette ({ search }).
+    // A reference from the palette or the quick jump; or a word search from
+    // the palette ({ search }): the Bíblia has no search field of its own
+    // (owner 2026-10-16, the console's search covers it).
     useEffect(() => {
         if (!request) return;
         if (request.search) {
             setMode("buscar");
-            setQ(request.search);
             search.setQ(request.search);
             search.run(request.search, "all");
             return;
@@ -177,7 +179,6 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         setMem(next); save(next);
         return () => { alive = false; };
     }, [version, book, chapter, installRev]); // eslint-disable-line react-hooks/exhaustive-deps
-    useEffect(() => { if (mode === "buscar") setTimeout(() => searchInputRef.current?.focus(), 0); }, [mode]);
 
     // What is on air, when it is this chapter.
     const onAir = c.cur?.content?.kind === "bible" ? c.cur.content : null;
@@ -258,15 +259,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         setSel([n]);
         setAnchor(n);
     };
-    const goRef = (text) => { const r = parseReference(text); if (!r) { c.say("Referência não reconhecida. Ex.: Jo 3:16-21"); return false; } setBook(r.book); setChapter(r.chapter); setSel(r.verseStart ? Array.from({ length: r.verseEnd - r.verseStart + 1 }, (_, i) => r.verseStart + i) : []); setAnchor(r.verseStart || null); setQ(""); return true; };
-    // The text panel's field: a reference opens it; anything else searches by
-    // word (the term stays in the field while the results show).
-    const submitTop = () => {
-        const text = q.trim();
-        if (!text) return;
-        if (parseReference(text)) { goRef(text); setMode("ler"); return; }
-        setMode("buscar"); search.setQ(text); search.run(text);
-    };
+    const goRef = (text) => { const r = parseReference(text); if (!r) { c.say("Referência não reconhecida. Ex.: Jo 3:16-21"); return false; } setBook(r.book); setChapter(r.chapter); setSel(r.verseStart ? Array.from({ length: r.verseEnd - r.verseStart + 1 }, (_, i) => r.verseStart + i) : []); setAnchor(r.verseStart || null); return true; };
     // Installing downloads the edition: without internet the buttons say so
     // instead of failing after a click.
     const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
@@ -353,16 +346,21 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         Promise.resolve(navigator.clipboard?.writeText(text)).then(() => c.say("Versículo copiado."), () => c.say("Não foi possível copiar o versículo."));
     };
     const installHint = online ? "" : " · sem internet";
-    // The edition, said plainly: installed here, from the internet, or missing.
-    // (The browser preview's verses are samples, never a real edition: said so.)
+    // The edition, only when something is off (owner 2026-10-16: no line of
+    // text under Livros): from the internet, missing, or the preview's
+    // samples — an amber dot on the version select, the words in its tooltip.
+    // Installed here says nothing.
     const canInstall = (v) => Boolean(BIBLE_VERSIONS.find((x) => x.id === v)?.install) && !installed.includes(v);
-    const badge = error ? { text: `${ver || wanted} · não disponível`, warn: true }
-        : keryx.isPreview && source ? { text: `${ver} · texto de exemplo (prévia)`, warn: true, title: "Na prévia de desenvolvimento os versículos são de exemplo; no aplicativo vêm da Bíblia instalada." }
-        : source === "local" ? { text: `${ver} · instalada neste computador`, warn: false }
-            : source === "online" ? { text: `${ver} · pela internet`, warn: true, title: fellBack ? undefined : `Sem internet, os capítulos ainda não lidos vêm de uma versão instalada.${canInstall(ver) ? " Instale-a pelo + para usar sem internet." : ""}` }
+    const badge = error ? { text: `${ver || wanted} · não disponível` }
+        : keryx.isPreview && source ? { text: `${ver} · texto de exemplo (prévia). Na prévia de desenvolvimento os versículos são de exemplo; no aplicativo vêm da Bíblia instalada.` }
+            : source === "online" ? { text: `${ver} · pela internet.${fellBack ? "" : ` Sem internet, os capítulos ainda não lidos vêm de uma versão instalada.${canInstall(ver) ? " Instale-a pelo + para usar sem internet." : ""}`}` }
                 : null;
     const others = installed.filter((v) => v !== (version || wanted));
-    const airTitle = c.cur?.content ? c.cur.content.title : c.cur?.media ? c.cur.media.title : "nada";
+    // What the No ar pill's dot says (the Programa's tones, ProgramaPill).
+    const airCap = captionParts(c.cur).title;
+    const airIdle = airCap === "nada" && !airInPlayer(c.cur);
+    const airTone = c.locked ? "rh" : airIdle ? "idle" : "air";
+    const airSaid = `${airIdle ? "Nada no ar" : `No ar: ${airCap}`}${c.locked ? " · travado" : ""}`;
     const searchSel = sel.length === 1 ? { book, chapter, verse: sel[0] } : null;
 
     // The Bíblia's modules (owner layout 2026-10-12: Livro · Capítulo ·
@@ -373,7 +371,10 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const modules = {
         books: (
             <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={<>
-                <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" title="Versão da Bíblia" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
+                <span className="bver" title={badge ? badge.text : "Versão da Bíblia"}>
+                    <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label={badge ? `Versão: ${badge.text}` : "Versão"} style={{ background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
+                    {badge && <i className="bver-dot" aria-hidden="true" />}
+                </span>
                 <Seg small value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
                 <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
                 <IconBtn name="grid" small title="Mais: tema da Bíblia, tamanho das células" onClick={(e) => menu(e, { title: "Bíblia", items: [
@@ -384,7 +385,6 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     { label: "Células grandes", icon: grid === "large" ? "check" : undefined, onSelect: () => setGrid?.("large") },
                 ] })} />
             </>}>
-                {badge && <div className={`bsrc ${badge.warn ? "kx-warn" : ""}`} title={badge.title || badge.text}><Icon name={badge.warn ? "warn" : "check"} size={12} /><span>{badge.text}</span></div>}
                 {ver && ver !== wanted && (
                     <div className="warnline"><Icon name="warn" /><span>{fellBack ? `${wanted} sem internet · ${book} ${chapter} na ${ver}` : `${wanted} não instalada · mostrando ${ver}`}</span>
                         {canInstall(wanted) && <Btn small kind="outline" disabled={!online} onClick={() => installVersion(wanted)} title={online ? `Baixar a ${wanted} para usar sem internet` : "Sem internet agora: conecte o computador para baixar"}>Instalar {wanted}{installHint}</Btn>}
@@ -397,11 +397,12 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         ),
         chapters: (
             <Panel className="bpick-chapters" title="Capítulos" count={`${bookRow.name} · ${bookRow.chapters}`}>
-                <div className="bchap">
+                {/* As tall as its cells (Console.jsx locks the height, capped). */}
+                <Measure onHeight={onChaptersH}><div className="bchap">
                     <div className={`chapters is-${grid}`}>
                         {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
                     </div>
-                </div>
+                </div></Measure>
             </Panel>
         ),
         verses: (
@@ -419,22 +420,17 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             </Panel>
         ),
         reading: (
-            <Panel className="bread bible-center" title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}${ver ? ` · ${ver}` : ""}`}
-                count={mode === "ler" ? "clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" : mode === "buscar" ? "↑↓ percorre os resultados · Enter ou 2 cliques projeta" : "versões lado a lado"}
+            <Panel className="bread bible-center" title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}`}
                 actions={<>
-                    {mode === "ler" && <><Btn small className="bread-sel" onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small className="bread-sel" onClick={() => setSel([])}>Limpar</Btn></>}
+                    {mode === "ler" && <><IconBtn small name="checks" className="bread-sel" title="Selecionar todos" onClick={() => setSel(verses.map((v) => v.number))} /><IconBtn small name="x" className="bread-sel" title="Limpar seleção" onClick={() => setSel([])} /></>}
                     <Seg small value={mode} onChange={setMode} options={MODES} />
-                    <span className="bread-search"><Field inputRef={searchInputRef} value={q} onChange={setQ} placeholder="Buscar: Jo 3:16 ou palavra" kbd="Enter"
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitTop(); } else if (e.key === "Escape" && mode === "buscar") { e.stopPropagation(); setMode("ler"); } }} /></span>
                 </>}>
                 <div className="bband-lists">
-                    <span className="kx-section">Recentes</span>
-                    {!(mem.recent || []).length && <span className="kx-meta">nenhum</span>}
-                    {(mem.recent || []).map(([b, ch]) => <button type="button" key={`${b}${ch}`} className="bchip kx-t" onClick={() => { setBook(b); setChapter(ch); setSel([]); setMode("ler"); }}><Icon name="history" size={12} />{b} {ch}</button>)}
-                    <span style={{ flex: 1 }} />
-                    <ListMenu icon="star" label="Favoritos" count={notesApi.favorites.length} empty="Selecione versículos e use a estrela."
+                    <ListMenu icon="history" label="Recentes" unit={["capítulo", "capítulos"]} empty="Os capítulos que você abrir aparecem aqui."
+                        rows={(mem.recent || []).map(([b, ch]) => ({ key: `${b}${ch}`, icon: "history", title: `${b} ${ch}`, onPick: () => { setBook(b); setChapter(ch); setSel([]); setMode("ler"); } }))} />
+                    <ListMenu icon="star" label="Favoritos" unit={["favorito", "favoritos"]} empty="Selecione versículos e use a estrela."
                         rows={notesApi.favorites.map((fv) => ({ key: fv.id, icon: "star", title: fv.reference, onPick: () => { if (goRef(fv.reference)) setMode("ler"); } }))} />
-                    <ListMenu icon="text" label="Anotações" count={notesApi.notes.length} empty="Selecione um versículo e escreva à direita."
+                    <ListMenu icon="text" label="Anotações" unit={["anotação", "anotações"]} empty="Selecione um versículo e escreva à direita."
                         rows={notesApi.notes.map((n) => ({ key: n.id, icon: "text", title: n.reference, meta: n.note_text, onPick: () => { if (goRef(n.reference)) setMode("ler"); } }))} />
                 </div>
                 <div className="bread-b">
@@ -479,10 +475,14 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             </Panel>
         ),
         air: (
-            <Panel className="bible-air-col" title={<span className={c.locked ? "kx-rh" : "kx-air"}>{c.locked ? "No ar · travado" : "No ar agora"}</span>} count={airTitle} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+            <Panel className="bible-air-col" noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
                 <div className="bible-air">
-                    {/* The screen actions ride a pill on this monitor (Rodada E1: they left the top bar for the Programa's pill). */}
-                    <div className={`kx-mon ${c.locked ? "is-rh" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview /><div className="prog-pill scr-pill"><ScreenActions c={c} onEnd={onEnd} /></div></div></div>
+                    {/* No header (owner 2026-10-16): the screen sits on top, and
+                        its pill is the Programa's with icons only — the state's
+                        dot and the screen actions (they left the top bar, Rodada E1). */}
+                    <div className={`kx-mon ${c.locked ? "is-rh" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview />
+                        <div className={`prog-pill scr-pill is-${airTone}`} role="group" aria-label={`No ar · ${airSaid}`} title={airSaid}><i className="pp-dot" aria-hidden="true" /><ScreenActions c={c} onEnd={onEnd} /></div>
+                    </div></div>
                 </div>
                 <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
                     <span className="kx-section">Selecionado <span className="kx-count">· {sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>

@@ -107,7 +107,7 @@
 .console .ctx-scrim { position: fixed; z-index: 45; }
 /* Every popover and menu (Ver, Saídas, the (+) menus, right-click menus,
    the tabs lists) stands out from the panels under it: a stronger ring and
-   a deeper shadow than the design system's --popover (owner 2026-10-14,
+   a deeper shadow than the design system's --shadow-popover (owner 2026-10-14,
    who liked the framed menus of the proposal). */
 .console .kx-pop { box-shadow: 0 0 0 1px var(--line-strong), 0 12px 32px #000000a6; }
 /* The right-click menu opens at the pointer, over the row it acts on: a
@@ -196,7 +196,7 @@
 /* A drop over the Programa or the Prévia (owner 2026-10-15, Rodada D: never
    a border): the screen dims and one pill says what letting go does. */
 .console .kx-drop-hint { position: absolute; inset: 0; z-index: 210; display: grid; place-items: center; pointer-events: none; background: color-mix(in srgb, var(--bg-0) 45%, transparent); }
-.console .kx-drop-hint > span { padding: 4px var(--space-3); border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-1); box-shadow: var(--popover); font: 600 12px/16px var(--font-sans); }
+.console .kx-drop-hint > span { padding: 4px var(--space-3); border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-1); box-shadow: var(--shadow-popover); font: 600 12px/16px var(--font-sans); }
 .console .kx-drop-hint.is-air > span { background: var(--air-fill); color: var(--on-state); }
 /* Monitor frames are painted inside the box (a ::after on top), never as an
    outer shadow: an outer shadow is cut by the panel's overflow and the
@@ -236,9 +236,9 @@
    beside the Prévia got a thin header of its own for it ("Painel"). */
 .console .kx-panel-h > .tabs-plus { flex: none; width: 24px; height: 24px; }
 /* A header is symmetric (owner 2026-10-16): its title sits 12 px from the
-   left edge and its last button 12 px from the right one. The bare panels
-   keep their own. */
-.console .kx-panel:not(.kx-panel-bare) > .kx-panel-h { padding-right: var(--space-3); }
+   left edge and its last button 12 px from the right one, its controls 8 px
+   apart, as in the windows' bar (.win-bar). The bare panels keep their own. */
+.console .kx-panel:not(.kx-panel-bare) > .kx-panel-h { padding-right: var(--space-3); gap: var(--space-2); }
 /* Too many tabs for the width: the row breaks into a second line (owner
    2026-10-14, the Biblioteca review), never a cut title. Only a single tab
    wider than the whole panel still shortens. */
@@ -290,6 +290,13 @@
 .console .sendrow { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex-wrap: wrap; }
 .console .slidesnav { height: 40px; display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-3) 0 var(--space-1); border-top: 1px solid var(--line); flex: none; white-space: nowrap; min-width: 0; }
 .console .slidesnav > .kx-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Under the Prévia's slides the footer's arrows are the air's (the design
+   audit, C-06): "● No ar", the two arrows and the air's n/m are one group,
+   apart from the column's "prévia n/m" at the right. */
+.console .slidesnav-air { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
+.console .slidesnav-lab { display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--space-1) 0 var(--space-2); font-size: 12px; color: var(--fg-2); }
+.console .slidesnav-air > .kx-meta { padding-left: var(--space-1); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.console .slidesnav .kx-btn-icon.kx-btn-live { width: 32px; padding: 0; }
 /* Rows (owner 2026-10-14, the small-screen review; they were cards): every
    slide in a list (the Slides column, No ar in a column) and every verse
    (Ler, Buscar) is a row with a 1 px separator, no card of its own, so a
@@ -404,7 +411,7 @@
 .console .warnline .kx-btn { margin-left: auto; flex: none; color: var(--fg-1); }
 /* Camadas: a drawer over the source columns, so the Programa stays in view while editing what is on air. */
 .console .drawer { position: absolute; z-index: 32; top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); left: var(--gutter); bottom: 40px; width: 360px; display: flex; flex-direction: column; gap: var(--gutter); }
-.console .drawer > .kx-panel { flex: 1; box-shadow: var(--popover); }
+.console .drawer > .kx-panel { flex: 1; box-shadow: var(--shadow-popover); }
 /* The Programa first or in the middle: the drawer opens on its right when there is more room there. */
 .console .drawer.is-right { left: auto; right: var(--gutter); }
 
@@ -499,26 +506,26 @@
    and its label beside it; never a filled box over the target. */
 .console .dock-hint { position: fixed; z-index: 45; pointer-events: none; border-radius: 2px; background: var(--brand); box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-0) 60%, transparent); }
 .console .dock-hint-label { position: fixed; z-index: 45; pointer-events: none; padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 11px/16px var(--font-sans); white-space: nowrap; }
-.console .dock-ghost { position: fixed; z-index: 46; pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font: 500 12px/16px var(--font-sans); }
+.console .dock-ghost { position: fixed; z-index: 46; pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font: 500 12px/16px var(--font-sans); }
 /* A media row's picture on hover (Library.jsx MediaPeek): beside the Biblioteca, 16:9, never under the mouse */
-.console .media-peek { position: fixed; z-index: 44; pointer-events: none; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: var(--popover); outline: 1px solid var(--line); }
+.console .media-peek { position: fixed; z-index: 44; pointer-events: none; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: var(--shadow-popover); outline: 1px solid var(--line); }
 .console .media-peek img { width: 100%; height: 100%; object-fit: contain; display: block; }
 /* The Bíblia in three columns (owner layout 2026-10-12): Livro, Capítulo
    and Versículo stacked, the chosen text, what is on air. Their order and the
    side widths are the operator's (Ver › Editar layout). Each picker card
    scrolls on its own; Versículos takes what is left. */
 .console .bible-center { container: bible / inline-size; }
-/* The band under Livros' header is the same row as Recentes under the text's
-   (4 + 24 + 4 and a separator), so both columns start their lists at the
-   same height. */
-.console .bpick-books .bsrc { display: flex; box-sizing: border-box; height: 33px; padding: 0 var(--space-3); border-bottom: 1px solid var(--line); }
-/* Livros' header carries the version, Abrev | Nomes, the install +, the
-   view menu and the fold chevron beside its title (Rodada F4): the
-   controls sit tighter, so the title still reads at the column's 300 px. */
-.console .bpick-books > .kx-panel-h { gap: 2px; }
-.console .bpick-books > .kx-panel-h > .kx-section { margin-right: 2px; }
-.console .bpick-books > .kx-panel-h > select { flex: none; width: 62px; padding: 0 2px; }
-.console .bpick-books > .kx-panel-h .kx-seg > button { padding: 0 5px !important; }
+/* Livros' header carries the version, Abrev | Nomes, the install + and the
+   view menu beside its title. Like every header's controls they are 24 px
+   tall and 8 px apart; the select and the two buttons are narrow, so the
+   title still reads at the column's 300 px. The edition says nothing while
+   it is installed here; from the internet, missing or the preview's samples
+   it is an amber dot on the select, the words in its tooltip (owner
+   2026-10-16: no line of text under the header). */
+.console .bpick-books .bver { position: relative; flex: none; display: inline-flex; }
+.console .bpick-books .bver > select { width: 52px; height: 24px; padding: 0 2px; }
+.console .bpick-books .bver-dot { position: absolute; top: -2px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--bg-1); pointer-events: none; }
+.console .bpick-books > .kx-panel-h .kx-seg > button { padding: 0 4px !important; }
 .console .kx-panel-h .addmenu > .kx-btn-icon { width: 24px; height: 24px; }
 /* Livros, Capítulos and Versículos in three cell sizes (owner 2026-10-14:
    Livros' header menu, layout.bibleGrid — pequenas, médias as they were,
@@ -532,9 +539,6 @@
 .console .chapters.is-small button, .console .verse-cells.is-small button { height: 22px; font-size: 11px; }
 .console .chapters.is-large, .console .verse-cells.is-large { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
 .console .chapters.is-large button, .console .verse-cells.is-large button { height: 34px; font-size: 14px; }
-/* The text panel's search field (Buscar; a reference opens the chapter). */
-.console .bread-search { flex: 0 4 240px; min-width: 140px; }
-.console .bread-search .kx-field { width: 100%; }
 .console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: var(--space-1); }
 .console .bpick-books.names-full .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
 .console .bpick-chapters .bchap { border-top: 0; padding: var(--space-1); }
@@ -542,20 +546,14 @@
 .console .bpick-verses .bverses { padding: var(--space-1); }
 /* The text column: recent chapters, favourites and notes on top, the
    reading (or Buscar, Comparar) below, scrolling. */
-/* Its header is one line at the density's height, like every panel's
-   (owner 2026-10-16, Rodada F4): narrower, the hint goes first, then
-   Selecionar todos and Limpar, and the search field gives way. */
+/* Its header is one line, like every panel's: the chapter, two icons
+   (Selecionar todos, Limpar seleção) and Ler | Comparar. No hint and no
+   search field (owner 2026-10-16: the console's search covers the Bíblia). */
 .console .bread > .kx-panel-h { overflow: hidden; }
 .console .bread > .kx-panel-h > .kx-section { min-width: 64px; }
-@container bible (max-width: 720px) { .console .bread > .kx-panel-h .kx-count { display: none; } }
-@container bible (max-width: 600px) { .console .bread .bread-sel { display: none; } }
-@container bible (max-width: 440px) { .console .bread-search { flex-basis: 150px; min-width: 96px; } }
 .console .bread > .kx-panel-b { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 .console .bread-b { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .console .bread-b > .reading { overflow: visible; }
-/* The edition: installed here, from the internet (amber) or missing (amber). */
-.console .bsrc { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.console .bsrc.kx-warn { color: var(--warn-fg); }
 .console .bunavail-acts { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1); margin-top: var(--space-2); }
 .console .bgrid { display: grid; gap: 3px; }
 .console .bgrid .kx-book { height: 26px; font-size: 12px; }
@@ -580,11 +578,20 @@
 .console .verse-cells button.is-air { background: var(--air-tint); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
 /* Nomes: the books with their whole names, left-aligned. */
 .console .bpick-books.names-full .bgrid .kx-book { align-items: flex-start; padding: 0 6px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 26px; text-align: left; }
-.console .bband-lists { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border-bottom: 1px solid var(--line); }
-.console .bband-lists > .kx-section { margin-right: var(--space-1); }
-.console .bchip { height: 24px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }
+/* Recentes, Favoritos and Anotações: three buttons on the left, 4 px in
+   (boxes). Their lists open from the band's left edge, never wider than
+   the panel, whose body clips (owner 2026-10-16). */
+.console .bband-lists { position: relative; flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); border-bottom: 1px solid var(--line); }
+.console .bband-lists .addmenu { position: static; }
+.console .bband-lists .blist-pop { left: var(--space-1); right: auto; width: min(300px, calc(100% - 2 * var(--space-1))); }
+/* 28 px, like the Biblioteca's search row: a band under a header is 36 px,
+   its controls 28, 4 px in and 4 px apart (owner 2026-10-16). */
+.console .bchip { height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }
 .console .bchip:hover, .console .bchip.is-on { background: var(--bg-3); color: var(--fg-1); }
 .console .blist-pop { width: 300px; max-height: 360px; overflow: auto; }
+/* The list's count lives at its top, never on the button (owner 2026-10-16). */
+.console .blist-h { height: 28px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 0 var(--space-2); }
+.console .blist-h .kx-section { font-size: 10px; }
 .console .reading { max-width: 760px; }
 .console .vgroup { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
 .console .vslide { display: grid; grid-template-columns: 16px 1fr; gap: var(--space-2); padding: 4px 8px 6px; border-radius: var(--radius-control); background: var(--bg-2); font-size: 12px; line-height: 16px; color: var(--fg-1); }
@@ -597,7 +604,7 @@
 .console .listhead .kx-section { font-size: 10px; color: var(--fg-3); }
 .console .listhead .kx-count, .console .listhead .kx-section .kx-count { text-transform: none; letter-spacing: normal; font-weight: 400; }
 .console .kx-tabs .grow { flex: 1; }
-.console .toast { position: absolute; z-index: 50; left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
+.console .toast { position: absolute; z-index: 50; left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
 .console .kx-row .kx-row-acts .kx-btn { color: var(--fg-1); }
 .console .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
 /* Dragging in a list (owner 2026-10-15, Rodada D; Rodada E2, 2026-10-16:
@@ -801,7 +808,7 @@
 /* The "No ar agora" monitor: at most 35 % of the column's height, so the
    selection and the actions below it stay in view on short windows. */
 .console .bible-air-col .kx-panel-b { container-type: size; }
-.console .bible-air { padding: 0 var(--space-1) var(--space-1); flex: none; display: flex; justify-content: center; }
+.console .bible-air { padding: var(--space-1); flex: none; display: flex; justify-content: center; }
 .console .bible-air .kx-mon { width: min(100%, calc(35cqh * 16 / 9)); }
 
 /* "+" beside a search field: the menu of what can be added there. */
@@ -1576,3 +1583,58 @@
 .console .sync .sync-time.is-bad { box-shadow: inset 0 0 0 1px var(--warn); }
 .console .sync .sync-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; opacity: .35; }
 .console .sync .sync-row:hover .sync-acts, .console .sync .sync-row.is-sel .sync-acts, .console .sync .sync-row:focus-within .sync-acts { opacity: 1; }
+
+/* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
+   the console's side of the cues in bundle.css, at the console's
+   specificity. Nothing above changes: this block only applies under a
+   contrast theme, where Chromium repaints backgrounds and borders in the
+   system's colours and drops shadows. One language for the states: on air =
+   Highlight filling the row (still the row's background, as the owner's
+   rule wants), Prévia = a dashed LinkText ring, next = a dotted ring,
+   chosen / pressed / open = a solid Highlight ring; a ring never hides the
+   keyboard's focus ring. What is a picture keeps its own colours: the
+   screens' stills (.cfg-prev, the editor's canvas; the monitors in
+   bundle.css, the outputs in screen.css) and the colour swatches. */
+.console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-preset i) { forced-color-adjust: none; }
+@media (forced-colors: active) {
+  /* Floating surfaces lose their shadow: an edge instead. */
+  .console :is(.pop, .kx-pop, .ctx-menu, .dialog, .palette, .toast, .qj, .verif-overlay, .addmenu-pop, .lyr, .win-dialog, .pl-pop, .lib-dialog, .media-peek) { outline: 1px solid CanvasText; }
+  /* Slides, No ar cards, verses, Setlist, Biblioteca and Mídia rows, the
+     Bíblia's verse cells and Comparar, the Escola's questions, Sincronizar.
+     :is(.is-air, .is-air.is-prev) weighs as much as the both-states rules
+     above, so the fill wins there too. */
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) { background: Highlight; color: HighlightText; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) * { color: HighlightText; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk).is-prev:not(:focus-visible) { outline: 2px dashed LinkText; outline-offset: -2px; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk).is-air.is-prev:not(:focus-visible) { outline-color: HighlightText; }
+  .console :is(.kx-slide, .kx-verse).is-air.is-prev > :is(.kx-slide-n, .kx-verse-n) { background: HighlightText; color: Highlight; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) :is(.kx-btn, button):hover,
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) :is(.kx-btn, button):hover * { background: HighlightText; color: Highlight; }
+  .console :is(.kx-slide, .onair-card).is-next:not(:focus-visible) { outline: 2px dotted CanvasText; outline-offset: -2px; }
+  .console .mv-th.is-air { outline: 3px solid Highlight; outline-offset: 2px; }
+  /* Chosen or pressed: tabs, chips, cells, tiles, Seg, an open menu… */
+  .console :is(.is-on, .is-sel, .is-selected):not(.sw2, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
+  .console .envtabs > button.is-on::after { background: Highlight; }
+  /* The Bíblia's cells are boxes. */
+  .console :is(.bgrid .kx-book, .chapters button, .verse-cells button):not(:focus-visible, .is-on, .is-selected, .is-prev) { outline: 1px solid ButtonText; outline-offset: -1px; }
+  /* Switches: track and knob in the system's colours, Highlight when on. */
+  .console .sw2 { border: 1px solid ButtonText; background: Canvas; }
+  .console .sw2::after { top: 1px; left: 1px; background: ButtonText; }
+  .console .sw2.is-on { border-color: Highlight; background: Highlight; }
+  .console .sw2.is-on::after { left: 13px; background: HighlightText; }
+  .console .sw2:disabled { border-color: GrayText; }
+  .console .sw2:disabled::after { background: GrayText; }
+  .console .sw2.is-on:disabled { background: GrayText; }
+  .console .sw2.is-on:disabled::after { background: Canvas; }
+  /* Fields get a boundary and a focus ring (an input inside a .kx-field or
+     the quick jump takes its box's). */
+  .console :is(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])):not(:is(.kx-field, .qj-input) *), .console .qj-input { border: 1px solid FieldText; }
+  .console :is(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])):not(:is(.kx-field, .qj-input) *):focus-visible, .console .qj-input:focus-within { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* The player's progress and volume (its meters: bundle.css), the bell's dot. */
+  .console .player .pl-seek::before { background: Canvas; outline: 1px solid CanvasText; }
+  .console .player .pl-seek > i { background: Highlight; }
+  .console .player .pl-seek > :is(b, .pl-tick) { background: CanvasText; }
+  .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
+  .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
+  .console .topbar .tb-bell-dot { background: Highlight; }
+}

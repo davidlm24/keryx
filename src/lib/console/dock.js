@@ -80,12 +80,13 @@ export const MODULES = {
     // The Bíblia (BibleEnv.jsx): the three pickers (the version and the
     // search live in their headers since 2026-10-14; an old save's "Versão
     // e busca" module is dropped by clean); the text; what is on air with
-    // Enviar ao ar.
-    books: { name: "Livros", minW: 200, minH: 120, env: "biblia" },
-    chapters: { name: "Capítulos", minW: 200, minH: 90, env: "biblia" },
-    verses: { name: "Versículos", minW: 200, minH: 96, env: "biblia" },
-    reading: { name: "Texto", minW: 360, minH: 200, required: true, env: "biblia" },
-    air: { name: "No ar", minW: 300, minH: 300, required: true, env: "biblia" },
+    // Enviar ao ar. None of them folds (owner 2026-10-16: the Bíblia's
+    // panels need no chevron).
+    books: { name: "Livros", minW: 200, minH: 120, env: "biblia", noFold: true },
+    chapters: { name: "Capítulos", minW: 200, minH: 90, env: "biblia", noFold: true },
+    verses: { name: "Versículos", minW: 200, minH: 96, env: "biblia", noFold: true },
+    reading: { name: "Texto", minW: 360, minH: 200, required: true, env: "biblia", noFold: true },
+    air: { name: "No ar", minW: 300, minH: 300, required: true, env: "biblia", noFold: true },
 };
 export const ENVS = ["culto", "biblia"];
 // A module the operator can fold (its header's chevron; layout.folded).

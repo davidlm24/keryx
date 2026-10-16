@@ -191,7 +191,7 @@ function OnStep({ c, st, busy, run, setMade }) {
     };
     const copy = (code) => navigator.clipboard?.writeText(code).then(() => c.say("Código copiado."), () => c.say("Selecione o código e copie com Ctrl+C."));
     const rotate = async () => {
-        if (!(await confirm({ title: "Trocar o código da igreja?", text: "Os outros computadores param de sincronizar até alguém digitar o código novo neles. Use para cortar de vez um computador que não deve mais sincronizar.", ok: "Trocar o código" }))) return;
+        if (!(await confirm({ title: "Trocar o código da igreja?", text: "Os outros computadores param de sincronizar até alguém digitar o código novo neles. Use para cortar de vez um computador que não deve mais sincronizar.", ok: "Trocar o código", danger: true }))) return;
         const r = await run("rotate", undefined, "Código");
         if (r?.code) { setShown(null); setMade({ code: r.code, changed: true }); }
     };
@@ -299,6 +299,7 @@ function Duplicates({ c, confirm }) {
             title: `Juntar "${g.title}" em uma?`,
             text: `Fica a editada por último (${formatWhen(keep.updated_date)}). As setlists e os modelos de culto passam a usar ela, e ${others === 1 ? "a outra cópia é excluída" : `as outras ${others} cópias são excluídas`}.`,
             ok: "Juntar",
+            danger: true,
         }))) return;
         setBusy(g.key);
         try {

@@ -14,6 +14,8 @@ const EXTRA = {
     info: '<circle cx="12" cy="12" r="8"/><path d="M12 11v5.5"/><path d="M12 7.8v.2"/>',
     pin:'<path d="M9.5 4.5h5l-.7 5 2.7 2.5v1.5H7.5V12l2.7-2.5z"/><path d="M12 13.5V20"/>',
     cloud: '<path d="M7.5 18.5h9.5a3.75 3.75 0 0 0 .4-7.48 5.5 5.5 0 0 0-10.6 1.26A3.1 3.1 0 0 0 7.5 18.5z"/>',
+    // Two ticks: select all (the Bíblia's verses).
+    checks: '<path d="m3.5 12.5 3.5 3.5 7-8"/><path d="m11 15.5.5.5 8-9"/>',
 };
 
 // The glyph's SVG markup, for a node built outside React (the drag ghost).

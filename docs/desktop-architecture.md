@@ -537,6 +537,12 @@ those keys.
   each output as a frameless, fullscreen, always-on-top `BrowserWindow` on
   its display at launch and when a monitor is plugged in. Settings gets an
   "Ecrãs" section with a picture of the monitors to drag outputs onto.
+  Built (2026-10-16, the design audit's WIN-01/02/16): an output whose
+  monitor leaves waits hidden and comes back full screen with it (never a
+  frameless window over the console), a monitor change elsewhere leaves an
+  output in place alone, and while any output is open a
+  `powerSaveBlocker` ("prevent-display-sleep") keeps Windows from turning
+  the displays off (`electron/outputs.cjs`, `outputs-manager.cjs`, tested).
 - **`window.open` keeps working:** pages open the projector with
   `window.open(...)` (`src/lib/projectionWindow.js`, `Home`, `Services`,
   `BibleSchool`). The main process intercepts these by window name and
