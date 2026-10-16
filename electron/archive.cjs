@@ -24,6 +24,20 @@ const FORMAT = "keryx-export";
 const VERSION = 1;
 const PENDING = "pending-import";
 const MAX_MANIFEST_BYTES = 64 * 1024;
+// What an import may take (the 0.2.19 audit): the zip says each entry's size
+// and yauzl checks the bytes against it while reading, so an entry that
+// would not fit is refused before any of it is written, and staging never
+// fills the disk. A church's export is its database (MBs) and its whole
+// media folder (many GB of videos is normal), so there is no cap per media
+// file: the disk's free space is the limit, keeping MIN_FREE_BYTES for the
+// live database, the backups and Windows.
+const MAX_ENTRIES = 100000;
+const MAX_DB_BYTES = 4 * 1024 ** 3;
+const MIN_FREE_BYTES = 512 * 1024 ** 2;
+const freeSpaceOf = (dir) => {
+    const st = fs.statfsSync(dir);
+    return Number(st.bavail) * Number(st.bsize);
+};
 const ENTRY = /^(manifest\.json|keryx\.db|media\/|media\/[A-Za-z0-9][A-Za-z0-9._-]*)$/;
 
 class ArchiveError extends Error {
@@ -108,8 +122,9 @@ function checkDatabase(file) {
 }
 
 // Validates the zip and extracts it to <dataDir>/pending-import/. Nothing
-// live is changed. Returns { media, manifest }.
-async function stageImport({ zipFile, dataDir }) {
+// live is changed. Returns { media, manifest }. `freeSpace` and the limits
+// are there for the tests.
+async function stageImport({ zipFile, dataDir, freeSpace = freeSpaceOf, maxEntries = MAX_ENTRIES, maxDbBytes = MAX_DB_BYTES, minFree = MIN_FREE_BYTES }) {
     const staging = path.join(dataDir, PENDING);
     fs.rmSync(staging, { recursive: true, force: true });
     fs.mkdirSync(path.join(staging, "media"), { recursive: true });
@@ -119,6 +134,7 @@ async function stageImport({ zipFile, dataDir }) {
     let hasDb = false;
     let media = 0;
     try {
+        if (zip.entryCount > maxEntries) throw new ArchiveError("O arquivo tem itens demais para uma exportação do KERYX.");
         await new Promise((resolve, reject) => {
             zip.on("error", reject);
             zip.on("end", resolve);
@@ -131,6 +147,9 @@ async function stageImport({ zipFile, dataDir }) {
                         if (name === "manifest.json") {
                             manifest = JSON.parse((await readAll(stream, MAX_MANIFEST_BYTES)).toString("utf8"));
                         } else {
+                            const size = Number(entry.uncompressedSize) || 0;
+                            if (name === "keryx.db" && size > maxDbBytes) throw new ArchiveError("O banco de dados dentro do arquivo é grande demais para ser do KERYX.");
+                            if (size + minFree > freeSpace(staging)) throw new ArchiveError("Não há espaço livre no disco para importar este arquivo. Libere espaço e tente de novo.");
                             await pipeline(stream, fs.createWriteStream(path.join(staging, name)));
                             if (name === "keryx.db") hasDb = true;
                             else media++;
