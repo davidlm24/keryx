@@ -9,7 +9,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { createStore, PROFILE_ID } = require("./db/store.cjs");
 const { createSyncEngine, inspectFolder, syncDirOf, mediaRefs, coalesce, fileName, STATE_KEY } = require("./sync.cjs");
-const { keysFor, createPairing, joinPairing, readPairing, PAIRING_FILE } = require("./syncPairing.cjs");
+const { keysFor, createPairing, joinPairing, readPairing, updateRemoved, PAIRING_FILE } = require("./syncPairing.cjs");
 const schema = require("./db/schema.json");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "keryx-sync-"));
@@ -390,18 +390,20 @@ test("lines without the church's signature are counted for their computer, never
 test("a computer joins with the church's code; a wrong code or a typo is told apart", async () => {
     const folder = tmp();
     const syncDir = syncDirOf(folder);
-    assert.deepEqual(await joinPairing(syncDir, "K7QM-2HXP-9WRT"), { error: "check" });
-    const typo = await joinPairing(syncDir, "K7QM-2HXP");
-    assert.equal(typo.error, "short");
+    const { makeCode } = await import("../shared/syncCode.mjs");
+    const valid = makeCode();
+    const typo = valid.slice(0, -1) + (valid.endsWith("0") ? "1" : "0");
+    assert.deepEqual(await joinPairing(syncDir, typo), { error: "check" });
+    assert.equal((await joinPairing(syncDir, "K7QM-2H")).error, "short");
 
     const a = computer(folder, { pairing: null });
     assert.equal((await a.engine.pass()).state, "unpaired", "a folder and no code: nothing happens");
     assert.equal((await inspectFolder(folder)).code, "missing");
-    const nothingYet = await joinPairing(syncDir, (await import("../shared/syncCode.mjs")).makeCode());
+    const nothingYet = await joinPairing(syncDir, valid);
     assert.equal(nothingYet.error, "nocode");
 
     const made = await createPairing(syncDir, { pc: a.store.pcId });
-    assert.match(made.code, /^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+    assert.match(made.code, /^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
     const file = JSON.parse(fs.readFileSync(path.join(syncDir, PAIRING_FILE), "utf8"));
     assert.equal(file.id, made.id);
     assert.ok(!JSON.stringify(file).includes(made.code.replace(/-/g, "")), "the code is never in the folder");
@@ -472,6 +474,50 @@ test("the code changes: a computer with the old one stops, keeps its changes, an
     assert.ok(fromB.rejected >= 1);
     a.close();
     b.close();
+});
+
+test("Tirar: a computer taken out stops, the others skip it, and typing the code brings it back", async () => {
+    const folder = tmp();
+    const syncDir = syncDirOf(folder);
+    const a = computer(folder);
+    const b = computer(folder);
+    const c = computer(folder);
+    a.store.call("Song", "create", [{ title: "Antes" }]);
+    b.store.call("Song", "create", [{ title: "De B, antes" }]);
+    await rounds([a, b, c], 2);
+
+    // A takes B out.
+    const list = await updateRemoved(syncDir, CHURCH, (now) => [...now, { pc: b.store.pcId, at: new Date().toISOString(), by: a.store.pcId }], { pc: a.store.pcId });
+    assert.deepEqual(list.map((r) => r.pc), [b.store.pcId]);
+    b.store.call("Song", "create", [{ title: "De B, tirado" }]);
+    const out = await b.engine.pass();
+    assert.equal(out.state, "removed");
+    assert.equal(out.removed.by, a.store.pcId);
+    assert.equal(b.store.outbox().length, 1, "its change waits");
+    // A line B wrote anyway (it had not seen the list yet) is skipped too.
+    const lateDir = path.join(syncDir, b.store.pcId);
+    fs.appendFileSync(path.join(lateDir, fileName(1)), signed.sign(JSON.stringify({ seq: 9, entity: "Song", id: crypto.randomUUID(), op: "upsert", row: { title: "Atrasada" }, at: new Date().toISOString(), pc: b.store.pcId })) + "\n");
+    const seen = await c.engine.pass();
+    assert.ok(!songs(c).some((x) => x.title === "Atrasada"), "a computer taken out is not read");
+    assert.equal(seen.computers.find((x) => x.pc === b.store.pcId).removed.by, a.store.pcId);
+
+    // A list edited without the key takes nobody out.
+    const file = path.join(syncDir, PAIRING_FILE);
+    const forged = JSON.parse(fs.readFileSync(file, "utf8"));
+    forged.removed.push({ pc: c.store.pcId, at: "x", by: "y" });
+    fs.writeFileSync(file, JSON.stringify(forged));
+    assert.equal((await c.engine.pass()).state, "ok", "the forged entry has no valid mac");
+    assert.equal((await b.engine.pass()).state, "ok", "and the whole list stops counting while it does not verify");
+    await updateRemoved(syncDir, CHURCH, (now) => now.filter((r) => r.pc !== c.store.pcId), { pc: a.store.pcId });
+
+    // B is back once the list no longer names it (B typing the code takes
+    // itself off: syncControl's join).
+    await updateRemoved(syncDir, CHURCH, (now) => [...now, { pc: b.store.pcId, at: new Date().toISOString(), by: a.store.pcId }], { pc: a.store.pcId });
+    assert.equal((await b.engine.pass()).state, "removed");
+    await updateRemoved(syncDir, CHURCH, (now) => now.filter((r) => r.pc !== b.store.pcId), { pc: b.store.pcId });
+    await rounds([b, a, c], 2);
+    for (const pc of [a, c]) assert.ok(songs(pc).some((x) => x.title === "De B, tirado"));
+    for (const pc of [a, b, c]) pc.close();
 });
 
 test("the code's file: written back when it goes missing, waited for while it arrives", async () => {

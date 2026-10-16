@@ -4,17 +4,18 @@
 // a key derived from it (electron/syncPairing.cjs), so files from computers
 // without the code are reported and never applied.
 //
-// Twelve symbols in three groups, "K7QM-2HXP-9WRT": Crockford's base32 (no
-// I, L, O or U, so nothing reads as something else), eleven random symbols
-// (55 bits) and a check symbol, so a typo is caught as it is typed instead of
-// looking like another church's code. Typing forgives what people do: lower
-// case, spaces or dots for the dashes, O for zero, I or L for one.
+// Eight symbols in two groups, "K7QM-2HXP" (owner 2026-10-16: short and easy
+// to type): Crockford's base32 (no I, L, O or U, so nothing reads as
+// something else), seven random symbols (35 bits) and a check symbol, so a
+// typo is caught as it is typed instead of looking like another church's
+// code. Typing forgives what people do: lower case, spaces or dots for the
+// dash, O for zero, I or L for one.
 //
 // Shared by the main process (making and checking the code) and the console
 // (checking it as the operator types). Pure: no Node, no DOM.
 
 export const CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-export const CODE_LENGTH = 12;
+export const CODE_LENGTH = 8;
 const RANDOM = CODE_LENGTH - 1;
 
 // Weighted sum mod 31 (a prime): any one symbol changed, or two neighbours
@@ -25,7 +26,7 @@ function checkSymbol(values) {
     return CODE_ALPHABET[sum % 31];
 }
 
-// "K7QM2HXP9WRT" -> "K7QM-2HXP-9WRT".
+// "K7QM2HXP" -> "K7QM-2HXP".
 export const formatCode = (code) => String(code).match(/.{1,4}/g).join("-");
 
 // A new code. `random(n)` gives n random bytes (crypto.getRandomValues in
@@ -35,8 +36,8 @@ export function makeCode(random = (n) => globalThis.crypto.getRandomValues(new U
     return formatCode(values.map((v) => CODE_ALPHABET[v]).join("") + checkSymbol(values));
 }
 
-// What the operator typed -> { code } (the 12 symbols, upper case, no
-// dashes) or { error, char? }: "empty" | "char" | "short" | "long" | "check".
+// What the operator typed -> { code } (the 8 symbols, upper case, no
+// dash) or { error, char? }: "empty" | "char" | "short" | "long" | "check".
 export function parseCode(input) {
     const s = String(input ?? "").toUpperCase().replace(/[\s._-]+/g, "").replace(/O/g, "0").replace(/[IL]/g, "1");
     if (!s) return { error: "empty" };

@@ -914,25 +914,28 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
 4. **Pairing, "PCs verificados" (done):** whoever has the church's sync
    code syncs; nobody else counts.
    - **The code** (`shared/syncCode.mjs`, tested; shared by main and the
-     console, which checks it as it is typed): 12 symbols in three groups,
-     `K7QM-2HXP-9WRT`, Crockford's base32 (no I, L, O or U), 11 random (55
-     bits) and a check symbol (weighted sum mod 31), so a typo says "alguma
-     letra está errada" instead of looking like another church's code.
-     Typing forgives lower case, spaces or dots for the dashes, O for zero,
-     I or L for one.
+     console, which checks it as it is typed): 8 symbols in two groups,
+     `K7QM-2HXP` (the owner chose short over long, 2026-10-16), Crockford's
+     base32 (no I, L, O or U), 7 random (35 bits) and a check symbol
+     (weighted sum mod 31), so a typo says "alguma letra está errada"
+     instead of looking like another church's code. Typing forgives lower
+     case, spaces or dots for the dash, O for zero, I or L for one.
    - **The folder's code file**, `sync/keryx-sync.json` `{ v, id, check,
-     made, by }` (`electron/syncPairing.cjs`, tested in `sync.test.cjs`):
-     `id` is random, made with the code; `check` (an HMAC of the id with the
-     key) proves a typed code is this folder's before a line is read. The
-     code and the key are never in the folder. `createPairing` writes it only
+     made, by, removed, mac }` (`electron/syncPairing.cjs`, tested in
+     `sync.test.cjs`): `id` is random, made with the code; `check` (an HMAC
+     of the id with the key) proves a typed code is this folder's before a
+     line is read; `removed` lists the computers taken out ("Tirar", below)
+     and counts only under a valid `mac` (an HMAC of the file's fields with
+     the key). The code and the key are never in the folder. `createPairing` writes it only
      where there is none (`wx`; two computers making a code at once leave a
      conflict copy, and only the file named `keryx-sync.json` counts);
      `joinPairing` answers the typed code with the key, or `short`/`check`/…
      (a typo), `nocode` (the folder has none yet), `busy` (its file is still
      arriving) or `wrong` (a valid code, another folder's).
-   - **The key** is `scrypt(code, "keryx-sync:" + id)` (N 2^15, r 8: ~50 ms
-     and 32 MB a try, so 55 bits are out of reach for someone who copied a
-     line out of the folder). Each computer keeps it (PR 5: the code itself,
+   - **The key** is `scrypt(code, "keryx-sync:" + id)` (N 2^16, r 8: about
+     half a second and 64 MB a try, paid once when the code is made or
+     typed; the code is short, so each guess from a line someone copied out
+     of the folder has to be slow: 2^35 tries is centuries of one core). Each computer keeps it (PR 5: the code itself,
      encrypted with the system's own protection, Electron `safeStorage`, so
      "Mostrar o código" works when a third computer joins months later).
    - **What is signed: each line.** A line is the entry's JSON with `"sig"`
@@ -947,19 +950,24 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      in `sync.state` (`peers`), and `status.rejected` counts a pass's.
    - **States**: `unpaired` (a folder, no code here: nothing read or
      written), `mismatch` (the folder's code file is another code's: the
-     code changed; nothing read or written, the outbox waits), `offline`
-     also while the code file is arriving half-written. A missing code file
+     code changed; nothing read or written, the outbox waits), `removed`
+     (this computer is on the code file's `removed` list: the same, with
+     who took it out), `offline` also while the code file is arriving
+     half-written. A missing code file
      is written back by any computer with the code. A new code (joining
      again, or the code changed) resets the cursors: every file is read again
      under the new key.
-   - **Revoking a computer = changing the code** ("Trocar o código", PR 5):
-     a new id and code over the old file. Computers that should stay type
-     the new code; the one left out keeps the old key, sees `mismatch`, and
-     its lines no longer verify anywhere. There is no list of removed
-     computers: with one shared key a removed computer could sign as
-     another, so only a new code really cuts it. A computer retired on
-     purpose just leaves the sync (Sair da sincronização); a dead one stays
-     quiet in the list.
+   - **Taking a computer out** (owner's pick: both): **"Tirar"** in the list
+     of computers adds it to the code file's `removed` list
+     (`updateRemoved`): it stops (`removed`, its changes wait) and the
+     others skip its folder, until the code is typed on it again (joining
+     takes it off the list). It pauses an honest computer; with one shared
+     key a computer that wanted to could sign as another, so **"Trocar o
+     código"** is the real cut: a new id and code over the old file;
+     computers that should stay type the new code, the one left out keeps
+     the old key, sees `mismatch`, and its lines no longer verify anywhere.
+     A computer retired on purpose just leaves the sync (Sair da
+     sincronização); a dead one stays quiet in the list.
 5. Configurações › Sincronização; the first join merges (never replaces) and
    flags likely duplicate songs.
 

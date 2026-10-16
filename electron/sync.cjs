@@ -25,14 +25,16 @@
 // (sync/keryx-sync.json), every line is signed with the key the code makes,
 // and a line that does not verify is counted for its computer, never
 // applied. Without a code nothing is read or written; with a code that is no
-// longer the folder's (it changed) neither, and the outbox waits.
+// longer the folder's (it changed) neither, and the outbox waits; the same
+// for a computer another one took out ("Tirar": the code file's removed
+// list), whose folder the others skip until the code is typed on it again.
 //
 // Pure Node over the store and a folder path, so it runs under node --test.
 
 const fs = require("node:fs");
 const path = require("node:path");
 const { isSynced } = require("./db/syncScope.cjs");
-const { keysFor, readPairing, writePairing, matches, pairingFile } = require("./syncPairing.cjs");
+const { keysFor, readPairing, writePairing, matches, pairingFile, removedOf } = require("./syncPairing.cjs");
 
 const fsp = fs.promises;
 
@@ -221,13 +223,14 @@ function createSyncEngine({ store, mediaDir, getFolder, getPairing = () => null,
     // file again: lines skipped under the old key may verify now.
     function loadState(folder, pairing) {
         const saved = store.getMeta(STATE_KEY);
-        const fresh = { folder, pairing, cursors: {}, peers: {}, out: null, missing: [] };
+        const fresh = { folder, pairing, cursors: {}, peers: {}, out: null, missing: [], removed: [] };
         if (!saved || saved.folder !== folder) return fresh;
         const sameCode = saved.pairing === pairing;
         return {
             ...fresh,
             cursors: sameCode && saved.cursors && typeof saved.cursors === "object" ? saved.cursors : {},
             peers: sameCode && saved.peers && typeof saved.peers === "object" ? saved.peers : {},
+            removed: sameCode && Array.isArray(saved.removed) ? saved.removed : [],
             out: saved.out && saved.out.pc === pc ? saved.out : null,
             missing: Array.isArray(saved.missing) ? saved.missing : [],
         };
@@ -424,6 +427,7 @@ function createSyncEngine({ store, mediaDir, getFolder, getPairing = () => null,
     async function readIn(syncDir, state) {
         const totals = { applied: 0, skipped: 0, failed: 0, bad: 0, rejected: 0 };
         const computers = new Map();
+        const out = new Map(state.removed.map((r) => [r.pc, r]));
         for (const d of await fsp.readdir(syncDir, { withFileTypes: true })) {
             const m = d.isDirectory() && PC_DIR.exec(d.name);
             if (!m) continue;
@@ -437,6 +441,12 @@ function createSyncEngine({ store, mediaDir, getFolder, getPairing = () => null,
                 continue; // deleted while we looked
             }
             const seen = computers.get(from) || { pc: from, files: 0, lastChange: 0 };
+            // Taken out: listed, never read, until it types the code again.
+            if (out.has(from)) {
+                seen.removed = { at: out.get(from).at, by: out.get(from).by };
+                computers.set(from, seen);
+                continue;
+            }
             for (const name of names) {
                 const mtime = await readFile(syncDir, state, dir, name, `${d.name}/${name}`, from, totals);
                 if (mtime == null) continue;
@@ -503,16 +513,26 @@ function createSyncEngine({ store, mediaDir, getFolder, getPairing = () => null,
                 setStatus({ ...status, state: "offline", folder: root, lastPass: at, error: "O arquivo do código da igreja ainda está chegando pela pasta." });
                 return;
             }
+            let state = null;
             if (code.state === "missing") {
-                await writePairing(syncDir, pairingFile(keys, pc, now()));
+                state = loadState(root, pairing.id);
+                await writePairing(syncDir, pairingFile(keys, pc, now(), state.removed));
                 logOnce("arquivo do código refeito na pasta");
             } else if (!matches(code.file, keys)) {
                 setStatus({ ...status, state: "mismatch", folder: root, lastPass: at, error: "O código da igreja mudou nesta pasta. Digite o código novo para voltar a sincronizar." });
                 logOnce("o código da pasta não é o deste computador");
                 return;
             }
+            state = state || loadState(root, pairing.id);
+            if (code.state === "ok") state.removed = removedOf(code.file, keys) || [];
+            const me = state.removed.find((r) => r.pc === pc);
+            if (me) {
+                saveState(state);
+                setStatus({ ...status, state: "removed", folder: root, lastPass: at, removed: { at: me.at, by: me.by }, error: "Este computador foi tirado da sincronização. Digite o código da igreja para voltar." });
+                logOnce("este computador foi tirado da sincronização");
+                return;
+            }
             await fsp.mkdir(path.join(syncDir, MEDIA_DIR), { recursive: true });
-            const state = loadState(root, pairing.id);
             const sent = await writeOut(syncDir, state);
             const { totals, computers } = await readIn(syncDir, state);
             await retryMissing(syncDir, state);

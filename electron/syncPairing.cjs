@@ -2,11 +2,16 @@
 // code (shared/syncCode.mjs) turns into, so only computers that typed it
 // count.
 //
-//   <folder>/sync/keryx-sync.json   { v: 1, id, check, made, by }
+//   <folder>/sync/keryx-sync.json   { v: 1, id, check, made, by, removed, mac }
 //
 // - id: random, made with the code (and again when the code changes). It
 //   salts the key, so the same code in another folder is another key.
 // - check: proves a typed code is this folder's before a single line is read.
+// - removed: the computers taken out of the sync from another one ("Tirar",
+//   owner 2026-10-16) — [{ pc, at, by }]. Each stops until the code is typed
+//   on it again; the others skip its folder meanwhile. Only a list under a
+//   valid mac counts (someone without the key cannot take a computer out).
+// - mac: an HMAC of the rest with the key.
 // - The code and the key are never in the folder.
 //
 // The key is scrypt(code, id). Every line a computer appends to its change
@@ -33,9 +38,11 @@ const fsp = fs.promises;
 const PAIRING_FILE = "keryx-sync.json";
 const VERSION = 1;
 const KEY_BYTES = 32;
-// ~50 ms and 32 MB per try: the code has 55 bits, so guessing it from a line
-// someone copied out of the folder is out of reach.
-const SCRYPT = { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+// About half a second and 64 MB per try, paid once when a code is made or
+// typed: the code is short (35 bits, the owner's pick), so each guess of it
+// from a line copied out of the folder has to be slow.
+const SCRYPT = { N: 2 ** 16, r: 8, p: 1, maxmem: 160 * 1024 * 1024 };
+const REMOVED_LIMIT = 200;
 const SIG_BYTES = 16;
 const SIG_TAIL = /,"sig":"([A-Za-z0-9_-]{22})"\}$/;
 
@@ -77,11 +84,37 @@ function keysFor(key, id) {
             if (!m) return false;
             return sameText(m[1], mac(`${text.slice(0, m.index)}}`));
         },
+        // The code file's mac: over its fields in a fixed order.
+        fileMac: (f) => b64url(hmac(lineKey, JSON.stringify(["keryx-sync-file", f.v, f.id, f.check, f.made, f.by, cleanRemoved(f.removed).map((r) => [r.pc, r.at, r.by])]))),
     };
 }
 
-// The code file for a new code.
-const pairingFile = (keys, pc, now = new Date()) => ({ v: VERSION, id: keys.id, check: keys.check, made: now.toISOString(), by: pc });
+// [{ pc, at, by }], well formed, one per computer, at most REMOVED_LIMIT.
+function cleanRemoved(list) {
+    const out = [];
+    const seen = new Set();
+    for (const r of Array.isArray(list) ? list : []) {
+        if (!r || typeof r.pc !== "string" || !r.pc || r.pc.length > 100 || seen.has(r.pc.toLowerCase())) continue;
+        seen.add(r.pc.toLowerCase());
+        out.push({ pc: r.pc.toLowerCase(), at: typeof r.at === "string" ? r.at.slice(0, 40) : "", by: typeof r.by === "string" ? r.by.slice(0, 100) : "" });
+        if (out.length >= REMOVED_LIMIT) break;
+    }
+    return out;
+}
+
+// The code file: for a new code, or the same code with another list of
+// computers taken out.
+function pairingFile(keys, pc, now = new Date(), removed = [], made = null) {
+    const file = { v: VERSION, id: keys.id, check: keys.check, made: made || now.toISOString(), by: pc, removed: cleanRemoved(removed) };
+    return { ...file, mac: keys.fileMac(file) };
+}
+
+// The computers taken out, from a code file with a valid mac; null when the
+// mac does not verify (edited without the key: nobody is taken out by it).
+function removedOf(file, keys) {
+    if (!file || !keys || typeof file.mac !== "string" || !sameText(file.mac, keys.fileMac(file))) return null;
+    return cleanRemoved(file.removed);
+}
 
 const isPairingFile = (f) => f && typeof f === "object" && !Array.isArray(f)
     && typeof f.id === "string" && f.id.length >= 8 && f.id.length <= 100 && typeof f.check === "string";
@@ -132,7 +165,7 @@ async function writePairing(syncDir, file, { replace = false } = {}) {
 // The folder's code file is this pairing's.
 const matches = (file, keys) => Boolean(file && keys && file.id === keys.id && sameText(file.check, keys.check));
 
-// A new code for the folder: { code: "K7QM-2HXP-9WRT", id, key }, or
+// A new code for the folder: { code: "K7QM-2HXP", id, key }, or
 // { error: "exists" } when the folder already has one (and `replace` was not
 // asked: changing the code is asking).
 async function createPairing(syncDir, { pc, replace = false, now = new Date() } = {}) {
@@ -161,4 +194,21 @@ async function joinPairing(syncDir, typed) {
     return { code: formatCode(parsed.code), id: found.file.id, key };
 }
 
-module.exports = { PAIRING_FILE, deriveKey, keysFor, pairingFile, readPairing, writePairing, matches, createPairing, joinPairing, codeRules };
+// Changes the list of computers taken out ("Tirar" / "Deixar voltar", and
+// a computer that typed the code again taking itself off it): the folder's
+// code file must be this pairing's. -> the new list, or { error:
+// "nocode" | "busy" | "mismatch" }.
+async function updateRemoved(syncDir, pairing, change, { pc, now = new Date() } = {}) {
+    const keys = keysFor(pairing.key, pairing.id);
+    const found = await readPairing(syncDir);
+    if (found.state === "missing") return { error: "nocode" };
+    if (found.state !== "ok") return { error: "busy" };
+    if (!matches(found.file, keys)) return { error: "mismatch" };
+    const before = removedOf(found.file, keys) || [];
+    const after = cleanRemoved(change(before.map((r) => ({ ...r })), now));
+    if (JSON.stringify(after) === JSON.stringify(before) && found.file.mac === keys.fileMac(found.file)) return after;
+    await writePairing(syncDir, pairingFile(keys, found.file.by || pc, now, after, found.file.made), { replace: true });
+    return after;
+}
+
+module.exports = { PAIRING_FILE, deriveKey, keysFor, pairingFile, removedOf, readPairing, writePairing, matches, createPairing, joinPairing, updateRemoved, codeRules };
