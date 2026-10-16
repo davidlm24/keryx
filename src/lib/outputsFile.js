@@ -2,12 +2,13 @@
 // 2026-10-12, as SPresenter's .spo): one JSON file with where each output
 // opens (electron/outputs.cjs assignments: which screen, "Abrir ao iniciar")
 // and each output's own settings (OutputPref rows: name, icon, Conteúdo,
-// Mostrar, theme, scale, margins, logo, options). For after a reinstall, or
+// Mostrar, theme, scale, margins, logo, options — the Aviso rápido bar
+// among them). For after a reinstall, or
 // to take a church's setup to another computer. Pure: the main process only
 // saves and reads the file; the console validates it here and applies it
 // through the same calls Configurações uses, so every window and network
 // screen follows at once.
-import { normalizePref, outputMeta } from "./outputPrefs.js";
+import { normalizePref, outputMeta, cleanAlertOptions } from "./outputPrefs.js";
 import { findLayout, normalizeLayout } from "./layouts.js";
 
 export const FILE_KIND = "keryx-saidas";
@@ -56,7 +57,8 @@ function prefFields(row, themes, layouts) {
         design: p.design ? { elements: p.design.elements, background: p.design.background } : layout ? { elements: layout.elements, background: layout.background } : null,
         layout_id: p.layoutId,
         layout_name: layout ? layout.name : "",
-        options: p.options,
+        // The page switches and the Aviso rápido bar (alert_*, checked).
+        options: cleanAlertOptions(p.options),
     };
 }
 
@@ -143,7 +145,7 @@ export function readOutputsFile(text, { themes = [], layouts = [], displays = []
         }
         prefs.push({
             path,
-            fields: { name: p.name, icon: p.icon, content: p.content, hidden_kinds: p.hidden, text_scale: Math.round(p.scale * 100), margin_pct: p.margin, show_logo: p.showLogo, theme_id: themeId, design, layout_id: layoutId, options: p.options },
+            fields: { name: p.name, icon: p.icon, content: p.content, hidden_kinds: p.hidden, text_scale: Math.round(p.scale * 100), margin_pct: p.margin, show_logo: p.showLogo, theme_id: themeId, design, layout_id: layoutId, options: cleanAlertOptions(p.options) },
         });
     }
     if (!assignments.length && !prefs.length) return { error: "O arquivo não tem nenhuma saída." };

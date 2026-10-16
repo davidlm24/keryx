@@ -32,6 +32,8 @@ export const SETTINGS_INDEX = [
     e("telas", "Ajustes", "clique numa tela: nome, ícone, conteúdo, desenho, texto, margens, logo e tema moram no Editor",
         ["Nome", "Ícone", "Conteúdo", "Desenho", "layout", "Editar a tela", "Escala do texto", "Cifra", "Nome da parte", "acordes", "Refrão", "Relógio e tempo", "Notas para músicos", "Próximo slide", "Relógio", "Próximos itens", "Margens", "Mostrar logo", "Tema", "Restaurar padrão", "tamanho da letra", "Mostrar", "filtro", "só letras", "só Bíblia",
             "Faixa", "Tamanho do texto", "Posição", "Referência na legenda"], { target: "Saídas" }),
+    e("telas", "Aviso rápido nas telas", "como cada tela mostra o aviso, no Editor: no alto ou embaixo, faixa ou pílula, cores, tamanho e entrada",
+        ["aviso rápido", "alerta", "barra", "faixa", "pílula", "Posição", "Estilo", "Cores", "Tamanho", "Entrada", "deslizar", "aparecer", "cor do aviso", "comunicação"], { target: "Saídas" }),
 
     e("rede", "Ligar telas na rede", "celulares, tablets e TVs pela rede da igreja", ["wifi", "wi-fi", "celular", "tablet", "rede", "ligar", "endereço", "qr", "link", "obs", "transmissão"]),
     e("rede", "Transmissão", "a legenda para a live no OBS: cor, tamanho e posição da faixa", ["obs", "live", "legenda", "faixa", "transmissão", "youtube"], { target: "Ligar telas na rede" }),

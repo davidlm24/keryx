@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../shared/live-state.mjs";
 import {
     ELEMENT_TYPES, TEXT_TYPES, LOOK_TYPES, ELEMENT_GROUPS, FACTORY_LAYOUTS, normalizeElement, normalizeLayout, newElement, newLayout, duplicateLayout,
-    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
+    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, seedLayoutId, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
 } from "./layouts.js";
 
 const T0 = Date.UTC(2026, 9, 12, 19, 30, 0);
@@ -21,10 +21,10 @@ test("element types: every text type exists and the factory layouts are valid", 
     // Projeção, monitor, logo, imagem and progresso take none.
     for (const id of ["screen", "monitor", "progress", "logo", "image"]) assert.ok(!LOOK_TYPES.has(id), id);
     for (const id of [...TEXT_TYPES, "current", "chords", "next_items"]) assert.ok(LOOK_TYPES.has(id), id);
-    assert.equal(FACTORY_LAYOUTS.length, 3);
+    assert.equal(FACTORY_LAYOUTS.length, 4);
     for (const l of FACTORY_LAYOUTS) {
         assert.ok(l.factory && l.id.startsWith("factory:"));
-        assert.ok(l.elements.length >= 3);
+        assert.ok(l.elements.length >= (l.id === "factory:tela" ? 1 : 3));
         for (const e of l.elements) assert.ok(e.x + e.w <= 100 && e.y + e.h <= 100, `${l.id} ${e.type} fits`);
     }
 });
@@ -85,7 +85,7 @@ test("findLayout and layoutChoices", () => {
     assert.equal(findLayout("factory:palco", rows).factory, true);
     assert.equal(findLayout("r2", rows).name, "Zeta");
     assert.equal(findLayout("gone", rows), null);
-    assert.deepEqual(layoutChoices(rows).map((c) => c.id), ["", "factory:palco", "factory:pastor", "factory:projecao", "r1", "r2"]);
+    assert.deepEqual(layoutChoices(rows).map((c) => c.id), ["", "factory:palco", "factory:pastor", "factory:projecao", "factory:tela", "r1", "r2"]);
 });
 
 test("layoutContext reads the live state", () => {
@@ -189,6 +189,19 @@ test("elementHasContent: empty elements draw nothing", () => {
     assert.ok(has("logo", off, {}, { logoUrl: "x" }) && !has("logo", off));
     assert.ok(has("image", off, { url: "http://x" }) && !has("image", off));
     assert.ok(has("next_items", off) && has("monitor", off));
+});
+
+test("each screen starts in the Editor from its page as it draws itself (Rodada E3)", () => {
+    assert.equal(seedLayoutId("/StageView"), "factory:palco");
+    assert.equal(seedLayoutId("/PastorView"), "factory:pastor");
+    assert.equal(seedLayoutId("/Projection"), "factory:projecao");
+    // Letras, Vídeo and Comunicação: their view full screen, no clock or
+    // timer their views never show.
+    for (const path of ["/LyricProjection", "/VideoProjection", "/CommunicationProjection"]) {
+        const seed = findLayout(seedLayoutId(path));
+        assert.deepEqual(seed.elements.map((e) => [e.type, e.x, e.y, e.w, e.h]), [["screen", 0, 0, 100, 100]], path);
+        assert.ok(!layoutHasTimer(seed));
+    }
 });
 
 test("layoutHasTimer and the screen element", () => {
