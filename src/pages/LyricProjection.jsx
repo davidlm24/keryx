@@ -2,6 +2,7 @@ import React from "react";
 import OutputScreen from "@/components/screen/OutputScreen";
 import TabletVideoReceiver from "@/components/projection/TabletVideoReceiver";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { useScreenKeys } from "@/hooks/useScreenKeys";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 
 // The lyrics screen (tablets, TVs, the "Letras" output): the same renderer as
@@ -13,6 +14,7 @@ export default function LyricProjection() {
     const live = useLiveState();
     const now = useLiveNow(1000);
     const logo = useChurchLogo();
+    useScreenKeys(live);
     return (
         <>
             <TabletVideoReceiver />
