@@ -4,6 +4,7 @@ import StageScreen from "@/components/network/StageScreen";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import OutputScreen from "@/components/screen/OutputScreen";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { useScreenKeys } from "@/hooks/useScreenKeys";
 import { useOutputPref } from "@/hooks/useOutputPref";
 import { useDesign } from "@/hooks/useLayout";
 import { useUpcoming } from "@/hooks/useUpcoming";
@@ -25,6 +26,7 @@ export default function StageView() {
     const { pref, theme } = useOutputPref("/StageView");
     const layout = useDesign(pref);
     const { upcoming, hasService } = useUpcoming(live);
+    useScreenKeys(live);
 
     useEffect(() => {
         if (keryx.isDesktop) return undefined; // the main process places desktop outputs
