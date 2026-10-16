@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useRef } from "react";
+import React, { createContext, useContext, useEffect, useId, useRef } from "react";
 import { focusesCancel } from "@/lib/console/confirm";
+import { useDialogFocus } from "./useDialogFocus";
 
 // "Excluir…" from a right-click menu (songs, images, videos, avisos, themes)
 // asks first (owner's request 2026-10-13): one dialog the console holds,
@@ -20,12 +21,16 @@ export default function ConfirmDialog({ request, onAnswer }) {
     const noRef = useRef(null);
     const safe = focusesCancel(request);
     useEffect(() => { setTimeout(() => (safe ? noRef : okRef).current?.focus(), 0); }, [request, safe]);
+    // Tab stays here; the focus goes back to the opener after a keyboard open (C-12).
+    const boxRef = useRef(null);
+    const textId = useId();
+    useDialogFocus(boxRef);
     return (
         <>
             <div className="scrim is-dim confirm-scrim" onClick={() => onAnswer(false)} />
-            <div className="dialog confirm-dialog" role="alertdialog" aria-label={request.title}>
+            <div ref={boxRef} className="dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-label={request.title} aria-describedby={request.text ? textId : undefined}>
                 <div className="kx-section" style={{ color: "var(--fg-1)" }}>{request.title}</div>
-                {request.text && <div>{request.text}</div>}
+                {request.text && <div id={textId}>{request.text}</div>}
                 <div className="acts">
                     <button ref={okRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => onAnswer(true)}>{request.ok || "Excluir"}</button>
                     <button ref={noRef} type="button" className="kx-btn kx-t" onClick={() => onAnswer(false)}>Cancelar</button>

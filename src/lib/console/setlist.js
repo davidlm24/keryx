@@ -27,16 +27,17 @@ export const playableItems = (items) => (items || []).filter((i) => !isSection(i
 
 const MEDIA_TYPES = ["VIDEO", "IMAGE", "PDF", "POWERPOINT"];
 
-// Whether the session's Setlist item (live.session.itemId) is what the
-// audience sees now (the design audit's C-08): after Esc, under Tela preta or
-// the Logo, or once something else went on air, it is only the last item sent
-// — the Setlist marks it "último", never red. Read from what is on top, in
+// Whether the session's Setlist item (live.session.itemId) is still on air
+// (the design audit's C-08): after Esc, or once something else went on air,
+// it is only the last item sent — the Setlist marks it "último", never red.
+// Under Tela preta or the Logo it stays on air, covered (the panels'
+// "coberto" look, CRIT-14). Read from what is on top, in
 // mainLayer's order (shared/live-state.mjs); a sound item counts while the
 // audio channel plays it.
 export function itemOnAir(live, items) {
     const id = live?.session?.itemId;
     const it = id ? (items || []).find((x) => x.id === id) : null;
-    if (!it || live.screen === "black" || live.screen === "logo") return false;
+    if (!it) return false;
     const type = String(it.type || "").toUpperCase();
     const own = it.contentId || null;
     if (type === "AUDIO") return Boolean(own) && live.audio?.id === own;

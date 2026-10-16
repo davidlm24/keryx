@@ -79,7 +79,7 @@ export default function Rundown({ service, items, airItemId, airNow = true, prev
                         </div>
                     );
                 }
-                // Red only while the screens show it; after Esc (or under Tela preta) the
+                // Red only while it is on air (dimmed when covered); after Esc the
                 // session's item is the "último", a quiet mark (C-08).
                 const last = it.id === airItemId && !airNow;
                 const state = it.id === airItemId && airNow ? "is-air" : [it.id === prevItemId && "is-prev", last && "is-last"].filter(Boolean).join(" ") || (airIdx >= 0 && i < airIdx ? "is-done" : "");

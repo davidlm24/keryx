@@ -51,9 +51,9 @@ test("itemOnAir: the session's item is on air only while the screens still show 
     assert.equal(itemOnAir(at("b", song), items), true);
     // After Esc the session keeps its item; nothing is on air.
     assert.equal(itemOnAir(at("b", {}), items), false);
-    // Covered by Tela preta or the Logo: the audience does not see it.
-    assert.equal(itemOnAir(at("b", { ...song, screen: "black" }), items), false);
-    assert.equal(itemOnAir(at("b", { ...song, screen: "logo" }), items), false);
+    // Covered by Tela preta or the Logo it is still on air (the panels say "coberto").
+    assert.equal(itemOnAir(at("b", { ...song, screen: "black" }), items), true);
+    assert.equal(itemOnAir(at("b", { ...song, screen: "logo" }), items), true);
     // Another item (or a song from the Biblioteca) over it.
     assert.equal(itemOnAir(at("b", { content: { kind: "lyrics", ref: { songId: "song9" } } }), items), false);
     assert.equal(itemOnAir(at("b", { content: { kind: "lyrics", ref: { songId: "song1", serviceItemId: "x" } } }), items), false);
