@@ -297,8 +297,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                     <span style={{ flex: 1 }} />
                     {request.manage
                         ? <Btn small onClick={() => done(null)}>Fechar</Btn>
-                        : <><Btn small onClick={() => done(null)}>Cancelar</Btn>
-                            <Btn small kind="brand" disabled={!can} onClick={() => (themeMode ? takeTheme() : take())}>{request.useLabel || "Usar"}</Btn></>}
+                        : <><Btn small kind="brand" disabled={!can} onClick={() => (themeMode ? takeTheme() : take())}>{request.useLabel || "Usar"}</Btn>
+                            <Btn small onClick={() => done(null)}>Cancelar</Btn></>}
                 </div>
             </div>
         </>
