@@ -584,6 +584,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tier's. The Bíblia's dock stays one. Splits have one
   flexible child and fixed pixel sizes (`allocate`); what cannot fit side
   by side joins as tabs, a pair at a time, the Programa last (`fitDock`).
+  The Programa alone in a split never takes more than its 16:9 and the
+  player (`programaNatural`, design audit C-51): the rest goes to its
+  neighbour (the Prévia's band), never a locked or folded one; the
+  dock's sizes stay the operator's. The band starts as tall as the
+  Prévia's screen (no +84 for the header and button it lost).
   A new module is an entry in
   dock.js `MODULES` and in `modulePanels`. **Disposições com nome**
   (`src/lib/console/dockPresets.js`, tested): the edit banner saves the dock
