@@ -3,6 +3,7 @@ import { Btn, Seg } from "../kx";
 import { FormRow, Switch, CfgKey, useBridge } from "./parts";
 import ShortcutList from "../ShortcutList";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
+import { relaySend } from "@/lib/janelaRelay";
 
 // Console: the operator's screen and this computer. The density is the
 // church's (it rides backups); which modules show (the culto's tray), the
@@ -25,12 +26,19 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
             if (message) c.say(message);
         } catch { c.say("Não foi possível salvar."); }
     };
-    if (!layout) return null;
+    // Detached (/Janela, Rodada F5): the arrangement is the console's own
+    // state, so its rows open there; the rest of this computer's settings stay.
+    if (!layout && !c.detached) return null;
     const login = machine?.login;
+    const inConsole = () => { if (relaySend("janela", "console.open", { what: "settings", section: "console" })) c.say("Configurações › Console abriu no console."); };
     return (
         <>
             <div className="frm">
-                <FormRow k="Módulos">
+                {!layout && <FormRow k="Disposição">
+                    <Btn small onClick={inConsole}>Abrir no console</Btn>
+                    <span className="kx-meta">os módulos, a densidade e a disposição são do console · ajuste-os lá</span>
+                </FormRow>}
+                {layout && <><FormRow k="Módulos">
                     {MODULES.map(([key, name]) => (
                         <span key={key} className="cfg-launch">
                             <Switch on={!layout.hidden[key]} onChange={(on) => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !on } })} label={`Mostrar ${name}`} />
@@ -46,7 +54,7 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                 <FormRow k="Disposição">
                     <Btn small onClick={restoreLayout}>Restaurar disposição</Btn>
                     <span className="kx-meta">volta os módulos, a densidade, os tamanhos e a ordem das colunas ao padrão · deste computador</span>
-                </FormRow>
+                </FormRow></>}
                 <FormRow k="Ao fechar">
                     <Switch on={machine ? machine.confirmClose : true} disabled={!system || !machine} label="Perguntar antes de fechar o KERYX"
                         onChange={(on) => change("machineSet", { confirmClose: on }, on ? "O KERYX pergunta antes de fechar." : "Fechar o KERYX não pergunta mais.")} />

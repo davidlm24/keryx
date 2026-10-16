@@ -16,7 +16,7 @@ import { useWindowTitle } from '@/hooks/useChurch';
 import { outputMeta } from '@/lib/outputPrefs';
 
 import Console from './pages/Console';
-import Editor from './pages/Editor';
+import Janela from './pages/Janela';
 import Projection from './pages/Projection';
 import LyricProjection from './pages/LyricProjection';
 import StageView from './pages/StageView';
@@ -53,9 +53,13 @@ function NetworkStatus() {
 // for the console, "Palco · Igreja X" for a screen (on the taskbar, in
 // Alt-Tab and in a tablet's bookmarks).
 const TITLED = new Set(['/Projection', '/LyricProjection', '/StageView', '/VideoProjection', '/CommunicationProjection', '/PastorView', '/StreamView']);
+// A detached page (/Janela) names its own window after the page it shows.
 function WindowTitle() {
   const { pathname } = useLocation();
-  useWindowTitle(pathname === '/Remote' ? 'Controle remoto' : pathname === '/Editor' ? 'Editor de temas e layouts' : TITLED.has(pathname) ? outputMeta(pathname).name : '');
+  return pathname === '/Janela' || pathname === '/Editor' ? null : <ScreenTitle pathname={pathname} />;
+}
+function ScreenTitle({ pathname }) {
+  useWindowTitle(pathname === '/Remote' ? 'Controle remoto' : TITLED.has(pathname) ? outputMeta(pathname).name : '');
   return null;
 }
 
@@ -98,10 +102,13 @@ function App() {
           ) : (
             <Routes>
               <Route path="/Console" element={<Console />} />
-              {/* The Editor de temas e layouts: its own window, opened by
-                  src/lib/editorWindow.js. Never a network screen (lan.cjs
-                  serves only NETWORK_SCREENS, so it stays off the network). */}
-              <Route path="/Editor" element={<Editor />} />
+              {/* A page of the console's window, detached ("Destacar em
+                  janela", src/pages/Janela.jsx); /Editor is the old detached
+                  Editor de temas e telas, which lands there too. Never a
+                  network screen (lan.cjs serves only NETWORK_SCREENS, so it
+                  stays off the network). */}
+              <Route path="/Janela" element={<Janela />} />
+              <Route path="/Editor" element={<Janela />} />
               {screens}
               {import.meta.env.DEV && keryx.isPreview && <Route path="/Rede" element={<NetworkHome screens={PREVIEW_SCREENS} />} />}
               {import.meta.env.DEV && keryx.isPreview && <Route path="/Remote" element={<RemoteView />} />}
