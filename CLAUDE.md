@@ -52,12 +52,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   header text sits 12 px (`--space-3`) from its edge and its last button
   12 px from the right one (symmetric, owner 2026-10-16 after the Bíblia
   review; the first row under a header — cells, the edition line — starts
-  4 px below it); anything with a box
+  4 px below it); a header's controls (buttons, selects, Seg, the search
+  field) are 24 px tall and 4 px apart; anything with a box
   of its own — list cards, verse cards, the cells of Livros/Capítulos/
   Versículos, the Temas tiles, the search field, tabs, the No ar agora
-  monitor — sits 4 px (`--space-1`) in from the column, with its text at
-  12 px; listheads and sub-titles (Recentes, "Selecionado", a Temas
-  heading inside Camadas) at 12 px; every panel header is 32 px, 28 in
+  monitor, the Bíblia's Recentes/Favoritos/Anotações buttons — sits 4 px
+  (`--space-1`) in from the column, with its text at 12 px; listheads and
+  sub-titles ("Selecionado", a Temas heading inside Camadas) at 12 px;
+  Capítulos is as tall as its cells, up to 40 % of the column (`Measure` →
+  the Bíblia's `fitDock` `locked`, Console.jsx); every panel header is 32 px, 28 in
   Compacta (`panelHead`), one line — a header never wraps into a taller
   block (the Bíblia's Texto drops its hint, then Selecionar todos/Limpar,
   container queries). Don't give one panel its own inset.

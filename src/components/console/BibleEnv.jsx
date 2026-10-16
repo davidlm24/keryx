@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Row, Seg, Empty } from "./kx";
+import { Panel, Btn, IconBtn, Field, Row, Seg, Empty, Measure } from "./kx";
 import DockView from "./Dock";
 import { useContextMenu } from "./ContextMenu";
 import AddMenu from "./AddMenu";
@@ -58,8 +58,8 @@ export const bibleVersionWanted = () => getPrefs().bible_version;
 //     the whole chapter (one verse per slide) starting there, so ←/→ keep
 //     walking the chapter; a range picked on purpose (Shift/Ctrl+click) goes
 //     out as that passage, grouped 1/2/3/Auto per slide.
-// Favoritos and Anotações: a button with a dropdown list (the selector band
-// stays one line high).
+// Recentes, Favoritos and Anotações: a button with a dropdown list, side by
+// side on the left (the band stays one line high).
 function ListMenu({ icon, label, count, empty, rows }) {
     const [open, setOpen] = useState(false);
     const box = useRef(null);
@@ -73,7 +73,7 @@ function ListMenu({ icon, label, count, empty, rows }) {
     }, [open]);
     return (
         <span className="addmenu" ref={box}>
-            <button type="button" className={`bchip kx-t ${open ? "is-on" : ""}`} onClick={() => setOpen((o) => !o)} aria-expanded={open}><Icon name={icon} size={12} />{label} · {count}</button>
+            <button type="button" className={`bchip kx-t ${open ? "is-on" : ""}`} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu"><Icon name={icon} size={12} />{label} · {count}<Icon name="chevron-down" size={12} /></button>
             {open && (
                 <div className="kx-pop addmenu-pop blist-pop" role="menu">
                     {!rows.length && <div className="be-hint kx-meta">{empty}</div>}
@@ -84,7 +84,7 @@ function ListMenu({ icon, label, count, empty, rows }) {
     );
 }
 
-export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, onEnd, dockProps, grid = "medium", setGrid }) {
+export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, onEnd, dockProps, grid = "medium", setGrid, onChaptersH }) {
     const [mem, setMem] = useState(load);
     const [version, setVersion] = useState(null);
     const [book, setBook] = useState(mem.book || "João");
@@ -373,7 +373,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
     const modules = {
         books: (
             <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={<>
-                <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" title="Versão da Bíblia" style={{ height: 22, background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
+                <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label="Versão" title="Versão da Bíblia" style={{ background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
                 <Seg small value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
                 <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
                 <IconBtn name="grid" small title="Mais: tema da Bíblia, tamanho das células" onClick={(e) => menu(e, { title: "Bíblia", items: [
@@ -397,11 +397,12 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         ),
         chapters: (
             <Panel className="bpick-chapters" title="Capítulos" count={`${bookRow.name} · ${bookRow.chapters}`}>
-                <div className="bchap">
+                {/* As tall as its cells (Console.jsx locks the height, capped). */}
+                <Measure onHeight={onChaptersH}><div className="bchap">
                     <div className={`chapters is-${grid}`}>
                         {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
                     </div>
-                </div>
+                </div></Measure>
             </Panel>
         ),
         verses: (
@@ -428,10 +429,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitTop(); } else if (e.key === "Escape" && mode === "buscar") { e.stopPropagation(); setMode("ler"); } }} /></span>
                 </>}>
                 <div className="bband-lists">
-                    <span className="kx-section">Recentes</span>
-                    {!(mem.recent || []).length && <span className="kx-meta">nenhum</span>}
-                    {(mem.recent || []).map(([b, ch]) => <button type="button" key={`${b}${ch}`} className="bchip kx-t" onClick={() => { setBook(b); setChapter(ch); setSel([]); setMode("ler"); }}><Icon name="history" size={12} />{b} {ch}</button>)}
-                    <span style={{ flex: 1 }} />
+                    <ListMenu icon="history" label="Recentes" count={(mem.recent || []).length} empty="Os capítulos que você abrir aparecem aqui."
+                        rows={(mem.recent || []).map(([b, ch]) => ({ key: `${b}${ch}`, icon: "history", title: `${b} ${ch}`, onPick: () => { setBook(b); setChapter(ch); setSel([]); setMode("ler"); } }))} />
                     <ListMenu icon="star" label="Favoritos" count={notesApi.favorites.length} empty="Selecione versículos e use a estrela."
                         rows={notesApi.favorites.map((fv) => ({ key: fv.id, icon: "star", title: fv.reference, onPick: () => { if (goRef(fv.reference)) setMode("ler"); } }))} />
                     <ListMenu icon="text" label="Anotações" count={notesApi.notes.length} empty="Selecione um versículo e escreva à direita."

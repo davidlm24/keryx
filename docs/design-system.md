@@ -234,11 +234,12 @@ columns, each its own module, with real splitters (the side two resizable,
   edition, the reference/word field and "+"; then three cards, each
   scrolling on its own — **Livros** (all 66, coloured by group; **Abrev |
   Nomes** in its header, remembered), **Capítulos** (every chapter of the
-  book) and **Versículos** (the chapter's verses as 26 px cells: a click
+  book, as tall as its cells up to 40 % of the column) and **Versículos** (the chapter's verses as 26 px cells: a click
   selects as clicking the text does — Ctrl adds, Shift ranges, a double
   click projects — green selected, red on air; it takes the height left).
-- **Texto** (flexible, min 360 px): Recentes chips and the
-  Favoritos/Anotações dropdowns on top, then Ler/Buscar/Comparar and the
+- **Texto** (flexible, min 360 px): the Recentes, Favoritos and Anotações
+  dropdowns side by side on the left of a band on top (owner 2026-10-16;
+  Recentes were chips), then Ler/Buscar/Comparar and the
   verse list, scrolling on its own.
 - **No ar** (400 px): **No ar agora** (at most 35 % of the column's height)
   and **Selecionado**; the Bible has no Prévia.
@@ -379,13 +380,15 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
   panels have inconsistent padding"): a panel's header is one line, 32 px
   (28 in Compacta), its text 12 px (`space-3`) from the panel's edge and
   its last button 12 px from the right one (symmetric; the first row under
-  a header starts 4 px below it);
+  a header starts 4 px below it); its controls (buttons, selects, Seg,
+  the search field) are 24 px tall and 4 px apart;
   whatever has a box of its own — list cards, verse cards, the Bíblia's
   book, chapter and verse cells, the Temas tiles, the search field, tabs,
-  the No ar agora monitor — sits 4 px (`space-1`) in from the column, with
-  its text at 12 px; listheads and sub-titles (Recentes, Selecionado, the
-  Temas heading at the end of Camadas) at 12 px, a band like Recentes with
-  a 1 px `line` under it. A header never wraps into a taller block: the
+  the No ar agora monitor, the Recentes/Favoritos/Anotações buttons — sits
+  4 px (`space-1`) in from the column, with its text at 12 px; listheads
+  and sub-titles (Selecionado, the Temas heading at the end of Camadas) at
+  12 px; a band under a header (the Recentes band, Livros' edition line)
+  has a 1 px `line` under it. A header never wraps into a taller block: the
   Bíblia's Texto drops its hint, then *Selecionar todos* and *Limpar*, and
   its search field gives way first. No panel gets an inset of its own.
 - **Folding a panel** (owner 2026-10-16, Rodada F4, pick A): every panel
