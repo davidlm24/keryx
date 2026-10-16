@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
-const { app, BrowserWindow, Menu, dialog, ipcMain, powerMonitor, safeStorage, screen, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, powerMonitor, safeStorage, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
@@ -17,6 +17,7 @@ const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
 const { createLive, loadLiveRules } = require("./live.cjs");
 const closeGuard = require("./closeGuard.cjs");
+const windowState = require("./windowState.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
 const schema = require("./db/schema.json");
@@ -213,11 +214,18 @@ function openOutputWindow(url, placement) {
 }
 
 function createMainWindow() {
+    // Where the operator left it (electron/windowState.cjs): its size,
+    // place and maximized state, on a monitor still connected; the first
+    // time, the default size, or maximized on a smaller screen.
+    const place = windowState.restoreState(appSettings?.get(windowState.SETTINGS_KEY), screen.getAllDisplays().map((d) => ({
+        primary: d.id === screen.getPrimaryDisplay().id, bounds: d.bounds, workArea: d.workArea,
+    })));
     mainWindow = new BrowserWindow({
-        width: 1440,
-        height: 900,
-        minWidth: 960,
-        minHeight: 600,
+        width: windowState.DEFAULT.width,
+        height: windowState.DEFAULT.height,
+        ...(place.bounds || {}),
+        minWidth: windowState.MIN.width,
+        minHeight: windowState.MIN.height,
         show: false,
         backgroundColor: BG,
         title: "KERYX",
@@ -231,7 +239,20 @@ function createMainWindow() {
         webPreferences,
     });
     guardWindow(mainWindow);
-    mainWindow.once("ready-to-show", () => mainWindow.show());
+    mainWindow.once("ready-to-show", () => (place.maximized ? mainWindow.maximize() : mainWindow.show()));
+    // Kept as it changes (a moment after the last move or resize) and on
+    // close, so a restart for an import or an update keeps it too.
+    const win = mainWindow;
+    let saveTimer = null;
+    const savePlace = () => {
+        clearTimeout(saveTimer);
+        if (!appSettings || win.isDestroyed() || win.isMinimized() || win.isFullScreen()) return;
+        const state = windowState.captureState({ normalBounds: win.getNormalBounds(), maximized: win.isMaximized() });
+        if (state) appSettings.set(windowState.SETTINGS_KEY, state);
+    };
+    const saveSoon = () => { clearTimeout(saveTimer); saveTimer = setTimeout(savePlace, 800); };
+    for (const ev of ["resized", "moved", "maximize", "unmaximize"]) win.on(ev, saveSoon);
+    win.on("close", savePlace);
     // Closing the console closes KERYX. The outputs are not in the taskbar, so
     // otherwise the app could keep running unseen (and the network server up).
     // "close" (not "closed"): the import restart's app.exit() destroys windows
@@ -276,6 +297,11 @@ app.on("child-process-gone", (_e, details) => logger.error(`child-process-gone: 
 app.whenReady().then(async () => {
     if (!gotLock) return;
     Menu.setApplicationMenu(null);
+    // KERYX is dark only (dark rooms): what Windows draws around it — the
+    // title bars of detached pages and of an output "Em janela", the text
+    // fields' right-click menu — is dark too, whatever the Windows theme.
+    // (Windows' own message boxes stay light: they have no dark mode.)
+    nativeTheme.themeSource = "dark";
     logger.info(`KERYX ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
     if (importOutcome && importOutcome.error) {
         dialog.showErrorBox("Importação não aplicada", `Os dados anteriores foram mantidos.\n\n${importOutcome.error}`);

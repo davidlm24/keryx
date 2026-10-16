@@ -54,6 +54,11 @@ row only prepares it in the Prévia (green). It reaches the screens by one of:
 | **Enviar ao ar** | the button where there is one: the Bíblia, the Escola bíblica, the Mídia (and the Setlist's *Ir*); the culto's Prévia has none since 2026-10-14 — Enter, a double click on its screen or its right-click menu send it. Its keys live in one tooltip on every send button, never printed: "Enviar ao ar · Enter (Ctrl+Enter de qualquer lugar)" (`SEND_TIP` in `src/lib/console/copy.js`) |
 | **Drag onto the Programa** | from the Biblioteca (onto the Prévia it prepares; onto the Setlist it adds) |
 
+**The pointer is the Windows one** (Windows pass of the design audit,
+2026-10-16): the arrow on every button, row, tab, card and slider; the hand
+only on a real link. One weighted rule in `bundle.css` (`.kx button`) beats
+Tailwind's preflight; don't add `cursor: pointer` to a control.
+
 A click on one control never leaves focus on it, so the next key works on the
 console. Typing never sends: in a text field every key is typing, and Esc first
 leaves the field. A control focused with Tab keeps its own Enter and Space.
