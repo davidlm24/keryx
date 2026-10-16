@@ -237,12 +237,18 @@ columns, each its own module, with real splitters (the side two resizable,
   book, as tall as its cells up to 40 % of the column) and **Versículos** (the chapter's verses as 26 px cells: a click
   selects as clicking the text does — Ctrl adds, Shift ranges, a double
   click projects — green selected, red on air; it takes the height left).
-- **Texto** (flexible, min 360 px): the Recentes, Favoritos and Anotações
-  dropdowns side by side on the left of a band on top (owner 2026-10-16;
-  Recentes were chips), then Ler/Buscar/Comparar and the
-  verse list, scrolling on its own.
-- **No ar** (400 px): **No ar agora** (at most 35 % of the column's height)
-  and **Selecionado**; the Bible has no Prévia.
+- **Texto** (flexible, min 360 px): a header with the chapter, two icons
+  (Selecionar todos, Limpar seleção) and Ler | Comparar — no hint and no
+  search field (owner 2026-10-16: the console's search, the palette, opens
+  references and searches words in the Bíblia, its results in this panel);
+  the Recentes, Favoritos and Anotações dropdowns on the left of a band
+  under it, their counts inside the lists; then the verse list, scrolling
+  on its own.
+- **No ar** (400 px): no header (owner 2026-10-16) — the screen on top
+  (at most 35 % of the column's height) with the Programa's pill, icons
+  only (the state's dot, Tela preta, Logo, Limpar, Encerrar), then
+  **Selecionado**; the Bible has no Prévia. None of the Bíblia's panels
+  folds.
 The order of the columns and of the three cards is the operator's (Editar
 layout).
 Without internet every *Instalar* says "sem internet" and does nothing. The
@@ -380,19 +386,22 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
   panels have inconsistent padding"): a panel's header is one line, 32 px
   (28 in Compacta), its text 12 px (`space-3`) from the panel's edge and
   its last button 12 px from the right one (symmetric; the first row under
-  a header starts 4 px below it); its controls (buttons, selects, Seg,
-  the search field) are 24 px tall and 4 px apart;
+  a header starts 4 px below it); its controls (buttons, selects, Seg)
+  are 24 px tall and 8 px apart, as in the windows' bar (owner
+  2026-10-16, both environments);
   whatever has a box of its own — list cards, verse cards, the Bíblia's
   book, chapter and verse cells, the Temas tiles, the search field, tabs,
-  the No ar agora monitor, the Recentes/Favoritos/Anotações buttons — sits
+  the No ar agora monitor — sits
   4 px (`space-1`) in from the column, with its text at 12 px; listheads
   and sub-titles (Selecionado, the Temas heading at the end of Camadas) at
-  12 px; a band under a header (the Recentes band, Livros' edition line)
-  has a 1 px `line` under it. A header never wraps into a taller block: the
-  Bíblia's Texto drops its hint, then *Selecionar todos* and *Limpar*, and
-  its search field gives way first. No panel gets an inset of its own.
+  12 px; a band under a header (the Biblioteca's search row, the Bíblia's
+  Recentes/Favoritos/Anotações) is 36 px, its controls 28 px, 4 px in and
+  4 px apart, with a 1 px `line` under it. A header never wraps into a
+  taller block, and a panel carries no text it does not need: no hints in
+  headers, counts inside the lists they count. No panel gets an inset of
+  its own.
 - **Folding a panel** (owner 2026-10-16, Rodada F4, pick A): every panel
-  but the Programa, the Prévia and the player has a chevron right of its
+  but the Programa, the Prévia, the player and the Bíblia's panels has a chevron right of its
   header's +, pointing up while open ("Dobrar"), turned while folded
   ("Abrir"). Folded down a column, the panel is its header and its
   neighbours take the room; folded across a row (the Biblioteca, the

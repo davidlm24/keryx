@@ -236,9 +236,9 @@
    beside the Prévia got a thin header of its own for it ("Painel"). */
 .console .kx-panel-h > .tabs-plus { flex: none; width: 24px; height: 24px; }
 /* A header is symmetric (owner 2026-10-16): its title sits 12 px from the
-   left edge and its last button 12 px from the right one. The bare panels
-   keep their own. */
-.console .kx-panel:not(.kx-panel-bare) > .kx-panel-h { padding-right: var(--space-3); }
+   left edge and its last button 12 px from the right one, its controls 8 px
+   apart, as in the windows' bar (.win-bar). The bare panels keep their own. */
+.console .kx-panel:not(.kx-panel-bare) > .kx-panel-h { padding-right: var(--space-3); gap: var(--space-2); }
 /* Too many tabs for the width: the row breaks into a second line (owner
    2026-10-14, the Biblioteca review), never a cut title. Only a single tab
    wider than the whole panel still shortens. */
@@ -508,16 +508,16 @@
    side widths are the operator's (Ver › Editar layout). Each picker card
    scrolls on its own; Versículos takes what is left. */
 .console .bible-center { container: bible / inline-size; }
-/* The band under Livros' header is the same row as Recentes under the text's
-   (4 + 24 + 4 and a separator), so both columns start their lists at the
-   same height. */
-.console .bpick-books .bsrc { display: flex; box-sizing: border-box; height: 33px; padding: 0 var(--space-3); border-bottom: 1px solid var(--line); }
-/* Livros' header carries the version, Abrev | Nomes, the install +, the
-   view menu and the fold chevron beside its title (Rodada F4). Like every
-   header's controls they are 24 px tall and 4 px apart; the select and
-   the two buttons are narrow, so the title still reads at the column's
-   300 px. */
-.console .bpick-books > .kx-panel-h > select { flex: none; width: 52px; height: 24px; padding: 0 2px; }
+/* Livros' header carries the version, Abrev | Nomes, the install + and the
+   view menu beside its title. Like every header's controls they are 24 px
+   tall and 8 px apart; the select and the two buttons are narrow, so the
+   title still reads at the column's 300 px. The edition says nothing while
+   it is installed here; from the internet, missing or the preview's samples
+   it is an amber dot on the select, the words in its tooltip (owner
+   2026-10-16: no line of text under the header). */
+.console .bpick-books .bver { position: relative; flex: none; display: inline-flex; }
+.console .bpick-books .bver > select { width: 52px; height: 24px; padding: 0 2px; }
+.console .bpick-books .bver-dot { position: absolute; top: -2px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--bg-1); pointer-events: none; }
 .console .bpick-books > .kx-panel-h .kx-seg > button { padding: 0 4px !important; }
 .console .kx-panel-h .addmenu > .kx-btn-icon { width: 24px; height: 24px; }
 /* Livros, Capítulos and Versículos in three cell sizes (owner 2026-10-14:
@@ -532,9 +532,6 @@
 .console .chapters.is-small button, .console .verse-cells.is-small button { height: 22px; font-size: 11px; }
 .console .chapters.is-large, .console .verse-cells.is-large { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
 .console .chapters.is-large button, .console .verse-cells.is-large button { height: 34px; font-size: 14px; }
-/* The text panel's search field (Buscar; a reference opens the chapter). */
-.console .bread-search { flex: 0 4 240px; min-width: 140px; }
-.console .bread-search .kx-field { width: 100%; height: 24px; }
 .console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: var(--space-1); }
 .console .bpick-books.names-full .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
 .console .bpick-chapters .bchap { border-top: 0; padding: var(--space-1); }
@@ -542,20 +539,14 @@
 .console .bpick-verses .bverses { padding: var(--space-1); }
 /* The text column: recent chapters, favourites and notes on top, the
    reading (or Buscar, Comparar) below, scrolling. */
-/* Its header is one line at the density's height, like every panel's
-   (owner 2026-10-16, Rodada F4): narrower, the hint goes first, then
-   Selecionar todos and Limpar, and the search field gives way. */
+/* Its header is one line, like every panel's: the chapter, two icons
+   (Selecionar todos, Limpar seleção) and Ler | Comparar. No hint and no
+   search field (owner 2026-10-16: the console's search covers the Bíblia). */
 .console .bread > .kx-panel-h { overflow: hidden; }
 .console .bread > .kx-panel-h > .kx-section { min-width: 64px; }
-@container bible (max-width: 720px) { .console .bread > .kx-panel-h .kx-count { display: none; } }
-@container bible (max-width: 600px) { .console .bread .bread-sel { display: none; } }
-@container bible (max-width: 440px) { .console .bread-search { flex-basis: 150px; min-width: 96px; } }
 .console .bread > .kx-panel-b { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 .console .bread-b { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .console .bread-b > .reading { overflow: visible; }
-/* The edition: installed here, from the internet (amber) or missing (amber). */
-.console .bsrc { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.console .bsrc.kx-warn { color: var(--warn-fg); }
 .console .bunavail-acts { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1); margin-top: var(--space-2); }
 .console .bgrid { display: grid; gap: 3px; }
 .console .bgrid .kx-book { height: 26px; font-size: 12px; }
@@ -586,9 +577,14 @@
 .console .bband-lists { position: relative; flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); border-bottom: 1px solid var(--line); }
 .console .bband-lists .addmenu { position: static; }
 .console .bband-lists .blist-pop { left: var(--space-1); right: auto; width: min(300px, calc(100% - 2 * var(--space-1))); }
-.console .bchip { height: 24px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }
+/* 28 px, like the Biblioteca's search row: a band under a header is 36 px,
+   its controls 28, 4 px in and 4 px apart (owner 2026-10-16). */
+.console .bchip { height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }
 .console .bchip:hover, .console .bchip.is-on { background: var(--bg-3); color: var(--fg-1); }
 .console .blist-pop { width: 300px; max-height: 360px; overflow: auto; }
+/* The list's count lives at its top, never on the button (owner 2026-10-16). */
+.console .blist-h { height: 28px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 0 var(--space-2); }
+.console .blist-h .kx-section { font-size: 10px; }
 .console .reading { max-width: 760px; }
 .console .vgroup { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
 .console .vslide { display: grid; grid-template-columns: 16px 1fr; gap: var(--space-2); padding: 4px 8px 6px; border-radius: var(--radius-control); background: var(--bg-2); font-size: 12px; line-height: 16px; color: var(--fg-1); }
@@ -805,7 +801,7 @@
 /* The "No ar agora" monitor: at most 35 % of the column's height, so the
    selection and the actions below it stay in view on short windows. */
 .console .bible-air-col .kx-panel-b { container-type: size; }
-.console .bible-air { padding: 0 var(--space-1) var(--space-1); flex: none; display: flex; justify-content: center; }
+.console .bible-air { padding: var(--space-1); flex: none; display: flex; justify-content: center; }
 .console .bible-air .kx-mon { width: min(100%, calc(35cqh * 16 / 9)); }
 
 /* "+" beside a search field: the menu of what can be added there. */

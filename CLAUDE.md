@@ -51,23 +51,29 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **One padding rule for panels** (owner 2026-10-16, Rodada F4): a panel's
   header text sits 12 px (`--space-3`) from its edge and its last button
   12 px from the right one (symmetric, owner 2026-10-16 after the Bíblia
-  review; the first row under a header — cells, the edition line — starts
-  4 px below it); a header's controls (buttons, selects, Seg, the search
-  field) are 24 px tall and 4 px apart; anything with a box
+  review; the first row under a header — cells, a list — starts 4 px
+  below it); a header's controls (buttons, selects, Seg) are 24 px tall
+  and **8 px apart, as in the windows' bar** (`.win-bar`; owner
+  2026-10-16, in both environments); a band under a header (the
+  Biblioteca's search row, the Bíblia's Recentes/Favoritos/Anotações) is
+  36 px, its controls 28, 4 px in and 4 px apart; anything with a box
   of its own — list cards, verse cards, the cells of Livros/Capítulos/
   Versículos, the Temas tiles, the search field, tabs, the No ar agora
-  monitor, the Bíblia's Recentes/Favoritos/Anotações buttons — sits 4 px
+  monitor — sits 4 px
   (`--space-1`) in from the column, with its text at 12 px; listheads and
   sub-titles ("Selecionado", a Temas heading inside Camadas) at 12 px;
   Capítulos is as tall as its cells, up to 40 % of the column (`Measure` →
   the Bíblia's `fitDock` `locked`, Console.jsx); every panel header is 32 px, 28 in
   Compacta (`panelHead`), one line — a header never wraps into a taller
-  block (the Bíblia's Texto drops its hint, then Selecionar todos/Limpar,
-  container queries). Don't give one panel its own inset.
+  block. No text a panel does not need (owner 2026-10-16, the Bíblia
+  review): no hints in headers, no "installed here" lines, counts inside
+  the lists they count (the Bíblia's dropdowns), never on their button.
+  Don't give one panel its own inset.
 - **Every panel folds** (owner 2026-10-16, Rodada F4): a chevron right of
   the header's + (`FoldBtn` in kx.jsx; "Dobrar"/"Abrir"), on every module
-  but the Programa, the Prévia and the player (`noFold` in dock.js
-  `MODULES`). The state is `layout.folded` (`{ [moduleId]: true }`, per
+  but the Programa, the Prévia, the player and the Bíblia's panels
+  (owner 2026-10-16: they need none; `noFold` in dock.js `MODULES`, a
+  fold saved before is ignored). The state is `layout.folded` (`{ [moduleId]: true }`, per
   computer, both environments; `normalizeFolded` migrates the old
   `onairMin`). `fitDock`'s `folded` (dock.js, tested) locks a folded module
   alone in a split: down a column to its header (`head`, the density's),
@@ -534,9 +540,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   No ar never leave; the old "Versão e busca" module is gone, 2026-10-14:
   the version, Abrev | Nomes, the install + and a view menu (Tema da
   Bíblia…, Células pequenas/médias/grandes — `layout.bibleGrid`, per
-  computer) are Livros' header, and Buscar
-  is the text panel's header field — a reference opens the chapter, a word
-  searches, Esc or Ler goes back; its modes are Ler | Comparar) starts as its three columns
+  computer) are Livros' header — the edition only as an amber dot on the
+  select when it is from the internet, missing or the preview's samples
+  (`bver-dot`, the words in its tooltip). The Bíblia has **no search field
+  of its own** (owner 2026-10-16): the console's search (the palette, `/`)
+  opens a reference there and searches a word (`request.search` → the
+  text panel's Buscar mode; Ler goes back). The text panel's header is the
+  chapter, two icons (Selecionar todos, Limpar seleção) and Ler | Comparar;
+  under it Recentes, Favoritos and Anotações are dropdowns on the left,
+  their counts inside the list. **No ar has no header** (owner
+  2026-10-16): its screen on top and the Programa's pill with icons only
+  (the state's dot, Tela preta, Logo, Limpar, Encerrar). It starts as its three columns
   (`fromBibleArrangement`); BibleEnv builds the modules, Console.jsx keeps
   the dock. `src/lib/console/arrange.js` now only reads the old
   `order`/`stacks` saves. The culto's: a tree of splits and tab groups,

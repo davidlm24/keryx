@@ -154,9 +154,10 @@ test("folded panels (Rodada F4): per computer, cleaned, the No ar strip's old mi
     assert.deepEqual(old.folded, { onair: true });
     assert.equal("onairMin" in old, false);
     assert.deepEqual(withStore({ onairMin: false }, () => loadLayout("x")).folded, {});
-    // Only modules that fold, only true: the Programa, the Prévia and the player never; unknown ids go.
-    const mine = withStore({ folded: { lib: true, reading: true, programa: true, previa: true, player: true, zz: true, slides: "yes", setlist: false } }, () => loadLayout("x"));
-    assert.deepEqual(mine.folded, { lib: true, reading: true });
+    // Only modules that fold, only true: the Programa, the Prévia, the player
+    // and the Bíblia's panels never (a Texto folded before 2026-10-16 opens); unknown ids go.
+    const mine = withStore({ folded: { lib: true, camadas: true, reading: true, programa: true, previa: true, player: true, zz: true, slides: "yes", setlist: false } }, () => loadLayout("x"));
+    assert.deepEqual(mine.folded, { lib: true, camadas: true });
     assert.deepEqual(normalizeFolded(["lib"]), {});
     assert.deepEqual(normalizeFolded(null, true), { onair: true });
     // The chevron: folded and back; a module that never folds stays as it is.
