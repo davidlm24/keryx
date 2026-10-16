@@ -77,7 +77,8 @@
 .ks-comm-attention .ks-comm-t, .ks-comm-announcement .ks-comm-t, .ks-comm-image_text .ks-comm-t { font-weight: 700; }
 .ks-logo.ks-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
 @keyframes ks-pulse { 50% { transform: scale(1.06); } }
-@media (prefers-reduced-motion: reduce) { .ks-comm-big.ks-urgent { animation: none; } }
+/* The console (.kx) honours reduced motion on its monitors; the outputs never do (the audience sees them). */
+@media (prefers-reduced-motion: reduce) { .kx .ks-comm-big.ks-urgent { animation: none; } }
 
 /* Media in a preview: a still (a video's poster, else its kind and title), never a playing video */
 .ks-media { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; background: #000; }
@@ -133,7 +134,8 @@
 .ks-alert-layer { position: fixed; inset: 0; z-index: 9999; container-type: size; pointer-events: none; overflow: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ks-anim-fade > *, .ks-anim-slide > *, .ks-anim-zoom > * { animation: none; }
+  /* the theme's slide entrance: still on the console's monitors (.kx), played on the outputs */
+  .kx :is(.ks-anim-fade, .ks-anim-slide, .ks-anim-zoom) > * { animation: none; }
   .ks-alert { animation: none !important; } /* every entrance, whatever its class */
 }
 
@@ -156,3 +158,12 @@
 /* One box per look layer, stacked by live.layerOrder (inline z-index). */
 .ks-z { position: absolute; inset: 0; pointer-events: none; }
 .ks-z > * { pointer-events: auto; }
+
+/* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
+   what the congregation sees never takes this computer's contrast theme.
+   An output's whole document opts out (App.jsx marks it ks-output-doc),
+   and so does every root that draws an output anywhere else — the
+   renderer, a screen's design, the Palco, the Pastor, the Aviso rápido
+   beside them, the Transmissão band — so the console's stills match the
+   outputs (its monitors opt out in bundle.css). */
+html.ks-output-doc, .ks, .kl, .ks-alert-layer, .net-stage, .net:has(> .net-pastor), .kx-stream-band { forced-color-adjust: none; }

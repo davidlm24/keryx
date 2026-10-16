@@ -77,6 +77,22 @@ and its toast's *Desfazer* puts back what was on air, on the same slide;
 opens the quick jump. A splitter focused with Tab keeps ←/→ and ↑/↓ for
 itself, so resizing never moves what is on air.
 
+**Menus** (2026-10-16, audit C-14/C-15): every menu is one component,
+`MenuList` in `src/components/console/Menu.jsx` (the menu bar, the logo's
+menu, Ver, the (+) menus, right-click menus, the tabs lists, the Bíblia's
+lists; `MenuButton` for a button with its menu). It takes the focus when it
+opens (its first item), ↑/↓ walk it round the ends, Home/End jump, disabled
+items are skipped, → opens a submenu and ← leaves it, Enter/Space choose,
+Esc and Tab close; one frame (`.kx-pop`) and the gold focus ring. When it
+closes the focus goes back to what opened it only if the keyboard opened
+and closed it — after a mouse open, to nothing, so the live keys work
+(`useFocusReturn`, `focusAfterClose` in `menuNav.js`). The menu bar
+answers **F10** or **Alt** alone (the focus on the bar: ←/→ walk it, ↓ or
+Enter opens, Esc leaves it) and **Alt + C/M/D/F** (Culto, Música, Mídia,
+Ferramentas; the letter underlined only while Alt is held or the bar has
+the keyboard). Setlist and planner rows move with **Alt+↑/↓** on a focused
+row and Subir/Descer in their menu, as Camadas' do (`useRowStep`).
+
 **The command palette** (`/`) opens centred over the console, on the dimmed
 scrim (owner decision 2026-10-11; it used to stop short of the Programa).
 Enter puts the result in the Prévia and Shift+Enter
@@ -289,6 +305,21 @@ stays 5.6–7.4:1; a lighter shade would drop under 4.5:1). Disabled goes
 neutral like the gold button (`bg-3`, `fg-3`) and never lights on hover;
 the focus ring is the gold button's (light `fg-1`, 2 px outside the fill).
 *Destravar* on the lock banner is 24 px, like every banner button.
+
+**Windows contrast themes (2026-10-16, design audit C-05):** under forced
+colours Chromium repaints backgrounds and borders in the system's colours and
+drops shadows, so the states (all of them backgrounds) and the controls drawn
+with fills or shadows would vanish. One `@media (forced-colors: active)` block
+at the end of `bundle.css` (and the console's at the end of `console.css`)
+gives them cues in system colours only: on air, `Highlight` fills the row with
+`HighlightText` (still the row's background); Prévia, a 2 px dashed
+`LinkText` ring; next, a 2 px dotted ring; chosen, pressed or open (`is-on`,
+`is-selected`, Seg, tabs), a 2 px `Highlight` ring; switches, fields and
+outline or filled buttons get `ButtonText` / `FieldText` borders, panels and
+popovers a 1 px edge. A ring never replaces the keyboard's focus ring, and
+the normal look does not change. The monitors (`.kx-mon-screen`, `.kx-pip`)
+and every output opt out (`forced-color-adjust: none`): the picture, its
+frame included, keeps its own colours.
 
 **Screens on the network (2026-10-10):** every page a tablet, TV or stage
 monitor opens is on this system (`src/components/network/net.css`): `bg-0`

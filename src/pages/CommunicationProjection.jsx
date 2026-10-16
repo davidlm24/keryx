@@ -1,6 +1,7 @@
 import React from "react";
 import { keryx } from "@/api/keryxClient";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { useScreenKeys } from "@/hooks/useScreenKeys";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useNoticeAdvance } from "@/hooks/useNoticeAdvance";
 import OutputScreen from "@/components/screen/OutputScreen";
@@ -15,6 +16,7 @@ export default function CommunicationProjection() {
     const communication = live?.communication;
     const now = useLiveNow(1000);
     const logo = useChurchLogo();
+    useScreenKeys(live);
     useNoticeAdvance(communication);
     return <OutputScreen page="/CommunicationProjection" live={live} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />;
 }

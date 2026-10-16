@@ -39,7 +39,7 @@
   --on-brand: #20180c;
   --screen-bg: #000000;
   --screen-fg: #ffffff;
-  --popover: 0 0 0 1px #35342f, 0 8px 24px #00000080;
+  --shadow-popover: 0 0 0 1px #35342f, 0 8px 24px #00000080;
   --dialog: 0 0 0 1px #4a484099, 0 10px 28px #00000066;
   --screen-text: 0 2px 12px #000000b3;
 }
