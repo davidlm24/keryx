@@ -50,6 +50,7 @@ import { syncState } from "@/lib/console/syncView";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
+import { useFocusReturn } from "@/components/console/Menu";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
@@ -261,6 +262,9 @@ export default function Console() {
     const openReports = useCallback(() => { setOpen(null); setWin(openStack({ page: "reports" })); }, []);
     const [plannerFocus, setPlannerFocus] = useState(null);
     const [open, setOpen] = useState(null);
+    // A popover or menu opened from the keyboard gives the focus back to
+    // what opened it; opened with the mouse, to nothing (Menu.jsx; C-14).
+    useFocusReturn(Boolean(open));
     const [libTab, setLibTab] = useState(() => {
         try { return new URLSearchParams(window.location.search).get("lib") === "avisos" ? "avisos" : "letras"; } catch { return "letras"; }
     });
@@ -1311,7 +1315,7 @@ export default function Console() {
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)}
-                sync={syncTop} onSync={() => openSettings("sincronizacao")} />
+                sync={syncTop} onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1395,7 +1399,7 @@ export default function Console() {
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} />
-            <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} />
+            <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />

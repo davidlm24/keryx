@@ -1,7 +1,7 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
-import Icon from "./Icon";
-import { MenuItem } from "./kx";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { MenuList } from "./Menu";
 import { nextMenu } from "@/lib/console/menuBar";
+import { ACCESS_KEYS, accessParts, menuBarKey, altTap } from "@/lib/console/menuNav";
 
 // The menu bar (owner 2026-10-15, Rodada D4, "Menus novos" = A; the model
 // is src/lib/console/menuBar.js): its buttons ride in the top bar beside the
@@ -9,56 +9,103 @@ import { nextMenu } from "@/lib/console/menuBar";
 // scrim close it like any popover. With one open, pointing at another
 // switches to it, and ← / → walk them, as in a desktop program. On a narrow
 // window the bar folds away (console.css) and the logo's menu has it all.
-export function MenuBarButtons({ menus, open, setOpen }) {
+//
+// The keyboard (audit C-14, 2026-10-16), as in Windows: F10 or Alt alone
+// puts the focus on the bar (← / → walk it, ↓ / Enter open, Esc leaves it);
+// Alt + the underlined letter opens that menu — C Culto, M Música, D Mídia,
+// F Ferramentas (src/lib/console/menuNav.js; the letter is underlined only
+// while Alt is held or the bar has the keyboard, so it reads as before).
+// An open menu has the focus (its first item), → enters a submenu, ← leaves
+// it, and ← / → elsewhere go to the next menu.
+// `blocked`: something is over the console (a window, a dialog): the bar's
+// keys rest.
+export function MenuBarButtons({ menus, open, setOpen, blocked = false }) {
     const openId = typeof open === "string" && open.startsWith("mb:") ? open.slice(3) : null;
+    const nav = useRef(null);
+    const [alt, setAlt] = useState(false);
+    const [cur, setCur] = useState(0);
+    const buttons = () => [...(nav.current?.querySelectorAll("[data-menu]") || [])];
+    const shown = () => Boolean(nav.current?.offsetParent);
+    const live = useRef({});
+    live.current = { open, setOpen, blocked };
+
+    // F10, Alt alone and Alt + letter, from anywhere in the console.
+    useEffect(() => {
+        let tap = null;
+        const free = () => !live.current.blocked && (!live.current.open || String(live.current.open).startsWith("mb:"));
+        const focusBar = () => {
+            if (!shown()) { live.current.setOpen("menu"); return; } // folded: the logo's menu has it all
+            live.current.setOpen(null);
+            const list = buttons();
+            if (list.includes(document.activeElement)) { document.activeElement.blur(); return; }
+            setCur(0);
+            list[0]?.focus();
+        };
+        const onDown = (e) => {
+            const r = altTap(tap, e);
+            tap = r.state;
+            setAlt(e.altKey && !e.ctrlKey);
+            const k = menuBarKey(e);
+            if (!k || !free()) return;
+            e.preventDefault();
+            if (k === "bar") focusBar();
+            else live.current.setOpen(shown() ? `mb:${k.slice(5)}` : "menu");
+        };
+        const onUp = (e) => {
+            const r = altTap(tap, e);
+            tap = r.state;
+            if (e.key === "Alt") setAlt(false);
+            if (r.fire && free()) { e.preventDefault(); focusBar(); }
+        };
+        const reset = (e) => { tap = altTap(tap, { type: e.type }).state; setAlt(false); };
+        window.addEventListener("keydown", onDown);
+        window.addEventListener("keyup", onUp);
+        window.addEventListener("pointerdown", reset, true);
+        window.addEventListener("blur", reset);
+        return () => {
+            window.removeEventListener("keydown", onDown);
+            window.removeEventListener("keyup", onUp);
+            window.removeEventListener("pointerdown", reset, true);
+            window.removeEventListener("blur", reset);
+        };
+    }, []);
+
+    // The bar with the focus: ← / → (Home / End) walk it, ↓ / Enter / Space
+    // open the menu (its first item focused), Esc leaves the bar. Its keys
+    // never reach the console behind (an arrow would move what is on air,
+    // Esc would end the projection).
+    const onKeyDown = (e) => {
+        const list = buttons();
+        const at = list.indexOf(document.activeElement);
+        if (at < 0) return;
+        const go = (i) => { const n = (i + list.length) % list.length; setCur(n); list[n].focus(); };
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); e.stopPropagation(); go(at + (e.key === "ArrowRight" ? 1 : -1)); }
+        else if (e.key === "Home" || e.key === "End") { e.preventDefault(); e.stopPropagation(); go(e.key === "Home" ? 0 : list.length - 1); }
+        else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); setOpen(`mb:${menus[at].id}`); }
+        else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); document.activeElement.blur(); }
+    };
     return (
-        <nav className="tb-menus" role="menubar" aria-label="Menus">
-            {menus.map((m) => (
-                <button key={m.id} type="button" role="menuitem" data-menu={m.id} aria-haspopup="menu" aria-expanded={openId === m.id}
-                    className={`tb-menu kx-t ${openId === m.id ? "is-on" : ""}`}
-                    onClick={() => setOpen(openId === m.id ? null : `mb:${m.id}`)}
-                    onPointerEnter={() => { if (openId && openId !== m.id) setOpen(`mb:${m.id}`); }}>
-                    {m.label}
-                </button>
-            ))}
+        <nav ref={nav} className={`tb-menus ${alt ? "show-ak" : ""}`} role="menubar" aria-label="Menus" onKeyDown={onKeyDown}>
+            {menus.map((m, i) => {
+                const [a, k, b] = accessParts(m.label, ACCESS_KEYS[m.id]);
+                return (
+                    <button key={m.id} type="button" role="menuitem" data-menu={m.id} aria-haspopup="menu" aria-expanded={openId === m.id}
+                        tabIndex={i === cur ? 0 : -1} aria-keyshortcuts={k ? `Alt+${k.toUpperCase()}` : undefined}
+                        className={`tb-menu kx-t ${openId === m.id ? "is-on" : ""}`}
+                        onFocus={() => setCur(i)}
+                        onClick={() => setOpen(openId === m.id ? null : `mb:${m.id}`)}
+                        onPointerEnter={() => { if (openId && openId !== m.id) setOpen(`mb:${m.id}`); }}>
+                        {a}{k && <span className="tb-ak">{k}</span>}{b}
+                    </button>
+                );
+            })}
         </nav>
     );
 }
 
-// One item: an icon, the check of a state (the culto of the day), a key.
-function Item({ it, onPick, onSub, subOpen }) {
-    const tail = it.sub ? <Icon name="chevron-right" /> : it.checked && it.icon ? <Icon name="check" /> : it.kbd;
-    return (
-        <MenuItem icon={it.icon} checked={it.checked} kbd={tail} disabled={it.disabled} title={it.title} role="menuitem"
-            aria-haspopup={it.sub ? "menu" : undefined} aria-expanded={it.sub ? subOpen : undefined}
-            className={`kx-menu-item kx-t ${it.checked ? "is-checked" : ""} ${subOpen ? "is-on" : ""}`}
-            onPointerEnter={onSub} onClick={it.sub ? onSub : onPick}>
-            <span className="mb-l">{it.label}</span>
-        </MenuItem>
-    );
-}
-
-function Items({ items, onDone }) {
-    const [sub, setSub] = useState(null);
-    return items.map((it, i) => {
-        if (it.sep) return <div key={`s${i}`} className="kx-menu-sep" />;
-        if (it.head) return <div key={`h${i}`} className="kx-menu-h"><span className="kx-section">{it.head}</span></div>;
-        const pick = () => { onDone(); it.onSelect?.(); };
-        return (
-            <div key={`${it.label}${i}`} className="mb-row" onPointerLeave={(e) => { if (it.sub && !e.currentTarget.contains(e.relatedTarget)) setSub(null); }}>
-                <Item it={it} onPick={pick} subOpen={sub === i} onSub={() => setSub(it.sub ? i : null)} />
-                {it.sub && sub === i && (
-                    <div className="kx-pop mb-sub" role="menu" aria-label={it.label}>
-                        <Items items={it.sub} onDone={onDone} />
-                    </div>
-                )}
-            </div>
-        );
-    });
-}
-
 // The open menu, under its button (in the console, outside the top bar,
-// which clips what overflows it).
+// which clips what overflows it). It takes the focus when it opens; the
+// console gives the focus back when it closes (Menu.jsx useFocusReturn).
 export function MenuBarPop({ menus, open, setOpen }) {
     const openId = typeof open === "string" && open.startsWith("mb:") ? open.slice(3) : null;
     const menu = menus.find((m) => m.id === openId) || null;
@@ -75,22 +122,8 @@ export function MenuBarPop({ menus, open, setOpen }) {
         setLeft(Math.max(8, Math.min(b.left - h.left, h.width - w - 8)));
     }, [menu]);
     if (!menu) return null;
-    // The keyboard inside the menu: ↑ ↓ between items, ← → to the next menu.
-    const onKeyDown = (e) => {
-        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-            e.preventDefault(); e.stopPropagation();
-            setOpen(`mb:${nextMenu(menu.id, e.key === "ArrowRight" ? 1 : -1)}`);
-        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-            e.preventDefault(); e.stopPropagation();
-            const list = [...box.current.querySelectorAll(":scope > .mb-row > .kx-menu-item:not(:disabled)")];
-            const at = list.indexOf(document.activeElement);
-            const next = list[(at + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length];
-            next?.focus();
-        }
-    };
     return (
-        <div ref={box} className="pop kx-pop mb-pop" role="menu" aria-label={menu.label} style={{ left, top: "var(--pop-top)" }} onKeyDown={onKeyDown}>
-            <Items key={menu.id} items={menu.items} onDone={() => setOpen(null)} />
-        </div>
+        <MenuList listRef={box} key={menu.id} className="pop kx-pop mb-pop" label={menu.label} items={menu.items} style={{ left, top: "var(--pop-top)" }}
+            onClose={() => setOpen(null)} onArrow={(d) => setOpen(`mb:${nextMenu(menu.id, d)}`)} />
     );
 }
