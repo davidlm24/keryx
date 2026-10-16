@@ -10,6 +10,8 @@
 //   <folder>/sync/<pc>/state.json             what that computer has read of
 //                                             everyone's files and the media
 //                                             its rows use, for the cleanup
+//   <folder>/sync/keryx-sync.json             the church's code file
+//                                             (syncPairing.cjs)
 //   <folder>/sync/media/<file>                the media files those rows use,
 //                                             by their uuid name, never
 //                                             overwritten; collected once no
@@ -24,11 +26,22 @@
 // order. A last line without its newline is still being written or
 // downloaded: it is left for the next pass, never skipped.
 //
+// Only computers with the church's sync code count (PCs verificados,
+// electron/syncPairing.cjs): the folder holds the code's file, every line and
+// every state.json is signed with the key the code makes, and what does not
+// verify is counted for its computer, never applied (nor counted by the
+// cleanup). Without a code nothing is read or written; with a code that is
+// no longer the folder's (it changed) neither, and the outbox waits; the
+// same for a computer another one took out ("Tirar": the code file's
+// removed list), whose folder the others skip until the code is typed on
+// it again.
+//
 // Pure Node over the store and a folder path, so it runs under node --test.
 
 const fs = require("node:fs");
 const path = require("node:path");
 const { isSynced, SYNC_ENTITIES } = require("./db/syncScope.cjs");
+const { keysFor, readPairing, writePairing, matches, pairingFile, removedOf } = require("./syncPairing.cjs");
 
 const fsp = fs.promises;
 
@@ -114,15 +127,6 @@ async function writeWhole(dir, name, text) {
     }
 }
 
-async function readJson(file) {
-    try {
-        const value = JSON.parse(await fsp.readFile(file, "utf8"));
-        return value && typeof value === "object" && !Array.isArray(value) ? value : null;
-    } catch {
-        return null;
-    }
-}
-
 // The computer whose folder a cursor key ("<pc dir>/<file>") points into.
 const ownerOf = (key) => (PC_DIR.exec(String(key).split("/")[0]) || [])[1]?.toLowerCase() || null;
 
@@ -176,8 +180,44 @@ const isEntry = (e, pc) => e && typeof e === "object" && !Array.isArray(e)
     && typeof e.entity === "string" && (e.op === "upsert" || e.op === "delete")
     && String(e.pc || "").toLowerCase() === pc;
 
+const syncDirOf = (folder) => path.join(path.resolve(String(folder)), SYNC_DIR);
+
+// What a folder holds, for choosing it and typing the code (before any pass
+// runs there): { exists, code: "missing" | "bad" | "ok", computers: [{ pc,
+// files, lastChange }] }. Reads only.
+async function inspectFolder(folder) {
+    const root = path.resolve(String(folder));
+    if (!(await isDir(root))) return { exists: false, code: "missing", computers: [] };
+    const syncDir = path.join(root, SYNC_DIR);
+    const code = (await readPairing(syncDir)).state;
+    const computers = new Map();
+    for (const d of await fsp.readdir(syncDir, { withFileTypes: true }).catch(() => [])) {
+        const m = d.isDirectory() && PC_DIR.exec(d.name);
+        if (!m) continue;
+        const pc = m[1].toLowerCase();
+        const seen = computers.get(pc) || { pc, files: 0, lastChange: 0 };
+        for (const name of await fsp.readdir(path.join(syncDir, d.name)).catch(() => [])) {
+            if (!ANY_FILE.test(name)) continue;
+            try {
+                const st = await fsp.stat(path.join(syncDir, d.name, name));
+                seen.files += 1;
+                seen.lastChange = Math.max(seen.lastChange, st.mtimeMs);
+            } catch { /* gone while we looked */ }
+        }
+        computers.set(pc, seen);
+    }
+    return {
+        exists: true,
+        code,
+        computers: [...computers.values()].map((c) => ({ ...c, lastChange: c.lastChange ? new Date(c.lastChange).toISOString() : null })),
+    };
+}
+
+// getFolder() -> the folder chosen, or null (off). getPairing() -> { id, key }
+// (the code file's id and the key the code makes, syncPairing.cjs), or null
+// (no code typed on this computer yet).
 function createSyncEngine({
-    store, mediaDir, getFolder, log = console.warn, fileLimit = FILE_LIMIT, batch = BATCH, now = () => new Date(), onStatus = null,
+    store, mediaDir, getFolder, getPairing = () => null, log = console.warn, fileLimit = FILE_LIMIT, batch = BATCH, now = () => new Date(), onStatus = null,
     gcEveryMs = GC_EVERY_MS, gcGraceMs = GC_GRACE_MS,
 }) {
     const pc = String(store.pcId).toLowerCase();
@@ -205,6 +245,7 @@ function createSyncEngine({
     let timer = null;
     let debounce = null;
     let unsubscribe = null;
+    let keys = null; // keysFor the pairing in use, made again when it changes
 
     const setStatus = (next) => {
         status = { pc, ...next };
@@ -224,13 +265,19 @@ function createSyncEngine({
     // Cursors and the writer's file number belong to one folder; another
     // folder starts over (reading twice is harmless). The writer's state is
     // also this computer's: a database brought from elsewhere drops it.
-    function loadState(folder) {
+    // Another code (it changed, or the computer joined again) reads every
+    // file again: lines skipped under the old key may verify now.
+    function loadState(folder, pairing) {
         const saved = store.getMeta(STATE_KEY);
-        if (!saved || saved.folder !== folder) return { folder, cursors: {}, out: null, missing: [], gc: emptyGc() };
+        if (!saved || saved.folder !== folder) return { folder, pairing, cursors: {}, peers: {}, out: null, missing: [], removed: [], gc: emptyGc() };
         const gc = saved.gc && typeof saved.gc === "object" ? saved.gc : {};
+        const sameCode = saved.pairing === pairing;
         return {
             folder,
-            cursors: saved.cursors && typeof saved.cursors === "object" ? saved.cursors : {},
+            pairing,
+            cursors: sameCode && saved.cursors && typeof saved.cursors === "object" ? saved.cursors : {},
+            peers: sameCode && saved.peers && typeof saved.peers === "object" ? saved.peers : {},
+            removed: sameCode && Array.isArray(saved.removed) ? saved.removed : [],
             out: saved.out && saved.out.pc === pc ? saved.out : null,
             missing: Array.isArray(saved.missing) ? saved.missing : [],
             gc: {
@@ -289,7 +336,7 @@ function createSyncEngine({
                 const media = await shipMedia(syncDir, line.row);
                 if (media) line.media = media;
             }
-            const text = lines.map((line) => JSON.stringify(line) + "\n").join("");
+            const text = lines.map((line) => keys.sign(JSON.stringify(line)) + "\n").join("");
             const n = await outFile(dir, state, Buffer.byteLength(text));
             await appendLines(path.join(dir, fileName(n)), text);
             state.out = { pc, n, used: true };
@@ -408,7 +455,21 @@ function createSyncEngine({
                     logOnce(`linha ilegível ignorada em ${key}`);
                 }
             }
-            if (isEntry(entry, from)) pending.push(entry);
+            if (isEntry(entry, from)) {
+                // Signed with this church's key, or not taken at all.
+                const peer = state.peers[from] || (state.peers[from] = { ok: 0, rejected: 0, last: null });
+                if (keys.verify(text)) {
+                    delete entry.sig;
+                    pending.push(entry);
+                    peer.ok += 1;
+                    peer.last = "ok";
+                } else {
+                    peer.rejected += 1;
+                    peer.last = "rejected";
+                    totals.rejected += 1;
+                    logOnce(`linhas sem a assinatura do código da igreja ignoradas em ${key}`);
+                }
+            }
             pos = nl + 1;
             if (pending.length >= batch) await flush();
         }
@@ -417,8 +478,9 @@ function createSyncEngine({
     }
 
     async function readIn(syncDir, state) {
-        const totals = { applied: 0, skipped: 0, failed: 0, bad: 0 };
+        const totals = { applied: 0, skipped: 0, failed: 0, bad: 0, rejected: 0 };
         const computers = new Map();
+        const out = new Map(state.removed.map((r) => [r.pc, r]));
         for (const d of await fsp.readdir(syncDir, { withFileTypes: true })) {
             const m = d.isDirectory() && PC_DIR.exec(d.name);
             if (!m) continue;
@@ -432,6 +494,12 @@ function createSyncEngine({
                 continue; // deleted while we looked
             }
             const seen = computers.get(from) || { pc: from, files: 0, lastChange: 0 };
+            // Taken out: listed, never read, until it types the code again.
+            if (out.has(from)) {
+                seen.removed = { at: out.get(from).at, by: out.get(from).by };
+                computers.set(from, seen);
+                continue;
+            }
             for (const name of names) {
                 const mtime = await readFile(syncDir, state, dir, name, `${d.name}/${name}`, from, totals);
                 if (mtime == null) continue;
@@ -440,9 +508,20 @@ function createSyncEngine({
             }
             computers.set(from, seen);
         }
+        // verified: the last line read from it carried this church's
+        // signature (false: it writes without the code, or with an old one;
+        // null: nothing read from it yet).
         return {
             totals,
-            computers: [...computers.values()].map((c) => ({ ...c, lastChange: c.lastChange ? new Date(c.lastChange).toISOString() : null })),
+            computers: [...computers.values()].map((c) => {
+                const peer = state.peers[c.pc];
+                return {
+                    ...c,
+                    lastChange: c.lastChange ? new Date(c.lastChange).toISOString() : null,
+                    verified: peer && peer.last ? peer.last === "ok" : null,
+                    rejected: peer ? peer.rejected : 0,
+                };
+            }),
         };
     }
 
@@ -460,6 +539,8 @@ function createSyncEngine({
     // never touched. A computer that still uses a file someone collected (a
     // row edited while it was away) copies it back from its own media
     // folder: the names collected are announced in state.json (`collected`).
+    // state.json is signed like a line: only computers with the church's
+    // code count, and a computer taken out ("Tirar") holds nothing back.
 
     // The media every row here names (the church's content only).
     function liveRefs() {
@@ -483,20 +564,33 @@ function createSyncEngine({
         // Unchanged and still there (this computer's folder may be deleted).
         if (text === published && (await sizeOf(path.join(dir, MANIFEST))) >= 0) return;
         await fsp.mkdir(dir, { recursive: true });
-        await writeWhole(dir, MANIFEST, JSON.stringify({ ...body, at: now().toISOString() }));
+        await writeWhole(dir, MANIFEST, keys.sign(JSON.stringify({ ...body, at: now().toISOString() })));
         published = text;
     }
 
-    // The other computers: every folder in sync/ (Drive's " (1)" copies
-    // counted as theirs) and the newest state.json each wrote (null: none).
-    async function readManifests(syncDir) {
+    // The other computers that count: every folder in sync/ (Drive's " (1)"
+    // copies counted as theirs) and the newest signed state.json each wrote
+    // (null: none yet, which holds every file). A computer taken out, or one
+    // whose files never verified (no code, an old one), does not count.
+    async function readManifests(syncDir, state) {
         const seen = new Map();
+        const out = new Set(state.removed.map((r) => r.pc));
         for (const d of await fsp.readdir(syncDir, { withFileTypes: true })) {
             const m = d.isDirectory() && PC_DIR.exec(d.name);
             if (!m) continue;
             const from = m[1].toLowerCase();
-            if (from === pc) continue;
-            const manifest = await readJson(path.join(syncDir, d.name, MANIFEST));
+            if (from === pc || out.has(from)) continue;
+            let text = null;
+            try {
+                text = (await fsp.readFile(path.join(syncDir, d.name, MANIFEST), "utf8")).trim();
+            } catch { /* none yet */ }
+            let manifest = null;
+            if (text && keys.verify(text)) {
+                try {
+                    manifest = JSON.parse(text);
+                } catch { /* not JSON: as none */ }
+            }
+            if (!manifest && state.peers[from]?.last !== "ok") continue;
             const ok = manifest && String(manifest.pc || "").toLowerCase() === from ? manifest : null;
             const before = seen.get(from) || null;
             if (!before || (ok && String(ok.at || "") > String(before.at || ""))) seen.set(from, ok);
@@ -527,7 +621,7 @@ function createSyncEngine({
     async function collect(syncDir, state, names) {
         const gc = state.gc;
         const at = now();
-        const manifests = await readManifests(syncDir);
+        const manifests = await readManifests(syncDir, state);
         const shared = path.join(syncDir, MEDIA_DIR);
 
         // Put back what someone collected that a row here still uses.
@@ -597,6 +691,19 @@ function createSyncEngine({
         }
         const root = path.resolve(String(folder));
         const at = now().toISOString();
+        let pairing = null;
+        try {
+            pairing = getPairing();
+        } catch { /* unreadable: as if no code */ }
+        // A folder but no code: nothing is read or written (the outbox waits).
+        if (!pairing || !pairing.id || !pairing.key) {
+            setStatus({ state: "unpaired", folder: root, lastPass: at, error: null });
+            return;
+        }
+        if (!keys || keys.id !== pairing.id || keys.key !== pairing.key) {
+            keys = { ...keysFor(pairing.key, pairing.id), key: pairing.key };
+            published = "";
+        }
         // The folder itself is never made here: missing, it is a drive not
         // mounted or a sync service not running, not a place to start one.
         if (!(await isDir(root))) {
@@ -606,8 +713,35 @@ function createSyncEngine({
         }
         const syncDir = path.join(root, SYNC_DIR);
         try {
+            // The folder's code file: this code's, written back if it went
+            // missing (any computer with the code can), or another code's —
+            // then this computer neither reads nor writes until the new code
+            // is typed here.
+            const code = await readPairing(syncDir);
+            if (code.state === "bad") {
+                setStatus({ ...status, state: "offline", folder: root, lastPass: at, error: "O arquivo do código da igreja ainda está chegando pela pasta." });
+                return;
+            }
+            let state = null;
+            if (code.state === "missing") {
+                state = loadState(root, pairing.id);
+                await writePairing(syncDir, pairingFile(keys, pc, now(), state.removed));
+                logOnce("arquivo do código refeito na pasta");
+            } else if (!matches(code.file, keys)) {
+                setStatus({ ...status, state: "mismatch", folder: root, lastPass: at, error: "O código da igreja mudou nesta pasta. Digite o código novo para voltar a sincronizar." });
+                logOnce("o código da pasta não é o deste computador");
+                return;
+            }
+            state = state || loadState(root, pairing.id);
+            if (code.state === "ok") state.removed = removedOf(code.file, keys) || [];
+            const me = state.removed.find((r) => r.pc === pc);
+            if (me) {
+                saveState(state);
+                setStatus({ ...status, state: "removed", folder: root, lastPass: at, removed: { at: me.at, by: me.by }, error: "Este computador foi tirado da sincronização. Digite o código da igreja para voltar." });
+                logOnce("este computador foi tirado da sincronização");
+                return;
+            }
             await fsp.mkdir(path.join(syncDir, MEDIA_DIR), { recursive: true });
-            const state = loadState(root);
             const sent = await writeOut(syncDir, state);
             const { totals, computers } = await readIn(syncDir, state);
             await retryMissing(syncDir, state);
@@ -618,7 +752,7 @@ function createSyncEngine({
             saveState(state);
             await publish(syncDir, state, names);
             missingNow = state.missing.map((m) => m.name);
-            const { bad, ...received } = totals;
+            const { bad, rejected, ...received } = totals;
             setStatus({
                 state: "ok",
                 folder: root,
@@ -628,6 +762,7 @@ function createSyncEngine({
                 sent,
                 received,
                 bad,
+                rejected,
                 missingMedia: state.missing.length,
                 collectedMedia: collected,
                 computers,
@@ -703,4 +838,4 @@ function createSyncEngine({
     return { pass, poke, start, stop, status: () => status, missing };
 }
 
-module.exports = { createSyncEngine, mediaRefs, coalesce, SYNC_DIR, MEDIA_DIR, MANIFEST, STATE_KEY, fileName };
+module.exports = { createSyncEngine, inspectFolder, syncDirOf, mediaRefs, coalesce, SYNC_DIR, MEDIA_DIR, MANIFEST, STATE_KEY, fileName };

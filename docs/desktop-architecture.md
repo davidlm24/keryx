@@ -952,8 +952,68 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    conflict names, files read while Drive downloads them, a video of
    hundreds of MB copied while the console projects, the cleanup's
    deletes reaching the other computers.
-4. Pairing: a church sync code; files signed with a key from it, so only
-   verified computers count.
+4. **Pairing, "PCs verificados" (done):** whoever has the church's sync
+   code syncs; nobody else counts.
+   - **The code** (`shared/syncCode.mjs`, tested; shared by main and the
+     console, which checks it as it is typed): 8 symbols in two groups,
+     `K7QM-2HXP` (the owner chose short over long, 2026-10-16), Crockford's
+     base32 (no I, L, O or U), 7 random (35 bits) and a check symbol
+     (weighted sum mod 31), so a typo says "alguma letra está errada"
+     instead of looking like another church's code. Typing forgives lower
+     case, spaces or dots for the dash, O for zero, I or L for one.
+   - **The folder's code file**, `sync/keryx-sync.json` `{ v, id, check,
+     made, by, removed, mac }` (`electron/syncPairing.cjs`, tested in
+     `sync.test.cjs`): `id` is random, made with the code; `check` (an HMAC
+     of the id with the key) proves a typed code is this folder's before a
+     line is read; `removed` lists the computers taken out ("Tirar", below)
+     and counts only under a valid `mac` (an HMAC of the file's fields with
+     the key). The code and the key are never in the folder. `createPairing` writes it only
+     where there is none (`wx`; two computers making a code at once leave a
+     conflict copy, and only the file named `keryx-sync.json` counts);
+     `joinPairing` answers the typed code with the key, or `short`/`check`/…
+     (a typo), `nocode` (the folder has none yet), `busy` (its file is still
+     arriving) or `wrong` (a valid code, another folder's).
+   - **The key** is `scrypt(code, "keryx-sync:" + id)` (N 2^16, r 8: about
+     half a second and 64 MB a try, paid once when the code is made or
+     typed; the code is short, so each guess from a line someone copied out
+     of the folder has to be slow: 2^35 tries is centuries of one core). Each computer keeps it (PR 5: the code itself,
+     encrypted with the system's own protection, Electron `safeStorage`, so
+     "Mostrar o código" works when a third computer joins months later).
+   - **What is signed: each line.** A line is the entry's JSON with `"sig"`
+     last: an HMAC-SHA256 (16 bytes, base64url) of the line's own bytes
+     before it, with a key derived from the code's key. A line is checked
+     alone, so everything §3 made harmless (files still arriving, conflict
+     copies, a file read again) stays harmless. A line that does not verify
+     (a computer that never had the code, the old code, an edited line) is
+     counted for its computer and never applied; the reader moves past it.
+     `engine.status().computers[]` adds `verified` (the last line read from
+     it verified; null = nothing read yet) and `rejected`, kept per computer
+     in `sync.state` (`peers`), and `status.rejected` counts a pass's.
+   - **States**: `unpaired` (a folder, no code here: nothing read or
+     written), `mismatch` (the folder's code file is another code's: the
+     code changed; nothing read or written, the outbox waits), `removed`
+     (this computer is on the code file's `removed` list: the same, with
+     who took it out), `offline` also while the code file is arriving
+     half-written. A missing code file
+     is written back by any computer with the code. A new code (joining
+     again, or the code changed) resets the cursors: every file is read again
+     under the new key.
+   - **Taking a computer out** (owner's pick: both): **"Tirar"** in the list
+     of computers adds it to the code file's `removed` list
+     (`updateRemoved`): it stops (`removed`, its changes wait) and the
+     others skip its folder, until the code is typed on it again (joining
+     takes it off the list). It pauses an honest computer; with one shared
+     key a computer that wanted to could sign as another, so **"Trocar o
+     código"** is the real cut: a new id and code over the old file;
+     computers that should stay type the new code, the one left out keeps
+     the old key, sees `mismatch`, and its lines no longer verify anywhere.
+     A computer retired on purpose just leaves the sync (Sair da
+     sincronização); a dead one stays quiet in the list — "Tirar" it, so it
+     no longer holds the cleanup of `sync/media` back.
+   - **The cleanup counts only computers with the code**: each
+     `state.json` is signed like a line; a computer whose files never
+     verified (no code, an old one) or that was taken out does not hold a
+     file back, and one with the code but no `state.json` yet still does.
 5. Configurações › Sincronização; the first join merges (never replaces) and
    flags likely duplicate songs.
 
