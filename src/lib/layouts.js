@@ -262,6 +262,10 @@ export function layoutContext({ live, now, upcoming = [], hasService = false, ch
     };
 }
 
+// A presentation's page (a PDF's, Rodada F3): its picture when the slide is
+// one, else "". "Letra atual" and "Próximo slide" draw it.
+export const slidePage = (slide) => (slide && !slide.text && typeof slide.image_url === "string" ? slide.image_url : "");
+
 // Whether an element shows now, by its rule.
 export function elementVisible(el, ctx) {
     if (el.when === "content") return Boolean(ctx.content);
@@ -307,6 +311,8 @@ export const elementItems = (el, ctx) => ctx.upcoming.slice(0, Math.max(1, el.pr
 // string, a chords block with chords, dots with more than one slide, a logo
 // or image with a file. Empty, the renderer draws nothing (no empty box).
 export function elementHasContent(el, ctx, { logoUrl = "" } = {}) {
+    // The next page of a presentation draws its picture (LayoutRenderer).
+    if (el.type === "next" && slidePage(ctx.next)) return true;
     if (TEXT_TYPES.has(el.type)) return Boolean(elementText(el, ctx));
     switch (el.type) {
         case "current": return Boolean(ctx.current);

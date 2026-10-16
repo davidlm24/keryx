@@ -3,7 +3,7 @@
 // and one for the editors (nav.js winSize), and the panels inside a page
 // are resized by splitters like the console's — each column's size kept
 // per page. Kept in localStorage (this computer's, like the console's
-// arrangement; the detached /Editor window reads the same), never a User
+// arrangement; a detached page's /Janela reads the same), never a User
 // field.
 export const WIN_KEY = "keryx.console.win";
 export const WIN_MIN = { w: 760, h: 480 };

@@ -17,6 +17,7 @@ const { createNetwork } = require("./network.cjs");
 const { createLive, loadLiveRules } = require("./live.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
+const { createSyncEngine } = require("./sync.cjs");
 const schema = require("./db/schema.json");
 
 // A projection window covered by another window is still projecting. Windows
@@ -65,7 +66,7 @@ process.on("unhandledRejection", (reason) => logger.error("unhandledRejection:",
 let importOutcome = null;
 try {
     importOutcome = applyPendingImport(dataDir);
-    if (importOutcome) logger.info(`[keryx-import] aplicado; dados anteriores em ${importOutcome.archived}`);
+    if (importOutcome) logger.info(`[keryx-import] aplicado; dados anteriores em ${importOutcome.archived}; id de sincronização: ${importOutcome.pcId}`);
 } catch (err) {
     logger.error(`[keryx-import] não foi possível aplicar: ${err.stack || err.message}`);
     importOutcome = { error: err.message };
@@ -82,6 +83,7 @@ let outputs = null;
 let system = null;
 let network = null;
 let live = null;
+let sync = null;
 // The live-state rules (shared/live-state.mjs) and this computer's settings,
 // for the close guard (electron/closeGuard.cjs).
 let liveRules = null;
@@ -422,6 +424,27 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send("keryx:remote", { id, action, args });
     });
 
+    // Destacar em janela (Rodada F5): a page in a window of its own (/Janela;
+    // /Editor is its old name) and the console talk through here — a page's
+    // message goes to the console, the console's to every detached page.
+    // Main only says who sent it; the side that receives checks the message
+    // against its closed list (src/lib/janelaRelay.js, checkMessage).
+    const isJanelaUrl = (url) => {
+        try { const u = new URL(url); return u.origin === appOrigin && (u.pathname === "/Janela" || u.pathname === "/Editor"); } catch { return false; }
+    };
+    ipcMain.on("keryx:janela", (event, msg) => {
+        if (!mainWindow || mainWindow.isDestroyed() || !msg || typeof msg !== "object" || typeof msg.type !== "string") return;
+        try { if (JSON.stringify(msg).length > 1024 * 1024) return; } catch { return; }
+        if (event.sender === mainWindow.webContents) {
+            const out = { ...msg, from: "console" };
+            for (const w of BrowserWindow.getAllWindows()) {
+                if (w !== mainWindow && !w.isDestroyed() && isJanelaUrl(w.webContents.getURL())) w.webContents.send("keryx:janela", out);
+            }
+        } else if (isJanelaUrl(event.senderFrame && event.senderFrame.url)) {
+            mainWindow.webContents.send("keryx:janela", { ...msg, from: "janela" });
+        }
+    });
+
     // Tablets and TVs on the church network (off until enabled in Settings).
     // KERYX_LAN_PORT=0 lets a smoke run use a free port.
     network = createNetwork({
@@ -460,6 +483,19 @@ app.whenReady().then(async () => {
         log: (m) => console.error(m),
     });
 
+    // Sync with the church's other computers through a shared folder
+    // (electron/sync.cjs). Off until a folder is set (settings "sync":
+    // { folder }; Configurações › Sincronização comes later): until then
+    // each pass ends at once.
+    sync = createSyncEngine({
+        store,
+        mediaDir,
+        getFolder: () => (settings.get("sync", {}) || {}).folder || null,
+        log: (m) => logger.warn(m),
+    });
+    sync.start();
+    powerMonitor.on("resume", () => sync.poke());
+
     const win = createMainWindow();
     // Outputs set to "Abrir ao iniciar" in Telas e saídas.
     win.once("ready-to-show", () => outputs.openAtLaunch());
@@ -468,6 +504,7 @@ app.whenReady().then(async () => {
 
 app.on("window-all-closed", () => app.quit());
 app.on("will-quit", () => {
+    if (sync) sync.stop();
     if (network) network.stop();
     if (live) live.flush();
     if (system) {

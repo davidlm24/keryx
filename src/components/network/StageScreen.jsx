@@ -43,6 +43,8 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
         );
     }
 
+    if (content.kind === "presentation") return <PresentationStage content={content} now={now} nowMs={nowMs} show={show} cls={cls} style={style}>{children}</PresentationStage>;
+
     const song = { title: content.title, artist: content.artist, background_image: content.style?.background_image, ...content.stage };
     const slides = content.slides?.length ? content.slides : [{ text: "" }];
     const index = content.index || 0;
@@ -100,6 +102,49 @@ export default function StageScreen({ content, nowMs, embed = false, opts = {}, 
             )}
             {slides.length > 1 && (
                 <div className="ns-dots" aria-label={`Slide ${index + 1} de ${slides.length}`}>
+                    {slides.map((_, i) => <i key={i} className={i === index ? "is-on" : i < index ? "is-done" : ""} />)}
+                </div>
+            )}
+            {children}
+        </div>
+    );
+}
+
+// A presentation (a PDF's pages, Rodada F3): the page on air and the next
+// one, so whoever speaks knows what comes; the page count and the clock in
+// the header, as for a song.
+function PresentationStage({ content, now, nowMs, show, cls, style, children }) {
+    const slides = content.slides || [];
+    const index = content.index || 0;
+    const current = slides[index] || {};
+    const next = slides[index + 1];
+    const elapsed = Math.max(0, Math.floor((nowMs - content.startedAt) / 1000));
+    return (
+        <div className={cls} style={style}>
+            <header className="ns-h">
+                <div className="ns-title">
+                    <b>{content.title || "Apresentação"}</b>
+                    <span>Apresentação</span>
+                </div>
+                <div className="ns-chips">
+                    <div className="ns-chip"><small>Página</small><b>{index + 1}/{slides.length}</b></div>
+                    {show.clock && <div className="ns-chip"><small>No ar</small><b>{mmss(elapsed)}</b></div>}
+                    {show.clock && <div className="ns-chip is-clock"><small>Hora</small><b>{hhmm(now)}</b></div>}
+                </div>
+            </header>
+            <main className={`ns-pres ${next && show.next ? "" : "is-alone"}`}>
+                <figure className="ns-page is-cur">
+                    {isImage(current.image_url) && <img src={current.image_url} alt={current.label || ""} />}
+                </figure>
+                {next && show.next && (
+                    <figure className="ns-page is-next">
+                        <span className="net-section">Próxima</span>
+                        {isImage(next.image_url) && <img src={next.image_url} alt={next.label || ""} />}
+                    </figure>
+                )}
+            </main>
+            {slides.length > 1 && (
+                <div className="ns-dots" aria-label={`Página ${index + 1} de ${slides.length}`}>
                     {slides.map((_, i) => <i key={i} className={i === index ? "is-on" : i < index ? "is-done" : ""} />)}
                 </div>
             )}

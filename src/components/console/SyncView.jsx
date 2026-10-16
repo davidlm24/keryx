@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Seg, WinBar, Empty } from "./kx";
+import { Panel, Btn, IconBtn, Seg, WinBar, useUnloadGuard, Empty } from "./kx";
 import { useConfirm } from "./ConfirmDialog";
 import { useWinCol } from "./winLayout";
 import { isVideoUrl } from "@/lib/console/content";
@@ -58,6 +58,8 @@ export default function SyncView({ title = "", slides = [], media = "", duration
     const duration = mediaDur || songDuration || (live ? Math.max(180, Math.ceil(lastMark + 30)) : null);
     const marked = markedCount(starts);
     const dirty = !sameMarks(starts, Array.from({ length: n }, (_, i) => initial[i] ?? null));
+    // Detached (/Janela), unsaved changes hold the window: closing it asks.
+    useUnloadGuard(dirty);
     const playingIdx = indexAt(starts, t);
 
     const now = useCallback(() => {

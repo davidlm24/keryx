@@ -32,6 +32,8 @@ const MIME = {
     ".wav": "audio/wav",
     ".pdf": "application/pdf",
     ".map": "application/json",
+    // pdf.js's image decoders (dist/pdfjs/wasm, src/lib/pdfPagesCapture.js).
+    ".wasm": "application/wasm",
 };
 
 const MEDIA_PREFIX = "/media/";

@@ -36,7 +36,7 @@ const seedFor = (path) => {
     return normalizeLayout(f ? { ...duplicateLayout(f), name: "", category: cat, factory: false } : newLayout(cat));
 };
 
-// The screens half of the Editor (its own window, src/pages/Editor.jsx;
+// The screens half of the Editor (a page of THE window;
 // owner's decision 2026-10-13: each screen owns its design — the layout
 // catalog died). A vertical menu switches between the screens; the 16:9
 // canvas edits THIS screen's drawing (OutputPref.design) with the screen's
@@ -48,8 +48,9 @@ const seedFor = (path) => {
 // are "não salvo", and nothing is written until "Salvar a tela".
 // `hosted`: a page of THE window (Rodada C, fase d2) — the editor draws its
 // own WinBar (No ar | Exemplo as the bar's tool; Cancelar and Salvar a tela
-// as its actions; ⧉ Destacar via onDetach) and no footer; the middle column
-// splits into Desenho | Ajustes. Detached (/Editor) keeps header and footer.
+// as its actions; ⧉ Destacar from the window, or onDetach) and no footer;
+// the middle column splits into Desenho | Ajustes. Both hosts — the
+// console's window and a detached /Janela — mount it hosted.
 export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colTelas = useWinCol("screen.telas", { def: 190, min: 160, max: 360 });
@@ -69,8 +70,8 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const [sel, setSel] = useState(null);
     const [adding, setAdding] = useState(false);
     const [confirm, setConfirm] = useState(null); // "reset" | "discard" (detached only)
-    // The console's window provides the one-question guard; the detached
-    // /Editor has no provider (null) and keeps the two-step toast.
+    // Both windows (the console's, a detached /Janela) provide the
+    // one-question guard; a host without one (null) gets the two-step toast.
     const askCtx = useContext(ConfirmContext);
     const [busy, setBusy] = useState(false);
     const [source, setSource] = useState("auto"); // "auto" | "sample"
@@ -164,8 +165,8 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
             say(`${name} voltou à página padrão.`);
         } catch (err) { say(err?.message || "Não foi possível."); }
     };
-    // In the console's window the guard is the one question (Rodada C);
-    // detached, the two-step toast stays.
+    // The guard is the one question (Rodada C), in the console's window and
+    // in a detached /Janela; with no provider, the two-step toast.
     const askDiscard = async () => {
         if (!dirty) return true;
         if (askCtx) return askCtx({ title: "Descartar as mudanças?", text: `O desenho de ${name} tem mudanças não salvas.`, ok: "Descartar" });

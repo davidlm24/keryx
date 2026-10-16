@@ -1097,8 +1097,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(600);
         await dblclick(".kx-row", "Canto do console");
         result.lookDefault = await waitFor(() => { const st = live.get().content && live.get().content.style; return Boolean(st && !st.transition && st.transition_ms == null); }, 5000);
-        // "no ar há m:ss" in the Programa's pill while the item is on air.
-        result.airSince = await waitFor(() => js("/^no ar há \\d+:\\d\\d$/.test((document.querySelector('.prog-pill .kx-since') || {}).textContent || '')"), 5000);
+        // No "no ar há" in the Programa's pill any more (Rodada F1); lyrics
+        // keep their title there (the player does not name them).
+        result.pillNoSince = await waitFor(() => js("(() => { const p = document.querySelector('.prog-pill'); return Boolean(p) && !/no ar há/.test(p.textContent) && ((p.querySelector('.pp-title') || {}).textContent || '') === 'Canto do console'; })()"), 5000);
         // Títulos nas telas off: the song's name leaves the Programa (and every output).
         await js(`window.keryxDesktop.db.call("User", "update", ["local", { show_item_title: false }])`);
         result.titleHidden = await waitFor(() => js("Boolean(document.querySelector('.kx-mon .ks-text')) && !document.querySelector('.kx-mon .ks-title')"), 5000);
@@ -1385,7 +1386,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Enter");
         result.audioOn = await waitFor(() => live.get().audio && live.get().audio.title === "Tom de teste");
         result.audioUnderSong = Boolean(live.get().content) && live.get().content.title === "Canto do console";
-        result.playerShows = await waitFor(() => js("Boolean(document.querySelector('.player:not(.is-idle)')) && document.querySelector('.player .pl-what').textContent.includes('Tom de teste')"));
+        // Its title, no kind word (Rodada F1: the icon says it); the pill keeps
+        // the song's title, which the player does not name.
+        result.playerShows = await waitFor(() => js("Boolean(document.querySelector('.player:not(.is-idle)')) && document.querySelector('.player .pl-what').textContent === 'Tom de teste' && ((document.querySelector('.prog-pill .pp-title') || {}).textContent || '') === 'Canto do console'"));
         const meterState = () => js("document.querySelector('.player .meters') && document.querySelector('.player .meters').dataset.state");
         await waitFor(async () => (await meterState()) !== "wait", 8000);
         result.meterState = await meterState();
@@ -1422,6 +1425,36 @@ async function checkConsole(webContents, { live, outputs }) {
         // The mute reached the element that actually plays, on the projector.
         result.projectorMuted = await waitFor(() => main && main.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.volume === 0 : null; })()").catch(() => null));
 
+        // The progress bar drags (Rodada F1): while the hand holds it only the
+        // console moves (the elapsed time and a tip over the thumb follow it),
+        // and the screens get ONE seek, on release, so the letra automática
+        // never walks the slides in between. Paused, so the times are exact
+        // (the tone lasts 20 s: three quarters of the bar is 0:15).
+        live.call("transport", { layer: "audio", action: "pause" });
+        live.call("transport", { layer: "audio", action: "seek", time: 2 });
+        {
+            const bar = await js(`(() => { const b = document.querySelector(".player .pl-seek.is-can"); if (!b) return null; b.scrollIntoView({ block: "nearest" }); const r = b.getBoundingClientRect(); return { left: r.left, width: r.width, y: Math.round(r.top + r.height / 2) }; })()`);
+            const seeks = [];
+            let last = live.get().audio?.playback?.position;
+            const offSeek = live.onChange((s) => { const p = s.audio && s.audio.playback; if (p && p.position !== last) { last = p.position; seeks.push(p.position); } });
+            if (bar) {
+                const x = (f) => Math.round(bar.left + bar.width * f);
+                webContents.sendInputEvent({ type: "mouseMove", x: x(0.25), y: bar.y });
+                webContents.sendInputEvent({ type: "mouseDown", x: x(0.25), y: bar.y, button: "left", clickCount: 1 });
+                for (const f of [0.35, 0.5, 0.65, 0.75]) {
+                    webContents.sendInputEvent({ type: "mouseMove", x: x(f), y: bar.y, modifiers: ["leftButtonDown"] });
+                    await sleep(60);
+                }
+                result.seekDragFollows = await waitFor(() => js("(() => { const t = document.querySelector('.player .pl-seek .pl-tip'); return Boolean(t) && /^0:1[45]$/.test(t.textContent) && /^0:1[45]$/.test(document.querySelector('.player .pl-time').textContent); })()"), 3000) && seeks.length === 0;
+                webContents.sendInputEvent({ type: "mouseUp", x: x(0.75), y: bar.y, button: "left", clickCount: 1 });
+                await waitFor(() => seeks.length > 0, 3000);
+                await sleep(400);
+            }
+            offSeek();
+            const tipGone = await js("!document.querySelector('.player .pl-seek .pl-tip')");
+            result.seekDragOnce = seeks.length === 1 && Math.abs(seeks[0] - 15) < 0.6 && tipGone ? true : { seeks, bar: Boolean(bar), tipGone };
+        }
+
         // The Encerrar button asks first; only "Encerrar" in the dialog ends.
         // The music is not a screen: it keeps playing until Parar.
         await pillClick("Encerrar a projeção", "Encerrar");
@@ -1430,11 +1463,17 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".dialog button", "Encerrar");
         result.ended = await waitFor(() => !live.get().content);
         result.audioSurvivesEnd = Boolean(live.get().audio);
+        // Only the sound left on air: the player names it, so the pill has no
+        // title (owner's pick A, Rodada F1), its dot still red.
+        result.pillTitleInPlayer = await waitFor(() => js("(() => { const p = document.querySelector('.prog-pill'); return Boolean(p) && !p.querySelector('.pp-title') && p.classList.contains('is-air'); })()"), 4000);
         await click(".player button", "Parar e tirar do ar");
         result.audioStopped = await waitFor(() => !live.get().audio);
+        result.pillNada = await waitCap(PROG, "Nada no ar", 4000);
         // The player is always visible under the Programa (owner's decision
-        // 2026-10-13): idle it dims, it never disappears.
+        // 2026-10-13): idle it dims, it never disappears, and says nothing —
+        // only its icon (Rodada F1: no "Nenhum áudio ou vídeo tocando").
         result.playerAlwaysThere = await js("(() => { const pl = document.querySelector('.pslot .player'); return Boolean(pl) && pl.className.includes('is-idle') && getComputedStyle(pl).visibility === 'visible'; })()");
+        result.playerIdleQuiet = await js("(() => { const w = document.querySelector('.pslot .player .pl-what'); return Boolean(w) && w.textContent.trim() === '' && Boolean(w.querySelector('.kx-i')); })()");
 
         // The Linha do tempo strip is gone (owner decision 2026-10-12); the
         // top bar's service clock is what says how the service goes.
@@ -1921,7 +1960,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Temas: Configurações keeps only the list; "Novo tema…" opens the
         // Editor de temas e telas as a floating dialog over Configurações
         // (.win-dialog.is-editor, owner 2026-10-14 "janelas flutuantes"; "Destacar em
-        // janela" still opens the /Editor window — the shutdown check keeps
+        // janela" opens it in a /Janela window — the shutdown check keeps
         // covering that path), where the theme gets a name and a font with a
         // live sample, Salvar writes the row, and Esc closes back to
         // Configurações. Element clicks (not coordinates): the dialog
@@ -2053,7 +2092,9 @@ async function checkConsole(webContents, { live, outputs }) {
         await click(".topbar .markbtn", "");
         await click(".kx-pop button", "Configurações");
         await waitFor(() => js("Boolean(document.querySelector('.console .win-dialog'))"));
-        await click(".console .win-bar button", "");
+        // The X by its name: the bar also has "Destacar em janela" (Rodada F5),
+        // first, and the first button would detach the page instead.
+        await click(".console .win-bar button", "Fechar");
         result.cfgX = await waitFor(() => js("!document.querySelector('.console .win-dialog')"));
 
         // Camadas › Fundo: a clip from Mídia plays as the background layer;
@@ -2328,6 +2369,42 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         await press("Escape");
         result.mvClosed = await waitFor(() => js("!document.querySelector('.console .mv') && Boolean(document.querySelector('.console .main .dock'))"));
+
+        // Apresentações (Rodada F3, "Só PDF"): a 2-page PDF made here (jspdf)
+        // reaches the Mídia as an import does (the file copied, a Media row);
+        // the console makes its pages with pdf.js (usePagesBackfill: 2
+        // pictures in the media folder, the first one the thumbnail); a double
+        // click in Biblioteca › Imagens sends it as a presentation, page 1 on
+        // air, drawn full screen; PageDown (what a clicker sends) turns to page 2.
+        const { jsPDF } = require("jspdf");
+        const pdfDoc = new jsPDF({ orientation: "landscape", unit: "pt", format: [960, 540] });
+        pdfDoc.setFontSize(64);
+        pdfDoc.text("Página um", 80, 280);
+        pdfDoc.addPage([960, 540], "landscape");
+        pdfDoc.text("Página dois", 80, 280);
+        const pdfB64 = Buffer.from(pdfDoc.output("arraybuffer")).toString("base64");
+        const pdfFile = await js(`(async () => {
+            const bytes = Uint8Array.from(atob(${JSON.stringify(pdfB64)}), (ch) => ch.charCodeAt(0));
+            const res = await window.keryxDesktop.media.importFile(new File([bytes], "apresentacao-smoke.pdf", { type: "application/pdf" }));
+            return res.data && res.data.fileName;
+        })()`);
+        const pdfRow = pdfFile ? (await js(`window.keryxDesktop.db.call("Media", "create", [${JSON.stringify({ title: "PDF do smoke", type: "pdf", file_url: `keryx-media://${pdfFile}`, category: "other", duration: 0 })}])`)).data : null;
+        mvRows.push(pdfRow);
+        result.pdfPages = Boolean(pdfRow) && await waitFor(async () => {
+            const row = (await js(`window.keryxDesktop.db.call("Media", "get", [${JSON.stringify(pdfRow.id)}])`)).data;
+            return row?.pages?.length === 2 && row.pages.every((p) => /^keryx-media:\/\/.+\.jpg$/.test(p.url) && p.w >= 1900) && row.thumbnail_url === row.pages[0].url;
+        }, 20000);
+        await click(".kx-tabs button", "Imagens");
+        await waitFor(() => js("[...document.querySelectorAll('.console .kx-row')].some((n) => n.textContent.includes('PDF do smoke') && n.textContent.includes('2 páginas'))"), 6000);
+        await dblclick(".kx-row", "PDF do smoke");
+        result.pdfSent = await waitFor(() => {
+            const c = live.get().content;
+            return c?.kind === "presentation" && c.slides.length === 2 && c.index === 0 && c.slides[0].label === "Página 1" && c.ref?.mediaId === pdfRow?.id && !live.get().media;
+        }, 6000);
+        result.pdfDrawn = await waitFor(() => js("Boolean(document.querySelector('.prog .ks-pres img')) && !document.querySelector('.prog .ks-text')"), 4000);
+        await press("PageDown");
+        result.pdfNext = await waitFor(() => live.get().content?.kind === "presentation" && live.get().content.index === 1, 4000);
+        live.call("clear");
 
         // The aviso editor: "Novo aviso", the kind "Chamar atenção" shows its
         // flag in the live preview, Ctrl+S saves; "Tocar todos" in
@@ -2639,7 +2716,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.sent && result.projected && result.projectorFont && result.prevTitle12 && result.progTitle13 && result.progOneTitle && result.progPill && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
-        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.airSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
+        && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
         && result.bgSongStays && result.libOpen && result.libClosed && result.fundoLocked && result.fundoHeld
         && result.bibleThemeSent && result.songThemeSaved && result.songThemeCleared && result.itemTitleHidden
         && result.deleteAsks && result.deleteKept && result.deleteDone && result.bgNotInMedia && result.temasCard && result.serviceThemeSent && result.bgPrefFollows
@@ -2648,7 +2725,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.unlocked && result.unlockedSends && /^Culto \d|^Sem culto|^Sem horário|^\d\d:\d\d · |^\d\d\/\d\d · \d\d:\d\d$/.test(result.serviceClock) && result.quickOpened && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
-        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.audioSurvivesEnd && result.audioStopped && result.playerAlwaysThere
+        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.seekDragFollows && result.seekDragOnce === true && result.audioSurvivesEnd && result.pillTitleInPlayer && result.audioStopped && result.pillNada && result.playerAlwaysThere && result.playerIdleQuiet
         && result.tlGone && result.forecastOff && result.forecastOn
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded && result.setlistRight === true && result.notesPanel && result.tabsMenu && result.quickTools && result.quickAlertOnce
         && result.colsFit && result.editBanner && result.editMove === true && result.editEsc && result.editRestore
@@ -2662,6 +2739,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.edMenuOnScreen === true && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edSplitLive && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
+        && result.pdfPages && result.pdfSent && result.pdfDrawn && result.pdfNext
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted && result.timerChips && result.timerKept && result.timerListed && result.timerPrepared && result.timerOn && result.timerAdjusted && result.timerDeleted && result.mvOn && result.mvShows && result.mvPicked && result.mvOff
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
         && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch && result.paletteClear && result.paletteRefHere && result.paletteRefAdded
@@ -3081,8 +3159,10 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
             let editorAsked = false;
             let editorKept = false;
             try {
-                const editor = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/Editor"));
-                await webContents.executeJavaScript('window.open(location.origin + "/Editor?theme=new", "keryx-editor"); true');
+                // A detached page (Destacar em janela, Rodada F5): /Janela, the
+                // Editor de temas by its URL (never just the first /Janela).
+                const editor = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/Janela?page=theme"));
+                await webContents.executeJavaScript('window.open(location.origin + "/Janela?page=theme&theme=new", "keryx-janela-theme"); true');
                 for (let i = 0; i < 40 && !editor(); i += 1) await sleep(200);
                 // userGesture: the typing comes as an operator's would.
                 const ejs = (code) => editor().webContents.executeJavaScript(code, true);

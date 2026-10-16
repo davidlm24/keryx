@@ -9,6 +9,7 @@ import { SAMPLE_SLIDES } from "../settings/sample";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
+import { usePrefs } from "@/hooks/useUser";
 import { visibleBackgrounds, categoriesOf, sourceOf } from "@/lib/console/backgroundPrefs";
 import { cleanSpec, bgArgs, bgSpec, bgLabel, sameBg } from "@/lib/console/backgroundSpec";
 import { themeStyle, themeBackgroundArgs, themeName, themeHasBackground } from "@/lib/console/themes";
@@ -116,7 +117,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
 
     // The picture or clip entries of this tab, with their settings.
     const entries = list.filter((b) => b.kind === tab);
-    const cats = useMemo(() => categoriesOf(entries), [entries]);
+    const storedCats = usePrefs().background_categories;
+    const cats = useMemo(() => categoriesOf(entries, storedCats), [entries, storedCats]);
     const hiddenCount = entries.filter((b) => b.hidden).length;
     const shown = filter === HIDDEN ? entries.filter((b) => b.hidden) : visibleBackgrounds(entries, filter === ALL ? {} : { only: filter });
     const entry = sel && (sel.kind === "image" || sel.kind === "video") ? list.find((b) => b.source === sourceOf(sel.value)) || null : null;

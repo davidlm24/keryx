@@ -4,6 +4,7 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
 import { CfgKey } from "./parts";
+import FundoCategories from "./FundoCategories";
 import { ThemeThumb, NoBgMark } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
@@ -61,8 +62,8 @@ function KindThemes({ c, themes, setDefault }) {
 
 // Configurações › Temas: the LIST of the projection presets — the default
 // one per kind (KindThemes), the themes as small screens, Tornar padrão and
-// Excluir. Editing happens in ONE place, the Editor de temas e layouts (its
-// own window, src/pages/Editor.jsx): a click on a theme, the context menu's
+// Excluir. Editing happens in ONE place, the Editor de temas (a page of the
+// window, pushed over this one): a click on a theme, the context menu's
 // Editar and "Novo tema…" open it. Camadas adjusts what is on air and
 // captures a theme with "Salvar como novo"; the console's Temas card
 // applies them.
@@ -128,6 +129,7 @@ export default function TemasSection({ c }) {
                 mode); this is its door in Configurações — it was Aparência's
                 until the section dissolved (Rodada B 2026-10-14). */}
             <CfgKey k="Fundos" className="listhead"><span className="kx-section">Fundos <span className="kx-count">· imagens, vídeos, gerados e cores para temas e papéis de parede</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca…</Btn></CfgKey>
+            <FundoCategories c={c} />
         </>
     );
 }

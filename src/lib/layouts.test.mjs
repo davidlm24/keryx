@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../shared/live-state.mjs";
 import {
     ELEMENT_TYPES, TEXT_TYPES, LOOK_TYPES, ELEMENT_GROUPS, FACTORY_LAYOUTS, normalizeElement, normalizeLayout, newElement, newLayout, duplicateLayout,
-    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, seedLayoutId, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
+    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, slidePage, layoutHasTimer, seedLayoutId, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
 } from "./layouts.js";
 
 const T0 = Date.UTC(2026, 9, 12, 19, 30, 0);
@@ -189,6 +189,11 @@ test("elementHasContent: empty elements draw nothing", () => {
     assert.ok(has("logo", off, {}, { logoUrl: "x" }) && !has("logo", off));
     assert.ok(has("image", off, { url: "http://x" }) && !has("image", off));
     assert.ok(has("next_items", off) && has("monitor", off));
+    // A presentation's next page has no text, but its picture draws (Rodada F3).
+    const pres = layoutContext({ live: applyOp(emptyState(T0), "content.show", { kind: "presentation", title: "Missões", slides: [{ image_url: "keryx-media://p1.jpg", label: "Página 1" }, { image_url: "keryx-media://p2.jpg", label: "Página 2" }] }, T0), now: T0 });
+    assert.ok(has("next", pres) && has("current", pres));
+    assert.equal(slidePage(pres.next), "keryx-media://p2.jpg");
+    assert.equal(slidePage(on.current), "", "a song's slide is text");
 });
 
 test("each screen starts in the Editor from its page as it draws itself (Rodada E3)", () => {

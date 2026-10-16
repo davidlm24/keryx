@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Row, Empty } from "./kx";
+import { Row, Empty, FoldBtn, FoldStrip, foldStrip } from "./kx";
 import { TeacherNotes } from "./CenterPanel";
 import { QuickAlert, ReadyTimers, OnAirTimer, ToolsPicker } from "./QuickTools";
 import { restoreArgs } from "@/lib/projection";
@@ -107,15 +107,20 @@ function AirHistory({ c, onPrepare, onGo }) {
 
 // The panel beside the Prévia (owner's design 2026-10-13, the console
 // audit): one tab at a time, the ones the operator checked in its (+). Its
-// thin header (title "Painel", the + at its right) is Rodada E1's.
-export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo }) {
+// thin header (title "Painel", the + at its right) is Rodada E1's; the
+// fold chevron (`fold`, the dock's: Panel) right of the +, Rodada F4.
+export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo, fold }) {
+    const strip = foldStrip(fold);
     return (
-        <div className="kx-panel bb-side tabs-panel" data-panel-tab={active}>
-            <div className="kx-panel-h tabs-panel-h">
-                <span className="kx-section">Painel</span>
-                {onMenu && <TabsPlus row="panel" onMenu={onMenu} menuOpen={menuOpen} />}
-            </div>
-            <TabRow tabs={tabs} active={active} onPick={setActive} />
+        <div className={`kx-panel bb-side tabs-panel ${fold?.on ? "is-collapsed" : ""} ${strip ? "kx-strip" : ""}`} data-panel-tab={active}>
+            {strip ? <FoldStrip fold={fold} /> : (
+                <div className="kx-panel-h tabs-panel-h">
+                    <span className="kx-section">Painel</span>
+                    {onMenu && <TabsPlus row="panel" onMenu={onMenu} menuOpen={menuOpen} />}
+                    <FoldBtn fold={fold} />
+                </div>
+            )}
+            {!fold?.on && <TabRow tabs={tabs} active={active} onPick={setActive} />}
             <div className="kx-panel-b">
                 {active === "notas" && <ItemNotes c={c} items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={onSaveNotes} />}
                 {active === "aviso" && <div className="tabs-pad"><QuickAlert c={c} data={data} /></div>}

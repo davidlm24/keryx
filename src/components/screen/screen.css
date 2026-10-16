@@ -87,6 +87,11 @@
 .ks-media-chip { position: absolute; left: 2cqw; bottom: 2cqw; font-size: 1.8cqw; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; background: rgba(0, 0, 0, .6); padding: .4cqw 1.2cqw; border-radius: .6cqw; }
 .ks-media-count { position: absolute; top: 2cqw; right: 2cqw; font-size: 2cqw; background: rgba(0, 0, 0, .55); padding: .4cqw 1.2cqw; border-radius: .6cqw; }
 
+/* A presentation (a PDF's pages, Rodada F3): the page whole on black; the next one loads hidden */
+.ks-pres { position: absolute; inset: 0; background: #000; }
+.ks-pres > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.ks-pres > .ks-pres-next { display: none; }
+
 /* Corner logo and the idle/logo screens */
 .ks-logo { position: absolute; z-index: 20; object-fit: contain; opacity: .95; }
 .ks-logo.ks-medium { width: 8cqw; height: 8cqw; } .ks-logo.ks-small { width: 5cqw; height: 5cqw; } .ks-logo.ks-large { width: 12cqw; height: 12cqw; }
@@ -137,6 +142,16 @@
 .ks-vidcover { position: absolute; inset: 0; background: #000; z-index: 80; }
 .ks-vidcover-v { width: 100%; height: 100%; }
 .ks-vidcover-v video, .ks-vidcover-v > div { width: 100%; height: 100%; object-fit: contain; }
+
+/* Transições (Rodada F2): the screen before a change, on top of the one now,
+   going transparent over the live state's duration (inline). Above the look
+   layers, under the video channel's cover and the Aviso rápido. Not under the
+   reduced-motion rule: the audience sees it (the console decides for its own
+   monitors). .ks-fade-out is the same fade for a clip over a page. */
+.ks-ghost { position: absolute; inset: 0; z-index: 70; pointer-events: none; animation: ks-out linear forwards; }
+.ks-ghost > * { pointer-events: none; }
+.ks-fade-out { animation: ks-out linear forwards; pointer-events: none; }
+@keyframes ks-out { to { opacity: 0; } }
 
 /* One box per look layer, stacked by live.layerOrder (inline z-index). */
 .ks-z { position: absolute; inset: 0; pointer-events: none; }

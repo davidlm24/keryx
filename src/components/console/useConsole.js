@@ -10,6 +10,9 @@ import { useBackgroundPrefs, useThemes } from "./useConsoleData";
 import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName } from "@/lib/console/themes";
 import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
+import { withTransitions } from "@/lib/console/transitions";
+import { stageBlock } from "@/lib/presentation";
+import { pagesProgressOf } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs } from "@/hooks/useUser";
 
 // The console's own state around the live state. One console, always live:
@@ -25,13 +28,13 @@ import { useUser, usePrefs } from "@/hooks/useUser";
 // click, Enter, or "Enviar ao ar"). Every other change of what is on screen
 // goes through callOp.
 // The theme in use, on this computer (localStorage, like the arrangement).
-const THEME_IN_USE_KEY = "keryx.themeInUse";
+export const THEME_IN_USE_KEY = "keryx.themeInUse";
 export const LOCKED_SAY = "Telas travadas: nada vai ao ar. Destrave em Saídas.";
 
-export function useConsole() {
-    const live = useLiveState();
-    const now = useLiveNow(1000);
-    const [prev, setPrevState] = useState(null);
+// The look every op is stamped with (withThemeDefaults, the Bíblia's
+// display preferences, each background's own settings): the console and a
+// detached page (src/pages/Janela.jsx) dress what they prepare the same way.
+export function useStamp(themeId) {
     // The Bíblia's display preferences (Configurações › Bíblia e músicas,
     // on User), stamped into each passage that goes on air
     // (src/lib/console/look.js). The transition is the theme's alone.
@@ -51,6 +54,79 @@ export function useConsole() {
     // Texto and Timer (a tool.show).
     const prefs = usePrefs();
     const kindIds = useMemo(() => ({ bible: prefs.bible_theme_id, text: prefs.text_theme_id, tool: prefs.timer_theme_id }), [prefs.bible_theme_id, prefs.text_theme_id, prefs.timer_theme_id]);
+    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, themeId)), look), bgPrefs), [themes, kindIds, themeId, look, bgPrefs]);
+    return { stamp, bgPrefs };
+}
+
+// A toast: one line, 3 s (6 s for a long one, such as how to send a
+// PowerPoint as PDF); with an action ({ label, run }) a button and 8 s, so
+// there is time to reach it.
+export function useToast() {
+    const [toast, setToastState] = useState(null);
+    const toastTimer = useRef(null);
+    const say = useCallback((text, action = null) => {
+        setToastState({ text, action });
+        clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToastState(null), action ? 8000 : String(text).length > 80 ? 6000 : 3000);
+    }, []);
+    useEffect(() => () => clearTimeout(toastTimer.current), []);
+    return { toast: toast?.text || null, toastAction: toast?.action || null, say };
+}
+
+// The operations on what is on air that need nothing of the console's own
+// state (no Prévia, no history): any window may run them — the console, and
+// a detached page (the Escola bíblica walks its slides, Configurações
+// changes the idle screen). Travar telas holds in applyOp, whoever sends.
+export function useLiveOps(live, say, bgPrefs) {
+    const locked = Boolean(live?.locked);
+    // The church's Transições (Rodada F2), for every window that sends.
+    const prefs = usePrefs();
+
+    // One operation on the live state. Resolves with the new document; errors
+    // (a refused op while locked, a bad argument) become a toast.
+    const liveOp = useCallback(async (op, args = {}) => {
+        try {
+            // A background (an item's, an aviso's, the idle wallpaper) brings
+            // the dim and blur Aparência › Fundos gave it; already there: kept.
+            // A sound that starts, Esc, Limpar, Tela preta and Logo bring the
+            // church's Transições (transitions.js): every sender through here
+            // (keys, the controle remoto, Tocar todos, a song's playback).
+            return await keryx.live.call(op, withTransitions(op, withBackgroundDefaults(op, args, bgPrefs), prefs));
+        } catch (err) {
+            say(err?.message || "Não foi possível projetar.");
+            throw err;
+        }
+    }, [say, bgPrefs, prefs]);
+    const callOp = liveOp;
+
+    const moveSlide = useCallback((d) => {
+        if (!live?.content) { say("Nada com slides no ar."); return; }
+        if (locked) { say(LOCKED_SAY); return; }
+        callOp(d > 0 ? "content.next" : "content.prev").catch(() => {});
+    }, [live, locked, callOp, say]);
+
+    const goTo = useCallback((index) => {
+        if (locked) { say(LOCKED_SAY); return Promise.resolve(); }
+        return callOp("content.goTo", { index }).catch(() => {});
+    }, [locked, callOp, say]);
+
+    // Tela preta / Mostrar logo: emergency actions, they work locked too.
+    const toggleScreen = useCallback((which) => {
+        const next = live?.screen === which ? "show" : which;
+        liveOp("screen.set", { mode: next }).catch(() => {});
+    }, [live, liveOp]);
+
+    // Limpar texto: the text layers go (one change, one fade: text.clear);
+    // background, logo and media stay.
+    const clearText = useCallback(() => callOp("text.clear").catch(() => {}), [callOp]);
+
+    return { locked, liveOp, callOp, moveSlide, goTo, toggleScreen, clearText };
+}
+
+export function useConsole() {
+    const live = useLiveState();
+    const now = useLiveNow(1000);
+    const [prev, setPrevState] = useState(null);
     // The theme in use (owner's decisions 2026-10-13/14): the one last
     // clicked in Camadas › Temas. It dresses everything sent until someone
     // changes it (Música in themeForKind); choosing a culto with a theme of
@@ -62,34 +138,9 @@ export function useConsole() {
         setThemeIdState(id || null);
         try { if (id) localStorage.setItem(THEME_IN_USE_KEY, id); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
     }, []);
-    const stamp = useCallback((op, args) => withBackgroundDefaults(op, withLookDefaults(op, withThemeDefaults(op, args, themeForKind(themes, op === "tool.show" ? "tool" : args?.kind, kindIds, themeId)), look), bgPrefs), [themes, kindIds, themeId, look, bgPrefs]);
-    const [toast, setToastState] = useState(null);
-    const toastTimer = useRef(null);
-
-    // A toast: one line, 3 s; with an action ({ label, run }) a button and
-    // 8 s, so there is time to reach it.
-    const say = useCallback((text, action = null) => {
-        setToastState({ text, action });
-        clearTimeout(toastTimer.current);
-        toastTimer.current = setTimeout(() => setToastState(null), action ? 8000 : 3000);
-    }, []);
-    useEffect(() => () => clearTimeout(toastTimer.current), []);
-
-    const locked = Boolean(live?.locked);
-
-    // One operation on the live state. Resolves with the new document; errors
-    // (a refused op while locked, a bad argument) become a toast.
-    const liveOp = useCallback(async (op, args = {}) => {
-        try {
-            // A background (an item's, an aviso's, the idle wallpaper) brings
-            // the dim and blur Aparência › Fundos gave it; already there: kept.
-            return await keryx.live.call(op, withBackgroundDefaults(op, args, bgPrefs));
-        } catch (err) {
-            say(err?.message || "Não foi possível projetar.");
-            throw err;
-        }
-    }, [say, bgPrefs]);
-    const callOp = liveOp;
+    const { stamp, bgPrefs } = useStamp(themeId);
+    const { toast, toastAction, say } = useToast();
+    const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen, clearText } = useLiveOps(live, say, bgPrefs);
 
     // The idle wallpaper follows its settings: editing its dim or blur in
     // Fundos (or the settings loading after it was applied) updates the
@@ -155,6 +206,9 @@ export function useConsole() {
 
     const setPrev = useCallback((stage) => {
         if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
+        // A PowerPoint, or a PDF whose pages are being made — or could not
+        // be (presentation.js).
+        else if (stage?.blocked) say(stageBlock(stage, pagesProgressOf(stage.args?.id)));
         setPrevState(stage);
     }, [say]);
 
@@ -164,6 +218,7 @@ export function useConsole() {
         if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
+        if (stage.blocked) { say(stageBlock(stage, pagesProgressOf(stage.args?.id))); return false; }
         // A theme's example (Camadas › Temas, nothing on air): sending it uses
         // the theme — its background on the Fundo (not past the padlock) —
         // never the example text.
@@ -195,28 +250,6 @@ export function useConsole() {
         return true;
     }, [prev, locked, live, callOp, say, stamp, setThemeId]);
 
-    const moveSlide = useCallback((d) => {
-        if (!live?.content) { say("Nada com slides no ar."); return; }
-        if (locked) { say(LOCKED_SAY); return; }
-        callOp(d > 0 ? "content.next" : "content.prev").catch(() => {});
-    }, [live, locked, callOp, say]);
-
-    const goTo = useCallback((index) => {
-        if (locked) { say(LOCKED_SAY); return Promise.resolve(); }
-        return callOp("content.goTo", { index }).catch(() => {});
-    }, [locked, callOp, say]);
-
-    // Tela preta / Mostrar logo: emergency actions, they work locked too.
-    const toggleScreen = useCallback((which) => {
-        const next = live?.screen === which ? "show" : which;
-        liveOp("screen.set", { mode: next }).catch(() => {});
-    }, [live, liveOp]);
-
-    // Limpar texto: the text layers go; background, logo and media stay.
-    const clearText = useCallback(async () => {
-        for (const op of ["tool.clear", "communication.clear", "content.clear"]) await callOp(op).catch(() => {});
-    }, [callOp]);
-
     // Desfazer (the toast after Esc / Encerrar): what the screens showed goes
     // straight back (src/lib/console/restore.js). Not while locked: putting
     // something on air is what the lock refuses.
@@ -246,5 +279,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast: toast?.text || null, toastAction: toast?.action || null, say };
+    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say };
 }

@@ -5,7 +5,7 @@ import ChordedLines, { chordedOf, Transpose } from "@/components/network/Chorded
 import { transposeChords } from "@/utils/chordTranspose";
 import { typeLabel } from "@/lib/console/setlist";
 import { FONT_MAP } from "@/lib/deviceStyles";
-import { layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, TEXT_TYPES, typeOf } from "@/lib/layouts";
+import { layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, slidePage, TEXT_TYPES, typeOf } from "@/lib/layouts";
 import "@/components/network/net.css";
 import "./layout.css";
 
@@ -64,7 +64,9 @@ function Element({ el, ctx, shown, ghost, logoUrl, embed, transpose, setTranspos
     // to see where the element is.
     const has = elementHasContent(el, ctx, { logoUrl });
     if (!has && !ghost) return null;
-    const body = !has ? null : TEXT_TYPES.has(el.type) ? <div className="kl-v">{elementText(el, ctx)}</div> : <Body el={el} ctx={ctx} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
+    // A presentation's page in "Letra atual" / "Próximo slide" (Rodada F3): its picture.
+    const page = el.type === "current" ? slidePage(ctx.current) : el.type === "next" ? slidePage(ctx.next) : "";
+    const body = !has ? null : page ? <img className="kl-page" src={page} alt="" /> : TEXT_TYPES.has(el.type) ? <div className="kl-v">{elementText(el, ctx)}</div> : <Body el={el} ctx={ctx} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
     const style = {
         left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%`,
         "--s": el.size, fontFamily: FONT[el.font] || FONT.sans, fontWeight: el.weight === "bold" ? 700 : 400,

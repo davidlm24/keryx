@@ -12,8 +12,6 @@
 /* Side columns shrink down to their minimum (inline flex-basis/min-width
    from Console.jsx); the center keeps room for the monitors. */
 .console .main > .col.center { min-width: 480px; }
-/* The detached Editor (/Editor): its canvas gives way before the columns beside it leave the window (D5, 960 px). */
-.console.edw .main > .col.center { min-width: 320px; }
 /* Narrow tier: Biblioteca over Slides in one column. */
 .console .col.source > .kx-panel { flex: 1 1 0; }
 .console .col.source > .kx-panel.is-collapsed { flex: none; }
@@ -144,9 +142,10 @@
    inside the screen, bottom-right, over the frame (::after, z 200), the
    Multiview's labels (201) and the drop hint (210); it takes the clicks the
    screen never does. As the screen narrows it gives way before the title
-   does: how long on air, then on how many screens with Voltar ao anterior
-   and Camadas (into its "…", the Programa's menu), then the screen
-   actions too (the keys B, L, C and Esc stay), and on a tiny screen the
+   does, folding ONCE (Rodada F1: the "…" never beside the buttons it holds):
+   at 560 px only "2 telas" goes; at 480 every button but Multiview (.pp-full:
+   Voltar ao anterior, Camadas and the screen actions; the keys B, L, C and
+   Esc stay) goes into the "…", the Programa's menu; on a tiny screen the
    title goes. */
 .console .prog .kx-mon-screen { container-name: prog-screen; }
 .console .prog-pill { position: absolute; right: var(--space-2); bottom: var(--space-2); z-index: 220; display: flex; align-items: center; gap: 6px; max-width: calc(100% - 2 * var(--space-2)); height: 32px; box-sizing: border-box; padding: 0 4px 0 10px; border-radius: var(--radius-round); background: #0d0d0cd9; box-shadow: 0 0 0 1px #ffffff14; font-family: var(--font-sans); color: var(--fg-2); white-space: nowrap; pointer-events: auto; }
@@ -166,13 +165,12 @@
 .console .prog-pill .kx-btn:hover { background: #ffffff1f; }
 .console .prog-pill .kx-btn.is-on { background: var(--bg-3); }
 .console .prog-pill .pp-more { display: none; }
-@container prog-screen (max-width: 640px) { .console .prog-pill .kx-since { display: none; } }
-@container prog-screen (max-width: 560px) { .console .prog-pill :is(.prog-where, .pp-btns) { display: none; } .console .prog-pill .pp-more { display: inline-flex; } }
-@container prog-screen (max-width: 480px) { .console .prog-pill .pp-full { display: none; } }
+@container prog-screen (max-width: 560px) { .console .prog-pill .prog-where { display: none; } }
+@container prog-screen (max-width: 480px) { .console .prog-pill .pp-full { display: none; } .console .prog-pill .pp-more { display: inline-flex; } }
 @container prog-screen (max-width: 300px) { .console .prog-pill .pp-title { display: none; } }
 /* Over the Multiview the pill sits on the fourth screen: folded, title and
    all, so that screen's own label stays readable. */
-.console .mx .prog-pill :is(.pp-full, .pp-title, .kx-since, .prog-where) { display: none; }
+.console .mx .prog-pill :is(.pp-full, .pp-title, .prog-where) { display: none; }
 .console .mx .prog-pill .pp-more { display: inline-flex; }
 /* The Bíblia's No ar monitor: the screen actions alone, in the same pill. */
 .console .scr-pill { padding: 0 4px; }
@@ -232,7 +230,6 @@
    the level of its title like every module's + (Rodada E1). The panel
    beside the Prévia got a thin header of its own for it ("Painel"). */
 .console .kx-panel-h > .tabs-plus { flex: none; width: 24px; height: 24px; }
-.console .tabs-panel > .tabs-panel-h { height: 28px; }
 /* Too many tabs for the width: the row breaks into a second line (owner
    2026-10-14, the Biblioteca review), never a cut title. Only a single tab
    wider than the whole panel still shortens. */
@@ -261,7 +258,8 @@
 .console .pslot .player.is-idle { opacity: .55; }
 /* Density (Ver › Densidade). Confortável: 32 px rows, 14 px titles that may
    take two lines (long Portuguese names stay readable); the slides' text at
-   14 px. Compacta keeps the 28 px single lines. Headers and controls stay 28 px. */
+   14 px. Compacta keeps the 28 px single lines. Controls stay as they are;
+   panel headers are 32 px, 28 in Compacta (below). */
 .console.is-comfortable .kx-row { min-height: var(--row-comfortable); }
 .console.is-comfortable .kx-row .kx-row-title { font-size: 14px; line-height: 20px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .console.is-comfortable .kx-row:not(.kx-row-1) .kx-row-main { padding: 6px 0; }
@@ -299,13 +297,13 @@
 .console .kx-cards { display: flex; flex-direction: column; gap: 0; padding: 0 0 var(--space-1); }
 /* Verses (Ler, Buscar) are cards again (owner 2026-10-14): prose reads
    better with its own box; the lists of slides are rows. */
-.console .reading, .console .bs-list { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .reading, .console .bs-list { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1); }
 .console .onair-card { position: relative; display: grid; gap: var(--space-2); padding: 6px var(--space-3); width: 100%; text-align: left; color: var(--fg-1); font-size: 13px; line-height: 18px; }
 .console .kx-slide, .console .onair-card { grid-template-columns: 20px minmax(0, 1fr); white-space: normal; }
 /* Rows edge to edge (owner 2026-10-14): no radius, the separator and the
    state's background run from one edge of the column to the other. */
 .console .kx-slide, .console .onair-card { flex: none; border-radius: 0; background: none; box-shadow: inset 0 -1px 0 var(--line); padding-top: 5px; padding-bottom: 5px; }
-.console .kx-verse { flex: none; border-radius: var(--radius-control); background: var(--bg-2); }
+.console .kx-verse { flex: none; border-radius: var(--radius-control); background: var(--bg-2); padding-left: var(--space-2); }
 .console .kx-slide::before, .console .kx-verse::before { content: none; }
 .console .kx-slide:hover, .console .onair-card:hover { background: var(--bg-2); }
 .console .kx-verse:hover { background: var(--bg-3); }
@@ -314,6 +312,10 @@
 .console .kx-slide-body { display: flex; flex-direction: column; min-width: 0; }
 .console .kx-slide-body .kx-slide-lab { font-size: 11px; line-height: 14px; color: var(--fg-3); margin-bottom: 2px; }
 .console .kx-ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A presentation's page (Rodada F3): its picture, 16:9 on black, and its name beside it. */
+.console .kx-slide-body.is-page { flex-direction: row; align-items: center; gap: var(--space-2); }
+.console .kx-slide-page { flex: none; width: 128px; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border-radius: 4px; }
+.console .kx-slide-body.is-page .kx-slide-lab { margin: 0; font-size: 12px; }
 .console .onair-card .kx-slide-n { font-size: 11px; color: var(--fg-3); }
 .console .kx-slide.is-next, .console .onair-card.is-next { background: var(--bg-3); }
 .console .kx-slide.is-prev, .console .kx-verse.is-prev, .console .onair-card.is-prev { background: var(--prev-bg); }
@@ -324,7 +326,7 @@
 .console .is-air.is-prev > .kx-slide-n, .console .is-air.is-prev > .kx-verse-n { align-self: start; height: 16px; line-height: 16px; border-radius: 4px; background: var(--live); color: var(--on-brand); text-align: center; font-weight: 500; }
 /* The Slides column's two tabs (No ar · Prévia) while the No ar module is
    not on screen and another item is prepared (SlidesPanel airTabs). */
-.console .slides-tabs { padding: 0 var(--space-2); }
+.console .slides-tabs { padding: 0 var(--space-1); }
 .console .slides-tabs .dock-tab { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; }
 .console .slides-tabs .dock-tab.is-on { background: var(--bg-3); color: var(--fg-1); }
 .console .slides-dot { flex: none; width: 7px; height: 7px; border-radius: var(--radius-round); }
@@ -344,6 +346,8 @@
     .console .onair-card.is-next { background: var(--bg-3); }
     .console .onair-card.is-prev { background: var(--prev-bg); }
     .console .onair-card.is-air { background: var(--live-bg); }
+    /* A page as tall as dock.js ONAIR_PAGE_LINES lines. */
+    .console .onair-card .kx-slide-page { width: auto; height: 54px; }
 }
 /* An output failure: one line above the monitors, never over them. */
 .console .kx-warnbar { flex: none; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 2px var(--space-1) 2px 10px; position: relative; background: var(--warn-tint); color: var(--warn-fg); border-radius: var(--radius-control); font-size: 12px; }
@@ -358,14 +362,16 @@
 /* Camadas › Temas (owner 2026-10-14): the theme tiles over the layer list. */
 /* Temas: its own card (temas-panel), or at the end of Camadas while that
    module is in the tray (layer-temas). */
-.console .layer-temas { padding: var(--space-2); border-top: 1px solid var(--line); }
-.console .temas-panel .tm { padding: 0 var(--space-2) var(--space-2); }
+.console .layer-temas { padding: 0 0 var(--space-1); border-top: 1px solid var(--line); }
+/* The tiles are cards: 4 px in from the column (2 px here and the grid's
+   own 2 px, which keeps the ring of the theme in use whole). */
+.console :is(.temas-panel, .layer-temas) .tm { padding: 0 2px 2px; }
 /* The pencil on a layer: where it is edited; shown on hover or focus. */
 .console .kx-layer { grid-template-columns: 16px 20px 20px minmax(0, 1fr) 24px; }
 /* Camadas › Sobreposições (owner 2026-10-14): one row per overlay, its text
    as the name; with 2+ they join under a thin heading — the group's handle in
    the layer order — behind an inset bar. The top row draws on top on screen. */
-.console .kx-ovhead { display: flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 var(--space-3) 0 var(--space-2); cursor: grab; }
+.console .kx-ovhead { display: flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 var(--space-3); cursor: grab; }
 .console .kx-ovhead .kx-glyph { color: var(--fg-3); display: inline-flex; justify-content: center; width: 16px; }
 .console .kx-ovhead .kx-section { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .kx-ovhead .kx-count { font-weight: 400; color: var(--fg-3); }
@@ -377,13 +383,13 @@
 .console .kx-layer .layer-edit.is-on { opacity: 1; color: var(--brand); }
 .console .layer-temas > .listhead > .kx-section { flex: 1; }
 @media (prefers-reduced-motion: reduce) { .console .kx-layer .layer-edit { transition: none; } }
-.console .layer-temas > .listhead { padding: 0; }
+.console .layer-temas > .listhead { padding: 0 6px 0 var(--space-3); }
 .console .layeracts { display: flex; gap: var(--space-1); flex-wrap: wrap; }
 .console .layerprops .k { font-size: 11px; color: var(--fg-3); }
 /* Camadas is on screen in the wide tier: its choices are 24 px targets like every control (the Seg "small" inline sizes are overridden). */
 .console .layerprops .kx-seg { height: var(--row) !important; padding: 2px !important; } .console .layerprops .kx-seg > button { height: 24px !important; min-width: 24px; padding: 0 8px !important; font-size: 11px !important; justify-content: center; }
 .console .layerprops select { height: 24px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; }
-.console .warnline { display: flex; align-items: center; gap: 6px; padding: 0 var(--space-2); height: var(--row); color: var(--warn-fg); font-size: 11px; white-space: nowrap; overflow: hidden; }
+.console .warnline { display: flex; align-items: center; gap: 6px; padding: 0 var(--space-1) 0 var(--space-3); height: var(--row); color: var(--warn-fg); font-size: 11px; white-space: nowrap; overflow: hidden; }
 .console .warnline .kx-i { color: var(--warn); flex: none; }
 .console .warnline span { overflow: hidden; text-overflow: ellipsis; }
 .console .warnline .kx-btn { margin-left: auto; flex: none; color: var(--fg-1); }
@@ -417,6 +423,24 @@
 /* A locked height (dock.js `locked`): it eases to its new size (a pencil
    opening Camadas, a song with more lines); the gap beside it has no handle. */
 .console .dock-cell.dock-locked { transition: flex-basis 180ms var(--ease-out); }
+/* Folding a panel (owner 2026-10-16, Rodada F4; kx.jsx FoldBtn/FoldStrip,
+   dock.js fitDock's `folded`): the chevron right of the header's +, up
+   while open, turned while folded; the last open panel of a split keeps
+   it, inert. Down a column a folded panel is its header (32 px, 28 in
+   Compacta); across a row a 28 px strip, the chevron over the module's
+   name standing up, a click anywhere on it opens the panel. */
+.console .kx-fold { flex: none; }
+.console .kx-fold .kx-i { transition: transform var(--duration-fast) var(--ease-out); }
+.console .kx-fold.is-folded .kx-i { transform: rotate(180deg); }
+.console .kx-btn.kx-fold.is-stuck { opacity: var(--dim); cursor: default; }
+.console .kx-btn.kx-fold.is-stuck:hover { background: none; }
+.console.is-compact .kx-panel.is-collapsed { height: 28px; }
+.console .kx-strip-b { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: 4px 0 var(--space-3); border: 0; border-radius: inherit; background: none; color: var(--fg-3); cursor: pointer; overflow: hidden; }
+.console.is-compact .kx-strip-b { padding-top: 2px; }
+.console .kx-strip-b:hover { background: var(--bg-2); color: var(--fg-1); }
+.console .kx-strip-b > .kx-fold { flex: none; width: 24px; height: 24px; display: grid; place-items: center; }
+.console .kx-strip-b > .kx-strip-name { writing-mode: vertical-rl; min-height: 0; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .console .kx-fold .kx-i { transition: none; } }
 .console .dock-gap { flex: 0 0 var(--gutter); }
 /* While editing the arrangement, every splitter says its side's size in %
    of the split (owner 2026-10-14); a click turns it into a field. */
@@ -467,7 +491,15 @@
    side widths are the operator's (Ver › Editar layout). Each picker card
    scrolls on its own; Versículos takes what is left. */
 .console .bible-center { container: bible / inline-size; }
-.console .bpick-books .bsrc { display: flex; height: 20px; padding: 0 var(--space-2); }
+.console .bpick-books .bsrc { display: flex; height: 20px; padding: 0 var(--space-3); }
+/* Livros' header carries the version, Abrev | Nomes, the install +, the
+   view menu and the fold chevron beside its title (Rodada F4): the
+   controls sit tighter, so the title still reads at the column's 300 px. */
+.console .bpick-books > .kx-panel-h { gap: 2px; }
+.console .bpick-books > .kx-panel-h > .kx-section { margin-right: 2px; }
+.console .bpick-books > .kx-panel-h > select { flex: none; width: 62px; padding: 0 2px; }
+.console .bpick-books > .kx-panel-h .kx-seg > button { padding: 0 5px !important; }
+.console .kx-panel-h .addmenu > .kx-btn-icon { width: 24px; height: 24px; }
 /* Livros, Capítulos and Versículos in three cell sizes (owner 2026-10-14:
    Livros' header menu, layout.bibleGrid — pequenas, médias as they were,
    or grandes). */
@@ -481,16 +513,23 @@
 .console .chapters.is-large, .console .verse-cells.is-large { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
 .console .chapters.is-large button, .console .verse-cells.is-large button { height: 34px; font-size: 14px; }
 /* The text panel's search field (Buscar; a reference opens the chapter). */
-.console .bread-search { flex: 0 1 240px; min-width: 140px; }
+.console .bread-search { flex: 0 4 240px; min-width: 140px; }
 .console .bread-search .kx-field { width: 100%; }
-.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: 0 var(--space-1) var(--space-1); }
 .console .bpick-books.names-full .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-.console .bpick-chapters .bchap { border-top: 0; padding-bottom: var(--space-2); }
+.console .bpick-chapters .bchap { border-top: 0; padding: 0 var(--space-1) var(--space-1); }
 .console .bpick-chapters .chapters { max-height: none; overflow: visible; }
-.console .bpick-verses .bverses { padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .bpick-verses .bverses { padding: 0 var(--space-1) var(--space-1); }
 /* The text column: recent chapters, favourites and notes on top, the
    reading (or Buscar, Comparar) below, scrolling. */
-.console .bread > .kx-panel-h { flex-wrap: wrap; height: auto; min-height: 32px; row-gap: 2px; padding-top: 2px; padding-bottom: 2px; }
+/* Its header is one line at the density's height, like every panel's
+   (owner 2026-10-16, Rodada F4): narrower, the hint goes first, then
+   Selecionar todos and Limpar, and the search field gives way. */
+.console .bread > .kx-panel-h { overflow: hidden; }
+.console .bread > .kx-panel-h > .kx-section { min-width: 64px; }
+@container bible (max-width: 720px) { .console .bread > .kx-panel-h .kx-count { display: none; } }
+@container bible (max-width: 600px) { .console .bread .bread-sel { display: none; } }
+@container bible (max-width: 440px) { .console .bread-search { flex-basis: 150px; min-width: 96px; } }
 .console .bread > .kx-panel-b { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 .console .bread-b { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .console .bread-b > .reading { overflow: visible; }
@@ -521,15 +560,14 @@
 .console .verse-cells button.is-air { background: var(--air-tint); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
 /* Nomes: the books with their whole names, left-aligned. */
 .console .bpick-books.names-full .bgrid .kx-book { align-items: flex-start; padding: 0 6px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 26px; text-align: left; }
-.console .bband-lists { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); }
+.console .bband-lists { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border-bottom: 1px solid var(--line); }
 .console .bband-lists > .kx-section { margin-right: var(--space-1); }
 .console .bchip { height: 24px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }
 .console .bchip:hover, .console .bchip.is-on { background: var(--bg-3); color: var(--fg-1); }
 .console .blist-pop { width: 300px; max-height: 360px; overflow: auto; }
-.console .reading { padding: var(--space-1) 0 var(--space-2); max-width: 760px; }
-.console .bband-lists { border-top: 0; }
-.console .vgroup { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-2) var(--space-2); }
-.console .vslide { display: grid; grid-template-columns: 16px 1fr; gap: var(--space-2); padding: 4px 8px 6px 10px; border-radius: var(--radius-control); background: var(--bg-2); font-size: 12px; line-height: 16px; color: var(--fg-1); }
+.console .reading { max-width: 760px; }
+.console .vgroup { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-1) var(--space-1); }
+.console .vslide { display: grid; grid-template-columns: 16px 1fr; gap: var(--space-2); padding: 4px 8px 6px; border-radius: var(--radius-control); background: var(--bg-2); font-size: 12px; line-height: 16px; color: var(--fg-1); }
 .console .vslide b { font-size: 11px; font-weight: 400; color: var(--fg-3); }
 .console .listhead { height: var(--row); display: flex; align-items: center; padding: 0 var(--space-3); min-width: 0; }
 .console .listhead > .kx-section { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -587,7 +625,7 @@
    left padding, so the text stays where it was (in line with listheads). */
 .console :is(.kx-row, .kx-layer) { width: auto; margin: 1px var(--space-1); border-radius: var(--radius-control); overflow: clip; }
 .console .kx-row { padding-left: var(--space-2); }
-.console .kx-layer { padding-left: var(--space-1); height: calc(var(--row) - 2px); }
+.console .kx-layer { padding-left: var(--space-2); height: calc(var(--row) - 2px); }
 /* A measured module (Camadas, Temas) counts its cards' margins: without
    this the first and last card's margin collapse out of the box, the
    height comes out 2 px short and the panel scrolls. The layer cards give
@@ -624,45 +662,60 @@
 .console .kx-preset-t { min-width: 0; max-width: 100%; height: 24px; padding: 0 4px 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; }
 .console .kx-preset-x { flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; color: var(--fg-3); }
 .console .kx-preset-x:hover { color: var(--fg-1); }
-/* ---------- Player, under the Programa: two rows (Rodada E1) ---------- */
-/* Row 1: what plays, the transport, the time and the progress bar with the
-   whole width; row 2: the layer it controls, the letra automática, where the
-   sound goes, then the volume and the L/R meters at its right end. 64 px in
-   all (.pslot, dock.js PLAYER_SLOT). Narrowing (a laptop: ~490–580 px) drops
-   the secondary bits first — the kind, −10/+10, the volume number, then the
-   position and the labels of where and of the letra automática (which
-   shorten with "…" before that) — never the bar, the remaining time or Tocar. */
+/* ---------- Player, under the Programa: two rows (Rodada E1, F1) ---------- */
+/* Row 1: what plays (its icon, its title, n/m in a list — no kind word, the
+   icon says it), the elapsed time, the progress bar and the remaining time;
+   row 2: the controls — the transport, the eye, Parar, the layer it
+   controls, the letra automática, where the sound goes — then the volume
+   and the L/R meters at its right end. 64 px in all (.pslot, dock.js
+   PLAYER_SLOT). The title has a floor and a cap: it never vanishes, never
+   eats the bar. Narrowing folds row 2 in the owner's order (Rodada F1): the
+   volume number, −10/+10, the labels of where and of the letra automática
+   (down to their icons; they shorten with "…" before that), a narrower
+   volume, then the meters and where. Tocar, the eye, Parar and the mute
+   always stay. Idle (nothing plays): only the icon, the controls dimmed. */
 .console .player { flex: none; height: 64px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 4px var(--space-1) 4px var(--space-2); background: var(--bg-2); border-radius: var(--radius-control); white-space: nowrap; min-width: 0; container: player / inline-size; }
 .console .player .pl-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .console .player .pl-row1 { height: 28px; }
 .console .player .pl-row2 { height: 26px; }
 .console .player .pl-gap { flex: 1 1 0; min-width: 0; }
-.console .player .pl-what { display: inline-flex; align-items: center; gap: 6px; flex: 0 4 auto; max-width: 32cqw; min-width: 64px; color: var(--fg-1); } /* as long as its title, a third of the row at most; it gives way before the bar does */
+.console .player .pl-what { display: inline-flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: min(110px, 34cqw); max-width: 46cqw; color: var(--fg-1); } /* as long as its title, between a floor and a cap: it gives way to the bar, never to nothing */
 .console .player .pl-what .t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .console .player .pl-what .kx-i { color: var(--fg-3); flex: none; }
-.console .player.is-idle .pl-what { color: var(--fg-3); }
-.console .player .pl-kind { flex: none; }
-.console .player .kx-seg { flex: none; }
+.console .player .pl-what .pl-n { flex: none; font-size: 11px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
+.console .player.is-idle .pl-what { min-width: 0; color: var(--fg-3); }
+/* The layer switch (2+ layers playing) gives way like the labels: its names
+   end in "…" before row 2 would overflow (each keeps its tooltip). */
+.console .player .kx-seg { flex: 0 0.01 auto; min-width: 0; } /* after where has given way */
+.console .player .kx-seg > button { display: block; flex: 0 1 auto; min-width: 28px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 20px; }
 .console .player .pl-btns { display: inline-flex; align-items: center; gap: 2px; flex: none; }
 .console .player .pl-skip { height: var(--row); padding: 0 6px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--fg-2); }
 .console .player .pl-play:not(:disabled) { background: var(--bg-3); color: var(--fg-1); }
 .console .player .pl-time { flex: none; min-width: 0; font-variant-numeric: tabular-nums; }
-/* The progress bar: a real bar (6 px), red while live, click to seek; the
-   thumb shows on hover. Remaining time and the length sit to its right. */
-.console .player .pl-seek { flex: 1 1 140px; min-width: 80px; height: 6px; position: relative; background: var(--bg-3); border-radius: 3px; cursor: pointer; }
-.console .player .pl-seek > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--fg-2); border-radius: 3px; }
+/* The progress bar (Rodada F1: it drags): a 6 px bar, red while live, in a
+   16 px hit area; the thumb shows on hover, on keyboard focus and while the
+   hand holds it, with a tip over it saying where. Remaining time and the
+   length sit to its right. */
+.console .player .pl-seek { flex: 1 1 140px; min-width: 80px; height: 16px; position: relative; border-radius: 3px; touch-action: none; cursor: default; }
+.console .player .pl-seek.is-can { cursor: pointer; }
+.console .player .pl-seek::before { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 6px; border-radius: 3px; background: var(--bg-3); }
+.console .player .pl-seek > i { position: absolute; left: 0; top: 5px; height: 6px; background: var(--fg-2); border-radius: 3px; }
 .console .player .pl-seek.is-live > i { background: var(--air); }
-.console .player .pl-seek > b { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--radius-round); background: var(--fg-1); opacity: 0; transition: opacity .12s; }
-.console .player .pl-seek:hover > b { opacity: 1; }
+.console .player .pl-seek > b { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--radius-round); background: var(--fg-1); box-shadow: 0 1px 4px #0009; opacity: 0; transition: opacity .12s; pointer-events: none; }
+.console .player .pl-seek.is-can:is(:hover, :focus-visible, .is-drag) > b { opacity: 1; }
+.console .player .pl-seek:focus-visible { outline: var(--bar) solid var(--brand); outline-offset: 2px; }
+.console .player .pl-seek > .pl-tip { position: absolute; bottom: calc(100% + 1px); z-index: 1; transform: translateX(-50%); padding: 0 5px; border-radius: 4px; background: var(--fg-1); color: var(--bg-0); font: 600 10px/14px var(--font-sans); font-style: normal; font-variant-numeric: tabular-nums; pointer-events: none; }
+/* Só o som (Rodada F1): while a video plays as sound only, the eye is red. */
+.console .player .pl-eye.is-sound { background: color-mix(in srgb, var(--air) 24%, transparent); color: var(--air-fg); box-shadow: inset 0 0 0 1px var(--air); }
+.console .player .pl-eye.is-sound:hover { background: color-mix(in srgb, var(--air) 36%, transparent); }
 /* Letra automática (Rodada D4): one tick per marked slide on the bar, and the
    chip saying what the lyrics follow (a click pauses / resumes). */
-.console .player .pl-seek > .pl-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--fg-1); opacity: .55; pointer-events: auto; }
+.console .player .pl-seek > .pl-tick { position: absolute; top: 2px; bottom: 2px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--fg-1); opacity: .55; pointer-events: auto; }
 .console .player .pl-follow { flex: 0 1 auto; min-width: 0; height: 24px; padding: 0 8px; gap: 5px; font-size: 11px; border-radius: 12px; background: var(--bg-3); color: var(--fg-2); }
 .console .player .pl-follow .lbl { overflow: hidden; text-overflow: ellipsis; }
 .console .player .pl-follow.is-on { color: var(--live); background: color-mix(in srgb, var(--live) 16%, transparent); }
 .console .player .pl-follow.is-paused { color: var(--warn); }
 .console .player .pl-follow-go { flex: none; height: 26px; gap: 5px; font-size: 12px; }
-.console .player .pl-seek.is-unknown, .console .player.is-idle .pl-seek { cursor: default; }
 .console .player .pl-left { flex: none; display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 12px; font-variant-numeric: tabular-nums; min-width: 40px; }
 .console .player .pl-left small { font-size: 10px; color: var(--fg-3); }
 .console .player .pl-vol { display: inline-flex; align-items: center; gap: 2px; flex: none; }
@@ -680,10 +733,11 @@
 .console .player .meters[data-state="off"], .console .player .meters[data-state="wait"] { opacity: var(--dim); }
 .console .player .pl-where { display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 16px; overflow: hidden; }
 .console .player .pl-where .lbl { overflow: hidden; text-overflow: ellipsis; }
-@container player (max-width: 720px) { .console .player .pl-kind { display: none; } .console .player .pl-vol input { width: 64px; } }
-@container player (max-width: 640px) { .console .player .pl-skip { display: none; } .console .player .pl-what { max-width: 26cqw; } }
 @container player (max-width: 560px) { .console .player .pl-num { display: none; } }
-@container player (max-width: 460px) { .console .player .pl-time, .console .player .pl-where .lbl, .console .player .pl-follow .lbl { display: none; } .console .player .pl-vol input { width: 48px; } }
+@container player (max-width: 520px) { .console .player .pl-skip { display: none; } }
+@container player (max-width: 440px) { .console .player :is(.pl-where, .pl-follow, .pl-follow-go) .lbl { display: none; } .console .player .pl-follow { padding: 0 6px; } }
+@container player (max-width: 400px) { .console .player .pl-vol input { width: 52px; } }
+@container player (max-width: 360px) { .console .player :is(.meters, .pl-where) { display: none; } }
 /* ---------- Bíblia: quick jump (Livro → Capítulo → Versículo) ---------- */
 .console .qj { position: absolute; z-index: 40; left: 50%; top: 120px; transform: translateX(-50%); width: 560px; max-width: calc(100vw - 24px); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .console .qj-steps { display: flex; gap: var(--space-3); }
@@ -727,12 +781,12 @@
 /* The "No ar agora" monitor: at most 35 % of the column's height, so the
    selection and the actions below it stay in view on short windows. */
 .console .bible-air-col .kx-panel-b { container-type: size; }
-.console .bible-air { padding: 0 var(--space-2) var(--space-2); flex: none; display: flex; justify-content: center; }
+.console .bible-air { padding: 0 var(--space-1) var(--space-1); flex: none; display: flex; justify-content: center; }
 .console .bible-air .kx-mon { width: min(100%, calc(35cqh * 16 / 9)); }
 
 /* "+" beside a search field: the menu of what can be added there. */
 /* The Biblioteca's search field with its ☆ and "+" on one line. */
-.console .searchrow { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); }
+.console .searchrow { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1); }
 .console .searchrow > .kx-field { flex: 1; }
 .console .addmenu { position: relative; flex: none; }
 .console .addmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 45; width: 230px; }
@@ -787,6 +841,12 @@
 .console .win-page[hidden] { display: none; }
 @keyframes win-page-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .console .win-dialog { transition: none; } .console .win-page { animation: none; } }
+/* A page detached into a window of its own (/Janela, src/pages/Janela.jsx;
+   Rodada F5): the same frame, filling that window — no scrim, no shadow,
+   no edges (the system window resizes); the dialogs a page opens sit
+   near its top. */
+.console.janela { --pop-top: 16px; padding: 0; }
+.console .win-dialog.is-detached { position: relative; left: auto; top: auto; transform: none; width: auto; height: auto; flex: 1; min-height: 0; border-radius: 0; box-shadow: none; transition: none; }
 /* The bar: the Configurações header, now every page's. */
 .console .win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
 /* The title gives way first (an ellipsis; its whole text is the page) so the
@@ -1001,6 +1061,7 @@
 .console .mv-lab { position: absolute; left: 0; top: 0; padding: 1px 5px; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 0 4px 0; }
 .console .mv-n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: 10px; line-height: 12px; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 4px 0 0; font-variant-numeric: tabular-nums; }
 .console .mv-title { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .mv-sub { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .mv-cell > .kx-btn { align-self: flex-start; }
 .console .mv-rename { height: 24px; width: 100%; box-sizing: border-box; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; outline: none; box-shadow: inset 0 0 0 1px var(--line-strong); user-select: text; }
 .console .mv-row.is-sel { background: var(--prev-fill, var(--bg-2)); }
@@ -1040,8 +1101,8 @@
 .console .kx-verse.has-note { padding-right: 28px; }
 .console .kx-verse .be-notemark { position: absolute; top: 6px; right: 8px; display: inline-flex; color: var(--fg-2); }
 .console .kx-verse.has-note .kx-verse-n { color: var(--fg-1); }
-.console .be-note { flex: none; border-top: 1px solid var(--line); padding: 0 var(--space-2) var(--space-2); }
-.console .be-note .listhead { padding: 0; }
+.console .be-note { flex: none; border-top: 1px solid var(--line); padding: 0 var(--space-1) var(--space-1); }
+.console .be-note .listhead { padding: 0 var(--space-2); }
 .console .be-note .ed-text { min-height: 56px; }
 .console .bs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .console .bs-bar { flex: none; display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; padding: var(--space-2) var(--space-2) 0; }
@@ -1263,8 +1324,6 @@
 .console .wn-li::before { content: ""; position: absolute; left: 3px; top: 7px; width: 4px; height: 4px; border-radius: 2px; background: var(--fg-3); }
 .console .wn-li b, .console .wn-p b { color: var(--fg-1); font-weight: 600; }
 .console .wn-p { margin: 0; font-size: 12px; line-height: 18px; color: var(--fg-2); }
-/* "no ar há m:ss" in the Programa's caption: digits that do not jump. */
-.console .kx-prog-cap .kx-since { font-variant-numeric: tabular-nums; flex: none; }
 /* The Prévia's badge: its caption mirrors the Programa's (green word while
    something is prepared, blue while the screens are locked). */
 .console .kx-prog-cap.is-prevcap .kx-live-cap { color: var(--prev-fg); }
@@ -1308,10 +1367,6 @@
 .console .le-nums label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); }
 .console .le-num { width: 58px; }
 .console .le-range { flex: 1 1 80px; min-width: 60px; accent-color: var(--brand); }
-/* The Editor de temas e layouts window (/Editor, src/pages/Editor.jsx):
-   the console's shell without its top bar; a one-line footer instead. */
-.console .edw-foot { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); font-size: 11px; color: var(--fg-3); }
-.console.edw .kx-gap { flex: none; width: var(--gutter); }
 
 /* Biblioteca de temas e fundos (library/BackgroundLibrary.jsx): one window
    for every picker, above Configurações (it opens from there too), below the

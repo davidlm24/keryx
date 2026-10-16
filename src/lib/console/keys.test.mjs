@@ -65,6 +65,17 @@ test("↑/↓ move the selection, ←/→ the air (Holyrics)", () => {
     assert.equal(key("ArrowDown", nothing, { ctrlKey: true }), null);
 });
 
+test("a presentation clicker's PageDown / PageUp move what is on air, as → / ← (Rodada F3)", () => {
+    assert.equal(key("PageDown", nothing), "next");
+    assert.equal(key("PageUp", nothing), "prev");
+    assert.equal(key("PageDown", button), "next", "a plain button does not use them");
+    assert.equal(key("PageDown", liveArea), "next");
+    assert.equal(key("PageDown", tab), null, "a tab list keeps its keys");
+    assert.equal(key("PageDown", el("SELECT", ["select"], ["select"])), null, "a select keeps them");
+    assert.equal(key("PageDown", input), null, "typing");
+    assert.equal(key("PageDown", nothing, { ctrlKey: true }), null, "Ctrl+PageDown is not a slide");
+});
+
 test("a splitter focused with Tab keeps the arrows: nothing moves on air", () => {
     // <div class="kx-split" role="separator" tabindex="0">
     const splitter = el("DIV", ["[tabindex]:not([data-live-keys])", "[role='separator']"]);
@@ -77,6 +88,19 @@ test("a splitter focused with Tab keeps the arrows: nothing moves on air", () =>
     assert.equal(key("Enter", splitter, { ctrlKey: true }), "send", "Ctrl+Enter still sends from anywhere");
     assert.equal(key("b", splitter), "black", "the screen keys still work");
     assert.equal(key("Escape", splitter), "end");
+});
+
+test("the player's progress bar focused with Tab keeps the arrows: the slide on air stays (Rodada F1)", () => {
+    // <span class="pl-seek" role="slider" tabindex="0">
+    const seek = el("SPAN", ["[tabindex]:not([data-live-keys])", "[role='slider']"]);
+    assert.equal(focusKind(seek), "control");
+    for (const k of ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"]) assert.equal(key(k, seek), null, k);
+    assert.equal(key(" ", seek), null, "Space is the control's");
+    assert.equal(key("Enter", seek), null, "a focused control never sends");
+    assert.equal(key("b", seek), "black", "the screen keys still work");
+    assert.equal(key("Escape", seek), "end");
+    // A child of the bar (the thumb, a tick) is the bar.
+    assert.equal(key("ArrowRight", el("B", [], ["[tabindex]:not([data-live-keys])", "[role='slider']"])), null);
 });
 
 test("AltGr (Ctrl+Alt with a character) is typing, not a shortcut", () => {

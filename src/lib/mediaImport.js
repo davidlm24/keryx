@@ -1,4 +1,5 @@
 import { keryx } from "@/api/keryxClient";
+import { PPTX_HINT } from "@/lib/presentation";
 
 // The Media type of a picked file, by MIME type and extension.
 export function mediaTypeOf(file) {
@@ -26,12 +27,17 @@ export async function mediaFromYouTube(url, { title = "Vídeo do YouTube", categ
     return keryx.entities.Media.create({ title, type: "video", file_url: u, category, duration: 0 });
 }
 
+// A PowerPoint file is not copied (Rodada F3, "Só PDF"): it comes back in
+// `refused`, and the caller says how to save it as PDF (PPTX_HINT). A PDF's
+// pages are made after, by the console (usePagesBackfill).
 export async function importMediaFiles(files, { title = "", description = "", category = "other", onProgress } = {}) {
     const list = Array.from(files || []);
     const created = [];
     const failed = [];
+    const refused = [];
     for (const [i, file] of list.entries()) {
         onProgress?.(i, list.length, file.name);
+        if (mediaTypeOf(file) === "powerpoint") { refused.push({ name: file.name, message: PPTX_HINT }); continue; }
         try {
             const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             const baseName = file.name.replace(/\.[^.]+$/, "");
@@ -48,5 +54,15 @@ export async function importMediaFiles(files, { title = "", description = "", ca
             failed.push({ name: file.name, message: err?.message || "falhou" });
         }
     }
-    return { created, failed };
+    return { created, failed, refused };
+}
+
+// What the Mídia says after an import: how many came in, which failed and,
+// for PowerPoint files, how to send them as PDF.
+export function importSummary({ created = [], failed = [], refused = [] }, where = "") {
+    const parts = [];
+    if (created.length || !refused.length) parts.push(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}${where}`);
+    if (failed.length) parts.push(`falhou: ${failed.map((x) => x.name).join(", ")}`);
+    if (refused.length) parts.push(PPTX_HINT);
+    return parts.join(" · ").replace(/([^.])$/, "$1.");
 }

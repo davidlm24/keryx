@@ -29,6 +29,8 @@ export const SHOW_KINDS = [
     { id: "bible", name: "Bíblia", layer: "content", kind: "bible" },
     { id: "text", name: "Texto", layer: "content", kind: "text" },
     { id: "media", name: "Imagens e vídeos", layer: "media" },
+    // A PDF's pages (Rodada F3): shown where Imagens e vídeos are.
+    { id: "presentation", name: "Apresentações", layer: "content", kind: "presentation" },
     { id: "tool", name: "Relógio e timer", layer: "tool" },
     { id: "communication", name: "Avisos", layer: "communication" },
     { id: "alert", name: "Aviso rápido", layer: "alert" },
@@ -36,7 +38,7 @@ export const SHOW_KINDS = [
 // The kinds each view can show at all (views.js): only those are offered.
 // The Aviso rápido rides on every view (Rodada E3: one bar, every screen).
 const VIEW_KINDS = {
-    "/Projection": ["lyrics", "bible", "text", "media", "tool", "communication", "alert"],
+    "/Projection": ["lyrics", "bible", "text", "media", "presentation", "tool", "communication", "alert"],
     "/LyricProjection": ["lyrics", "bible", "text", "alert"],
     "/VideoProjection": ["alert"],
     "/CommunicationProjection": ["alert"],
@@ -67,7 +69,7 @@ export function hideKinds(state, hidden) {
 // A prepared stage (src/lib/console/stage.js) on an output that hides its
 // kind: the kind's name, else null. A stage kind with no Mostrar entry
 // (audio, the video channel) is never hidden.
-const STAGE_KIND = { lyrics: "lyrics", bible: "bible", text: "text", media: "media", tool: "tool", piece: "communication" };
+const STAGE_KIND = { lyrics: "lyrics", bible: "bible", text: "text", presentation: "presentation", media: "media", tool: "tool", piece: "communication" };
 export function stageHidden(stageKind, pref) {
     const id = STAGE_KIND[stageKind];
     return id && pref?.hidden?.includes(id) ? SHOW_KINDS.find((k) => k.id === id).name : null;

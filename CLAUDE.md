@@ -5,7 +5,8 @@ projection). Vite + React 18 + Tailwind + shadcn/ui, packaged as an
 offline-first Electron desktop app with a local SQLite store. Desktop only:
 the web build on Supabase was retired (2026-10-08, like Holyrics or
 ProPresenter, the app is the program on the church computer); `supabase/` is
-kept, unused, for a future cloud sync or backup. Plan:
+kept, unused, for a possible cloud backup (the sync between the church's
+computers is a shared folder, no server: `electron/sync.cjs`). Plan:
 `docs/desktop-architecture.md`. Read `README.md` first — it covers the
 stack, how to run it, the backend wiring, the data model and the known gaps.
 
@@ -25,8 +26,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   culto" any more; "Fundo" alone stays the LAYER's name (Camadas › Fundo);
   "Tema sem nome" only where a name is required (menus, tooltips, a select),
   never as a caption; "O mesmo das músicas" (herdar) e "Estilo de fábrica" (sem
-  tema); Excluir = apaga (sempre via `useConfirm`/ConfirmDialog; the
-  Editor window alone keeps the two-click, it has no provider), Tirar =
+  tema); Excluir = apaga (sempre via `useConfirm`/ConfirmDialog, a
+  detached page's window included), Tirar =
   sai do lugar, Remover só em "Remover saída"; Travar/Destravar; Tela =
   monitor físico e telas na rede, Saída = janela/página (aberta/fechada;
   rede = conectada/desconectada); Pôr na prévia / Enviar ao ar; Fixar no
@@ -47,10 +48,42 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and the states never run edge to edge. One rule in `console.css`; don't
   override it per list. Edge to edge only where the owner asks (the Slides
   column and No ar, to gain room). docs/design-system.md has it too.
+- **One padding rule for panels** (owner 2026-10-16, Rodada F4): a panel's
+  header text sits 12 px (`--space-3`) from its edge; anything with a box
+  of its own — list cards, verse cards, the cells of Livros/Capítulos/
+  Versículos, the Temas tiles, the search field, tabs, the No ar agora
+  monitor — sits 4 px (`--space-1`) in from the column, with its text at
+  12 px; listheads and sub-titles (Recentes, "Selecionado", a Temas
+  heading inside Camadas) at 12 px; every panel header is 32 px, 28 in
+  Compacta (`panelHead`), one line — a header never wraps into a taller
+  block (the Bíblia's Texto drops its hint, then Selecionar todos/Limpar,
+  container queries). Don't give one panel its own inset.
+- **Every panel folds** (owner 2026-10-16, Rodada F4): a chevron right of
+  the header's + (`FoldBtn` in kx.jsx; "Dobrar"/"Abrir"), on every module
+  but the Programa, the Prévia and the player (`noFold` in dock.js
+  `MODULES`). The state is `layout.folded` (`{ [moduleId]: true }`, per
+  computer, both environments; `normalizeFolded` migrates the old
+  `onairMin`). `fitDock`'s `folded` (dock.js, tested) locks a folded module
+  alone in a split: down a column to its header (`head`, the density's),
+  across a row to a 28 px strip (`FOLD_STRIP`; `FoldStrip`, its name
+  standing, a click opens it); the fold wins over Camadas'/Temas' measured
+  heights. A split keeps one open child: the last open one's chevron is
+  inert ("Um painel da coluna fica sempre aberto"), and when only measured
+  heights stay open the last of them takes the rest. As a tab beside
+  others, or while editing the arrangement, nothing folds. The body stays
+  mounted, hidden. Don't confuse it with the dock frames' `collapsed`
+  (joined as tabs) or No ar's `fold`/`gone` (no lyrics on air).
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).
-  `npm test` fails if schema.json and the jsonc drift apart.
+  `npm test` fails if schema.json and the jsonc drift apart. A new entity
+  also goes in `SYNC_ENTITIES` or `LOCAL_ENTITIES`
+  (`electron/db/syncScope.cjs`, sync between the church's computers,
+  desktop-architecture.md §8b), and a User field that belongs to one
+  computer in `LOCAL_USER_FIELDS`; `npm test` checks the entity. Only
+  writes through the store's operations reach the sync outbox (`_outbox`;
+  `importRows` and `applyRemote` record nothing, so remote changes never
+  echo back).
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by
@@ -65,7 +98,35 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/lib/projection.js` (its stages, `src/lib/console/stage.js`); outputs
   read it with `useLiveState()`. A new kind of content is a new op in
   `shared/live-state.mjs` with a test there, not a new sync table or
-  postMessage type (both are gone). Every output renders it; outputs can be
+  postMessage type (both are gone). **One sound at a time, and the fades**
+  (owner 2026-10-16, Rodada F2; Configurações › Telas e saídas ›
+  Transições: User `media_transition`/`_ms`, `clear_transition`/`_ms`,
+  `screen_transition`): an op that starts an item with sound (`video.show`,
+  `audio.show`, `audio.playlist`, `media.show`, `media.playlist`; a video,
+  audio or YouTube not at volume 0, `heard`) stops the other sound layers
+  (`hush`), cut or fading out — the stopped item rides in `live.leaving`
+  (`{ layer, item, at, until }`, dropped by the next change) — unless its
+  `transition` says `mix` (Tocar junto; no transition = the same, for
+  senders that say nothing). The console adds `transition` and the exit
+  `fade` in `liveOp` (`withTransitions`, `src/lib/console/transitions.js`,
+  tested; the projector window's own keys too); the live state never reads
+  prefs. Never hush in `media.toAudio`/`audio.toMedia`, `content.show` or
+  `clear` (the audio channel survives Esc); a list counts by the item it
+  starts with, advances never hush, the Fundo's video is muted. Esc
+  (`clear`), Limpar (`text.clear`: the timer, the aviso and the text in ONE
+  change, so the ghost is what the audience saw — three clears in a row
+  drew the song hidden under an aviso fading out) and the single-layer
+  clears, and Tela preta/Logo (`screen.set`, while the switch is on) take a `fade`
+  (ms) kept as `live.fade = { ms, at }` (`at` = that change's updatedAt),
+  so every output, network screens included, draws the same fade: the
+  renderer keeps the screen drawn before as a ghost going transparent over
+  the one now (`useExitGhost`, `screenExitMs`/`videoExitMs` in
+  `src/lib/exitFade.js`, tested; `.ks-ghost`), its video still playing as
+  its volume comes down (`LiveVideo fadeOut`, the element handed over by
+  the pool); the projector plays `leaving` audio out the same way. Outputs
+  ignore reduced motion (the audience sees them), the Programa monitor
+  honours it, still previews cut. The slide-to-slide transition stays the
+  theme's. Every output renders the live state; outputs can be
   opened by the main process (`keryx:displays:open`, "Abrir ao iniciar").
   Avisos (CommunicationVideo) are the `communication` layer, drawn in full
   by `ScreenRenderer` (look, background, logo, chime; arithmetic in
@@ -130,7 +191,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   sent there are Media rows of category "background" (`isBackgroundMedia`),
   left out of `useLibrary().media` (Biblioteca, media library, editors) and
   listed by `useBackgrounds()` (plus Mídia pictures that already have a
-  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. **A default
+  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. The factory
+  photos are never deleted, only hidden (Oculto). **The categories are the
+  church's** (owner 2026-10-16, Configurações › Temas e fundos › Categorias
+  de fundos, `FundoCategories.jsx`): `User.background_categories` names and
+  orders them, even empty (null = `CATEGORY_SUGGESTIONS`); a background's
+  own category is still `BackgroundPref.category`, so a rename or a delete
+  rewrites those rows (a factory photo gets its first one) and a delete
+  sends them to "Outros", which is never renamed or deleted (helpers in
+  backgroundPrefs.js, tested). Both sync. **A default
   theme per kind** (`themeForKind`, `THEME_KINDS`): Música (the theme in
   use, else the theme marked padrão), Bíblia, Texto and Timer (`User.bible_theme_id`, `text_theme_id`,
   `timer_theme_id`; "" = Música's, "none" = factory), chosen in Temas ›
@@ -233,7 +302,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (`themeSampleStage`, `stage.theme`: sending it only applies the theme's
   background, never the example text), a double click
   (or the menu's Editar, or Configurações › Temas) edits it in the Editor
-  de temas e telas (the console's floating dialog, `openEditor({ theme })`;
+  de temas e telas (a page of THE window, `openEditor({ theme })`;
   the one-off ThemeStudio overlay from 2026-10-13 was folded into it —
   don't bring a second theme editor back),
   and "Salvar tema para a música" writes `Song.theme_id` for the song on air
@@ -374,7 +443,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   da tela"; `openEditor`'s `from` carries the label), Esc / the Voltar
   chip / the scrim pop ONE level (the first closes), the (x) closes the
   whole stack, and every exit goes through the top page's `escRef`
-  (modes "esc" | "back" | "all"), so the one unsaved guard asks —
+  (modes "esc" | "back" | "all" | "detach"), so the one unsaved guard asks —
   **"Descartar as mudanças?" via `useConfirm`** (owner's pick, Rodada C;
   Esc answers "continuar"), never the old two-step toast. Pages under
   the top stay mounted and hidden (Voltar finds them as they were); a
@@ -383,7 +452,41 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   answer (the background library, ConfirmDialog, menus) stay ON TOP,
   never in the stack. While the window is open the Programa monitor and
   the Multiview draw one still frame (`still` on CenterPanel — the air
-  itself never pauses). The Bíblia is the
+  itself never pauses). The pages are one switch, `winPage` in
+  `WinPages.jsx`, for both hosts below; a new page goes there.
+  **"Destacar em janela" on every page** (owner 2026-10-16, Rodada F5;
+  for whoever works watching another monitor): the WinBar's ⧉ (the host
+  gives `onDetach` through `WinCtx`) moves the page on top to a window of
+  its own, **`/Janela?page=<page>&…`** (`src/pages/Janela.jsx`, window
+  `keryx-janela-<page>`, one per kind of page; a tab in the preview;
+  desktop only, NEVER in NETWORK_SCREENS; `/Editor` is its old name and
+  lands there too). It first goes through the page's own guard (`escRef`
+  mode "detach": "Descartar as mudanças?"; "Cancelar" keeps it), then the
+  console pops that level and opens the window (`detachSpec` in nav.js,
+  tested: the params `stackFromParams` reads back; Sincronizar takes the
+  Editor de música below with it, `?song=<id>&sync=1`). The detached
+  window is THE window's frame filling it (`.win-dialog.is-detached`):
+  its own stack with Voltar, ConfirmDialog, PromptDialog, menus, the
+  background library and a toast, Esc routed to the top page's `escRef`
+  (the first level closes the window); a page with unsaved changes holds
+  it (`useUnloadGuard` in kx.jsx → closeGuard on the desktop). It reads
+  the store and the live state like any window and gets a **light `c`**
+  (`useJanelaConsole`: `useStamp`, `useToast`, `useLiveOps` from
+  useConsole.js) — **never mount `useConsole` there** (its letra
+  automática ticker and the Fundo's follow-ups run once, in the console).
+  **What goes to the Prévia or on air goes to the console**
+  (`src/lib/janelaRelay.js`, tested: a closed list, `JANELA_MESSAGES`,
+  checked on arrival by `checkMessage`; main relays `keryx:janela` page →
+  console and console → pages, as `keryx:remote`; a BroadcastChannel in
+  the preview): `prev.set`, `stage.send`, `prev.send`/`prev.step` (the
+  detached Escola's Enter and ↑/↓), `song.saved` (→ `songSaved`),
+  `setlist.material` (→ `addMaterial`), `console.open` (Novidades,
+  Configurações › Console — the arrangement is the console's, so detached
+  that section says "Abrir no console"); the console answers with
+  `console.prev` (its Prévia, which the detached Escola shows). The
+  console runs them through its own `setPrev`/`sendStage`, so the Prévia,
+  the history and the log stay its own. Tela preta and Logo work in every
+  detached page; in the Escola every live key does. The Bíblia is the
   console's second environment (`BibleEnv.jsx`: Ler, Comparar, the Buscar field,
   notes). Where the modules go is the operator's: **each environment is a
   dock** (owner 2026-10-13, the "Disposição do console" prototype, model
@@ -443,13 +546,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   owner 2026-10-13, which replaced the two-band centre of #136/#138):
   Biblioteca and Slides are whole columns; the **centre** (`live`) is the
   Programa on top (CenterPanel: the monitor or the Multiview, and the
-  player **always visible**, dimmed while idle, **in two rows** — Rodada E1,
-  owner 2026-10-16, "o necessário, de forma responsiva": what plays, the
-  transport, the time and the progress bar with the row's room; under them
-  the layer it controls, the letra automática, where the sound goes, the
-  volume and the meters; 64 px, `.pslot` and dock.js `PLAYER_SLOT` 72;
-  narrowing drops the kind, −10/+10, the volume number, then the position
-  and the labels, never the bar, the remaining time or Tocar) and below it one row that
+  player **always visible**, dimmed while idle — only its icon then, **no
+  placeholder words** — **in two rows** (Rodada F1, owner 2026-10-16): the
+  first is what plays (the file icon, the title — floor `min(110px, 34cqw)`,
+  cap 46cqw — and "n/m" in a list; **no kind word**, the icon says it), the
+  elapsed time, the progress bar and the remaining time; the second is the
+  controls: ⏮ −10 ⏯ +10 ⏭, the eye, Parar, the layer switch (2+ layers), the
+  letra automática, where the sound goes, then the volume and the meters;
+  64 px, `.pslot` and dock.js `PLAYER_SLOT` 72; narrowing folds row 2 (the
+  volume %, −10/+10, the where/chip labels down to icons, a narrower volume,
+  then the meters and where; Tocar, the eye, Parar and the mute always
+  stay). **The progress bar drags** (`Seek` in PlayerBar.jsx, pointer
+  capture, a 16 px hit area, a time tip over the thumb): while the hand
+  holds it only the console moves, and the screens get **one seek, on
+  release** (`seekAt` in player.js, tested), so the letra automática never
+  walks the slides in between; Tab gives it the focus and ←/→ step 5 s
+  (`SEEK_KEY_SECONDS`; keys.js leaves a focused `[role=slider]` its arrows,
+  tested) — a mouse press never focuses it; the live clock (no media) has
+  no seek) and below it one row that
   **ends at the centre's edge**: the Prévia (44 % of the centre at first),
   then the **tabs panel**
   (`TabsPanel.jsx`); under the Biblioteca, the Slides and the centre the **No ar**
@@ -471,15 +585,22 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   children so it rides the Multiview too): a dot in the state's colour
   (red on air, blue locked with the "Travado" word, amber when an output
   failed, grey "Nada no ar"), the title (in that colour, **no "Programa"
-  word**, owner 2026-10-14), the slide "2/6", "no ar há m:ss", "2 telas"
-  (`health.onAir.short`), then Voltar ao anterior (its popover opens above
-  the pill), the Camadas drawer (only while Camadas is in the tray),
-  Multiview and the screen actions Tela preta, Logo, Limpar, Encerrar
-  (owner's pick B). As the screen narrows (container queries on the screen,
-  `prog-screen`) it drops how long, then the count with Voltar and
-  Camadas, then the screen actions, folding them into a "…" that opens the
-  Programa's menu (the same as its right click, Camadas included); over
-  the Multiview it is always folded. dock.js gives the Programa `minH` 172:
+  word**, owner 2026-10-14) **only when the player does not name the item**
+  (owner's pick A, Rodada F1, `airInPlayer` in caption.js, tested: a video
+  or audio playing in the player — the video channel, the projector's
+  media, a sound with nothing on the screens — has no title in the pill;
+  lyrics, Bíblia, text, a picture, a presentation, a tool, an aviso, Tela
+  preta and Logo keep it), the slide "2/6", "2 telas"
+  (`health.onAir.short`) — **no "no ar há"** (Rodada F1) — then Voltar ao
+  anterior (its popover opens above the pill), the Camadas drawer (only
+  while Camadas is in the tray), Multiview and the screen actions Tela
+  preta, Logo, Limpar, Encerrar (owner's pick B). As the screen narrows
+  (container queries on the screen, `prog-screen`) it **folds once**: at
+  560 px only "2 telas" goes; at 480 every `.pp-full` button (Voltar,
+  Camadas, the screen actions) goes into a "…" that opens the Programa's
+  menu (the same as its right click, Camadas included) — the "…" never
+  beside the buttons it holds; over the Multiview it is always folded.
+  dock.js gives the Programa `minH` 172:
   the header it lost pays for the player's second row;
   the Prévia is its screen, its caption a badge inside the top-left corner
   (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
@@ -524,7 +645,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (scrolling sideways, the card on air kept in view), a list in a column.
   **No ar exists only while lyrics are on air** (owner 2026-10-14):
   text slides on the projector (a song, a passage, free text, an Escola
-  material; `lyricsOnAir` in dock.js, tested) not covered by Tela preta,
+  material, a presentation's pages; `lyricsOnAir` in dock.js, tested) not covered by Tela preta,
   the Logo, a timer, an aviso, a picture or a video. Otherwise — and
   after Esc — it folds away: `fitDock(…, { gone: goneModules(c.cur) })`
   gives a child made only of folding modules (`MODULES.onair.fold`) size
@@ -533,9 +654,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   where it was. It folds wherever it is placed alone (not as a tab beside
   another module), never while editing the arrangement, and eases in and
   out in 180 ms (`.dock-fold`, off with reduced motion). The Bíblia's
-  No ar is another module (`air`) and never folds. In both a click prepares that slide, a double click
+  No ar is another module (`air`) and never folds away (its header's
+  chevron still folds it, Rodada F4). In both a click prepares that slide, a double click
   sends it; ↑/↓ walk the Slides column, ←/→ move what is on air. **Lists
-  follow what is on air** (0.2.18): the Slides column, No ar, the Setlist and
+  follow what is on air** (0.2.19): the Slides column, No ar, the Setlist and
   the Bíblia's verses (list and grid) keep the card on air and its
   neighbours in view, so they move at the next-to-last card
   (`useKeepInView` + `src/lib/console/keepInView.js`, tested) — don't go back
@@ -555,8 +677,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tiers, or the tray), while lyrics are on air and another item is in the
   Prévia, the Slides column has two tabs, No ar · Prévia (`airTabs` in
   SlidesPanel.jsx): the tab only changes what the column shows, the keys
-  do as always. The strip's header chevron minimizes it to its header
-  (`layout.onairMin`, per computer; its count adds the slide's part).
+  do as always. The strip's header chevron folds it to its header, like
+  every panel (`layout.folded.onair`; its count adds the slide's part).
   **Densidade Automática** is the default (`shownDensity`, layout.js):
   Compacta when the console's grid is under `AUTO_COMPACT_H` (820 px; a
   notebook), with 28 px panel headers (`panelHead`, which the locked
@@ -591,7 +713,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/components/screen/ScreenRenderer.jsx` — one component, sized in
   container units — so a preview is the output; the Programa monitor plays
   videos muted (`motion`). The player's eye ("Tirar o vídeo · o som
-  continua", as in Holyrics) moves a video off the projector into the
+  continua", as in Holyrics; while the video plays as sound only it is
+  pressed and red, `is-sound`, Rodada F1) moves a video off the projector into the
   audio channel at the same second (`media.toAudio`; "Mostrar o vídeo" is
   `audio.toMedia`; `videoSwap` in `src/lib/console/player.js`, no
   YouTube) in the same `<video>`, without a gap: `LiveVideo` takes its
@@ -602,7 +725,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   topmost thing open (`escapeTarget`: a right-click menu, the background
   library, a popover, then THE window — one level of its stack, routed to
   the top page's close request — then the Camadas drawer) and with nothing
-  open ends at once (music on the audio channel keeps playing; the Fundo
+  open ends at once, fading out as Configurações › Telas e saídas ›
+  Transições says (Rodada F2) (music on the audio channel keeps playing; the Fundo
   stays on screen, and the idle look shows only with no Fundo); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
   `src/lib/console/restore.js`). Camadas' eyes on Texto principal and Fundo
@@ -613,7 +737,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   background (theirs, not the Fundo's; ScreenRenderer's Background). The rundown is called
   **"Setlist"** in the UI; its right click (and Planejar) has "Tirar da
   setlist…" / "Tirar a seção…" (`setlistActions.js`: asks with
-  `useConfirm`, then renumbers from the store; 0.2.18). Output windows are never background (occlusion
+  `useConfirm`, then renumbers from the store; 0.2.19). Output windows are never background (occlusion
   tracking off in `electron/main.cjs`): don't reintroduce per-element audio
   taps — the level meters read the system loopback in the console.
 - **Realtime is `keryx.entities.<Name>.subscribe(cb)`.** Returns an
@@ -621,8 +745,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   reaches every window with the whole row, deletes included.
 - **No login.** `auth.me()` is one local operator profile (`entities.User`
   maps to it whatever id is passed). Don't add features that assume
-  accounts; if cloud sync comes, its sign-in lives in Configurações and is
-  only for that. The profile and the church's preferences are read through
+  accounts: the sync between the church's computers (`electron/sync.cjs`)
+  goes through a shared folder, with no sign-in. The profile and the church's preferences are read through
   `src/hooks/useUser.js` (`useUser`, `usePrefs`, `getPrefs`, `updateUser`;
   null = default, `src/lib/prefs/schema.js`): a preference that should ride
   a backup is a User field, never localStorage (that is for this computer:
@@ -695,6 +819,26 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (taken by the console, `usePosterBackfill` + `mediaPosterCapture.js`,
   sent through `UploadFile`); it rides in the live item as `poster` for the
   Prévia and shows on hover in the Biblioteca.
+- **Apresentações are PDF only** (owner 2026-10-16, Rodada F3, "Só PDF"):
+  when a PDF reaches the Mídia the console renders its pages with pdf.js
+  (`pdfjs-dist`, a devDependency bundled by Vite; its worker and data files
+  are served at `/pdfjs/` by `pdfjsAssets` in vite.config.js — never a CDN),
+  ~1920 px wide, uploads each through `UploadFile` and saves
+  `Media.pages` (`[{ url, w, h }]`, page 1 = `thumbnail_url`):
+  `src/lib/pdfPagesCapture.js`, run by `usePagesBackfill` (old rows too; the
+  rows say "Preparando páginas 7/12", `PagesMeta`). On air a PDF is a
+  content of kind **"presentation"** (`stageFromMedia` →
+  `presentationStage`, `src/lib/presentation.js`, tested): one slide per
+  page (`{ image_url, label: "Página n" }`, `ref.mediaId`), so ←/→,
+  PageUp/PageDown (a clicker), the Slides column, No ar (thumbnails),
+  Desfazer, the controle remoto and the network screens walk it like a song.
+  ScreenRenderer draws the page `contain` on black — no theme, title, Fundo
+  or corner logo; the Palco shows the page and the next one; Letras and
+  Transmissão leave it out; Mostrar has "Apresentações". PowerPoint is never
+  converted: choosing one says `PPTX_HINT` (Salvar como › PDF), old rows stay
+  listed as "Salve como PDF" and cannot go on air (`stage.blocked`). PDFs
+  are out of "Tocar todos" (`playsInSequence`). The media layer no longer
+  draws a PDF (no iframe, no "Baixar apresentação").
 
 ## Commands
 
@@ -716,9 +860,9 @@ Smoke runs use a free port and a temp data folder, so they never collide with a 
 The smoke's audio-meter check (`metersFollowVolume`) hears every sound of the computer, and the focus checks (`focusKept`, `autoFocusKept`, `outputKeys.focus`, and `splitterKeys` when its arrow never arrived) need KERYX to be the program in front. When someone uses the PC during a run they do not fail: another program in front (no KERYX window focused) or another program playing (meters up, no KERYX window audible) marks them inconclusive, listed in `console.inconclusive`, and the run can still pass. An output holding the focus, or a KERYX window still audible after the mute, fails. The console page itself is told it has focus (CDP focus emulation), so fields that save on blur work regardless.
 
 Outputs (projector, stage, ...) render the live state, so either the console (`window.open`) or the main process (`outputs.open`, `keryx:displays:open`, "Abrir ao iniciar") can open them; `electron/outputs*.cjs` places and tracks them. **An output full screen on a monitor other than the console's stays
-always on top** (0.2.18, as Holyrics; `staysOnTop` in `electron/outputs.cjs`,
+always on top** (0.2.19, as Holyrics; `staysOnTop` in `electron/outputs.cjs`,
 tested): nothing can cover the projector; never as a window or on the
-console's own monitor. **The Saídas popover is one switch per local row** (2026-10-13): ligado = the window exists, the name of an open output brings it forward, states are plain text (`rowStatus` in `src/lib/console/outputs.js`, tested) and the banner stays the active alert; network rows keep Esquecer. **Remover saída** (Telas e saídas; also "Adicionar saída" there and in the popover) hides an output from the popover, the tabs and Verificar and never opens it at launch: the flag is `removed` on the electron settings `"outputs"` entry (per computer, carried by Exportar/Importar ajustes), the OutputPref row stays, so re-adding restores everything; `/Projection` is not removable (the Prévia mirrors it and send auto-opens it), and a network screen showing a removed page keeps working and keeps its row. Each renderer output (Projeção, Letras, Vídeo, Comunicação) has its own settings, one `OutputPref` row per page path shared by the window and network screens showing that page: pages draw through `OutputScreen` (`src/lib/outputPrefs.js`, tested); no row means the output exactly as before. **Telas e saídas is a thumbnail grid** (owner 2026-10-13, no more vertical tabs — old `telas/<tab>` links just resolve to the section): one card per output showing a real still of what that screen draws now (`OutputPreview` in OutputPrefCard.jsx — the card and the grid share it; connected network screens get the same still in Telas na rede); the card keeps only the placement (Automático/Tela N, Abrir ao iniciar, Abrir/Fechar; Remover no clique direito), and clicking the thumb opens the Editor on that screen — every visual setting lives there. **Mostrar** (`hidden_kinds`) leaves kinds out of one output (Letras, Bíblia, Texto, Imagens e vídeos, Relógio e timer, Avisos, Aviso rápido; `hideKinds`): the layer goes, the output shows what is under it or its idle look, and a song's playback track keeps playing (`track`); the console's Prévia says when the output it previews hides the prepared kind (`stageHidden`). A new kind of content gets its entry in `SHOW_KINDS`. **The Aviso rápido is one bar on every screen, in each screen's look** (Rodada E3, owner 2026-10-16): `alert.show` is drawn by `AlertBar` (`src/components/screen/AlertBar.jsx`, `.ks-alert` in screen.css) — inside ScreenRenderer, over a design (LayoutRenderer's `alert`, never inside its Projeção element), over the Vídeo's clip and beside the Palco's StageScreen (`AlertLayer`, a fixed box: `.net-stage` pulls its children into the flow); the old framer-motion pill (AlertOverlayRenderer) is gone, don't bring a second look back. Each output picks Posição (Alto/Baixo), Estilo (Faixa/Pílula), Cores, Tamanho (P/M/G) and Entrada (Deslizar/Aparecer/Nenhuma) in the Editor's Ajustes › Aviso rápido: flat `alert_*` keys of `OutputPref.options`, read by `alertOptions(pref, page)` (tested; no key = `ALERT_DEFAULTS`, the amber band across the top as the Projeção always drew it — except **the Palco, whose bar starts at the bottom** (owner 2026-10-16, `alertDefaults`: its header with title, Tom, BPM and clock is what the musicians read, and its old pill sat there; its Ajustes can still say Alto) — so every caller passes the page) and carried as `alert.look` by `prefState` (only when not the default, so no row = the same state) or `alertOf` (Palco, Vídeo's clip); the entrance respects reduced motion, and a type `"alert"` stays red. Every view keeps the alert (views.js: Vídeo and Comunicação too, so their Mostrar offers Aviso rápido); the Palco shows it while a song is on air, the Pastor's page never (`showsAlert`). The Programa monitor draws the raw live state, so it shows the default bar. **Exportar / Importar ajustes das saídas** (Telas e saídas) is one JSON file with every output's placement and every page's `OutputPref` settings (`src/lib/outputsFile.js`, tested; the theme travels by name): the main process only saves and reads the file (`keryx:displays:export-file` / `import-file`, 1 MB at most); the console checks it, says what will not come out the same on this computer, and applies it through `displays.set` and `OutputPref` (rows updated or created, never deleted). A new setting on `OutputPref` goes in that file too (the Aviso rápido's `alert_*` options ride in `options`, checked both ways by `cleanAlertOptions`). **Cada tela é dona do seu desenho** (owner 2026-10-13; reverte a decisão
+console's own monitor. **The Saídas popover is one switch per local row** (2026-10-13): ligado = the window exists, the name of an open output brings it forward, states are plain text (`rowStatus` in `src/lib/console/outputs.js`, tested) and the banner stays the active alert; network rows keep Esquecer. **Remover saída** (Telas e saídas; also "Adicionar saída" there and in the popover) hides an output from the popover, the tabs and Verificar and never opens it at launch: the flag is `removed` on the electron settings `"outputs"` entry (per computer, carried by Exportar/Importar ajustes), the OutputPref row stays, so re-adding restores everything; `/Projection` is not removable (the Prévia mirrors it and send auto-opens it), and a network screen showing a removed page keeps working and keeps its row. Each renderer output (Projeção, Letras, Vídeo, Comunicação) has its own settings, one `OutputPref` row per page path shared by the window and network screens showing that page: pages draw through `OutputScreen` (`src/lib/outputPrefs.js`, tested); no row means the output exactly as before. **Telas e saídas is a thumbnail grid** (owner 2026-10-13, no more vertical tabs — old `telas/<tab>` links just resolve to the section): one card per output showing a real still of what that screen draws now (`OutputPreview` in OutputPrefCard.jsx — the card and the grid share it; connected network screens get the same still in Telas na rede); the card keeps only the placement (Automático/Tela N, Abrir ao iniciar, Abrir/Fechar; Remover no clique direito), and clicking the thumb opens the Editor on that screen — every visual setting lives there. **Mostrar** (`hidden_kinds`) leaves kinds out of one output (Letras, Bíblia, Texto, Imagens e vídeos, Apresentações, Relógio e timer, Avisos, Aviso rápido; `hideKinds`): the layer goes, the output shows what is under it or its idle look, and a song's playback track keeps playing (`track`); the console's Prévia says when the output it previews hides the prepared kind (`stageHidden`). A new kind of content gets its entry in `SHOW_KINDS`. **The Aviso rápido is one bar on every screen, in each screen's look** (Rodada E3, owner 2026-10-16): `alert.show` is drawn by `AlertBar` (`src/components/screen/AlertBar.jsx`, `.ks-alert` in screen.css) — inside ScreenRenderer, over a design (LayoutRenderer's `alert`, never inside its Projeção element), over the Vídeo's clip and beside the Palco's StageScreen (`AlertLayer`, a fixed box: `.net-stage` pulls its children into the flow); the old framer-motion pill (AlertOverlayRenderer) is gone, don't bring a second look back. Each output picks Posição (Alto/Baixo), Estilo (Faixa/Pílula), Cores, Tamanho (P/M/G) and Entrada (Deslizar/Aparecer/Nenhuma) in the Editor's Ajustes › Aviso rápido: flat `alert_*` keys of `OutputPref.options`, read by `alertOptions(pref, page)` (tested; no key = `ALERT_DEFAULTS`, the amber band across the top as the Projeção always drew it — except **the Palco, whose bar starts at the bottom** (owner 2026-10-16, `alertDefaults`: its header with title, Tom, BPM and clock is what the musicians read, and its old pill sat there; its Ajustes can still say Alto) — so every caller passes the page) and carried as `alert.look` by `prefState` (only when not the default, so no row = the same state) or `alertOf` (Palco, Vídeo's clip); the entrance respects reduced motion, and a type `"alert"` stays red. Every view keeps the alert (views.js: Vídeo and Comunicação too, so their Mostrar offers Aviso rápido); the Palco shows it while a song is on air, the Pastor's page never (`showsAlert`). The Programa monitor draws the raw live state, so it shows the default bar. **Exportar / Importar ajustes das saídas** (Telas e saídas) is one JSON file with every output's placement and every page's `OutputPref` settings (`src/lib/outputsFile.js`, tested; the theme travels by name): the main process only saves and reads the file (`keryx:displays:export-file` / `import-file`, 1 MB at most); the console checks it, says what will not come out the same on this computer, and applies it through `displays.set` and `OutputPref` (rows updated or created, never deleted). A new setting on `OutputPref` goes in that file too (the Aviso rápido's `alert_*` options ride in `options`, checked both ways by `cleanAlertOptions`). **Cada tela é dona do seu desenho** (owner 2026-10-13; reverte a decisão
 de 2026-10-12 dos layouts avulsos): o desenho mora em **`OutputPref.design`**
 ({ elements, background } no formato de `normalizeLayout`) — `designOf(pref,
 layoutRows)` em `src/lib/outputPrefs.js` (testado) resolve: o design da
@@ -737,8 +881,8 @@ desenha a vista da saída (`prefState`) e um desenho com *timer* tira a
 camada `tool` dela (`layoutHasTimer`).
 **Os editores são páginas DA janela** (Rodada C, owner 2026-10-14, "uma
 janela, com Voltar"): todo `openEditor({ screen|theme, from })`
-(`src/lib/editorWindow.js`) cai no host que a console registra
-(`setEditorHost`) — com `from` (o título de onde veio) ele empurra um
+(`src/lib/editorWindow.js`) cai no host que a janela registra
+(`setEditorHost`: a console, ou a `/Janela` de uma página destacada) — com `from` (o título de onde veio) ele empurra um
 nível NA janela em cena ("← Temas", "← Telas e saídas"; de dentro do
 Editor da tela, "Editar tema…" empurra o Editor de temas, nível 3), sem
 `from` abre como janela própria; Esc volta um nível, o (x) fecha a
@@ -746,13 +890,14 @@ pilha, a janela cresce para o tamanho Editor (`.is-editor`) e a console
 desenha a barra (WinBar: título, ⧉ Destacar, ×). Na console cada editor
 é uma página (não há mais o alternador Temas | Telas nem o rodapé do
 diálogo; o guarda de não salvo pergunta via `useConfirm`, e trocar de
-tema/tela também). **"Destacar em janela"** (o ⧉ da barra; para quem
-edita vendo outro monitor) abre o `EditorHost` na janela de sempre:
-`/Editor` (`src/pages/Editor.jsx`; `openEditor({ …, detached: true })`,
-janela nomeada `keryx-editor`; aba no preview; nunca em NETWORK_SCREENS),
-com o guarda de fechar do Electron (closeGuard) — só lá ficam o rodapé
-com o alternador Temas | Telas e o guarda de dois toques (sem provider
-de confirmação). Os dois corpos:
+tema/tela também). **"Destacar em janela"** (o ⧉ da barra, como em toda
+página da janela — Rodada F5) passa primeiro pelo guarda de não salvo e
+abre o editor numa `/Janela` própria (`?page=theme&theme=<id>` ou
+`?page=screen&screen=<path>`; `openEditor({ …, detached: true })` vai para
+lá também), a mesma página hospedada, com o guarda de fechar do Electron
+(closeGuard). O antigo `/Editor` (`Editor.jsx`, `EditorHost`, o rodapé
+com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
+`/Editor` cai na `/Janela`. Os dois corpos:
   - uma TELA (`ScreenEditor.jsx`): menu vertical com as telas
     (`EDITOR_SCREENS`), o canvas edita o design DELA com os ajustes reais
     da própria tela vestindo a prévia (prefState + kp-out, ou só a Escala
@@ -835,7 +980,7 @@ moves the slide (`useConsole`, `followIndex`, `content.goTo` with
 `auto`); **the arrows never turn it off**: any other `content.goTo`
 re-syncs `follow.offset` so it goes on from the new slide; the player's
 chip (`FollowChip`, `followLabel` in player.js) pauses/resumes on
-purpose. The Biblioteca says "sincronizada". Generated backgrounds are the next step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa's pill, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
+purpose. The Biblioteca says "sincronizada". **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa's pill, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.
@@ -936,7 +1081,9 @@ so a release follows these rules. The steps and commands are in README ›
   get a uuid string. Never cast `id` to uuid.
 - **Unknown fields are dropped on write** (logged once per field in the main
   process), not rejected. Unknown fields in a filter or sort are errors.
-- **Routes are in `src/App.jsx` only:** `/Console` and the output pages
+- **Routes are in `src/App.jsx` only:** `/Console`, `/Janela` (a detached
+  page of the console's window; `/Editor` lands there too; desktop only)
+  and the output pages
   (`/Projection`, `/LyricProjection`, `/StageView`, `/VideoProjection`,
   `/CommunicationProjection`, `/PastorView`, `/StreamView`), the same output
   pages for network screens. A new output page goes there, in

@@ -6,8 +6,9 @@ import { songContent, passageContent, isVideoUrl } from "@/lib/console/content";
 import { noticeLabel } from "@/lib/console/notice";
 import { materialStage, materialMeta } from "@/lib/console/school";
 import { passageOf, chapterOf, chapterOnAir } from "@/lib/console/bibleVerses";
+import { presentationStage, presentationBlock, pagesOf, playsInSequence } from "@/lib/presentation";
 
-const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
+const KIND_LABEL = { lyrics: "Música", bible: "Bíblia", text: "Texto", presentation: "Apresentação", media: "Mídia", piece: "Aviso", tool: "Ferramenta", video: "Vídeo", audio: "Áudio" };
 
 export function stageFromSong(song, ref = {}, themes = []) {
     const content = songContent(song, ref, themes);
@@ -40,15 +41,19 @@ export function stageFromText(title, text) {
     return { kind: "text", id: `text:${title}`, title, meta: "Texto", slides: [{ text }], index: 0, op: "content.show", args: { kind: "text", title, slides: [{ text }], inherit: { look: true, background: true } } };
 }
 
-// A Media row: videos, images, PDFs and the like go to the main projector's
-// media layer; a video can be sent to the video screens instead (toVideo).
-// An audio file goes to the audio channel: it plays under whatever the
-// screens show.
+// A Media row: videos and images go to the main projector's media layer; a
+// video can be sent to the video screens instead (toVideo). An audio file
+// goes to the audio channel: it plays under whatever the screens show. A PDF
+// with its pages is a presentation (src/lib/presentation.js): its pages are
+// the slides. A PDF still being prepared, or a PowerPoint, shows in the
+// Prévia but cannot go on air (`blocked` says why).
 export function stageFromMedia(media, { toVideo = false } = {}) {
+    if (media.type === "pdf" && pagesOf(media).length) return presentationStage(media);
     const kind = media.type === "video" && media.file_url?.includes("youtu") ? "youtube" : media.type;
     const item = { kind, url: media.file_url, title: media.title || "", duration: media.duration || undefined, id: media.id, poster: media.thumbnail_url || undefined };
     if (kind === "audio") return { kind: "audio", id: `media:${media.id}`, title: media.title || "", meta: "Áudio", slides: [], index: 0, op: "audio.show", args: item, missing: Boolean(media.missing) };
-    return { kind: toVideo ? "video" : "media", id: `media:${media.id}`, title: media.title || "", meta: KIND_LABEL[kind] || media.type, slides: [], index: 0, op: toVideo ? "video.show" : "media.show", args: item, missing: Boolean(media.missing) };
+    const blocked = presentationBlock(media);
+    return { kind: toVideo ? "video" : "media", id: `media:${media.id}`, title: media.title || "", meta: KIND_LABEL[kind] || media.type, slides: [], index: 0, op: toVideo ? "video.show" : "media.show", args: item, missing: Boolean(media.missing), ...(blocked ? { blocked } : {}) };
 }
 
 // Several audio files played one after the other (music before the service,
@@ -60,7 +65,10 @@ export function stageFromAudioList(list) {
 
 // Pictures and videos shown one after the other on the projector (images
 // for their duration, videos to the end); the projector moves on by itself.
-export function stageFromMediaList(list) {
+// PDFs and PowerPoints are left out (playsInSequence): a PDF goes on air by
+// itself, page by page.
+export function stageFromMediaList(all) {
+    const list = all.filter(playsInSequence);
     const items = list.map((m) => ({ kind: m.type === "video" && m.file_url?.includes("youtu") ? "youtube" : m.type, url: m.file_url, title: m.title || "", id: m.id, duration: m.duration || undefined, poster: m.thumbnail_url || undefined }));
     return { kind: "media", id: `medias:${list.map((m) => m.id).join(",")}`, title: `${list.length} mídias em sequência`, meta: "Mídia", slides: [], index: 0, op: "media.playlist", args: { items, index: 0 }, missing: list.some((m) => m.missing) };
 }
@@ -147,6 +155,8 @@ export function liveStageId(state) {
         if (r.songId) return `song:${r.songId}`;
         if (r.materialId) return `material:${r.materialId}`;
         if (r.passageId) return `passage:${r.passageId}`;
+        // A presentation is its Media row, as in the Mídia's lists.
+        if (r.mediaId) return `media:${r.mediaId}`;
         return `${state.content.kind}:${state.content.title}`;
     }
     return null;

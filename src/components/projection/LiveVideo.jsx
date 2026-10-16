@@ -48,8 +48,11 @@ const videos = createPool({
  *   this window is an output: it reports the item's duration to the console's
  *   player (useDurationReport). Levels are never measured here — the console
  *   reads the system output itself, so playback cannot be disturbed.
+ * fadeOut: { at, until } on the live clock — the item is on its way out
+ *   (Transições: a new sound stopped it, Esc took it off): it plays on while
+ *   its volume comes down to 0 by `until`.
  */
-export default function LiveVideo({ item, loop = false, muted = false, className = "", onEnded, onDuration, meter = null }) {
+export default function LiveVideo({ item, loop = false, muted = false, className = "", onEnded, onDuration, meter = null, fadeOut = null }) {
     const isYouTube = item?.kind === "youtube";
     const hideYtTitle = usePrefs().youtube_hide_title;
     const videoRef = useRef(null);
@@ -61,6 +64,15 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     const callbacks = useRef({ onEnded, onDuration, loop, muted });
     callbacks.current = { onEnded, onDuration, loop, muted };
     const playback = item?.playback;
+    // How much of the volume is left on the way out (1: not leaving).
+    const fadeRef = useRef(fadeOut);
+    fadeRef.current = fadeOut;
+    const left = () => {
+        const f = fadeRef.current;
+        if (!f) return 1;
+        const span = f.until - f.at;
+        return span > 0 ? Math.max(0, Math.min(1, (f.until - keryx.live.now()) / span)) : 0;
+    };
     const metered = Boolean(meter) && Boolean(window.keryxDesktop);
     useDurationReport(videoRef, { layer: meter, url: item?.url || "", enabled: metered && !isYouTube });
 
@@ -97,14 +109,14 @@ export default function LiveVideo({ item, loop = false, muted = false, className
             if (plan.pause) p.pauseVideo();
             if (plan.play) p.playVideo();
             if (muted) p.mute();
-            else { p.unMute(); p.setVolume(Math.round(plan.volume * 100)); }
+            else { p.unMute(); p.setVolume(Math.round(plan.volume * left() * 100)); }
             return;
         }
         const el = videoRef.current;
         if (!el || el.readyState < 1) return;
         const plan = playbackPlan(el, playback, now, { loop });
         if (plan.seek !== undefined) el.currentTime = plan.seek;
-        el.volume = plan.volume;
+        el.volume = plan.volume * left();
         if (plan.pause) el.pause();
         if (plan.play) {
             el.play().then(() => setBlocked(false)).catch((err) => {
@@ -154,6 +166,23 @@ export default function LiveVideo({ item, loop = false, muted = false, className
         const id = setInterval(() => syncRef.current(), SYNC_MS);
         return () => clearInterval(id);
     }, [item?.url, item?.shownAt, playback?.paused, playback?.position, playback?.at, playback?.volume, muted]);
+
+    // On the way out: the volume comes down in small steps, without a gap.
+    const fadeAt = fadeOut?.at;
+    const fadeUntil = fadeOut?.until;
+    useEffect(() => {
+        if (fadeUntil === undefined || callbacks.current.muted) return undefined;
+        const step = () => {
+            const v = (playback?.volume ?? 1) * left();
+            const p = ytRef.current;
+            if (isYouTube) { if (typeof p?.setVolume === "function") p.setVolume(Math.round(v * 100)); }
+            else if (videoRef.current) videoRef.current.volume = v;
+            return v > 0;
+        };
+        if (!step()) return undefined;
+        const id = setInterval(() => { if (!step()) clearInterval(id); }, 40);
+        return () => clearInterval(id);
+    }, [fadeAt, fadeUntil, isYouTube]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // YouTube: one player per link.
     useEffect(() => {

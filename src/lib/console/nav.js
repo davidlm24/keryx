@@ -71,14 +71,61 @@ export const replaceTop = (stack, props, { keep = false } = {}) => {
 };
 
 // The ?song= / ?config= style query params still open their page at launch
-// (the old desktop routes land here); null when none asks for a window.
+// (the old desktop routes land here), and they are what a detached page's
+// window opens with (/Janela, detachSpec below); null when none asks for a
+// window. "1" (and a planner's "new") means "no row in particular".
+const some = (v) => (v && v !== "1" ? v : null);
 export const stackFromParams = (params) => {
-    if (params.get("config")) return openStack({ page: "config" });
-    if (params.get("song")) return openStack({ page: "song", props: { id: params.get("song") } });
-    if (params.get("planner")) return openStack({ page: "planner" });
-    if (params.get("media")) return openStack({ page: "media" });
-    if (params.get("notice")) return openStack({ page: "notice", props: { id: params.get("notice") } });
-    if (params.get("school")) return openStack({ page: "school" });
-    if (params.get("reports")) return openStack({ page: "reports" });
+    const get = (k) => params.get(k);
+    if (get("config")) return openStack({ page: "config", props: some(get("config")) ? { section: get("config") } : {} });
+    // ?song=<id>&sync=1: the Editor de música, Sincronizar opening on top.
+    if (get("song")) return openStack({ page: "song", props: { id: get("song"), ...(get("sync") ? { sync: true } : {}) } });
+    if (get("planner")) { const id = some(get("planner")); return openStack({ page: "planner", props: id && id !== "new" ? { serviceId: id } : {} }); }
+    if (get("media")) return openStack({ page: "media" });
+    if (get("notice")) return openStack({ page: "notice", props: { id: get("notice") } });
+    if (get("material")) return openStack({ page: "material", props: { id: get("material") === "new" ? null : get("material"), classId: get("class") || "" } });
+    if (get("school")) return openStack({ page: "school" });
+    if (get("reports")) return openStack({ page: "reports" });
+    // The editors (the old /Editor window's deep links too).
+    if (get("theme")) return openStack({ page: "theme", props: { id: get("theme") } });
+    if (get("screen")) return openStack({ page: "screen", props: { path: get("screen") } });
     return null;
 };
+
+// "Destacar em janela" (Rodada F5, owner 2026-10-16: every page of THE
+// window): the page on top moves to a window of its own, /Janela
+// (src/pages/Janela.jsx), for whoever works watching another monitor.
+// -> { pop, page, query }: how many levels leave the console's window,
+// the page the new window shows (its window name, keryx-janela-<page>)
+// and its params, which stackFromParams reads back; null when the page on
+// top cannot stand alone. Sincronizar answers to the Editor de música
+// below it (its Aplicar fills that editor's draft), so the two go
+// together: ?song=<id>&sync=1. What the console keeps outside the stack
+// comes in `at`: the Configurações section, the culto in hand.
+export const detachSpec = (stack, at = {}) => {
+    const t = top(stack);
+    if (!t) return null;
+    const p = t.props || {};
+    const one = (page, query) => ({ pop: 1, page, query: new URLSearchParams({ page, ...query }).toString() });
+    switch (t.page) {
+        case "config": return one("config", { config: at.section || "1" });
+        case "planner": return one("planner", { planner: at.serviceId || "1" });
+        case "media": return one("media", { media: "1" });
+        case "notice": return one("notice", { notice: p.id || "new" });
+        case "song": return one("song", { song: p.id || "new" });
+        case "school": return one("school", { school: "1" });
+        case "material": return one("material", { material: p.id || "new", ...(p.classId ? { class: p.classId } : {}) });
+        case "reports": return one("reports", { reports: "1" });
+        case "theme": return one("theme", { theme: p.id || "new" });
+        case "screen": return one("screen", { screen: p.path || "/Projection" });
+        case "sync": {
+            const below = stack.length > 1 ? stack[stack.length - 2] : null;
+            if (below?.page !== "song" || !below.props?.id || below.props.id === "new") return null;
+            return { pop: 2, page: "song", query: new URLSearchParams({ page: "song", song: below.props.id, sync: "1" }).toString() };
+        }
+        default: return null;
+    }
+};
+// The detached page's window: one per kind of page (opening it again
+// navigates that one, whose unsaved guard still asks).
+export const janelaName = (page) => `keryx-janela-${page}`;

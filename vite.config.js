@@ -1,5 +1,7 @@
 import { fileURLToPath, URL } from 'node:url'
 import { createRequire } from 'node:module'
+import fs from 'node:fs'
+import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
@@ -25,9 +27,36 @@ function keryxPreview() {
   };
 }
 
+// pdf.js's data files (character maps, standard fonts, image decoders,
+// colour profiles) at /pdfjs/: served by the dev server and copied into the
+// build, so the console reads any PDF offline (src/lib/pdfPagesCapture.js),
+// never from a CDN. The script sandbox (quickjs) is left out: PDFs are only
+// drawn, their scripts never run.
+function pdfjsAssets() {
+  const root = fileURLToPath(new URL('./node_modules/pdfjs-dist/', import.meta.url));
+  const DIRS = ['cmaps', 'standard_fonts', 'wasm', 'iccs'];
+  const files = (dir) => fs.readdirSync(path.join(root, dir)).filter((name) => !name.startsWith('quickjs'));
+  return {
+    name: 'keryx-pdfjs-assets',
+    configureServer(server) {
+      server.middlewares.use('/pdfjs/', (req, res, next) => {
+        const [dir, name, extra] = decodeURIComponent((req.url || '').split('?')[0]).replace(/^\/+/, '').split('/');
+        if (!DIRS.includes(dir) || !name || extra !== undefined || !files(dir).includes(name)) return next();
+        res.setHeader('Content-Type', name.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream');
+        fs.createReadStream(path.join(root, dir, name)).pipe(res);
+      });
+    },
+    generateBundle() {
+      for (const dir of DIRS) {
+        for (const name of files(dir)) this.emitFile({ type: 'asset', fileName: `pdfjs/${dir}/${name}`, source: fs.readFileSync(path.join(root, dir, name)) });
+      }
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), keryxPreview()],
+  plugins: [react(), keryxPreview(), pdfjsAssets()],
   // The side-panel preview passes a free port in PORT (.claude/launch.json,
   // autoPort); without it Vite keeps its default.
   server: process.env.PORT ? { port: Number(process.env.PORT), strictPort: true } : {},

@@ -209,6 +209,242 @@ test("importRows keeps ids and timestamps, replaces on re-run, emits nothing", (
     assert.equal(events.length, 0);
 });
 
+test("every entity is either synced or local, never both", () => {
+    const { SYNC_ENTITIES, LOCAL_ENTITIES, LOCAL_USER_FIELDS } = require("./syncScope.cjs");
+    for (const name of Object.keys(schema.entities)) {
+        assert.ok(SYNC_ENTITIES.has(name) !== LOCAL_ENTITIES.has(name), `${name}: add it to SYNC_ENTITIES or LOCAL_ENTITIES in syncScope.cjs`);
+    }
+    for (const name of [...SYNC_ENTITIES, ...LOCAL_ENTITIES]) assert.ok(schema.entities[name], `${name} is not an entity`);
+    for (const field of LOCAL_USER_FIELDS) assert.ok(schema.entities.User.columns[field], `User.${field} does not exist`);
+});
+
+test("syncRow: local entities stay, the profile travels without this computer's fields", () => {
+    const { syncRow } = require("./syncScope.cjs");
+    assert.equal(syncRow("OutputPref", { id: "x" }), null);
+    assert.equal(syncRow("BibleVerse", { id: "x" }), null);
+    const song = { id: "s", title: "A" };
+    assert.deepEqual(syncRow("Song", song), song);
+    assert.notEqual(syncRow("Song", song), song, "a copy");
+    const me = syncRow("User", { id: PROFILE_ID, logo_url: "l", church_name: "Gerar", full_name: "Ana", prefs_version: 2, console_density: "compact" });
+    assert.deepEqual(me, { id: PROFILE_ID, logo_url: "l", church_name: "Gerar" });
+});
+
+test("deleting a synced row leaves a tombstone; local entities leave none", () => {
+    const s = fresh();
+    const a = s.call("Song", "create", [{ title: "A" }]);
+    const pref = s.call("OutputPref", "create", [{ page: "/Projection" }]);
+    s.call("Song", "delete", [a.id]);
+    s.call("Song", "delete", [a.id]);
+    s.call("OutputPref", "delete", [pref.id]);
+    s.call("Song", "delete", ["never-existed"]);
+    const marks = s.tombstones();
+    assert.equal(marks.length, 1);
+    assert.equal(marks[0].entity, "Song");
+    assert.equal(marks[0].id, a.id);
+    assert.ok(Date.parse(marks[0].deleted_at) >= Date.parse(a.created_date));
+});
+
+test("tombstones: since filters, a row back clears its mark, prune forgets old ones", () => {
+    const s = fresh();
+    const [a, b] = s.call("Song", "bulkCreate", [[{ title: "A" }, { title: "B" }]]);
+    s.call("Song", "delete", [a.id]);
+    const first = s.tombstones()[0].deleted_at;
+    s.call("Song", "delete", [b.id]);
+    assert.equal(s.tombstones().length, 2);
+    assert.ok(s.tombstones(first).every((m) => m.deleted_at > first));
+    s.importRows("Song", [{ ...a }]);
+    assert.deepEqual(s.tombstones().map((m) => m.id), [b.id], "restored row is no longer deleted");
+    assert.equal(s.pruneTombstones("2000-01-01"), 0);
+    assert.equal(s.pruneTombstones(new Date(Date.now() + 60_000)), 1);
+    assert.equal(s.tombstones().length, 0);
+    assert.throws(() => s.pruneTombstones("nope"), { status: 400 });
+});
+
+const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+// Carries what `from` recorded after `cursor` to `to`; returns the new cursor.
+const carry = (from, to, cursor = 0) => {
+    const changes = from.outbox(cursor);
+    to.applyRemote(changes);
+    return changes.length ? changes[changes.length - 1].seq : cursor;
+};
+
+test("the computer's id is made once and kept in the database", () => {
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "keryx-")), "t.db");
+    const first = createStore({ file, schema, log: () => {} });
+    const id = first.pcId;
+    first.close();
+    const again = createStore({ file, schema, log: () => {} });
+    assert.match(id, /^[0-9a-f-]{36}$/);
+    assert.equal(again.pcId, id);
+    assert.notEqual(fresh().pcId, id, "another database, another computer");
+    again.close();
+});
+
+test("outbox: every change to a synced entity, in order, nothing local", () => {
+    const s = fresh();
+    const a = s.call("Song", "create", [{ title: "A" }]);
+    const [b] = s.call("Song", "bulkCreate", [[{ title: "B" }]]);
+    s.call("Song", "update", [a.id, { title: "A2" }]);
+    s.call("Song", "bulkUpdate", [[{ id: b.id, title: "B2" }]]);
+    s.call("Song", "delete", [b.id]);
+    s.call("OutputPref", "create", [{ page: "/Projection" }]);
+    s.call("LiveSession", "create", [{ status: "active" }]);
+    s.importRows("Song", [{ id: "imported", title: "I" }]);
+    const out = s.outbox();
+    assert.deepEqual(out.map((c) => `${c.op}:${c.row?.title ?? "-"}`), ["upsert:A", "upsert:B", "upsert:A2", "upsert:B2", "delete:-"]);
+    assert.ok(out.every((c) => c.entity === "Song" && c.pc === s.pcId));
+    assert.ok(out.every((c, i) => i === 0 || c.seq > out[i - 1].seq));
+    assert.equal(out[2].at, s.call("Song", "get", [a.id]).updated_date, "an upsert is at the row's date");
+    assert.equal(out[4].at, s.tombstones()[0].deleted_at, "a delete is at its tombstone's");
+    assert.equal(out[4].row, null);
+    assert.deepEqual(s.outbox(out[2].seq).map((c) => c.seq), [out[3].seq, out[4].seq]);
+    assert.equal(s.outbox(0, 2).length, 2);
+    assert.equal(s.pruneOutbox(out[2].seq), 3);
+    assert.deepEqual(s.outbox().map((c) => c.seq), [out[3].seq, out[4].seq], "seq keeps counting");
+    assert.throws(() => s.pruneOutbox("x"), { status: 400 });
+});
+
+test("outbox: the profile travels only when a church field changes, without this computer's fields", () => {
+    const s = fresh();
+    s.call("User", "update", [PROFILE_ID, { full_name: "Ana", console_density: "compact" }]);
+    assert.equal(s.outbox().length, 0, "who operates and the density stay here");
+    s.call("User", "update", [PROFILE_ID, { logo_url: "l" }]);
+    const [change] = s.outbox();
+    assert.equal(change.entity, "User");
+    assert.equal(change.row.logo_url, "l");
+    assert.equal(change.row.full_name, undefined);
+    assert.equal(change.row.console_density, undefined);
+});
+
+test("applyRemote: takes newer changes, emits events, never echoes them", () => {
+    const a = fresh();
+    const b = fresh();
+    const song = a.call("Song", "create", [{ title: "A", slides: [{ text: "v1" }], is_favorite: true }]);
+    const events = [];
+    b.onChange((e) => events.push(e));
+    const result = b.applyRemote(a.outbox());
+    assert.deepEqual(result, { applied: 1, skipped: 0, failed: 0 });
+    const copy = b.call("Song", "get", [song.id]);
+    assert.deepEqual(copy, song, "same id, timestamps and values");
+    assert.deepEqual(events.map((e) => `${e.entity}:${e.type}:${e.id}`), [`Song:create:${song.id}`]);
+    assert.equal(b.outbox().length, 0, "a remote change is not this computer's");
+    assert.deepEqual(b.applyRemote(a.outbox()), { applied: 0, skipped: 1, failed: 0 }, "the same change twice");
+    assert.deepEqual(a.applyRemote(a.outbox()), { applied: 0, skipped: 1, failed: 0 }, "our own changes");
+    assert.deepEqual(b.applyRemote([
+        { entity: "OutputPref", id: "x", op: "upsert", row: { id: "x" }, at: new Date().toISOString(), pc: "p" },
+        { entity: "Nope", id: "x", op: "upsert", row: { id: "x" }, at: new Date().toISOString(), pc: "p" },
+        { entity: "Song", id: "x", op: "rename", at: new Date().toISOString(), pc: "p" },
+        { entity: "Song", id: "x", op: "upsert", row: { id: "x" }, at: "nope", pc: "p" },
+        null,
+    ]).skipped, 5);
+    assert.equal(events.length, 1);
+    assert.throws(() => b.applyRemote("x"), { status: 400 });
+});
+
+test("applyRemote: a tie on the date goes to the computer with the greater id", () => {
+    const s = fresh();
+    const song = s.call("Song", "create", [{ title: "here" }]);
+    const at = song.updated_date;
+    const lower = "0".repeat(8), higher = "~";
+    assert.ok(lower < s.pcId && higher > s.pcId);
+    s.applyRemote([{ entity: "Song", id: song.id, op: "upsert", row: { ...song, title: "lower" }, at, pc: lower }]);
+    assert.equal(s.call("Song", "get", [song.id]).title, "here");
+    s.applyRemote([{ entity: "Song", id: song.id, op: "upsert", row: { ...song, title: "higher" }, at, pc: higher }]);
+    assert.equal(s.call("Song", "get", [song.id]).title, "higher");
+    s.applyRemote([{ entity: "Song", id: song.id, op: "upsert", row: { ...song, title: "between" }, at, pc: s.pcId + "0" }]);
+    assert.equal(s.call("Song", "get", [song.id]).title, "higher", "the tie is against the computer that made the row's version");
+});
+
+test("two computers converge: edits on both, older vs newer, delete vs later edit", async () => {
+    const a = fresh();
+    const b = fresh();
+    let fromA = 0, fromB = 0;
+    const exchange = () => {
+        fromA = carry(a, b, fromA);
+        fromB = carry(b, a, fromB);
+    };
+    const titles = (s) => s.call("Song", "list", ["title"]).map((r) => r.title).join(",");
+
+    // Edits on both computers meet.
+    const one = a.call("Song", "create", [{ title: "Um" }]);
+    const two = b.call("Song", "create", [{ title: "Dois" }]);
+    const three = a.call("Song", "create", [{ title: "Três" }]);
+    exchange();
+    assert.equal(titles(a), "Dois,Três,Um");
+    assert.equal(titles(b), titles(a));
+
+    // The same song edited on both: the later edit wins on both, whichever
+    // arrives first.
+    a.call("Song", "update", [one.id, { title: "Um (A)" }]);
+    await tick();
+    b.call("Song", "update", [one.id, { title: "Um (B)" }]);
+    fromB = carry(b, a, fromB);
+    fromA = carry(a, b, fromA);
+    assert.equal(a.call("Song", "get", [one.id]).title, "Um (B)", "the older edit does not overwrite the newer");
+    assert.equal(b.call("Song", "get", [one.id]).title, "Um (B)");
+
+    // A delete, then a later edit elsewhere: the edit wins and the song is back.
+    a.call("Song", "delete", [two.id]);
+    await tick();
+    b.call("Song", "update", [two.id, { title: "Dois (B)" }]);
+    exchange();
+    assert.equal(a.call("Song", "get", [two.id]).title, "Dois (B)");
+    assert.equal(b.call("Song", "get", [two.id]).title, "Dois (B)");
+    assert.equal(a.tombstones().length, 0, "the song exists again on A");
+
+    // An edit, then a later delete elsewhere: the delete wins.
+    b.call("Song", "update", [three.id, { title: "Três (B)" }]);
+    await tick();
+    a.call("Song", "delete", [three.id]);
+    exchange();
+    assert.throws(() => a.call("Song", "get", [three.id]), { status: 404 });
+    assert.throws(() => b.call("Song", "get", [three.id]), { status: 404 });
+    assert.deepEqual(b.tombstones().map((m) => m.id), [three.id]);
+
+    // Nothing bounced back: each outbox holds only its own computer's edits.
+    assert.ok(a.outbox().every((c) => c.pc === a.pcId));
+    assert.ok(b.outbox().every((c) => c.pc === b.pcId));
+    assert.equal(titles(a), titles(b));
+});
+
+test("two computers: the profile merges the church's fields and keeps each one's own", async () => {
+    const a = fresh();
+    const b = fresh();
+    a.call("User", "update", [PROFILE_ID, { full_name: "Ana", console_density: "compact", logo_url: "logo-A", church_name: "Igreja" }]);
+    await tick();
+    b.call("User", "update", [PROFILE_ID, { full_name: "Bia", church_name: "Gerar" }]);
+    await tick();
+    // A's later local-only edit must not hide B's church edit from it.
+    a.call("User", "update", [PROFILE_ID, { console_density: "comfortable" }]);
+    const events = [];
+    a.onChange((e) => events.push(e));
+    carry(a, b);
+    carry(b, a);
+    const meA = a.call("User", "get", [PROFILE_ID]);
+    const meB = b.call("User", "get", [PROFILE_ID]);
+    assert.equal(meA.full_name, "Ana");
+    assert.equal(meA.console_density, "comfortable");
+    assert.equal(meB.full_name, "Bia");
+    assert.notEqual(meB.console_density, "compact", "A's density never reaches B");
+    assert.equal(meA.church_name, "Gerar", "B's newer edit of the field reaches A");
+    assert.equal(meB.church_name, "Gerar", "A's older edit of it does not overwrite B's");
+    assert.equal(meA.logo_url, "logo-A", "a field B never edited stays");
+    assert.equal(meB.logo_url, "logo-A", "and reaches B");
+    assert.deepEqual(events.map((e) => `${e.entity}:${e.type}`), ["User:update"]);
+    assert.equal(a.outbox().filter((c) => c.entity === "User").length, 1, "nothing echoed");
+    // A remote copy that carries local fields anyway leaves them alone.
+    a.applyRemote([{ entity: "User", id: "other", op: "upsert", at: new Date(Date.now() + 1000).toISOString(), pc: "p",
+        row: { id: "other", full_name: "Intruso", prefs_version: 99, church_name: "Nova" } }]);
+    const after = a.call("User", "get", [PROFILE_ID]);
+    assert.equal(after.full_name, "Ana");
+    assert.notEqual(after.prefs_version, 99);
+    assert.equal(after.church_name, "Nova");
+    assert.equal(a.call("User", "list", []).length, 1, "still one profile");
+    assert.equal(a.applyRemote([{ entity: "User", id: PROFILE_ID, op: "delete", at: new Date(Date.now() + 2000).toISOString(), pc: "p" }]).applied, 0);
+});
+
 test("schema upgrade adds new columns to an existing database", () => {
     const fs = require("node:fs");
     const os = require("node:os");
@@ -219,4 +455,16 @@ test("schema upgrade adds new columns to an existing database", () => {
     const row = s.call("Song", "create", [{ title: "A", slides: [{ text: "x" }] }]);
     assert.deepEqual(row.slides, [{ text: "x" }]);
     s.close();
+});
+
+test("meta: this database's own bookkeeping, JSON values, the computer's id not settable", () => {
+    const s = fresh();
+    assert.equal(s.getMeta("sync.state"), null);
+    s.setMeta("sync.state", { folder: "G:/KERYX", cursors: { "a/changes-000001.jsonl": 120 } });
+    assert.deepEqual(s.getMeta("sync.state"), { folder: "G:/KERYX", cursors: { "a/changes-000001.jsonl": 120 } });
+    s.setMeta("sync.state", null);
+    assert.equal(s.getMeta("sync.state"), null);
+    assert.throws(() => s.setMeta("pc_id", "x"), { status: 400 });
+    assert.equal(s.getMeta("pc_id"), null, "a plain string id is not JSON");
+    assert.equal(s.outbox().length, 0, "nothing in the outbox");
 });

@@ -6,6 +6,7 @@ import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { usePosterBackfill } from "@/hooks/usePosterBackfill";
+import { usePagesBackfill } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
 import { serviceTheme, lookFields, lookOf } from "@/lib/console/serviceLook";
@@ -36,22 +37,13 @@ import BibleEnv, { bibleVersionWanted } from "@/components/console/BibleEnv";
 import BibleQuickJump from "@/components/console/BibleQuickJump";
 import VerifyView from "@/components/console/VerifyView";
 import LyricsSearch from "@/components/console/LyricsSearch";
-import SongEditor from "@/components/console/SongEditor";
-import SyncView from "@/components/console/SyncView";
-import ServicePlanner from "@/components/console/ServicePlanner";
-import MediaView from "@/components/console/MediaView";
-import NoticeEditor from "@/components/console/NoticeEditor";
+import { winPage } from "@/components/console/WinPages";
 import { openEditor, setEditorHost } from "@/lib/editorWindow";
-import ThemeEditor from "@/components/editor/ThemeEditor";
-import ScreenEditor from "@/components/editor/ScreenEditor";
+import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { WinEdges, useWinState, setWinState } from "@/components/console/winLayout";
 import { withSize } from "@/lib/console/winLayout";
-import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams } from "@/lib/console/nav";
+import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec, janelaName } from "@/lib/console/nav";
 import { setIdleMode } from "@/lib/console/idle";
-import SchoolView from "@/components/console/SchoolView";
-import MaterialView from "@/components/console/MaterialView";
-import ReportsView from "@/components/console/ReportsView";
-import SettingsView from "@/components/console/settings/SettingsView";
 import { resolveSection } from "@/lib/console/settings";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
@@ -63,7 +55,7 @@ import TabsPanel, { TabsPlus } from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
-import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier } from "@/lib/console/layout";
+import { loadLayout, saveLayout, DEFAULT_LAYOUT, MODULES as VER_LIST, tierFor, shownDensity, panelHead, restoreEnv, switchTier, toggleFolded, foldedList } from "@/lib/console/layout";
 import { MODULES as DOCK_MODULES, fromArrangement, fromBibleArrangement, defaultDock, normalizeDock, fitDock, goneModules, onAirHeight, moveModules, hideModule, returnModule, isPinned, trayFlags, applyTrayFlags, canTray, leaves, pathOf , moveBand, dockMode, setDockMode } from "@/lib/console/dock";
 import { pickTile } from "@/lib/console/multiview";
 import { useRailViews } from "@/hooks/useOutputPref";
@@ -75,6 +67,7 @@ import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
+import { presentationBlock } from "@/lib/presentation";
 import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
@@ -107,6 +100,19 @@ export default function Console() {
     // Every video's still (Media.thumbnail_url), the background library's too.
     const allMedia = useMemo(() => [...data.media, ...data.backgroundMedia], [data.media, data.backgroundMedia]);
     usePosterBackfill(allMedia);
+    // Every PDF's pages as pictures (Media.pages): a presentation on air.
+    usePagesBackfill(data.media);
+    // A PDF put in the Prévia before its pages were ready (stage.blocked):
+    // when they arrive the Prévia becomes the presentation, so Enter sends it
+    // without picking it again (a setlist item keeps its ref).
+    const { prev: cPrev, setPrev: cSetPrev } = c;
+    useEffect(() => {
+        if (!cPrev?.blocked || !cPrev.args?.id) return;
+        const row = data.media.find((m) => m.id === cPrev.args.id);
+        if (!row || presentationBlock(row)) return;
+        const s = stageFromMedia(row);
+        cSetPrev(cPrev.args.ref ? { ...s, args: { ...s.args, ref: { ...(s.args.ref || {}), ...cPrev.args.ref } } } : s);
+    }, [cPrev, cSetPrev, data.media]);
     const [profile, setProfile] = useState("");
     const [quick, setQuick] = useState(null);
     // The layer the player controls when several play (null: the newest).
@@ -167,6 +173,11 @@ export default function Console() {
         const keys = new Set(win.map((e) => e.key));
         for (const k of [...winRefs.current.keys()]) if (!keys.has(k)) winRefs.current.delete(k);
     }, [win]);
+    // ⧉ Destacar em janela (Rodada F5, owner 2026-10-16: every page): a
+    // detach under way — the levels still to leave (top last) and where they
+    // go (nav.js detachSpec). Each level leaves through its own guard
+    // (winCloser below); a "Continuar" anywhere drops it.
+    const detaching = useRef(null);
     // What a page's guard calls once leaving is allowed: pop (or close, at
     // the first level); all = the (x), the whole stack.
     const leaveTop = useCallback((all = false) => setWin((s) => (all || s.length <= 1 ? [] : winPop(s))), []);
@@ -175,6 +186,7 @@ export default function Console() {
     const winEsc = useCallback((mode = "esc") => {
         const t = winTopOf(winStateRef.current);
         if (!t) return;
+        if (mode !== "detach") detaching.current = null;
         const fn = winRefs.current.get(t.key)?.current;
         if (fn) fn(mode); else leaveTop(mode === "all");
     }, [leaveTop]);
@@ -206,7 +218,11 @@ export default function Console() {
     const askText = useCallback((spec) => new Promise((resolve) => setAsk({ ...spec, resolve })), []);
     const answerAsk = useCallback((value) => setAsk((prev) => { prev?.resolve(value ?? null); return null; }), []);
     const askConfirm = useCallback((opts) => new Promise((resolve) => setConfirmReq((prev) => { prev?.resolve(false); return { ...opts, resolve }; })), []);
-    const answerConfirm = useCallback((yes) => setConfirmReq((prev) => { prev?.resolve(Boolean(yes)); return null; }), []);
+    const answerConfirm = useCallback((yes) => {
+        // "Continuar" to an unsaved guard: a detach under way stays here.
+        if (!yes) detaching.current = null;
+        setConfirmReq((prev) => { prev?.resolve(Boolean(yes)); return null; });
+    }, []);
     // The right-click menu open now (ContextMenu.jsx), first in the Esc order.
     const [ctxMenu, setCtxMenu] = useState(null);
     const openMenu = useCallback((e, spec) => { e.preventDefault(); e.stopPropagation(); setCtxMenu(menuRequest(e, spec)); }, []);
@@ -237,13 +253,6 @@ export default function Console() {
         setWin((s) => (from && s.length ? winPush(s, spec, from) : openStack(spec)));
         return true;
     }), [closeLibrary]);
-    // Pop the editor's level, then reopen the same document in the /Editor
-    // window (for whoever edits looking at another monitor).
-    const detachEditor = useCallback((entry) => {
-        setWin((s) => (s.length > 1 ? winPop(s) : []));
-        const r = openEditor({ [entry.page === "theme" ? "theme" : "screen"]: entry.page === "theme" ? entry.props.id : entry.props.path, detached: true });
-        if (r?.error) c.say(r.error);
-    }, [c]);
     // The Escola bíblica sends through the KERYX environment's Prévia.
     const openSchool = useCallback(() => { setOpen(null); setEnvState("culto"); setWin(openStack({ page: "school" })); }, []);
     const openReports = useCallback(() => { setOpen(null); setWin(openStack({ page: "reports" })); }, []);
@@ -397,7 +406,8 @@ export default function Console() {
         if (type === "ANNOUNCEMENT" && item.contentId) { const s = stageFromPiece(await keryx.entities.CommunicationVideo.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
         if (type === "SONG") return stageFromSong(await keryx.entities.Song.get(item.contentId), ref, data.themes);
         if (type === "BIBLE") return stageFromPassage(await keryx.entities.BiblePassage.get(item.contentId), ref);
-        if (["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
+        // A PDF's presentation keeps its own ref (mediaId: the lists mark it on air).
+        if (["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref: { ...(s.args.ref || {}), ...ref } } }; }
         if (type === "TIMER") { const s = stageFromTool("timer", { minutes: Math.max(1, Math.round((item.duration || 300) / 60)) }); return { ...s, args: { ...s.args, ref } }; }
         const s = stageFromText(item.title || "Texto", item.notes || item.title || "");
         return { ...s, args: { ...s.args, ref } };
@@ -525,7 +535,7 @@ export default function Console() {
         else if (stage.id?.startsWith("media:")) {
             contentId = stage.id.slice(6);
             const k = stage.args?.kind;
-            type = k === "video" || k === "youtube" ? "VIDEO" : k === "audio" ? "AUDIO" : k === "pdf" ? "PDF" : k === "powerpoint" ? "POWERPOINT" : "IMAGE";
+            type = k === "video" || k === "youtube" ? "VIDEO" : k === "audio" ? "AUDIO" : k === "pdf" || k === "presentation" ? "PDF" : k === "powerpoint" ? "POWERPOINT" : "IMAGE";
         }
         if (!type) { c.say("Esse item ainda não entra na setlist; arraste para a Prévia ou o Programa."); return; }
         const at = Math.max(0, Math.min(items.length, index ?? items.length));
@@ -854,10 +864,12 @@ export default function Console() {
 
     // A mouse click must not leave focus on the control it hit: the live keys
     // would then belong to that control (the "keys don't work" bug). Keyboard
-    // activation (detail 0) keeps focus, so Tab navigation still works.
+    // activation (detail 0) keeps focus, so Tab navigation still works. A
+    // slider too: one left focused kept PageUp/PageDown, so a presentation
+    // clicker moved the player's volume instead of the page.
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
-        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href]");
+        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href], input[type='range']");
         if (t && !t.closest(".dialog, .palette, .qj, .lyr, .addmenu")) setTimeout(() => t.blur?.(), 0);
     };
 
@@ -883,14 +895,20 @@ export default function Console() {
     // panel header it gives (28 or 32 px).
     const density = shownDensity(layout, mainSize.h);
     const PANEL_HEAD = panelHead(density);
-    // Minimized (its header's chevron, as Holyrics' strip): only its header.
-    const onAirH = layout.onairMin ? PANEL_HEAD : onAirHeight(c.cur?.content?.slides, PANEL_HEAD);
+    const onAirH = onAirHeight(c.cur?.content?.slides, PANEL_HEAD);
     const [camadasFitH, setCamadasFitH] = useState(0);
     const [temasFitH, setTemasFitH] = useState(0);
+    // The panels folded with their header's chevron (owner 2026-10-16,
+    // Rodada F4; layout.folded, this computer's): down a column a header,
+    // across a row a strip (fitDock's `folded`, the fold winning over the
+    // heights above). While editing the arrangement every panel is open.
+    const folded = editing ? "" : foldedList(layout.folded).join();
+    const onFold = (id) => setLayout({ ...layout, folded: toggleFolded(layout.folded, id) });
     const dockFrame = useMemo(() => fitDock(dock, mainSize.w, mainSize.h, {
         gone: gone ? gone.split(",") : [],
         locked: { onair: onAirH, ...(camadasFitH ? { camadas: PANEL_HEAD + camadasFitH } : {}), ...(temasFitH ? { temas: PANEL_HEAD + temasFitH } : {}) },
-    }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH, temasFitH]);
+        folded: folded ? folded.split(",") : [], head: PANEL_HEAD,
+    }), [dock, mainSize.w, mainSize.h, gone, onAirH, camadasFitH, temasFitH, folded, PANEL_HEAD]);
     const onScreen = (id) => Boolean(pathOf(dock.tree, id));
     const playerDocked = !onScreen("player");
     const setDock = (next) => setLayout({ ...layout, dock: next });
@@ -905,7 +923,7 @@ export default function Console() {
     // The Bíblia's own dock (BibleEnv.jsx draws its modules), the same way.
     const bibleDock = useMemo(() => (layout.bibleDock ? normalizeDock({ ...layout.bibleDock, env: "biblia" }) : fromBibleArrangement(layout)),
         [layout.bibleDock, layout.order, layout.stacks, layout.bibleSelW, layout.bibleAirW]); // eslint-disable-line react-hooks/exhaustive-deps
-    const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h), [bibleDock, mainSize.w, mainSize.h]);
+    const bibleFrame = useMemo(() => fitDock(bibleDock, mainSize.w, mainSize.h, { folded: folded ? folded.split(",") : [], head: PANEL_HEAD }), [bibleDock, mainSize.w, mainSize.h, folded, PANEL_HEAD]);
     const setBibleDock = (next) => setLayout({ ...layout, bibleDock: next });
     // Editing moves the modules of the environment on screen.
     const envDock = env === "biblia" ? bibleDock : dock;
@@ -1080,8 +1098,7 @@ export default function Console() {
     );
     // What is on air, slide by slide, whatever the Slides column holds.
     const onAirPanel = (
-        <Panel title="No ar" count={onAirCount(c, layout.onairMin) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
-            collapsed={Boolean(layout.onairMin)} onToggle={() => setLayout({ ...layout, onairMin: !layout.onairMin })}>
+        <Panel title="No ar" count={onAirCount(c, Boolean(layout.folded?.onair)) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <OnAirPanel c={c} />
         </Panel>
     );
@@ -1149,7 +1166,7 @@ export default function Console() {
         lib: libraryPanel, slides: slidesPanel, programa: livePanel, previa: previaPanel, abas: tabsPanel, setlist: setlistPanel, camadas: camadasPanel, temas: temasPanel, onair: onAirPanel,
         player: <Panel title="Player" className="player-panel">{playerSlot}</Panel>,
     };
-    const renderModule = (id) => (modulePanels[id] ? React.cloneElement(modulePanels[id], { key: id }) : null);
+    const renderModule = (id, fold) => (modulePanels[id] ? React.cloneElement(modulePanels[id], { key: id, fold }) : null);
 
     // The service clock in the top bar, and how late the item on air runs.
     const playAirIdx = playable.findIndex((i) => i.id === airItemId);
@@ -1199,6 +1216,76 @@ export default function Console() {
         },
     });
 
+    // What the window's pages get from the console (WinPages.jsx): the same
+    // props a detached page's window gives them, through the relay there.
+    const winHost = {
+        c, data, logoUrl, askText,
+        push: (spec, from) => setWin((s) => winPush(s, spec, from)),
+        replaceTop: (props, opts) => setWin((s) => winReplaceTop(s, props, opts)),
+        sendNow: (s) => { c.setPrev(s); sendStage(s); },
+        sendStage: (s) => sendStage(s),
+        songSaved, addMaterial,
+        cfg, setCfg, uiLayout, setUiLayout, restoreLayout, openScreen, openWhatsNew,
+        services, serviceId, setServiceId, plannerFocus,
+    };
+    // A page's guard calls this once leaving is allowed. While a detach is
+    // under way, the level leaves (pop) and the next one asks; after the
+    // last, the page opens in its own window (/Janela) — only after every
+    // guard said yes, so "Descartar as mudanças?" comes first (it used to
+    // detach the editors without asking).
+    const winCloser = (entry) => (all = false) => {
+        const d = detaching.current;
+        if (d && d.keys[d.keys.length - 1] === entry.key) {
+            d.keys.pop();
+            leaveTop(false);
+            if (d.keys.length) { leaveVia(d.keys[d.keys.length - 1]); return; }
+            detaching.current = null;
+            const w = window.open(`${window.location.origin}/Janela?${d.spec.query}`, janelaName(d.spec.page), "width=1280,height=820");
+            if (!w) { c.say("O navegador bloqueou a janela: permita pop-ups para destacar a página."); return; }
+            try { w.focus(); } catch { /* another window may refuse focus */ }
+            return;
+        }
+        detaching.current = null;
+        leaveTop(Boolean(all));
+    };
+    // One level leaves through its own request (mode "detach": the page's
+    // guard asks, then calls its onClose, winCloser above).
+    const leaveVia = (key) => {
+        const fn = winRefs.current.get(key)?.current;
+        if (fn) fn("detach");
+        else { const e = win.find((x) => x.key === key); if (e) winCloser(e)(false); }
+    };
+    const detachTop = () => {
+        const spec = detachSpec(win, { section: cfg, serviceId });
+        if (!spec) return;
+        detaching.current = { spec, keys: win.slice(-spec.pop).map((e) => e.key) };
+        leaveVia(detaching.current.keys[detaching.current.keys.length - 1]);
+    };
+
+    // The detached pages (Rodada F5, src/lib/janelaRelay.js): what they put
+    // in the Prévia or on air runs here, through the console's own Prévia,
+    // sendStage (the history, the log) and songSaved; read through a ref,
+    // the latest state. They hear what the Prévia holds now.
+    const relayRun = (m) => {
+        switch (m.type) {
+            case "prev.set": c.setPrev(m.stage); break;
+            case "stage.send": c.setPrev(m.stage); sendStage(m.stage); break;
+            case "prev.send": if (c.prev) sendStage(c.prev); else c.say("Nada na prévia."); break;
+            case "prev.step": selectSlide(m.d); break;
+            case "song.saved": songSaved(m.song); break;
+            case "setlist.material": addMaterial(m.material); break;
+            case "console.open": if (m.what === "novidades") openWhatsNew(); else openSettings(m.section || "console"); break;
+            case "console.hello": tellPrev(c.prev); break;
+            default: break;
+        }
+    };
+    const relayRef = useRef(relayRun);
+    relayRef.current = relayRun;
+    useEffect(() => relayListen("console", (m) => relayRef.current(m)), []);
+    // A Prévia the list cannot carry (a theme's example) reads as empty there.
+    const tellPrev = (stage) => { if (!relaySend("console", "console.prev", { stage: stage || null })) relaySend("console", "console.prev", { stage: null }); };
+    useEffect(() => { tellPrev(c.prev); }, [c.prev]);
+
     return (
         <ContextMenuProvider value={openMenu}>
         <LibraryContext.Provider value={pickFromLibrary}>
@@ -1243,8 +1330,8 @@ export default function Console() {
             <div className="main" ref={mainRef}>
                 {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })}
-                    dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu }} />}
-                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
+                    dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold }} />}
+                {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} />}
             </div>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
 
@@ -1258,26 +1345,11 @@ export default function Console() {
                     <WinEdges dialogRef={winDialogRef} onRect={setWinRect} onDone={(r) => setWinState((st) => withSize(st, winKind, { w: r.w, h: r.h }))} />
                     {win.map((entry, i) => {
                         const active = i === win.length - 1;
-                        const escRef = winRef(entry.key);
-                        const onClose = (all = false) => leaveTop(Boolean(all));
-                        let page = null;
-                        if (entry.page === "config") page = <SettingsView c={c} section={cfg || "igreja"} setSection={setCfg} onClose={onClose} escRef={escRef} active={active} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} onOpenScreen={openScreen} onWhatsNew={openWhatsNew} />;
-                        else if (entry.page === "planner") page = <ServicePlanner c={c} services={services} serviceId={serviceId} setServiceId={setServiceId} data={data} focusId={plannerFocus} onClose={onClose} escRef={escRef}
-                            onEditSong={(id) => setWin((s) => winPush(s, { page: "song", props: { id } }, "Planejar o culto"))} />;
-                        else if (entry.page === "media") page = <MediaView c={c} intent={entry.props.intent || null} media={data.media} onSend={(s) => { c.setPrev(s); sendStage(s); }} onClose={onClose} escRef={escRef} active={active} askText={askText} />;
-                        else if (entry.page === "notice") page = <NoticeEditor c={c} noticeId={entry.props.id} logoUrl={logoUrl} media={data.media} onClose={onClose} onSaved={(row) => { if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active} />;
-                        else if (entry.page === "song") page = <SongEditor c={c} songId={entry.props.id} autoSync={Boolean(entry.props.sync)} themes={data.themes} onClose={onClose} onSaved={(row) => { songSaved(row); if (entry.props.id === "new" && row?.id) setWin((s) => winReplaceTop(s, { id: row.id })); }} escRef={escRef} active={active}
-                            onEditTheme={(id) => setWin((s) => winPush(s, { page: "theme", props: { id } }, "Editor de música"))}
-                            onSync={(props) => setWin((s) => winPush(s, { page: "sync", props }, "Editor de música"))} />;
-                        else if (entry.page === "sync") page = <SyncView {...entry.props} onClose={onClose} escRef={escRef} active={active} />;
-                        else if (entry.page === "school") page = <SchoolView c={c} logoUrl={logoUrl} media={data.media} onSend={(s) => sendStage(s)} onAddToSetlist={addMaterial} onClose={onClose} escRef={escRef}
-                            onEditMaterial={(id, kid) => setWin((s) => winPush(s, { page: "material", props: { id: id || null, classId: kid || "" } }, "Escola bíblica"))} />;
-                        else if (entry.page === "material") page = <MaterialView c={c} materialId={entry.props.id} classId={entry.props.classId} media={data.media} onClose={onClose} escRef={escRef} active={active} />;
-                        else if (entry.page === "reports") page = <ReportsView c={c} onClose={onClose} escRef={escRef} />;
-                        else if (entry.page === "theme") page = <ThemeEditor hosted themeId={entry.props.id} say={c.say} now={c.now} onClose={onClose} onSaved={(row) => { if (row?.id && entry.props.id !== row.id) setWin((s) => winReplaceTop(s, { id: row.id }, { keep: true })); }} onSwitch={(id) => setWin((s) => winReplaceTop(s, { id: id || "new" }))} escRef={escRef} active={active} onDetach={() => detachEditor(entry)} />;
-                        else if (entry.page === "screen") page = <ScreenEditor hosted screenPath={entry.props.path} media={data.media} themes={data.themes} say={c.say} live={c.cur} now={c.now} onClose={onClose} onSwitch={(path) => setWin((s) => winReplaceTop(s, { path: path || "/Projection" }))} escRef={escRef} active={active} onDetach={() => detachEditor(entry)} />;
+                        const page = winPage(entry, { active, escRef: winRef(entry.key), onClose: winCloser(entry) }, winHost);
+                        // ⧉ Destacar em janela: on the page on top, when it can stand alone (nav.js detachSpec).
+                        const canDetach = active && Boolean(detachSpec(win, { section: cfg, serviceId }));
                         return (
-                            <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: resetWinSize }}>
+                            <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: resetWinSize, onDetach: canDetach ? detachTop : null }}>
                                 <div className="win-page" hidden={!active}>{page}</div>
                             </WinCtx.Provider>
                         );

@@ -7,12 +7,14 @@ import LiveVideo from "@/components/projection/LiveVideo";
 const IMAGE_SECONDS = 5;
 
 /**
- * The main projector's media layer (live.media): a video, image, GIF, PDF or
- * PowerPoint from the Mídia library, alone or as a looping playlist.
+ * The main projector's media layer (live.media): a video, image or GIF from
+ * the Mídia library, alone or as a looping playlist.
  * A playlist moves on when an item ends; the projector on the KERYX computer
  * reports that (media.advance, which ignores duplicate reports).
+ * fadeOut ({ at, until }): the media is leaving (ScreenRenderer's ghost,
+ * Transições): it plays on, quieter and quieter, and moves nothing on.
  */
-export default function LiveMediaView({ media }) {
+export default function LiveMediaView({ media, fadeOut = null }) {
     // An image's name over it only when the church wants titles (the legacy pref; the item title is the theme's since the Rodada B 2026-10-14).
     const showTitle = usePrefs().show_item_title;
     const inPlaylist = Boolean(media.playlist);
@@ -20,7 +22,7 @@ export default function LiveMediaView({ media }) {
     // A playlist moves on; a single video that ends leaves the screen (the
     // frozen-last-frame bug). Loops belong to the background layer.
     const advance = () => {
-        if (!keryx.isDesktop) return;
+        if (!keryx.isDesktop || fadeOut) return;
         const done = inPlaylist ? projection.advanceMedia(index) : projection.clearMedia();
         done.catch((err) => console.error("[keryx] mídia:", err));
     };
@@ -28,7 +30,7 @@ export default function LiveMediaView({ media }) {
     // Images in a playlist stay up for a few seconds, counted from when the
     // item went up (the same moment on every screen).
     useEffect(() => {
-        if (!inPlaylist || (media.kind !== "image" && media.kind !== "gif")) return undefined;
+        if (fadeOut || !inPlaylist || (media.kind !== "image" && media.kind !== "gif")) return undefined;
         const seconds = media.duration || IMAGE_SECONDS;
         const left = Math.max(0, media.shownAt + seconds * 1000 - keryx.live.now());
         const id = setTimeout(advance, left);
@@ -46,7 +48,7 @@ export default function LiveMediaView({ media }) {
             <div className="min-h-screen bg-black flex items-center justify-center relative">
                 {counter}
                 {/* Ends -> the playlist moves on, a single video leaves the screen. */}
-                <LiveVideo item={media} onEnded={advance} meter="media" className="w-full h-screen" />
+                <LiveVideo item={media} onEnded={advance} meter={fadeOut ? null : "media"} fadeOut={fadeOut} className="w-full h-screen" />
             </div>
         );
     }
@@ -68,30 +70,8 @@ export default function LiveMediaView({ media }) {
         );
     }
 
-    if (media.kind === "pdf") {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center relative">
-                {counter}
-                <iframe key={media.url} src={media.url} title={media.title} className="w-full h-screen border-0" />
-            </div>
-        );
-    }
-
-    if (media.kind === "powerpoint") {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-background via-primary/20 to-accent/20 flex flex-col items-center justify-center p-8">
-                <h2 className="text-3xl font-semibold text-white mb-4">{media.title}</h2>
-                <div className="bg-white/10 p-8 rounded-lg backdrop-blur-sm">
-                    <p className="text-2xl text-blue-300 mb-4">
-                        PowerPoint carregado
-                    </p>
-                    <a href={media.url} download className="text-blue-400 hover:text-blue-300 underline">
-                        Baixar apresentação
-                    </a>
-                </div>
-            </div>
-        );
-    }
-
+    // A PDF or a PowerPoint sent as media before Rodada F3: black. A PDF goes
+    // on air as a presentation now (its pages, the content layer), a
+    // PowerPoint not at all (the operator saves it as PDF).
     return <div className="min-h-screen bg-black" />;
 }

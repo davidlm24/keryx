@@ -422,7 +422,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             <Panel className="bread bible-center" title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}${ver ? ` · ${ver}` : ""}`}
                 count={mode === "ler" ? "clique ou ↑↓ seleciona · Enter ou 2 cliques projeta · ←→ no ar" : mode === "buscar" ? "↑↓ percorre os resultados · Enter ou 2 cliques projeta" : "versões lado a lado"}
                 actions={<>
-                    {mode === "ler" && <><Btn small onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small onClick={() => setSel([])}>Limpar</Btn></>}
+                    {mode === "ler" && <><Btn small className="bread-sel" onClick={() => setSel(verses.map((v) => v.number))}>Selecionar todos</Btn><Btn small className="bread-sel" onClick={() => setSel([])}>Limpar</Btn></>}
                     <Seg small value={mode} onChange={setMode} options={MODES} />
                     <span className="bread-search"><Field inputRef={searchInputRef} value={q} onChange={setQ} placeholder="Buscar: Jo 3:16 ou palavra" kbd="Enter"
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitTop(); } else if (e.key === "Escape" && mode === "buscar") { e.stopPropagation(); setMode("ler"); } }} /></span>
@@ -503,7 +503,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                             onBlur={(e) => saveNote(e.target.value)} />
                     </div>
                 )}
-                <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-2)", flexWrap: "wrap", borderTop: "1px solid var(--line)" }}>
+                <div style={{ display: "flex", gap: "var(--space-1)", padding: "var(--space-1)", flexWrap: "wrap", borderTop: "1px solid var(--line)" }}>
                     <Btn kind="prev" className="kx-btn-live" disabled={!stage || c.locked} onClick={() => onSend(stage)} title={sendTip(c.locked)}>{SEND_LABEL}</Btn>
                     <Btn disabled={!sel.length} onClick={addToService}>Adicionar à setlist</Btn>
                     <Btn kind="icon" on={notesApi.isFavorite(reference)} disabled={!reference} onClick={toggleFav} title={notesApi.isFavorite(reference) ? "Tirar dos favoritos" : "Favoritar"}><Icon name="star" /></Btn>
@@ -512,5 +512,5 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         ),
     };
 
-    return dockProps ? <DockView {...dockProps} render={(id) => (modules[id] ? React.cloneElement(modules[id], { key: id }) : null)} playerDocked={false} /> : null;
+    return dockProps ? <DockView {...dockProps} render={(id, fold) => (modules[id] ? React.cloneElement(modules[id], { key: id, fold }) : null)} playerDocked={false} /> : null;
 }
