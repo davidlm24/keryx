@@ -157,7 +157,7 @@ export function Field({ icon = "search", value, onChange, placeholder, onKeyDown
     return (
         <div className="kx-field kx-t" {...rest}>
             {icon && <Icon name={icon} />}
-            <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} onKeyDown={onKeyDown} {...inputProps} />
+            <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} onKeyDown={onKeyDown} spellCheck={false} {...inputProps} />
             {kbd && <kbd>{kbd}</kbd>}
         </div>
     );
@@ -180,7 +180,7 @@ export function Row({ icon, lead, title, meta, metaClass = "", time, state = "",
             {lead}
             {icon && <span className="kx-glyph"><Icon name={icon} /></span>}
             <div className="kx-row-main">
-                <div className="kx-row-title">{title}</div>
+                <div className="kx-row-title" title={typeof title === "string" ? title : undefined}>{title}</div>
                 {meta != null && meta !== "" && <div className={`kx-row-meta ${metaClass}`}>{meta}</div>}
             </div>
             {children}

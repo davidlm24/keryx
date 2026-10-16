@@ -49,7 +49,7 @@ export function winPage(entry, { active, escRef, onClose }, h) {
         case "sync":
             return <SyncView {...p} onClose={onClose} escRef={escRef} active={active} />;
         case "school":
-            return <SchoolView c={c} logoUrl={h.logoUrl} media={data.media} onSend={h.sendStage} onAddToSetlist={h.addMaterial} onClose={onClose} escRef={escRef}
+            return <SchoolView c={c} logoUrl={h.logoUrl} media={data.media} onSend={h.sendStage} onAddToSetlist={h.addMaterial} onClose={onClose} escRef={escRef} askText={h.askText}
                 onEditMaterial={(id, kid) => h.push({ page: "material", props: { id: id || null, classId: kid || "" } }, "Escola bíblica")} />;
         case "material":
             return <MaterialView c={c} materialId={p.id} classId={p.classId} media={data.media} onClose={onClose} escRef={escRef} active={active} />;
