@@ -155,7 +155,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     // Voltar à página padrão: the design goes, the page draws itself again
     // and the canvas starts over from its ready design.
     const resetToPage = async () => {
-        if (askCtx) { if (!(await askCtx({ title: "Voltar à página padrão?", text: `O desenho próprio de ${name} sai; a tela volta a se desenhar sozinha.`, ok: "Voltar ao padrão" }))) return; }
+        if (askCtx) { if (!(await askCtx({ title: "Voltar à página padrão?", text: `O desenho próprio de ${name} sai; a tela volta a se desenhar sozinha.`, ok: "Voltar ao padrão", danger: true }))) return; }
         else if (confirm !== "reset") { setConfirm("reset"); say(`Clique de novo: ${name} volta ao desenho padrão da página.`); return; }
         setConfirm(null);
         try {
@@ -313,7 +313,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     // another screen's own design (Rodada C, fase d2 — the catalog's one
     // useful door, without the catalog).
     const applyDesign = async (label, layout) => {
-        if (dirty && askCtx && !(await askCtx({ title: "Substituir o desenho?", text: `O desenho atual de ${name} dá lugar a ${label}; nada é salvo sem "Salvar a tela".`, ok: "Substituir" }))) return;
+        if (dirty && askCtx && !(await askCtx({ title: "Substituir o desenho?", text: `O desenho atual de ${name} dá lugar a ${label}; nada é salvo sem "Salvar a tela".`, ok: "Substituir", danger: true }))) return;
         setDraft(normalizeLayout({ ...duplicateLayout(layout), name: "", factory: false }));
         setSel(null);
         setStarting(null);

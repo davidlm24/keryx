@@ -42,6 +42,11 @@ import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { PAGE_TITLES, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
 import { resolveSection } from "@/lib/console/settings";
 import { liveAction, escapeTarget } from "@/lib/console/keys";
+import { blurSelectsAfterPick } from "@/lib/console/selectPick";
+
+// Where a control keeps the focus after a mouse click: overlays that run
+// their own keys (a question, the palette…).
+const KEEPS_FOCUS = ".dialog, .palette, .lyr, .addmenu";
 
 // The theme in use, as the console keeps it on this computer (localStorage):
 // what a song or a material in this window is dressed with in its previews.
@@ -213,13 +218,14 @@ export default function Janela() {
             return;
         }
         if ((ctxMenu || libReq || confirmReq || ask) && !["black", "logo"].includes(action)) return;
-        if (action === "black") c.toggleScreen("black");
-        else if (action === "logo") c.toggleScreen("logo");
+        // Prevented: a select focused with Tab would also jump to its option.
+        if (action === "black") { e.preventDefault(); c.toggleScreen("black"); }
+        else if (action === "logo") { e.preventDefault(); c.toggleScreen("logo"); }
         else if (winTop?.page !== "school") return;
         else if (action === "send") { e.preventDefault(); toConsole("prev.send", {}); }
         else if (action === "next" || action === "prev") { e.preventDefault(); c.moveSlide(action === "next" ? 1 : -1); }
         else if (action === "selUp" || action === "selDown") { e.preventDefault(); toConsole("prev.step", { d: action === "selDown" ? 1 : -1 }); }
-        else if (action === "clear") c.clearText();
+        else if (action === "clear") { e.preventDefault(); c.clearText(); }
     };
     useEffect(() => {
         const onKey = (e) => keysRef.current(e);
@@ -228,12 +234,14 @@ export default function Janela() {
     }, []);
 
     // A mouse click must not leave focus on the control it hit (the keys
-    // would then be that control's), as in the console.
+    // would then be that control's), as in the console; a select gives it
+    // back after a mouse pick (selectPick.js, audit C-03).
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
         const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='listitem'][tabindex], a[href]");
-        if (t && !t.closest(".dialog, .palette, .lyr, .addmenu")) setTimeout(() => t.blur?.(), 0);
+        if (t && !t.closest(KEEPS_FOCUS)) setTimeout(() => t.blur?.(), 0);
     };
+    useEffect(() => blurSelectsAfterPick(window, { skip: KEEPS_FOCUS }), []);
 
     return (
         <ContextMenuProvider value={openMenu}>
