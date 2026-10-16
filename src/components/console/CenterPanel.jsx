@@ -59,24 +59,65 @@ export function TeacherNotes({ prev, cur }) {
     );
 }
 
-// The Programa's caption, in its panel's header: what is on air at 16px in
-// the colour of its state (red while something is on air, amber for a failed
-// output, blue when locked, grey when nothing is), a "Travado" chip while the
-// screens are locked, and its position. No "Programa" word (owner
-// 2026-10-14): the monitor says it. Used by Console.jsx's Programa panel.
-export function ProgramaCaption({ c, projectorDown }) {
+// A glyph button of the pills (24 px; the name is its aria-label and tooltip).
+const btn = ({ className = "", ...props }, icon) => <button type="button" className={`kx-btn kx-btn-icon kx-t ${className}`} {...props}><Icon name={icon} /></button>;
+
+// The Programa has no header (owner 2026-10-16, Rodada E1): its caption and
+// controls are one pill in the screen's bottom-right corner, so the screen's
+// top lines up with the panels beside it. A dot in the colour of the state
+// (red on air, blue locked with the "Travado" word, amber when an output
+// failed, grey with nothing on air), the title, the slide (2/6), how long it
+// has been on air, on how many screens (`where`: outputHealth's onAir), then
+// Voltar ao anterior, the Camadas drawer (`camadas`, only while Camadas is in
+// the tray), Multiview and the screen actions (owner's pick B: Tela preta,
+// Logo, Limpar, Encerrar left the top bar for here). On a small screen it
+// folds (container queries on the screen, console.css) to the dot, the
+// slide, Multiview and a "…" that opens the Programa's menu (`onMore`, the
+// same as its right click), which holds every action the pill dropped.
+// Inside the screen, so it rides the Multiview too.
+export function ProgramaPill({ c, projectorDown, where, camadas, histOpen, onHist, multiviewOn, onMultiview, onMore, onEnd }) {
     const { cur, locked } = c;
     const { title, pos } = captionParts(cur);
     // How long this item has been on air (the live clock: every window agrees).
     const since = airFor(cur, c.now);
     const idle = title === "nada";
+    const shown = idle ? "Nada no ar" : title;
     const tone = projectorDown ? "warn" : locked ? "rh" : idle ? "idle" : "air";
     return (
-        <span className={`kx-prog-cap prog-cap is-${tone}`} aria-label={`Programa · ${idle ? "nada no ar" : title}${locked ? " · travado" : ""}`}>
-            <span className="kx-mon-t kx-live-title" title={idle ? "Nada no ar" : title}>{idle ? "Nada no ar" : title}</span>
-            {locked && <span className="prog-locked">Travado</span>}
-            {pos && <span className="kx-meta">{pos}</span>}
-            {since && <span className="kx-meta kx-since" title="Há quanto tempo este item está no ar">no ar há {since}</span>}
+        <div className={`prog-pill is-${tone}`} role="group" aria-label="Programa">
+            <span className={`kx-prog-cap prog-cap is-${tone}`} aria-label={`Programa · ${idle ? "nada no ar" : title}${locked ? " · travado" : ""}`}>
+                <i className="pp-dot" aria-hidden="true" />
+                <span className="kx-mon-t pp-title" title={shown}>{shown}</span>
+                {locked && <span className="prog-locked">Travado</span>}
+                {pos && <span className="kx-meta pp-pos">{pos}</span>}
+                {since && <span className="kx-meta kx-since" title="Há quanto tempo este item está no ar">no ar há {since}</span>}
+            </span>
+            {where && <span className={`kx-meta prog-where ${where.warn ? "kx-warn" : ""}`} title={`O Programa está ${where.text} agora · detalhes em Saídas`}>{where.short}</span>}
+            <span className="pp-sep pp-full" aria-hidden="true" />
+            <span className="pp-btns pp-full">
+                {btn({ className: `pp-hist ${histOpen ? "is-on" : ""}`, onClick: onHist, "aria-label": "Voltar ao anterior", "aria-expanded": histOpen, title: "Voltar ao anterior · o que esteve no ar há pouco" }, "undo")}
+                {camadas && btn({ className: `pp-camadas ${camadas.open ? "is-on" : ""}`, onClick: camadas.onToggle, "aria-label": "Camadas", "aria-expanded": camadas.open, title: "Camadas: tema, papel de parede, logo e sobreposições do que está no ar" }, "layers")}
+            </span>
+            {btn({ className: "pp-more", onClick: onMore, "aria-label": "Mais ações do Programa", "aria-haspopup": "menu", title: "Tela preta, logo, limpar, voltar ao anterior, Camadas e encerrar" }, "more")}
+            {btn({ className: `mx-toggle ${multiviewOn ? "is-on" : ""}`, onClick: onMultiview, "aria-label": "Multiview", "aria-pressed": multiviewOn, title: multiviewOn ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar" }, "grid")}
+            <span className="pp-sep pp-full" aria-hidden="true" />
+            <ScreenActions c={c} onEnd={onEnd} className="pp-full" />
+        </div>
+    );
+}
+
+// The actions that change what the audience sees, as glyphs (names and keys
+// in the tooltips; they act even with the screens locked): in the Programa's
+// pill, and alone in a pill on the Bíblia's No ar monitor (Rodada E1: they
+// left the top bar).
+export function ScreenActions({ c, onEnd, className = "" }) {
+    const { live } = c;
+    return (
+        <span className={`pp-screens ${className}`} role="group" aria-label="Telas: ações que mudam o que o público vê">
+            {btn({ className: live?.screen === "black" ? "is-on" : "", "aria-pressed": live?.screen === "black", "aria-label": "Tela preta", title: "Tela preta · B · nas telas, na hora", onClick: () => c.toggleScreen("black") }, "black")}
+            {btn({ className: live?.screen === "logo" ? "is-on" : "", "aria-pressed": live?.screen === "logo", "aria-label": "Mostrar logo", title: "Mostrar logo · L · nas telas", onClick: () => c.toggleScreen("logo") }, "logo")}
+            {btn({ "aria-label": "Limpar texto", title: "Limpar texto · C", onClick: c.clearText }, "eraser")}
+            {onEnd && btn({ "aria-label": "Encerrar a projeção", title: "Encerrar a projeção (pergunta antes) · Esc encerra na hora", onClick: onEnd }, "stop")}
         </span>
     );
 }
@@ -94,11 +135,12 @@ export function PlayerSlot({ c, picked, setPicked, videoScreens, projectorOpen }
 }
 
 // The Programa module: what is on air (or the Multiview: four outputs at
-// once, { tiles, rows, onPick }) and, right under it, `player` (PlayerSlot)
-// when the player rides with the Programa. Sized by console.css
+// once, { tiles, rows, onPick }) with its `pill` (ProgramaPill) inside the
+// screen and, right under it, `player` (PlayerSlot) when the player rides
+// with the Programa. Sized by console.css
 // (.liveblock): as wide as its panel allows, limited by the 16:9 of its
 // height. The Prévia is its own module (PreviaPanel); the dock places both.
-export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, onProgMenu, items = [], multiview = null, player = null, still = false }) {
+export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, onProgMenu, items = [], multiview = null, player = null, pill = null, still = false }) {
     const { cur, now, locked } = c;
     const [dropOn, setDropOn] = useState(null);
     // Under a floating view (owner 2026-10-14) the monitor draws one still
@@ -109,7 +151,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
     if (still) { if (frozen.current == null) frozen.current = now; } else frozen.current = null;
     const shownNow = still ? frozen.current : now;
     // Locked: the screens keep this image, blue (they are not following). On
-    // air there is no frame: the red lives in the header's state word and on
+    // air there is no frame: the red lives in the pill's dot and title and on
     // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
     const progState = projectorDown ? "warn" : locked ? "rh" : "";
     // A drop from the Biblioteca on the Programa sends.
@@ -125,10 +167,12 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
                 {multiview ? (
                     <MultiView live={cur} now={shownNow} logoUrl={logoUrl} tiles={multiview.tiles} rows={multiview.rows} items={items} onPick={multiview.onPick} still={still}
                         state={progState} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
+                        {pill}
                         {dropHint}
                     </MultiView>
                 ) : (
                     <Monitor className="prog" state={progState} noCap live={cur} now={shownNow} logoUrl={logoUrl} motion={!still} dropProps={{ ...dropProps, onContextMenu: onProgMenu }}>
+                        {pill}
                         {dropHint}
                     </Monitor>
                 )}

@@ -25,8 +25,9 @@ import { DEFAULT_ORDER, normalizeOrder } from "./arrange.js";
 // The gutter between two children: the splitter is the gap (console.css).
 export const GUTTER = 6;
 const G = GUTTER;
-// The player's slot under the Programa (.pslot 36 + the gap above it).
-export const PLAYER_SLOT = 44;
+// The player's slot under the Programa (.pslot 64, two rows since Rodada E1,
+// + the gap above it); the Programa's header it replaced paid for most of it.
+export const PLAYER_SLOT = 72;
 const PX_MIN = 40;
 const PX_MAX = 4000;
 // A new group's size along its split when nothing better is known.
@@ -43,11 +44,15 @@ export const TEMAS_H = 220;
 // lines whole down to 300 px (~33 letters a line); a longer line ends in
 // "…" there and never wraps (owner 2026-10-14: the editor's lines stay lines).
 export const MODULES = {
-    // 260: the default four tabs and the (+) are 218 px wide, and a wider row
-    // breaks into two lines, so no title is ever cut (owner 2026-10-14).
+    // 260: the default four tabs fit with room (the (+) is in the header
+    // since Rodada E1), and a wider row breaks into two lines, so no title
+    // is ever cut (owner 2026-10-14).
     lib: { name: "Biblioteca", minW: 260, minH: 160 },
     slides: { name: "Slides", minW: 300, minH: 140 },
-    programa: { name: "Programa", minW: 320, minH: 200, required: true },
+    // No header since Rodada E1 (its caption is a pill inside the screen):
+    // the 28 px it gave back pay for the player's second row, so the column
+    // needs what it did before (172 + PLAYER_SLOT = the old 200 + 44).
+    programa: { name: "Programa", minW: 320, minH: 172, required: true },
     previa: { name: "Prévia", minW: 220, minH: 200, required: true },
     abas: { name: "Painel de abas", minW: 220, minH: 140 },
     // Never out of reach (the console audit, 2026-10-13).
@@ -66,10 +71,10 @@ export const MODULES = {
     // nor moved beside another module, it can only leave for the tray and
     // come back there.
     onair: { name: "No ar", minW: 220, minH: 96, fold: true, pinned: "bottom" },
-    // As a module of its own: the panel's header (32) over the slot (36); in
+    // As a module of its own: the panel's header (32) over the slot (64); in
     // a column it comes in at its own height (`size.col`), not half of its
     // neighbour's.
-    player: { name: "Player", minW: 280, minH: 76, home: "programa", size: { col: 80 } },
+    player: { name: "Player", minW: 280, minH: 96, home: "programa", size: { col: 100 } },
     // The Bíblia (BibleEnv.jsx): the three pickers (the version and the
     // search live in their headers since 2026-10-14; an old save's "Versão
     // e busca" module is dropped by clean); the text; what is on air with

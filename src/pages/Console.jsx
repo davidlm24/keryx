@@ -16,7 +16,6 @@ import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
 import { Panel, IconBtn, Measure, Seg, WinCtx } from "@/components/console/kx";
-import Icon from "@/components/console/Icon";
 import TopBar from "@/components/console/TopBar";
 import { MenuBarPop } from "@/components/console/MenuBar";
 import { buildMenus, songInHand } from "@/lib/console/menuBar";
@@ -26,7 +25,7 @@ import { useChurch } from "@/hooks/useChurch";
 import Library from "@/components/console/Library";
 import SlidesPanel, { handTitle, handIsPrev } from "@/components/console/SlidesPanel";
 import OnAirPanel, { onAirCount } from "@/components/console/OnAirPanel";
-import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaCaption } from "@/components/console/CenterPanel";
+import CenterPanel, { PreviaPanel, PlayerSlot, captionOf, ProgramaPill } from "@/components/console/CenterPanel";
 import { outputHealth, localId } from "@/lib/console/outputs";
 import Rundown, { plannedTimes } from "@/components/console/Rundown";
 import Layers from "@/components/console/Layers";
@@ -60,7 +59,7 @@ import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
 import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew, TabsMenu } from "@/components/console/Popovers";
-import TabsPanel from "@/components/console/TabsPanel";
+import TabsPanel, { TabsPlus } from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
 import { shouldOpenOnLaunch, hasUpdate } from "@/lib/console/updates";
@@ -976,14 +975,12 @@ export default function Console() {
             ...(canTray(id) && pathOf(d.tree, id) ? ["sep", { label: "Tirar para a bandeja", icon: "x", onSelect: () => setEnvDock(hideModule(d, id)) }] : []),
         ] });
     };
-    // The Programa's box on screen: "Voltar ao anterior" and the Camadas
-    // drawer open beside it, wherever the dock puts it.
+    // The Programa's box on screen: the Camadas drawer opens beside it,
+    // wherever the dock puts it.
     const programaBox = () => mainRef.current?.querySelector('[data-dock-mods~="programa"]')?.getBoundingClientRect() || null;
-    // "Voltar ao anterior" opens over the Programa, wherever it is.
-    // Under the Programa's header, where its button is; inside the window.
-    const histBox = open === "hist" ? programaBox() : null;
-    const histLeft = histBox ? Math.round(histBox.left) : 6;
-    const histTop = histBox ? Math.round(Math.min(histBox.top + 36, window.innerHeight - 240)) : 72;
+    // "Voltar ao anterior" opens above the Programa's pill (its button, or
+    // the "…" when the pill is folded), its right edge on the pill's.
+    const histAnchor = open === "hist" ? mainRef.current?.querySelector(".prog-pill")?.getBoundingClientRect() || null : null;
     const camadasOn = onScreen("camadas");
     // Camadas on screen: no drawer left open behind it (Esc would close that first).
     useEffect(() => { if (camadasOn) setDrawer(false); }, [camadasOn]);
@@ -1071,8 +1068,8 @@ export default function Console() {
             items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend} />
     );
     const libraryPanel = (
-        <Panel title="Biblioteca" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <Library c={c} data={data} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} onTabsMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} tabsMenuOpen={open === "tabs:lib"} elsewhere={panelHas}
+        <Panel title="Biblioteca" actions={<TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <Library c={c} data={data} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
                 onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
         </Panel>
     );
@@ -1105,32 +1102,34 @@ export default function Console() {
         <PlayerSlot c={c} picked={playerPick} setPicked={setPlayerPick} projectorOpen={Boolean(projector?.open)}
             videoScreens={network.filter((d) => d.online && d.role === "media").map((d) => d.name).join(", ") || null} />
     );
-    // The Programa: its caption, Camadas (when it is in the tray: a drawer),
-    // Voltar ao anterior, Multiview, and the monitor (CenterPanel).
+    // The Programa's menu: its right click and the pill's "…" (which holds
+    // what a folded pill leaves out, Camadas included while in the tray).
+    const progMenu = (e) => openMenu(e, { title: "Programa", items: [
+        { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
+        { label: c.cur?.screen === "logo" ? "Tirar o logo" : "Mostrar logo", icon: "logo", kbd: "L", onSelect: () => c.toggleScreen("logo") },
+        { label: "Limpar texto", icon: "eraser", kbd: "C", onSelect: c.clearText },
+        { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
+        !camadasOn && { label: drawer ? "Fechar Camadas" : "Camadas…", icon: "layers", onSelect: () => setDrawer((d) => !d) },
+        { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
+        { label: "Encerrar…", icon: "stop", air: true, onSelect: () => setOpen("encerrar") },
+    ] });
+    // The Programa has no header (Rodada E1): the screen's top lines up with
+    // the panels beside it, and its caption and controls are the pill inside
+    // the screen (ProgramaPill). The papel de parede's one live door is
+    // Camadas' Fundo pencil (Rodada B 2026-10-14); with Camadas in the tray
+    // the pill's Camadas button opens the drawer that keeps it a click away.
+    const programaPill = (
+        <ProgramaPill c={c} projectorDown={projectorDown} where={health.onAir}
+            camadas={camadasOn ? null : { open: drawer, onToggle: () => setDrawer((d) => !d) }}
+            histOpen={open === "hist"} onHist={() => setOpen(open === "hist" ? null : "hist")}
+            multiviewOn={Boolean(layout.multiview)} onMultiview={toggleMultiview} onMore={progMenu} onEnd={() => setOpen("encerrar")} />
+    );
     const livePanel = (
-        <Panel bare className="prog-panel" caption={<ProgramaCaption c={c} projectorDown={projectorDown} />} actions={
-            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 2 }}>
-                {health.onAir && <span className={`kx-meta prog-where ${health.onAir.warn ? "kx-warn" : ""}`} title="Quantas telas mostram o Programa agora · detalhes em Saídas">{health.onAir.text}</span>}
-                {/* The papel de parede's one live door is Camadas' Fundo
-                    pencil (Rodada B 2026-10-14): the header button it had is
-                    gone; with Camadas in the tray the drawer below keeps the
-                    pencil a click away. */}
-                {!camadasOn && <button type="button" className={`kx-btn kx-t ${drawer ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setDrawer((d) => !d)} aria-expanded={drawer} title="Camadas: tema, papel de parede, logo e sobreposições do que está no ar"><Icon name="layers" />Camadas</button>}
-                <button type="button" className={`kx-btn kx-t ${open === "hist" ? "is-on" : ""}`} style={{ height: 24 }} onClick={() => setOpen(open === "hist" ? null : "hist")} title="O que esteve no ar há pouco" aria-label="Voltar ao anterior"><Icon name="undo" /><span className="hist-lbl">Voltar ao anterior</span></button>
-                <button type="button" className={`kx-btn kx-t mx-toggle ${layout.multiview ? "is-on" : ""}`} style={{ height: 24 }} onClick={toggleMultiview} aria-pressed={layout.multiview} title={layout.multiview ? "Voltar a ver só o Programa" : "Multiview: quatro saídas ao mesmo tempo, com o que está no ar"} aria-label="Multiview"><Icon name="grid" /><span className="hist-lbl">Multiview</span></button>
-            </div>
-        } bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel bare className="prog-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <CenterPanel c={c} logoUrl={logoUrl} projectorDown={projectorDown} player={playerDocked ? playerSlot : null}
-                items={playable} multiview={multiview} still={winOpen}
+                items={playable} multiview={multiview} still={winOpen} pill={programaPill}
                 onDropStage={(s, where) => { c.setPrev(s); if (where === "air") sendStage(s); }}
-                onProgMenu={(e) => openMenu(e, { title: "Programa", items: [
-                    { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
-                    { label: c.cur?.screen === "logo" ? "Tirar o logo" : "Mostrar logo", icon: "logo", kbd: "L", onSelect: () => c.toggleScreen("logo") },
-                    { label: "Limpar texto", icon: "eraser", kbd: "C", onSelect: c.clearText },
-                    { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
-                    { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
-                    { label: "Encerrar…", icon: "stop", air: true, onSelect: () => setOpen("encerrar") },
-                ] })} />
+                onProgMenu={progMenu} />
         </Panel>
     );
     // The Prévia: its screen, then the teacher notes (unless the Notas tab
@@ -1156,7 +1155,7 @@ export default function Console() {
     const playAirIdx = playable.findIndex((i) => i.id === airItemId);
     const late = service ? serviceTiming({ items: playable, times: plannedTimes(service, playable), airIdx: playAirIdx, startedAt: playAirIdx >= 0 ? log[airItemId]?.start : null, now: c.now }).late : 0;
     const showForecast = useShowForecast();
-    const svc = serviceClock({ service, seconds: setPlan.seconds, late, now: c.now, forecast: showForecast });
+    const svc = serviceClock({ service, seconds: setPlan.seconds, late, now: c.now, forecast: showForecast, compact: true });
 
     // The palette opens centred (owner decision 2026-10-11); the dimmed scrim
     // keeps the console readable behind it.
@@ -1210,7 +1209,7 @@ export default function Console() {
         <ConfirmContext.Provider value={askConfirm}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCount={health.status.short} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
+            <TopBar c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1246,7 +1245,7 @@ export default function Console() {
                 <div className="kx-banner is-rh" role="status"><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             <div className="main" ref={mainRef}>
-                {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)}
+                {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu }} />}
                 {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} />}
@@ -1310,7 +1309,7 @@ export default function Console() {
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} />
             <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} />
-            <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} left={histLeft} top={histTop} />
+            <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
             <Palette open={open} setOpen={setOpen} data={data} items={playable} env={env} onPrepare={(s, i) => (s?.op ? c.setPrev(s) : prepareItem(s, i))} onAddSong={addSong} openReference={openReference} onPrepareReference={prepareReference} onAddReference={addReference} onBibleSearch={searchBibleFor} />

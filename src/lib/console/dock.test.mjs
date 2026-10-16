@@ -173,12 +173,12 @@ test("the tray: modules leave the console; the Programa, the Prévia and the Set
 });
 
 test("the player rides the Programa until it is placed, and goes home instead of the tray", () => {
-    // In a column the player comes in at its own height (80), whatever was asked.
+    // In a column the player comes in at its own height (100), whatever was asked.
     const placed = moveModules(defaultDock(W), ["player"], { kind: "group", path: [0, 3, 2], zone: "top" }, { px: 300 });
-    assert.deepEqual(nodeAt(placed.tree, [0, 3]), split("col", [g("camadas"), g("temas"), g("player"), g("setlist")], [280, TEMAS_H, 80, null]));
+    assert.deepEqual(nodeAt(placed.tree, [0, 3]), split("col", [g("camadas"), g("temas"), g("player"), g("setlist")], [280, TEMAS_H, 100, null]));
     const underCamadas = moveModules(defaultDock(W), ["player"], { kind: "group", path: [0, 3, 1], zone: "bottom" });
-    assert.deepEqual(nodeAt(underCamadas.tree, [0, 3]).sizes, [280, 134, 80, null], "a fixed neighbour gives up just that");
-    assert.equal(minSize(g("player"), false, { playerDocked: false }), 76, "its panel header counts");
+    assert.deepEqual(nodeAt(underCamadas.tree, [0, 3]).sizes, [280, 120, 100, null], "a fixed neighbour gives up just that (down to its minimum)");
+    assert.equal(minSize(g("player"), false, { playerDocked: false }), 96, "its panel header counts");
     assert.deepEqual(pathOf(placed.tree, "player"), [0, 3, 2]);
     const hidden = hideModule(placed, "player");
     assert.equal(pathOf(hidden.tree, "player"), null);
@@ -232,8 +232,9 @@ test("sizes: fixed children keep theirs, then give way toward their minimums", (
     assert.deepEqual(allocate([260, 300, null, 320], [200, 300, 320, 280], 1890), [260, 300, 1010, 320]);
     assert.deepEqual(allocate([260, 300, null], [200, 200, 320], 800), [230, 250, 320]);
     // The Programa's minimum height includes the player riding under it.
-    assert.equal(minSize(g("programa"), false), 200 + PLAYER_SLOT);
-    assert.equal(minSize(g("programa"), false, { playerDocked: false }), 200);
+    assert.equal(minSize(g("programa"), false), 172 + PLAYER_SLOT);
+    assert.equal(minSize(g("programa"), false, { playerDocked: false }), 172);
+    assert.equal(172 + PLAYER_SLOT, 244, "no header and a two-row player: the column needs what it did");
 });
 
 test("fitting: what does not fit side by side becomes tabs, the dock itself unchanged", () => {

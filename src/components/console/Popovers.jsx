@@ -244,10 +244,15 @@ export function TabsMenu({ open, list, onToggle, onRestore }) {
 }
 
 // "Esteve no ar": the live state's history, back through the Prévia.
-export function History({ open, setOpen, history, onPick, left, top = 72 }) {
+// Above `anchor` (the Programa's pill, a DOMRect), its right edge on the
+// anchor's and never past the window; under the top bar without one.
+export function History({ open, setOpen, history, onPick, anchor = null }) {
     if (open !== "hist") return null;
+    const style = anchor
+        ? { right: Math.max(8, Math.round(window.innerWidth - anchor.right)), bottom: Math.round(window.innerHeight - anchor.top + 6), maxHeight: Math.max(160, Math.round(anchor.top - 12)), overflow: "auto", width: 300 }
+        : { left: 6, top: "var(--pop-top)", width: 300 };
     return (
-        <div className="pop kx-pop" style={{ left, top, width: 300 }}>
+        <div className="pop kx-pop hist-pop" style={style}>
             <div className="kx-menu-h"><span className="kx-section">Voltar ao anterior</span><span style={{ flex: 1 }} /><span className="kx-meta">escolha para pôr na prévia</span></div>
             {!history.length && <div className="kx-menu-h"><span className="kx-meta">Nada ainda.</span></div>}
             {history.map((h) => (

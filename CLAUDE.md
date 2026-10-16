@@ -156,7 +156,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   still reads the pre-rename titles) — and its items are "Trocar o papel
   de parede…" (`pickServiceFundo`: **the one live door**, Rodada B
   2026-10-14 — the Programa's header button is gone; in the medium/narrow
-  tiers the Programa header's Camadas drawer keeps the pencil reachable)
+  tiers the Camadas drawer of the Programa's pill keeps the pencil reachable)
   and "Qualquer outro culto…" (Configurações › Culto); the Fundo layer
   still has no options (the row keeps its eye, padlock and place). The text look is edited only in the Editor de
   temas; when the text on air looks otherwise (a song's own look) Texto
@@ -318,7 +318,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (Atalhos, Novidades, Sobre, Atualizar) live in the logo's menu** — neither
   goes back in the bar. Under 1240 px the bar folds away and the logo's
   menu (every page) has it all. A new top-level action goes in the bar's
-  model, not as another icon in the top bar.
+  model, not as another icon in the top bar. **The right side is compact**
+  (owner 2026-10-16, Rodada E1): the service clock "◷ 19:00 · 9h46"
+  (`serviceClock` with `compact`, timeline.js, tested; the whole sentence
+  is its tooltip and `label`; a running service keeps "Culto 0:42:10"),
+  the clock, the Saídas status "2 telas" (`outputHealth`'s
+  `status.compact`, outputs.js, tested; the full label in its tooltip),
+  Ver and the bell; the search is at most 320 px. **The screen actions
+  (Tela preta, Logo, Limpar, Encerrar) are not in the top bar any more**:
+  they live in the Programa's pill (owner's pick B).
   Everything else
   is a page of **THE window** (Rodada C, owner's choice "uma janela, com
   Voltar", 2026-10-14; the `win` stack in Console.jsx fed by
@@ -417,7 +425,13 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   owner 2026-10-13, which replaced the two-band centre of #136/#138):
   Biblioteca and Slides are whole columns; the **centre** (`live`) is the
   Programa on top (CenterPanel: the monitor or the Multiview, and the
-  player **always visible**, dimmed while idle) and below it one row that
+  player **always visible**, dimmed while idle, **in two rows** — Rodada E1,
+  owner 2026-10-16, "o necessário, de forma responsiva": what plays, the
+  transport, the time and the progress bar with the row's room; under them
+  the layer it controls, the letra automática, where the sound goes, the
+  volume and the meters; 64 px, `.pslot` and dock.js `PLAYER_SLOT` 72;
+  narrowing drops the kind, −10/+10, the volume number, then the position
+  and the labels, never the bar, the remaining time or Tocar) and below it one row that
   **ends at the centre's edge**: the Prévia (44 % of the centre at first),
   then the **tabs panel**
   (`TabsPanel.jsx`); under the Biblioteca, the Slides and the centre the **No ar**
@@ -432,20 +446,34 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Setlist, full height** (Camadas as tall as its list, Temas `TEMAS_H`: the
   Setlist gets the rest of the column). **The Notas tab** is the setlist item's notes
   (only when it has some) over the operator's free field, nothing else. **The Programa and the Prévia have no card** (owner 2026-10-14,
-  `Panel bare`, `kx-panel-bare`): the Programa is its header line (caption,
-  the Camadas drawer button when that module is in the tray, Voltar ao
-  anterior, Multiview), the screen and the player;
-  its caption has **no "Programa" word** (owner 2026-10-14): the title is
-  in its state's colour (red on air, amber failure, blue locked, grey
-  "Nada no ar") with a blue "Travado" chip while the screens are locked;
+  `Panel bare`, `kx-panel-bare`). **The Programa has no header** (owner
+  2026-10-16, Rodada E1): its screen's top lines up with the panels beside
+  it, and its caption and controls are **one pill inside the screen,
+  bottom-right** (`ProgramaPill` in CenterPanel.jsx, `.prog-pill`, Monitor
+  children so it rides the Multiview too): a dot in the state's colour
+  (red on air, blue locked with the "Travado" word, amber when an output
+  failed, grey "Nada no ar"), the title (in that colour, **no "Programa"
+  word**, owner 2026-10-14), the slide "2/6", "no ar há m:ss", "2 telas"
+  (`health.onAir.short`), then Voltar ao anterior (its popover opens above
+  the pill), the Camadas drawer (only while Camadas is in the tray),
+  Multiview and the screen actions Tela preta, Logo, Limpar, Encerrar
+  (owner's pick B). As the screen narrows (container queries on the screen,
+  `prog-screen`) it drops how long, then the count with Voltar and
+  Camadas, then the screen actions, folding them into a "…" that opens the
+  Programa's menu (the same as its right click, Camadas included); over
+  the Multiview it is always folded. dock.js gives the Programa `minH` 172:
+  the header it lost pays for the player's second row;
   the Prévia is its screen, its caption a badge inside the top-left corner
   (`kx-mon-badge`: "Prévia · nome · 2/6", blue "Prévia · travado" while
   locked), and **no Enviar ao ar button** — Enter, a double click on it
   or its right-click menu send (the Bíblia, the Escola bíblica and the
   Mídia keep theirs). Camadas in the tray is a drawer opened from the
-  Programa's header. The old `order`/`stacks`/widths are only read to build the first
-  dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca end
-  their tab row in a (+)** (the Biblioteca's also offers Áudios and
+  Programa's pill (or its "…"). The old `order`/`stacks`/widths are only read to build the first
+  dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca have
+  their (+) in the panel's header**, at the level of the title like every
+  module's + (Rodada E1, `TabsPlus` in TabsPanel.jsx, `data-tabs-plus`;
+  the tabs panel got a thin header of its own, "Painel"; the tab rows
+  carry only tabs) (the Biblioteca's also offers Áudios and
   Apresentações, off at first: shown, they take their files out of Vídeos
   and Imagens — `libMediaKinds` in panelTabs.js, tested) that lists every tab with a check mark
   (`TabsMenu` in Popovers.jsx, as Ver lists the modules): checked = shown,
@@ -723,10 +751,10 @@ query). **The Slides and the Biblioteca have a minimum width**
 there is no `LIMITS` object any more): squeezed, a 2-line verse wrapped
 into 3 and looked split wrong, and the Biblioteca's tabs read "Le…, Ima…";
 the splitter clamps there and the narrow tier's Biblioteca-over-Slides
-column takes `slidesW` too. 260 holds the default four tabs and the (+)
-(218 px) with room; **a tab row that does not fit breaks into a second
-line** (`.tabrow` flex-wrap, console.css: Áudios and Apresentações on, the
-(+) always on the last line) for the Biblioteca and the panel beside the
+column takes `slidesW` too. 260 holds the default four tabs with room
+(the (+) is in the header since Rodada E1); **a tab row that does not fit
+breaks into a second line** (`.tabrow` flex-wrap, console.css: Áudios and
+Apresentações on) for the Biblioteca and the panel beside the
 Prévia alike (one `TabRow`; neither is a measured/`locked` module, so the
 extra line only pushes the list down). A slide keeps the
 editor's lines (owner 2026-10-14, replacing "never an ellipsis"): each line
@@ -769,7 +797,7 @@ moves the slide (`useConsole`, `followIndex`, `content.goTo` with
 `auto`); **the arrows never turn it off**: any other `content.goTo`
 re-syncs `follow.offset` so it goes on from the new slide; the player's
 chip (`FollowChip`, `followLabel` in player.js) pauses/resumes on
-purpose. The Biblioteca says "sincronizada". Generated backgrounds are the next step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa header, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
+purpose. The Biblioteca says "sincronizada". Generated backgrounds are the next step. **Timers prontos** (Avisos › Ferramentas › Timer): 5, 10, 15, 30 and 60 min always, plus the church's own (`TimerPreset` rows, `src/lib/console/timerPresets.js`); a click prepares the timer, a double click sends it, and a timer on air takes or gives time with `tool.adjust` (−1, +1, +5 min; refused while the screens are locked). **Multiview** (the Programa's pill, or its right-click menu) turns the Programa monitor into four outputs at once, each what is on air as that output shows it, with its own `OutputPref` (Palco and Pastor in their own layouts), and where it is on screen now from the output health rows; a quadrant's label picks its output (`src/lib/console/multiview.js`, tested; saved with the layout as `multiview`/`mvTiles`). Only the Projeção quadrant (else Vídeo) plays videos. The Prévia's output picker (the six buttons beside it) is gone (user decision 2026-10-12: the Multiview shows every output): the Prévia is the prepared stage as Projeção will show it, with Projeção's own settings.
 
 The desktop app's real data is in `%APPDATA%\KERYX` — never point a test at
 it; smoke runs use a temp `KERYX_DATA_DIR`.
