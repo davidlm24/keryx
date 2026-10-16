@@ -230,6 +230,10 @@
    the level of its title like every module's + (Rodada E1). The panel
    beside the Prévia got a thin header of its own for it ("Painel"). */
 .console .kx-panel-h > .tabs-plus { flex: none; width: 24px; height: 24px; }
+/* A header is symmetric (owner 2026-10-16): its title sits 12 px from the
+   left edge and its last button 12 px from the right one. The bare panels
+   keep their own. */
+.console .kx-panel:not(.kx-panel-bare) > .kx-panel-h { padding-right: var(--space-3); }
 /* Too many tabs for the width: the row breaks into a second line (owner
    2026-10-14, the Biblioteca review), never a cut title. Only a single tab
    wider than the whole panel still shortens. */
@@ -415,14 +419,15 @@
 .console .dock { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .console .dock-split { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .console .dock-split.is-col { flex-direction: column; }
+.console { --fold-ms: 240ms; --ease-fold: cubic-bezier(0.32, 0.72, 0, 1); }
 .console .dock-cell { display: flex; min-width: 0; min-height: 0; }
 /* A folding module (the No ar strip, only while lyrics are on air): it eases
    in and out of its place so the columns do not jump; gone, it takes no room. */
-.console .dock-cell.dock-fold { overflow: hidden; transition: flex-basis 180ms var(--ease-out); }
-.console .dock-cell.dock-fold.is-gone { visibility: hidden; transition: flex-basis 180ms var(--ease-out), visibility 0s 180ms; }
+.console .dock-cell.dock-fold { overflow: hidden; transition: flex-basis var(--fold-ms) var(--ease-fold); }
+.console .dock-cell.dock-fold.is-gone { visibility: hidden; transition: flex-basis var(--fold-ms) var(--ease-fold), visibility 0s var(--fold-ms); }
 /* A locked height (dock.js `locked`): it eases to its new size (a pencil
    opening Camadas, a song with more lines); the gap beside it has no handle. */
-.console .dock-cell.dock-locked { transition: flex-basis 180ms var(--ease-out); }
+.console .dock-cell.dock-locked { transition: flex-basis var(--fold-ms) var(--ease-fold); }
 /* Folding a panel (owner 2026-10-16, Rodada F4; kx.jsx FoldBtn/FoldStrip,
    dock.js fitDock's `folded`): the chevron right of the header's +, up
    while open, turned while folded; the last open panel of a split keeps
@@ -430,8 +435,15 @@
    Compacta); across a row a 28 px strip, the chevron over the module's
    name standing up, a click anywhere on it opens the panel. */
 .console .kx-fold { flex: none; }
-.console .kx-fold .kx-i { transition: transform var(--duration-fast) var(--ease-out); }
+.console .kx-fold .kx-i { transition: transform 220ms var(--ease-fold); }
 .console .kx-fold.is-folded .kx-i { transform: rotate(180deg); }
+/* Folded down a column the body stays under the shrinking cell (clipped by
+   the panel) and fades, instead of vanishing before the box moves. */
+.console .kx-panel > .kx-panel-b { transition: opacity 200ms var(--ease-fold) 60ms; }
+.console .kx-panel.is-collapsed:not(.kx-strip) > .kx-panel-b { display: block; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms var(--ease-fold), visibility 0s var(--fold-ms); }
+/* aria-expanded (open) must not read as "pressed" (the base rule gives it the
+   hover look): the chevron rests like the (+), a background only on hover. */
+.console .kx-btn.kx-fold[aria-expanded="true"]:not(:hover):not(:active) { background: none; color: var(--fg-2); }
 .console .kx-btn.kx-fold.is-stuck { opacity: var(--dim); cursor: default; }
 .console .kx-btn.kx-fold.is-stuck:hover { background: none; }
 .console.is-compact .kx-panel.is-collapsed { height: 28px; }
@@ -440,7 +452,7 @@
 .console .kx-strip-b:hover { background: var(--bg-2); color: var(--fg-1); }
 .console .kx-strip-b > .kx-fold { flex: none; width: 24px; height: 24px; display: grid; place-items: center; }
 .console .kx-strip-b > .kx-strip-name { writing-mode: vertical-rl; min-height: 0; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (prefers-reduced-motion: reduce) { .console .kx-fold .kx-i { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .console .kx-fold .kx-i, .console .kx-panel > .kx-panel-b, .console .kx-panel.is-collapsed:not(.kx-strip) > .kx-panel-b { transition: none; } }
 .console .dock-gap { flex: 0 0 var(--gutter); }
 /* While editing the arrangement, every splitter says its side's size in %
    of the split (owner 2026-10-14); a click turns it into a field. */
@@ -491,7 +503,10 @@
    side widths are the operator's (Ver › Editar layout). Each picker card
    scrolls on its own; Versículos takes what is left. */
 .console .bible-center { container: bible / inline-size; }
-.console .bpick-books .bsrc { display: flex; height: 20px; padding: 0 var(--space-3); }
+/* The band under Livros' header is the same row as Recentes under the text's
+   (4 + 24 + 4 and a separator), so both columns start their lists at the
+   same height. */
+.console .bpick-books .bsrc { display: flex; box-sizing: border-box; height: 33px; padding: 0 var(--space-3); border-bottom: 1px solid var(--line); }
 /* Livros' header carries the version, Abrev | Nomes, the install +, the
    view menu and the fold chevron beside its title (Rodada F4): the
    controls sit tighter, so the title still reads at the column's 300 px. */
@@ -515,11 +530,11 @@
 /* The text panel's search field (Buscar; a reference opens the chapter). */
 .console .bread-search { flex: 0 4 240px; min-width: 140px; }
 .console .bread-search .kx-field { width: 100%; }
-.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: 0 var(--space-1) var(--space-1); }
+.console .bpick-books .bgrid { grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); padding: var(--space-1); }
 .console .bpick-books.names-full .bgrid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-.console .bpick-chapters .bchap { border-top: 0; padding: 0 var(--space-1) var(--space-1); }
+.console .bpick-chapters .bchap { border-top: 0; padding: var(--space-1); }
 .console .bpick-chapters .chapters { max-height: none; overflow: visible; }
-.console .bpick-verses .bverses { padding: 0 var(--space-1) var(--space-1); }
+.console .bpick-verses .bverses { padding: var(--space-1); }
 /* The text column: recent chapters, favourites and notes on top, the
    reading (or Buscar, Comparar) below, scrolling. */
 /* Its header is one line at the density's height, like every panel's
@@ -1410,6 +1425,10 @@
 .console .nobg-mark { position: absolute; top: 3px; right: 3px; z-index: 2; width: 14px; height: 14px; border-radius: 50%; background: var(--warn); color: var(--on-warn); display: grid; place-items: center; pointer-events: none; }
 .console .nobg-label { position: absolute; left: 4px; bottom: 4px; z-index: 2; padding: 0 5px; border-radius: 3px; background: #000000b3; color: var(--warn-fg); font-size: 10px; line-height: 16px; pointer-events: none; }
 .console .bgchip-l { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* A file the sync between the church's computers has not brought yet
+   (SyncWait in library/BackgroundLibrary.jsx): said in place of the picture. */
+.console .sync-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: var(--space-1); background: var(--bg-2); color: var(--fg-2); font-size: 11px; pointer-events: none; }
+.console .lib-thumb.is-wait { background: var(--bg-2); }
 /* Temas (ThemeStrip.jsx): the pinned themes as small screens inside
    Camadas › Fundo (presets, as in Holyrics). */
 .console .tm { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }

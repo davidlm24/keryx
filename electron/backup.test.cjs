@@ -203,6 +203,26 @@ test("zips that are not KERYX exports are refused with a reason", async () => {
     assert.ok(!hasPendingImport(dest));
 });
 
+test("an import never fills the disk: too many items, a huge database or no room are refused before writing", async () => {
+    const dest = tmp();
+    const manifest = ["manifest.json", '{"format":"keryx-export","version":1}'];
+    const many = path.join(tmp(), "many.zip");
+    await zipOf(many, [manifest, ["keryx.db", "x"], ["media/a.png", "a"], ["media/b.png", "b"]]);
+    await assert.rejects(stageImport({ zipFile: many, dataDir: dest, maxEntries: 3 }), /itens demais/);
+    assert.ok(!hasPendingImport(dest));
+
+    const bigDb = path.join(tmp(), "bigdb.zip");
+    await zipOf(bigDb, [manifest, ["keryx.db", "x".repeat(64)]]);
+    await assert.rejects(stageImport({ zipFile: bigDb, dataDir: dest, maxDbBytes: 10 }), /grande demais/);
+    assert.ok(!hasPendingImport(dest));
+
+    // The disk would be left with less than the margin: nothing of it is written.
+    const media = path.join(tmp(), "media.zip");
+    await zipOf(media, [manifest, ["media/video.mp4", "v".repeat(5000)], ["keryx.db", "x"]]);
+    await assert.rejects(stageImport({ zipFile: media, dataDir: dest, freeSpace: () => 4000, minFree: 0 }), /espaço livre/);
+    assert.ok(!fs.existsSync(path.join(dest, "pending-import")), "staging removed");
+});
+
 test("a re-staged import replaces the earlier one; discard removes it", async () => {
     const source = tmp();
     const store = openAt(source);
