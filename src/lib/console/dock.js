@@ -735,6 +735,39 @@ export function allocate(sizes, mins, avail) {
 // them takes the rest. Every group alone in a split carries `fold`:
 // { dir, on, can } — how it folds there, whether it is folded, whether its
 // chevron may act (folded, or another child of the split is open).
+// What the dock moves by itself (Dock.jsx eases it, POL-01): every cell of
+// a fitted frame, keyed by its split's path and its place there, with its
+// size along the split. `shape` names the cells; `motion` adds what folds,
+// goes or locks. Between two frames of one window size and one shape, a
+// different `motion` is a panel folded or opened, the No ar strip coming or
+// going, or a measured height changing: eased. A new shape (another
+// arrangement, editing it, a group joined as tabs) or a new window size is
+// drawn at once, and so is a splitter drag (it moves no lock).
+export function dockMotion(frame) {
+    const cells = [];
+    const sizes = {};
+    const walk = (f) => {
+        if (!f || f.kind !== "split") return;
+        for (const ch of f.children) {
+            const k = `${JSON.stringify(f.path)}/${ch.at.join(",")}`;
+            sizes[k] = ch.size;
+            cells.push({ k, m: `${ch.folded ? "f" : ""}${ch.gone ? "g" : ""}${ch.locked ? Math.round(ch.size) : ""}` });
+            walk(ch.frame);
+        }
+    };
+    walk(frame);
+    return {
+        w: frame?.w ?? 0,
+        h: frame?.h ?? 0,
+        shape: cells.map((c) => c.k).join("|"),
+        motion: cells.map((c) => `${c.k}:${c.m}`).join("|"),
+        sizes,
+    };
+}
+
+// Whether the change from one dockMotion to the next is eased (see above).
+export const easesBetween = (a, b) => Boolean(a && b) && a.w === b.w && a.h === b.h && a.shape === b.shape && a.motion !== b.motion;
+
 export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head = 32 } = {}) {
     if (!dock?.tree) return null;
     const folding = new Set(gone.filter((id) => MODULES[id]?.fold));
