@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { overIndex, isNoop, shiftFor, placeIndex, moveTo, measureRows, roomFor, slotAt, slotTop } from "./dropOrder.js";
+import { overIndex, isNoop, shiftFor, placeIndex, moveTo, measureRows, roomFor, slotAt, slotTop, stepSlot, stepKey } from "./dropOrder.js";
 
 test("overIndex: the slot is how many row middles are above the pointer", () => {
     const mids = [16, 48, 80];
@@ -106,4 +106,23 @@ test("slotAt: reordering, the source is left out and 'no move' is its own index"
     // The section dragged to the top.
     assert.equal(slotAt(g, 3, 4, null), 0);
     assert.equal(slotAt(g, 999, 4, null), 6);
+});
+
+test("stepSlot: Subir / Descer move one place, never past the ends (C-16)", () => {
+    const list = ["a", "b", "c", "d"];
+    assert.deepEqual(moveTo(list, 2, stepSlot(2, -1, 4)), ["a", "c", "b", "d"]);
+    assert.deepEqual(moveTo(list, 1, stepSlot(1, 1, 4)), ["a", "c", "b", "d"]);
+    assert.deepEqual(moveTo(list, 0, stepSlot(0, 1, 4)), ["b", "a", "c", "d"]);
+    assert.deepEqual(moveTo(list, 3, stepSlot(3, -1, 4)), ["a", "b", "d", "c"]);
+    assert.equal(stepSlot(0, -1, 4), null);
+    assert.equal(stepSlot(3, 1, 4), null);
+    assert.equal(stepSlot(-1, 1, 4), null);
+});
+
+test("stepKey: only Alt+↑ / Alt+↓ move a row", () => {
+    assert.equal(stepKey({ key: "ArrowUp", altKey: true }), -1);
+    assert.equal(stepKey({ key: "ArrowDown", altKey: true }), 1);
+    assert.equal(stepKey({ key: "ArrowDown" }), 0);
+    assert.equal(stepKey({ key: "ArrowDown", altKey: true, ctrlKey: true }), 0);
+    assert.equal(stepKey({ key: "ArrowLeft", altKey: true }), 0);
 });
