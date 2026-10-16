@@ -14,6 +14,8 @@ export const SECTIONS = [
     { id: "biblia", icon: "book", name: "Bíblia e músicas" },
     { id: "culto", icon: "clock", name: "Culto" },
     { id: "console", icon: "keyboard", name: "Console" },
+    // Between the church's computers, through a shared folder (§8b; owner 2026-10-16).
+    { id: "sincronizacao", icon: "cloud", name: "Sincronização" },
     { id: "backup", icon: "save", name: "Backup e atualizações" },
     { id: "sobre", icon: "info", name: "Sobre" },
 ];
@@ -23,7 +25,7 @@ export const SECTIONS = [
 // network). Console is mixed: its rows say it one by one.
 export const SECTION_SCOPE = {
     igreja: "church", temas: "church", biblia: "church", culto: "church",
-    telas: "machine", rede: "machine", backup: "machine", console: "mixed",
+    telas: "machine", rede: "machine", sincronizacao: "machine", backup: "machine", console: "mixed",
 };
 export const SCOPE_LABEL = { church: "da igreja · viaja no backup", machine: "deste computador" };
 
@@ -37,6 +39,7 @@ const ALIASES = {
     fundos: { id: "temas" },
     dados: { id: "backup" },
     letras: { id: "biblia" },
+    sync: { id: "sincronizacao" },
 };
 
 // -> { id, tab }: the section to show (Telas e saídas when the id is

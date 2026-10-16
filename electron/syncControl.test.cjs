@@ -98,6 +98,7 @@ test("two computers: choose the folder, make the code on one, type it on the oth
 
     const st = await b.call("status");
     assert.equal(st.engine.state, "ok");
+    assert.ok(!b.bell.some((n) => n.key === "sync-dups"), "no look-alike songs, no bell");
     assert.equal(st.name, "NOTEBOOK-PASTOR");
     const other = st.engine.computers.find((c) => c.pc === a.store.pcId);
     assert.equal(other.name, "IGREJA-SOM");
@@ -142,6 +143,23 @@ test("pause, sync now, change the code, leave", async () => {
     assert.ok(titles(a).includes("Com o código velho"), "what waited goes with the new code");
     assert.deepEqual(b.bell.at(-1), { dismissed: "sync" }, "the bell clears once it is fine");
 
+    // Tirar from A: B stops until it types the code again.
+    await assert.rejects(a.call("remove", { pc: a.store.pcId }), /Sair da sincronização/);
+    const afterRemove = await a.call("remove", { pc: b.store.pcId });
+    assert.equal(afterRemove.engine.computers.find((c) => c.pc === b.store.pcId).removed.by, a.store.pcId.toLowerCase());
+    b.store.call("Song", "create", [{ title: "Enquanto tirado" }]);
+    assert.equal((await b.call("now")).engine.state, "removed");
+    await settle([a], 1);
+    assert.ok(!titles(a).includes("Enquanto tirado"));
+    await b.call("join", { code: next.code });
+    await settle([b, a], 2);
+    assert.ok(titles(a).includes("Enquanto tirado"), "typing the code brought it back");
+    // Deixar voltar, from A.
+    await a.call("remove", { pc: b.store.pcId });
+    assert.equal((await b.call("now")).engine.state, "removed");
+    await a.call("restore", { pc: b.store.pcId });
+    assert.equal((await b.call("now")).engine.state, "ok");
+
     // Leaving: this computer stops, nothing is deleted anywhere.
     const left = await b.call("leave");
     assert.equal(left.folder, null);
@@ -153,6 +171,28 @@ test("pause, sync now, change the code, leave", async () => {
     assert.ok(!titles(a).includes("Depois de sair"));
     assert.ok(titles(a).includes("Com o código velho"), "what it sent stays");
     assert.equal(b.store.outbox().length > 0, true);
+    a.close();
+    b.close();
+});
+
+test("after a join, the bell says once that some songs look repeated", async () => {
+    const folder = tmp();
+    const a = computer(folder, "A");
+    const b = computer(folder, "B");
+    a.store.call("Song", "create", [{ title: "Grande é o Senhor", lyrics: "Grande é o Senhor" }]);
+    b.store.call("Song", "create", [{ title: "Grande e o senhor", lyrics: "grande é o Senhor!" }]);
+    b.store.call("Song", "create", [{ title: "Santo", lyrics: "Santo" }]);
+    await a.call("choose");
+    const made = await a.call("create");
+    await b.call("choose");
+    await b.call("join", { code: made.code });
+    await settle([a, b], 2);
+    for (const pc of [a, b]) {
+        const dups = pc.bell.filter((n) => n.key === "sync-dups");
+        assert.equal(dups.length, 1, "once");
+        assert.equal(dups[0].title, "1 música parece repetida");
+        assert.equal(dups[0].action, "settings:sincronizacao");
+    }
     a.close();
     b.close();
 });

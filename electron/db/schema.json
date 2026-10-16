@@ -1846,6 +1846,9 @@
         "background_categories": {
           "type": "json"
         },
+        "song_duplicates_kept": {
+          "type": "json"
+        },
         "logo_corner": {
           "type": "text"
         },

@@ -13,8 +13,9 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const { createSyncEngine, inspectFolder, syncDirOf } = require("./sync.cjs");
-const { createPairing, joinPairing, codeRules } = require("./syncPairing.cjs");
+const { createPairing, joinPairing, updateRemoved, codeRules } = require("./syncPairing.cjs");
 
 const KEY = "sync";
 // The bell's one entry for the sync (notifications.cjs keeps one per key).
@@ -22,6 +23,11 @@ const BELL = "sync";
 // The folder unavailable this long before the bell says so (a laptop that
 // opens before Drive does is not news).
 const OFFLINE_BELL_MS = 10 * 60 * 1000;
+// After a join, how long the passes look for likely duplicate songs (the
+// other computers' songs arrive over a few passes); the bell says so once.
+const DUPLICATES_BELL = "sync-dups";
+const DUPLICATES_WATCH_MS = 15 * 60 * 1000;
+const duplicateRules = () => import(pathToFileURL(path.join(__dirname, "..", "shared", "syncDuplicates.mjs")).href);
 
 // Electron's safeStorage as seal/open, or a plain fallback where the system
 // has no protection (never on Windows): "safe:" or "plain:" + base64.
@@ -55,13 +61,14 @@ async function joinMessage(result) {
         case "busy": return "O arquivo do código ainda está chegando pela pasta. Tente de novo em instantes.";
         case "wrong": return "Este código não é o desta pasta. Confira com quem criou, ou veja em Mostrar o código num computador que já sincroniza.";
         case "exists": return "Esta pasta já tem o código de uma igreja. Digite esse código.";
+        case "mismatch": return "O código da igreja mudou nesta pasta. Digite o código novo primeiro.";
         default: return (await codeRules()).codeMessage(result) || "Não foi possível usar o código.";
     }
 }
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 
-function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = async () => null, describe = () => ({}), notify = null, dismiss = null, log = console.warn, now = () => new Date(), engineOptions = {} }) {
+function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = async () => null, openPath = null, describe = () => ({}), notify = null, dismiss = null, log = console.warn, now = () => new Date(), engineOptions = {} }) {
     const config = () => {
         const c = settings.get(KEY, null);
         return c && typeof c === "object" ? c : {};
@@ -103,7 +110,40 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             if (dismiss) dismiss(BELL);
         }
     }
+    // Músicas repetidas after a join (shared/syncDuplicates.mjs): the bell
+    // once, when the merged library has songs that look the same.
+    let watchDuplicates = 0;
+    let checking = false;
+    async function checkDuplicates() {
+        if (!notify || checking || !watchDuplicates) return;
+        if (now() - watchDuplicates > DUPLICATES_WATCH_MS) {
+            watchDuplicates = 0;
+            return;
+        }
+        checking = true;
+        try {
+            const { duplicateSongs } = await duplicateRules();
+            const kept = store.call("User", "get", ["local"]).song_duplicates_kept;
+            const groups = duplicateSongs(store.call("Song", "list", []), Array.isArray(kept) ? kept : []);
+            if (!groups.length) return;
+            watchDuplicates = 0;
+            const n = groups.length;
+            notify({
+                key: DUPLICATES_BELL,
+                kind: "info",
+                title: n === 1 ? "1 música parece repetida" : `${n} músicas parecem repetidas`,
+                body: "Depois de juntar com os outros computadores, há músicas com o mesmo título e a mesma letra. Veja em Configurações › Sincronização.",
+                action: "settings:sincronizacao",
+            });
+        } catch (err) {
+            log(`[keryx-sync] músicas repetidas: ${err.message}`);
+        } finally {
+            checking = false;
+        }
+    }
+
     function onStatus(state) {
+        if (state.state === "ok") checkDuplicates();
         if (state.state === "ok") {
             since.sent += state.sent || 0;
             for (const k of ["applied", "skipped", "failed"]) since[k] += state.received?.[k] || 0;
@@ -142,9 +182,27 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         });
         pairing = null;
         pairingFrom = null;
+        watchDuplicates = now().getTime();
         const sent = store.snapshot();
         log(`[keryx-sync] código ${cur.pairing ? "novo" : "aceito"}; ${sent} registros a enviar`);
         engine.pass().catch(() => {});
+        return status();
+    }
+
+    async function removed(target, out) {
+        const who = String(target || "").toLowerCase();
+        const me = String(store.pcId).toLowerCase();
+        if (!who) throw fail("Qual computador?");
+        if (who === me) throw fail("Para este computador, use Sair da sincronização.");
+        const p = currentPairing();
+        if (!p) throw fail("Este computador ainda não sincroniza.");
+        const folder = await folderOrFail();
+        const list = await updateRemoved(syncDirOf(folder), p, (cur, at) => {
+            const rest = cur.filter((r) => r.pc !== who);
+            return out ? [...rest, { pc: who, at: at.toISOString(), by: me }] : rest;
+        }, { pc: me, now: now() });
+        if (list.error) throw fail(await joinMessage(list));
+        await engine.pass();
         return status();
     }
 
@@ -200,6 +258,11 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             engine.poke();
             return { ...status(), inspect: await inspectFolder(root) };
         },
+        open: async () => {
+            const folder = await folderOrFail();
+            if (openPath) await openPath(folder);
+            return null;
+        },
         inspect: async () => {
             const folder = config().folder;
             return folder ? inspectFolder(folder) : null;
@@ -214,8 +277,15 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             const folder = await folderOrFail();
             const joined = await joinPairing(syncDirOf(folder), code);
             if (joined.error) throw fail(await joinMessage(joined));
+            // Typing the code brings back a computer that was taken out.
+            const pc = String(store.pcId).toLowerCase();
+            await updateRemoved(syncDirOf(folder), joined, (list) => list.filter((r) => r.pc !== pc), { pc, now: now() }).catch(() => {});
             return paired(joined);
         },
+        // Tirar (owner 2026-10-16): another computer stops until the code is
+        // typed on it again; Deixar voltar undoes it from here.
+        remove: async (_event, { pc: target } = {}) => removed(target, true),
+        restore: async (_event, { pc: target } = {}) => removed(target, false),
         // Trocar o código: a new one over the folder's; the computers that
         // should stay type it, the one left out stops.
         rotate: async () => {

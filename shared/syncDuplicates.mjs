@@ -1,8 +1,9 @@
 // Músicas repetidas (docs/desktop-architecture.md §8b, the first join): when
 // two computers that each had their own copy of a song start syncing, both
 // copies stay (the join merges, it never replaces), and the operator is told
-// which look like the same song. Pure; Configurações › Sincronização shows
-// them and runs the plan.
+// which look like the same song. Configurações › Sincronização shows
+// them and runs the plan; the main process rings the bell once after a
+// join (electron/syncControl.cjs). Shared, pure: no Node, no DOM.
 //
 // Likely the same: the same title and the same lyrics once case, accents,
 // punctuation, chords ([G], [Am7]) and spacing are set aside.

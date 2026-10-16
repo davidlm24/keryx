@@ -21,7 +21,7 @@ export function ago(iso, nowMs = Date.now()) {
 export function syncStep(st) {
     if (!st || st.available === false) return "unavailable";
     if (!st.folder) return "folder";
-    if (!st.paired || st.keyLost || st.engine?.state === "mismatch") return "code";
+    if (!st.paired || st.keyLost || st.engine?.state === "mismatch" || st.engine?.state === "removed") return "code";
     return "on";
 }
 
@@ -37,6 +37,7 @@ export function syncState(st, nowMs = Date.now()) {
         case "ok": return { tone: "ok", label: "Em dia", detail: e.lastPass ? `última passagem ${ago(e.lastPass, nowMs)}` : "" };
         case "offline": return { tone: "wait", label: "Aguardando a pasta", detail: e.error || "a pasta não está disponível" };
         case "mismatch": return { tone: "wait", label: "O código da igreja mudou nesta pasta", detail: "digite o código novo; as mudanças deste computador esperam" };
+        case "removed": return { tone: "wait", label: "Este computador foi tirado da sincronização", detail: "digite o código da igreja para voltar; as mudanças deste computador esperam" };
         case "error": return { tone: "wait", label: "Não sincronizou", detail: e.error || "" };
         default: return { tone: "off", label: "Começando…", detail: "" };
     }
@@ -49,6 +50,19 @@ export function computerRows(st, nowMs = Date.now()) {
     const rows = [{ pc: st.pc, name: st.name || "Este computador", self: true, tone: "ok", detail: st.version ? `este computador · KERYX ${st.version}` : "este computador", tag: "este" }];
     for (const c of st.engine?.computers || []) {
         const bits = [];
+        if (c.removed) {
+            const by = c.removed.by === st.pc ? "por este computador" : "";
+            rows.push({
+                pc: c.pc,
+                name: c.name || `Computador ${String(c.pc).slice(0, 4).toUpperCase()}`,
+                self: false,
+                tone: "off",
+                detail: ["tirado", ago(c.removed.at, nowMs), by].filter(Boolean).join(" "),
+                tag: "tirado",
+                removed: true,
+            });
+            continue;
+        }
         if (c.verified === false) {
             bits.push(c.rejected ? `${c.rejected} ${c.rejected === 1 ? "mudança ignorada" : "mudanças ignoradas"}` : "sem o código");
         } else {

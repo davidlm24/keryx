@@ -968,8 +968,56 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      the old key, sees `mismatch`, and its lines no longer verify anywhere.
      A computer retired on purpose just leaves the sync (Sair da
      sincronização); a dead one stays quiet in the list.
-5. Configurações › Sincronização; the first join merges (never replaces) and
-   flags likely duplicate songs.
+5. **Configurações › Sincronização and the first join (done; the owner's
+   picks of 2026-10-16 on the decision page):**
+   - **Main side** (`electron/syncControl.cjs`, tested in
+     `syncControl.test.cjs` with temp stores, one folder and the picker,
+     the protection and the bell faked; reached through `keryx:sync`):
+     choose the folder (native picker; a new folder forgets the old one's
+     code), create / type / show / change the code, pause, sync now, open
+     the folder, Tirar / Deixar voltar, leave. settings.json keeps `"sync":
+     { folder, paused, pairing: { id, key, code, joinedAt } }`, the key and
+     the code sealed with Electron `safeStorage` (Windows' DPAPI;
+     "Mostrar o código" was the owner's pick); a key that will not open
+     here (settings brought from another account) asks for the code again
+     (`keyLost`). Each computer writes a signed `sync/<pc>/computer.json`
+     (its Windows name and KERYX version, again when either changes and
+     twice a day), so the list says "NOTEBOOK-PASTOR · escreveu há 3 min ·
+     0.2.20". The bell: when the code changed, when the folder is gone for
+     10 minutes, and once after a join when songs look repeated.
+   - **The first join merges** (`store.snapshot()`, tested): creating or
+     typing a code (and changing it) puts everything this computer holds
+     into the outbox at the versions it is at, so the others' newer copies
+     still win and nothing is replaced; every delete goes at its
+     tombstone's date; the profile sends only the church fields this
+     computer set (a version of its own, or a value other than the factory
+     one), so a fresh install never sends its defaults over the church's
+     logo. Media all go (the owner's pick: no question first).
+   - **The section** (`settings/SyncSection.jsx`, machine scope, between
+     Console and Backup): three steps (`syncStep` in
+     `src/lib/console/syncView.js`, tested, with the status in pt-BR):
+     the folder; the code (make it where the folder has none — shown big
+     once, with Copiar —, or type it, checked as it is typed by
+     `shared/syncCode.mjs`; also after `mismatch`, `removed` or
+     `keyLost`); then Sincronizar (pause), Pasta, Estado with "Sincronizar
+     agora", Desde que abriu, Mídias, Computadores (Tirar… / Deixar
+     voltar), Código da igreja (Mostrar, Copiar, Trocar o código…), Músicas
+     repetidas and Sair. Every question goes through `useConfirm`. One
+     poll for the window (`src/hooks/useSyncStatus.js`, every 4 s while
+     someone listens). The browser preview has no main process: the section
+     shows its first step with the button off and says why.
+   - **The top bar's cloud** (owner's pick B): beside Ver, only on a
+     computer that syncs, its dot green (in step), amber (something waits)
+     or grey (paused); a click opens the section.
+   - **Músicas repetidas** (`shared/syncDuplicates.mjs`, tested; shared so
+     the main process can ring the bell): the same title and lyrics once
+     case, accents, punctuation, chords and spacing are set aside. The
+     section lists them; **Juntar em uma** keeps the newest copy, points
+     every setlist item, template item and history row at it and deletes
+     the others (`mergePlan`, after `useConfirm`); **Manter as duas**
+     keeps them on every computer (`User.song_duplicates_kept`, a church
+     field of pairs "a|b"). On a computer that syncs the Biblioteca says
+     "parece repetida" in the row, and its menu has "Ver as repetidas…".
 
 ## 9. Project layout after the change
 

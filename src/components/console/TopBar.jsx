@@ -11,12 +11,13 @@ import { MenuBarButtons } from "./MenuBar";
 // KERYX | Bíblia as tabs, the search, the service clock in its compact
 // form ("◷ 19:00 · 9h46", the whole sentence in its tooltip: serviceClock in
 // src/lib/console/timeline.js; a click opens Planejar o culto), the clock,
-// the outputs status ("2 telas", the full label in its tooltip), Ver (the
-// eye) and the bell. The screen actions (Tela preta, Logo, Limpar,
+// the outputs status ("2 telas", the full label in its tooltip), the sync's
+// cloud (only on a computer that syncs: green in step, amber when something
+// waits, grey paused; owner's pick, 2026-10-16), Ver (the eye) and the bell. The screen actions (Tela preta, Logo, Limpar,
 // Encerrar) live in the Programa's pill since Rodada E1 (owner's pick B).
 // Nothing wraps: as the window narrows the bar drops the service's end,
 // then the clock, then shortens the search (container queries in console.css).
-export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svc, onPlanner }) {
+export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svc, onPlanner, sync = null, onSync }) {
     const { now } = c;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const toggle = (name) => setOpen(open === name ? null : name);
@@ -51,6 +52,12 @@ export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outs
                 <button type="button" className={`kx-status kx-t ${outsState ? `is-${outsState}` : ""}`} onClick={() => toggle("outs")} title={`Telas e saídas · ${outsLabel}`} aria-label={`Telas e saídas · ${outsLabel}`} aria-expanded={open === "outs"}>
                     <i className="kx-dot" /><span className="tb-outs-l">{outsCompact}</span>
                 </button>
+                {sync && (
+                    <span className="tb-sync">
+                        <IconBtn name="cloud" title={`Sincronização · ${sync.label}${sync.detail ? ` · ${sync.detail}` : ""}`} onClick={onSync} />
+                        <i className={`tb-sync-dot is-${sync.tone}`} aria-hidden="true" />
+                    </span>
+                )}
                 {/* Ver: the modules, the density and the arrangements; beside the bell. */}
                 <IconBtn name="eye" className="tb-ver" title="Ver · módulos, densidade e disposição" on={open === "ver"} onClick={() => toggle("ver")} aria-haspopup="menu" aria-expanded={open === "ver"} />
                 <span className="tb-bell">

@@ -82,6 +82,16 @@ export const SETTINGS_INDEX = [
     e("console", "Iniciar com o Windows", "abrir o KERYX quando o computador liga", ["windows", "iniciar", "ligar", "automático", "inicialização"]),
     e("console", "Atalhos", "as teclas do console: Enter, setas, B, L, C, Esc", ["teclado", "teclas", "atalho", "enter", "esc"]),
 
+    e("sincronizacao", "Pasta", "a pasta do Google Drive, OneDrive ou Dropbox que os computadores da igreja compartilham", ["sincronizar", "sincronização", "google drive", "drive", "onedrive", "dropbox", "pasta compartilhada", "outro computador", "notebook", "nuvem", "Escolher a pasta", "Trocar", "Abrir"]),
+    e("sincronizacao", "Código da igreja", "criar, digitar, mostrar ou trocar o código que os computadores da igreja usam para sincronizar", ["código", "senha", "pcs verificados", "verificado", "Criar o código da igreja", "Entrar", "Mostrar", "Trocar o código", "entrar na sincronização", "parear"]),
+    e("sincronizacao", "Sincronizar", "ligar ou pausar a sincronização neste computador", ["pausar", "ligar", "desligar", "parar"]),
+    e("sincronizacao", "Estado", "em dia, aguardando a pasta, código mudou; Sincronizar agora", ["status", "sincronizar agora", "agora", "erro", "offline", "aguardando"]),
+    e("sincronizacao", "Desde que abriu", "quantas mudanças foram enviadas e recebidas", ["enviadas", "recebidas", "mudanças"]),
+    e("sincronizacao", "Mídias", "os arquivos de mídia que ainda estão chegando pela pasta", ["arquivos", "vídeos", "imagens", "chegando"]),
+    e("sincronizacao", "Computadores", "os computadores da igreja que sincronizam, quando cada um escreveu; Tirar e Deixar voltar", ["computador", "notebook", "lista", "tirar", "Tirar", "Deixar voltar", "sem o código", "verificado"]),
+    e("sincronizacao", "Músicas repetidas", "músicas com o mesmo título e a mesma letra depois de juntar os computadores; Juntar em uma, Manter as duas", ["repetidas", "duplicadas", "iguais", "Juntar em uma", "Manter as duas", "juntar"]),
+    e("sincronizacao", "Sair", "este computador para de sincronizar; nada é apagado", ["sair da sincronização", "parar", "desligar", "desconectar"]),
+
     e("backup", "Backup", "o último backup e Fazer backup agora", ["cópia", "segurança", "backup agora"]),
     e("backup", "Backup automático", "um backup ao abrir e ao fechar, por dia; pode desligar", ["automático", "desligar", "ligar"]),
     e("backup", "Manter os últimos", "quantos backups ficam (7, 14, 30, 60)", ["quantos", "dias", "antigos", "apagar"]),

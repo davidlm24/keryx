@@ -1,7 +1,7 @@
-// node --test src/lib/console/syncDuplicates.test.mjs   (npm test)
+// node --test shared/syncDuplicates.test.mjs   (npm test)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { duplicateSongs, songKey, pairKey, keepPairs, mergePlan } from "./syncDuplicates.js";
+import { duplicateSongs, songKey, pairKey, keepPairs, mergePlan } from "./syncDuplicates.mjs";
 
 const song = (id, title, lyrics, updated = "2026-10-01T00:00:00.000Z") => ({ id, title, lyrics, updated_date: updated });
 

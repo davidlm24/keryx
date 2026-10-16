@@ -488,6 +488,7 @@ app.whenReady().then(async () => {
             });
             return canceled || !filePaths[0] ? null : filePaths[0];
         },
+        openPath: (folder) => shell.openPath(folder),
         describe: () => ({ name: os.hostname(), version: app.getVersion() }),
         notify: (n) => notifications.add(n),
         dismiss: (key) => notifications.remove((n) => n.key === key),

@@ -23,6 +23,7 @@ test("the step: the preview, the folder, the code, on", () => {
     assert.equal(syncStep({ ...base, paired: false }), "code");
     assert.equal(syncStep({ ...base, keyLost: true }), "code");
     assert.equal(syncStep({ ...base, engine: { state: "mismatch" } }), "code");
+    assert.equal(syncStep({ ...base, engine: { state: "removed" } }), "code");
     assert.equal(syncStep(base), "on");
     assert.equal(syncStep({ ...base, paused: true }), "on");
 });
@@ -34,6 +35,7 @@ test("the Estado row", () => {
     assert.match(syncState({ ...base, engine: { state: "mismatch" } }, NOW).label, /código/);
     assert.equal(syncState({ ...base, engine: { state: "off" } }, NOW).label, "Começando…");
     assert.match(syncState({ ...base, keyLost: true }, NOW).label, /de novo/);
+    assert.match(syncState({ ...base, engine: { state: "removed" } }, NOW).label, /tirado/);
 });
 
 test("the computers: this one first, the others with when they wrote, the ones without the code flagged", () => {
@@ -42,6 +44,7 @@ test("the computers: this one first, the others with when they wrote, the ones w
         { pc: "b", name: "RECEPCAO", version: "0.2.19", lastChange: minus(9 * 86400000), verified: true, rejected: 0 },
         { pc: "c7f0aa", name: null, lastChange: minus(60000), verified: false, rejected: 4 },
         { pc: "d", name: "NOVO", seen: minus(120000), verified: true, rejected: 0 },
+        { pc: "e", name: "VELHO", lastChange: minus(86400000 * 40), verified: true, rejected: 0, removed: { at: minus(3600000), by: "me" } },
     ] } };
     const rows = computerRows(st, NOW);
     assert.deepEqual(rows.map((r) => [r.name, r.tone, r.detail, r.tag]), [
@@ -50,6 +53,7 @@ test("the computers: this one first, the others with when they wrote, the ones w
         ["RECEPCAO", "off", "escreveu há 9 dias · 0.2.19", "verificado"],
         ["Computador C7F0", "wait", "4 mudanças ignoradas", "sem o código"],
         ["NOVO", "ok", "visto há 2 min", "verificado"],
+        ["VELHO", "off", "tirado há 1 hora por este computador", "tirado"],
     ]);
     assert.equal(sinceLine(st), "1 mudança enviada · 31 recebidas");
 });
