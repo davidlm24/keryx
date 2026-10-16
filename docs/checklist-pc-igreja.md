@@ -56,6 +56,19 @@ Este item não muda nada no KERYX; serve para decidir se a escolha da placa de s
 2. Confira se o KERYX mostra algum nome desses (em Telas e saídas, ou no Verificar).
 3. Anote o que aparece: nomes reais (como "Saída HDMI · TV") ou só "Saída 1", "Saída 2". Essa informação decide a próxima etapa.
 
+## 8. Sincronização entre computadores (Google Drive)
+
+Precisa de dois computadores com o **Google Drive para computador** instalado e a mesma conta, e a mesma pasta do Drive nos dois (por exemplo `G:\Meu Drive\KERYX`).
+
+1. No computador da igreja, em Configurações › Sincronização, **Escolher a pasta…** e **Criar o código da igreja**. Anote o código (8 letras e números).
+2. A primeira vez copia todas as mídias para a pasta: confira se o KERYX continua projetando normalmente enquanto isso, e se a nuvem no topo fica verde quando termina.
+3. No outro computador, escolha a mesma pasta e digite o código. As músicas dos dois devem aparecer nos dois (nada some). Se houver músicas iguais, o sino avisa e a Biblioteca mostra "parece repetida".
+4. Edite uma música num computador. Em cerca de 30 segundos (mais o tempo do Drive) ela deve mudar no outro.
+5. Feche o Google Drive num deles: a nuvem fica âmbar ("Aguardando a pasta") e o KERYX continua normal. Abra o Drive de novo: as mudanças vão sozinhas.
+6. Em Computadores, use **Tirar…** no outro computador: ele deve parar e pedir o código. Digite o código nele: volta a sincronizar.
+7. Em um deles, **Sair da sincronização…**: nada é apagado, e os outros continuam com o que ele mandou.
+8. Anote quanto tempo uma mudança leva para chegar e qualquer arquivo estranho que o Drive criar na pasta `sync` (cópias com "(1)" no nome são normais).
+
 ## Ao terminar
 
 Mande para o responsável pelo KERYX:

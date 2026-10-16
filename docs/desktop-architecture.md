@@ -821,7 +821,7 @@ Recorded so the decision is not lost (2026-10-08; nothing built):
 - `supabase/` (migrations, Edge Functions) is kept, unused, as the starting
   point for that.
 
-### Sincronização entre computadores (owner 2026-10-16; being built)
+### Sincronização entre computadores (owner 2026-10-16; built in PRs 1–6)
 
 The owner chose **two-way sync through a shared folder** (as Holyrics'
 Drive sync): every verified computer edits, and each one writes to and reads
@@ -858,9 +858,8 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    remote copies never touch them. What is taken emits the usual change
    event (windows refresh); nothing applied from elsewhere is recorded in
    the outbox (no echo). Returns `{ applied, skipped, failed }`; a change
-   that fails is rolled back alone (a savepoint). Known edge for later
-   PRs: an entity this version does not know is skipped, not kept for a
-   newer version.
+   that fails is rolled back alone (a savepoint). What a newer version
+   sends that this one cannot store is kept (PR 6).
 3. **The folder, main-process side (done):** `electron/sync.cjs`
    (`createSyncEngine`, pure Node, tested with three temp stores and one
    folder). The folder chosen holds:
@@ -905,9 +904,8 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    **The sync id is the computer's**: `applyPendingImport` (Importar,
    Restaurar um backup) gives the staged database the id of the one it
    replaces, else none (a new one), so a clone never writes another
-   computer's folder. Restoring a backup on a computer that syncs does not
-   push the restored rows to the others (they keep their newer copies):
-   for PR 5/6.
+   computer's folder. Restoring a backup or importing on a computer that
+   syncs asks first (PR 6).
    What only a real run with Drive can confirm: Drive's own temp and
    conflict names, files read while Drive downloads them, a video of
    hundreds of MB copied while the console projects.
@@ -1018,6 +1016,42 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      keeps them on every computer (`User.song_duplicates_kept`, a church
      field of pairs "a|b"). On a computer that syncs the Biblioteca says
      "parece repetida" in the row, and its menu has "Ver as repetidas…".
+6. **Hardening (done):**
+   - **No outbox while this computer does not sync** (`store.setRecording`,
+     set by `syncControl` at launch: a folder and a code, paused
+     included): before, every change was recorded forever on a computer
+     that never synced. Joining sends everything anyway (the snapshot);
+     choosing another folder or leaving forgets what waited. Versions are
+     kept either way.
+   - **Restoring a backup or importing on a computer that syncs** asks
+     (`syncQuestion` in `system.cjs`, the owner's picks): **"Voltar todos a
+     dd/mm"** (chosen by default; for an import, "Usar em todos os
+     computadores") — after the restart the restored database goes out as
+     edits made now (`store.snapshot({ bump: true })` through
+     `syncControl.afterImport("all")`), so its rows win on every computer
+     while what was made after stays; or **"Só este computador"** — it goes
+     back and leaves the sync (`afterImport("leave")`). The answer waits in
+     settings.json (`syncAfterImport`) and is applied only when the swap
+     really happened. Without sync nothing changes.
+   - **The same PDF converted once** (`pagesWait` in `presentation.js`,
+     tested; `usePagesBackfill`): the computer a PDF was sent on makes its
+     pages at once (`madeHere` in `mediaImport.js`); every other one waits
+     5 minutes from the row's date for those pages to arrive with the row,
+     and makes them itself only if they do not (old rows go at once).
+   - **Computers on different versions** (`_parked` in `store.cjs`,
+     tested): a change of an entity this version does not know, and the
+     fields of a row its table lacks, are kept as they came (the newest per
+     row) and filled in when a version that knows them opens the database
+     (`replayParked`); and a remote row is written over what is here, so a
+     sender on an older version, which does not know a column, never
+     erases it (a sender that knows a column always sends it, empty or
+     not). Without this, an older computer would lose a newer one's values
+     and its next edit would erase them everywhere.
+   What only the real thing can confirm (docs/checklist-pc-igreja.md, item
+   8): two PCs on Google Drive para computador, the first join of the
+   church PC copying every media file into Drive while it projects, a code
+   typed on the second PC, edits in about 30 s, Tirar, leaving, and a
+   restore for everyone.
 
 ## 9. Project layout after the change
 

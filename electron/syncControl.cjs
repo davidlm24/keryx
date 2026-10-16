@@ -335,10 +335,33 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         },
     };
 
+    // After a backup restored or an export imported here (system.cjs asked
+    // before the restart): "all" sends every row as an edit made now, so the
+    // restored copies win on every computer (what was made after stays);
+    // "leave" takes this computer out of the sync.
+    function afterImport(mode) {
+        if (mode === "leave") {
+            save(null);
+            pairing = null;
+            pairingFrom = null;
+            store.setRecording(false);
+            store.pruneOutbox(Number.MAX_SAFE_INTEGER);
+            log("[keryx-sync] dados restaurados só neste computador: ele saiu da sincronização");
+            return;
+        }
+        if (mode === "all" && syncing()) {
+            store.setRecording(true);
+            const n = store.snapshot({ bump: true });
+            log(`[keryx-sync] dados restaurados para todos os computadores: ${n} registros a enviar`);
+            engine.poke();
+        }
+    }
+
     return {
         engine,
         ops,
         status,
+        afterImport,
         start: (opts) => engine.start(opts),
         stop: () => engine.stop(),
         poke: () => engine.poke(),

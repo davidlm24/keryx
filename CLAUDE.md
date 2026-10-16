@@ -84,6 +84,26 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   writes through the store's operations reach the sync outbox (`_outbox`;
   `importRows` and `applyRemote` record nothing, so remote changes never
   echo back).
+- **Sincronização entre computadores** (owner 2026-10-16; docs/desktop-architecture.md
+  §8b): a folder Google Drive para computador (or OneDrive, Dropbox) keeps
+  in step, no server, no sign-in, last edit wins per row. Only computers
+  with the church's code count (`shared/syncCode.mjs`: 8 symbols,
+  `K7QM-2HXP`; every line signed, `electron/syncPairing.cjs`). The engine
+  is `electron/sync.cjs`, Configurações › Sincronização's main side
+  `electron/syncControl.cjs` (`keryx:sync`; the key and code sealed with
+  safeStorage), the section `settings/SyncSection.jsx` (pt-BR status in
+  `src/lib/console/syncView.js`, one poll in `useSyncStatus`), the cloud
+  beside Ver only on a computer that syncs. Joining merges
+  (`store.snapshot`), never replaces; likely duplicate songs are
+  `shared/syncDuplicates.mjs` (Juntar em uma / Manter as duas,
+  `User.song_duplicates_kept`; "parece repetida" in the Biblioteca).
+  "Tirar" pauses a computer (the code file's `removed` list); "Trocar o
+  código" cuts it. Restoring or importing on a computer that syncs asks
+  ("Voltar todos", by default, or "Só este computador", which leaves).
+  The outbox records only while syncing; what a newer version sends is
+  parked (`_parked`) and a remote row never erases a column its sender
+  does not know. Tests use temp stores and a temp folder; only real Drive
+  folders confirm the rest (docs/checklist-pc-igreja.md, item 8).
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by

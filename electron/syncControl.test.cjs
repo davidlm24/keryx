@@ -199,6 +199,34 @@ test("after a join, the bell says once that some songs look repeated", async () 
     b.close();
 });
 
+test("a backup restored here for everyone wins on the others; for this one only, it leaves", async () => {
+    const folder = tmp();
+    const a = computer(folder, "A");
+    const b = computer(folder, "B");
+    a.store.importRows("Song", [{ id: "hino", title: "Hino", created_date: "2026-10-01T00:00:00.000Z", updated_date: "2026-10-01T00:00:00.000Z" }]);
+    await a.call("choose");
+    const made = await a.call("create");
+    await b.call("choose");
+    await b.call("join", { code: made.code });
+    await settle([a, b], 2);
+    b.store.call("Song", "update", ["hino", { title: "Hino (editado depois do backup)" }]);
+    b.store.call("Song", "create", [{ title: "Nova depois do backup" }]);
+    await settle([b, a], 1);
+    // A restores the backup (the swap: the old row, before B's edit and new song).
+    a.store.importRows("Song", [{ id: "hino", title: "Hino", created_date: "2026-10-01T00:00:00.000Z", updated_date: "2026-10-01T00:00:00.000Z" }]);
+    a.control.afterImport("all");
+    await settle([a, b], 2);
+    assert.equal(b.store.call("Song", "get", ["hino"]).title, "Hino", "the backup wins everywhere");
+    assert.ok(titles(b).includes("Nova depois do backup"), "what was made after stays");
+
+    a.control.afterImport("leave");
+    const st = await a.call("status");
+    assert.equal(st.folder, null);
+    assert.equal(st.paired, false);
+    a.close();
+    b.close();
+});
+
 test("a key that does not open here (settings from another Windows account) asks for the code again", async () => {
     const folder = tmp();
     const a = computer(folder, "A");
