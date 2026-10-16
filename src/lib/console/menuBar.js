@@ -1,9 +1,12 @@
 // The menu bar (owner 2026-10-15, Rodada D4, "Menus novos" = A): after the
 // logo and KERYX | Bíblia, as in Holyrics and desktop programs — Culto,
-// Música, Mídia, Telas, Ferramentas. Ver stays the eye beside the bell and
-// Ajuda's items live in the logo's menu ("O topo", owner 2026-10-15). On a
-// narrow window the bar folds into the logo's menu, as before. Everything here already has a place in
-// the console; the bar puts it one click away. Pure: the console passes
+// Música, Mídia, Ferramentas. Ver stays the eye beside the bell and Ajuda's
+// items live in the logo's menu ("O topo", owner 2026-10-15). There is no
+// Telas menu (owner 2026-10-16, Rodada E0): Tela preta, Logo and Limpar are
+// the top bar's chip, Saídas and Verificar the logo's menu, Travar telas and
+// Telas e saídas the Saídas popover. On a narrow window the bar folds into
+// the logo's menu, as before. Everything here already has a place in the
+// console; the bar puts it one click away. Pure: the console passes
 // what it knows (`ctx`) and its actions (`ctx.act`), the bar draws the result.
 //
 // A menu: { id, label, items }. An item: { label, icon?, kbd?, checked?,
@@ -14,7 +17,7 @@ const sep = { sep: true };
 const head = (text) => ({ head: text });
 const date = (d) => (d ? d.split("-").reverse().slice(0, 2).join("/") : "");
 
-export const MENU_IDS = ["culto", "musica", "midia", "telas", "ferramentas"];
+export const MENU_IDS = ["culto", "musica", "midia", "ferramentas"];
 
 // The source a song's automatic lyrics follow, in words.
 const FOLLOW_WORD = { video: "o vídeo", audio: "o playback", clock: "o relógio ao vivo" };
@@ -65,19 +68,6 @@ export function buildMenus(ctx) {
         { label: ctx.playing ? "Pausar o player" : "Tocar o player", icon: ctx.playing ? "pause" : "play", disabled: !ctx.playerOn, onSelect: call("playerToggle") },
     ];
 
-    const telas = [
-        { label: "Saídas", icon: "monitor", onSelect: call("outputs") },
-        { label: "Travar telas", icon: "lock", checked: Boolean(ctx.locked), title: "Nada novo vai às telas; tirar continua valendo", onSelect: call("lock", !ctx.locked) },
-        sep,
-        { label: "Tela preta", icon: "black", kbd: "B", checked: ctx.screen === "black", onSelect: call("screen", "black") },
-        { label: "Logo", icon: "logo", kbd: "L", checked: ctx.screen === "logo", onSelect: call("screen", "logo") },
-        { label: "Limpar texto", icon: "eraser", kbd: "C", onSelect: call("clearText") },
-        sep,
-        { label: "Telas e saídas…", icon: "sliders", onSelect: call("settings", "telas") },
-        { label: "Telas na rede…", icon: "wifi", onSelect: call("settings", "rede") },
-        { label: "Verificar tudo", icon: "check", onSelect: call("verify") },
-    ];
-
     const timers = (ctx.timers || []).map((t) => ({ label: t.label, onSelect: call("timer", t.minutes) }));
     const ferramentas = [
         { label: "Avisos", icon: "megaphone", onSelect: call("notices") },
@@ -93,7 +83,6 @@ export function buildMenus(ctx) {
         { id: "culto", label: "Culto", items: culto },
         { id: "musica", label: "Música", items: musica },
         { id: "midia", label: "Mídia", items: midia },
-        { id: "telas", label: "Telas", items: telas },
         { id: "ferramentas", label: "Ferramentas", items: ferramentas },
     ];
 }
