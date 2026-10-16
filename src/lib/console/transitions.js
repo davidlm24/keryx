@@ -10,8 +10,9 @@
 // Pure: the console's liveOp and the projector window's own keys use it.
 
 export const SOUND_OPS = ["video.show", "audio.show", "audio.playlist", "media.show", "media.playlist"];
-// Esc (clear) and Limpar (the text layers, one op each).
-export const EXIT_OPS = ["clear", "content.clear", "tool.clear", "communication.clear"];
+// Esc (clear), Limpar (text.clear: the text layers in one change) and the
+// single-layer clears.
+export const EXIT_OPS = ["clear", "text.clear", "content.clear", "tool.clear", "communication.clear"];
 
 // The rows' choices, [value, label] as Seg takes them.
 export const MEDIA_MODES = [["cut", "Corte"], ["fade", "Suave"], ["mix", "Tocar junto"]];

@@ -904,7 +904,7 @@ test("the exit fade: Esc, Limpar, Tela preta and Logo carry how long what leaves
     assert.equal(applyOp(s, "clear", { fade: 0 }, T0 + 50).fade, null);
     assert.equal(applyOp(s, "clear", { fade: 9999 }, T0).fade.ms, 3000, "clamped");
     assert.throws(() => applyOp(s, "clear", { fade: "suave" }, T0), LiveError);
-    // Limpar is three ops; each says how its layer goes.
+    // The single-layer clears each say how their layer goes.
     const tool = applyOp(s, "tool.clear", { fade: 600 }, T0 + 1);
     assert.deepEqual(tool.fade, { ms: 600, at: T0 + 1 });
     assert.deepEqual(applyOp(tool, "content.clear", { fade: 600 }, T0 + 2).fade, { ms: 600, at: T0 + 2 });
@@ -919,4 +919,29 @@ test("the exit fade: Esc, Limpar, Tela preta and Logo carry how long what leaves
     const locked = applyOp(s, "screens.lock", { locked: true }, T0);
     assert.equal(applyOp(locked, "clear", { fade: 300 }, T0 + 7).fade.ms, 300);
     assert.equal(restoreState(JSON.parse(JSON.stringify(esc)), T0 + 9999).fade, null);
+});
+
+test("Limpar (text.clear): timer, aviso and text go in one change with one fade; history as three clears", () => {
+    const notice = { item: { type: "announcement", text: "Bem-vindos" } };
+    const s = run([["content.show", song], ["communication.show", notice, T0 + 1], ["tool.show", { mode: "clock" }, T0 + 2]]);
+    const lim = applyOp(s, "text.clear", { fade: 300 }, T0 + 10);
+    assert.equal(lim.rev, s.rev + 1, "one change, so an output fades once from what was on screen");
+    assert.deepEqual([lim.tool, lim.communication, lim.content], [null, null, null]);
+    assert.deepEqual(lim.fade, { ms: 300, at: T0 + 10 });
+    // The history the three clears in a row would keep.
+    const three = run([["tool.clear", {}, T0 + 10], ["communication.clear", {}, T0 + 10], ["content.clear", {}, T0 + 10]], s);
+    assert.deepEqual(lim.history, three.history);
+    // What stays: the Fundo, the media, the logo, the audio channel.
+    const withMedia = run([["media.show", { kind: "image", url: "https://x/a.jpg" }, T0 + 3], ["communication.show", notice, T0 + 4]]);
+    const kept = applyOp(withMedia, "text.clear", {}, T0 + 11);
+    assert.deepEqual([kept.media?.url, kept.communication], ["https://x/a.jpg", null]);
+    // Only what is there goes; nothing there: no change.
+    const onlyText = run([["content.show", song]]);
+    assert.equal(applyOp(onlyText, "text.clear", {}, T0 + 12).content, null);
+    const empty = emptyState(T0);
+    assert.equal(applyOp(empty, "text.clear", { fade: 300 }, T0), empty);
+    // Locked, it still works (taking things off the air).
+    assert.ok(WHILE_LOCKED.has("text.clear"));
+    const locked = applyOp(s, "screens.lock", { locked: true }, T0);
+    assert.equal(applyOp(locked, "text.clear", {}, T0 + 13).content, null);
 });

@@ -15,7 +15,8 @@ const setProgress = (id, value) => {
     for (const fn of listeners) fn();
 };
 const subscribe = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
-export const usePagesProgress = (id) => useSyncExternalStore(subscribe, () => (id ? progress.get(id) || null : null));
+export const pagesProgressOf = (id) => (id ? progress.get(id) || null : null);
+export const usePagesProgress = (id) => useSyncExternalStore(subscribe, () => pagesProgressOf(id));
 
 // Rows this window already tried (by id and file: "Localizar…" gives a row a
 // new file and a new chance), so a file that cannot be read is not retried

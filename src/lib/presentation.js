@@ -60,6 +60,14 @@ export function presentationBlock(row) {
     return null;
 }
 
+// What to say about a stage that cannot go on air, given how the making of
+// its pages went (usePagesBackfill's { error } for its Media id): a PDF whose
+// pages failed says so, never "being prepared" for ever.
+export function stageBlock(stage, progress = null) {
+    if (!stage?.blocked) return null;
+    return stage.blocked === PAGES_PENDING && progress?.error ? PAGES_FAILED : stage.blocked;
+}
+
 // The Mídia row's progress while its pages are made: { done, total } or { error }.
 export function pagesLabel(progress) {
     if (!progress) return "";

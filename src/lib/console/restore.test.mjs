@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../../shared/live-state.mjs";
 import { restoreArgs, undoEndOps } from "./restore.js";
+import { withTransitions } from "./transitions.js";
 
 const T = 1_000_000;
 const run = (state, ops, at = T + 10) => ops.reduce((s, [op, args]) => applyOp(s, op, args, at), state);
@@ -26,6 +27,24 @@ test("a picture over the song comes back over it; the video channel and Tela pre
     assert.equal(after.media.title, "Foto");
     assert.equal(after.video.title, "Clipe");
     assert.equal(after.screen, "black");
+});
+
+test("Desfazer never stops the music Esc kept, and a sound comes back at its volume", () => {
+    // The music on the audio channel and a muted video on the projector (Tocar
+    // junto, or a video the operator turned down to 0).
+    let before = applyOp(emptyState(T), "audio.show", { kind: "audio", url: "keryx-media://hino.mp3", title: "Hino" }, T);
+    before = applyOp(before, "media.show", { kind: "video", url: "keryx-media://v.mp4", title: "Clipe", volume: 0 }, T + 1);
+    before = applyOp(before, "video.show", { kind: "video", url: "keryx-media://w.mp4", title: "Telão", volume: 0.4, transition: { mode: "mix" } }, T + 2);
+    const ended = applyOp(before, "clear", {}, T + 3);
+    assert.equal(ended.audio.title, "Hino", "Esc keeps the audio channel");
+    // As the console sends them: with the church's Transições (Suave).
+    const prefs = { media_transition: "fade", media_transition_ms: 500 };
+    const ops = undoEndOps(before).map(([op, args]) => [op, withTransitions(op, args, prefs)]);
+    const back = run(ended, ops);
+    assert.equal(back.audio?.title, "Hino", "the music goes on");
+    assert.deepEqual(back.leaving, []);
+    assert.equal(back.media.playback.volume, 0);
+    assert.equal(back.video.playback.volume, 0.4);
 });
 
 test("an aviso or a tool over the song comes back over it", () => {

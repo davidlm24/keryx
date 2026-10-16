@@ -29,17 +29,18 @@ export default function Projection() {
         if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
     }, []);
 
-    // Arrows, space and clicks move the live slide (every screen follows),
-    // only while the slides are what the projector shows.
+    // Arrows, space, a presentation clicker (PageDown / PageUp) and clicks
+    // move the live slide (every screen follows), only while the slides are
+    // what the projector shows.
     const hasContent = mainLayer(live) === "content";
     useEffect(() => {
         if (!keryx.isDesktop || !hasContent) return undefined;
         const fail = (err) => console.error("[keryx] slide:", err);
         const handleKeyPress = (e) => {
-            if (e.key === "ArrowRight" || e.key === " ") {
+            if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
                 e.preventDefault();
                 projection.next().catch(fail);
-            } else if (e.key === "ArrowLeft") {
+            } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
                 e.preventDefault();
                 projection.prev().catch(fail);
             }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState, mainLayer } from "../../shared/live-state.mjs";
 import { streamCaption } from "./streamCaption.js";
 import {
-    PPTX_HINT, PAGES_PENDING, pageScale, pagesOf, needsPages, presentationSlides, presentationStage, presentationBlock, pagesLabel, presentationMeta, playsInSequence,
+    PPTX_HINT, PAGES_PENDING, PAGES_FAILED, pageScale, pagesOf, needsPages, presentationSlides, presentationStage, presentationBlock, stageBlock, pagesLabel, presentationMeta, playsInSequence,
 } from "./presentation.js";
 
 const pages = [{ url: "http://127.0.0.1:7700/media/a-1.jpg", w: 1920, h: 1080 }, { url: "http://127.0.0.1:7700/media/a-2.jpg", w: 1920, h: 1080 }];
@@ -51,6 +51,16 @@ test("what cannot go on air says why: a PowerPoint, a PDF before its pages", () 
     assert.equal(presentationBlock(pdf), null);
     assert.equal(presentationBlock({ type: "image" }), null);
     assert.equal(presentationBlock({ ...pdf, pages: [], missing: true }), null, "a missing file says so itself");
+});
+
+test("a PDF whose pages failed says so, never 'being prepared' for ever", () => {
+    const waiting = { blocked: PAGES_PENDING };
+    assert.equal(stageBlock(waiting), PAGES_PENDING);
+    assert.equal(stageBlock(waiting, { done: 2, total: 9 }), PAGES_PENDING, "still being made");
+    assert.equal(stageBlock(waiting, { error: "falhou" }), PAGES_FAILED);
+    assert.equal(stageBlock({ blocked: PPTX_HINT }, { error: "x" }), PPTX_HINT, "a PowerPoint keeps its own reason");
+    assert.equal(stageBlock({ kind: "presentation" }), null);
+    assert.equal(stageBlock(null), null);
 });
 
 test("the Mídia row's line: progress, pages, what it needs", () => {

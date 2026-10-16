@@ -186,7 +186,7 @@ export function emptyState(now = Date.now()) {
 // list, the next aviso of a "Tocar todos").
 export const WHILE_LOCKED = new Set([
     "screens.lock", "screen.set", "idle.set", "session.end", "layers.hide", "layers.lock", "background.default",
-    "clear", "content.clear", "media.clear", "video.clear", "audio.clear", "tool.clear", "communication.clear", "alert.clear", "background.clear",
+    "clear", "content.clear", "media.clear", "video.clear", "audio.clear", "tool.clear", "communication.clear", "text.clear", "alert.clear", "background.clear",
     "media.advance", "audio.advance", "communication.advance", "media.toAudio",
 ]);
 
@@ -841,6 +841,18 @@ const OPS = {
         return { communication: { ...c, item: c.playlist[i], playlistIndex: i, startedAt: now } };
     },
     "communication.clear": (s, a, now) => (s.communication ? { ...remember(s, now, "communication"), communication: null, fade: exitFade(a.fade, now) } : null),
+    // Limpar texto (C): the timer, the aviso and the text go in ONE change, so
+    // an output fades once from what the audience saw. Three clears in a row
+    // drew the song hidden under an aviso fading out (the exit ghost is the
+    // screen before each change). The history keeps what the three would.
+    "text.clear": (s, a, now) => {
+        let cur = s;
+        for (const layer of ["tool", "communication", "content"]) {
+            if (cur[layer]) cur = { ...cur, ...remember(cur, now, layer), [layer]: null };
+        }
+        if (cur === s) return null;
+        return { ...(cur.history !== s.history ? { history: cur.history } : {}), tool: null, communication: null, content: null, fade: exitFade(a.fade, now) };
+    },
 
     "overlays.set": (_s, { overlays }) => ({
         overlays: list(overlays ?? [], "Sobreposições", 50).map((o) => loose(o, "Sobreposição")).filter(isPlainObject),

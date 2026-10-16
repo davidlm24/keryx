@@ -14,6 +14,7 @@ test("transitions: the defaults are a 0,5 s crossfade and a 0,3 s exit fade, Tel
     assert.deepEqual(withTransitions("screen.set", { mode: "black" }, defaults), { mode: "black", fade: 300 });
     for (const op of SOUND_OPS) assert.ok(withTransitions(op, {}, defaults).transition, op);
     for (const op of EXIT_OPS) assert.equal(withTransitions(op, {}, defaults).fade, 300, op);
+    assert.ok(EXIT_OPS.includes("text.clear"), "Limpar texto is one change with the exit fade");
 });
 
 test("transitions: each choice of the rows reaches the op", () => {
