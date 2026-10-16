@@ -695,6 +695,26 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   (taken by the console, `usePosterBackfill` + `mediaPosterCapture.js`,
   sent through `UploadFile`); it rides in the live item as `poster` for the
   Prévia and shows on hover in the Biblioteca.
+- **Apresentações are PDF only** (owner 2026-10-16, Rodada F3, "Só PDF"):
+  when a PDF reaches the Mídia the console renders its pages with pdf.js
+  (`pdfjs-dist`, a devDependency bundled by Vite; its worker and data files
+  are served at `/pdfjs/` by `pdfjsAssets` in vite.config.js — never a CDN),
+  ~1920 px wide, uploads each through `UploadFile` and saves
+  `Media.pages` (`[{ url, w, h }]`, page 1 = `thumbnail_url`):
+  `src/lib/pdfPagesCapture.js`, run by `usePagesBackfill` (old rows too; the
+  rows say "Preparando páginas 7/12", `PagesMeta`). On air a PDF is a
+  content of kind **"presentation"** (`stageFromMedia` →
+  `presentationStage`, `src/lib/presentation.js`, tested): one slide per
+  page (`{ image_url, label: "Página n" }`, `ref.mediaId`), so ←/→,
+  PageUp/PageDown (a clicker), the Slides column, No ar (thumbnails),
+  Desfazer, the controle remoto and the network screens walk it like a song.
+  ScreenRenderer draws the page `contain` on black — no theme, title, Fundo
+  or corner logo; the Palco shows the page and the next one; Letras and
+  Transmissão leave it out; Mostrar has "Apresentações". PowerPoint is never
+  converted: choosing one says `PPTX_HINT` (Salvar como › PDF), old rows stay
+  listed as "Salve como PDF" and cannot go on air (`stage.blocked`). PDFs
+  are out of "Tocar todos" (`playsInSequence`). The media layer no longer
+  draws a PDF (no iframe, no "Baixar apresentação").
 
 ## Commands
 

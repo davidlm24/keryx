@@ -6,6 +6,7 @@ import "@/components/console/console.css";
 import { keryx } from "@/api/keryxClient";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { usePosterBackfill } from "@/hooks/usePosterBackfill";
+import { usePagesBackfill } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs, getPrefs, updateUser, useMigratePrefs } from "@/hooks/useUser";
 import { defaultFundo, defaultFundoArgs, serviceFundo, fundoGoesOnNow } from "@/lib/console/defaultFundo";
 import { serviceTheme, lookFields, lookOf } from "@/lib/console/serviceLook";
@@ -107,6 +108,8 @@ export default function Console() {
     // Every video's still (Media.thumbnail_url), the background library's too.
     const allMedia = useMemo(() => [...data.media, ...data.backgroundMedia], [data.media, data.backgroundMedia]);
     usePosterBackfill(allMedia);
+    // Every PDF's pages as pictures (Media.pages): a presentation on air.
+    usePagesBackfill(data.media);
     const [profile, setProfile] = useState("");
     const [quick, setQuick] = useState(null);
     // The layer the player controls when several play (null: the newest).
@@ -397,7 +400,8 @@ export default function Console() {
         if (type === "ANNOUNCEMENT" && item.contentId) { const s = stageFromPiece(await keryx.entities.CommunicationVideo.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
         if (type === "SONG") return stageFromSong(await keryx.entities.Song.get(item.contentId), ref, data.themes);
         if (type === "BIBLE") return stageFromPassage(await keryx.entities.BiblePassage.get(item.contentId), ref);
-        if (["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref } }; }
+        // A PDF's presentation keeps its own ref (mediaId: the lists mark it on air).
+        if (["VIDEO", "IMAGE", "PDF", "POWERPOINT", "AUDIO"].includes(type)) { const s = stageFromMedia(await keryx.entities.Media.get(item.contentId)); return { ...s, args: { ...s.args, ref: { ...(s.args.ref || {}), ...ref } } }; }
         if (type === "TIMER") { const s = stageFromTool("timer", { minutes: Math.max(1, Math.round((item.duration || 300) / 60)) }); return { ...s, args: { ...s.args, ref } }; }
         const s = stageFromText(item.title || "Texto", item.notes || item.title || "");
         return { ...s, args: { ...s.args, ref } };
@@ -525,7 +529,7 @@ export default function Console() {
         else if (stage.id?.startsWith("media:")) {
             contentId = stage.id.slice(6);
             const k = stage.args?.kind;
-            type = k === "video" || k === "youtube" ? "VIDEO" : k === "audio" ? "AUDIO" : k === "pdf" ? "PDF" : k === "powerpoint" ? "POWERPOINT" : "IMAGE";
+            type = k === "video" || k === "youtube" ? "VIDEO" : k === "audio" ? "AUDIO" : k === "pdf" || k === "presentation" ? "PDF" : k === "powerpoint" ? "POWERPOINT" : "IMAGE";
         }
         if (!type) { c.say("Esse item ainda não entra na setlist; arraste para a Prévia ou o Programa."); return; }
         const at = Math.max(0, Math.min(items.length, index ?? items.length));

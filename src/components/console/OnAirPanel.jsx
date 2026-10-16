@@ -42,7 +42,7 @@ export default function OnAirPanel({ c }) {
                             onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
                                 { label: "Pôr na prévia", icon: "eye", disabled: i === index, onSelect: () => pick(i) },
                                 { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
-                            ] })} title={`${i === index ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || ""}`}>
+                            ] })} title={`${i === index ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || sl.label || ""}`}>
                             <span className="kx-slide-n">{i + 1}</span>
                             <SlideText slide={sl} />
                         </button>

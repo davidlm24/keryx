@@ -52,7 +52,7 @@ export function liveAction(e) {
     // tab lists, menus, and a splitter focused with Tab (it resizes).
     const ownsArrows = kind === "control" && e.target.closest(ARROW_CONTROLS);
     if (ARROWS[e.key]) {
-        const vertical = e.key === "ArrowUp" || e.key === "ArrowDown";
+        const vertical = VERTICAL.has(e.key);
         return ownsArrows || (vertical && kind === "control" && e.target.closest("select")) ? null : ARROWS[e.key];
     }
     if (e.key === " ") return kind === "control" ? null : "play";
@@ -60,7 +60,11 @@ export function liveAction(e) {
 }
 
 // The keys without a modifier (besides Enter, the arrows and Space above).
-const ARROWS = { ArrowRight: "next", ArrowLeft: "prev", ArrowUp: "selUp", ArrowDown: "selDown" };
+// PageDown / PageUp are what a presentation clicker sends (Rodada F3): the
+// next / previous slide or page on air, as → / ←; a list, a menu or a select
+// that uses them keeps them, as it keeps ↑/↓.
+const ARROWS = { ArrowRight: "next", ArrowLeft: "prev", ArrowUp: "selUp", ArrowDown: "selDown", PageDown: "next", PageUp: "prev" };
+const VERTICAL = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown"]);
 const PLAIN = { b: "black", B: "black", l: "logo", L: "logo", c: "clear", C: "clear", Escape: "end", "/": "search", "?": "help" };
 
 // Every shortcut, as the operator reads it: the ? list and Configurações ›
@@ -73,6 +77,7 @@ export const SHORTCUTS = [
     { keys: "Enter", label: "Enviar ao ar (depois de clicar numa música ou versículo)", action: "send", probe: { key: "Enter" } },
     { keys: "2 cliques", label: "Enviar o item ao ar na hora (biblioteca, setlist, slides, versículos)", action: null, probe: null },
     { keys: "← →", label: "Slide ou versículo anterior / próximo no ar", action: "prev", probe: { key: "ArrowLeft" }, also: [["next", { key: "ArrowRight" }]] },
+    { keys: "PageUp PageDown", label: "Passador de slides: anterior / próximo no ar (como ← →)", action: "prev", probe: { key: "PageUp" }, also: [["next", { key: "PageDown" }]] },
     { keys: "↑ ↓", label: "Mover a seleção (verde) sem mudar o que está no ar", action: "selUp", probe: { key: "ArrowUp" }, also: [["selDown", { key: "ArrowDown" }]] },
     { keys: "Espaço", label: "Tocar / pausar", action: "play", probe: { key: " " } },
     { keys: "B", label: "Tela preta (na hora)", action: "black", probe: { key: "b" } },

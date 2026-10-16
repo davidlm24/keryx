@@ -40,7 +40,10 @@ const layerOrderOf = (value) => {
 };
 
 export const SCREEN_MODES = ["show", "black", "logo"];
-export const CONTENT_KINDS = ["lyrics", "bible", "text"];
+// "presentation" (Rodada F3, owner 2026-10-16): a PDF's pages, one picture
+// per slide (slide.image_url, label "Página n"), drawn full screen on black
+// with no text, title or Fundo; walked like a song's slides.
+export const CONTENT_KINDS = ["lyrics", "bible", "text", "presentation"];
 export const MEDIA_KINDS = ["video", "image", "gif", "pdf", "powerpoint", "youtube", "audio"];
 export const BACKGROUND_KINDS = ["image", "video", "color", "generator"];
 export const TOOL_MODES = ["clock", "stopwatch", "timer", "freetext"];

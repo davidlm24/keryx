@@ -6,6 +6,7 @@ import { installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
 import { BIBLE_VERSIONS, editionPlan } from "@/lib/bibleBooks";
 import { getPrefs } from "@/hooks/useUser";
 import { FONT_MAP } from "@/lib/deviceStyles";
+import { presentationBlock } from "@/lib/presentation";
 
 // Verificar: the readiness check before the service. Every line is a real
 // check, never a promise: output windows and network screens, every media
@@ -51,10 +52,13 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
 
         // Mídia da setlist: files of media items, songs' playback and backgrounds.
         const files = [];
+        // A PowerPoint cannot go on air, nor a PDF before its pages (Rodada F3).
+        const docs = [];
         for (const it of items) {
             const type = String(it.type || "").toUpperCase();
             if (MEDIA_TYPES.includes(type)) {
                 const m = data.media.find((x) => x.id === it.contentId);
+                if (m && !m.missing && presentationBlock(m)) docs.push(line(it.title || m.title || "Apresentação", m.type === "powerpoint" ? "PowerPoint · não vai ao ar: salve como PDF e envie o PDF" : "PDF · as páginas ainda estão sendo preparadas", "warn", { label: "Abrir a biblioteca", run: () => onOpenMedia?.() }, "film"));
                 files.push({ title: it.title || m?.title || "Mídia", what: m ? "Arquivo" : "Item sem mídia na biblioteca", url: m?.file_url || "" });
             } else if (type === "SONG") {
                 const s = data.songs.find((x) => x.id === it.contentId);
@@ -69,6 +73,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
             if (st === "net") net.push(line(f.title, `${f.what} · ${isYouTube(f.url) ? "YouTube" : "na internet"} · precisa de internet durante o culto`, navigator.onLine ? "ok" : "warn", null, "external"));
             else media.push(line(f.title, st === "ok" ? `${f.what} · encontrado` : `${f.what} · Arquivo não encontrado`, st === "ok" ? "ok" : "miss", st === "ok" ? null : { label: "Abrir a biblioteca", run: () => onOpenMedia?.() }, "film"));
         }));
+        media.push(...docs);
         out.push({ name: "Mídia da setlist", lines: media.length ? media : [line("Nenhum arquivo na setlist", "Músicas, leituras e avisos não dependem de arquivos", "info", null, "film")] });
 
         // Fontes: Geist ships with KERYX (src/fonts.css) and is the "Sem

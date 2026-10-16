@@ -66,12 +66,13 @@ export function useConsole() {
     const [toast, setToastState] = useState(null);
     const toastTimer = useRef(null);
 
-    // A toast: one line, 3 s; with an action ({ label, run }) a button and
-    // 8 s, so there is time to reach it.
+    // A toast: one line, 3 s (6 s for a long one, such as how to send a
+    // PowerPoint as PDF); with an action ({ label, run }) a button and 8 s,
+    // so there is time to reach it.
     const say = useCallback((text, action = null) => {
         setToastState({ text, action });
         clearTimeout(toastTimer.current);
-        toastTimer.current = setTimeout(() => setToastState(null), action ? 8000 : 3000);
+        toastTimer.current = setTimeout(() => setToastState(null), action ? 8000 : String(text).length > 80 ? 6000 : 3000);
     }, []);
     useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -155,6 +156,8 @@ export function useConsole() {
 
     const setPrev = useCallback((stage) => {
         if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
+        // A PowerPoint, or a PDF whose pages are being made (presentation.js).
+        else if (stage?.blocked) say(stage.blocked);
         setPrevState(stage);
     }, [say]);
 
@@ -164,6 +167,7 @@ export function useConsole() {
         if (locked) { say(LOCKED_SAY); return false; }
         if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
         if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
+        if (stage.blocked) { say(stage.blocked); return false; }
         // A theme's example (Camadas › Temas, nothing on air): sending it uses
         // the theme — its background on the Fundo (not past the padlock) —
         // never the example text.

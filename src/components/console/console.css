@@ -314,6 +314,10 @@
 .console .kx-slide-body { display: flex; flex-direction: column; min-width: 0; }
 .console .kx-slide-body .kx-slide-lab { font-size: 11px; line-height: 14px; color: var(--fg-3); margin-bottom: 2px; }
 .console .kx-ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A presentation's page (Rodada F3): its picture, 16:9 on black, and its name beside it. */
+.console .kx-slide-body.is-page { flex-direction: row; align-items: center; gap: var(--space-2); }
+.console .kx-slide-page { flex: none; width: 128px; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border-radius: 4px; }
+.console .kx-slide-body.is-page .kx-slide-lab { margin: 0; font-size: 12px; }
 .console .onair-card .kx-slide-n { font-size: 11px; color: var(--fg-3); }
 .console .kx-slide.is-next, .console .onair-card.is-next { background: var(--bg-3); }
 .console .kx-slide.is-prev, .console .kx-verse.is-prev, .console .onair-card.is-prev { background: var(--prev-bg); }
@@ -344,6 +348,8 @@
     .console .onair-card.is-next { background: var(--bg-3); }
     .console .onair-card.is-prev { background: var(--prev-bg); }
     .console .onair-card.is-air { background: var(--live-bg); }
+    /* A page as tall as dock.js ONAIR_PAGE_LINES lines. */
+    .console .onair-card .kx-slide-page { width: auto; height: 54px; }
 }
 /* An output failure: one line above the monitors, never over them. */
 .console .kx-warnbar { flex: none; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 2px var(--space-1) 2px 10px; position: relative; background: var(--warn-tint); color: var(--warn-fg); border-radius: var(--radius-control); font-size: 12px; }
@@ -1001,6 +1007,7 @@
 .console .mv-lab { position: absolute; left: 0; top: 0; padding: 1px 5px; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 0 4px 0; }
 .console .mv-n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: 10px; line-height: 12px; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 4px 0 0; font-variant-numeric: tabular-nums; }
 .console .mv-title { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .mv-sub { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .mv-cell > .kx-btn { align-self: flex-start; }
 .console .mv-rename { height: 24px; width: 100%; box-sizing: border-box; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; outline: none; box-shadow: inset 0 0 0 1px var(--line-strong); user-select: text; }
 .console .mv-row.is-sel { background: var(--prev-fill, var(--bg-2)); }
