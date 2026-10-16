@@ -6,6 +6,7 @@ This is the final pass of the owner's "KERYX Design Audit — Prompt Pack"
 - **Code:** branch `audit/design-0219` at 0866cb4, the 0.2.19 release candidate.
 - **Inputs:** `audit/01-critique.md` to `audit/06-polish.md`; shared context in `audit/CONTEXT.md`; 20 screenshots in `audit/screens/`.
 - **Audit only:** nothing was fixed. Fixes start only after the owner approves this summary, one batch per session.
+- **Refreshed 16/10 (evening):** the owner answered C-09 (drop click-to-advance) and C-10 (Cancelar selected first), and confirmed on the desktop app the four Electron checks: three new Majors (C-90 to C-92, from CODE-18 to CODE-20) and C-55's spellcheck lines.
 - **Blockers re-checked:** the five Blockers were checked again against the code during consolidation, and all five hold.
   - C-01: no `powerSaveBlocker` anywhere.
   - C-02: `outputs.cjs` falls back to a 1280×720 `frame:false` window.
@@ -18,13 +19,13 @@ This is the final pass of the owner's "KERYX Design Audit — Prompt Pack"
 | Pass | Blocker | Major | Minor | Total |
 |------|---------|-------|-------|-------|
 | 01 Design critique (CRIT) | 0 | 5 | 16 | 21 |
-| 02 UI code guidelines (CODE) | 1 | 7 | 9 | 17 |
+| 02 UI code guidelines (CODE) | 1 | 10 | 9 | 20 |
 | 03 Accessibility (A11Y) | 1 | 15 | 5 | 21 |
 | 04 Design system (SYS) | 1 | 6 | 11 | 18 |
 | 05 Windows conventions (WIN) | 2 | 8 | 9 | 19 |
 | 06 Polish & motion (POL) | 0 | 2 | 13 | 15 |
-| **Raw total** | **5** | **43** | **63** | **111** |
-| **After merging duplicates** | **5** | **32** | **52** | **89** |
+| **Raw total** | **5** | **46** | **63** | **114** |
+| **After merging duplicates** | **5** | **35** | **52** | **92** |
 
 Overall, the core is sound:
 - **Live keys:** they work as specified.
@@ -63,8 +64,8 @@ Sorted by severity, then by impact on the core flows (2 = live, then 1 = prepare
 | C-06 | Major | `SlidesPanel.jsx:87-91` | While the Slides column shows the Prévia's slides ("prévia 1/2"), the Anterior/Próximo buttons under it move the slide **on air**. | Label the pair as acting on air ("No ar ◀ ▶") or hide it while the column shows the Prévia. | S | CRIT-02 |
 | C-07 | Major | `screen.css:80,135-137`; `activity.css:40-47` | `prefers-reduced-motion` (Windows "Efeitos de animação" off) removes the theme's slide transitions, the aviso entrance, activity reveals and the urgent pulse **on the outputs**, while the exit fades still play. | Scope those reduced-motion rules to the console's monitors (`.kx .ks-anim-*`). | S | CODE-05, POL-02 |
 | C-08 | Major | `Rundown.jsx:77`; `Console.jsx:402` (`airItemId = c.cur?.session?.itemId`) | After Esc (and after a reload), the last item sent stays red (`is-air`) in the Setlist while the Programa says "Nada no ar". | `is-air` only while that item is on air; a quieter "último" state for the session's last item. | S | CRIT-04 |
-| C-09 | Major | `src/pages/Projection.jsx:36-77` | A single click anywhere on the Projeção window moves the slide on air (left = back, right = forward). Its keys bypass keys.js (Space = next; no C, no ↑/↓). On a one-monitor PC, clicking the window to bring it forward changes what the audience sees. | Drop click-to-advance (or confirm it with the owner) and route the window's keys through `liveAction`. | S | CODE-04 |
-| C-10 | Major | `ConfirmDialog.jsx:14-25` (all `useConfirm`: Excluir…, Descartar as mudanças?, Trocar o código) | Destructive questions focus the destructive button, so Enter (the operator's send reflex) deletes or discards. The native close guard already defaults to Cancelar. | Focus Cancelar when the action is destructive; Esc keeps answering no. | S | CODE-10, WIN-03, A11Y-02 (part) |
+| C-09 | Major | `src/pages/Projection.jsx:36-77` | A single click anywhere on the Projeção window moves the slide on air (left = back, right = forward). Its keys bypass keys.js (Space = next; no C, no ↑/↓). On a one-monitor PC, clicking the window to bring it forward changes what the audience sees. | Drop click-to-advance (owner, 16/10) and route the window's keys through `liveAction`. | S | CODE-04 |
+| C-10 | Major | `ConfirmDialog.jsx:14-25` (all `useConfirm`: Excluir…, Descartar as mudanças?, Trocar o código) | Destructive questions focus the destructive button, so Enter (the operator's send reflex) deletes or discards. The native close guard already defaults to Cancelar. | Focus Cancelar when the action is destructive (owner, 16/10: Cancelar selected first); Esc keeps answering no. | S | CODE-10, WIN-03, A11Y-02 (part) |
 | C-11 | Major | `MediaView.jsx:178`; `editor/ScreenEditor.jsx:255` | Backspace deletes, as on macOS: in the Mídia it opens "Excluir da Mídia?" (Excluir focused); in the Editor da tela it deletes the element at once, with no undo. | Delete only; drop Backspace from both handlers. | S | WIN-04 |
 | C-12 | Major | `Console.jsx:1354-1371` (`.win-dialog` `aria-modal`); `ConfirmDialog.jsx:16`; `PromptDialog.jsx:12`; `Popovers.jsx:270` | THE window and its dialogs never take the focus: about 47 console Tab stops come first, the console isn't `inert`, Tab walks out of dialogs, and focus doesn't return to the opener on close. "Nova música" opens with no field focused. | Focus the first control on open, make `.main` and the top bar `inert`, keep Tab inside, return focus to a keyboard opener. | M | CODE-03, A11Y-02 |
 | C-13 | Major | `useConsole.js:71-75,282`; `Console.jsx:1415-1420` | Desfazer after Esc/Encerrar exists only as a toast button, is never focused, has no key, lasts 8 s even while hovered, and a later toast replaces it. | Ctrl+Z while the toast shows (listed in Atalhos); pause the timer on hover/focus; queue plain toasts behind action toasts. | S | A11Y-07, POL-11 |
@@ -78,7 +79,7 @@ Sorted by severity, then by impact on the core flows (2 = live, then 1 = prepare
 | C-21 | Major | Fields: `bundle.css:78-83`; `console.css:795-797,966,981,1003,1009,1055,1058,1358`; `.kx-split-pct-in :466` | Six field classes at 22–40 px. Focus is a 1 px inset at 1.78:1 for some fields, a gold ring for others, and no change at all for `cfg-inline`. There is no hover, disabled or error state. | One `kx-input`/`kx-select` (28/24 px) with hover, a ≥3:1 focus (quiet `fg-3` line), disabled and `[aria-invalid]`; map the six onto it. | M | SYS-02, CODE-08, A11Y-14 |
 | C-22 | Major | `bundle.css:54-57,15,65`; `BibleEnv.jsx:507`; `SchoolView.jsx:201`; Destravar (`Console.jsx:1340`, `bundle.css:175`) | The live fill buttons (Enviar ao ar, Destravar, Encerrar, Excluir) lack hover and pressed steps. A disabled Enviar ao ar still lights up on hover. Their focus ring is 1.8–1.95:1 on the fill. Enviar ao ar's hover is 3.16:1. Destravar is 22 px. | Hover and pressed steps, a disabled rule at the same specificity, the brand's ring treatment, a hover shade keeping ≥4.5:1, and Destravar at 24 px. | S | SYS-04, A11Y-20 |
 | C-23 | Major | `kx.jsx:146-148` (Seg `small` inline 24/20 px); `Popovers.jsx:200` (Travar telas); `console.css:399,521,1047,1132` (`!important`) | All 72 segmented controls (Travar telas included) have 20 px segments set inline, below the 24 px target; four places override them with `!important`, and density can't reach them. | A `.kx-seg.is-small` CSS rule at 24 px; drop the inline sizes and the `!important`s. | S | SYS-05 |
-| C-24 | Major | `console.css:305,329-335`; `OnAirPanel.jsx:41`; `BibleEnv.jsx:461` | On air (gold) vs Prévia (green) differ by hue only (1.06:1); only the number's colour changes. A red-green colour-blind operator can't tell what Enter sends from what is on air. | A non-colour cue in the number cell (▶ on air, ● Prévia), pending the owner's OK. | S | A11Y-09 |
+| C-24 | Major (closed by the owner: colour only) | `console.css:305,329-335`; `OnAirPanel.jsx:41`; `BibleEnv.jsx:461` | On air (gold) vs Prévia (green) differ by hue only (1.06:1); only the number's colour changes. A red-green colour-blind operator can't tell what Enter sends from what is on air. | A non-colour cue in the number cell (▶ on air, ● Prévia), pending the owner's OK. | S | A11Y-09 |
 | C-25 | Major | `Console.jsx:1415`, `Janela.jsx:257` (toast `role="status"` mounted with its text); `CenterPanel.jsx:97` | Toasts appear already filled (often skipped by NVDA/Narrator); what goes on air, "Travado" and refusals are never announced. | One always-mounted empty live region; write toasts and "No ar: … 1/3" into it. | S | A11Y-08 |
 | C-26 | Major | `SlidesPanel.jsx:76`, `OnAirPanel.jsx:41`, `BibleEnv.jsx:459`, `Rundown.jsx:77`, `kx.jsx:120,169,271` | Live states exist only as classes. There is no `aria-current`/`aria-selected` on slides, verses, Setlist rows or Bíblia cells; `MenuItem checked` has no `menuitemcheckbox`; `IconBtn on` has no `aria-pressed`. | Map is-air → `aria-current` + "no ar", is-prev → `aria-selected`; `menuitemcheckbox`/`aria-checked`; `aria-pressed` on IconBtn. | M | A11Y-10 |
 | C-27 | Major | `kx.jsx:169-178` (`Row` `role=button` wrapping actions); `ThemeStrip.jsx:137`; `TopBar.jsx:40-41`; `Layers.jsx:230-278` | Rows are buttons that contain buttons, so their names become run-on text and the inner buttons may drop out. Temas tiles are `<button role=listitem>`. The search is a `div role=button` that ignores Space. Camadas' "Ocultar"/"Travar" don't name the layer. | Rows as list items with sibling action buttons named by target; tiles in an `li`; the search a real `<button>`. | M | A11Y-11, CODE-16 |
@@ -92,6 +93,9 @@ Sorted by severity, then by impact on the core flows (2 = live, then 1 = prepare
 | C-35 | Major | `main.cjs` (no `nativeTheme.themeSource`); `:132-146,176-186`; `outputs-manager.cjs:76` | Windows draws light chrome around the dark app: white title bars on detached pages and windowed outputs, and a white text menu. | `nativeTheme.themeSource = "dark"` at startup (dark only is the owner's decision). | S | WIN-08 |
 | C-36 | Major | `build/icon.png` (opaque 512 px photo); `package.json › build.win.icon` | The app icon is a photo, muddy at 16–32 px in the taskbar, Alt+Tab and the installer. | A multi-size `build/icon.ico` with the emblem flat on transparency. | S | WIN-10 |
 | C-37 | Major | `console.css:427-435`; `Dock.jsx:278-280`; `kx.jsx:285-297` (`Measure`) | Panel folds open with a snap; a neighbour that changes between flexible and fixed collapses to 0 px and regrows; the right column slides into place at every launch; the code runs 240 ms where the docs say 180. | Animate between measured px both ways (FLIP/WAAPI); no transition on a module's first measured height; settle 180 vs 240. | M | POL-01, POL-07, SYS-12 |
+| C-90 | Major | `LyricProjection.jsx`, `VideoProjection.jsx`, `CommunicationProjection.jsx`, `StageView.jsx`, `PastorView.jsx` (no key handler) vs `Projection.jsx:64-77` | Only the Projeção answers B / L / Esc. With another output window in front, Tela preta's key goes nowhere until the console is clicked (confirmed by the owner on the desktop app). | The Projeção's screen keys (through keys.js) on every output page, or main hands the focus back to the console. | S | CODE-18 |
+| C-91 | Major | `Console.jsx`, `Janela.jsx` (no Ctrl+wheel guard); `main.cjs:106` (no zoom limits) | Ctrl+mouse wheel zooms the whole console (confirmed by the owner on the desktop app); there is no way back. | Ignore Ctrl+wheel (or pin the zoom from main) until C-30 gives an intended, resettable zoom. | S | CODE-19 |
+| C-92 | Major | `console.css:797,966,1003`; `BibleEnv.jsx:376` (inline); no `option` rule anywhere | The open dropdown lists are hard to read: selects set their colours, their options don't (confirmed by the owner on the desktop app). | `.kx option { background: var(--bg-2); color: var(--fg-1); }`, checked on Windows. | S | CODE-20 |
 | C-38 | Minor | `SongEditor.jsx:492` | The lyrics syntax help line is cut off at 1366 and 1280. | Wrap it above the textarea or move it to a tooltip. | S | CRIT-06 |
 | C-39 | Minor | `SongEditor.jsx:405-425` | The song's look uses "Estilo", "Tema padrão (estilo de fábrica)", "Próprio" and "visual próprio", where the app says Tema. | "Tema desta música": O mesmo das músicas / Tema … / Só desta música. | S | CRIT-07 |
 | C-40 | Minor | Editor de música WinBar | "Excluir…" sits beside Cancelar and Salvar in the same row and weight. | Move it to the song's right-click menu, or set it apart at the left. | S | CRIT-08 |
@@ -109,7 +113,7 @@ Sorted by severity, then by impact on the core flows (2 = live, then 1 = prepare
 | C-52 | Minor | `Popovers.jsx:52,85,191`; `menuBar.js:64`; `Library.jsx:170`; `MediaView.jsx:204` | Labels vary: "Atalhos" vs "Atalhos do teclado", "…" used unevenly, "Enviar" both uploads and sends to air, "Biblioteca" names three things, English "live"/"OBS". | One label per command, one rule for "…", "Enviar arquivos…", "Mídia", "biblioteca de fundos", "transmissão ao vivo". | S | CRIT-20, CRIT-21 |
 | C-53 | Minor | `SongEditor.jsx:341`; `NoticeEditor.jsx:123`; `MaterialView.jsx:96,112` | A held Ctrl+S or a double click can create a new song, aviso or material twice. | Return early on `busy` or `e.repeat`; give MaterialView a busy state. | S | CODE-09 |
 | C-54 | Minor | `kx.jsx:169-178` (`Row`) | Truncated row titles have no tooltip (0 of 9 rows). | `title` on `Row` when the title is a string. | S | CODE-11 |
-| C-55 | Minor | `kx.jsx:155-161` (`Field`); `main.cjs:176-186` | Spellcheck squiggles in the search, reference and URL fields, and the text menu has no Desfazer and no suggestions. | `spellCheck={false}` by default in `Field` (on for lyrics and notes); add undo/redo and suggestions to the text menu. | S | CODE-12, WIN-13 |
+| C-55 | Minor | `kx.jsx:155-161` (`Field`); `main.cjs:176-186` | Spellcheck squiggles in the search, reference and URL fields (confirmed by the owner on the desktop app), and the text menu has no Desfazer and no suggestions. | `spellCheck={false}` by default in `Field` (on for lyrics and notes); add undo/redo and suggestions to the text menu. | S | CODE-12, WIN-13 |
 | C-56 | Minor | `Console.jsx:883`; `AddMenu.jsx:30-31`; `BibleEnv.jsx:75-76` | The click-blur skips `.addmenu`, so its triggers keep the focus: after Esc, Enter reopens the menu instead of sending. | Blur the trigger on close, or exclude only `.addmenu-pop`. | S | CODE-13 |
 | C-57 | Minor | `console.css:948,1348,1388,1392,1440`; `ThemeStrip.jsx:137` | Temas tiles, library tiles, generator presets and switches have no hover. | One hover rule for tiles and one for switches. | S | CODE-14 |
 | C-58 | Minor | `TopBar.jsx:31`; `ScreenRenderer.jsx:68,157,338,459`; `Library.jsx:89` | Images are draggable; dropped in a field they type a `127.0.0.1` media URL. | `.kx img { -webkit-user-drag: none }`. | S | CODE-15 |
@@ -152,17 +156,17 @@ Each batch is one focused session that touches the files listed. Batches marked 
 | # | Batch | Findings | Files touched | Effort |
 |---|-------|----------|---------------|--------|
 | 1 | **Projector safety (main process)** | C-01, C-02, C-76, C-77, C-34, C-35, C-79 | `electron/main.cjs`, `outputs-manager.cjs`, `outputs.cjs`, `index.html` (+ the Saídas tooltip and Atalhos) | M |
-| 2 | **CSS and token quick fixes** ✋ (fold timing) | C-04, C-07, C-20, C-58, C-81, C-87, C-88 | `docs/design-system/tokens.css/json`, `src/index.css`, `bundle.css`, `console.css`, `screen.css`, `activity.css` | S |
-| 3 | **Live keys and focus** ✋ (C-09 click-to-advance) | C-03, C-56, C-09, C-10, C-11, C-12, C-13, C-73, C-53 | `Console.jsx`, `keys.js` (+test), `Projection.jsx`, `ConfirmDialog.jsx`, `PromptDialog.jsx`, `MediaView.jsx`, `ScreenEditor.jsx`, `useConsole.js`, `SongEditor/NoticeEditor/MaterialView.jsx` | M |
-| 4 | **Windows contrast themes and screen readers** ✋ (C-24 cue) | C-05, C-24, C-25, C-26, C-27, C-28, C-29, C-59, C-61, C-62 | `console.css`, `bundle.css`, `screen.css`, `ScreenRenderer.jsx`, `kx.jsx`, `Console.jsx`, `Janela.jsx`, `Rundown/SlidesPanel/OnAirPanel/BibleEnv.jsx`, `settings/parts.jsx` | L |
+| 2 | **CSS and token quick fixes** | C-04, C-07, C-20, C-92, C-58, C-81, C-87, C-88 | `docs/design-system/tokens.css/json`, `src/index.css`, `bundle.css`, `console.css`, `screen.css`, `activity.css` | S |
+| 3 | **Live keys and focus** | C-03, C-56, C-09, C-90, C-10, C-11, C-12, C-13, C-73, C-53 | `Console.jsx`, `keys.js` (+test), `Projection.jsx`, `ConfirmDialog.jsx`, `PromptDialog.jsx`, `MediaView.jsx`, `ScreenEditor.jsx`, `useConsole.js`, `SongEditor/NoticeEditor/MaterialView.jsx` | M |
+| 4 | **Windows contrast themes and screen readers** | C-05, C-25, C-26, C-27, C-28, C-29, C-59, C-61, C-62 | `console.css`, `bundle.css`, `screen.css`, `ScreenRenderer.jsx`, `kx.jsx`, `Console.jsx`, `Janela.jsx`, `Rundown/SlidesPanel/OnAirPanel/BibleEnv.jsx`, `settings/parts.jsx` | L |
 | 5 | **Clarity while live** | C-06, C-08, C-17, C-46, C-45, C-49, C-48, C-84, C-85, C-86, C-80 | `SlidesPanel.jsx`, `Rundown.jsx`, `Console.jsx`, `CenterPanel.jsx`, `Layers.jsx`, `BibleEnv.jsx`, `useConsoleData.js`, `console.css`, `bundle.css` | M |
 | 6 | **Menus and keyboard navigation** | C-14, C-15, C-16, C-60, C-72 | `MenuBar.jsx`, `Popovers.jsx`, `ContextMenu.jsx`, `AddMenu.jsx`, `kx.jsx` (MenuItem), `TopBar.jsx`, `TabsPanel.jsx`, `Rundown.jsx`, `ServicePlanner.jsx`, `useSortable.js`, `MediaView.jsx`, `main.cjs` (F10) | L |
-| 7 | **Design-system controls** ✋ (field focus look) | C-21, C-22, C-23, C-63, C-64, C-69, C-57, C-67, C-83 | `bundle.css`, `console.css`, `kx.jsx`, `ConfirmDialog.jsx`, `VerifyView.jsx`, `SyncView.jsx`, `Janela.jsx`, `Popovers.jsx` | L |
-| 8 | **Copy and names** ✋ (C-18 output names) | C-18, C-19, C-38, C-39, C-40, C-41, C-42, C-43, C-44, C-47, C-50, C-52, C-74 | `electron/outputs.cjs`, `network/views.js`, `SongEditor.jsx`, `ServicePlanner.jsx`, `TemasSection.jsx`, `BackgroundLibrary.jsx`, `BibleEnv.jsx`, `layoutChoices.js`, `Popovers.jsx`, `menuBar.js`, `Library.jsx`, `MediaView.jsx`, the dialogs, `resources/` names | M |
+| 7 | **Design-system controls** | C-21, C-22, C-23, C-63, C-64, C-69, C-57, C-67, C-83 | `bundle.css`, `console.css`, `kx.jsx`, `ConfirmDialog.jsx`, `VerifyView.jsx`, `SyncView.jsx`, `Janela.jsx`, `Popovers.jsx` | L |
+| 8 | **Copy and names** | C-18, C-19, C-38, C-39, C-40, C-41, C-42, C-43, C-44, C-47, C-50, C-52, C-74 | `electron/outputs.cjs`, `network/views.js`, `SongEditor.jsx`, `ServicePlanner.jsx`, `TemasSection.jsx`, `BackgroundLibrary.jsx`, `BibleEnv.jsx`, `layoutChoices.js`, `Popovers.jsx`, `menuBar.js`, `Library.jsx`, `MediaView.jsx`, the dialogs, `resources/` names | M |
 | 9 | **Editors and detached windows** | C-33, C-75, C-54 | `ScreenEditor.jsx`, `ThemeEditor.jsx`, `main.cjs` (window options), `Janela.jsx`, `editorWindow.js`, `kx.jsx` (Row title) | M |
 | 10 | **Motion** | C-37, C-82 | `console.css`, `Dock.jsx`, `kx.jsx` (Measure), `Library.jsx` | M |
 | 11 | **Type, tokens and docs** | C-31, C-32, C-65, C-66, C-68, C-70, C-71, C-89 | `tokens.css/json`, `bundle.css`, `console.css`, `Icon.jsx`, `docs/design-system*.md` | L |
-| 12 | **More Windows integration** | C-30, C-36, C-55, C-78, C-51 | `main.cjs`, `build/icon.ico`, `kx.jsx` (Field), `console.css`, `Dock.jsx`/`dock.js` | M |
+| 12 | **More Windows integration** | C-30, C-91, C-36, C-55, C-78, C-51 | `main.cjs`, `build/icon.ico`, `kx.jsx` (Field), `console.css`, `Dock.jsx`/`dock.js` | M |
 
 The order is batches 1–4 (Blockers) first, then 5 (the live flow), then 6–12. Batches 1, 2 and 3 are small enough to land before 0.2.19 if the owner wants: C-01, C-04 and C-03 are each a few lines.
 
@@ -211,10 +215,10 @@ The next tier, just as small: C-07 (outputs keep their transitions), C-20 (no ha
 - **Scrollbars.** Thin warm thumbs, with no light arrow buttons, on Windows 10 and 11.
 - **Windowed outputs.** "Em janela" is a tool window, so check that the Saídas name brings it forward.
 - **Display numbers.** "Tela 1" in KERYX vs Windows' Identificar: is the difference intended?
-- **Output focus.** After an output opens (Abrir ao iniciar / Saídas), the keyboard focus should still be in the console. If a Letras, Vídeo or Comunicação window takes the focus, the screen keys go nowhere.
-- **Electron zoom.** Ctrl+wheel and a touchpad pinch should do nothing.
-- **Spellcheck (C-55).** Look for red squiggles in the search and reference fields on a pt-BR Windows.
-- **Native select popups.** Check the colours and contrast of the open list under `color-scheme: dark`.
+- **Output focus:** confirmed by the owner, now C-90.
+- **Electron zoom:** Ctrl+wheel zooms (owner), now C-91. A touchpad pinch is still to check.
+- **Spellcheck (C-55):** confirmed by the owner.
+- **Native select popups:** hard to read (owner), now C-92.
 - **C-04 in the packaged app.** Check the Camadas drawer's edge and the Esc toast's frame.
 - **Fonts at a cold start.** The first frame should have its text (`font-display: block`).
 - **Frame cost.** With DevTools › Performance in `desktop:dev`, check that the No ar fold and THE window's resize stay at 60 fps on the church notebook.
@@ -244,12 +248,12 @@ The next tier, just as small: C-07 (outputs keep their transitions), C-20 (no ha
 - **Focus ring at fractional DPI.** The 2 px inset gold ring should stay visible on the edge-to-edge Slides rows and on the pill.
 
 ### Questions for the owner (decisions in CLAUDE.md or open)
-1. **C-09:** keep click-to-advance on the Projeção window (a wireless mouse as clicker), or drop it?
-2. **C-10 / C-74:** confirm Cancelar as the default and Windows button order in destructive questions.
-3. **C-24:** a small glyph in the number cell (▶ on air, ● Prévia) as the non-colour cue, despite "only the background"?
-4. **C-21:** the fields' quiet focus line, raised to `fg-3` (≥3:1) but still non-gold: OK?
-5. **C-37:** fold timing, 180 ms (the docs) or 240 ms (the code)?
-6. **C-18:** one name for the avisos output, "Avisos" or "Comunicação"?
+1. **C-09:** answered 16/10: drop click-to-advance.
+2. **C-10 / C-74:** Cancelar as the default: answered 16/10, yes. The Windows button order (C-74) is still to confirm.
+3. **C-24:** answered 16/10: colour only. No glyph; C-24 is closed by the owner's decision (C-05 still gives contrast themes their cue).
+4. **C-21:** answered 16/10: the quiet grey line, raised to `fg-3` (≥3:1), non-gold.
+5. **C-37:** answered 16/10: 180 ms (code changes to match the docs).
+6. **C-18:** answered 16/10: "Avisos" everywhere.
 7. **WCAG 2.1.4:** offer "Teclas de uma letra: ligadas / com Shift / desligadas" in Configurações › Console?
 8. **The Aviso rápido's entrance:** follow the outputs' "ignore reduced motion" (C-07), or stay the E3 exception?
 9. **No ar fold:** fold on every Tela preta, Logo, aviso or timer (motion triggered by keys), or keep the strip dimmed while the lyrics are only covered?
