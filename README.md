@@ -203,7 +203,7 @@ local database with no internet. Other versions (ARA, ARC, NAA, NTLH, BKJ
 ### Where the app keeps its data
 
 Everything is in `%APPDATA%\KERYX` (override with `KERYX_DATA_DIR`):
-`keryx.db` (SQLite, all 31 entities plus the operator profile), `media/`
+`keryx.db` (SQLite, every entity plus the operator profile), `media/`
 (uploaded files) and Chromium's own profile (`localStorage`). Backing up that
 folder backs up KERYX. Smoke runs never touch it; they use a temp folder.
 
@@ -271,7 +271,7 @@ electron/
   smoke.cjs             in-app checks for npm run desktop:smoke
   db/                   store.cjs, schema.json (generated), tests
 shared/live-state.mjs   the live state and its operations (main process and console)
-base44/entities/*.jsonc 31 JSON Schemas the tables are generated from; readable field docs
+base44/entities/*.jsonc the JSON Schemas the tables are generated from; readable field docs
 docs/design-system/     tokens, kx- components and icons the console is built on
 supabase/               the retired web build's migrations and functions (unused)
 src/

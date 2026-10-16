@@ -97,6 +97,19 @@ test("installFromSource reports offline and HTTP failures in Portuguese", async 
     await assert.rejects(installFromSource(s, "NVI", async () => ({ ok: false, status: 404 })), { status: 502 });
 });
 
+test("installFromSource never waits for ever: a site that never answers, or a body that never ends", async () => {
+    const s = fresh();
+    const never = () => new Promise(() => {});
+    await assert.rejects(installFromSource(s, "NVI", never, { timeoutMs: 30 }), (e) => e.status === 504 && /não terminou a tempo/.test(e.message));
+    let aborted = false;
+    const slowBody = async (_url, { signal }) => {
+        signal.addEventListener("abort", () => { aborted = true; });
+        return { ok: true, status: 200, text: never };
+    };
+    await assert.rejects(installFromSource(s, "NVI", slowBody, { timeoutMs: 30 }), { status: 504 });
+    assert.ok(aborted, "the real request is stopped too");
+});
+
 test("fetchOnlineChapter reads the verses of the site's answer", async () => {
     let seen;
     const fetchImpl = async (url) => {
