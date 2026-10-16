@@ -372,7 +372,7 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     const hidden = layout?.hidden || {};
     const px = (k, d) => pxOrNull(layout?.[k]) ?? d;
     const libW = px("libW", 260);
-    const slidesW = px("slidesW", 300);
+    let slidesW = px("slidesW", 300);
     const rightW = px("rightW", 320);
     const camadasH = px("camadasH", 280);
     const wide = tier !== "medium" && tier !== "narrow";
@@ -380,6 +380,7 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     // Narrow: the Biblioteca and the Slides share a column, in the stack's order.
     const pair = normalizeOrder(layout?.stacks?.source, ["lib", "slides"]).filter((id) => !hidden[id]);
     let centre = width - (wide ? rightW + G : 0);
+    const slidesShown = narrow ? pair.length > 0 : !hidden.slides;
     if (narrow) { if (pair.length) centre -= slidesW + G; }
     else {
         if (!hidden.lib) centre -= libW + G;
@@ -392,6 +393,19 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     // empty band under it and squeezed the Programa; design audit C-51).
     // What the Programa cannot use comes back to it (fitDock, programaNatural).
     const bottomH = Math.max(MODULES.previa.minH, Math.round((prevW * 9) / 16));
+    // Medium and narrow (the No ar strip in the tray, so the Programa's
+    // height never changes during a service): the Slides start wider by what
+    // the Programa's 16:9 cannot use at this height (design audit C-51), so
+    // the centre is as wide as its screen; the Prévia keeps its width and
+    // the Setlist beside it gives the room, down to its minimum. Never over a
+    // width of its own an old layout gave the Slides (layout.js keeps the
+    // default 300 in every layout; nothing writes another since the dock).
+    // The wide console keeps its columns: there the strip comes and goes
+    // with the lyrics, and the columns would move with it.
+    if (!wide && slidesShown && slidesW === 300) {
+        const fill = Math.max(MODULES.programa.minW, prevW + G + MODULES.setlist.minW, programaNatural(true, 0, height - bottomH - G));
+        if (fill < centre) { slidesW += Math.round(centre - fill); centre = fill; }
+    }
     const band = split("row", [group(["previa"]), group([wide ? "abas" : "setlist"])], [prevW, null]);
     const live = split("col", [group(["programa"]), band], [null, bottomH]);
     // Camadas over the Setlist (or under it), Camadas with its own height and

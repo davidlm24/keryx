@@ -323,6 +323,27 @@ test("the Programa never takes more than its 16:9: the rest goes to its neighbou
     assert.deepEqual(fitDock(locked, 400, 1000, { locked: { camadas: 150 } }).children.map((c) => c.size), [844, 150]);
 });
 
+test("medium and narrow start with the Slides wider by what the Programa's 16:9 cannot use (C-51)", () => {
+    // 1366 × 768 with the window and top bars: a grid of 1354 × 654. The
+    // Programa's screen fills the centre (668 px) and the Slides take the rest.
+    const spare = (d, w, h) => { const live = fitDock(d, w, h).children[2]; return live.size - programaNatural(true, 0, live.frame.children[0].size); };
+    const medium = fromArrangement({}, { width: 1354, height: 654, tier: "medium" });
+    assert.deepEqual(medium.tree.sizes, [260, 414, null]);
+    assert.equal(spare(medium, 1354, 654), 0);
+    assert.deepEqual(nodeAt(medium.tree, [2, 1]).sizes, [344, null], "the Prévia keeps its width; the Setlist beside it gives the room");
+    assert.deepEqual(fromArrangement({}, { width: 1268, height: 606, tier: "medium" }).tree.sizes, [260, 413, null], "1280 × 720");
+    // Tall enough for the Programa to fill the centre: the Slides keep 300.
+    assert.deepEqual(fromArrangement({}, { width: 1354, height: 768, tier: "medium" }).tree.sizes, [260, 300, null]);
+    // The layout's own width for the Slides wins; the wide console keeps its columns.
+    assert.deepEqual(fromArrangement({ slidesW: 300 }, { width: 1354, height: 654, tier: "medium" }).tree.sizes, [260, 414, null], "300 is every layout's default (layout.js)");
+    assert.deepEqual(fromArrangement({ slidesW: 340 }, { width: 1354, height: 654, tier: "medium" }).tree.sizes, [260, 340, null]);
+    assert.deepEqual(fromArrangement({}, { width: 1908, height: 654, tier: "wide" }).tree.children[0].children[0].sizes, [260, 300, null]);
+    // Narrow: the Biblioteca-over-Slides column takes it.
+    assert.equal(fromArrangement({}, { width: 1000, height: 600, tier: "narrow" }).tree.sizes[0], 422);
+    // Slides in the tray: nothing to give it to.
+    assert.deepEqual(fromArrangement({ hidden: { slides: true } }, { width: 1354, height: 654, tier: "medium" }).tree.sizes, [260, null]);
+});
+
 test("the No ar strip is pinned to the bottom: never moved, only to the tray and back", () => {
     const d = defaultDock(W);
     const bottom = (dk) => { const t = dk.tree; const last = t.children?.[t.children.length - 1]; return t.dir === "col" && JSON.stringify(last?.tabs) === '["onair"]'; };

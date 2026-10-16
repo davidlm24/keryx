@@ -588,7 +588,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   player (`programaNatural`, design audit C-51): the rest goes to its
   neighbour (the Prévia's band), never a locked or folded one; the
   dock's sizes stay the operator's. The band starts as tall as the
-  Prévia's screen (no +84 for the header and button it lost).
+  Prévia's screen (no +84 for the header and button it lost). In the
+  medium and narrow tiers (No ar in the tray, so the Programa's height
+  is steady) the Slides start wider by what the Programa's 16:9 cannot
+  use at that height (`fromArrangement`; the Prévia keeps its width, the
+  Setlist beside it gives the room); the wide tier keeps its columns, which
+  would otherwise move each time the No ar strip comes and goes.
   A new module is an entry in
   dock.js `MODULES` and in `modulePanels`. **Disposições com nome**
   (`src/lib/console/dockPresets.js`, tested): the edit banner saves the dock
