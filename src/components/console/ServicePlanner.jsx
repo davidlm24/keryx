@@ -251,9 +251,9 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         <span className="k">Hora</span><input type="time" className="pl-input" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} onBlur={() => commit("startTime")} aria-label="Hora de início" />
                         <span className="k">Local</span><Field icon={null} {...f("location")} placeholder="Templo principal" />
                         <span className="k">Tipo</span><Seg small value={form.service_type} onChange={(v) => { setForm({ ...form, service_type: v }); saveSvc({ service_type: v }); }} options={[["culto", "Culto"], ["evento", "Evento"]]} />
-                        {form.service_type === "evento" && <><span className="k">Evento</span><Field icon={null} {...f("event_description")} placeholder="Descrição do evento" /></>}
+                        {form.service_type === "evento" && <><span className="k">Evento</span><Field icon={null} {...f("event_description")} placeholder="Descrição do evento" inputProps={{ spellCheck: true }} /></>}
                         <span className="k">Status</span><Seg small value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
-                        <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
+                        <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" inputProps={{ spellCheck: true }} />
                         <span className="k">Papel de parede</span>
                         <div className="pl-wall">
                             <BgChip value={look.background} title="Papel de parede do culto" empty="o de qualquer outro culto" noneLabel={look.background ? "Sem papel de parede próprio (o de qualquer outro culto)" : undefined}
