@@ -76,6 +76,8 @@ export function useToast() {
 // changes the idle screen). Travar telas holds in applyOp, whoever sends.
 export function useLiveOps(live, say, bgPrefs) {
     const locked = Boolean(live?.locked);
+    // The church's Transições (Rodada F2), for every window that sends.
+    const prefs = usePrefs();
 
     // One operation on the live state. Resolves with the new document; errors
     // (a refused op while locked, a bad argument) become a toast.
