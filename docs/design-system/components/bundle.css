@@ -12,6 +12,14 @@
 /* The reset weighs nothing (:where), so every kx- class below keeps its own padding, fill and colour. */
 :where(.kx) :where(button, input) { font: inherit; color: inherit; font-variant-numeric: inherit; }
 :where(.kx) :where(button) { background: none; border: 0; padding: 0; cursor: default; }
+/* Controls keep the arrow, as on Windows (the hand is for links): this outweighs
+   Tailwind's preflight (button, [role=button] { cursor: pointer }) and index.css. Grab, resize,
+   move and text cursors are set by their own classes, which load later or weigh more. */
+.kx :is(button, [role=button], [role=tab], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=option], [role=switch]) { cursor: default; }
+/* A select's open list: the selects colour themselves, the list did not (dark text on the system's grey). */
+.kx :is(option, optgroup) { background: var(--bg-2); color: var(--fg-1); }
+.kx optgroup { font-weight: 600; color: var(--fg-2); }
+.kx option:disabled { color: var(--fg-3); }
 .kx :is(button, input, [tabindex]):focus-visible { outline: var(--bar) solid var(--brand); outline-offset: -1px; }
 .kx-t { transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .kx *, .kx-t { transition: none !important; animation: none !important; } }
@@ -72,6 +80,11 @@
 .kx-seg > button.is-on { background: var(--bg-3); color: var(--fg-1); font-weight: 500; }
 .kx-seg.kx-seg-mode > button.is-on[data-mode="live"] { background: var(--air-fill); color: var(--on-state); }
 .kx-seg.kx-seg-mode > button.is-on[data-mode="ensaio"] { background: var(--rh-fill); color: var(--on-state); }
+/* Seg small (forms, menus, the console's own Segs): 24 px segments, the console's target, in a 28 px track.
+   In a header or a menu's 24 px heading row (controls 24 px tall) the track goes and the segments fill the 24 px. */
+.kx-seg.is-small { height: var(--row); padding: 2px; }
+.kx-seg.is-small > button { height: 24px; padding: 0 8px; font-size: 11px; }
+:is(.kx-panel-h, .win-bar, .kx-menu-h) .kx-seg.is-small { height: 24px; padding: 0; }
 .kx-dot { width: 6px; height: 6px; border-radius: var(--radius-round); background: currentColor; flex: none; display: inline-block; }
 
 /* ---- Field (search / command) ---- */
@@ -175,7 +188,7 @@
 .kx-banner .kx-btn { height: 22px; padding: 0 var(--space-2); }
 
 /* ---- Popover, menu, tooltip ---- */
-.kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: 6px; min-width: 180px; }
+.kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--shadow-popover); padding: 6px; min-width: 180px; }
 .kx-menu-item { display: flex; align-items: center; gap: var(--space-2); width: 100%; height: var(--row); padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-1); text-align: left; }
 .kx-menu-item:hover { background: var(--bg-3); }
 .kx-menu-item .kx-kbd { margin-left: auto; color: var(--fg-3); font-size: 11px; }
@@ -183,7 +196,7 @@
 .kx-menu-item.is-checked .kx-glyph { color: var(--fg-1); }
 .kx-menu-sep { height: 1px; background: var(--line); margin: var(--space-1) 0; }
 .kx-menu-h { height: 24px; display: flex; align-items: center; padding: 0 var(--space-2); }
-.kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; }
+.kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; }
 .kx-tip .kx-kbd { color: var(--fg-3); font-size: 11px; }
 
 /* ---- Splitter: invisible until hover ---- */
@@ -280,3 +293,37 @@
 .kx-route.kx-route-right > .kx-pop { left: auto; right: 0; }
 .kx-out .kx-route { margin-top: 2px; }
 .kx-out.is-tall { min-height: 56px; align-items: start; padding-top: 6px; }
+
+/* ---- Windows contrast themes (forced colours; design audit C-05, 2026-10-16) ----
+   Under a contrast theme Chromium repaints every background and border in the system's colours and drops every
+   shadow, so the states that are a background (on air, Prévia, next, chosen) and the controls drawn with fills or
+   shadows would vanish. Only there they get cues in system colours; the normal look never changes. The states keep
+   one language: on air = the system's selection (Highlight) filling the row, still its background; Prévia = a dashed
+   ring; next = a dotted ring; chosen = a solid Highlight ring. A monitor's screen is the output's picture: it keeps
+   its own colours, frame included, as the outputs do (screen.css). */
+.kx-mon-screen, .kx-pip { forced-color-adjust: none; }
+@media (forced-colors: active) {
+  .kx-panel:not(.kx-panel-bare) { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .kx-pop, .kx-tip { outline: 1px solid CanvasText; }
+  .kx-btn:is(.kx-btn-outline, .kx-btn-prev, .kx-btn-rh, .kx-btn-air, .kx-btn-brand) { border: 1px solid ButtonText; }
+  .kx-btn:is(.kx-btn-outline, .kx-btn-prev, .kx-btn-rh, .kx-btn-air, .kx-btn-brand):disabled { border-color: GrayText; }
+  .kx-btn.is-on, .kx-tool.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
+  .kx-seg { outline: 1px solid ButtonText; outline-offset: -1px; }
+  .kx-seg > button.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
+  .kx-field { border: 1px solid FieldText; }
+  .kx-tabs > button.is-on::after { height: 2px; background: Highlight; }
+  :is(.kx-row, .kx-slide, .kx-verse):is(.is-air, .is-prev, .is-rh, .is-next)::before { background: none; }
+  .kx-row.is-warn::before, .kx-alert::before { background: CanvasText; }
+  :is(.kx-row, .kx-slide, .kx-verse).is-air { background: Highlight; color: HighlightText; }
+  :is(.kx-row, .kx-slide, .kx-verse).is-air * { color: HighlightText; }
+  :is(.kx-row, .kx-slide, .kx-verse).is-prev { outline: 2px dashed LinkText; outline-offset: -2px; }
+  :is(.kx-row, .kx-slide, .kx-verse).is-air.is-prev { outline-color: HighlightText; }
+  .kx-row.is-rh { outline: 2px solid LinkText; outline-offset: -2px; }
+  .kx-slide.is-next { outline: 2px dotted CanvasText; outline-offset: -2px; }
+  :is(.kx-row, .kx-layer, .kx-book).is-selected { outline: 2px solid Highlight; outline-offset: -2px; }
+  .kx-banner { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .kx-transport .kx-seek { background: CanvasText; }
+  .kx-transport .kx-seek > :is(i, b) { background: Highlight; }
+  .kx-meter > i > b { background: CanvasText; }
+  .kx-meter > i > b.is-hot { background: Highlight; }
+}
