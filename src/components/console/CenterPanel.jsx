@@ -12,6 +12,8 @@ import { OUTPUT_VIEWS } from "@/lib/network/views";
 import { prefState, prefVars, stageHidden, alertOf } from "@/lib/outputPrefs";
 import { useOutputPref } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
+import { usePendingMedia } from "@/hooks/usePendingMedia";
+import { pendingUrls } from "@/lib/pendingMedia";
 
 // What the Prévia would look like on air: the stage applied with the live
 // state's own rules to a copy of the current look (background, logo,
@@ -204,6 +206,8 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
 // Enter, a double click on it or its right-click menu send (no button, owner
 // 2026-10-14). Where it goes is the dock's (Dock.jsx).
 export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notesInTab = false, className = "" }) {
+    // A file the sync has not brought yet: said over the Prévia, not drawn broken.
+    const pending = usePendingMedia();
     const { cur, prev, now, locked, stamp } = c;
     // Built with a time fixed per prepared stage, never the ticking clock:
     // a new startedAt each second replayed the slide's transition (the
@@ -243,7 +247,9 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
                 {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
                 {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Telas e saídas › Mostrar)</div>}
                 {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="music" /> Áudio · {prev.title || "sem título"}</div>}
-                {prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
+                {prev && pendingUrls(prev, pending, { skip: ["poster", "thumbnail_url"] }).length > 0
+                    ? <div className="kx-screen-hatch"><div>Baixando…<small>{prev.title} · da sincronização</small></div></div>
+                    : prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
             </Monitor>
             {!notesInTab && <TeacherNotes prev={prev} cur={cur} />}
         </Panel>

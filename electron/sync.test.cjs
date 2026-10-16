@@ -269,6 +269,167 @@ test("media still missing is retried after a restart", async () => {
     b.close();
 });
 
+test("the windows hear which files have not come down; a row deleted is not waited for", async () => {
+    const folder = tmp();
+    const a = computer(folder);
+    const b = computer(folder);
+    fs.writeFileSync(path.join(a.mediaDir, "longe.mp4"), "far");
+    const row = a.store.call("Media", "create", [{ title: "Longe", type: "video", file_url: "keryx-media://longe.mp4" }]);
+    await a.engine.pass();
+    fs.rmSync(path.join(folder, "sync", "media", "longe.mp4"));
+    assert.equal((await b.engine.pass()).missingMedia, 1);
+    assert.deepEqual(b.engine.missing(), ["longe.mp4"]);
+
+    await tick();
+    a.store.call("Media", "delete", [row.id]);
+    await a.engine.pass();
+    assert.equal((await b.engine.pass()).missingMedia, 0, "no row names it any more");
+    assert.deepEqual(b.engine.missing(), []);
+    a.close();
+    b.close();
+
+    let on = folder;
+    const c = computer(() => on);
+    c.store.setMeta(STATE_KEY, { folder, cursors: {}, out: null, missing: [{ name: "x.jpg", size: 1 }] });
+    c.close();
+    const again = computer(() => on, { dir: c.dir });
+    on = null;
+    assert.deepEqual(again.engine.missing(), [], "with sync off a file is simply not found");
+    on = folder;
+    assert.deepEqual(again.engine.missing(), ["x.jpg"], "known from the last run, before the first pass");
+    again.close();
+});
+
+// The cleanup of sync/media runs at every pass and collects at once in
+// these tests (no grace), unless a test says otherwise.
+const GC_NOW = { engine: { gcGraceMs: 0, gcEveryMs: 0 } };
+const shared = (folder, name) => path.join(folder, "sync", "media", name);
+const manifestOf = (folder, pc) => JSON.parse(fs.readFileSync(path.join(folder, "sync", pc.store.pcId, "state.json"), "utf8"));
+
+test("a file deleted everywhere leaves sync/media once every computer has read past the delete; the media folders keep it", async () => {
+    const folder = tmp();
+    const a = computer(folder, GC_NOW);
+    const b = computer(folder, GC_NOW);
+    const c = computer(folder, GC_NOW);
+    fs.writeFileSync(path.join(a.mediaDir, "velho.mp4"), "video");
+    fs.writeFileSync(path.join(a.mediaDir, "fica.jpg"), "picture");
+    const old = a.store.call("Media", "create", [{ title: "Velho", type: "video", file_url: "keryx-media://velho.mp4" }]);
+    a.store.call("Media", "create", [{ title: "Fica", type: "image", file_url: "keryx-media://fica.jpg" }]);
+    await rounds([a, b, c]);
+    for (const pc of [b, c]) assert.ok(fs.existsSync(path.join(pc.mediaDir, "velho.mp4")));
+    const said = manifestOf(folder, b);
+    assert.equal(said.pc, b.store.pcId);
+    assert.deepEqual(said.refs, ["fica.jpg", "velho.mp4"], "each computer says the media its rows use");
+    assert.ok(Object.keys(said.read).some((k) => k.startsWith(a.store.pcId)), "and how far it read");
+
+    await tick();
+    a.store.call("Media", "delete", [old.id]);
+    await a.engine.pass();
+    assert.ok(fs.existsSync(shared(folder, "velho.mp4")), "B and C still use it");
+    await b.engine.pass();
+    await a.engine.pass();
+    assert.ok(fs.existsSync(shared(folder, "velho.mp4")), "C has not read the delete");
+    const status = await c.engine.pass();
+    assert.equal(status.collectedMedia, 1);
+    assert.ok(!fs.existsSync(shared(folder, "velho.mp4")), "nobody uses it, everybody read past the delete");
+    assert.ok(fs.existsSync(shared(folder, "fica.jpg")), "a file in use stays");
+    for (const pc of [a, b, c]) assert.equal(fs.readFileSync(path.join(pc.mediaDir, "velho.mp4"), "utf8"), "video", "the media folder is never touched");
+    assert.deepEqual(manifestOf(folder, c).collected.map((x) => x.name), ["velho.mp4"]);
+    await rounds([a, b, c]);
+    for (const pc of [a, b, c]) assert.equal(pc.engine.missing().length, 0);
+
+    // A row that uses it again (here, the file still on B) brings it back.
+    await tick();
+    b.store.call("Song", "create", [{ title: "Com o vídeo", background: { kind: "video", value: "keryx-media://velho.mp4" } }]);
+    await rounds([b, a, c]);
+    assert.ok(fs.existsSync(shared(folder, "velho.mp4")));
+    for (const pc of [a, b, c]) pc.close();
+});
+
+test("a computer that has not said what it read, or not read past the delete, or that uses the file, holds it", async () => {
+    const folder = tmp();
+    const a = computer(folder, GC_NOW);
+    const b = computer(folder, GC_NOW);
+    fs.writeFileSync(path.join(a.mediaDir, "x.jpg"), "x");
+    const row = a.store.call("Media", "create", [{ title: "X", type: "image", file_url: "keryx-media://x.jpg" }]);
+    await rounds([a, b]);
+    // A computer with a folder and no state.json (an older KERYX).
+    const fake = fakeFolder(folder);
+    fs.writeFileSync(path.join(fake.dir, fileName(1)), fake.line(fake.entry("Do outro")));
+    await tick();
+    a.store.call("Media", "delete", [row.id]);
+    await rounds([a, b]);
+    assert.ok(fs.existsSync(shared(folder, "x.jpg")), "no state.json: it holds every file");
+
+    const say = (read, refs) => fs.writeFileSync(path.join(fake.dir, "state.json"), JSON.stringify({ pc: fake.id, at: new Date().toISOString(), read, refs, collected: [] }));
+    say({}, []);
+    await rounds([a, b]);
+    assert.ok(fs.existsSync(shared(folder, "x.jpg")), "it has not read past the delete");
+
+    // Everything the others wrote, read.
+    const everything = {};
+    for (const pc of [a, b]) {
+        const dir = path.join(folder, "sync", pc.store.pcId);
+        for (const n of fs.readdirSync(dir).filter((x) => x.startsWith("changes-"))) everything[`${pc.store.pcId}/${n}`] = fs.statSync(path.join(dir, n)).size;
+    }
+    say(everything, ["x.jpg"]);
+    await rounds([a, b]);
+    assert.ok(fs.existsSync(shared(folder, "x.jpg")), "it still uses the file");
+    say(everything, []);
+    await a.engine.pass();
+    assert.ok(!fs.existsSync(shared(folder, "x.jpg")));
+    assert.ok(fs.existsSync(path.join(b.mediaDir, "x.jpg")));
+    a.close();
+    b.close();
+});
+
+test("a file must stay unused for the grace period before it goes", async () => {
+    const folder = tmp();
+    let clock = Date.parse("2026-10-16T12:00:00.000Z");
+    const now = () => new Date(clock);
+    const a = computer(folder, { engine: { now } });
+    const b = computer(folder, { engine: { now } });
+    fs.writeFileSync(path.join(a.mediaDir, "z.png"), "z");
+    const row = a.store.call("Media", "create", [{ title: "Z", type: "image", file_url: "keryx-media://z.png" }]);
+    await rounds([a, b]);
+    clock += 60 * 60 * 1000;
+    a.store.call("Media", "delete", [row.id]);
+    await a.engine.pass();
+    await b.engine.pass();
+    // The cleanup looks every 10 minutes.
+    clock += 15 * 60 * 1000;
+    await a.engine.pass();
+    assert.ok(fs.existsSync(shared(folder, "z.png")));
+    assert.ok(a.store.getMeta(STATE_KEY).gc.candidates["z.png"], "marked as unused");
+
+    clock += 3 * 24 * 60 * 60 * 1000;
+    await rounds([a, b]);
+    assert.ok(fs.existsSync(shared(folder, "z.png")), "3 days are not enough");
+    clock += 5 * 24 * 60 * 60 * 1000;
+    await a.engine.pass();
+    assert.ok(!fs.existsSync(shared(folder, "z.png")), "after a week it goes");
+    assert.deepEqual(a.store.getMeta(STATE_KEY).gc.marks, {}, "nothing left to remember");
+    a.close();
+    b.close();
+});
+
+test("a computer that still uses a file someone collected puts it back from its media folder", async () => {
+    const folder = tmp();
+    const a = computer(folder, GC_NOW);
+    fs.writeFileSync(path.join(a.mediaDir, "volta.jpg"), "back");
+    a.store.call("Media", "create", [{ title: "Volta", type: "image", file_url: "keryx-media://volta.jpg" }]);
+    await a.engine.pass();
+    fs.rmSync(shared(folder, "volta.jpg"));
+    await a.engine.pass();
+    assert.ok(!fs.existsSync(shared(folder, "volta.jpg")), "a file only missing from the folder is not copied blindly (Drive may still be bringing it)");
+
+    const fake = fakeFolder(folder);
+    fs.writeFileSync(path.join(fake.dir, "state.json"), JSON.stringify({ pc: fake.id, at: new Date().toISOString(), read: {}, refs: [], collected: [{ name: "volta.jpg", at: new Date().toISOString() }] }));
+    await a.engine.pass();
+    assert.equal(fs.readFileSync(shared(folder, "volta.jpg"), "utf8"), "back");
+    a.close();
+});
+
 test("no folder, or a folder that is not there: no crash, a status, nothing made", async () => {
     const base = tmp();
     let folder = null;
@@ -297,7 +458,8 @@ test("new files past the limit; a file number is never reused after the folder i
         a.store.call("Song", "create", [{ title: `Música ${i}` }]);
         await a.engine.pass();
     }
-    const files = fs.readdirSync(mine).sort();
+    const changes = (dir) => fs.readdirSync(dir).filter((n) => n.startsWith("changes-")).sort();
+    const files = changes(mine);
     assert.ok(files.length >= 2, `several files: ${files}`);
     await b.engine.pass();
     assert.equal(songs(b).length, 6);
@@ -306,7 +468,7 @@ test("new files past the limit; a file number is never reused after the folder i
     fs.rmSync(mine, { recursive: true });
     a.store.call("Song", "create", [{ title: "Depois" }]);
     await a.engine.pass();
-    assert.deepEqual(fs.readdirSync(mine), [fileName(last + 1)]);
+    assert.deepEqual(changes(mine), [fileName(last + 1)]);
     await b.engine.pass();
     assert.equal(songs(b).length, 7, "B's cursor on the old number does not hide the new file");
     a.close();
