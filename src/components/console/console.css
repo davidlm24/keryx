@@ -50,6 +50,11 @@
 .console .topbar .tb-bell { position: relative; display: inline-flex; flex: none; }
 .console .topbar .tb-bell-dot { position: absolute; top: 1px; right: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--air); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
 .console .topbar .tb-outs-l { font-variant-numeric: tabular-nums; }
+/* The sync's cloud (TopBar): a dot in the state's colour on its corner. */
+.console .topbar .tb-sync { position: relative; display: inline-flex; flex: none; }
+.console .topbar .tb-sync-dot { position: absolute; right: 4px; bottom: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--fg-3); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
+.console .topbar .tb-sync-dot.is-ok { background: var(--prev); }
+.console .topbar .tb-sync-dot.is-wait { background: var(--warn); }
 .console .topbar .kx-seg > button { white-space: nowrap; }
 /* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
 .console .envtabs { height: var(--topbar); border-bottom: 0; padding: 0; }
@@ -903,6 +908,37 @@
 .console .cfg .frm .k { font-size: 11px; color: var(--fg-3); }
 .console .cfg .frm-v { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
 .console .cfg .frm .kx-field { flex: 1; min-width: 180px; }
+/* Configurações › Sincronização (SyncSection.jsx). */
+.console .cfg .cfg-sync-intro { max-width: 62ch; margin: var(--space-2) var(--space-3) var(--space-1); color: var(--fg-2); font-size: 12px; line-height: 1.55; }
+.console .cfg .cfg-sync-intro b { color: var(--fg-1); font-weight: 600; }
+.console .cfg .cfg-sync-travel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: var(--space-2); margin: var(--space-2) var(--space-3); }
+.console .cfg .cfg-sync-travel > div { background: var(--bg-2); border-radius: var(--radius-control); padding: var(--space-2) var(--space-3); font-size: 11.5px; color: var(--fg-2); line-height: 1.5; }
+.console .cfg .cfg-sync-travel b { display: block; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); margin-bottom: 2px; }
+.console .cfg .cfg-sync-made { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin: var(--space-2) var(--space-3); padding: var(--space-3); border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 55%, transparent); }
+.console .cfg .cfg-sync-bigcode { font: 600 26px/1.2 ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .1em; color: var(--fg-1); font-variant-numeric: tabular-nums; user-select: all; }
+.console .cfg .cfg-sync-acts { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.console .cfg .cfg-sync-codein { width: 132px; height: 28px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line-strong); padding: 0 8px; font: 500 14px/1 ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.console .cfg .cfg-sync-codein:focus-visible { outline: 2px solid var(--rh, var(--brand)); outline-offset: 1px; }
+.console .cfg .cfg-sync-codein.is-ok { box-shadow: inset 0 0 0 1px var(--prev); }
+.console .cfg .cfg-sync-codein.is-err { box-shadow: inset 0 0 0 1px var(--warn); }
+.console .cfg .cfg-sync-full { flex-basis: 100%; }
+.console .cfg .cfg-sync-codeshown { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .08em; }
+.console .cfg .cfg-sync-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--fg-3); }
+.console .cfg .cfg-sync-dot.is-ok { background: var(--prev); }
+.console .cfg .cfg-sync-dot.is-wait { background: var(--warn); }
+.console .cfg .cfg-sync-pcs { display: flex; flex-direction: column; gap: 2px; width: 100%; min-width: 0; }
+.console .cfg .cfg-sync-pc { display: flex; align-items: center; gap: var(--space-2); min-height: 30px; padding: 2px var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); min-width: 0; }
+.console .cfg .cfg-sync-pc.is-bad { background: color-mix(in srgb, var(--warn) 10%, var(--bg-2)); }
+.console .cfg .cfg-sync-pc-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.console .cfg .cfg-sync-pc-t b { font-weight: 500; color: var(--fg-1); }
+.console .cfg .cfg-sync-tag { flex: none; font-size: 10px; padding: 0 6px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--fg-3); white-space: nowrap; }
+.console .cfg .cfg-sync-tag.is-ok { color: var(--prev-fg, var(--prev)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prev) 55%, transparent); }
+.console .cfg .cfg-sync-tag.is-warn { color: var(--warn-fg, var(--warn)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 55%, transparent); }
+.console .cfg .cfg-sync-dups { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; }
+.console .cfg .cfg-sync-dup { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); border-radius: var(--radius-control); background: var(--bg-2); }
+.console .cfg .cfg-sync-dup-t { font-size: 12.5px; font-weight: 600; color: var(--fg-1); }
+.console .cfg .cfg-sync-dup-v { display: flex; justify-content: space-between; gap: var(--space-2); font-size: 11.5px; color: var(--fg-2); }
+.console .cfg .cfg-sync-dup .cfg-sync-acts { margin-top: var(--space-1); }
 .console .cfg .cfg-about { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-3) var(--space-2); }
 .console .cfg .cfg-about .kx-mark { width: 52px; height: 52px; flex: none; }
 .console .cfg .cfg-about .kx-mark::after { font-size: 24px; }

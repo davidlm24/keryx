@@ -45,6 +45,9 @@ import { withSize } from "@/lib/console/winLayout";
 import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec, janelaName } from "@/lib/console/nav";
 import { setIdleMode } from "@/lib/console/idle";
 import { resolveSection } from "@/lib/console/settings";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
+import { syncState } from "@/lib/console/syncView";
+import { duplicateSongs } from "@shared/syncDuplicates.mjs";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
@@ -274,6 +277,13 @@ export default function Console() {
     const [localLayout, setLayoutState] = useState(() => loadLayout(""));
     const prefs = usePrefs();
     useMigratePrefs();
+    // The sync (Configurações › Sincronização): its cloud in the top bar and
+    // the songs that look repeated, both only on a computer that syncs.
+    const syncSt = useSyncStatus();
+    const syncTop = syncSt?.folder ? syncState(syncSt) : null;
+    const dupIds = useMemo(() => (syncSt?.folder
+        ? new Set(duplicateSongs(data.songs, prefs.song_duplicates_kept).flatMap((g) => g.songs.map((s) => s.id)))
+        : null), [syncSt?.folder, data.songs, prefs.song_duplicates_kept]);
     const layout = useMemo(() => ({ ...localLayout, density: prefs.console_density, hidden: hiddenMap(prefs.console_hidden_modules) }),
         [localLayout, prefs.console_density, prefs.console_hidden_modules]);
     // ?planner=<id> (the old /Services/:id) opens on that culto.
@@ -1088,7 +1098,8 @@ export default function Console() {
     const libraryPanel = (
         <Panel title="Biblioteca" actions={<TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <Library c={c} data={data} tab={libTabNow} setTab={setLibTab} tabs={shownTabs("lib", tabLists.lib)} elsewhere={panelHas}
-                onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice} />
+                onPrepare={prepare} onGo={prepareAndSend} onAddSong={addSong} onLyricsWeb={() => setOpen("lyrics")} onEditSong={openSong} onOpenMedia={openMedia} onEditNotice={openNotice}
+                dupIds={dupIds} onDuplicates={() => openSettings("sincronizacao")} />
         </Panel>
     );
     const slidesPanel = (
@@ -1292,7 +1303,8 @@ export default function Console() {
         <ConfirmContext.Provider value={askConfirm}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)} />
+            <TopBar c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)}
+                sync={syncTop} onSync={() => openSettings("sincronizacao")} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (

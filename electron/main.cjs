@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { app, BrowserWindow, Menu, dialog, ipcMain, powerMonitor, screen, session, shell } = require("electron");
+const os = require("node:os");
+const { app, BrowserWindow, Menu, dialog, ipcMain, powerMonitor, safeStorage, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
@@ -17,7 +18,7 @@ const { createNetwork } = require("./network.cjs");
 const { createLive, loadLiveRules } = require("./live.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
-const { createSyncEngine } = require("./sync.cjs");
+const { createSyncControl, sealWith } = require("./syncControl.cjs");
 const schema = require("./db/schema.json");
 
 // A projection window covered by another window is still projecting. Windows
@@ -470,31 +471,28 @@ app.whenReady().then(async () => {
         powerMonitor.on("resume", () => checks.resume());
     }
 
-    registerDataIpc({
-        store,
-        outputs,
-        system,
-        network,
-        live,
-        lyrics: createLyrics(),
-        mediaDir,
-        mediaBaseUrl: serverUrl + MEDIA_PREFIX,
-        isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
-        log: (m) => console.error(m),
-    });
-
     // Sync with the church's other computers through a shared folder
-    // (electron/sync.cjs). Off until a folder is set (settings "sync":
-    // { folder }) and the church's code typed (electron/syncPairing.cjs;
-    // Configurações › Sincronização comes later): until then each pass ends
-    // at once. The windows hear which media files rows name
-    // that have not come down yet ("Baixando…", and the console refuses to
-    // send them): asked once, then pushed when the list changes.
+    // (electron/sync.cjs), set up in Configurações › Sincronização
+    // (electron/syncControl.cjs): off until a folder is chosen and the
+    // church's code typed. A pass every 30 s and 3 s after a local change.
     let missingSent = "";
-    sync = createSyncEngine({
+    sync = createSyncControl({
         store,
         mediaDir,
-        getFolder: () => (settings.get("sync", {}) || {}).folder || null,
+        settings,
+        protect: sealWith(safeStorage),
+        chooseFolder: async (event) => {
+            const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender) || undefined, {
+                title: "Pasta da sincronização",
+                buttonLabel: "Usar esta pasta",
+                properties: ["openDirectory", "createDirectory"],
+            });
+            return canceled || !filePaths[0] ? null : filePaths[0];
+        },
+        openPath: (folder) => shell.openPath(folder),
+        describe: () => ({ name: os.hostname(), version: app.getVersion() }),
+        notify: (n) => notifications.add(n),
+        dismiss: (key) => notifications.remove((n) => n.key === key),
         log: (m) => logger.warn(m),
         onStatus: () => {
             const names = sync ? sync.missing() : [];
@@ -504,6 +502,24 @@ app.whenReady().then(async () => {
             broadcast("keryx:sync:missing", names);
         },
     });
+
+    registerDataIpc({
+        store,
+        outputs,
+        system,
+        network,
+        sync,
+        live,
+        lyrics: createLyrics(),
+        mediaDir,
+        mediaBaseUrl: serverUrl + MEDIA_PREFIX,
+        isTrustedSender: (event) => isAppUrl(event.senderFrame && event.senderFrame.url),
+        log: (m) => console.error(m),
+    });
+
+    // The windows hear which media files rows name that have not come down
+    // yet ("Baixando…", and the console refuses to send them): asked once,
+    // then pushed when the list changes (syncControl's onStatus, below).
     ipcMain.handle("keryx:sync:missing", (event) => (isAppUrl(event.senderFrame && event.senderFrame.url)
         ? { data: sync.missing() }
         : { error: { message: "Origem não autorizada.", status: 403 } }));

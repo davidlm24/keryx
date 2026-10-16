@@ -192,7 +192,10 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
         },
         info: (names) => ipcRenderer.invoke("keryx:media-info", { names }),
     },
+    // Configurações › Sincronização (electron/syncControl.cjs), and the media
+    // rows name that have not come down yet.
     sync: {
+        call: (op, args) => ipcRenderer.invoke("keryx:sync", { op, args }),
         missing: () => ipcRenderer.invoke("keryx:sync:missing"),
         onMissing(listener) {
             syncMissingListeners.add(listener);

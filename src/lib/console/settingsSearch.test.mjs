@@ -21,6 +21,7 @@ const FILES = {
     "CultoSection.jsx": "culto",
     "ConsoleSection.jsx": "console",
     "DadosSection.jsx": "backup",
+    "SyncSection.jsx": "sincronizacao",
     "SobreSection.jsx": "sobre",
 };
 const labelsIn = (src) => [

@@ -8,6 +8,7 @@
 //   keryx:bible:*       invoke  installed versions, install from the web or a file, one online chapter
 //   keryx:system        invoke  { op } backups, export/import, diagnostics, updates
 //   keryx:network       invoke  { op, args } screens on the church network
+//   keryx:sync          invoke  { op, args } sync between the church's computers (syncControl.cjs)
 //   keryx:lyrics        invoke  { op: search | get, args } lyrics from the web
 //   keryx:live:get      invoke  -> live state snapshot (shared/live-state.mjs)
 //   keryx:live:call     invoke  { op, args } -> the new snapshot | { error }
@@ -23,7 +24,7 @@ const { BrowserWindow, dialog, ipcMain } = require("electron");
 const bible = require("./bible.cjs");
 const { importMedia, MAX_IMPORT_BYTES } = require("./mediaImport.cjs");
 
-function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
+function registerDataIpc({ store, outputs, system, network, sync, live, lyrics, mediaDir, mediaBaseUrl, isTrustedSender, log }) {
     const reject = { error: { message: "Origem não autorizada.", status: 403 } };
 
     ipcMain.handle("keryx:db", (event, payload) => {
@@ -174,6 +175,18 @@ function registerDataIpc({ store, outputs, system, network, live, lyrics, mediaD
         } catch (err) {
             if (!err.status) log(`[keryx-network] ${op}: ${err && err.stack}`);
             return { error: { message: err.message || "Falha na operação.", status: err.status || 500 } };
+        }
+    });
+
+    ipcMain.handle("keryx:sync", async (event, payload) => {
+        if (!isTrustedSender(event)) return reject;
+        const { op, args } = payload || {};
+        if (!sync || !Object.prototype.hasOwnProperty.call(sync.ops, op)) return { error: { message: `Operação desconhecida: ${op}.`, status: 400 } };
+        try {
+            return { data: await sync.ops[op](event, args || {}) };
+        } catch (err) {
+            if (!err.status) log(`[keryx-sync] ${op}: ${err && err.stack}`);
+            return { error: { message: err.message || "Falha na sincronização.", status: err.status || 500 } };
         }
     });
 

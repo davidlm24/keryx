@@ -53,6 +53,12 @@ const FILE_LIMIT = 256 * 1024;
 const BATCH = 500;
 // Media named by rows that has not arrived yet, retried every pass.
 const MISSING_LIMIT = 2000;
+// <folder>/sync/<pc>/computer.json: { pc, name, version, at, sig } — who
+// the computer is (its Windows name, its KERYX version), signed like a line,
+// rewritten when either changes and twice a day (so "visto" stays true
+// without a write every pass).
+const COMPUTER_FILE = "computer.json";
+const COMPUTER_REFRESH_MS = 12 * 60 * 60 * 1000;
 // The cleanup of sync/media: how often it looks, how long a file must have
 // been unused by every computer before it goes, and how many collected
 // names a computer keeps announcing (so one that still uses one puts it back).
@@ -182,9 +188,32 @@ const isEntry = (e, pc) => e && typeof e === "object" && !Array.isArray(e)
 
 const syncDirOf = (folder) => path.join(path.resolve(String(folder)), SYNC_DIR);
 
+// A computer's computer.json: { name, version, at, verified } (verified only
+// with `keys`; without, the name is shown as the folder says it), or null.
+async function readComputer(dir, keys = null) {
+    let text;
+    try {
+        text = (await fsp.readFile(path.join(dir, COMPUTER_FILE), "utf8")).trim();
+    } catch {
+        return null;
+    }
+    let info;
+    try {
+        info = JSON.parse(text);
+    } catch {
+        return null;
+    }
+    if (!info || typeof info !== "object") return null;
+    const verified = keys ? keys.verify(text) : null;
+    if (keys && !verified) return { name: null, version: null, at: null, verified: false };
+    const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : null);
+    return { name: str(info.name, 80), version: str(info.version, 40), at: str(info.at, 40), verified };
+}
+
 // What a folder holds, for choosing it and typing the code (before any pass
 // runs there): { exists, code: "missing" | "bad" | "ok", computers: [{ pc,
-// files, lastChange }] }. Reads only.
+// name, files, lastChange }] }. Reads only; the names are what the folder
+// says (nothing can be checked before the code is typed).
 async function inspectFolder(folder) {
     const root = path.resolve(String(folder));
     if (!(await isDir(root))) return { exists: false, code: "missing", computers: [] };
@@ -195,7 +224,8 @@ async function inspectFolder(folder) {
         const m = d.isDirectory() && PC_DIR.exec(d.name);
         if (!m) continue;
         const pc = m[1].toLowerCase();
-        const seen = computers.get(pc) || { pc, files: 0, lastChange: 0 };
+        const seen = computers.get(pc) || { pc, name: null, files: 0, lastChange: 0 };
+        seen.name = seen.name || (await readComputer(path.join(syncDir, d.name)))?.name || null;
         for (const name of await fsp.readdir(path.join(syncDir, d.name)).catch(() => [])) {
             if (!ANY_FILE.test(name)) continue;
             try {
@@ -215,9 +245,10 @@ async function inspectFolder(folder) {
 
 // getFolder() -> the folder chosen, or null (off). getPairing() -> { id, key }
 // (the code file's id and the key the code makes, syncPairing.cjs), or null
-// (no code typed on this computer yet).
+// (no code typed on this computer yet). describe() -> { name, version }:
+// this computer as the others list it.
 function createSyncEngine({
-    store, mediaDir, getFolder, getPairing = () => null, log = console.warn, fileLimit = FILE_LIMIT, batch = BATCH, now = () => new Date(), onStatus = null,
+    store, mediaDir, getFolder, getPairing = () => null, describe = null, log = console.warn, fileLimit = FILE_LIMIT, batch = BATCH, now = () => new Date(), onStatus = null,
     gcEveryMs = GC_EVERY_MS, gcGraceMs = GC_GRACE_MS,
 }) {
     const pc = String(store.pcId).toLowerCase();
@@ -269,7 +300,7 @@ function createSyncEngine({
     // file again: lines skipped under the old key may verify now.
     function loadState(folder, pairing) {
         const saved = store.getMeta(STATE_KEY);
-        if (!saved || saved.folder !== folder) return { folder, pairing, cursors: {}, peers: {}, out: null, missing: [], removed: [], gc: emptyGc() };
+        if (!saved || saved.folder !== folder) return { folder, pairing, cursors: {}, peers: {}, out: null, missing: [], me: null, removed: [], gc: emptyGc() };
         const gc = saved.gc && typeof saved.gc === "object" ? saved.gc : {};
         const sameCode = saved.pairing === pairing;
         return {
@@ -277,6 +308,7 @@ function createSyncEngine({
             pairing,
             cursors: sameCode && saved.cursors && typeof saved.cursors === "object" ? saved.cursors : {},
             peers: sameCode && saved.peers && typeof saved.peers === "object" ? saved.peers : {},
+            me: sameCode && saved.me && saved.me.pc === pc ? saved.me : null,
             removed: sameCode && Array.isArray(saved.removed) ? saved.removed : [],
             out: saved.out && saved.out.pc === pc ? saved.out : null,
             missing: Array.isArray(saved.missing) ? saved.missing : [],
@@ -347,6 +379,36 @@ function createSyncEngine({
             sent += lines.length;
         }
         return sent;
+    }
+
+    // This computer's computer.json, when what it says changed, it is gone,
+    // or it is half a day old.
+    async function writeComputer(syncDir, state) {
+        if (!describe) return;
+        let me;
+        try {
+            me = describe() || {};
+        } catch {
+            return;
+        }
+        const name = String(me.name || "").slice(0, 80);
+        const version = String(me.version || "").slice(0, 40);
+        const dir = path.join(syncDir, pc);
+        const file = path.join(dir, COMPUTER_FILE);
+        const last = state.me;
+        const at = now();
+        const fresh = last && last.name === name && last.version === version && at - Date.parse(last.at || 0) < COMPUTER_REFRESH_MS;
+        if (fresh && (await sizeOf(file)) > 0) return;
+        await fsp.mkdir(dir, { recursive: true });
+        const body = { pc, name, version, at: at.toISOString() };
+        const tmp = path.join(dir, `.${COMPUTER_FILE}.${process.pid}.partial`);
+        try {
+            await fsp.writeFile(tmp, keys.sign(JSON.stringify(body)) + "\n");
+            await fsp.rename(tmp, file);
+        } finally {
+            await fsp.rm(tmp, { force: true }).catch(() => {});
+        }
+        state.me = { pc, name, version, at: body.at };
     }
 
     // -- In: everyone else's folders ------------------------------------------
@@ -493,7 +555,12 @@ function createSyncEngine({
             } catch {
                 continue; // deleted while we looked
             }
-            const seen = computers.get(from) || { pc: from, files: 0, lastChange: 0 };
+            const seen = computers.get(from) || { pc: from, name: null, version: null, seen: null, signed: null, files: 0, lastChange: 0 };
+            const who = await readComputer(dir, keys);
+            if (who && (seen.signed === null || who.verified)) {
+                seen.signed = who.verified;
+                if (who.verified) Object.assign(seen, { name: who.name, version: who.version, seen: who.at });
+            }
             // Taken out: listed, never read, until it types the code again.
             if (out.has(from)) {
                 seen.removed = { at: out.get(from).at, by: out.get(from).by };
@@ -509,16 +576,17 @@ function createSyncEngine({
             computers.set(from, seen);
         }
         // verified: the last line read from it carried this church's
-        // signature (false: it writes without the code, or with an old one;
-        // null: nothing read from it yet).
+        // signature (false: it writes without the code, or with an old one);
+        // with no line read yet, its computer.json says; null: nothing at all.
+        // name, version, seen: from its computer.json, only when signed.
         return {
             totals,
-            computers: [...computers.values()].map((c) => {
+            computers: [...computers.values()].map(({ signed, ...c }) => {
                 const peer = state.peers[c.pc];
                 return {
                     ...c,
                     lastChange: c.lastChange ? new Date(c.lastChange).toISOString() : null,
-                    verified: peer && peer.last ? peer.last === "ok" : null,
+                    verified: peer && peer.last ? peer.last === "ok" : signed,
                     rejected: peer ? peer.rejected : 0,
                 };
             }),
@@ -743,6 +811,7 @@ function createSyncEngine({
             }
             await fsp.mkdir(path.join(syncDir, MEDIA_DIR), { recursive: true });
             const sent = await writeOut(syncDir, state);
+            await writeComputer(syncDir, state);
             const { totals, computers } = await readIn(syncDir, state);
             await retryMissing(syncDir, state);
             // A file no row here names any more is not waited for.
@@ -838,4 +907,4 @@ function createSyncEngine({
     return { pass, poke, start, stop, status: () => status, missing };
 }
 
-module.exports = { createSyncEngine, inspectFolder, syncDirOf, mediaRefs, coalesce, SYNC_DIR, MEDIA_DIR, MANIFEST, STATE_KEY, fileName };
+module.exports = { createSyncEngine, inspectFolder, syncDirOf, mediaRefs, coalesce, SYNC_DIR, MEDIA_DIR, MANIFEST, STATE_KEY, COMPUTER_FILE, fileName };

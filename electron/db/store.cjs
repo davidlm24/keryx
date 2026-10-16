@@ -13,7 +13,7 @@
 
 const crypto = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
-const { isSynced, syncRow, LOCAL_USER_FIELDS } = require("./syncScope.cjs");
+const { isSynced, syncRow, SYNC_ENTITIES, LOCAL_USER_FIELDS } = require("./syncScope.cjs");
 
 // Deletes of synced entities leave a mark (entity, id, when) so the delete can
 // travel to the church's other computers instead of the row coming back from
@@ -549,6 +549,73 @@ function createStore({ file, schema, log = console.warn }) {
         return Number(prepare(`DELETE FROM ${quote(OUTBOX)} WHERE seq <= ?`).run(upTo).changes);
     }
 
+    // Everything this computer holds of the church's content, into the outbox
+    // (docs/desktop-architecture.md §8b, the first join): what joining the
+    // sync, or a new code, sends to the others, since the outbox only holds
+    // what changed after it started recording. Whatever the outbox held is
+    // forgotten first: the rows are the state it led to. Each row goes at the
+    // version it is at here (`_version`, else its date), so the other
+    // computers' newer copies still win, and every delete at its tombstone's
+    // date. The profile only sends the church fields this computer set (a
+    // version of their own, or a value other than the factory one), at their
+    // own versions: a fresh install never sends its defaults over the
+    // church's logo. `bump`: the rows go as edits made now (a backup restored
+    // for every computer), deletes still at their dates. Returns the count.
+    function snapshot({ bump = false } = {}) {
+        const now = new Date().toISOString();
+        return transaction(() => {
+            prepare(`DELETE FROM ${quote(OUTBOX)}`).run();
+            const put = prepare(`INSERT INTO ${quote(OUTBOX)} (entity, id, op, row, at, pc) VALUES (?, ?, ?, ?, ?, ?)`);
+            let n = 0;
+            for (const entity of SYNC_ENTITIES) {
+                const def = schema.entities[entity];
+                if (!def) continue;
+                if (entity === "User") {
+                    n += snapshotProfile(def, put, bump, now);
+                    continue;
+                }
+                for (const raw of prepare(`SELECT * FROM ${quote(def.table)} ORDER BY rowid`).all()) {
+                    const row = decodeRow(def, raw);
+                    let at = now;
+                    if (bump) setVersion(entity, row.id, now, pcId);
+                    else at = localVersion(entity, String(row.id), row)?.at || toIso(row.updated_date) || now;
+                    put.run(entity, String(row.id), "upsert", JSON.stringify(syncRow(entity, row)), at, pcId);
+                    n += 1;
+                }
+            }
+            for (const mark of prepare(`SELECT entity, id, deleted_at FROM ${quote(TOMBSTONES)} ORDER BY deleted_at`).all()) {
+                if (!isSynced(mark.entity)) continue;
+                put.run(mark.entity, mark.id, "delete", null, mark.deleted_at, pcId);
+                n += 1;
+            }
+            return n;
+        });
+    }
+
+    function snapshotProfile(def, put, bump, now) {
+        const row = getRow(def, PROFILE_ID);
+        if (!row) return 0;
+        const byAt = new Map();
+        for (const field of churchFields(def, row)) {
+            const value = row[field];
+            if (value === null || value === undefined) continue;
+            let at = getVersion("User", fieldKey(field))?.at;
+            if (!at) {
+                const factory = field in PROFILE_DEFAULTS ? PROFILE_DEFAULTS[field] : def.columns[field].default;
+                if (factory !== undefined && JSON.stringify(factory) === JSON.stringify(value)) continue;
+                at = toIso(row.updated_date) || now;
+            }
+            if (bump) {
+                at = now;
+                setVersion("User", fieldKey(field), now, pcId);
+            }
+            if (!byAt.has(at)) byAt.set(at, { id: PROFILE_ID });
+            byAt.get(at)[field] = value;
+        }
+        for (const [at, body] of byAt) put.run("User", PROFILE_ID, "upsert", JSON.stringify(body), at, pcId);
+        return byAt.size;
+    }
+
     // One remote change, inside applyRemote's transaction. Returns false when
     // it is not taken (unknown, ours, or not newer than what is here), else
     // { event } (null when a delete found nothing to delete).
@@ -660,6 +727,7 @@ function createStore({ file, schema, log = console.warn }) {
         pruneTombstones,
         outbox,
         pruneOutbox,
+        snapshot,
         applyRemote,
         pcId,
         getMeta,

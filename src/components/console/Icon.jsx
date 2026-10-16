@@ -13,6 +13,7 @@ const EXTRA = {
     copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>',
     info: '<circle cx="12" cy="12" r="8"/><path d="M12 11v5.5"/><path d="M12 7.8v.2"/>',
     pin:'<path d="M9.5 4.5h5l-.7 5 2.7 2.5v1.5H7.5V12l2.7-2.5z"/><path d="M12 13.5V20"/>',
+    cloud: '<path d="M7.5 18.5h9.5a3.75 3.75 0 0 0 .4-7.48 5.5 5.5 0 0 0-10.6 1.26A3.1 3.1 0 0 0 7.5 18.5z"/>',
 };
 
 // The glyph's SVG markup, for a node built outside React (the drag ghost).
