@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Btn, Empty } from "./kx";
+import { Btn, Empty, IconBtn } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import useKeepInView from "./useKeepInView";
 import ClipTitle from "./ClipTitle";
@@ -45,6 +45,8 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
 
     const airWord = "is-air";
     const pos = slides.length ? `${hand ? "prévia" : "no ar"} ${index + 1}/${slides.length}` : "";
+    // Where the air is: the footer's arrows move it, whatever the column shows.
+    const airPos = air?.slides?.length ? `${air.index + 1}/${air.slides.length}` : "";
     const pick = (i) => {
         if (hand) c.setPrev(stageAt(prev, i));
         else if (air && i !== air.index) c.setPrev(stageAirSlide(air, i, airId));
@@ -85,9 +87,25 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
                     );
                 })}
             </div>
+            {/* The footer's arrows always move what is on air (←/→). Under the
+                Prévia's slides they say so — "No ar", the air's own n/m — apart
+                from the column's "prévia n/m", and go away with nothing on air
+                (the design audit, C-06): a click meant for the prepared item
+                must not read as stepping it. ↑/↓ walk the Prévia. */}
             <div className="slidesnav">
-                <Btn className="kx-btn-live" onClick={() => c.moveSlide(-1)} title="Slide anterior no ar · ←"><Icon name="skip-back" />Anterior</Btn>
-                <Btn className="kx-btn-live" onClick={() => c.moveSlide(1)} title="Próximo slide no ar · →">Próximo<Icon name="skip-fwd" /></Btn>
+                {hand ? airPos && (
+                    <span className="slidesnav-air" role="group" aria-label="Slide no ar">
+                        <span className="slidesnav-lab"><span className="slides-dot is-air" aria-hidden="true" />No ar</span>
+                        <IconBtn name="skip-back" className="kx-btn-live" onClick={() => c.moveSlide(-1)} title="Slide anterior no ar · ←" />
+                        <IconBtn name="skip-fwd" className="kx-btn-live" onClick={() => c.moveSlide(1)} title="Próximo slide no ar · →" />
+                        <span className="kx-meta" title={`Slide ${air.index + 1} de ${air.slides.length} no ar`}>{airPos}</span>
+                    </span>
+                ) : (
+                    <>
+                        <Btn className="kx-btn-live" disabled={!airPos} onClick={() => c.moveSlide(-1)} title="Slide anterior no ar · ←"><Icon name="skip-back" />Anterior</Btn>
+                        <Btn className="kx-btn-live" disabled={!airPos} onClick={() => c.moveSlide(1)} title="Próximo slide no ar · →">Próximo<Icon name="skip-fwd" /></Btn>
+                    </>
+                )}
                 <span style={{ flex: 1 }} />
                 <span className="kx-meta">{pos}</span>
             </div>

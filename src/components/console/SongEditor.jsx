@@ -63,6 +63,9 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const [cifraKept, setCifraKept] = useState(false);
     const [starts, setStarts] = useState([]);
     const [busy, setBusy] = useState("");
+    // One save at a time: a held Ctrl+S or a double click created a new
+    // song twice before the page swapped "new" for its id.
+    const saving = useRef(false);
     const [dirty, setDirty] = useState(false);
     // Detached (/Janela), unsaved changes hold the window: closing it asks.
     useUnloadGuard(dirty);
@@ -306,6 +309,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const save = useCallback(async () => {
         if (!song.title.trim()) { c.say("Dê um título à música."); return; }
         if (!song.lyrics.trim()) { c.say("A letra está vazia."); return; }
+        if (saving.current) return;
+        saving.current = true;
         setBusy("save");
         const data = {
             ...song,
@@ -324,6 +329,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             c.say(songId === "new" ? `${data.title} criada.` : "Música salva.");
             onSaved?.(row);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
+        saving.current = false;
         setBusy("");
     }, [song, slides, durationText, songId, split, c, onSaved]);
 
@@ -350,11 +356,12 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") || !active) return;
             if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
             e.preventDefault(); e.stopPropagation();
+            if (e.repeat || busy) return;
             if (song) save();
         };
         window.addEventListener("keydown", onKey, true);
         return () => window.removeEventListener("keydown", onKey, true);
-    }, [save, song, active]);
+    }, [save, song, active, busy]);
 
     if (error) return <><WinBar title="Editor de música" /><div className="win-body"><div className="col center"><Panel noHead><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div style={{ padding: "var(--space-2)" }}><Btn onClick={() => onClose()}>Fechar</Btn></div></Panel></div></div></>;
     if (!song) return <><WinBar title="Editor de música" /><div className="win-body"><div className="col center"><Panel noHead><Empty title="Abrindo…" /></Panel></div></div></>;
