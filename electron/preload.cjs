@@ -118,6 +118,10 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     network: {
         call: (op, args) => ipcRenderer.invoke("keryx:network", { op, args }),
     },
+    // Configurações › Sincronização (electron/syncControl.cjs).
+    sync: {
+        call: (op, args) => ipcRenderer.invoke("keryx:sync", { op, args }),
+    },
     remote: {
         onCommand(listener) {
             remoteListeners.add(listener);

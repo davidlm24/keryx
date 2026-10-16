@@ -443,7 +443,7 @@ export function UpdateDialog({ open, setOpen, update, live, call, onDismiss }) {
 
 const NOTE_ICON = { update: "download", warn: "warn", info: "check" };
 // "settings:dados" is what older versions saved (the section is Backup now).
-const ACTION_LABEL = { update: "Atualizar agora", whatsnew: "Ver novidades", "settings:backup": "Abrir Backup", "settings:dados": "Abrir Backup" };
+const ACTION_LABEL = { update: "Atualizar agora", whatsnew: "Ver novidades", "settings:backup": "Abrir Backup", "settings:dados": "Abrir Backup", "settings:sincronizacao": "Abrir Sincronização" };
 
 // The bell's list: newest first, each with what can be done about it.
 export function Notifications({ open, setOpen, notes, update, onAction, onDismiss, onClear }) {
