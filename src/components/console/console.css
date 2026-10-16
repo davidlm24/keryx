@@ -415,14 +415,15 @@
 .console .dock { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .console .dock-split { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .console .dock-split.is-col { flex-direction: column; }
+.console { --fold-ms: 240ms; --ease-fold: cubic-bezier(0.32, 0.72, 0, 1); }
 .console .dock-cell { display: flex; min-width: 0; min-height: 0; }
 /* A folding module (the No ar strip, only while lyrics are on air): it eases
    in and out of its place so the columns do not jump; gone, it takes no room. */
-.console .dock-cell.dock-fold { overflow: hidden; transition: flex-basis 180ms var(--ease-out); }
-.console .dock-cell.dock-fold.is-gone { visibility: hidden; transition: flex-basis 180ms var(--ease-out), visibility 0s 180ms; }
+.console .dock-cell.dock-fold { overflow: hidden; transition: flex-basis var(--fold-ms) var(--ease-fold); }
+.console .dock-cell.dock-fold.is-gone { visibility: hidden; transition: flex-basis var(--fold-ms) var(--ease-fold), visibility 0s var(--fold-ms); }
 /* A locked height (dock.js `locked`): it eases to its new size (a pencil
    opening Camadas, a song with more lines); the gap beside it has no handle. */
-.console .dock-cell.dock-locked { transition: flex-basis 180ms var(--ease-out); }
+.console .dock-cell.dock-locked { transition: flex-basis var(--fold-ms) var(--ease-fold); }
 /* Folding a panel (owner 2026-10-16, Rodada F4; kx.jsx FoldBtn/FoldStrip,
    dock.js fitDock's `folded`): the chevron right of the header's +, up
    while open, turned while folded; the last open panel of a split keeps
@@ -430,8 +431,15 @@
    Compacta); across a row a 28 px strip, the chevron over the module's
    name standing up, a click anywhere on it opens the panel. */
 .console .kx-fold { flex: none; }
-.console .kx-fold .kx-i { transition: transform var(--duration-fast) var(--ease-out); }
+.console .kx-fold .kx-i { transition: transform 220ms var(--ease-fold); }
 .console .kx-fold.is-folded .kx-i { transform: rotate(180deg); }
+/* Folded down a column the body stays under the shrinking cell (clipped by
+   the panel) and fades, instead of vanishing before the box moves. */
+.console .kx-panel > .kx-panel-b { transition: opacity 200ms var(--ease-fold) 60ms; }
+.console .kx-panel.is-collapsed:not(.kx-strip) > .kx-panel-b { display: block; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms var(--ease-fold), visibility 0s var(--fold-ms); }
+/* aria-expanded (open) must not read as "pressed" (the base rule gives it the
+   hover look): the chevron rests like the (+), a background only on hover. */
+.console .kx-btn.kx-fold[aria-expanded="true"]:not(:hover):not(:active) { background: none; color: var(--fg-2); }
 .console .kx-btn.kx-fold.is-stuck { opacity: var(--dim); cursor: default; }
 .console .kx-btn.kx-fold.is-stuck:hover { background: none; }
 .console.is-compact .kx-panel.is-collapsed { height: 28px; }
@@ -440,7 +448,7 @@
 .console .kx-strip-b:hover { background: var(--bg-2); color: var(--fg-1); }
 .console .kx-strip-b > .kx-fold { flex: none; width: 24px; height: 24px; display: grid; place-items: center; }
 .console .kx-strip-b > .kx-strip-name { writing-mode: vertical-rl; min-height: 0; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (prefers-reduced-motion: reduce) { .console .kx-fold .kx-i { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .console .kx-fold .kx-i, .console .kx-panel > .kx-panel-b, .console .kx-panel.is-collapsed:not(.kx-strip) > .kx-panel-b { transition: none; } }
 .console .dock-gap { flex: 0 0 var(--gutter); }
 /* While editing the arrangement, every splitter says its side's size in %
    of the split (owner 2026-10-14); a click turns it into a field. */
