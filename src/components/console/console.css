@@ -107,7 +107,10 @@
    a deeper shadow than the design system's --popover (owner 2026-10-14,
    who liked the framed menus of the proposal). */
 .console .kx-pop { box-shadow: 0 0 0 1px var(--line-strong), 0 12px 32px #000000a6; }
-.console .ctx-menu { position: fixed; z-index: 46; min-width: 220px; max-width: 320px; }
+/* The right-click menu opens at the pointer, over the row it acts on: a
+   fainter ring and a smaller, lighter shadow than the other menus' frame
+   (owner 2026-10-16, Rodada E0), so it does not stamp a hard box there. */
+.console .ctx-menu { position: fixed; z-index: 46; min-width: 220px; max-width: 320px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent), 0 6px 16px #00000059; }
 .console .ctx-menu .ctx-l { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .ctx-menu .kx-menu-item:focus-visible { outline: none; background: var(--bg-3); }
 .console .ctx-menu .kx-menu-item:disabled { opacity: var(--dim); }

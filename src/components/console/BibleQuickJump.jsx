@@ -1,15 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon";
-import { readQuickRef, quickRefLabel } from "@/lib/console/quickRef";
+import { readQuickRef, quickRefLabel, typeQuickRef } from "@/lib/console/quickRef";
 
 // The Bible quick jump, as in Holyrics: the first letter typed in the Bible
 // environment opens it, and the operator keeps typing "jo 3 16" — Livro,
-// Capítulo, Versículo fill in as they go. Tab (or a click) completes the
-// book; Enter opens the reference with the verses selected, ready in the
-// Prévia; Enter again sends (the console's own key). Esc cancels — it never
-// reaches the console here, so it can't take the projection down.
+// Capítulo, Versículo fill in as they go. Once the letters leave only one
+// book the field completes it on its own ("joã" -> "João ", typeQuickRef);
+// Tab (or a click) completes the book before that. Enter opens the
+// reference with the verses selected, ready in the Prévia; Enter again
+// sends (the console's own key). Esc cancels — it never reaches the console
+// here, so it can't take the projection down.
 export default function BibleQuickJump({ initial, onPick, onCancel }) {
-    const [text, setText] = useState(initial || "");
+    const [field, setField] = useState(() => typeQuickRef(null, initial || "", true));
+    const text = field.text;
     const [active, setActive] = useState(0);
     const input = useRef(null);
     const r = useMemo(() => readQuickRef(text), [text]);
@@ -18,8 +21,15 @@ export default function BibleQuickJump({ initial, onPick, onCancel }) {
 
     const complete = (name) => {
         const rest = text.slice(text.indexOf(r.query) + r.query.length).trimStart();
-        setText(`${name} ${rest}`);
+        setField({ text: `${name} ${rest}`, typed: null });
         input.current?.focus();
+    };
+    // Typing at the end of the field may complete the book; Backspace, a
+    // paste or an edit in the middle never does.
+    const onChange = (e) => {
+        const value = e.target.value;
+        const typing = e.nativeEvent.inputType === "insertText" && e.target.selectionStart === value.length;
+        setField((f) => typeQuickRef(f, value, typing));
     };
     const onKey = (e) => {
         if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onCancel(); return; }
@@ -63,7 +73,7 @@ export default function BibleQuickJump({ initial, onPick, onCancel }) {
                 </div>
                 <div className="qj-input">
                     <Icon name="book" />
-                    <input ref={input} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} aria-label="Referência" spellCheck={false} autoComplete="off" />
+                    <input ref={input} value={text} onChange={onChange} onKeyDown={onKey} aria-label="Referência" spellCheck={false} autoComplete="off" />
                 </div>
                 <div className="qj-cands">
                     {r.step === "livro" && r.candidates.map((b, i) => (
