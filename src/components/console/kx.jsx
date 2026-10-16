@@ -143,9 +143,9 @@ export function Seg({ value, options, onChange, mode, className = "", small, lab
     };
     const hasValue = options.some(([v]) => v === value);
     return (
-        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${className}`} style={small ? { height: 24, padding: 2 } : undefined} role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
+        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${small ? "is-small" : ""} ${className}`} role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
             {options.map(([v, label, extra], i) => (
-                <button type="button" key={v} className={`kx-t ${value === v ? "is-on" : ""}`} data-mode={v} role="radio" aria-checked={value === v} tabIndex={value === v || (!hasValue && i === 0) ? 0 : -1} onClick={() => onChange(v)} style={small ? { height: 20, padding: "0 8px", fontSize: 11 } : undefined} {...(extra || {})}>
+                <button type="button" key={v} className={`kx-t ${value === v ? "is-on" : ""}`} data-mode={v} role="radio" aria-checked={value === v} tabIndex={value === v || (!hasValue && i === 0) ? 0 : -1} onClick={() => onChange(v)} {...(extra || {})}>
                     {label}
                 </button>
             ))}
@@ -165,10 +165,19 @@ export function Field({ icon = "search", value, onChange, placeholder, onKeyDown
 
 // A list row: a glyph, a title and one grey line, time on the right, actions
 // on hover. Click, Enter and Space on the row all prepare (onClick); a
-// double click sends to air (onDoubleClick), as in Holyrics.
-export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, onContextMenu, onMouseEnter, onMouseLeave, dragProps, single, className = "", current, children }) {
+// double click sends to air (onDoubleClick), as in Holyrics. `onKey` sees
+// the row's other keys first (Alt+↑/↓ moves a Setlist row, C-16); `lead`
+// goes before the glyph (the planner's grip); `expanded`: the row opens
+// details under it (aria-expanded).
+export const rowKeyDown = (onClick, onKey) => (e) => {
+    onKey?.(e);
+    if (e.defaultPrevented) return;
+    if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); }
+};
+export function Row({ icon, lead, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, onContextMenu, onMouseEnter, onMouseLeave, onKey, expanded, dragProps, single, className = "", current, children }) {
     return (
-        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} role="button" tabIndex={0} aria-current={current || undefined} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
+        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} role="button" tabIndex={0} aria-current={current || undefined} aria-expanded={expanded} onKeyDown={rowKeyDown(onClick, onKey)} {...dragProps}>
+            {lead}
             {icon && <span className="kx-glyph"><Icon name={icon} /></span>}
             <div className="kx-row-main">
                 <div className="kx-row-title">{title}</div>
@@ -268,9 +277,11 @@ export function Empty({ icon, title, children }) {
     );
 }
 
-export function MenuItem({ icon, checked, kbd, children, ...rest }) {
+// One item of a menu (Menu.jsx MenuList draws them; a few popovers that
+// are not menus still use it as a row button).
+export function MenuItem({ icon, checked, kbd, className = "", children, ...rest }) {
     return (
-        <button type="button" className={`kx-menu-item kx-t ${checked ? "is-checked" : ""}`} {...rest}>
+        <button type="button" className={`kx-menu-item kx-t ${checked ? "is-checked" : ""} ${className}`} {...rest}>
             <span className="kx-glyph">{icon ? <Icon name={icon} /> : checked ? <Icon name="check" /> : null}</span>
             {children}
             {kbd && <span className="kx-kbd">{kbd}</span>}

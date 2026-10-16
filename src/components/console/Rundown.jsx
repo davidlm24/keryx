@@ -10,6 +10,7 @@ import Icon from "./Icon";
 import { plan, clockAt, span, total, isSection, typeIcon, typeLabel } from "@/lib/console/setlist";
 import { moveTo } from "@/lib/console/dropOrder";
 import useSortable from "./useSortable";
+import useRowStep from "./useRowStep";
 
 // The planned clock time of each item ("HH:MM"; "" for a section): the
 // service's start plus the durations before it (src/lib/console/setlist.js).
@@ -17,7 +18,8 @@ export const plannedTimes = (service, items) => plan(service, items).rows.map((r
 
 // The service's items in order: click (or Enter on the row) prepares; the
 // "Ir" button prepares and sends — the only send here. Drag reorders
-// (ServiceItem.order), as Cultos does.
+// (ServiceItem.order), as Cultos does; so do the row's menu (Subir,
+// Descer) and Alt+↑ / Alt+↓ on a focused row (C-16, useRowStep).
 export default function Rundown({ service, items, airItemId, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true }) {
     const menu = useContextMenu();
     const ask = useConfirm();
@@ -51,6 +53,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
     // changes, it is scrolled into view, so the next rows stay in sight.
     const listRef = sort.listProps.ref;
     useKeepInView(listRef, airItemId ? ".is-air" : ".is-prev", [airItemId, prevItemId]);
+    const step = useRowStep({ ids: items.map((it) => it.id), listRef, onMove: reorder, disabled: !canReorder });
 
 
     return (
@@ -65,17 +68,19 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                 if (isSection(it)) {
                     const sec = p.sections[i] || { count: 0, seconds: 0 };
                     return (
-                        <div key={it.id} className="listhead rund-sec" {...sort.rowProps(i, { label: it.title, icon: "list", time: sec.seconds ? total(sec.seconds) : "" })} style={sort.rowStyle(i)}
+                        <div key={it.id} className="listhead rund-sec" {...sort.rowProps(i, { label: it.title, icon: "list", time: sec.seconds ? total(sec.seconds) : "" })} {...step.rowAttrs(i)} style={sort.rowStyle(i)}
+                            tabIndex={canReorder ? 0 : undefined} aria-label={canReorder ? `Seção ${it.title} · Alt+↑ ou Alt+↓ muda de lugar` : undefined} onKeyDown={step.onKey(i)}
                             onContextMenu={(e) => menu(e, { title: it.title, items: [
                                 onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
                                 { label: "Tirar a seção…", icon: "x", onSelect: () => askTakeOut(it) },
+                                ...step.menuItems(i),
                             ] })}>
                             <span className="kx-section">{it.title}</span><span className="kx-count"> · {sec.count} · {total(sec.seconds)}</span>
                         </div>
                     );
                 }
                 const state = it.id === airItemId ? "is-air" : it.id === prevItemId ? "is-prev" : airIdx >= 0 && i < airIdx ? "is-done" : "";
-                const dragProps = { ...sort.rowProps(i, { label: it.title || typeLabel(it.type), icon: typeIcon(it.type), time: it.duration ? span(it.duration) : "" }), style: sort.rowStyle(i) };
+                const dragProps = { ...sort.rowProps(i, { label: it.title || typeLabel(it.type), icon: typeIcon(it.type), time: it.duration ? span(it.duration) : "" }), ...step.rowAttrs(i), style: sort.rowStyle(i) };
                 return (
                     <Row
                         key={it.id}
@@ -91,7 +96,9 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                             onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
                             { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(it, i) },
                             { label: "Tirar da setlist…", icon: "x", onSelect: () => askTakeOut(it) },
+                            ...step.menuItems(i),
                         ] })}
+                        onKey={step.onKey(i)}
                         dragProps={dragProps}
                         actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Enviar ao ar · 2 cliques" aria-label="Ir"><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Ir</span></Btn>{onPlan && <IconBtn name="more" title="Editar no planejador" onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}
                     />

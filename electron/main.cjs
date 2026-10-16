@@ -5,9 +5,9 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, powerMonitor, sa
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
-const { createOutputManager } = require("./outputs-manager.cjs");
+const { createOutputManager, createReloadLimiter } = require("./outputs-manager.cjs");
 const { createSettings } = require("./settings.cjs");
-const { outputKeyForUrl } = require("./outputs.cjs");
+const { outputKeyForUrl, outputForKey } = require("./outputs.cjs");
 const { createLogger, captureConsole } = require("./logger.cjs");
 const { applyPendingImport } = require("./archive.cjs");
 const { createUpdater, installedNote } = require("./updater.cjs");
@@ -98,6 +98,8 @@ let sync = null;
 // for the close guard (electron/closeGuard.cjs).
 let liveRules = null;
 let appSettings = null;
+// The bell, set once the notifications exist (a window can crash before then).
+let notify = () => {};
 // A quit already decided (app.quit: the updater, the menu, the guard's
 // "Fechar o KERYX"): the console's X no longer asks.
 let quitting = false;
@@ -131,6 +133,56 @@ function isAppUrl(url) {
     } catch {
         return false;
     }
+}
+
+// A renderer that dies or hangs reloads itself (ARCH-001): the live state is
+// held by the main process and pages ignore stale revisions, so a reload comes
+// back on the same slide. Before, a dead projector stayed dead.
+const UNRESPONSIVE_MS = 4000;
+const RELOAD_DELAY_MS = 300;
+function recoverFromCrashes(win) {
+    const { webContents } = win;
+    const limiter = createReloadLimiter();
+    let hung = null;
+    const name = () => {
+        const output = outputForKey(outputKeyForUrl(webContents.getURL(), appOrigin) || "");
+        return output ? `A saída ${output.label}` : win === mainWindow ? "O console" : "Uma janela do KERYX";
+    };
+    const alive = () => !quitting && !win.isDestroyed() && !webContents.isDestroyed();
+
+    webContents.on("render-process-gone", (_event, details) => {
+        if (details.reason === "clean-exit" || !alive()) return;
+        const who = name();
+        if (!limiter.allow()) {
+            logger.error(`[keryx-crash] ${who} reiniciou 3 vezes em 1 minuto; não vai reiniciar de novo (${details.reason})`);
+            notify({ key: `crash:${who}`, kind: "warn", title: `${who} reiniciou 3 vezes`, body: "Veja o diagnóstico em Configurações › Dados e backup." });
+            return;
+        }
+        logger.error(`[keryx-crash] ${who} caiu (${details.reason}); reiniciando`);
+        setTimeout(() => {
+            if (!alive()) return;
+            webContents.reload();
+            if (win === mainWindow) {
+                webContents.once("did-finish-load", () => notify({ key: "console-restarted", kind: "info", title: "O console foi reiniciado", body: "Nada saiu do ar." }));
+            }
+        }, RELOAD_DELAY_MS);
+    });
+    // A page silent for 4 s is crashed on purpose, which goes through the
+    // handler above (log, limit, reload).
+    webContents.on("unresponsive", () => {
+        if (hung) return;
+        hung = setTimeout(() => {
+            hung = null;
+            if (!alive()) return;
+            logger.error(`[keryx-crash] ${name()} parou de responder; reiniciando`);
+            webContents.forcefullyCrashRenderer();
+        }, UNRESPONSIVE_MS);
+    });
+    webContents.on("responsive", () => {
+        if (hung) clearTimeout(hung);
+        hung = null;
+    });
+    win.on("closed", () => { if (hung) clearTimeout(hung); });
 }
 
 function guardWindow(win) {
@@ -201,6 +253,8 @@ function guardWindow(win) {
             { label: "Selecionar tudo", role: "selectAll", enabled: Boolean(can.canSelectAll) },
         ]).popup({ window: BrowserWindow.fromWebContents(webContents) || undefined });
     });
+
+    recoverFromCrashes(win);
 
     if (DEVTOOLS) {
         webContents.on("before-input-event", (event, input) => {
@@ -428,6 +482,7 @@ app.whenReady().then(async () => {
         for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, payload);
     };
     const notifications = createNotifications({ settings, onChange: (list) => broadcast("keryx:notifications", list) });
+    notify = (n) => notifications.add(n);
     const autoUpdates = () => Boolean((settings.get("updates", {}) || {}).auto);
     const updater = createUpdater({
         app,

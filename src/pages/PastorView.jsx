@@ -8,6 +8,7 @@ import { useDesign } from "@/hooks/useLayout";
 import { useUpcoming } from "@/hooks/useUpcoming";
 import { pastorOptions } from "@/lib/outputPrefs";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { useScreenKeys } from "@/hooks/useScreenKeys";
 
 // The pastor's screen (a tablet on the pulpit, landscape like the others): PastorScreen
 // on the live state, with what comes next in the service's Setlist
@@ -19,6 +20,7 @@ export default function PastorView() {
     const church = useChurch();
     const session = live?.session || null;
     const { upcoming, hasService } = useUpcoming(live);
+    useScreenKeys(live);
     const { pref, theme } = useOutputPref("/PastorView");
     const layout = useDesign(pref);
     if (pref.content) return <OutputScreen page="/PastorView" live={live} prefs={{ pref, theme }} now={nowMs} logoUrl={church.logo} audio={false} />;
