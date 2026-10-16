@@ -175,7 +175,7 @@
 .kx-banner .kx-btn { height: 22px; padding: 0 var(--space-2); }
 
 /* ---- Popover, menu, tooltip ---- */
-.kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: 6px; min-width: 180px; }
+.kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--shadow-popover); padding: 6px; min-width: 180px; }
 .kx-menu-item { display: flex; align-items: center; gap: var(--space-2); width: 100%; height: var(--row); padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-1); text-align: left; }
 .kx-menu-item:hover { background: var(--bg-3); }
 .kx-menu-item .kx-kbd { margin-left: auto; color: var(--fg-3); font-size: 11px; }
@@ -183,7 +183,7 @@
 .kx-menu-item.is-checked .kx-glyph { color: var(--fg-1); }
 .kx-menu-sep { height: 1px; background: var(--line); margin: var(--space-1) 0; }
 .kx-menu-h { height: 24px; display: flex; align-items: center; padding: 0 var(--space-2); }
-.kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; }
+.kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; }
 .kx-tip .kx-kbd { color: var(--fg-3); font-size: 11px; }
 
 /* ---- Splitter: invisible until hover ---- */
