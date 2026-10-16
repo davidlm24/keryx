@@ -124,9 +124,12 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
                 if (it.head != null) return <div key={`h${i}`} className="kx-menu-h" role="presentation"><span className="kx-section">{it.head}</span>{it.meta != null && <><span style={{ flex: 1 }} /><span className="kx-meta">{it.meta}</span></>}</div>;
                 const open = sub?.i === i;
                 const tail = it.sub ? <Icon name="chevron-right" /> : it.kbd;
+                // An item with a state (checked true or false) is a checkbox
+                // item and says it (C-26): the culto of the day, Ver's modules.
+                const role = it.role || (typeof it.checked === "boolean" ? "menuitemcheckbox" : "menuitem");
                 const button = (
                     <MenuItem key={it.sub ? undefined : `${it.label}${i}`} data-mi={i} tabIndex={-1} icon={it.icon} checked={it.checked} kbd={tail} disabled={it.disabled} title={it.title}
-                        role={it.role || "menuitem"} aria-checked={it.role === "menuitemcheckbox" ? Boolean(it.checked) : undefined}
+                        role={role} aria-checked={role === "menuitemcheckbox" ? Boolean(it.checked) : undefined}
                         aria-disabled={it.ariaDisabled || undefined} aria-haspopup={it.sub ? "menu" : undefined} aria-expanded={it.sub ? open : undefined}
                         className={`${it.air ? "is-air" : ""} ${open ? "is-on" : ""} ${it.meta ? "has-meta" : ""}`}
                         onPointerEnter={it.sub ? () => setSub({ i, byKey: false }) : sub ? () => setSub(null) : undefined}
