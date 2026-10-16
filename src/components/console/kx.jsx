@@ -76,9 +76,13 @@ export function Btn({ kind = "", small, on, className = "", children, ...rest })
 // and actions (Salvar, Cancelar). There is no "← Console" any more: the
 // first level's Esc and (x) just close. A double click on the bar's empty
 // area gives the window its default size back (onResetSize, Rodada D3).
+// The ⧉ "Destacar em janela" (Rodada F5, every page): the host gives
+// onDetach when the page can move to a window of its own (nav.js
+// detachSpec); a detached window gives none (`detached` instead).
 export const WinCtx = createContext(null);
 export function WinBar({ title, sub, tools, actions, detach }) {
     const w = useContext(WinCtx) || {};
+    const onDetach = detach || w.onDetach;
     return (
         <div className="win-bar" onDoubleClick={(e) => { if (e.target === e.currentTarget || e.target.classList?.contains("win-gap")) w.onResetSize?.(); }}>
             {w.back && (
@@ -90,10 +94,25 @@ export function WinBar({ title, sub, tools, actions, detach }) {
             {tools && <span className="win-tools">{tools}</span>}
             <span className="win-gap" />
             {actions}
-            {detach && <IconBtn name="external" title="Destacar em janela: abrir o Editor em janela própria (para editar vendo outra tela)" onClick={detach} />}
+            {onDetach && <IconBtn name="external" title="Destacar em janela: esta página numa janela própria, para usar vendo outra tela" onClick={onDetach} />}
             <IconBtn name="x" title="Fechar · Esc" onClick={w.onCloseAll} />
         </div>
     );
+}
+
+// A detached page (/Janela, Rodada F5) with unsaved changes holds its
+// window: closing it asks first (beforeunload; on the desktop the main
+// process asks, electron/closeGuard.cjs askLeave). In the console's window
+// the page's own guard asks, so this does nothing there.
+export function useUnloadGuard(dirty) {
+    const w = useContext(WinCtx);
+    const on = Boolean(dirty && w?.detached);
+    useEffect(() => {
+        if (!on) return undefined;
+        const guard = (e) => { e.preventDefault(); e.returnValue = ""; };
+        window.addEventListener("beforeunload", guard);
+        return () => window.removeEventListener("beforeunload", guard);
+    }, [on]);
 }
 
 export function IconBtn({ name, title, small, on, className = "", ...rest }) {

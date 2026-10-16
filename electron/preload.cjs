@@ -36,6 +36,13 @@ ipcRenderer.on("keryx:remote", (_event, command) => {
         try { listener(command); } catch (err) { console.error("[keryx] remote listener failed:", err); }
     }
 });
+// Destacar em janela: the console and its detached pages (src/lib/janelaRelay.js).
+const janelaListeners = new Set();
+ipcRenderer.on("keryx:janela", (_event, msg) => {
+    for (const listener of janelaListeners) {
+        try { listener(msg); } catch (err) { console.error("[keryx] janela listener failed:", err); }
+    }
+});
 const updateListeners = new Set();
 ipcRenderer.on("keryx:update", (_event, state) => {
     for (const listener of updateListeners) {
@@ -117,6 +124,15 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
             return () => remoteListeners.delete(listener);
         },
         reply: (id, answer) => ipcRenderer.send("keryx:remote:result", { id, ...answer }),
+    },
+    // Destacar em janela: messages between the console and its detached
+    // pages, relayed by main (checked on arrival, src/lib/janelaRelay.js).
+    janela: {
+        send: (msg) => ipcRenderer.send("keryx:janela", msg),
+        onMessage(listener) {
+            janelaListeners.add(listener);
+            return () => janelaListeners.delete(listener);
+        },
     },
     // Lyrics from the web (LRCLIB + letras.mus.br search), main process.
     lyrics: {

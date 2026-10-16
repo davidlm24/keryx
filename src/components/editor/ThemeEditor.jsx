@@ -1,4 +1,4 @@
-// The theme half of the Editor de temas e layouts (src/pages/Editor.jsx):
+// The theme half of the Editor de temas e telas (a page of THE window):
 // the ONE place a ProjectionTheme is edited (Configurações › Temas is just
 // the list that opens this window; Camadas adjusts what is on air and only
 // captures a theme with "Salvar como novo"). Every field of the look — the
@@ -55,8 +55,9 @@ const pick = (row) => { const out = { ...BLANK }; for (const k of FIELDS) if (ro
 
 // `hosted`: a page of THE window (Rodada C, fase d) — the editor draws its
 // own WinBar (the Trocar de tema select as the bar's tool; Excluir,
-// Cancelar and Salvar tema as its actions; ⧉ Destacar via onDetach) and no
-// footer. Detached (/Editor) it keeps the panel header and the footer.
+// Cancelar and Salvar tema as its actions; ⧉ Destacar from the window, or
+// onDetach) and no footer. Both hosts — the console's window and a detached
+// /Janela — mount it hosted; unhosted it keeps the panel header and footer.
 export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colAjustes = useWinCol("theme.ajustes", { def: 400, min: 340, max: 720 });
@@ -68,8 +69,8 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     const [saved, setSaved] = useState(null);
     const [error, setError] = useState("");
     const [confirm, setConfirm] = useState(null); // "delete" | "discard" (detached only)
-    // The console's window provides the one-question guard; the detached
-    // /Editor has no provider (null) and keeps the two-step toast.
+    // Both windows (the console's, a detached /Janela) provide the
+    // one-question guard; a host without one (null) gets the two-step toast.
     const askCtx = useContext(ConfirmContext);
     const [busy, setBusy] = useState(false);
     const [dragging, setDragging] = useState(false);
@@ -123,9 +124,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         setBusy(false);
         return null;
     };
-    // In the console's window the guard is the one question (Rodada C,
-    // ConfirmDialog); the detached /Editor window has no provider and keeps
-    // the two-step toast, as agreed (owner 2026-10-13).
+    // The guard is the one question (Rodada C, ConfirmDialog), in the
+    // console's window and in a detached /Janela alike; with no provider the
+    // two-step toast (owner 2026-10-13).
     const askDiscard = async () => {
         if (!dirty) return true;
         if (askCtx) return askCtx({ title: "Descartar as mudanças?", text: `O tema "${(draft?.name || "").trim() || "sem nome"}" tem mudanças não salvas.`, ok: "Descartar" });

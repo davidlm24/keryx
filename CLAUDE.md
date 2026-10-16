@@ -25,8 +25,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   culto" any more; "Fundo" alone stays the LAYER's name (Camadas › Fundo);
   "Tema sem nome" only where a name is required (menus, tooltips, a select),
   never as a caption; "O mesmo das músicas" (herdar) e "Estilo de fábrica" (sem
-  tema); Excluir = apaga (sempre via `useConfirm`/ConfirmDialog; the
-  Editor window alone keeps the two-click, it has no provider), Tirar =
+  tema); Excluir = apaga (sempre via `useConfirm`/ConfirmDialog, a
+  detached page's window included), Tirar =
   sai do lugar, Remover só em "Remover saída"; Travar/Destravar; Tela =
   monitor físico e telas na rede, Saída = janela/página (aberta/fechada;
   rede = conectada/desconectada); Pôr na prévia / Enviar ao ar; Fixar no
@@ -432,7 +432,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   da tela"; `openEditor`'s `from` carries the label), Esc / the Voltar
   chip / the scrim pop ONE level (the first closes), the (x) closes the
   whole stack, and every exit goes through the top page's `escRef`
-  (modes "esc" | "back" | "all"), so the one unsaved guard asks —
+  (modes "esc" | "back" | "all" | "detach"), so the one unsaved guard asks —
   **"Descartar as mudanças?" via `useConfirm`** (owner's pick, Rodada C;
   Esc answers "continuar"), never the old two-step toast. Pages under
   the top stay mounted and hidden (Voltar finds them as they were); a
@@ -441,7 +441,41 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   answer (the background library, ConfirmDialog, menus) stay ON TOP,
   never in the stack. While the window is open the Programa monitor and
   the Multiview draw one still frame (`still` on CenterPanel — the air
-  itself never pauses). The Bíblia is the
+  itself never pauses). The pages are one switch, `winPage` in
+  `WinPages.jsx`, for both hosts below; a new page goes there.
+  **"Destacar em janela" on every page** (owner 2026-10-16, Rodada F5;
+  for whoever works watching another monitor): the WinBar's ⧉ (the host
+  gives `onDetach` through `WinCtx`) moves the page on top to a window of
+  its own, **`/Janela?page=<page>&…`** (`src/pages/Janela.jsx`, window
+  `keryx-janela-<page>`, one per kind of page; a tab in the preview;
+  desktop only, NEVER in NETWORK_SCREENS; `/Editor` is its old name and
+  lands there too). It first goes through the page's own guard (`escRef`
+  mode "detach": "Descartar as mudanças?"; "Cancelar" keeps it), then the
+  console pops that level and opens the window (`detachSpec` in nav.js,
+  tested: the params `stackFromParams` reads back; Sincronizar takes the
+  Editor de música below with it, `?song=<id>&sync=1`). The detached
+  window is THE window's frame filling it (`.win-dialog.is-detached`):
+  its own stack with Voltar, ConfirmDialog, PromptDialog, menus, the
+  background library and a toast, Esc routed to the top page's `escRef`
+  (the first level closes the window); a page with unsaved changes holds
+  it (`useUnloadGuard` in kx.jsx → closeGuard on the desktop). It reads
+  the store and the live state like any window and gets a **light `c`**
+  (`useJanelaConsole`: `useStamp`, `useToast`, `useLiveOps` from
+  useConsole.js) — **never mount `useConsole` there** (its letra
+  automática ticker and the Fundo's follow-ups run once, in the console).
+  **What goes to the Prévia or on air goes to the console**
+  (`src/lib/janelaRelay.js`, tested: a closed list, `JANELA_MESSAGES`,
+  checked on arrival by `checkMessage`; main relays `keryx:janela` page →
+  console and console → pages, as `keryx:remote`; a BroadcastChannel in
+  the preview): `prev.set`, `stage.send`, `prev.send`/`prev.step` (the
+  detached Escola's Enter and ↑/↓), `song.saved` (→ `songSaved`),
+  `setlist.material` (→ `addMaterial`), `console.open` (Novidades,
+  Configurações › Console — the arrangement is the console's, so detached
+  that section says "Abrir no console"); the console answers with
+  `console.prev` (its Prévia, which the detached Escola shows). The
+  console runs them through its own `setPrev`/`sendStage`, so the Prévia,
+  the history and the log stay its own. Tela preta and Logo work in every
+  detached page; in the Escola every live key does. The Bíblia is the
   console's second environment (`BibleEnv.jsx`: Ler, Comparar, the Buscar field,
   notes). Where the modules go is the operator's: **each environment is a
   dock** (owner 2026-10-13, the "Disposição do console" prototype, model
@@ -823,13 +857,14 @@ pilha, a janela cresce para o tamanho Editor (`.is-editor`) e a console
 desenha a barra (WinBar: título, ⧉ Destacar, ×). Na console cada editor
 é uma página (não há mais o alternador Temas | Telas nem o rodapé do
 diálogo; o guarda de não salvo pergunta via `useConfirm`, e trocar de
-tema/tela também). **"Destacar em janela"** (o ⧉ da barra; para quem
-edita vendo outro monitor) abre o `EditorHost` na janela de sempre:
-`/Editor` (`src/pages/Editor.jsx`; `openEditor({ …, detached: true })`,
-janela nomeada `keryx-editor`; aba no preview; nunca em NETWORK_SCREENS),
-com o guarda de fechar do Electron (closeGuard) — só lá ficam o rodapé
-com o alternador Temas | Telas e o guarda de dois toques (sem provider
-de confirmação). Os dois corpos:
+tema/tela também). **"Destacar em janela"** (o ⧉ da barra, como em toda
+página da janela — Rodada F5) passa primeiro pelo guarda de não salvo e
+abre o editor numa `/Janela` própria (`?page=theme&theme=<id>` ou
+`?page=screen&screen=<path>`; `openEditor({ …, detached: true })` vai para
+lá também), a mesma página hospedada, com o guarda de fechar do Electron
+(closeGuard). O antigo `/Editor` (`Editor.jsx`, `EditorHost`, o rodapé
+com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
+`/Editor` cai na `/Janela`. Os dois corpos:
   - uma TELA (`ScreenEditor.jsx`): menu vertical com as telas
     (`EDITOR_SCREENS`), o canvas edita o design DELA com os ajustes reais
     da própria tela vestindo a prévia (prefState + kp-out, ou só a Escala
@@ -1013,7 +1048,9 @@ so a release follows these rules. The steps and commands are in README ›
   get a uuid string. Never cast `id` to uuid.
 - **Unknown fields are dropped on write** (logged once per field in the main
   process), not rejected. Unknown fields in a filter or sort are errors.
-- **Routes are in `src/App.jsx` only:** `/Console` and the output pages
+- **Routes are in `src/App.jsx` only:** `/Console`, `/Janela` (a detached
+  page of the console's window; `/Editor` lands there too; desktop only)
+  and the output pages
   (`/Projection`, `/LyricProjection`, `/StageView`, `/VideoProjection`,
   `/CommunicationProjection`, `/PastorView`, `/StreamView`), the same output
   pages for network screens. A new output page goes there, in

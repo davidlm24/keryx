@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Empty, WinBar } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { emptyState } from "@shared/live-state.mjs";
 import { songContent, isVideoUrl } from "@/lib/console/content";
@@ -61,6 +61,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const [starts, setStarts] = useState([]);
     const [busy, setBusy] = useState("");
     const [dirty, setDirty] = useState(false);
+    // Detached (/Janela), unsaved changes hold the window: closing it asks.
+    useUnloadGuard(dirty);
     const ask = useConfirm();
     // The notebook fold (Rodada C, owner's pick A): with the window too
     // narrow for the three columns, Dados becomes a tab beside Letra (the

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePrefs } from "@/hooks/useUser";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar, useUnloadGuard } from "./kx";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { NOTICE_TYPES, newNotice, noticeLabel } from "@/lib/console/notice";
 import { parseDuration, formatDuration } from "@/lib/songImport";
@@ -51,6 +51,8 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
     }, [noticeId, isNew]);
 
     const dirty = useMemo(() => draft && JSON.stringify(pickFields(draft)) !== JSON.stringify(saved ? { ...pickFields({ ...newNotice(saved.type), ...pickFields(saved), files: saved.files || [] }) } : pickFields(newNotice("countdown"))), [draft, saved]);
+    // Detached (/Janela), unsaved changes hold the window: closing it asks.
+    useUnloadGuard(dirty);
     const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
     // The preview restarts when the timing changes (kind, length, files).
     useEffect(() => { setStartedAt(keryx.live.now()); }, [draft?.type, draft?.duration, draft?.files?.length]);

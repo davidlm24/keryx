@@ -61,8 +61,8 @@ function KindThemes({ c, themes, setDefault }) {
 
 // Configurações › Temas: the LIST of the projection presets — the default
 // one per kind (KindThemes), the themes as small screens, Tornar padrão and
-// Excluir. Editing happens in ONE place, the Editor de temas e layouts (its
-// own window, src/pages/Editor.jsx): a click on a theme, the context menu's
+// Excluir. Editing happens in ONE place, the Editor de temas (a page of the
+// window, pushed over this one): a click on a theme, the context menu's
 // Editar and "Novo tema…" open it. Camadas adjusts what is on air and
 // captures a theme with "Salvar como novo"; the console's Temas card
 // applies them.
