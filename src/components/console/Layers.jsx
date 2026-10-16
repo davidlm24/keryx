@@ -211,15 +211,16 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
         bg: { title: "O que está no Fundo e onde trocar", run: (e) => menu(e, { title: fundoTitle(), items: fundoItems }) },
     };
 
-    // Dragging (owner 2026-10-15, Rodada D): the rows below slide to open
-    // room (useSortable). The layer order: one sortable row per entry of
+    // Dragging (owner 2026-10-15, Rodada D; Rodada E2): a gold slot where
+    // the row lands, the rows around it making room (useSortable). The
+    // layer order: one sortable row per entry of
     // `order` — a fixed layer, the single (or empty) overlay row, or the
     // whole Sobreposições group (dragged by its heading). Inside the group a
     // second list reorders who draws on top among the overlays (r is the
     // row's place, top first). Both drop at a slot (dropOrder.js), as
     // moveLayer and moveOverlayRow take it.
-    const layerSort = useSortable({ onDrop: (from, over) => moveLayer(order[from], over) });
-    const ovSort = useSortable({ onDrop: (from, over) => { const id = ovRows[from]?.id; if (id == null) return; const next = moveOverlayRow(overlays, id, over); if (next !== overlays) setOverlays(next); } });
+    const layerSort = useSortable({ keys: order, onDrop: (from, over) => moveLayer(order[from], over) });
+    const ovSort = useSortable({ keys: ovRows.map((o) => o.id), onDrop: (from, over) => { const id = ovRows[from]?.id; if (id == null) return; const next = moveOverlayRow(overlays, id, over); if (next !== overlays) setOverlays(next); } });
     const layerDrag = (oi, label) => ({ ...layerSort.rowProps(oi, { label, icon: "layers" }), style: layerSort.rowStyle(oi) });
 
     const fixedRow = (L) => {

@@ -89,8 +89,9 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     const renumber = async (list) => {
         for (const [i, it] of list.entries()) if (it.order !== i) await keryx.entities.ServiceItem.update(it.id, { order: i });
     };
-    // A row dropped at a slot of the setlist (useSortable; dropOrder.js).
-    const sort = useSortable({ onDrop: (from, over) => { if (from >= 0) run(renumber(moveTo(items, from, over))); } });
+    // A row dropped at a slot of the setlist, lit in gold while it is dragged
+    // (useSortable; dropOrder.js).
+    const sort = useSortable({ keys: items.map((it) => it.id), onDrop: (from, over) => { if (from >= 0) run(renumber(moveTo(items, from, over))); } });
     const updateItem = (id, patch) => run(keryx.entities.ServiceItem.update(id, patch));
     const duplicate = async (it) => {
         const at = items.findIndex((x) => x.id === it.id) + 1;
@@ -283,9 +284,9 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                     <div className={`pl-list ${sort.sorting ? "is-sorting" : ""}`} {...sort.listProps}>
                         {!items.length && <Empty icon="list" title="Setlist vazia">Use os botões abaixo, um modelo, ou duplique o culto anterior.</Empty>}
                         {p.rows.map(({ item: it, at }, i) => {
-                            // The rows below slide to open room (useSortable,
+                            // The rows around make room for a lit slot (useSortable,
                             // owner 2026-10-15); an open item drags with its details.
-                            const dragProps = { ...sort.rowProps(i, { label: it.title || typeLabel(it.type), icon: isSection(it) ? "list" : typeIcon(it.type) }), style: sort.rowStyle(i) };
+                            const dragProps = { ...sort.rowProps(i, { label: it.title || typeLabel(it.type), icon: isSection(it) ? "list" : typeIcon(it.type), time: isSection(it) ? (p.sections[i]?.seconds ? total(p.sections[i].seconds) : "") : it.duration ? span(it.duration) : "" }), style: sort.rowStyle(i) };
                             if (isSection(it)) {
                                 const sec = p.sections[i] || { count: 0, seconds: 0 };
                                 return (

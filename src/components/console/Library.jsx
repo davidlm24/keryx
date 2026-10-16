@@ -22,10 +22,11 @@ import { isVideoUrl } from "@/lib/console/content";
 
 // A library row can be dragged onto the Prévia (prepares), the Programa
 // (sends) or the Setlist (adds the item there).
-// The pointer carries a small pill (its name), never a picture of the row.
-const dragProps = (stage) => ({
+// The pointer carries a card of the row's size (dragGhost.js: its icon, name
+// and length), never a picture of the row with its buttons.
+const dragProps = (stage, time = "") => ({
     draggable: true,
-    onDragStart: (e) => { setDragStage(stage); e.dataTransfer.setData(STAGE_MIME, stage.id || "1"); e.dataTransfer.effectAllowed = "copyMove"; setDragGhost(e, stageGhost(stage)); },
+    onDragStart: (e) => { setDragStage(stage); e.dataTransfer.setData(STAGE_MIME, stage.id || "1"); e.dataTransfer.effectAllowed = "copyMove"; setDragGhost(e, { ...stageGhost(stage), time }); },
     onDragEnd: () => clearDragStage(),
 });
 
@@ -215,7 +216,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                     { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Song", s, "a música", s.title, "Música excluída.") },
                                     onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) },
                                 ] })}
-                                dragProps={dragProps(stageFromSong(s, {}, data.themes))}
+                                dragProps={dragProps(stageFromSong(s, {}, data.themes), s.duration ? mmss(s.duration) : "")}
                                 actions={<>
                                     <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
                                     {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música" aria-label="Editar"><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>}
@@ -256,7 +257,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Media", m, MEDIA_WORD[m.type] || "o arquivo", m.title || "sem título", "Excluído da Mídia.") },
                             onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
                         ] })}
-                        dragProps={dragProps(stageFromMedia(m))}
+                        dragProps={dragProps(stageFromMedia(m), m.duration ? mmss(m.duration) : "")}
                         {...rowProps(m)}
                         actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label="Telas de vídeo"><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
                     />
@@ -299,7 +300,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
                             {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (
-                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p))}
+                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")}
                                     onContextMenu={(e) => menu(e, { title: p.title || p.text, items: [
                                         { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromPiece(p)) },
                                         onEditNotice && { label: "Editar", icon: "edit", onSelect: () => onEditNotice(p.id) },
