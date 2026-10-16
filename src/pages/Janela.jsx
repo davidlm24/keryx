@@ -33,7 +33,6 @@ import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useWindowTitle } from "@/hooks/useChurch";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
-import Toasts from "@/components/console/Toasts";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
@@ -66,7 +65,7 @@ function useJanelaConsole() {
     const now = useLiveNow(1000);
     const themeId = useThemeInUse();
     const { stamp, bgPrefs } = useStamp(themeId);
-    const { toasts, say, holdToast } = useToast();
+    const { toast, toastAction, say } = useToast();
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);
     useEffect(() => {
@@ -81,7 +80,7 @@ function useJanelaConsole() {
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
-    return { live, now, cur: live, bgPrefs, themeId, prev, setPrev, ...ops, stamp, toasts, holdToast, say, detached: true };
+    return { live, now, cur: live, bgPrefs, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, detached: true };
 }
 
 // The stack this window opens with: its params (nav.js stackFromParams), or,
@@ -254,7 +253,12 @@ export default function Janela() {
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             <PromptDialog ask={ask} onAnswer={answerAsk} />
-            <Toasts c={c} />
+            {c.toast && (
+                <div className="toast" role="status">
+                    <span className="toast-t">{c.toast}</span>
+                    {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
+                </div>
+            )}
             <ContextMenuLayer menu={ctxMenu} onClose={() => setCtxMenu(null)} />
         </div>
         </ConfirmContext.Provider>

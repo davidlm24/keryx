@@ -77,9 +77,7 @@
 .ks-comm-attention .ks-comm-t, .ks-comm-announcement .ks-comm-t, .ks-comm-image_text .ks-comm-t { font-weight: 700; }
 .ks-logo.ks-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
 @keyframes ks-pulse { 50% { transform: scale(1.06); } }
-/* Reduced motion is the operator's setting, not the audience's: only the
-   console's monitors (.kx) honour it, the outputs keep their motion. */
-@media (prefers-reduced-motion: reduce) { .kx .ks-comm-big.ks-urgent { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .ks-comm-big.ks-urgent { animation: none; } }
 
 /* Media in a preview: a still (a video's poster, else its kind and title), never a playing video */
 .ks-media { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; background: #000; }
@@ -134,12 +132,8 @@
 /* Over a page that draws something else full screen (the Vídeo's clip). */
 .ks-alert-layer { position: fixed; inset: 0; z-index: 9999; container-type: size; pointer-events: none; overflow: hidden; }
 
-/* The slide change is the audience's: the outputs keep it with reduced
-   motion on (a Windows setting on the operator's PC); only the console's
-   monitors (.kx) cut. The Aviso rápido's entrance still respects it on
-   every screen (Rodada E3; an open question for the owner). */
 @media (prefers-reduced-motion: reduce) {
-  .kx .ks-anim-fade > *, .kx .ks-anim-slide > *, .kx .ks-anim-zoom > * { animation: none; }
+  .ks-anim-fade > *, .ks-anim-slide > *, .ks-anim-zoom > * { animation: none; }
   .ks-alert { animation: none !important; } /* every entrance, whatever its class */
 }
 

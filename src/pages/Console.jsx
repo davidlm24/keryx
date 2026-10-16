@@ -50,7 +50,6 @@ import { syncState } from "@/lib/console/syncView";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
-import Toasts from "@/components/console/Toasts";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
@@ -1420,7 +1419,12 @@ export default function Console() {
                 <BibleQuickJump initial={quick} onCancel={() => setQuick(null)}
                     onPick={(r) => { setQuick(null); setBibleRequest({ book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart, at: Date.now() }); }} />
             )}
-            <Toasts c={c} />
+            {c.toast && (
+                <div className="toast" role="status">
+                    <span className="toast-t">{c.toast}</span>
+                    {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
+                </div>
+            )}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
         </ConfirmContext.Provider>
