@@ -250,7 +250,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         const raw = cifraText.trim();
         if (!raw) return;
         const inline = chordLinesToInline(raw);
-        if (!hasInlineChords(inline)) { c.say("Nenhum acorde sobre a letra encontrado; use Montar a letra."); return; }
+        if (!hasInlineChords(inline)) { c.say("Nenhum acorde sobre a letra encontrado; use Só a letra."); return; }
         set({ lyrics: inline, chords: "" });
         setResplit(true);
         setCifraOpen(false);
@@ -500,7 +500,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     {cifraOpen && (
                         <div className="ed-pad ed-cifra">
                             <textarea className="ed-text ed-mono" style={{ height: 120 }} value={cifraText} onChange={(e) => setCifraText(e.target.value)} placeholder="Cole a cifra (acordes sobre a letra) ou ChordPro" aria-label="Cifra para importar" autoFocus />
-                            <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small disabled={!cifraText.trim()} onClick={importCifraInline} title="Os acordes entram na própria letra, entre colchetes, sobre as sílabas">Montar com cifra na letra</Btn><Btn small kind="brand" disabled={!cifraText.trim()} onClick={importCifra}>Montar a letra</Btn></div>
+                            <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small disabled={!cifraText.trim()} onClick={importCifra} title="Monta só a letra; a cifra fica separada, para pôr na letra depois">Só a letra</Btn><Btn small kind="brand" disabled={!cifraText.trim()} onClick={importCifraInline} title="Os acordes entram na própria letra, entre colchetes, sobre as sílabas">Montar com cifra na letra</Btn></div>
                         </div>
                     )}
                     <div className="ed-lyrics"><textarea ref={lyricsRef} className="ed-text" value={song.lyrics || ""} onChange={(e) => setLyrics(e.target.value)} aria-label="Letra" placeholder={"[Verso 1]\nPrimeira linha\nsegunda linha\n\n[Refrão]\n…"} spellCheck={false} /></div>
