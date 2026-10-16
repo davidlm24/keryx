@@ -56,7 +56,7 @@ export const MODULES = {
     // and the Prévia are screens, the player a slot.
     programa: { name: "Programa", minW: 320, minH: 172, required: true, noFold: true },
     previa: { name: "Prévia", minW: 220, minH: 200, required: true, noFold: true },
-    abas: { name: "Painel de abas", minW: 220, minH: 140 },
+    abas: { name: "Painel", minW: 220, minH: 140 },
     // Never out of reach (the console audit, 2026-10-13).
     setlist: { name: "Setlist", minW: 220, minH: 120, required: true },
     camadas: { name: "Camadas", minW: 280, minH: 120 },
@@ -364,7 +364,7 @@ export const isPinned = (id) => Boolean(MODULES[id]?.pinned);
 //   wide    the four columns of the 2026-10-13 console audit, the No ar
 //           strip under all of them, edge to edge (2026-10-14);
 //   medium  no right column: Camadas is a drawer (in the tray, with No ar) and the
-//           Setlist sits beside the Prévia, where the Painel de abas was;
+//           Setlist sits beside the Prévia, where the Painel was;
 //   narrow  the same, and the Biblioteca over the Slides in one column.
 // `width`, `height`: the console's grid, to turn the Prévia's percentage
 // and a stacked column into pixels.

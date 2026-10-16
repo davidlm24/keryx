@@ -7,10 +7,13 @@
 // (owner's request, 2026-10-10; back there 2026-10-13); narrower, it is a
 // drawer opened from the Programa. The Setlist is not a module: it is
 // always on screen (the right column, else beside the Prévia). No ar, the
-// strip of what is on air (2026-10-14), is one more switch.
+// strip of what is on air (2026-10-14), is one more switch. The Painel (Notas,
+// Aviso rápido, Timers; dock id "abas") starts in the tray on notebooks, so
+// it has its switch too, under its header's name (design audit C-50).
 export const MODULES = [
     ["lib", "Biblioteca"],
     ["slides", "Slides"],
+    ["abas", "Painel"],
     ["camadas", "Camadas"],
     ["temas", "Temas"],
     ["onair", "No ar"],

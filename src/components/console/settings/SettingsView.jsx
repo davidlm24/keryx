@@ -52,7 +52,7 @@ const FLASH_MS = 1600;
 // section and lights the row up.
 export default function SettingsView({ c, section, setSection, onClose, escRef, active = true, layout, setLayout, restoreLayout, onOpenScreen, onWhatsNew }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colNav = useWinCol("config.secoes", { def: 240, min: 180, max: 400 });
+    const colNav = useWinCol("config.secoes", { name: "Seções", def: 240, min: 180, max: 400 });
     const current = sectionOf(section);
     const [q, setQ] = useState("");
     const [activeHit, setActiveHit] = useState(0);

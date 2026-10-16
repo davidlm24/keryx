@@ -44,9 +44,9 @@ const mmss = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(
 // lyrics (or the split) redoes them, keeping timings by position.
 export default function SongEditor({ c, songId, themes = [], onClose, onSaved, escRef, active = true, onEditTheme = null, onSync = null, autoSync = false }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colDados = useWinCol("song.dados", { def: 340, min: 280, max: 560 });
-    const colLetra = useWinCol("song.letra", { def: 480, min: 300, max: 900 });
-    const rowSlides = useWinCol("song.slides", { def: 380, min: 140, max: 1200, horizontal: true });
+    const colDados = useWinCol("song.dados", { name: "Dados", def: 340, min: 280, max: 560 });
+    const colLetra = useWinCol("song.letra", { name: "Letra", def: 480, min: 300, max: 900 });
+    const rowSlides = useWinCol("song.slides", { name: "Slides", def: 380, min: 140, max: 1200, horizontal: true });
     const [song, setSong] = useState(null);
     const [error, setError] = useState("");
     const [split, setSplit] = useState(0); // lines per slide, 0 = Estrofe
@@ -379,11 +379,12 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         <>
             <WinBar title="Editor de música" sub={`${songId === "new" ? "Nova música" : song.title || "Música"}${dirty ? " · não salvo" : ""}`}
                 tools={<>
-                    <IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={() => set({ is_favorite: !song.is_favorite })} />
+                    <IconBtn name="star" small on={song.is_favorite} title={song.is_favorite ? "Tirar dos favoritos" : "Favoritar"} aria-label="Favorita" onClick={() => set({ is_favorite: !song.is_favorite })} />
                     {narrow && <Seg small value={fold} onChange={setFold} label="O que a coluna mostra" options={[["dados", "Dados"], ["letra", "Letra"]]} />}
+                    {/* At the left, apart from Cancelar and Salvar (audit C-40). */}
+                    {songId !== "new" && <Btn small onClick={remove} title="Excluir esta música · pergunta antes">Excluir…</Btn>}
                 </>}
                 actions={<>
-                    {songId !== "new" && <Btn small onClick={remove}>Excluir…</Btn>}
                     <Btn small onClick={() => printSong({ ...song, duration: parseDuration(durationText) }, slides)} disabled={!slides.length}>Imprimir</Btn>
                     <Btn small onClick={() => close()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={busy === "save"} onClick={save} title="Salvar · Ctrl+S">{busy === "save" ? "Salvando…" : "Salvar"}</Btn>
@@ -393,19 +394,19 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             <div className="col song-ed-l" style={narrow ? { flex: 1, minWidth: 0 } : colDados.style}>
                 <Panel title="Dados da música" bodyStyle={{ overflow: "auto" }}>
                     <div className="frm">
-                        <span className="k">Título</span><Field icon={null} value={song.title} onChange={(v) => set({ title: v })} placeholder="Título da música" />
-                        <span className="k">Artista</span><Field icon={null} value={song.artist || ""} onChange={(v) => set({ artist: v })} placeholder="Artista ou ministério" />
+                        <span className="k">Título</span><Field label="Título" icon={null} value={song.title} onChange={(v) => set({ title: v })} placeholder="Título da música" />
+                        <span className="k">Artista</span><Field label="Artista" icon={null} value={song.artist || ""} onChange={(v) => set({ artist: v })} placeholder="Artista ou ministério" />
                         <span className="k">Categoria</span>
                         <select className="cfg-select" value={song.category || "worship"} onChange={(e) => set({ category: e.target.value })} aria-label="Categoria">{CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-                        <span className="k">Duração</span><Field icon={null} value={durationText} onChange={(v) => { setDurationText(v); setDirty(true); }} placeholder="m:ss" />
-                        <span className="k">BPM</span><Field icon={null} value={song.bpm ?? ""} onChange={(v) => set({ bpm: v.replace(/\D/g, "").slice(0, 3) })} placeholder="ex.: 72" />
+                        <span className="k">Duração</span><Field label="Duração" icon={null} value={durationText} onChange={(v) => { setDurationText(v); setDirty(true); }} placeholder="m:ss" />
+                        <span className="k">BPM</span><Field label="BPM" icon={null} value={song.bpm ?? ""} onChange={(v) => set({ bpm: v.replace(/\D/g, "").slice(0, 3) })} placeholder="ex.: 72" />
                         <span className="k">Tom</span>
                         <div className="ed-key">
-                            <Field icon={null} value={song.song_key || ""} onChange={(v) => set({ song_key: v.slice(0, 8) })} placeholder="ex.: E, Am" />
+                            <Field icon={null} label="Tom" value={song.song_key || ""} onChange={(v) => set({ song_key: v.slice(0, 8) })} placeholder="ex.: E, Am" />
                             <IconBtn name="minus" small title="Transpor meio tom abaixo · os acordes da letra, a cifra e o tom" onClick={() => transpose(-1)} />
                             <IconBtn name="plus" small title="Transpor meio tom acima · os acordes da letra, a cifra e o tom" onClick={() => transpose(1)} />
                         </div>
-                        <span className="k">CCLI</span><Field icon={null} value={song.ccli_number || ""} onChange={(v) => set({ ccli_number: v.slice(0, 20) })} placeholder="número da licença" />
+                        <span className="k">CCLI</span><Field label="CCLI" icon={null} value={song.ccli_number || ""} onChange={(v) => set({ ccli_number: v.slice(0, 20) })} placeholder="número da licença" />
                     </div>
                     <div className="listhead"><span className="kx-section">Notas para os músicos</span></div>
                     <div className="ed-pad"><textarea className="ed-text" style={{ height: 56 }} value={song.musician_notes || ""} onChange={(e) => set({ musician_notes: e.target.value })} aria-label="Notas para os músicos" placeholder="Intro, dinâmica, finais…" /></div>
@@ -416,33 +417,33 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             <Btn small onClick={chordsToInline} title="Põe os acordes desta cifra dentro da letra ([G]Deus é fiel), sobre as sílabas; a cifra separada some">Colocar na letra</Btn></div>
                         <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => { setCifraKept(true); set({ chords: e.target.value }); }} aria-label="Cifra separada" /></div>
                     </>}
-                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Estilo desta música</span></div>
+                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Tema desta música</span></div>
                     <div className="frm">
-                        <span className="k">Estilo</span>
-                        <select className="cfg-select" aria-label="Estilo da música"
+                        <span className="k">Tema</span>
+                        <select className="cfg-select" aria-label="Tema desta música"
                             value={look.theme || look.missing ? `t:${song.theme_id}` : following ? "default" : "own"}
                             onChange={(e) => { const v = e.target.value; if (v.startsWith("t:")) set({ theme_id: v.slice(2) }); else if (v === "default") set({ theme_id: "", style_mode: "theme" }); else setLook({ theme_id: "" }); }}
-                            title="Tema padrão: vai ao ar com o tema padrão (Configurações › Temas e fundos). Um tema: a música segue esse tema inteiro. Próprio: o estilo abaixo">
-                            <option value="default">{def ? `Tema padrão · ${def.name}` : "Tema padrão (estilo de fábrica)"}</option>
-                            {themes.filter((t) => !def || t.id !== def.id).map((t) => <option key={t.id} value={`t:${t.id}`}>Tema · {themeName(t)}</option>)}
-                            {def && <option value={`t:${def.id}`}>Tema · {def.name} (sempre este)</option>}
+                            title="O mesmo das músicas: vai ao ar com o tema das músicas (Configurações › Temas e fundos). Um tema: a música segue esse tema inteiro. Só desta música: a fonte, as cores e o fundo abaixo">
+                            <option value="default">{def ? `O mesmo das músicas · ${themeName(def)}` : "O mesmo das músicas"}</option>
+                            {themes.filter((t) => !def || t.id !== def.id).map((t) => <option key={t.id} value={`t:${t.id}`}>{themeName(t)}</option>)}
+                            {def && <option value={`t:${def.id}`}>{themeName(def)} (sempre este)</option>}
                             {look.missing && <option value={`t:${song.theme_id}`} disabled>(tema excluído)</option>}
-                            <option value="own">Próprio</option>
+                            <option value="own">Só desta música</option>
                         </select>
                     </div>
                     {look.theme && (
                         <div className="ed-pad ed-linked">
                             <span className="kx-meta">Segue o tema <b>{themeName(look.theme)}</b>: mudar o tema muda esta música.</span>
                             {onEditTheme && <Btn small onClick={() => onEditTheme(look.theme.id)} title="Abrir este tema no Editor de temas, na mesma janela · Voltar traz a música de volta">Editar tema…</Btn>}
-                            <Btn small onClick={() => { applyTheme(look.theme.id); set({ theme_id: "" }); }} title="Traz a fonte, as cores e o fundo do tema para o visual próprio, para ajustar aqui">Copiar para o visual próprio</Btn>
+                            <Btn small onClick={() => { applyTheme(look.theme.id); set({ theme_id: "" }); }} title="Traz a fonte, as cores e o fundo do tema para esta música (Só desta música), para ajustar aqui">Ajustar só nesta música</Btn>
                         </div>
                     )}
-                    {look.missing && <div className="ed-pad"><span className="kx-meta kx-warn">O tema desta música foi excluído: ela usa o visual próprio abaixo.</span></div>}
+                    {look.missing && <div className="ed-pad"><span className="kx-meta kx-warn">O tema desta música foi excluído: ela vai ao ar só com o tema dela, abaixo.</span></div>}
                     {!look.theme && <>
                     <div className="frm">
                         <span className="k">Fonte</span>
                         <select className="cfg-select" value={shown.font_family || "sans"} onChange={(e) => setLook({ font_family: e.target.value })} aria-label="Fonte">{FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-                        <span className="k">Tamanho</span><Seg small value={shown.font_size || "large"} onChange={(v) => setLook({ font_size: v })} options={SIZES} />
+                        <span className="k">Tamanho</span><Seg small label="Tamanho" value={shown.font_size || "large"} onChange={(v) => setLook({ font_size: v })} options={SIZES} />
                         <span className="k">Cor do texto</span>
                         <div className="swatches">
                             {SWATCHES.map(([hex, name]) => <button type="button" key={hex} className={`kx-t ${(shown.text_color || "#ffffff").toLowerCase() === hex ? "is-on" : ""}`} style={{ background: hex }} aria-label={name} title={name} onClick={() => setLook({ text_color: hex })} />)}
@@ -510,14 +511,14 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small disabled={!cifraText.trim()} onClick={importCifra} title="Monta só a letra; a cifra fica separada, para pôr na letra depois">Só a letra</Btn><Btn small kind="brand" disabled={!cifraText.trim()} onClick={importCifraInline} title="Os acordes entram na própria letra, entre colchetes, sobre as sílabas">Montar com cifra na letra</Btn></div>
                         </div>
                     )}
+                    <p className="kx-meta ed-help">[G] dentro da linha é acorde; [Refrão] sozinho na linha é o nome da parte. Cada tela mostra a cifra e o nome da parte se estiverem ligados nela (Configurações › Telas e saídas); o Palco já vem com os dois.</p>
                     <div className="ed-lyrics"><textarea ref={lyricsRef} className="ed-text" value={song.lyrics || ""} onChange={(e) => setLyrics(e.target.value)} aria-label="Letra" placeholder={"[Verso 1]\nPrimeira linha\nsegunda linha\n\n[Refrão]\n…"} spellCheck={false} /></div>
-                    <div className="listhead"><span className="kx-meta">[G] dentro da linha é acorde; [Refrão] sozinho na linha é o nome da parte. Cada tela mostra a cifra e o nome da parte se estiverem ligados nela (Configurações › Telas e saídas); o Palco já vem com os dois.</span></div>
                 </Panel>
             </div>
             </>}
             {narrow ? <div className="kx-gap" /> : colLetra.split}
             <div className="col center song-ed-r">
-                <Panel title={<>Slides <span className="kx-count">· {resplit ? "divisão ao vivo" : "slides salvos · editar a letra refaz"}</span></>} style={rowSlides.style} actions={<><Btn small on={showChords} onClick={() => setShowChords((v) => !v)} title="Mostra nos slides abaixo a cifra e o nome da parte, como o Palco os mostra (só aqui; as telas seguem os ajustes de cada uma)">Cifra e partes</Btn><Seg small value={thumbs} onChange={setThumbs} options={THUMBS} /></>} bodyStyle={{ overflow: "auto" }}>
+                <Panel title={<>Slides <span className="kx-count">· {resplit ? "divisão ao vivo" : "slides salvos · editar a letra refaz"}</span></>} style={rowSlides.style} actions={<><Btn small on={showChords} onClick={() => setShowChords((v) => !v)} title="Mostra nos slides abaixo a cifra e o nome da parte, como o Palco os mostra (só aqui; as telas seguem os ajustes de cada uma)">Cifra e partes</Btn><Seg small label="Tamanho das prévias" value={thumbs} onChange={setThumbs} options={THUMBS} /></>} bodyStyle={{ overflow: "auto" }}>
                     {!slides.length && <Empty icon="list" title="Nenhum slide">Escreva a letra; cada estrofe vira um slide.</Empty>}
                     <div className={"ed-thumbs is-" + thumbs}>
                         {doc && slides.map((s, i) => {

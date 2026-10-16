@@ -21,6 +21,8 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const nameOf = (id) => MODULES[id]?.name || id;
 // The first module in a frame: a stable React key for its cell.
 const firstOf = (f) => (f.kind === "group" ? f.tabs[0] : firstOf(f.children[0].frame));
+// Every module under a frame, by name: what a splitter resizes (C-62).
+const allNames = (f) => (f.kind === "group" ? f.tabs.map(nameOf) : f.children.flatMap((ch) => allNames(ch.frame)));
 
 export const ZONE_LABEL = { center: "Juntar como aba", left: "Pôr à esquerda", right: "Pôr à direita", top: "Pôr em cima", bottom: "Pôr embaixo" };
 
@@ -305,6 +307,8 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             const share = total > 0 ? Math.round((size / total) * 100) : null;
             out.push(
                 <Split key={`s${i}`} horizontal={f.dir === "col"} size={size} sign={sign}
+                    name={`${f.dir === "row" ? "Largura" : "Altura"} · ${allNames(f.children[owner].frame).join(", ")}`}
+                    value={share ?? undefined} min={share !== null ? 0 : undefined} max={share !== null ? 100 : undefined} valueText={share !== null ? `${share}%` : undefined}
                     onSize={(v) => onDock(resizeAll(v))}
                     onReset={() => { const d = defaultSize(dock, f.path, index); if (d !== null) onDock(resizeAll(d)); }}
                     clamp={(v) => Math.round(v)}

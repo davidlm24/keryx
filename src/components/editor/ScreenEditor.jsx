@@ -58,8 +58,8 @@ const seedFor = (path) => {
 // console's window and a detached /Janela — mount it hosted.
 export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colTelas = useWinCol("screen.telas", { def: 190, min: 160, max: 360 });
-    const colAjustes = useWinCol("screen.ajustes", { def: 400, min: 340, max: 720 });
+    const colTelas = useWinCol("screen.telas", { name: "Telas", def: 190, min: 160, max: 360 });
+    const colAjustes = useWinCol("screen.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
     const prefRows = useOutputPrefRows();
     const church = useChurch();
     const path = EDITOR_SCREENS.includes(screenPath) ? screenPath : "/Projection";
@@ -350,7 +350,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                     <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { const el = selected; upload(e.target.files?.[0], (url) => { if (el) setProp(el.id, "url", url); setPickImage(false); }); e.target.value = ""; }} />
                     <input ref={bgFileRef} type="file" hidden accept="image/*" onChange={(e) => { upload(e.target.files?.[0], (url) => { set({ background: { ...draft.background, image: url } }); setPickBgImage(false); }); e.target.value = ""; }} />
                     <div className="nv-scroll cfg">
-                        {isStream && <div className="listhead"><span className="kx-meta">A Transmissão é uma legenda sobre a live, sem canvas: só os ajustes abaixo.</span></div>}
+                        {isStream && <div className="listhead"><span className="kx-meta">A Transmissão é uma legenda sobre a transmissão ao vivo, sem canvas: só os ajustes abaixo.</span></div>}
                         {!isStream && tab === "desenho" && draft && <>
                         <div className="frm nv-frm">
                             <span className="k">Fundo</span>
@@ -402,7 +402,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                         {/* Topmost first; dragging a row changes who draws on
                             top (dropOrder.js moveTo); the eye hides the element
                             without losing its place (Rodada C, fase d2). */}
-                        <div className={`le-els ${elSort.sorting ? "is-sorting" : ""}`} {...elSort.listProps}>
+                        <div className={`le-els ${elSort.sorting ? "is-sorting" : ""}`} role="list" aria-label="Elementos da tela" {...elSort.listProps}>
                         {draft.elements.slice().reverse().map((el, di) => {
                             const t = typeOf(el.type);
                             return (
@@ -411,8 +411,8 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                                     onClick={() => setSel(el.id)}
                                     dragProps={{ ...elSort.rowProps(di, { label: t.name, icon: t.icon }), style: elSort.rowStyle(di) }}
                                     actions={<>
-                                        <IconBtn name={el.hidden ? "eye-off" : "eye"} small title={el.hidden ? "Mostrar o elemento" : "Esconder o elemento (ele fica no lugar)"} onClick={(e) => { e.stopPropagation(); setEl(el.id, { hidden: !el.hidden }); }} />
-                                        <IconBtn name="x" small title="Tirar da tela" onClick={(e) => { e.stopPropagation(); remove(el.id); }} />
+                                        <IconBtn name={el.hidden ? "eye-off" : "eye"} small title={el.hidden ? "Mostrar o elemento" : "Esconder o elemento (ele fica no lugar)"} aria-label={`${el.hidden ? "Mostrar" : "Esconder"} ${t.name}`} onClick={(e) => { e.stopPropagation(); setEl(el.id, { hidden: !el.hidden }); }} />
+                                        <IconBtn name="x" small title="Tirar da tela" aria-label={`Tirar ${t.name} da tela`} onClick={(e) => { e.stopPropagation(); remove(el.id); }} />
                                     </>}>
                                     <span className="kx-glyph" title="Arraste para mudar quem desenha por cima"><Icon name="grip" /></span>
                                 </Row>
@@ -441,7 +441,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                                     </select>
                                     {/* Every element takes these (the renderer
                                         always drew the label; Rodada C d2). */}
-                                    <span className="k">Rótulo</span><Field icon={null} value={selected.label} onChange={(v) => setEl(selected.id, { label: v.slice(0, 24) })} placeholder="Ex.: Próximo (opcional)" />
+                                    <span className="k">Rótulo</span><Field label="Rótulo" icon={null} value={selected.label} onChange={(v) => setEl(selected.id, { label: v.slice(0, 24) })} placeholder="Ex.: Próximo (opcional)" />
                                     <span className="k">Opacidade</span>
                                     <span className="nv-inline">
                                         <input type="range" className="le-range" min={10} max={100} step={1} value={Math.round((Number(selected.opacity) || 1) * 100)} onChange={(e) => setEl(selected.id, { opacity: Number(e.target.value) / 100 })} aria-label="Opacidade do elemento" />
@@ -463,14 +463,14 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                                             <input type="color" className="ed-color" value={selected.color || "#ffffff"} onChange={(e) => setEl(selected.id, { color: e.target.value })} aria-label="Cor do texto" />
                                             {selected.color ? <Btn small onClick={() => setEl(selected.id, { color: "" })}>Cor padrão</Btn> : <span className="kx-meta">a cor padrão das telas</span>}
                                         </span>
-                                        <span className="k">Alinhar</span><Seg small value={selected.align} options={ALIGNS} onChange={(v) => setEl(selected.id, { align: v })} />
-                                        <span className="k">Vertical</span><Seg small value={selected.valign} options={VALIGNS} onChange={(v) => setEl(selected.id, { valign: v })} />
+                                        <span className="k">Alinhar</span><Seg small label="Alinhar" value={selected.align} options={ALIGNS} onChange={(v) => setEl(selected.id, { align: v })} />
+                                        <span className="k">Vertical</span><Seg small label="Vertical" value={selected.valign} options={VALIGNS} onChange={(v) => setEl(selected.id, { valign: v })} />
                                         <span className="k">Caixa</span>
                                         <span className="nv-inline"><Switch on={selected.box} onChange={(on) => setEl(selected.id, { box: on })} label="Caixa atrás do elemento" /><span className="kx-meta">um cartão atrás, como as fichas do Palco</span></span>
                                     </>}
                                     {(selected.type === "monitor" || selected.type === "logo" || selected.type === "image") && <>
-                                        <span className="k">Alinhar</span><Seg small value={selected.align} options={ALIGNS} onChange={(v) => setEl(selected.id, { align: v })} />
-                                        <span className="k">Vertical</span><Seg small value={selected.valign} options={VALIGNS} onChange={(v) => setEl(selected.id, { valign: v })} />
+                                        <span className="k">Alinhar</span><Seg small label="Alinhar" value={selected.align} options={ALIGNS} onChange={(v) => setEl(selected.id, { align: v })} />
+                                        <span className="k">Vertical</span><Seg small label="Vertical" value={selected.valign} options={VALIGNS} onChange={(v) => setEl(selected.id, { valign: v })} />
                                     </>}
                                     {selected.type === "clock" && <><span className="k">Segundos</span><Switch on={selected.props.seconds} onChange={(on) => setProp(selected.id, "seconds", on)} label="Mostrar os segundos" /></>}
                                     {selected.type === "title" && <><span className="k">Artista</span><Switch on={selected.props.artist} onChange={(on) => setProp(selected.id, "artist", on)} label="Mostrar o artista" /></>}

@@ -9,6 +9,10 @@
 // console; the bar puts it one click away. Pure: the console passes
 // what it knows (`ctx`) and its actions (`ctx.act`), the bar draws the result.
 //
+// "…" ends a label only when the command asks for more before it acts (a
+// file, a link, a text, the marks); one that opens a page has none (design
+// audit C-52).
+//
 // A menu: { id, label, items }. An item: { label, icon?, kbd?, checked?,
 // disabled?, title?, onSelect?, sub?: [items] } or { sep: true } or
 // { head: "text" }.
@@ -34,7 +38,7 @@ export function buildMenus(ctx) {
         sep,
         { label: "Planejar o culto", icon: "list", onSelect: call("planner", ctx.serviceId) },
         { label: "Novo culto", icon: "plus", onSelect: call("planner", "new") },
-        { label: "Modelos de culto…", icon: "copy", title: "Configurações › Culto", onSelect: call("settings", "culto") },
+        { label: "Modelos de culto", icon: "copy", title: "Configurações › Culto", onSelect: call("settings", "culto") },
         { label: "Exportar a setlist em PDF", icon: "download", disabled: !ctx.serviceId || !ctx.itemsCount, title: ctx.serviceId ? undefined : "Escolha um culto primeiro", onSelect: call("exportPdf") },
     ];
 
@@ -56,11 +60,11 @@ export function buildMenus(ctx) {
         { label: "Sincronizar a música…", icon: "clock", disabled: !ctx.songId, title: ctx.songId ? "A música da Prévia, ou a que está no ar" : "Ponha uma música na Prévia ou no ar", onSelect: call("syncSong", ctx.songId) },
         { label: "Letra automática", icon: "music", sub: letra },
         sep,
-        { label: "Temas…", icon: "palette", title: "Configurações › Temas", onSelect: call("settings", "temas") },
+        { label: "Temas", icon: "palette", title: "Configurações › Temas e fundos", onSelect: call("settings", "temas") },
     ];
 
     const midia = [
-        { label: "Biblioteca de mídia", icon: "film", onSelect: call("media") },
+        { label: "Mídia", icon: "film", onSelect: call("media") },
         { label: "Enviar arquivos…", icon: "folder", onSelect: call("media", "upload") },
         { label: "Link do YouTube…", icon: "external", onSelect: call("media", "youtube") },
         { label: "Fundos", icon: "image", title: "Configurações › Temas e fundos", onSelect: call("settings", "fundos") },

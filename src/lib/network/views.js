@@ -2,6 +2,11 @@
 // as a view of it for ScreenRenderer: one renderer for every screen, each
 // page only choosing which layers it shows.
 
+// Every output's one factory name, the same the main process gives its
+// windows (Saídas, Telas e saídas, Verificar) and the network's start page.
+import OUTPUT_NAMES from "../../../shared/outputNames.json" with { type: "json" };
+export { OUTPUT_NAMES };
+
 // Letras (a tablet or TV with the song): the slides with their background,
 // logo, overlays and alerts; not media, presentations (a PDF's pages go
 // where pictures go), avisos or tools, which belong to the projector and the
@@ -42,10 +47,10 @@ export const noticeView = (live) => (live && live.communication ? withAlert({ sc
 // The outputs drawn by ScreenRenderer, and what each shows from a live state:
 // the console's Prévia rail previews a stage "as that output will show it".
 export const OUTPUT_VIEWS = [
-    { key: "/Projection", name: "Projeção", icon: "projector", view: (live) => live },
-    { key: "/LyricProjection", name: "Letras", icon: "tv", view: lyricView },
-    { key: "/VideoProjection", name: "Vídeo", icon: "film", view: videoView },
-    { key: "/CommunicationProjection", name: "Avisos", icon: "megaphone", view: noticeView },
+    { key: "/Projection", name: OUTPUT_NAMES["/Projection"], icon: "projector", view: (live) => live },
+    { key: "/LyricProjection", name: OUTPUT_NAMES["/LyricProjection"], icon: "tv", view: lyricView },
+    { key: "/VideoProjection", name: OUTPUT_NAMES["/VideoProjection"], icon: "film", view: videoView },
+    { key: "/CommunicationProjection", name: OUTPUT_NAMES["/CommunicationProjection"], icon: "megaphone", view: noticeView },
 ];
 
 export function outputView(key, live) {
@@ -56,8 +61,8 @@ export function outputView(key, live) {
 // The screens with a layout of their own (not ScreenRenderer views), which the
 // Prévia rail draws with the pages' own screen components.
 export const SCREEN_PAGES = [
-    { key: "/StageView", name: "Palco", icon: "monitor" },
-    { key: "/PastorView", name: "Pastor", icon: "tablet" },
+    { key: "/StageView", name: OUTPUT_NAMES["/StageView"], icon: "monitor" },
+    { key: "/PastorView", name: OUTPUT_NAMES["/PastorView"], icon: "tablet" },
 ];
 export const RAIL_VIEWS = [...OUTPUT_VIEWS, ...SCREEN_PAGES];
 
