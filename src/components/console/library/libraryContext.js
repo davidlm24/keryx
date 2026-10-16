@@ -7,6 +7,8 @@ import { createContext, useContext } from "react";
 //     accept: the kinds offered (["image", "video", "generator", "color"]),
 //             or "theme" to choose a theme
 //     value:  the current background (a spec, backgroundSpec.js) or theme id
+//     manage: no choice to make, only Fechar (Configurações' door)
+//     view:   "categories" opens on the categories editor
 //   -> Promise of { spec } (a background), { theme } (a theme row),
 //      { none: true } ("Sem fundo") or null (closed without choosing).
 export const LibraryContext = createContext(null);
