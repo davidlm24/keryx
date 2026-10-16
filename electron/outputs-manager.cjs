@@ -14,6 +14,21 @@ const {
 const SETTINGS_KEY = "outputs";
 const HIDE_CURSOR_CSS = "html, body, * { cursor: none !important; }";
 
+// A window whose renderer keeps dying must not reload in a loop: at most `max`
+// reloads in `windowMs`, then allow() says no and the caller warns instead.
+function createReloadLimiter({ max = 3, windowMs = 60000, now = Date.now } = {}) {
+    let times = [];
+    return {
+        allow() {
+            const t = now();
+            times = times.filter((at) => t - at < windowMs);
+            if (times.length >= max) return false;
+            times.push(t);
+            return true;
+        },
+    };
+}
+
 // BrowserWindow is injectable for tests (in plain Node, require("electron") is a path).
 function createOutputManager({ screen, settings, getOrigin, openWindow = null, operatorWindow = () => null, log = console.warn, BrowserWindow: Win = BrowserWindow }) {
     const windows = new Map(); // output key -> BrowserWindow
@@ -200,7 +215,15 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
     function open(key) {
         if (!outputForKey(key)) throw new Error(`Saída desconhecida: ${key}`);
         if (assignmentFor(key).removed) throw new Error("Saída removida. Adicione-a de novo em Telas e saídas.");
-        const existing = windows.get(key);
+        let existing = windows.get(key);
+        // A crashed renderer is a dead window: focusing it changes nothing.
+        // Drop it and open a fresh one (ARCH-001).
+        if (existing && !existing.isDestroyed() && existing.webContents.isCrashed && existing.webContents.isCrashed()) {
+            log(`[keryx-outputs] ${key} travou; abrindo de novo`);
+            windows.delete(key);
+            existing.destroy();
+            existing = null;
+        }
         if (existing && !existing.isDestroyed()) {
             existing.showInactive();
             existing.moveTop();
@@ -269,4 +292,4 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
     };
 }
 
-module.exports = { createOutputManager };
+module.exports = { createOutputManager, createReloadLimiter };

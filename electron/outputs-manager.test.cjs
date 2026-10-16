@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createOutputManager } = require("./outputs-manager.cjs");
+const { createOutputManager, createReloadLimiter } = require("./outputs-manager.cjs");
 
 const ORIGIN = "http://127.0.0.1:7700";
 const display = (id, x, primary) => ({ id, label: `Tela ${id}`, bounds: { x, y: 0, width: 1920, height: 1080 }, workArea: { x, y: 0, width: 1920, height: 1040 }, scaleFactor: 1, primary });
@@ -132,4 +132,30 @@ test("reassigning keeps it off the taskbar; opening again brings it forward", ()
     assert.equal(opened.length, 1, "no second window");
     assert.ok(win.calls.some((c) => c[0] === "showInactive") && win.calls.some((c) => c[0] === "moveTop"), "brought forward without taking focus");
     assert.equal(outputs.list().outputs.find((o) => o.key === "/Projection").open, true);
+});
+
+test("the reload limiter allows 3 reloads a minute, then refuses until the window passes", () => {
+    let t = 0;
+    const limiter = createReloadLimiter({ now: () => t });
+    assert.deepEqual([limiter.allow(), limiter.allow(), limiter.allow(), limiter.allow()], [true, true, true, false]);
+    t = 59000;
+    assert.equal(limiter.allow(), false, "still inside the minute of the first reload");
+    t = 60001;
+    assert.equal(limiter.allow(), true, "the first reload aged out");
+});
+
+test("open replaces an output whose renderer crashed instead of focusing the dead window", () => {
+    const { outputs, opened } = manager({ monitors: [display(1, 0, true)] });
+    outputs.open("/Projection");
+    const dead = opened[0].win;
+    dead.webContents.isCrashed = () => true;
+    dead.destroy = () => { dead.destroyed = true; };
+    outputs.open("/Projection");
+    assert.equal(opened.length, 2, "a fresh window was opened");
+    assert.equal(dead.destroyed, true, "the dead one is gone");
+    assert.deepEqual(dead.calls.filter((c) => c[0] === "showInactive"), [], "the dead window was not just brought forward");
+    // A healthy window is still only brought forward.
+    opened[1].win.webContents.isCrashed = () => false;
+    outputs.open("/Projection");
+    assert.equal(opened.length, 2);
 });

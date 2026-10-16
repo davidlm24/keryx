@@ -159,6 +159,27 @@ async function checkOutputs(webContents, outputs, screen, { fullscreen }) {
     await sleep(300);
     result.popupIgnored = outputs.trackedWindows().length === 0;
 
+    // A crashed output comes back by itself (ARCH-001): kill its renderer and
+    // it must reload on the same page, tracked and alive.
+    outputs.open("/Projection");
+    const crashing = await waitWindow("/Projection", 10000);
+    if (crashing) {
+        await sleep(500);
+        const reloaded = new Promise((resolve) => crashing.webContents.once("did-finish-load", () => resolve(true)));
+        crashing.webContents.forcefullyCrashRenderer();
+        const back = await Promise.race([reloaded, sleep(8000).then(() => false)]);
+        const after = outputs.trackedWindows().find((w) => w.key === "/Projection");
+        result.crashRecovery = {
+            reloaded: back,
+            stillTracked: Boolean(after && !after.destroyed),
+            samePage: !crashing.isDestroyed() && crashing.webContents.getURL().includes("/Projection") && !crashing.webContents.isCrashed(),
+        };
+    } else {
+        result.crashRecovery = { reloaded: false, stillTracked: false, samePage: false };
+    }
+    outputs.close("/Projection");
+    await sleep(300);
+
     if (fullscreen) {
         const primary = await webContents.executeJavaScript(PICK_PRIMARY);
         await webContents.executeJavaScript(ASSIGN({ id: primary.id, label: primary.label, width: primary.width, height: primary.height }));
@@ -179,6 +200,7 @@ async function checkOutputs(webContents, outputs, screen, { fullscreen }) {
     }
     const d = result.defaultPlacement;
     result.ok = Boolean(d.opened && d.tracked && d.fullScreen === d.expectFullScreen && d.onPlannedDisplay && result.popupIgnored
+        && result.crashRecovery.reloaded && result.crashRecovery.stillTracked && result.crashRecovery.samePage
         && (!fullscreen || (result.fullscreen.opened && result.fullscreen.fullScreen === true && result.fullscreen.onPrimary === true)));
     return result;
 }
