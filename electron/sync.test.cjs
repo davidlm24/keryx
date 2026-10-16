@@ -92,6 +92,28 @@ function fakeFolder(folder) {
     return { id, dir, entry, line: (e) => JSON.stringify(e) + "\n" };
 }
 
+test("the background library's categories and each background's own travel", async () => {
+    const folder = tmp();
+    const a = computer(folder);
+    const b = computer(folder);
+    a.store.call("User", "update", [PROFILE_ID, { background_categories: ["Páscoa", "Natureza", "Outros"] }]);
+    a.store.call("BackgroundPref", "create", [{ source: "bundled:1557672172-298e090bd0f1", category: "Páscoa", hidden: true }]);
+    await rounds([a, b]);
+    assert.deepEqual(b.store.call("User", "get", [PROFILE_ID]).background_categories, ["Páscoa", "Natureza", "Outros"]);
+    const pref = b.store.call("BackgroundPref", "list", []).find((p) => p.source === "bundled:1557672172-298e090bd0f1");
+    assert.equal(pref?.category, "Páscoa");
+    assert.equal(pref?.hidden, true);
+
+    // A rename on the other computer: the list and the pref, back to the first.
+    await tick();
+    b.store.call("User", "update", [PROFILE_ID, { background_categories: ["Semana Santa", "Natureza", "Outros"] }]);
+    b.store.call("BackgroundPref", "update", [pref.id, { category: "Semana Santa" }]);
+    await rounds([b, a]);
+    assert.deepEqual(a.store.call("User", "get", [PROFILE_ID]).background_categories, ["Semana Santa", "Natureza", "Outros"]);
+    assert.equal(a.store.call("BackgroundPref", "get", [pref.id]).category, "Semana Santa");
+    for (const pc of [a, b]) pc.close();
+});
+
 test("a half-written last line waits for the next pass; conflict copies are read too", async () => {
     const folder = tmp();
     const b = computer(folder);

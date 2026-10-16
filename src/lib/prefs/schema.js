@@ -5,6 +5,7 @@
 // default in the jsonc. What belongs to this computer (window sizes, the
 // outputs, the network PIN) stays out: localStorage or settings.json.
 import { DENSITIES, MODULES } from "../console/layout.js";
+import { normalizeCategories } from "../console/backgroundPrefs.js";
 
 const oneOf = (list, fallback) => (v) => (list.includes(v) ? v : fallback);
 const DENSITY_KEYS = DENSITIES.map(([k]) => k);
@@ -51,6 +52,9 @@ export const PREF_FIELDS = {
         default: 0,
         normalize: (v) => { const n = Number(v); return v !== null && v !== "" && Number.isInteger(n) && n >= 0 && n <= 12 ? n : 0; },
     },
+    // The background library's categories, in order (backgroundPrefs.js
+    // categoryList): null = never edited, the suggestions.
+    background_categories: { default: null, normalize: normalizeCategories },
     console_density: { default: "auto", normalize: oneOf(DENSITY_KEYS, "auto") },
     console_hidden_modules: {
         default: [],

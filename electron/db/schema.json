@@ -1843,6 +1843,9 @@
         "console_hidden_modules": {
           "type": "json"
         },
+        "background_categories": {
+          "type": "json"
+        },
         "logo_corner": {
           "type": "text"
         },

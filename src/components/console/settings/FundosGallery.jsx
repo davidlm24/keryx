@@ -4,7 +4,8 @@ import { Btn, Seg } from "../kx";
 import { FormRow } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { CATEGORY_SUGGESTIONS, DIM_PCT, BLUR_PX } from "@/lib/console/backgroundPrefs";
+import { DIM_PCT, BLUR_PX, categoryList } from "@/lib/console/backgroundPrefs";
+import { usePrefs } from "@/hooks/useUser";
 import { SAMPLE_SLIDES } from "./sample";
 
 const SAMPLE = SAMPLE_SLIDES.slice(0, 1);
@@ -40,6 +41,7 @@ export function useSaveBackgroundPref(say) {
 // One background's settings and a sample. (The library
 // window.)
 export function FundoDetail({ b, save, now, sample = true }) {
+    const cats = categoryList(usePrefs().background_categories);
     const [name, setName] = useState(b.pref?.name || "");
     const [category, setCategory] = useState(b.pref?.category || "");
     const [dim, setDim] = useState(b.dim === null ? null : Math.round(b.dim * 100));
@@ -77,7 +79,7 @@ export function FundoDetail({ b, save, now, sample = true }) {
             </FormRow>
             <FormRow k="Categoria">
                 <input className="fg-input" value={category} placeholder={b.category} maxLength={40} list="fg-cats" onChange={(e) => setCategory(e.target.value)} onBlur={commitCategory} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} aria-label="Categoria do fundo" />
-                <datalist id="fg-cats">{CATEGORY_SUGGESTIONS.map((k) => <option key={k} value={k} />)}</datalist>
+                <datalist id="fg-cats">{cats.map((k) => <option key={k} value={k} />)}</datalist>
             </FormRow>
             <FormRow k="Escurecer">
                 <input type="range" className="ap-range" min={DIM_PCT[0]} max={DIM_PCT[1]} step={5} value={dim ?? 45} onChange={(e) => setDim(Number(e.target.value))}

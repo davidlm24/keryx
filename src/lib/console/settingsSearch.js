@@ -51,6 +51,8 @@ export const SETTINGS_INDEX = [
             "título do item", "nome da música no slide", "mostrar o título"]),
     e("temas", "Fundos", "a biblioteca de fundos: imagens, vídeos, gerados e cores; nome, categoria, escurecer, desfoque, ocultar",
         ["imagens", "vídeos", "gerados", "enviar do computador", "Categoria", "Escurecer", "Desfoque", "Nas galerias", "favorito", "oculto", "biblioteca", "aparência"]),
+    e("temas", "Categorias de fundos", "criar, renomear, ordenar e excluir as categorias da biblioteca de fundos",
+        ["categoria", "categorias", "nova categoria", "renomear", "ordem", "excluir categoria", "outros", "fundos", "galerias"]),
 
     e("biblia", "Livros e importação", "livros abreviados e o corte das letras importadas", ["livros", "importar", "estrofe"]),
     e("biblia", "Livros da Bíblia", "abreviados (Gn) ou com o nome inteiro (Gênesis)", ["abreviados", "nome inteiro", "abrev", "livros"]),
