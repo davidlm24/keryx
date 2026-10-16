@@ -1576,3 +1576,58 @@
 .console .sync .sync-time.is-bad { box-shadow: inset 0 0 0 1px var(--warn); }
 .console .sync .sync-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; opacity: .35; }
 .console .sync .sync-row:hover .sync-acts, .console .sync .sync-row.is-sel .sync-acts, .console .sync .sync-row:focus-within .sync-acts { opacity: 1; }
+
+/* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
+   the console's side of the cues in bundle.css, at the console's
+   specificity. Nothing above changes: this block only applies under a
+   contrast theme, where Chromium repaints backgrounds and borders in the
+   system's colours and drops shadows. One language for the states: on air =
+   Highlight filling the row (still the row's background, as the owner's
+   rule wants), Prévia = a dashed LinkText ring, next = a dotted ring,
+   chosen / pressed / open = a solid Highlight ring; a ring never hides the
+   keyboard's focus ring. What is a picture keeps its own colours: the
+   screens' stills (.cfg-prev, the editor's canvas; the monitors in
+   bundle.css, the outputs in screen.css) and the colour swatches. */
+.console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-preset i) { forced-color-adjust: none; }
+@media (forced-colors: active) {
+  /* Floating surfaces lose their shadow: an edge instead. */
+  .console :is(.pop, .kx-pop, .ctx-menu, .dialog, .palette, .toast, .qj, .verif-overlay, .addmenu-pop, .lyr, .win-dialog, .pl-pop, .lib-dialog, .media-peek) { outline: 1px solid CanvasText; }
+  /* Slides, No ar cards, verses, Setlist, Biblioteca and Mídia rows, the
+     Bíblia's verse cells and Comparar, the Escola's questions, Sincronizar.
+     :is(.is-air, .is-air.is-prev) weighs as much as the both-states rules
+     above, so the fill wins there too. */
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) { background: Highlight; color: HighlightText; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) * { color: HighlightText; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk).is-prev:not(:focus-visible) { outline: 2px dashed LinkText; outline-offset: -2px; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk).is-air.is-prev:not(:focus-visible) { outline-color: HighlightText; }
+  .console :is(.kx-slide, .kx-verse).is-air.is-prev > :is(.kx-slide-n, .kx-verse-n) { background: HighlightText; color: Highlight; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) :is(.kx-btn, button):hover,
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) :is(.kx-btn, button):hover * { background: HighlightText; color: Highlight; }
+  .console :is(.kx-slide, .onair-card).is-next:not(:focus-visible) { outline: 2px dotted CanvasText; outline-offset: -2px; }
+  .console .mv-th.is-air { outline: 3px solid Highlight; outline-offset: 2px; }
+  /* Chosen or pressed: tabs, chips, cells, tiles, Seg, an open menu… */
+  .console :is(.is-on, .is-sel, .is-selected):not(.sw2, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
+  .console .envtabs > button.is-on::after { background: Highlight; }
+  /* The Bíblia's cells are boxes. */
+  .console :is(.bgrid .kx-book, .chapters button, .verse-cells button):not(:focus-visible, .is-on, .is-selected, .is-prev) { outline: 1px solid ButtonText; outline-offset: -1px; }
+  /* Switches: track and knob in the system's colours, Highlight when on. */
+  .console .sw2 { border: 1px solid ButtonText; background: Canvas; }
+  .console .sw2::after { top: 1px; left: 1px; background: ButtonText; }
+  .console .sw2.is-on { border-color: Highlight; background: Highlight; }
+  .console .sw2.is-on::after { left: 13px; background: HighlightText; }
+  .console .sw2:disabled { border-color: GrayText; }
+  .console .sw2:disabled::after { background: GrayText; }
+  .console .sw2.is-on:disabled { background: GrayText; }
+  .console .sw2.is-on:disabled::after { background: Canvas; }
+  /* Fields get a boundary and a focus ring (an input inside a .kx-field or
+     the quick jump takes its box's). */
+  .console :is(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])):not(:is(.kx-field, .qj-input) *), .console .qj-input { border: 1px solid FieldText; }
+  .console :is(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])):not(:is(.kx-field, .qj-input) *):focus-visible, .console .qj-input:focus-within { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* The player's progress and volume (its meters: bundle.css), the bell's dot. */
+  .console .player .pl-seek::before { background: Canvas; outline: 1px solid CanvasText; }
+  .console .player .pl-seek > i { background: Highlight; }
+  .console .player .pl-seek > :is(b, .pl-tick) { background: CanvasText; }
+  .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
+  .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
+  .console .topbar .tb-bell-dot { background: Highlight; }
+}
