@@ -235,7 +235,7 @@ function OnStep({ c, st, busy, run, setMade }) {
                 <span className="kx-meta">{sinceLine(st)}{e.rejected ? ` · ${e.rejected} ignoradas de computadores sem o código` : ""}</span>
             </FormRow>
             <FormRow k="Mídias">
-                <span className="kx-meta">{e.state === "ok" ? (e.missingMedia ? `${e.missingMedia} ainda chegando pela pasta · as outras aqui` : "todas aqui") : "—"}</span>
+                <span className="kx-meta">{e.state === "ok" ? (e.missingMedia ? `${e.missingMedia} ainda chegando pela pasta · as outras aqui` : "todas aqui") : "—"}{st.since?.collected ? ` · ${st.since.collected} sem uso há 7 dias ${st.since.collected === 1 ? "saiu" : "saíram"} da pasta (continuam em cada computador)` : ""}</span>
             </FormRow>
             <FormRow k="Computadores">
                 <div className="cfg-sync-pcs">
