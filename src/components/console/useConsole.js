@@ -10,6 +10,7 @@ import { useBackgroundPrefs, useThemes } from "./useConsoleData";
 import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName } from "@/lib/console/themes";
 import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
+import { withTransitions } from "@/lib/console/transitions";
 import { useUser, usePrefs } from "@/hooks/useUser";
 
 // The console's own state around the live state. One console, always live:
@@ -83,12 +84,15 @@ export function useConsole() {
         try {
             // A background (an item's, an aviso's, the idle wallpaper) brings
             // the dim and blur Aparência › Fundos gave it; already there: kept.
-            return await keryx.live.call(op, withBackgroundDefaults(op, args, bgPrefs));
+            // A sound that starts, Esc, Limpar, Tela preta and Logo bring the
+            // church's Transições (transitions.js): every sender through here
+            // (keys, the controle remoto, Tocar todos, a song's playback).
+            return await keryx.live.call(op, withTransitions(op, withBackgroundDefaults(op, args, bgPrefs), prefs));
         } catch (err) {
             say(err?.message || "Não foi possível projetar.");
             throw err;
         }
-    }, [say, bgPrefs]);
+    }, [say, bgPrefs, prefs]);
     const callOp = liveOp;
 
     // The idle wallpaper follows its settings: editing its dim or blur in

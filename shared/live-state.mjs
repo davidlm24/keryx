@@ -57,6 +57,20 @@ export const FOLLOW_ACTIONS = ["start", "pause", "resume"];
 // (blanks), more words of a verse to memorize gone (memorize), a
 // discussion's timer started (discussion).
 export const ACTIVITY_KINDS = ["choice", "truefalse", "blanks", "memorize", "discussion"];
+// One sound at a time (owner 2026-10-16, Rodada F2): an item that starts with
+// sound (video.show, audio.show, audio.playlist, media.show, media.playlist)
+// stops the other sound layers — at once ("cut") or fading out ("fade", the
+// stopped item rides in live.leaving until it is silent) — unless the sender
+// says "mix" (Tocar junto, the old behaviour; no transition at all means the
+// same). The console adds the church's choice to the op (its User prefs; this
+// module never reads them). The Fundo's video is muted and never counts.
+export const SOUND_LAYERS = ["media", "video", "audio"];
+export const SOUND_MODES = ["cut", "fade", "mix"];
+const HEARD_KINDS = ["video", "audio", "youtube"];
+export const SOUND_FADE_MS = [100, 5000];
+// What leaves the screens with a fade (Esc, Limpar, Tela preta, Logo): the
+// op's `fade` in ms, kept as live.fade so every output draws the same one.
+export const EXIT_FADE_MS = [50, 3000];
 export const MAX_OPTIONS = 8;
 export const MEMORIZE_ROUNDS = [1, 12];
 export const DISCUSSION_MINUTES = [0.5, 60];
@@ -151,6 +165,15 @@ export function emptyState(now = Date.now()) {
         // (WHILE_LOCKED). Rehearsal is the console with the screens locked.
         // Not kept across a restart (restoreState).
         locked: false,
+        // Sound on its way out (SOUND_MODES "fade"): { layer, item, at, until }
+        // per item a new sound stopped. Outputs keep playing it, bringing its
+        // volume (and a video's opacity) down to 0 by `until`, then drop it;
+        // the next change of the document leaves out the ones that are over.
+        leaving: [],
+        // How the last change that took something off the screens faded
+        // (EXIT_FADE_MS): { ms, at }, `at` being that change's updatedAt, so
+        // an output knows the fade is this change's. null: a cut.
+        fade: null,
     };
 }
 
@@ -387,6 +410,51 @@ const need = (layer, label) => {
     return layer;
 };
 
+// The volume a new item starts at: 1, or the sender's (`muted`: 0).
+const startVolume = (a) => (a.muted === true ? 0 : a.volume === undefined || a.volume === null ? 1 : ranged(a.volume, [0, 1], "Volume"));
+
+// Something that can be heard right now: a video, an audio file or YouTube,
+// not at volume 0 (a picture, a PDF, a muted video are not).
+export const heard = (item) => Boolean(item && HEARD_KINDS.includes(item.kind) && (item.playback?.volume ?? 1) > 0);
+
+// A sound op's `transition` ({ mode, ms }), checked: null for "mix" or none.
+function soundTransition(value) {
+    if (value === undefined || value === null) return null;
+    if (!isPlainObject(value)) throw new LiveError("Transição inválida.");
+    const mode = oneOf(value.mode, SOUND_MODES, "Transição");
+    if (mode === "mix") return null;
+    return { mode, ms: mode === "fade" ? Math.round(ranged(value.ms ?? 500, SOUND_FADE_MS, "Duração da transição")) : 0 };
+}
+
+// An exit op's `fade` (ms) as live.fade; none, 0 or false: a cut (null).
+const exitFade = (value, now) => (value === undefined || value === null || value === false || value === 0 ? null : { ms: Math.round(ranged(value, EXIT_FADE_MS, "Transição")), at: now });
+
+// One sound at a time (SOUND_MODES): `item` starts on `layer`, so every
+// layer that can be heard gives way — another layer goes (the media layer
+// into the history, like any change of the projector), the same layer is
+// being replaced anyway — and with "fade" each one rides in live.leaving
+// (without its list) until it is silent. Nothing when `item` is silent.
+function hush(s, layer, item, value, now) {
+    const t = soundTransition(value);
+    if (!t || !heard(item)) return {};
+    const out = {};
+    const leaving = [];
+    for (const k of SOUND_LAYERS) {
+        const cur = s[k];
+        if (!heard(cur)) continue;
+        if (k !== layer) out[k] = null;
+        if (t.mode === "fade") {
+            const gone = { ...cur };
+            delete gone.playlist;
+            delete gone.playlistIndex;
+            leaving.push({ layer: k, item: gone, at: now, until: now + t.ms });
+        }
+    }
+    if (out.media === null) Object.assign(out, remember(s, now, "media"));
+    if (leaving.length) out.leaving = [...(s.leaving || []), ...leaving];
+    return out;
+}
+
 // -- Operations ---------------------------------------------------------------
 // Each returns the fields of the document it changes, or null for "no change"
 // (no new rev, nothing broadcast).
@@ -446,7 +514,8 @@ function resynced(s, f, at, now) {
 }
 
 const OPS = {
-    "screen.set": (_s, { mode }) => ({ screen: oneOf(mode, SCREEN_MODES, "Modo da tela") }),
+    // `fade`: Tela preta and Logo come in and go out with the exit fade.
+    "screen.set": (_s, { mode, fade }, now) => ({ screen: oneOf(mode, SCREEN_MODES, "Modo da tela"), fade: exitFade(fade, now) }),
 
     // "Travar telas" on or off (see WHILE_LOCKED).
     "screens.lock": (s, { locked }) => {
@@ -608,22 +677,20 @@ const OPS = {
         if (revealStep(current) > 0) return OPS["content.reveal"](s, { by: -1 }, now);
         return OPS["content.goTo"](s, { index: current.index - 1 }, now);
     },
-    "content.clear": (s, _a, now) => (s.content ? { ...remember(s, now, "content"), content: null } : null),
+    "content.clear": (s, a, now) => (s.content ? { ...remember(s, now, "content"), content: null, fade: exitFade(a.fade, now) } : null),
 
-    "media.show": (s, a, now) => ({
-        ...remember(s, now),
-        ...reveal(["tool", "communication"]),
-        media: { ...mediaItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: freshPlayback(now) },
-    }),
+    // `transition` ({ mode, ms }, SOUND_MODES): how the sound already
+    // playing gives way to this one; `volume` / `muted`: how it starts.
+    "media.show": (s, a, now) => {
+        const media = { ...mediaItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: freshPlayback(now, startVolume(a)) };
+        return { ...remember(s, now), ...reveal(["tool", "communication"]), ...hush(s, "media", media, a.transition, now), media };
+    },
     "media.playlist": (s, a, now) => {
         const items = list(a.items, "Lista de mídias").map(mediaItem);
         if (items.length === 0) throw new LiveError("A lista de mídias está vazia.");
         const i = clampIndex(a.index, items.length);
-        return {
-            ...remember(s, now),
-            ...reveal(["tool", "communication"]),
-            media: { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: freshPlayback(now) },
-        };
+        const media = { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: freshPlayback(now, startVolume(a)) };
+        return { ...remember(s, now), ...reveal(["tool", "communication"]), ...hush(s, "media", media, a.transition, now), media };
     },
     // Reported by the output when an item ends. Several outputs may report
     // the same end: only the first one (fromIndex still current) advances.
@@ -637,17 +704,24 @@ const OPS = {
 
     // The video channel: video screens and tablets (VideoProjection). It does
     // not cover the main projector.
-    "video.show": (_s, a, now) => ({ video: { ...mediaItem(a), shownAt: now, playback: freshPlayback(now) } }),
+    "video.show": (s, a, now) => {
+        const video = { ...mediaItem(a), shownAt: now, playback: freshPlayback(now, startVolume(a)) };
+        return { ...hush(s, "video", video, a.transition, now), video };
+    },
     "video.clear": (s) => (s.video ? { video: null } : null),
 
     // The audio channel (see emptyState): one file or a list, a video file
     // used for its sound included.
-    "audio.show": (_s, a, now) => ({ audio: { ...audioItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: freshPlayback(now) } }),
-    "audio.playlist": (_s, a, now) => {
+    "audio.show": (s, a, now) => {
+        const audio = { ...audioItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: freshPlayback(now, startVolume(a)) };
+        return { ...hush(s, "audio", audio, a.transition, now), audio };
+    },
+    "audio.playlist": (s, a, now) => {
         const items = list(a.items, "Lista de áudios").map(audioItem);
         if (items.length === 0) throw new LiveError("A lista de áudios está vazia.");
         const i = clampIndex(a.index, items.length);
-        return { audio: { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: freshPlayback(now) } };
+        const audio = { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: freshPlayback(now, startVolume(a)) };
+        return { ...hush(s, "audio", audio, a.transition, now), audio };
     },
     "audio.advance": (s, { fromIndex }, now) => {
         const audio = need(s.audio, "tocando");
@@ -745,7 +819,7 @@ const OPS = {
         if (a.deltaMs === "" || a.deltaMs == null || !Number.isFinite(d) || d === 0 || Math.abs(d) > 3 * 3600000) throw new LiveError("Tempo inválido para o timer.");
         return { tool: { ...tool, endsAt: Math.max(now, Math.max(tool.endsAt, now) + d) } };
     },
-    "tool.clear": (s, _a, now) => (s.tool ? { ...remember(s, now, "tool"), tool: null } : null),
+    "tool.clear": (s, a, now) => (s.tool ? { ...remember(s, now, "tool"), tool: null, fade: exitFade(a.fade, now) } : null),
 
     // Communication pieces (countdowns, announcements, image + text) are
     // free-form rows from CommunicationVideo; outputs render them.
@@ -763,7 +837,7 @@ const OPS = {
         const i = (c.playlistIndex + 1) % c.playlist.length;
         return { communication: { ...c, item: c.playlist[i], playlistIndex: i, startedAt: now } };
     },
-    "communication.clear": (s, _a, now) => (s.communication ? { ...remember(s, now, "communication"), communication: null } : null),
+    "communication.clear": (s, a, now) => (s.communication ? { ...remember(s, now, "communication"), communication: null, fade: exitFade(a.fade, now) } : null),
 
     "overlays.set": (_s, { overlays }) => ({
         overlays: list(overlays ?? [], "Sobreposições", 50).map((o) => loose(o, "Sobreposição")).filter(isPlainObject),
@@ -823,10 +897,11 @@ const OPS = {
     // alerts stay; they have their own controls. The Fundo goes back to the
     // Fundo padrão (owner's decision 2026-10-12: with nothing on air the
     // screen shows the service's, else the day's background) — unless the
-    // padlock holds it; with no Fundo padrão it stays as it is.
-    "clear": (s, _a, now) => {
+    // padlock holds it; with no Fundo padrão it stays as it is. The audio
+    // channel plays on, hushed by nothing. `fade`: what goes fades out.
+    "clear": (s, a, now) => {
         const fundo = s.defaultBackground && !layerLocked(s, "background") ? { background: { ...s.defaultBackground }, ...without(s, "background") } : {};
-        return { ...remember(s, now), ...without(s, "content"), ...fundo, screen: "show", content: null, media: null, video: null, tool: null, communication: null };
+        return { ...remember(s, now), ...without(s, "content"), ...fundo, screen: "show", content: null, media: null, video: null, tool: null, communication: null, fade: exitFade(a.fade, now) };
     },
 };
 
@@ -844,7 +919,10 @@ export function applyOp(state, op, args = {}, now = Date.now()) {
     if (!isPlainObject(args)) throw new LiveError("Argumentos inválidos.");
     const patch = OPS[op](state, args, now);
     if (patch === null) return state;
-    return { ...state, ...patch, rev: state.rev + 1, updatedAt: now };
+    const next = { ...state, ...patch, rev: state.rev + 1, updatedAt: now };
+    // Sound that has finished leaving goes with the next change.
+    if (next.leaving?.some((e) => !(e.until > now))) next.leaving = next.leaving.filter((e) => e.until > now);
+    return next;
 }
 
 // A document read back from disk after a restart: same content, screen
