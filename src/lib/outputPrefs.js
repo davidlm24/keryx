@@ -34,11 +34,12 @@ export const SHOW_KINDS = [
     { id: "alert", name: "Aviso rápido", layer: "alert" },
 ];
 // The kinds each view can show at all (views.js): only those are offered.
+// The Aviso rápido rides on every view (Rodada E3: one bar, every screen).
 const VIEW_KINDS = {
     "/Projection": ["lyrics", "bible", "text", "media", "tool", "communication", "alert"],
     "/LyricProjection": ["lyrics", "bible", "text", "alert"],
-    "/VideoProjection": [],
-    "/CommunicationProjection": [],
+    "/VideoProjection": ["alert"],
+    "/CommunicationProjection": ["alert"],
 };
 export const showKindsFor = (page, pref) => {
     const ids = VIEW_KINDS[prefViewKey(page, pref)] || [];
@@ -209,6 +210,50 @@ export function bandBackground(opts) {
     return `rgba(${r}, ${g}, ${b}, ${opts.band_opacity})`;
 }
 
+// Aviso rápido (alert.show; Rodada E3, owner 2026-10-16): how each screen
+// draws the bar — Posição (Alto | Baixo), Estilo (Faixa: the full width |
+// Pílula: centred), the colours, Tamanho (P/M/G) and Entrada (Deslizar |
+// Aparecer | Nenhuma). Flat `alert_*` keys of OutputPref.options; a missing
+// or unknown key is the bar as the Projeção always drew it.
+export const ALERT_DEFAULTS = { position: "top", style: "band", bg: "#f5a524", fg: "#1a1300", size: "m", entrance: "slide" };
+const ALERT_CHOICES = { position: ["top", "bottom"], style: ["band", "pill"], size: ["s", "m", "l"], entrance: ["slide", "fade", "none"] };
+const alertValue = (k, v) => {
+    if (k === "bg" || k === "fg") return typeof v === "string" && HEX6.test(v) ? v.toLowerCase() : undefined;
+    return ALERT_CHOICES[k]?.includes(v) ? v : undefined;
+};
+export function alertOptions(pref) {
+    const o = pref?.options || {};
+    return Object.fromEntries(Object.keys(ALERT_DEFAULTS).map((k) => [k, alertValue(k, o[`alert_${k}`]) ?? ALERT_DEFAULTS[k]]));
+}
+export const isDefaultAlert = (opts) => Object.keys(ALERT_DEFAULTS).every((k) => opts?.[k] === ALERT_DEFAULTS[k]);
+// The options with their alert_* keys checked: a valid one kept (a colour
+// in lower case), anything else dropped (the Exportar/Importar file).
+export function cleanAlertOptions(options) {
+    const o = options && typeof options === "object" && !Array.isArray(options) ? options : {};
+    const out = {};
+    for (const [k, v] of Object.entries(o)) {
+        if (!k.startsWith("alert_")) { out[k] = v; continue; }
+        const clean = alertValue(k.slice(6), v);
+        if (clean !== undefined) out[k] = clean;
+    }
+    return out;
+}
+// Whether this screen draws the Aviso rápido at all: every renderer view
+// (its Mostrar can still leave it out) and the Palco's own page; never the
+// Pastor's or the Transmissão.
+export function showsAlert(page, pref) {
+    const kinds = VIEW_KINDS[prefViewKey(page, pref)];
+    return kinds ? kinds.includes("alert") : page === "/StageView";
+}
+// The alert as this screen draws it (with its look), else null: for the
+// pages that draw the bar over something of their own (the Palco, the
+// Vídeo's clip). Renderer views get it from prefState.
+export function alertOf(live, pref) {
+    if (!live?.alert || pref?.hidden?.includes("alert")) return null;
+    const look = alertOptions(pref);
+    return isDefaultAlert(look) ? live.alert : { ...live.alert, look };
+}
+
 // The page view an output draws: its own, unless Conteúdo picks another.
 export function prefViewKey(page, pref) {
     return PREF_CONTENTS.find((c) => c.id && c.id === pref?.content)?.view || page;
@@ -226,6 +271,11 @@ export function prefState(page, live, pref, theme = null) {
     let state = outputView(prefViewKey(page, pref), live);
     if (!state || !pref) return state;
     state = hideKinds(state, pref.hidden);
+    // The Aviso rápido in this output's look (none set: the bar as always).
+    if (state.alert) {
+        const look = alertOptions(pref);
+        if (!isDefaultAlert(look)) state = { ...state, alert: { ...state.alert, look } };
+    }
     // The renderer draws chords and part names only where this output asks.
     if (state.content) {
         const show = lyricsOptions(page, pref);

@@ -47,6 +47,21 @@ test("outputView: each output's view of a stage, for the Prévia rail", async ()
     assert.equal(outputView("/Nope", live), live, "unknown: the projector");
 });
 
+test("every output's view keeps the Aviso rápido (Rodada E3: one bar on every screen)", async () => {
+    const { outputView } = await import("./views.js");
+    const clip = { kind: "video", url: "clip.mp4", title: "Clipe" };
+    const notice = { item: { title: "Aviso" } };
+    const alert = { message: "Carro ABC-1234", type: "message", since: 1 };
+    const live = { screen: "show", content: song, video: clip, communication: notice, alert };
+    for (const key of ["/Projection", "/LyricProjection", "/VideoProjection", "/CommunicationProjection"]) assert.equal(outputView(key, live).alert, alert, key);
+    assert.equal(outputView("/VideoProjection", { screen: "show", content: song, alert }).alert, alert, "Vídeo waiting: the bar over the idle look");
+    assert.deepEqual(outputView("/CommunicationProjection", live), { screen: "show", communication: notice, alert });
+    // No aviso on air: Comunicação draws the bar alone (over its idle look).
+    const only = outputView("/CommunicationProjection", { screen: "show", content: song, alert });
+    assert.deepEqual(only, { screen: "show", alert });
+    assert.equal(mainLayer(only), "none");
+});
+
 test("previewSession: the pastor's Próximo follows the prepared Setlist item", () => {
     const items = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }];
     const live = { startedAt: 5, serviceId: "s", itemId: "a" };

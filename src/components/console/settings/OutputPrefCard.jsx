@@ -7,7 +7,7 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import { mainLayer } from "@shared/live-state.mjs";
-import { PREF_CONTENTS, PREF_OUTPUTS, ownsTheme, normalizePref, isDefaultSettings, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, lyricsOptions, showKindsFor, streamOptions, designOf } from "@/lib/outputPrefs";
+import { PREF_CONTENTS, PREF_OUTPUTS, ownsTheme, normalizePref, isDefaultSettings, outputMeta, ICON_CHOICES, prefState, prefVars, prefViewKey, stageOptions, pastorOptions, lyricsOptions, showKindsFor, streamOptions, designOf, alertOptions, showsAlert, ALERT_DEFAULTS } from "@/lib/outputPrefs";
 import StreamBand from "@/components/network/StreamBand";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { useLayoutRows } from "@/hooks/useLayout";
@@ -22,6 +22,11 @@ const MARGINS = [["0", "Sem"], ["2", "2%"], ["5", "5%"], ["10", "10%"]];
 // or an old layout_id: the Editor's "Voltar à página padrão" is for that).
 const DEFAULTS = { content: "", hidden_kinds: [], text_scale: 100, margin_pct: 0, show_logo: true, theme_id: "", name: "", icon: "", options: {} };
 const NEXT_COUNTS = [["0", "Não"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]];
+// Aviso rápido (alertOptions): the choices, in the bar's own words.
+const ALERT_POSITIONS = [["top", "Alto"], ["bottom", "Baixo"]];
+const ALERT_STYLES = [["band", "Faixa"], ["pill", "Pílula"]];
+const ALERT_SIZES = [["s", "P"], ["m", "M"], ["l", "G"]];
+const ALERT_ENTRANCES = [["slide", "Deslizar"], ["fade", "Aparecer"], ["none", "Nenhuma"]];
 // The icons' names, for screen readers and the tooltip.
 const ICON_NAMES = { projector: "Projetor", tv: "TV", monitor: "Monitor", tablet: "Tablet", film: "Filme", megaphone: "Megafone", book: "Livro", image: "Imagem", text: "Texto", star: "Estrela", layers: "Camadas", external: "Janela" };
 const sameJson = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
@@ -55,8 +60,10 @@ export function OutputPreview({ path, pref, design, themes = [], live, now, chur
 // row in Telas e saídas. Each change is saved at once; the output (and any
 // network screen showing the same page) follows it live. Palco and Pastor
 // also own a design (owner 2026-10-13: each screen owns its drawing);
-// `onOpenScreen` opens the Editor on this screen.
-export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, inEditor = false }) {
+// `onOpenScreen` opens the Editor on this screen. In the Editor,
+// `alertSample`/`onAlertSample(on, fresh)` show an example Aviso rápido on
+// its canvas while this screen's bar is being set.
+export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, inEditor = false, alertSample = false, onAlertSample = null }) {
     const say = c.say;
     const church = useChurch();
     const pref = normalizePref(row);
@@ -108,6 +115,24 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
     const renderer = PREF_OUTPUTS.includes(output.key) || Boolean(pref.content);
     // Mostrar: only for renderer views, only the kinds the view can show.
     const kinds = renderer ? showKindsFor(output.key, pref) : [];
+    // Cifra and Nome da parte only where songs can show (not Vídeo, not
+    // Comunicação).
+    const lyricsView = kinds.some((k) => k.id === "lyrics");
+    // The Aviso rápido bar (Rodada E3): every screen that draws it sets its
+    // own look; a change shows the example on the Editor's canvas.
+    const alertShown = !isStream && showsAlert(output.key, pref);
+    const alertHidden = pref.hidden.includes("alert");
+    const alertLook = alertOptions(pref);
+    const saveAlert = (k, v) => { saveOpt(`alert_${k}`, v); onAlertSample?.(true); };
+    const alertColoursDefault = alertLook.bg === ALERT_DEFAULTS.bg && alertLook.fg === ALERT_DEFAULTS.fg;
+    const resetAlertColours = () => {
+        const next = { ...(sentOpts.current || pref.options) };
+        delete next.alert_bg;
+        delete next.alert_fg;
+        sentOpts.current = next;
+        save({ options: next });
+        onAlertSample?.(true);
+    };
     const meta = outputMeta(output.key);
     const now = c?.now || Date.now();
     // The preview: this screen right now (OutputPreview above).
@@ -169,7 +194,7 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
             {/* What this screen adds to a song's lyrics (lyricsOptions): the
                 chords over the syllables and the part's name. The Palco
                 shows both unless told otherwise; the others neither. */}
-            {((renderer && !isStream) || (isPastor && !pref.content && !design)) && <>
+            {((renderer && !isStream && lyricsView) || (isPastor && !pref.content && !design)) && <>
             <FormRow k="Cifra">
                 <Switch on={lyricsOpts.chords} onChange={(on) => saveOpt("chords", on)} label={`Cifra em ${output.label}`} />
                 <span className="kx-meta">os acordes da letra ([G]) sobre as sílabas</span>
@@ -243,6 +268,37 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
                 </select>
                 {pref.themeId && !themeGone && <Btn small onClick={() => { const r = openEditor({ theme: pref.themeId, from: inEditor ? "Editor da tela" : "Telas e saídas" }); if (r?.error) c.say(r.error); }} title="Abrir este tema no Editor"><Icon name="edit" />Editar tema…</Btn>}
             </FormRow>}
+            </>}
+            {/* The Aviso rápido bar on this screen (alertOptions; Rodada E3):
+                no choice is the amber band across the top, as always. */}
+            {alertShown && <>
+            <div className="cfg-frm-head">
+                <span className="kx-section">Aviso rápido</span>
+                {alertHidden && <span className="kx-meta">esta saída não mostra o Aviso rápido (Mostrar)</span>}
+                <span className="grow" />
+                {inEditor && onAlertSample && !alertHidden && <Btn small on={alertSample} onClick={() => onAlertSample(!alertSample, true)} title="Um aviso de exemplo na tela ao lado, com estes ajustes">Ver exemplo</Btn>}
+            </div>
+            {!alertHidden && <>
+            <FormRow k="Posição">
+                <Seg small label={`Posição do Aviso rápido em ${output.label}`} value={alertLook.position} options={ALERT_POSITIONS} onChange={(v) => saveAlert("position", v)} />
+            </FormRow>
+            <FormRow k="Estilo">
+                <Seg small label={`Estilo do Aviso rápido em ${output.label}`} value={alertLook.style} options={ALERT_STYLES} onChange={(v) => saveAlert("style", v)} />
+            </FormRow>
+            <FormRow k="Cores">
+                <input type="color" className="ed-color" value={alertLook.bg} onChange={(e) => saveAlert("bg", e.target.value)} aria-label="Cor do fundo do Aviso rápido" title="Fundo" />
+                <input type="color" className="ed-color" value={alertLook.fg} onChange={(e) => saveAlert("fg", e.target.value)} aria-label="Cor do texto do Aviso rápido" title="Texto" />
+                <span className="kx-meta">fundo e texto</span>
+                {!alertColoursDefault && <Btn small onClick={resetAlertColours} title="Volta ao âmbar de sempre">Cores padrão</Btn>}
+            </FormRow>
+            <FormRow k="Tamanho">
+                <Seg small label={`Tamanho do Aviso rápido em ${output.label}`} value={alertLook.size} options={ALERT_SIZES} onChange={(v) => saveAlert("size", v)} />
+            </FormRow>
+            <FormRow k="Entrada">
+                <Seg small label={`Entrada do Aviso rápido em ${output.label}`} value={alertLook.entrance} options={ALERT_ENTRANCES} onChange={(v) => saveAlert("entrance", v)} />
+                <span className="kx-meta">sem movimento quando o Windows pede menos animação</span>
+            </FormRow>
+            </>}
             </>}
             <FormRow k="">
                 <Btn small kind={confirmReset ? "air" : ""} disabled={isDefaultSettings(pref)} onClick={reset} title="Volta os ajustes desta tela ao padrão; o desenho fica">{confirmReset ? "Restaurar mesmo" : "Restaurar padrão"}</Btn>

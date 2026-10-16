@@ -146,3 +146,23 @@ test("the design travels whole; an old file still matches its layout by name", (
     assert.equal(none.prefs.find((p) => p.path === "/StageView").fields.design, null);
     assert.ok(none.notes.some((n) => /Palco: o desenho “Palco banda”/.test(n)));
 });
+
+test("the Aviso rápido bar of each screen travels in the file, checked both ways (Rodada E3)", () => {
+    const bar = { alert_position: "bottom", alert_style: "pill", alert_bg: "#1e40af", alert_fg: "#ffffff", alert_size: "l", alert_entrance: "fade" };
+    const rows = [
+        { id: "r1", screen_path: "/CommunicationProjection", options: { ...bar } },
+        { id: "r2", screen_path: "/StageView", options: { chords: false, alert_size: "s", alert_bg: "laranja" } },
+    ];
+    const f = buildOutputsFile({ outputs, prefRows: rows, themes, displays });
+    assert.deepEqual(f.prefs["/CommunicationProjection"].options, bar);
+    assert.deepEqual(f.prefs["/StageView"].options, { chords: false, alert_size: "s" }, "a value the app never writes stays out");
+    assert.deepEqual(f.prefs["/Projection"].options, {}, "no row: the bar as always");
+    // Read back: the same bar lands on the screen it came from.
+    const r = readOutputsFile(JSON.stringify(f), { themes, displays });
+    assert.deepEqual(r.prefs.find((p) => p.path === "/CommunicationProjection").fields.options, bar);
+    // A hand-edited file: odd values are dropped, the rest applies.
+    const edited = JSON.parse(JSON.stringify(f));
+    edited.prefs["/CommunicationProjection"].options = { ...bar, alert_position: "meio", alert_fg: "#FFF000", alert_entrance: 7 };
+    const r2 = readOutputsFile(JSON.stringify(edited), { themes, displays });
+    assert.deepEqual(r2.prefs.find((p) => p.path === "/CommunicationProjection").fields.options, { alert_style: "pill", alert_bg: "#1e40af", alert_fg: "#fff000", alert_size: "l" });
+});
