@@ -486,13 +486,26 @@ app.whenReady().then(async () => {
     // Sync with the church's other computers through a shared folder
     // (electron/sync.cjs). Off until a folder is set (settings "sync":
     // { folder }; Configurações › Sincronização comes later): until then
-    // each pass ends at once.
+    // each pass ends at once. The windows hear which media files rows name
+    // that have not come down yet ("Baixando…", and the console refuses to
+    // send them): asked once, then pushed when the list changes.
+    let missingSent = "";
     sync = createSyncEngine({
         store,
         mediaDir,
         getFolder: () => (settings.get("sync", {}) || {}).folder || null,
         log: (m) => logger.warn(m),
+        onStatus: () => {
+            const names = sync ? sync.missing() : [];
+            const key = names.join("|");
+            if (key === missingSent) return;
+            missingSent = key;
+            broadcast("keryx:sync:missing", names);
+        },
     });
+    ipcMain.handle("keryx:sync:missing", (event) => (isAppUrl(event.senderFrame && event.senderFrame.url)
+        ? { data: sync.missing() }
+        : { error: { message: "Origem não autorizada.", status: 403 } }));
     sync.start();
     powerMonitor.on("resume", () => sync.poke());
 

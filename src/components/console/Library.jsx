@@ -34,7 +34,7 @@ const dragProps = (stage, time = "") => ({
 // The picture a media row shows on hover: an image itself, a video's still
 // (Media.thumbnail_url, src/lib/mediaPosterCapture.js) or a PDF's first page
 // (src/lib/pdfPagesCapture.js); nothing else has one.
-const peekOf = (m) => (m.missing ? "" : m.type === "image" || m.type === "gif" ? m.file_url : m.type === "video" || m.type === "pdf" ? m.thumbnail_url || "" : "");
+const peekOf = (m) => (m.missing || m.posterSyncing ? "" : m.type === "image" || m.type === "gif" ? m.file_url : m.type === "video" || m.type === "pdf" ? m.thumbnail_url || "" : "");
 const PEEK_DELAY_MS = 350;
 const PEEK_W = 240;
 
@@ -246,8 +246,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         key={m.id}
                         icon={MEDIA_ICON[m.type] || "film"}
                         title={m.title}
-                        meta={m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
-                        metaClass={m.missing ? "kx-warn" : ""}
+                        meta={m.syncing ? `${MEDIA_LABEL[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
+                        metaClass={m.missing && !m.syncing ? "kx-warn" : ""}
                         state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
                         onClick={() => onPrepare(stageFromMedia(m))}
                         onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}
