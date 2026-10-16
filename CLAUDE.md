@@ -565,7 +565,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `src/lib/console/setlist.js`. A click prepares a *stage* in the Prévia;
   Enter, a **double click** or the Prévia's menu "Enviar ao ar" sends it
   (user decision 2026-10-07; dragging a library row onto the Prévia prepares, onto the
-  Programa sends, onto the Setlist adds a ServiceItem). There is no
+  Programa sends, onto the Setlist adds a ServiceItem). **Dragging in a
+  list** (the Setlist, the planner, Camadas, the Editor's elements; Rodada
+  E2, owner 2026-10-16) is `useSortable` + `dragGhost.js`: a card of the
+  row's size (icon, title, time) follows the pointer — the browser gets a
+  transparent drag image, the card lives on `<body>` — a gold slot lights
+  where it lands (the dragged row itself, or `.kx-sort-slot` for a drop
+  from elsewhere), the rows around glide 180 ms (`measureRows`/`slotAt`/
+  `slotTop` in `dropOrder.js`, tested: rows differ in height), and the
+  drop settles the card into the slot before the list takes its new order
+  (the hook's `keys`; what the drag carried is read at the drop, `carry`).
+  Reduced motion: the same states, no animation. Keep `data-sort-row`,
+  `data-sort-tail` and `is-sorting`: the smoke drives them with synthetic
+  DragEvents. There is no
   Ensaio: rehearsing is **"Travar telas"** (Saídas), the live state's
   `locked` flag, enforced in `applyOp` (status 423) so every sender
   obeys: while locked nothing new goes on air, anything can come off (Tela

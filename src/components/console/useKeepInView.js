@@ -37,8 +37,9 @@ export default function useKeepInView(ref, selector, deps) {
                 ? { start: r.left - b.left + box.scrollLeft, end: r.right - b.left + box.scrollLeft }
                 : { start: r.top - b.top + box.scrollTop, end: r.bottom - b.top + box.scrollTop };
         };
-        // A neighbour is the next card, never the list's drop tail or a hidden row.
-        const sib = (n, dir) => { while (n && (n.hasAttribute?.("data-sort-tail") || !n.getClientRects().length)) n = n[dir]; return n; };
+        // A neighbour is the next card, never the list's drop tail, a drag's lit
+        // slot or a hidden row.
+        const sib = (n, dir) => { while (n && (n.hasAttribute?.("data-sort-tail") || n.classList?.contains("kx-sort-slot") || !n.getClientRects().length)) n = n[dir]; return n; };
         const item = { start: span(first).start, end: span(last).end };
         const target = keepInView(
             { scroll: horizontal ? box.scrollLeft : box.scrollTop, size: horizontal ? box.clientWidth : box.clientHeight },

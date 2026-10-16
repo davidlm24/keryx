@@ -29,20 +29,22 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
     };
     const p = plan(service, items);
     const airIdx = items.findIndex((i) => i.id === airItemId);
-    // Dragging (owner 2026-10-15, Rodada D): the rows below slide to open
-    // room where the item lands — a Setlist row moved, or a song from the
-    // Biblioteca (a stage) added there (useSortable; dropOrder.js, tested).
+    // Dragging (owner 2026-10-15, Rodada D; lit slot, Rodada E2): a gold
+    // slot shows where the item lands and the rows around it make room — a
+    // Setlist row moved, or a song from the Biblioteca (a stage, taken at
+    // the drop) added there (useSortable; dropOrder.js, tested).
     const reorder = async (from, over) => {
         const next = moveTo(items, from, over);
         await Promise.all(next.map((x, i) => (x.order !== i ? keryx.entities.ServiceItem.update(x.id, { order: i }) : null)));
     };
     const sort = useSortable({
         disabled: !canReorder,
+        keys: items.map((it) => it.id),
         accepts: () => Boolean(getDragStage()),
-        onDrop: (from, over) => {
+        carry: () => { const stage = getDragStage(); clearDragStage(); return stage; },
+        onDrop: (from, over, stage) => {
             if (from >= 0) { reorder(from, over); return; }
-            const stage = getDragStage();
-            if (stage) { clearDragStage(); onAddStage?.(stage, over); }
+            if (stage) onAddStage?.(stage, over);
         },
     });
     // The list follows the service: when the item on air (or in the Prévia)
@@ -63,7 +65,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                 if (isSection(it)) {
                     const sec = p.sections[i] || { count: 0, seconds: 0 };
                     return (
-                        <div key={it.id} className="listhead rund-sec" {...sort.rowProps(i, { label: it.title, icon: "list" })} style={sort.rowStyle(i)}
+                        <div key={it.id} className="listhead rund-sec" {...sort.rowProps(i, { label: it.title, icon: "list", time: sec.seconds ? total(sec.seconds) : "" })} style={sort.rowStyle(i)}
                             onContextMenu={(e) => menu(e, { title: it.title, items: [
                                 onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
                                 { label: "Tirar a seção…", icon: "x", onSelect: () => askTakeOut(it) },
@@ -73,7 +75,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                     );
                 }
                 const state = it.id === airItemId ? "is-air" : it.id === prevItemId ? "is-prev" : airIdx >= 0 && i < airIdx ? "is-done" : "";
-                const dragProps = { ...sort.rowProps(i, { label: it.title || typeLabel(it.type), icon: typeIcon(it.type) }), style: sort.rowStyle(i) };
+                const dragProps = { ...sort.rowProps(i, { label: it.title || typeLabel(it.type), icon: typeIcon(it.type), time: it.duration ? span(it.duration) : "" }), style: sort.rowStyle(i) };
                 return (
                     <Row
                         key={it.id}
@@ -95,6 +97,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                     />
                 );
             })}
+            {sort.slot}
             {canReorder && <div className="rund-tail" data-sort-tail="" />}
         </div>
     );

@@ -542,18 +542,41 @@
 .console .toast { position: absolute; z-index: 50; left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
 .console .kx-row .kx-row-acts .kx-btn { color: var(--fg-1); }
 .console .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
-/* Dragging in a list (owner 2026-10-15, Rodada D): the rows below slide
-   to open room where the item lands (useSortable.js) — never a border or a
-   line on a neighbour. Only while a drag hovers the list does a row
-   animate, so the order a drop leaves takes its place at once. */
-.console .is-sorting > [data-sort-row] { transition: transform .15s var(--ease-out), opacity .15s var(--ease-out); }
-@media (prefers-reduced-motion: reduce) { .console .is-sorting > [data-sort-row] { transition: none; } }
+/* Dragging in a list (owner 2026-10-15, Rodada D; Rodada E2, 2026-10-16:
+   "a slight card highlight where it will drop"): where the card will land a
+   slot lights up in gold — the dragged row itself, moved there with its
+   content hidden, or a placeholder (.kx-sort-slot) for a drop from
+   elsewhere — and the rows around it glide out of the way (useSortable.js).
+   Only while a drag is on the list does a row animate, so the order a drop
+   leaves takes its place at once. */
+.console .is-sorting > [data-sort-row] { transition: transform 180ms var(--ease-out); }
+.console .is-sorting > [data-sort-row][data-sort-slot] { position: relative; background: transparent; box-shadow: none; }
+.console .is-sorting > [data-sort-row][data-sort-slot] > * { visibility: hidden; }
+.console .is-sorting > [data-sort-row][data-sort-slot]::before { opacity: 0; }
+.console .is-sorting > [data-sort-row][data-sort-slot]::after,
+.console .kx-sort-slot { content: ""; position: absolute; inset: 1px var(--space-1); z-index: 1; border-radius: var(--radius-control); background: color-mix(in srgb, var(--brand) 16%, var(--bg-1)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 60%, transparent); pointer-events: none; }
+/* A card row (Setlist, Camadas) is the slot itself: its margins are the inset. */
+.console .is-sorting > :is(.kx-row, .kx-layer)[data-sort-row][data-sort-slot]::after { inset: 0; }
+.console .kx-sort-slot { inset: auto var(--space-1); transition: top 180ms var(--ease-out); animation: kx-slot-in 120ms var(--ease-out); }
+@keyframes kx-slot-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .console .is-sorting > [data-sort-row], .console .kx-sort-slot { transition: none; animation: none; } }
 .console [data-sort-row][draggable="true"] { cursor: grab; }
 .console [data-sort-row][draggable="true"]:active { cursor: grabbing; }
-/* The pill that follows the pointer (dragGhost.js); built on <body>, outside
-   .console, so it reads the tokens from :root. */
-.drag-ghost { position: fixed; top: -200px; left: -200px; z-index: 1000; display: inline-flex; align-items: center; gap: 6px; max-width: 280px; padding: 4px 10px; border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-1); box-shadow: var(--popover); font: 500 12px/16px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.drag-ghost .kx-i { flex: none; color: var(--brand); }
+/* The card that follows the pointer (dragGhost.js): the row's size, its
+   icon, title and time, lifted; it lands in the lit slot (.is-land) or
+   fades (.is-gone). Built on <body>, outside .console, so it reads the
+   tokens from :root. */
+.drag-card { position: fixed; left: 0; top: 0; z-index: 1000; pointer-events: none; will-change: transform; }
+.drag-card-in { box-sizing: border-box; display: flex; align-items: center; gap: var(--space-2); width: 100%; height: 100%; padding: 0 var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font: 500 13px/18px var(--font-sans); white-space: nowrap; box-shadow: 0 0 0 1px var(--line-strong), 0 14px 30px #000000a0; transform: scale(1.03) rotate(-0.6deg); transition: transform 120ms var(--ease-out), box-shadow 180ms var(--ease-out); animation: kx-lift 120ms var(--ease-out); }
+@keyframes kx-lift { from { transform: none; box-shadow: 0 0 0 1px var(--line-strong); } }
+.drag-card-in .kx-i { flex: none; color: var(--brand); }
+.drag-card-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.drag-card-time { flex: none; color: var(--fg-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.drag-card.is-land { transition: transform 180ms var(--ease-out), width 180ms var(--ease-out), height 180ms var(--ease-out); }
+.drag-card.is-land .drag-card-in { transform: none; box-shadow: 0 0 0 1px var(--line-strong), 0 2px 6px #00000059; }
+.drag-card.is-gone { opacity: 0; transition: opacity 120ms var(--ease-out); }
+.drag-card.is-gone .drag-card-in { transform: scale(0.96); }
+@media (prefers-reduced-motion: reduce) { .drag-card, .drag-card-in { transition: none !important; animation: none !important; } }
 /* UI rule (owner 2026-10-14): every list row in the console — Biblioteca,
    Setlist, the tabs panel, Camadas, Configurações' menu, the views — is a
    rounded card set in from its column, like the verses: the hover and the
@@ -690,7 +713,7 @@
 
 /* Drag from the Biblioteca: the monitor under the pointer says what a drop
    does; the Setlist's tail takes a drop after the last item. */
-.console .rund { display: flex; flex-direction: column; min-height: 100%; }
+.console .rund { position: relative; display: flex; flex-direction: column; min-height: 100%; }
 .console .rund-tail { flex: 1; min-height: 28px; }
 
 /* Fields: no gold ring while typing (the design system's focus ring is for

@@ -82,8 +82,9 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const [starting, setStarting] = useState(null); // "model" | "copy": the pickers at the drawing's tail
     const [pickBgImage, setPickBgImage] = useState(false);
     // The element list (top first, the reverse of the drawing order): the
-    // rows below slide to open room (useSortable, owner 2026-10-15).
+    // rows around make room for a lit slot (useSortable, owner 2026-10-15/16).
     const elSort = useSortable({
+        keys: (draft?.elements || []).map((el) => el.id).reverse(),
         onDrop: (from, over) => setDraft((d) => ({ ...d, elements: moveTo(d.elements.slice().reverse(), from, over).slice().reverse() })),
     });
     const fileRef = useRef(null);
