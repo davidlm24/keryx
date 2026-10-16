@@ -6,7 +6,7 @@ import { MenuBarButtons } from "./MenuBar";
 // The top bar, a menu bar: the KERYX menu (the mark), the environments
 // KERYX | BÍBLIA right after it (bold caps, the gold underline: places, not
 // commands — "O topo", owner's pick B 2026-10-15; no icons), then the menu bar (Culto,
-// Música, Mídia, Telas, Ferramentas; Rodada D4 — it folds into the mark's
+// Música, Mídia, Ferramentas; Rodada D4, no Telas since E0 — it folds into the mark's
 // menu on a narrow window, console.css), the environments
 // KERYX | Bíblia as tabs, the search, the service clock (how long the
 // service has been running, from its scheduled time: serviceClock in

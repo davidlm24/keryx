@@ -1159,14 +1159,15 @@ export default function Console() {
     const hhmm = (t) => (t ? new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—");
 
     // The menu bar (owner 2026-10-15, Rodada D4, "Menus novos" = A;
-    // src/lib/console/menuBar.js): Culto, Música, Mídia, Telas, Ferramentas
-    // after KERYX | Bíblia (Ver is the eye, Ajuda the logo's menu: O topo); every item is something the console
-    // already does. Música › Importar uma pasta… uses this hidden picker.
+    // src/lib/console/menuBar.js): Culto, Música, Mídia, Ferramentas after
+    // KERYX | Bíblia (Ver is the eye, Ajuda the logo's menu: O topo; no Telas
+    // menu, Rodada E0); every item is something the console already does.
+    // Música › Importar uma pasta… uses this hidden picker.
     const church = useChurch();
     const folderRef = useRef(null);
     const barLayer = playerLayer(c.cur);
     const menus = buildMenus({
-        services, serviceId, itemsCount: items.length, locked: c.locked, screen: c.cur?.screen,
+        services, serviceId, itemsCount: items.length, locked: c.locked,
         songId: songInHand(c.prev, c.cur), follow: c.cur?.content?.follow || null,
         playerOn: Boolean(barLayer), playing: Boolean(barLayer && !c.cur[barLayer]?.playback?.paused),
         timers: timerChoices(data.timerPresets).map((t) => ({ minutes: t.minutes, label: minutesLabel(t.minutes) })),
@@ -1182,11 +1183,6 @@ export default function Console() {
             follow: (action) => c.callOp("content.follow", { action }).catch(() => {}),
             media: (intent) => openMedia(intent),
             playerToggle: () => { const op = playerOp(c.cur, barLayer, "toggle"); if (op) c.callOp(op[0], op[1]).catch(() => {}); },
-            outputs: () => setOpen("outs"),
-            lock: (on) => c.setLocked(on),
-            screen: (which) => c.toggleScreen(which),
-            clearText: () => c.clearText(),
-            verify: () => setOpen("verificar"),
             notices: () => openNotices(),
             newNotice: () => openNotice("new"),
             quickAlert: async () => {

@@ -3,7 +3,9 @@
 // table, so node --test can check it.
 //
 // "j"          -> step livro, candidates Josué, Juízes, Jó, Jeremias, …
-// "jo"         -> João (exact short form wins), step capitulo
+// "jo"         -> João (exact short form wins), step capitulo; not `unique`:
+//                 Josué, Jó, Joel and Jonas still start so
+// "joã"        -> João, `unique` (the one book left): typing completes it
 // "jo 3" / "jo3" -> chapter 3, still on capitulo
 // "jo 3 " / "jo 3:" -> step versiculo
 // "jo 3 16-18" -> verses 16 to 18
@@ -18,7 +20,7 @@ const SHAPE = /^\s*((?:[1-3]\s*)?\p{L}[\p{L}\s.]*?)\s*((?:\d|[\s:.,-])*)$/u;
 
 export function readQuickRef(text) {
     const raw = String(text || "");
-    const out = { text: raw, step: "livro", query: "", candidates: [], book: null, chapter: null, verseStart: null, verseEnd: null, valid: false, error: "" };
+    const out = { text: raw, step: "livro", query: "", candidates: [], book: null, unique: false, chapter: null, verseStart: null, verseEnd: null, valid: false, error: "" };
     const m = SHAPE.exec(raw);
     if (!m) {
         out.query = raw.trim();
@@ -30,7 +32,10 @@ export function readQuickRef(text) {
     const key = fold(bookText);
     const prefixed = bibleBooks.filter((b) => fold(b.name).startsWith(key) || fold(b.short).startsWith(key));
     out.candidates = prefixed.slice(0, MAX_CANDIDATES).map((b) => ({ name: b.name, short: b.short }));
-    const book = findBook(bookText) || (prefixed.length === 1 ? prefixed[0] : null);
+    // Only one book starts with these letters (the autocomplete's cue; `book`
+    // alone is not, an exact short form resolves while others still match).
+    out.unique = prefixed.length === 1;
+    const book = findBook(bookText) || (out.unique ? prefixed[0] : null);
     if (!book) {
         if (!prefixed.length) out.error = "Livro não reconhecido";
         return out;
@@ -78,6 +83,36 @@ export function readQuickRef(text) {
     out.verseStart = start;
     if (out.verseEnd != null) out.verseEnd = Math.max(start, Math.min(out.verseEnd, max));
     return out;
+}
+
+// The autocomplete (owner 2026-10-16, Rodada E0): once the letters typed
+// leave only one book, the field becomes its whole name and a space, on to
+// the chapter ("joã" -> "João "). Letters typed after that which go on
+// spelling the book are absorbed (then "o" and a space keep "João "), so
+// typing the name out in full still reads; anything else is typed as usual.
+// Only typing completes (`inserted`), never Backspace or a paste. The
+// opening letter counts as typed: "i" opens on "Isaías ".
+//
+// field: { text, typed }, `typed` being what the operator typed of the book
+// while the field holds the name completed from it (else null).
+export function typeQuickRef(field, value, inserted) {
+    let text = String(value ?? "");
+    if (!inserted) return { text, typed: null };
+    const book = field?.typed != null && text.startsWith(field.text) ? readQuickRef(field.text).book : null;
+    if (book) {
+        // One character at a time (an insert may hold several): the ones
+        // that go on spelling the book go, the rest is typed after the name.
+        const spells = (s) => { const k = fold(s); return fold(book.name).startsWith(k) || fold(book.short).startsWith(k); };
+        const added = [...text.slice(field.text.length)];
+        let typed = field.typed;
+        while (added.length && spells(typed + added[0])) typed += added.shift();
+        if (!added.length) return { text: field.text, typed };
+        text = field.text + added.join("");
+    }
+    // The last character a letter: still in the book's name, no number yet.
+    const r = readQuickRef(text);
+    if (r.unique && /\p{L}$/u.test(text)) return { text: `${r.book.name} `, typed: r.query };
+    return { text, typed: null };
 }
 
 // The reference the quick jump shows ("João 3:16-18").

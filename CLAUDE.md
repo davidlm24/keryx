@@ -307,8 +307,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **The top bar's left side** (owner 2026-10-15, Rodada D4 + "O topo", pick
   B): the logo, then **KERYX | BÍBLIA** (bold caps, no icons, gold
   underline — places, not commands), a divider, then **the menu bar**: Culto, Música,
-  Mídia, Telas, Ferramentas (`MenuBar.jsx`; the model is
-  `src/lib/console/menuBar.js`, tested). Its open menu is the console's
+  Mídia, Ferramentas (`MenuBar.jsx`; the model is
+  `src/lib/console/menuBar.js`, tested). **There is no Telas menu** (owner
+  2026-10-16, Rodada E0): Tela preta, Logo and Limpar are the top bar's
+  chip, Saídas and Verificar the logo's menu, Travar telas and Telas e
+  saídas the Saídas popover — don't put it back. Its open menu is the console's
   `open` (`"mb:<id>"`): Esc and the scrim close it, pointing at another
   menu switches, ← / → walk them. Every item is something the console
   already does (Música › Sincronizar a música… opens the song in the Prévia

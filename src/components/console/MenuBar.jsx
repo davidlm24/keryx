@@ -25,7 +25,7 @@ export function MenuBarButtons({ menus, open, setOpen }) {
     );
 }
 
-// One item: an icon, the check of a state (Travar telas, Tela preta), a key.
+// One item: an icon, the check of a state (the culto of the day), a key.
 function Item({ it, onPick, onSub, subOpen }) {
     const tail = it.sub ? <Icon name="chevron-right" /> : it.checked && it.icon ? <Icon name="check" /> : it.kbd;
     return (
