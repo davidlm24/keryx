@@ -372,7 +372,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         books: (
             <Panel className={`bpick-books ${fullNames ? "names-full" : ""}`} title="Livros" actions={<>
                 <span className="bver" title={badge ? badge.text : "Versão da Bíblia"}>
-                    <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label={badge ? `Versão: ${badge.text}` : "Versão"} style={{ background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
+                    <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label={badge ? `Versão: ${badge.text}` : "Versão"} >{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
                     {badge && <i className="bver-dot" aria-hidden="true" />}
                 </span>
                 <Seg small value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
