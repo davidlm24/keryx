@@ -213,7 +213,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                         </button>
                                     );
                                 })}
-                                {!(themeMode ? themes : withBg).length && <span className="kx-meta">Nenhum tema ainda. Crie em Configurações › Temas, ou salve o que está no ar em Camadas.</span>}
+                                {!(themeMode ? themes : withBg).length && <span className="kx-meta">Nenhum tema ainda. Crie um em Configurações › Temas e fundos › Novo tema…</span>}
                             </div>
                         )}
                         {(tab === "image" || tab === "video") && view === "categories" && <FundoCategories c={c} entries={list} onDone={() => setView("grid")} />}
@@ -270,7 +270,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                 {sel?.kind === "generator" && <>
                                     <GeneratorPanel background={bgArgs(sel, "")} op={(_op, args) => setSel(cleanSpec(args))} />
                                     <span className="k">Escurecer</span>
-                                    <Seg small value={String(sel.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => setSel(cleanSpec({ ...sel, dim: Number(v) }))} />
+                                    <Seg small label="Escurecer" value={String(sel.dim ?? 0)} options={[["0", "0"], ["0.3", "30%"], ["0.45", "45%"], ["0.7", "70%"]]} onChange={(v) => setSel(cleanSpec({ ...sel, dim: Number(v) }))} />
                                 </>}
                                 {sel?.kind !== "generator" && <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Um fundo que as telas calculam: escolha um gerador, depois as cores e o movimento.</span>}
                             </div>
@@ -329,6 +329,13 @@ export const themePending = (theme, pending) => pendingUrls(themeBackgroundArgs(
 
 // A theme as a small screen: its text look over its background (the
 // library's Temas tab and the console's Temas card).
+// The factory look (no theme): the example text as the renderer draws it
+// with nothing chosen, for the Temas padrão boxes (audit C-43).
+export function FactoryThumb({ now }) {
+    const doc = useMemo(() => sampleDoc(now), []); // eslint-disable-line react-hooks/exhaustive-deps
+    return doc ? <span className="lib-thumb"><ScreenRenderer state={doc} now={now} preview /></span> : null;
+}
+
 export function ThemeThumb({ theme, now }) {
     const waiting = themePending(theme, usePendingMedia());
     const doc = useMemo(() => (waiting ? null : sampleDoc(now, themeBackgroundArgs(theme), themeStyle(theme))), [theme, waiting]); // eslint-disable-line react-hooks/exhaustive-deps

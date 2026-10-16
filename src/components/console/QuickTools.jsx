@@ -41,7 +41,7 @@ export function QuickAlert({ c, data }) {
             <div className="qt-row">
                 <Field icon={null} value={alertText} onChange={setAlertText} placeholder="Aviso para as telas" style={{ flex: 1 }} inputProps={{ spellCheck: true }} onKeyDown={(e) => { if (e.key === "Enter") showAlert(); }} />
                 <Btn onClick={showAlert} title="Mostrar nas telas agora · Enter">Mostrar</Btn>
-                <IconBtn name="star" on={Boolean(kept)} disabled={!kept && !alertText.trim()} title={kept ? "Esta mensagem já está salva" : "Salvar esta mensagem como pronta"} onClick={keepAlert} />
+                <IconBtn name="star" on={Boolean(kept)} disabled={!kept && !alertText.trim()} title={kept ? "Esta mensagem já está salva" : "Salvar esta mensagem como pronta"} aria-label="Mensagem pronta" onClick={keepAlert} />
             </div>
             <div className="kx-presets" role="list" aria-label="Mensagens prontas">
                 {!presets.length && <span className="kx-meta kx-presets-empty">Escreva um aviso e use a estrela para guardá-lo como mensagem pronta. Ex.: Chamar pessoa, Kids, Carro.</span>}

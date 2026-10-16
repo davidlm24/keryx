@@ -407,7 +407,7 @@ Capítulo / Versículo captions over the typed text and the candidate books.
   Identificar), Mídia do roteiro (*Mídia da setlist* in the app) (Localizar…),
   Áudio (Testar), Fontes do tema, Bíblia (installed for offline use), Internet; a
   summary ("Tudo pronto" / "N itens precisam de atenção"). In the app it is an
-  overlay from Saídas › *Verificar tudo…*.
+  overlay from Saídas › *Verificar tudo*.
 
 **To relabel in the canvas** (an external artifact; not edited from here):
 artboards 8–15 as "Histórico · 2026-10-07"; "Roteiro" → "Setlist"; the
@@ -463,7 +463,7 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
   header's +, pointing up while open ("Dobrar"), turned while folded
   ("Abrir"). Folded down a column, the panel is its header and its
   neighbours take the room; folded across a row (the Biblioteca, the
-  Slides, the Painel de abas, the Bíblia's Texto and No ar agora), a 28 px
+  Slides, the Painel, the Bíblia's Texto and No ar agora), a 28 px
   strip on `bg-1`: the chevron at the header's height over the module's
   name standing up (`writing-mode: vertical-rl`, the `section` style), the
   whole strip a button that opens it (hover `bg-2`). A split always keeps
@@ -510,6 +510,20 @@ Apresentar send button's printed "Ctrl+Enter"; the Esc that asks.
   *Esquecer*.
 - Projected screens are not styled by these tokens: they use the church's
   themes and backgrounds (user data) and only the `screen-*` styles.
+- **Screen readers** (audit batch 4, 2026-10-16; kx.jsx). A state shown by a
+  background (on air, Prévia) is also `aria-current` plus words in a
+  `.kx-sr` span ("no ar", "na prévia": `stateWords`/`SrState`), never a
+  glyph — the owner keeps on air vs Prévia colour only. A `Row` with actions
+  is a `listitem` (its list `role="list"`) with sibling buttons named by
+  their target ("Ir para João 3:16-17", "Ocultar o Fundo"); without actions
+  it is one button. `Panel` is a region whose title is a level-2 heading; the
+  dock is the page's `<main>`. Toasts and what goes on air are said by one
+  always-mounted polite region (`useLiveRegion`), never by a `role="status"`
+  that mounts with its text. A field or `Seg` beside a visible label is named
+  by it (`label`, or `FormRow`'s `RowLabel`), never by its placeholder.
+  `Seg`'s chosen option has a 1 px `fg-3` inset (≥3:1) besides its fill; a
+  done Setlist row dims its glyph and title only, its meta and time stay
+  `fg-3`.
 
 ## What the canvas does not cover
 

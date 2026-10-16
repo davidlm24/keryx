@@ -16,7 +16,8 @@ import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
 import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
-import { Panel, IconBtn, Measure, Seg, WinCtx } from "@/components/console/kx";
+import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion } from "@/components/console/kx";
+import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
 import { MenuBarPop } from "@/components/console/MenuBar";
 import { buildMenus, songInHand } from "@/lib/console/menuBar";
@@ -104,6 +105,16 @@ const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LO
 // docs/design-system.md is the look; docs/desktop-architecture.md the plumbing.
 export default function Console() {
     const c = useConsole();
+    // What a screen reader hears (C-25): one polite region, always mounted —
+    // the toasts, and what is on air when it really changes (a new item, a
+    // new slide, Tela preta, Esc), never the clock; the screens locked too.
+    const [liveRegion, announce] = useLiveRegion();
+    useEffect(() => { if (c.toast) announce(c.toast); }, [c.toast, announce]);
+    const airSaid = airAnnouncement(c.cur);
+    const heardAir = useRef(airSaid);
+    useEffect(() => { if (heardAir.current !== airSaid) { heardAir.current = airSaid; announce(airSaid); } }, [airSaid, announce]);
+    const heardLock = useRef(c.locked);
+    useEffect(() => { if (heardLock.current !== c.locked) { heardLock.current = c.locked; announce(c.locked ? "Telas travadas" : "Telas destravadas"); } }, [c.locked, announce]);
     // A generated background following the sound: the console feeds the level.
     useAudioFeed(c.live);
     const logoUrl = useChurchLogo();
@@ -903,7 +914,7 @@ export default function Console() {
     // it back after a mouse pick, on its change (selectPick.js, audit C-03).
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
-        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href], input[type='range']");
+        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='listitem'][tabindex], a[href], input[type='range']");
         if (t && !t.closest(KEEPS_FOCUS)) setTimeout(() => t.blur?.(), 0);
     };
     useEffect(() => blurSelectsAfterPick(window, { skip: KEEPS_FOCUS }), []);
@@ -1371,8 +1382,8 @@ export default function Console() {
             {editing && (
                 <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {!winOpen && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
-                    {!winOpen && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Sob as colunas", { title: "A faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela toda", { title: "A faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
-                    {!winOpen && <span className="dock-presets dock-span"><span className="kx-meta">Tamanhos:</span><Seg small value={dockMode(envDock)} onChange={setEnvMode} options={[["free", "Livre", { title: "Os divisores param onde você soltar; os tamanhos ficam em pixels" }], ["pct", "Por %", { title: "Os divisores encaixam de 5 em 5 %; numa tela menor ou maior, as proporções se mantêm" }]]} /></span>}
+                    {!winOpen && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small label="No ar" value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Sob as colunas", { title: "A faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela toda", { title: "A faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
+                    {!winOpen && <span className="dock-presets dock-span"><span className="kx-meta">Tamanhos:</span><Seg small label="Tamanhos" value={dockMode(envDock)} onChange={setEnvMode} options={[["free", "Livre", { title: "Os divisores param onde você soltar; os tamanhos ficam em pixels" }], ["pct", "Por %", { title: "Os divisores encaixam de 5 em 5 %; numa tela menor ou maior, as proporções se mantêm" }]]} /></span>}
                     {!winOpen && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
                 </EditBanner>
             )}
@@ -1380,12 +1391,12 @@ export default function Console() {
                 <div className="kx-banner is-rh" role="status" inert={winOpen ? "" : undefined}><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
             {/* Behind THE window nothing takes the focus (C-12); its keys still listen on window. */}
-            <div className="main" ref={mainRef} inert={winOpen ? "" : undefined}>
+            <main className="main" ref={mainRef} inert={winOpen ? "" : undefined}>
                 {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold }} />}
                 {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} />}
-            </div>
+            </main>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
 
             {/* THE window (Rodada C): one dialog, its pages stacked by
@@ -1454,6 +1465,7 @@ export default function Console() {
                     onPick={(r) => { setQuick(null); setBibleRequest({ book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart, at: Date.now() }); }} />
             )}
             <Toast c={c} />
+            {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
         </ConfirmContext.Provider>

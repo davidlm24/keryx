@@ -63,7 +63,7 @@ const pick = (row) => { const out = { ...BLANK }; for (const k of FIELDS) if (ro
 // /Janela — mount it hosted; unhosted it keeps the panel header and footer.
 export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colAjustes = useWinCol("theme.ajustes", { def: 400, min: 340, max: 720 });
+    const colAjustes = useWinCol("theme.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["editor", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["editor", "themes"] })), [client]);
@@ -282,7 +282,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                                 <select className="pl-input" style={{ width: "auto" }} value={draft.font_family} onChange={(e) => set({ font_family: e.target.value })} aria-label="Fonte do tema">
                                     {THEME_FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                                 </select>
-                                <Seg small value={draft.font_size} options={TEXT_SIZES} onChange={(v) => set({ font_size: v })} />
+                                <Seg small label="Tamanho da fonte" value={draft.font_size} options={TEXT_SIZES} onChange={(v) => set({ font_size: v })} />
                             </span>
                             <span className="k">Efeito e cor</span>
                             <span className="nv-inline">
@@ -303,12 +303,12 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             </span>
                             <span className="k">Entrelinhas</span>
                             <span className="nv-inline">
-                                <Seg small value={draft.line_height || ""} options={LINES} onChange={(v) => set({ line_height: v })} />
+                                <Seg small label="Entrelinhas" value={draft.line_height || ""} options={LINES} onChange={(v) => set({ line_height: v })} />
                                 <Switch on={draft.text_case === "upper"} onChange={(on) => set({ text_case: on ? "upper" : "" })} label="Maiúsculas" /><span className="kx-meta">Maiúsculas</span>
                             </span>
                             <span className="k">Caixa do texto</span>
                             <span className="nv-inline">
-                                <Seg small value={draft.text_box || ""} options={BOXES} onChange={(v) => set({ text_box: v, ...(v ? { text_box_color: draft.text_box_color || "#000000", text_box_opacity: draft.text_box_opacity || 0.55 } : { text_box_color: "", text_box_opacity: "" }) })} />
+                                <Seg small label="Caixa do texto" value={draft.text_box || ""} options={BOXES} onChange={(v) => set({ text_box: v, ...(v ? { text_box_color: draft.text_box_color || "#000000", text_box_opacity: draft.text_box_opacity || 0.55 } : { text_box_color: "", text_box_opacity: "" }) })} />
                                 {draft.text_box && <input type="color" className="ed-color" value={draft.text_box_color || "#000000"} onChange={(e) => set({ text_box_color: e.target.value })} aria-label="Cor da caixa" title="Cor da caixa" />}
                             </span>
                             {/* The box's opacity was fixed at 55% with no
@@ -326,9 +326,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                         <div className="listhead"><span className="kx-section">Texto na tela</span></div>
                         <div className="frm nv-frm">
                             <span className="k">Alinhamento</span>
-                            <Seg small value={draft.text_align || ""} options={H_ALIGNS} onChange={(v) => set({ text_align: v })} />
+                            <Seg small label="Alinhamento" value={draft.text_align || ""} options={H_ALIGNS} onChange={(v) => set({ text_align: v })} />
                             <span className="k">Posição</span>
-                            <Seg small value={draft.text_position || ""} options={V_POS} onChange={(v) => set({ text_position: v, text_nudge: "" })} />
+                            <Seg small label="Posição" value={draft.text_position || ""} options={V_POS} onChange={(v) => set({ text_position: v, text_nudge: "" })} />
                             <span className="k">Largura</span>
                             <span className="nv-inline">
                                 <input type="range" className="le-range" min={MIN_WIDTH} max={100} step={1} value={band ? 100 : Number(draft.text_max_width) || 100} disabled={band} onChange={(e) => set({ text_max_width: Number(e.target.value) >= 100 ? "" : Number(e.target.value) })} aria-label="Largura do texto" />
@@ -358,12 +358,12 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             </span>
                             {bg && bg.kind !== "color" && bg.kind !== "generator" && <>
                                 <span className="k">Ajuste do fundo</span>
-                                <Seg small value={bg.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => setBg({ fit: v === "cover" ? undefined : v })} />
+                                <Seg small label="Ajuste do fundo" value={bg.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => setBg({ fit: v === "cover" ? undefined : v })} />
                                 {/* Which part of the picture stays on screen
                                     (the spec always carried it; no UI until
                                     Rodada C, fase d). */}
                                 <span className="k">Posição do fundo</span>
-                                <Seg small value={bg.position || "center"} options={[["top", "Topo"], ["center", "Centro"], ["bottom", "Base"]]} onChange={(v) => setBg({ position: v === "center" ? undefined : v })} />
+                                <Seg small label="Posição do fundo" value={bg.position || "center"} options={[["top", "Topo"], ["center", "Centro"], ["bottom", "Base"]]} onChange={(v) => setBg({ position: v === "center" ? undefined : v })} />
                             </>}
                             {bg && bg.kind !== "color" && <>
                                 <span className="k">Escurecer</span>
@@ -381,7 +381,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             </>}
                             <span className="k">Transição</span>
                             <span className="nv-inline">
-                                <Seg small value={draft.transition || ""} options={[["", `Padrão (Esmaecer · ${NATURAL_MS.fade} ms)`], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
+                                <Seg small label="Transição" value={draft.transition || ""} options={[["", `Padrão (Esmaecer · ${NATURAL_MS.fade} ms)`], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
                                 {draft.transition && draft.transition !== "cut" && <><input type="range" className="le-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-meta">{Number(draft.transition_ms) || 400} ms</span></>}
                             </span>
                         </div>
