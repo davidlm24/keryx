@@ -4,6 +4,7 @@ import { RELEASE_NOTES } from "@/lib/console/releaseNotesData";
 import ShortcutList from "./ShortcutList";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
+import { MenuList, useFocusFirst } from "./Menu";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
 import { PANEL_TABS, TABS_MENU_TITLE, tabsMenu } from "@/lib/console/panelTabs";
 import { restoreArgs } from "@/lib/projection";
@@ -25,76 +26,64 @@ const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "m
 // the eye beside the bell.
 export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow, onWhatsNew }) {
     if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
+    // Every list here is the console's one menu (Menu.jsx MenuList): it takes
+    // the focus, the arrows walk it, Esc and Tab close it (C-14, C-15).
+    const close = () => setOpen(null);
+    const go = (fn) => () => { setOpen(null); fn?.(); };
     if (open === "ver") {
+        const items = [
+            { head: "Ver" },
+            ...MODULES.map(([key, name]) => ({ label: name, role: "menuitemcheckbox", checked: !layout.hidden[key], onSelect: () => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } }) })),
+            "sep",
+            { head: "Densidade" },
+            ...DENSITIES.map(([key, name]) => ({ label: name, role: "menuitemcheckbox", checked: densityOf(layout) === key, onSelect: () => setLayout({ ...layout, density: key }), title: key === "auto" ? "Compacta numa tela baixa (notebook), Confortável nas outras" : key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item" })),
+            "sep",
+            // Named arrangements (dockPresets.js): Padrão and the operator's.
+            { head: "Disposição" },
+            ...[{ id: null, name: "Padrão" }, ...presets].map((p) => ({
+                label: `${p.name}${presetId === p.id && presetDirty ? " · alterada" : ""}`, role: "menuitemcheckbox", checked: presetId === p.id, onSelect: () => onPickPreset?.(p.id),
+                title: p.id ? `Trocar para a disposição “${p.name}”` : "A disposição de fábrica do console",
+            })),
+            "sep",
+            { label: editing ? "Concluir a edição" : "Editar disposição", icon: "grip", checked: editing, onSelect: onEditLayout, title: "Mudar os módulos de lugar, salvar disposições com nome · Esc conclui" },
+            { label: "Restaurar disposição", onSelect: () => { restoreLayout(); setOpen(null); } },
+            { label: "Atalhos do teclado", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
+        ];
         return (
             // Under the top bar's Ver button, its right edge on the button's.
-            <div className="pop kx-pop" style={{ right: Math.max(8, Math.round(window.innerWidth - (document.querySelector(".topbar .tb-ver")?.getBoundingClientRect().right ?? window.innerWidth - 8))), top: "var(--pop-top)", width: 220 }}>
-                <div className="kx-menu-h"><span className="kx-section">Ver</span></div>
-                {MODULES.map(([key, name]) => (
-                    <MenuItem key={key} checked={!layout.hidden[key]} onClick={() => setLayout({ ...layout, hidden: { ...layout.hidden, [key]: !layout.hidden[key] } })}>{name}</MenuItem>
-                ))}
-                <div className="kx-menu-sep" />
-                <div className="kx-menu-h"><span className="kx-section">Densidade</span></div>
-                {DENSITIES.map(([key, name]) => (
-                    <MenuItem key={key} checked={densityOf(layout) === key} onClick={() => setLayout({ ...layout, density: key })} title={key === "auto" ? "Compacta numa tela baixa (notebook), Confortável nas outras" : key === "comfortable" ? "Linhas de 32 px, títulos em até duas linhas" : "Linhas de 28 px, uma linha por item"}>{name}</MenuItem>
-                ))}
-                <div className="kx-menu-sep" />
-                {/* Named arrangements (dockPresets.js): Padrão and the operator's. */}
-                <div className="kx-menu-h"><span className="kx-section">Disposição</span></div>
-                {[{ id: null, name: "Padrão" }, ...presets].map((p) => (
-                    <MenuItem key={p.id || "padrao"} checked={presetId === p.id} onClick={() => onPickPreset?.(p.id)}
-                        title={p.id ? `Trocar para a disposição “${p.name}”` : "A disposição de fábrica do console"}>
-                        {p.name}{presetId === p.id && presetDirty ? " · alterada" : ""}
-                    </MenuItem>
-                ))}
-                <div className="kx-menu-sep" />
-                <MenuItem icon="grip" checked={editing} onClick={onEditLayout} title="Mudar os módulos de lugar, salvar disposições com nome · Esc conclui">{editing ? "Concluir a edição" : "Editar disposição"}</MenuItem>
-                <MenuItem onClick={() => { restoreLayout(); setOpen(null); }}>Restaurar disposição</MenuItem>
-                <MenuItem icon="keyboard" kbd="?" onClick={() => setOpen("atalhos")}>Atalhos do teclado</MenuItem>
-            </div>
+            <MenuList key="ver" className="pop kx-pop" label="Ver" items={items} closeOnPick={false} onClose={close}
+                style={{ right: Math.max(8, Math.round(window.innerWidth - (document.querySelector(".topbar .tb-ver")?.getBoundingClientRect().right ?? window.innerWidth - 8))), top: "var(--pop-top)", width: 220 }} />
         );
     }
     if (open === "cultos") {
-        return (
-            <div className="pop kx-pop" style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 300, maxHeight: 420, overflow: "auto" }}>
-                <div className="kx-menu-h"><span className="kx-section">Culto</span></div>
-                {!services.length && <div className="kx-menu-h"><span className="kx-meta">Nenhum culto ainda.</span></div>}
-                {services.slice(0, 20).map((s) => (
-                    <MenuItem key={s.id} checked={s.id === serviceId} onClick={() => { setServiceId(s.id); setOpen(null); }}>
-                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</span>
-                        <span className="kx-kbd">{s.date ? s.date.split("-").reverse().slice(0, 2).join("/") : ""}</span>
-                    </MenuItem>
-                ))}
-                <div className="kx-menu-sep" />
-                <MenuItem icon="list" onClick={() => { setOpen(null); onPlanner?.(serviceId); }}>Planejar o culto</MenuItem>
-                <MenuItem icon="plus" onClick={() => { setOpen(null); onPlanner?.("new"); }}>Novo culto</MenuItem>
-            </div>
-        );
+        const items = [
+            { head: "Culto" },
+            ...(!services.length ? [{ node: <div key="none" className="kx-menu-h"><span className="kx-meta">Nenhum culto ainda.</span></div> }] : []),
+            ...services.slice(0, 20).map((s) => ({ label: s.title, checked: s.id === serviceId, kbd: s.date ? s.date.split("-").reverse().slice(0, 2).join("/") : "", onSelect: () => { setServiceId(s.id); setOpen(null); } })),
+            "sep",
+            { label: "Planejar o culto", icon: "list", onSelect: go(() => onPlanner?.(serviceId)) },
+            { label: "Novo culto", icon: "plus", onSelect: go(() => onPlanner?.("new")) },
+        ];
+        return <MenuList key="cultos" className="pop kx-pop" label="Culto" items={items} closeOnPick={false} onClose={close} style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 300, maxHeight: 420, overflow: "auto" }} />;
     }
-    return (
-        <div className="pop kx-pop" style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }}>
-            <MenuItem icon="list" onClick={() => setOpen("cultos")}>Culto<span className="kx-kbd"><Icon name="chevron-right" /></span></MenuItem>
-            <MenuItem icon="list" onClick={() => { setOpen(null); onPlanner?.(serviceId); }}>Planejar o culto</MenuItem>
-            <MenuItem icon="film" onClick={() => { setOpen(null); onMedia?.(); }}>Biblioteca de mídia</MenuItem>
-            <MenuItem icon="megaphone" onClick={() => { setOpen(null); onNotices?.(); }}>Avisos</MenuItem>
-            <MenuItem icon="plus" onClick={() => { setOpen(null); onNewNotice?.(); }}>Novo aviso</MenuItem>
-            <MenuItem icon="book" onClick={() => { setOpen(null); onSchool?.(); }}>Escola bíblica</MenuItem>
-            <MenuItem icon="history" onClick={() => { setOpen(null); onReports?.(); }}>Relatórios</MenuItem>
-            <div className="kx-menu-sep" />
-            <MenuItem icon="monitor" onClick={() => setOpen("outs")}>Saídas</MenuItem>
-            <MenuItem icon="check" onClick={() => setOpen("verificar")}>Verificar tudo</MenuItem>
-            <MenuItem icon="keyboard" onClick={() => setOpen("atalhos")}>Atalhos<span className="kx-kbd">?</span></MenuItem>
-            <MenuItem icon="star" onClick={() => onWhatsNew?.()}>Novidades</MenuItem>
-            <MenuItem icon="sliders" onClick={() => { setOpen(null); onSettings?.("telas"); }}>Configurações</MenuItem>
-            <MenuItem icon="info" onClick={() => { setOpen(null); onSettings?.("sobre"); }}>Sobre o KERYX…</MenuItem>
-            {hasUpdate(update) && (
-                <MenuItem icon="download" onClick={() => onUpdateNow?.()}>
-                    <span style={{ flex: 1 }}>{update.status === "downloading" ? "Atualizando…" : "Atualizar agora"}</span>
-                    <span className="kx-kbd">{update.status === "downloading" ? `${update.percent}%` : update.version}</span>
-                </MenuItem>
-            )}
-        </div>
-    );
+    const items = [
+        { label: "Culto", icon: "list", kbd: <Icon name="chevron-right" />, onSelect: () => setOpen("cultos") },
+        { label: "Planejar o culto", icon: "list", onSelect: go(() => onPlanner?.(serviceId)) },
+        { label: "Biblioteca de mídia", icon: "film", onSelect: go(onMedia) },
+        { label: "Avisos", icon: "megaphone", onSelect: go(onNotices) },
+        { label: "Novo aviso", icon: "plus", onSelect: go(onNewNotice) },
+        { label: "Escola bíblica", icon: "book", onSelect: go(onSchool) },
+        { label: "Relatórios", icon: "history", onSelect: go(onReports) },
+        "sep",
+        { label: "Saídas", icon: "monitor", onSelect: () => setOpen("outs") },
+        { label: "Verificar tudo", icon: "check", onSelect: () => setOpen("verificar") },
+        { label: "Atalhos", icon: "keyboard", kbd: "?", onSelect: () => setOpen("atalhos") },
+        { label: "Novidades", icon: "star", onSelect: () => onWhatsNew?.() },
+        { label: "Configurações", icon: "sliders", onSelect: go(() => onSettings?.("telas")) },
+        { label: "Sobre o KERYX…", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
+        hasUpdate(update) && { label: update.status === "downloading" ? "Atualizando…" : "Atualizar agora", icon: "download", kbd: update.status === "downloading" ? `${update.percent}%` : update.version, onSelect: () => onUpdateNow?.() },
+    ];
+    return <MenuList key="menu" className="pop kx-pop" label="Menu" items={items} closeOnPick={false} onClose={close} style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }} />;
 }
 
 export function Shortcuts({ open, setOpen }) {
@@ -139,11 +128,12 @@ const TONE_CLS = { ok: "", rh: "is-rh", warn: "is-warn", off: "is-off" };
 export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose, onForget, removed = [], onRestore, idle, onIdle, onSettings }) {
     const look = useOutputLooks();
     const anchor = useAnchor(".topbar .kx-status", 440, open === "outs");
+    const box = useFocusFirst(open === "outs");
     if (open !== "outs") return null;
     const rows = health.rows;
     const summary = health.total ? `${health.connected} de ${health.total} conectadas${locked ? " · travadas" : ""}` : "nenhuma aberta";
     return (
-        <div className="pop kx-pop pop-outs" style={{ left: anchor?.left ?? 6, top: "var(--pop-top)", width: anchor?.width ?? 440, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }}>
+        <div ref={box} role="dialog" aria-label="Saídas" className="pop kx-pop pop-outs" style={{ left: anchor?.left ?? 6, top: "var(--pop-top)", width: anchor?.width ?? 440, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }}>
             <div className="kx-menu-h"><span className="kx-section" style={{ color: "var(--fg-1)" }}>Saídas</span><span style={{ flex: 1 }} /><span className={`kx-meta ${!health.connected ? "kx-warn" : ""}`}>{summary}</span></div>
             {byGroup(rows, (r) => (r.local ? r.key : r.screen)).map((g) => (
                 <React.Fragment key={g.key}>
@@ -220,7 +210,7 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
 // A click checks or unchecks and the list stays open; the last tab checked
 // cannot go. Under the (+), its right edge on the button's — above it when
 // the window has no room below (the panel beside the Prévia is low).
-export function TabsMenu({ open, list, onToggle, onRestore }) {
+export function TabsMenu({ open, list, onToggle, onRestore, onClose }) {
     const row = open?.startsWith("tabs:") ? open.slice(5) : null;
     if (!row || !PANEL_TABS[row]) return null;
     const plus = document.querySelector(`.console [data-tabs-plus="${row}"]`)?.getBoundingClientRect();
@@ -230,17 +220,15 @@ export function TabsMenu({ open, list, onToggle, onRestore }) {
         : below ? { right: Math.max(8, Math.round(window.innerWidth - plus.right)), top: Math.round(plus.bottom + 4), width: 240 }
             : { right: Math.max(8, Math.round(window.innerWidth - plus.right)), bottom: Math.round(window.innerHeight - plus.top + 4), width: 240 };
     return (
-        <div className="pop kx-pop tabs-menu" style={style} role="menu" aria-label={TABS_MENU_TITLE[row]}>
-            <div className="kx-menu-h"><span className="kx-section">{TABS_MENU_TITLE[row]}</span></div>
-            {tabsMenu(row, list).map((t) => (
-                <MenuItem key={t.id} role="menuitemcheckbox" aria-checked={t.checked} checked={t.checked} onClick={() => onToggle(row, t.id)}
-                    title={t.last ? "Pelo menos uma aba fica à vista" : undefined} aria-disabled={t.last || undefined}>
-                    <span className="tabs-menu-t">{t.name}{t.hint && <span className="kx-meta"> {t.hint}</span>}</span>
-                </MenuItem>
-            ))}
-            <div className="kx-menu-sep" />
-            <MenuItem onClick={() => onRestore(row)}>Restaurar abas padrão</MenuItem>
-        </div>
+        <MenuList key={row} className="pop kx-pop tabs-menu" style={style} label={TABS_MENU_TITLE[row]} closeOnPick={false} onClose={onClose} items={[
+            { head: TABS_MENU_TITLE[row] },
+            ...tabsMenu(row, list).map((t) => ({
+                label: <span className="tabs-menu-t">{t.name}{t.hint && <span className="kx-meta"> {t.hint}</span>}</span>, role: "menuitemcheckbox", checked: t.checked,
+                title: t.last ? "Pelo menos uma aba fica à vista" : undefined, ariaDisabled: t.last, onSelect: () => onToggle(row, t.id),
+            })),
+            "sep",
+            { label: "Restaurar abas padrão", onSelect: () => onRestore(row) },
+        ]} />
     );
 }
 
@@ -253,16 +241,15 @@ export function History({ open, setOpen, history, onPick, anchor = null }) {
         ? { right: Math.max(8, Math.round(window.innerWidth - anchor.right)), bottom: Math.round(window.innerHeight - anchor.top + 6), maxHeight: Math.max(160, Math.round(anchor.top - 12)), overflow: "auto", width: 300 }
         : { left: 6, top: "var(--pop-top)", width: 300 };
     return (
-        <div className="pop kx-pop hist-pop" style={style}>
-            <div className="kx-menu-h"><span className="kx-section">Voltar ao anterior</span><span style={{ flex: 1 }} /><span className="kx-meta">escolha para pôr na prévia</span></div>
-            {!history.length && <div className="kx-menu-h"><span className="kx-meta">Nada ainda.</span></div>}
-            {history.map((h) => (
-                <MenuItem key={h.at} onClick={() => { onPick(stageFromHistory(h, restoreArgs)); setOpen(null); }}>
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.title || h.layer}{h.layer === "content" && h.data.slides?.length > 1 ? ` · slide ${h.data.index + 1}` : ""}</span>
-                    <span className="kx-kbd">{new Date(h.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
-                </MenuItem>
-            ))}
-        </div>
+        <MenuList className="pop kx-pop hist-pop" style={style} label="Voltar ao anterior" closeOnPick={false} onClose={() => setOpen(null)} items={[
+            { node: <div key="h" className="kx-menu-h"><span className="kx-section">Voltar ao anterior</span><span style={{ flex: 1 }} /><span className="kx-meta">escolha para pôr na prévia</span></div> },
+            ...(!history.length ? [{ node: <div key="none" className="kx-menu-h"><span className="kx-meta">Nada ainda.</span></div> }] : []),
+            ...history.map((h) => ({
+                label: `${h.title || h.layer}${h.layer === "content" && h.data.slides?.length > 1 ? ` · slide ${h.data.index + 1}` : ""}`,
+                kbd: new Date(h.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+                onSelect: () => { onPick(stageFromHistory(h, restoreArgs)); setOpen(null); },
+            })),
+        ]} />
     );
 }
 
@@ -452,10 +439,11 @@ const ACTION_LABEL = { update: "Atualizar agora", whatsnew: "Ver novidades", "se
 // The bell's list: newest first, each with what can be done about it.
 export function Notifications({ open, setOpen, notes, update, onAction, onDismiss, onClear }) {
     const anchor = useAnchor(".topbar .tb-bell", 360, open === "notifs");
+    const box = useFocusFirst(open === "notifs");
     if (open !== "notifs") return null;
     const when = (at) => new Date(at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
     return (
-        <div className="pop kx-pop notifs" style={{ left: anchor?.left ?? 6, top: "var(--pop-top)", width: anchor?.width ?? 360, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }} role="dialog" aria-label="Notificações">
+        <div ref={box} className="pop kx-pop notifs" style={{ left: anchor?.left ?? 6, top: "var(--pop-top)", width: anchor?.width ?? 360, maxHeight: "calc(100vh - var(--pop-top) - 16px)", overflow: "auto" }} role="dialog" aria-label="Notificações">
             <div className="kx-menu-h"><span className="kx-section">Notificações</span><span style={{ flex: 1 }} />{notes.length > 0 && <Btn small onClick={onClear}>Limpar</Btn>}</div>
             {!notes.length && <div className="kx-menu-h"><span className="kx-meta">Nada por aqui. Atualizações e avisos de backup aparecem aqui.</span></div>}
             {notes.map((n) => {
