@@ -53,21 +53,30 @@ const dayOf = (date, now) => {
 // so a church that plans only the order would be shown invented figures
 // (owner decision 2026-10-12).
 // -> { text, more, muted, warn, title }: `more` is the part a narrow bar
-// drops first; `warn` makes it amber.
-export function serviceClock({ service, seconds = 0, late = 0, now, forecast = false }) {
+// drops first; `warn` makes it amber. `compact` (the top bar, Rodada E1):
+// the short form "19:00 · 9h46" in `text`, the whole sentence first in
+// `title` and as `label` (what a screen reader says); a running service
+// keeps its words ("Culto 0:42:10").
+export function serviceClock({ service, seconds = 0, late = 0, now, forecast = false, compact = false }) {
+    const say = (full, short) => {
+        if (!compact || !short) return full;
+        const sentence = [full.text, full.more].filter(Boolean).join(" · ");
+        return { ...full, text: short, more: "", label: sentence, title: `${sentence} · ${full.title}` };
+    };
     if (!service) return { text: "Sem culto", more: "", muted: true, warn: false, title: "Nenhum culto escolhido · escolha ou crie um na Setlist" };
     const mins = minutesOf(service.startTime) ?? minutesOf(service.time);
-    if (mins == null) return { text: "Culto sem horário", more: "", muted: true, warn: false, title: "Defina o horário em Planejar o culto (ou um horário de sempre em Configurações › Culto)" };
+    if (mins == null) return say({ text: "Culto sem horário", more: "", muted: true, warn: false, title: "Defina o horário em Planejar o culto (ou um horário de sempre em Configurações › Culto)" }, "Sem horário");
     const day = dayOf(service.date, now);
     const start = day + mins * 60000;
     const plan = "Planejar o culto · clique";
     if (now < start) {
         const today = dayOf(null, now) === day;
-        if (!today) return { text: `Culto em ${dm(start)} às ${hm(start)}`, more: "", muted: true, warn: false, title: plan };
-        return { text: `Começa às ${hm(start)}`, more: inWords(Math.ceil((start - now) / 60000)), muted: false, warn: false, title: plan };
+        if (!today) return say({ text: `Culto em ${dm(start)} às ${hm(start)}`, more: "", muted: true, warn: false, title: plan }, `${dm(start)} · ${hm(start)}`);
+        const left = inWords(Math.ceil((start - now) / 60000));
+        return say({ text: `Começa às ${hm(start)}`, more: left, muted: false, warn: false, title: plan }, `${hm(start)} · ${left.replace(/^em /, "")}`);
     }
     // Long over (a service from another day): just say which one it was.
-    if (now - start > 12 * 3600000) return { text: `Culto de ${dm(start)} às ${hm(start)}`, more: "", muted: true, warn: false, title: plan };
+    if (now - start > 12 * 3600000) return say({ text: `Culto de ${dm(start)} às ${hm(start)}`, more: "", muted: true, warn: false, title: plan }, `${dm(start)} · ${hm(start)}`);
     const text = `Culto ${hms(now - start)}`;
     if (!seconds || !forecast) return { text, more: "", muted: false, warn: false, title: `Começou às ${hm(start)} · ${plan}` };
     const ends = start + seconds * 1000 + late * 60000;

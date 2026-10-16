@@ -21,17 +21,19 @@
 .console .col > .kx-panel { flex: 1; }
 .console .col > .kx-panel.is-collapsed { flex: none; }
 .console .center { flex: 1; min-width: 0; }
-/* The top bar is a menu bar: left (menu, environments, Ver), the search in
-   the middle, right (service clock, clock, outputs, Telas). It has no panel
-   of its own: it sits on the window (bg-0) like the Windows title bar above
-   it; the search, the bell and the Telas group are bg-1 chips on it. Nothing
-   wraps; as it narrows it drops the service's end and the clock, then
-   shortens the outputs and the search. */
+/* The top bar is a menu bar: left (menu, environments, the menus), the
+   search in the middle, right (service clock, clock, outputs, Ver, the
+   bell). It has no panel of its own: it sits on the window (bg-0) like the
+   Windows title bar above it; the search is a bg-1 chip on it. Compact
+   since Rodada E1: "◷ 19:00 · 9h46", "2 telas" (the sentences in their
+   tooltips), the search at most 320 px, and the screen actions in the
+   Programa's pill. Nothing wraps; as it narrows it drops the service's
+   end and the clock, then shortens the search. */
 .console .topbar { height: var(--topbar); flex: none; display: flex; align-items: center; gap: var(--space-2); padding: 0 2px; background: none; white-space: nowrap; container: topbar / inline-size; overflow: hidden; }
 .console .topbar > div { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .console .topbar .tb-l, .console .topbar .tb-r { flex: none; }
 .console .topbar .tb-c { flex: 1; justify-content: center; }
-.console .topbar .tb-search { width: 100%; max-width: 420px; min-width: 0; height: 32px; padding: 0 var(--space-3); border-radius: var(--radius-round); background: var(--bg-1); cursor: text; }
+.console .topbar .tb-search { width: 100%; max-width: 320px; min-width: 0; height: 32px; padding: 0 var(--space-3); border-radius: var(--radius-round); background: var(--bg-1); cursor: text; }
 .console .topbar .tb-search:hover { box-shadow: inset 0 0 0 1px var(--line); }
 .console .topbar .kx-seg { background: var(--bg-1); height: 32px; padding: 3px; border-radius: var(--radius-control); }
 .console .topbar .kx-seg > button { height: 26px; }
@@ -49,12 +51,7 @@
 /* The bell: a red dot while something is unread. */
 .console .topbar .tb-bell { position: relative; display: inline-flex; flex: none; }
 .console .topbar .tb-bell-dot { position: absolute; top: 1px; right: 1px; width: 8px; height: 8px; border-radius: 50%; background: var(--air); box-shadow: 0 0 0 2px var(--bg-0); pointer-events: none; }
-.console .topbar .tb-outs-s { display: none; font-variant-numeric: tabular-nums; }
-.console .topbar .tb-screens { display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 2px; flex: none; border-radius: var(--radius-round); background: var(--bg-1); }
-/* The screen actions: one round bg-1 chip of 28 px glyph buttons (names in the tooltips). */
-.console .topbar .tb-screens .kx-btn { height: 28px; width: 28px; padding: 0; border-radius: var(--radius-round); }
-.console .topbar .tb-screens .kx-btn:hover { background: var(--bg-2); }
-.console .topbar .tb-screens .kx-btn.is-on { background: var(--bg-3); }
+.console .topbar .tb-outs-l { font-variant-numeric: tabular-nums; }
 .console .topbar .kx-seg > button { white-space: nowrap; }
 /* The environments: menu-bar tabs, the active one underlined (kx-tabs without its rule). */
 .console .envtabs { height: var(--topbar); border-bottom: 0; padding: 0; }
@@ -93,10 +90,6 @@
 @container topbar (max-width: 1240px) { .console .topbar .tb-menus, .console .topbar .tb-div { display: none; } }
 @container topbar (max-width: 1400px) { .console .topbar .tb-svc-more { display: none; } }
 @container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
-@container topbar (max-width: 1200px) {
-    .console .topbar .tb-outs-l { display: none; }
-    .console .topbar .tb-outs-s { display: inline; }
-}
 @container topbar (max-width: 1080px) {
     .console .topbar .tb-search { width: 32px; max-width: 32px; padding: 0; justify-content: center; }
     .console .topbar .tb-search input, .console .topbar .tb-search kbd { display: none; }
@@ -132,23 +125,54 @@
 .console .palette .kx-field input { font-size: 13px; }
 .console .palette .res { overflow: auto; padding: 0 var(--space-1) var(--space-1); }
 .console .palette .kx-row { border-radius: var(--radius-control); }
-/* The live column: one block (Programa, Prévia + Enviar, player slot,
-   Próximo) as wide as the band allows and as tall as fits. Its width is
-   min(band, (height − K) / 0.5625): 9/16 for the Programa alone (the
-   Prévia lives in the band below since 2026-10-13), K = the player slot 36
-   + gap 8. */
-.console .mons { --live-k: 44px; display: flex; flex-direction: column; align-items: center; padding: 0; min-height: 0; flex: 1; container-type: size; }
+/* The live column: the Programa (no header since Rodada E1: its top lines
+   up with the panels beside it) and the player slot under it, as wide as
+   the cell allows and as tall as fits. Its width is min(cell, (height − K)
+   / 0.5625): 9/16 for the Programa alone (the Prévia lives in the band
+   below since 2026-10-13), K = the player slot 64 + gap 8 (dock.js
+   PLAYER_SLOT). */
+.console .mons { --live-k: 72px; display: flex; flex-direction: column; align-items: center; padding: 0; min-height: 0; flex: 1; container-type: size; }
 .console .mons.no-player { --live-k: 0px; } /* the player placed elsewhere: the Programa takes its slot */
 .console .liveblock { width: min(100cqw, calc((100cqh - var(--live-k)) / 0.5625)); flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .console .liveblock > * { flex: none; }
-.console .prog-where { flex: none; white-space: nowrap; margin-right: var(--space-2); }
-/* The Programa's caption is its panel's header: word, title, position on one line.
-   The header gives way before the title does: first the names of the secondary
-   controls (Voltar ao anterior becomes its glyph), then the screen count's words. */
-.console .prog-panel > .kx-panel-h { container: prog-h / inline-size; }
-@container prog-h (max-width: 716px) { .console .hist-lbl { display: none; } } /* 700 + the 16 px of card padding the bare header gave back */
-@container prog-h (max-width: 576px) { .console .prog-where { display: none; } }
+/* A header whose caption is a control of its own (the Editor da tela's tabs). */
 .console .kx-panel-h .kx-panel-cap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-2); }
+/* The Programa's pill (ProgramaPill, Rodada E1): its caption and controls
+   inside the screen, bottom-right, over the frame (::after, z 200), the
+   Multiview's labels (201) and the drop hint (210); it takes the clicks the
+   screen never does. As the screen narrows it gives way before the title
+   does: how long on air, then on how many screens with Voltar ao anterior
+   and Camadas (into its "…", the Programa's menu), then the screen
+   actions too (the keys B, L, C and Esc stay), and on a tiny screen the
+   title goes. */
+.console .prog .kx-mon-screen { container-name: prog-screen; }
+.console .prog-pill { position: absolute; right: var(--space-2); bottom: var(--space-2); z-index: 220; display: flex; align-items: center; gap: 6px; max-width: calc(100% - 2 * var(--space-2)); height: 32px; box-sizing: border-box; padding: 0 4px 0 10px; border-radius: var(--radius-round); background: #0d0d0cd9; box-shadow: 0 0 0 1px #ffffff14; font-family: var(--font-sans); color: var(--fg-2); white-space: nowrap; pointer-events: auto; }
+.console .prog-pill .kx-prog-cap { flex: 0 1 auto; gap: 6px; }
+.console .prog-pill .pp-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--fg-3); }
+.console .prog-pill.is-air .pp-dot { background: var(--air-fg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--air) 30%, transparent); }
+.console .prog-pill.is-rh .pp-dot { background: var(--rh-fg); }
+.console .prog-pill.is-warn .pp-dot { background: var(--warn-fg); }
+.console .prog-pill .pp-title { max-width: 30cqw; font-size: 13px; line-height: 16px; font-weight: 600; color: var(--fg-1); } /* a long title ends in "…" and never stretches the pill across the lyrics */
+.console .prog-pill .kx-meta { color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.console .prog-pill .prog-where { flex: none; }
+.console .prog-pill .prog-where.kx-warn { color: var(--warn-fg); }
+.console .prog-pill .prog-locked { height: 18px; padding: 0 6px; font-size: 10px; }
+.console .prog-pill .pp-sep { flex: none; width: 1px; height: 14px; background: #ffffff26; }
+.console .prog-pill .pp-btns, .console .prog-pill .pp-screens { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.console .prog-pill .kx-btn { flex: none; width: 24px; height: 24px; padding: 0; border-radius: var(--radius-round); background: transparent; color: var(--fg-1); }
+.console .prog-pill .kx-btn:hover { background: #ffffff1f; }
+.console .prog-pill .kx-btn.is-on { background: var(--bg-3); }
+.console .prog-pill .pp-more { display: none; }
+@container prog-screen (max-width: 640px) { .console .prog-pill .kx-since { display: none; } }
+@container prog-screen (max-width: 560px) { .console .prog-pill :is(.prog-where, .pp-btns) { display: none; } .console .prog-pill .pp-more { display: inline-flex; } }
+@container prog-screen (max-width: 480px) { .console .prog-pill .pp-full { display: none; } }
+@container prog-screen (max-width: 300px) { .console .prog-pill .pp-title { display: none; } }
+/* Over the Multiview the pill sits on the fourth screen: folded, title and
+   all, so that screen's own label stays readable. */
+.console .mx .prog-pill :is(.pp-full, .pp-title, .kx-since, .prog-where) { display: none; }
+.console .mx .prog-pill .pp-more { display: inline-flex; }
+/* The Bíblia's No ar monitor: the screen actions alone, in the same pill. */
+.console .scr-pill { padding: 0 4px; }
 .kx-prog-cap { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .kx-prog-cap .kx-live-cap { flex: none; color: var(--fg-3); }
 .kx-prog-cap .kx-mon-t { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -201,14 +225,14 @@
 .console .col.center { gap: var(--gutter); }
 .console .bb-side { flex: 1; align-self: stretch; min-width: 180px; min-height: 0; contain: size; }
 /* A row of tabs the operator trims (TabsPanel.jsx, the Biblioteca): the
-   (+) at its end opens the list with check marks. */
-.console .tabrow > .tabs-plus { margin-left: auto; align-self: center; flex: none; width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border-radius: var(--radius-control); color: var(--fg-3); }
-.console .tabrow > .tabs-plus:hover { background: var(--bg-2); color: var(--fg-1); }
-.console .tabrow > .tabs-plus.is-on { background: var(--bg-3); color: var(--fg-1); }
-.console .tabrow > .tabs-plus.is-on::after { display: none; }
+   (+) that opens the list with check marks sits in the panel's header, at
+   the level of its title like every module's + (Rodada E1). The panel
+   beside the Prévia got a thin header of its own for it ("Painel"). */
+.console .kx-panel-h > .tabs-plus { flex: none; width: 24px; height: 24px; }
+.console .tabs-panel > .tabs-panel-h { height: 28px; }
 /* Too many tabs for the width: the row breaks into a second line (owner
-   2026-10-14, the Biblioteca review), never a cut title; the (+) stays on the
-   last line. Only a single tab wider than the whole panel still shortens. */
+   2026-10-14, the Biblioteca review), never a cut title. Only a single tab
+   wider than the whole panel still shortens. */
 .console .tabrow { height: auto; min-height: var(--row); flex-wrap: wrap; }
 .console .tabrow > button[role="tab"] { height: var(--row); white-space: nowrap; min-width: 0; max-width: 100%; overflow: clip; overflow-clip-margin: 1px; text-overflow: ellipsis; }
 .console .tabs-panel > .kx-tabs { flex: none; overflow: hidden; }
@@ -229,8 +253,8 @@
 .console .lines-pick { display: inline-flex; align-items: center; gap: 4px; }
 .console .lines-pick .qt-min { width: 46px; }
 
-/* The player's slot is always there; the player shows only while something plays. */
-.console .pslot { height: 36px; }
+/* The player's slot is always there (two rows, Rodada E1); idle, the player dims. */
+.console .pslot { height: 64px; }
 .console .pslot .player.is-idle { opacity: .55; }
 /* Density (Ver › Densidade). Confortável: 32 px rows, 14 px titles that may
    take two lines (long Portuguese names stay readable); the slides' text at
@@ -574,9 +598,20 @@
 .console .kx-preset-t { min-width: 0; max-width: 100%; height: 24px; padding: 0 4px 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; }
 .console .kx-preset-x { flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; color: var(--fg-3); }
 .console .kx-preset-x:hover { color: var(--fg-1); }
-/* ---------- Player, on top of the Programa: transport, volume, L/R meters ---------- */
-.console .player { flex: none; height: 36px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-1) 0 var(--space-2); background: var(--bg-2); border-radius: var(--radius-control); white-space: nowrap; min-width: 0; container: player / inline-size; }
-.console .player .pl-what { display: inline-flex; align-items: center; gap: 6px; flex: 0 1 240px; min-width: 0; color: var(--fg-1); }
+/* ---------- Player, under the Programa: two rows (Rodada E1) ---------- */
+/* Row 1: what plays, the transport, the time and the progress bar with the
+   whole width; row 2: the layer it controls, the letra automática, where the
+   sound goes, then the volume and the L/R meters at its right end. 64 px in
+   all (.pslot, dock.js PLAYER_SLOT). Narrowing (a laptop: ~490–580 px) drops
+   the secondary bits first — the kind, −10/+10, the volume number, then the
+   position and the labels of where and of the letra automática (which
+   shorten with "…" before that) — never the bar, the remaining time or Tocar. */
+.console .player { flex: none; height: 64px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 4px var(--space-1) 4px var(--space-2); background: var(--bg-2); border-radius: var(--radius-control); white-space: nowrap; min-width: 0; container: player / inline-size; }
+.console .player .pl-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.console .player .pl-row1 { height: 28px; }
+.console .player .pl-row2 { height: 26px; }
+.console .player .pl-gap { flex: 1 1 0; min-width: 0; }
+.console .player .pl-what { display: inline-flex; align-items: center; gap: 6px; flex: 0 4 auto; max-width: 32cqw; min-width: 64px; color: var(--fg-1); } /* as long as its title, a third of the row at most; it gives way before the bar does */
 .console .player .pl-what .t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .console .player .pl-what .kx-i { color: var(--fg-3); flex: none; }
 .console .player.is-idle .pl-what { color: var(--fg-3); }
@@ -584,12 +619,11 @@
 .console .player .kx-seg { flex: none; }
 .console .player .pl-btns { display: inline-flex; align-items: center; gap: 2px; flex: none; }
 .console .player .pl-skip { height: var(--row); padding: 0 6px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--fg-2); }
-.console .player .pl-play { width: 32px; height: 32px; }
 .console .player .pl-play:not(:disabled) { background: var(--bg-3); color: var(--fg-1); }
 .console .player .pl-time { flex: none; min-width: 0; font-variant-numeric: tabular-nums; }
 /* The progress bar: a real bar (6 px), red while live, click to seek; the
    thumb shows on hover. Remaining time and the length sit to its right. */
-.console .player .pl-seek { flex: 1 1 80px; min-width: 60px; height: 6px; position: relative; background: var(--bg-3); border-radius: 3px; cursor: pointer; }
+.console .player .pl-seek { flex: 1 1 140px; min-width: 80px; height: 6px; position: relative; background: var(--bg-3); border-radius: 3px; cursor: pointer; }
 .console .player .pl-seek > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--fg-2); border-radius: 3px; }
 .console .player .pl-seek.is-live > i { background: var(--air); }
 .console .player .pl-seek > b { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--radius-round); background: var(--fg-1); opacity: 0; transition: opacity .12s; }
@@ -602,27 +636,28 @@
 .console .player .pl-follow.is-on { color: var(--live); background: color-mix(in srgb, var(--live) 16%, transparent); }
 .console .player .pl-follow.is-paused { color: var(--warn); }
 .console .player .pl-follow-go { flex: none; height: 26px; gap: 5px; font-size: 12px; }
-@container player (max-width: 720px) { .console .player .pl-follow .lbl { display: none; } }
 .console .player .pl-seek.is-unknown, .console .player.is-idle .pl-seek { cursor: default; }
 .console .player .pl-left { flex: none; display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 12px; font-variant-numeric: tabular-nums; min-width: 40px; }
 .console .player .pl-left small { font-size: 10px; color: var(--fg-3); }
 .console .player .pl-vol { display: inline-flex; align-items: center; gap: 2px; flex: none; }
-.console .player .pl-vol input { -webkit-appearance: none; appearance: none; width: 72px; height: 16px; background: transparent; cursor: pointer; margin: 0 4px; }
+.console .player .pl-vol .kx-btn { width: 24px; height: 24px; }
+.console .player .pl-vol input { -webkit-appearance: none; appearance: none; width: 88px; height: 16px; background: transparent; cursor: pointer; margin: 0 4px; }
 .console .player .pl-vol input::-webkit-slider-runnable-track { height: 2px; border-radius: 1px; background: linear-gradient(to right, var(--fg-2) var(--v), var(--bg-3) var(--v)); }
 .console .player .pl-vol input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 10px; margin-top: -4px; border-radius: var(--radius-round); background: var(--fg-1); }
 .console .player .pl-vol input:disabled { opacity: var(--dim); cursor: default; }
 .console .player .pl-vol input:focus-visible { outline: var(--bar) solid var(--brand); outline-offset: 2px; }
 .console .player .pl-num { font-size: 11px; color: var(--fg-3); width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
-.console .player .meters { gap: 3px; }
-.console .player .meters .kx-meter { height: 28px; gap: 2px; }
+.console .player .meters { gap: 3px; flex: none; }
+.console .player .meters .kx-meter { height: 22px; gap: 2px; }
 .console .player .meters .kx-meter > i { width: 6px; }
 .console .player .meters .lr { font-size: 9px; line-height: 10px; width: 8px; color: var(--fg-3); white-space: normal; word-spacing: 8px; }
 .console .player .meters[data-state="off"], .console .player .meters[data-state="wait"] { opacity: var(--dim); }
-.console .player .pl-where { display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.console .player .pl-where { display: inline-flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 16px; overflow: hidden; }
 .console .player .pl-where .lbl { overflow: hidden; text-overflow: ellipsis; }
-@container player (max-width: 860px) { .console .player .pl-where .lbl, .console .player .pl-kind { display: none; } }
-@container player (max-width: 720px) { .console .player .pl-num, .console .player .pl-skip { display: none; } .console .player .pl-what { flex-basis: 150px; } }
-@container player (max-width: 580px) { .console .player .pl-time { display: none; } .console .player .pl-vol input { width: 48px; } }
+@container player (max-width: 720px) { .console .player .pl-kind { display: none; } .console .player .pl-vol input { width: 64px; } }
+@container player (max-width: 640px) { .console .player .pl-skip { display: none; } .console .player .pl-what { max-width: 26cqw; } }
+@container player (max-width: 560px) { .console .player .pl-num { display: none; } }
+@container player (max-width: 460px) { .console .player .pl-time, .console .player .pl-where .lbl, .console .player .pl-follow .lbl { display: none; } .console .player .pl-vol input { width: 48px; } }
 /* ---------- Bíblia: quick jump (Livro → Capítulo → Versículo) ---------- */
 .console .qj { position: absolute; z-index: 40; left: 50%; top: 120px; transform: translateX(-50%); width: 560px; max-width: calc(100vw - 24px); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .console .qj-steps { display: flex; gap: var(--space-3); }
@@ -1148,6 +1183,11 @@
 .console .cfg .cfg-kinds button:hover { background: var(--bg-3); color: var(--fg-1); }
 .console .cfg .cfg-kinds button.is-on { background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .console .cfg .cfg-kinds button.is-on .kx-i { visibility: visible; }
+/* Ajustes › Aviso rápido (Rodada E3): a sub-title across the form's two
+   columns, the listhead's look, with its note and "Ver exemplo". */
+.console .cfg .frm .cfg-frm-head { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); margin-top: var(--space-1); min-width: 0; }
+.console .cfg .frm .cfg-frm-head .kx-section { font-size: 10px; color: var(--fg-3); white-space: nowrap; }
+.console .cfg .frm .cfg-frm-head .grow { flex: 1; }
 
 /* Configurações' sliders and sample screens (Fundos, Gerados, a tema's length). */
 .console .ap-range { width: 180px; accent-color: var(--prev); }

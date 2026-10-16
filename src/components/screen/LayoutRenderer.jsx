@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenRenderer from "./ScreenRenderer";
+import AlertBar from "./AlertBar";
 import ChordedLines, { chordedOf, Transpose } from "@/components/network/ChordedLines";
 import { transposeChords } from "@/utils/chordTranspose";
 import { typeLabel } from "@/lib/console/setlist";
@@ -17,16 +18,22 @@ const FONT = { ...FONT_MAP, mono: 'ui-monospace, "Cascadia Mono", Consolas, mono
 // editor's canvas (`ghost`: elements hidden by their rule are drawn faint,
 // so they can be picked). Sized in container units from its own box, so
 // every surface shows the same picture in proportion; `scale` is the
-// output's Escala do texto. `children` go on top (the alert banner). A
-// Projeção element draws `screenState` (the output's view of the live state,
-// src/lib/outputPrefs.js prefState; the live state itself by default) with
-// ScreenRenderer, playing sound when `audio`; with a timer element in the
-// layout it leaves the full-screen tool layer out (the timer is in the
-// element instead).
-export default function LayoutRenderer({ layout, live, screenState, nowMs, logoUrl = "", upcoming = [], hasService = false, church = null, scale = 1, embed = false, ghost = false, audio = false, children }) {
+// output's Escala do texto. `children` go on top. A Projeção element draws
+// `screenState` (the output's view of the live state, src/lib/outputPrefs.js
+// prefState; the live state itself by default) with ScreenRenderer, playing
+// sound when `audio`; with a timer element in the layout it leaves the
+// full-screen tool layer out (the timer is in the element instead).
+// `alert`: the Aviso rápido this screen draws (Rodada E3), over the whole
+// drawing in the screen's look, never inside the Projeção element; left
+// undefined (the Pastor), the element draws what its state has, as before.
+export default function LayoutRenderer({ layout, live, screenState, alert, nowMs, logoUrl = "", upcoming = [], hasService = false, church = null, scale = 1, embed = false, ghost = false, audio = false, children }) {
     const ctx = useMemo(() => layoutContext({ live, now: nowMs, upcoming, hasService, church }), [live, nowMs, upcoming, hasService, church]);
     const base = screenState === undefined ? live : screenState;
-    const screen = useMemo(() => (base?.tool && layoutHasTimer(layout) ? { ...base, tool: null } : base), [base, layout]);
+    const screen = useMemo(() => {
+        let s = base?.tool && layoutHasTimer(layout) ? { ...base, tool: null } : base;
+        if (alert !== undefined && s?.alert) s = { ...s, alert: null };
+        return s;
+    }, [base, layout, alert]);
     // A new song starts untransposed (the Cifra and the chorded words).
     const [transpose, setTranspose] = useState(0);
     const songKey = ctx.content?.startedAt ?? null;
@@ -46,6 +53,7 @@ export default function LayoutRenderer({ layout, live, screenState, nowMs, logoU
                 if (!shown && !ghost) return null;
                 return <Element key={el.id} el={el} ctx={ctx} shown={shown} ghost={ghost} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
             })}
+            {alert && <AlertBar alert={alert} />}
             {children}
         </div>
     );

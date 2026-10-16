@@ -157,18 +157,20 @@ export function outputHealth({ outputs = [], seen = {}, locked = false, air = ""
 
     // The status in the top bar: a problem wins, then the lock (blue: the
     // screens are not following the console), then nothing open (amber: a
-    // green dot never sits next to a zero).
+    // green dot never sits next to a zero). `compact` is what the bar shows
+    // ("2 telas", Rodada E1); the whole `label` rides its tooltip.
+    const telas = (n) => (n === 1 ? "1 tela" : `${n} telas`);
     let status;
-    if (problems.length) status = { label: `Saídas · ${problems.length} com problema`, short: "!", state: "warn" };
-    else if (locked) status = { label: "Telas travadas", short: "Travadas", state: "rh" };
-    else if (!connected) status = { label: "Nenhuma saída aberta", short: "0", state: "warn" };
-    else status = { label: `Saídas · ${connected} ${connected === 1 ? "conectada" : "conectadas"}`, short: String(connected), state: "" };
+    if (problems.length) status = { label: `Saídas · ${problems.length} com problema`, compact: `${problems.length} com problema`, state: "warn" };
+    else if (locked) status = { label: "Telas travadas", compact: "Travadas", state: "rh" };
+    else if (!connected) status = { label: "Nenhuma saída aberta", compact: "Nenhuma tela", state: "warn" };
+    else status = { label: `Saídas · ${connected} ${connected === 1 ? "conectada" : "conectadas"}`, compact: telas(connected), state: "" };
 
-    // Where the Programa is: beside its caption.
+    // Where the Programa is: the sentence, and the short form its pill shows.
     let onAir;
-    if (!connected) onAir = { text: "em nenhuma tela", warn: true };
-    else if (problems.length) onAir = { text: `em ${connected} de ${total} telas`, warn: true };
-    else onAir = { text: connected === 1 ? "em 1 tela" : `em ${connected} telas`, warn: false };
+    if (!connected) onAir = { text: "em nenhuma tela", short: "nenhuma tela", warn: true };
+    else if (problems.length) onAir = { text: `em ${connected} de ${total} telas`, short: `${connected} de ${total} telas`, warn: true };
+    else onAir = { text: `em ${telas(connected)}`, short: telas(connected), warn: false };
 
     // One banner (banners never stack): the projector on the wrong monitor
     // first (it has its own, with Tela preta and Mostrar logo), else the

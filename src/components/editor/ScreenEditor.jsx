@@ -8,12 +8,12 @@ import OutputPrefCard from "../console/settings/OutputPrefCard";
 import { mainLayer } from "@shared/live-state.mjs";
 import {
     ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
-    normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, FACTORY_LAYOUTS,
+    normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, FACTORY_LAYOUTS, seedLayoutId,
 } from "@/lib/layouts";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
-import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars } from "@/lib/outputPrefs";
+import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars, prefViewKey, alertOf } from "@/lib/outputPrefs";
 import { useChurch } from "@/hooks/useChurch";
-import { sampleLive, SAMPLE_ITEMS } from "../console/settings/sample";
+import { sampleLive, sampleNotice, sampleAlert, SAMPLE_ITEMS } from "../console/settings/sample";
 import { ConfirmContext } from "../console/ConfirmDialog";
 import useSortable from "../console/useSortable";
 import { moveTo } from "@/lib/console/dropOrder";
@@ -22,9 +22,9 @@ import { useWinCol } from "@/components/console/winLayout";
 const HANDLES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // The screens the Editor edits (every page with settings; Transmissão has
-// no canvas, only its settings) and the ready design each one starts from.
+// no canvas, only its settings). Each starts from its page's ready design
+// (seedLayoutId in layouts.js).
 export const EDITOR_SCREENS = [...PREF_OUTPUTS, "/StageView", "/PastorView", "/StreamView"];
-const SEED = { "/StageView": "factory:palco", "/PastorView": "factory:pastor" };
 // What a design keeps on the row: the drawing alone (no name or category —
 // the screen itself is the identity; owner 2026-10-13).
 const designFields = (d) => { if (!d) return null; const f = layoutFields(normalizeLayout(d)); return { elements: f.elements, background: f.background }; };
@@ -32,7 +32,7 @@ const CATEGORY = { "/StageView": "palco", "/PastorView": "pastor" };
 // The page's ready design, as a fresh draft for this screen.
 const seedFor = (path) => {
     const cat = CATEGORY[path] || "publico";
-    const f = findLayout(SEED[path] || "factory:projecao", []);
+    const f = findLayout(seedLayoutId(path), []);
     return normalizeLayout(f ? { ...duplicateLayout(f), name: "", category: cat, factory: false } : newLayout(cat));
 };
 
@@ -264,10 +264,25 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const madeAt = useRef(now);
     const sampleDoc = useMemo(() => ({ ...sampleLive(madeAt.current), session: { startedAt: madeAt.current - 42 * 60000 } }), []);
     const liveOn = liveState && mainLayer(liveState) !== "none" ? liveState : null;
-    const live = source === "sample" || !liveOn ? sampleDoc : { ...liveOn, session: liveOn.session || sampleDoc.session };
+    const shown = source === "sample" || !liveOn ? sampleDoc : { ...liveOn, session: liveOn.session || sampleDoc.session };
+    // A screen that shows only avisos (Comunicação) gets an example aviso
+    // when none is on air, as Telas e saídas' still does: a song would
+    // leave it on the idle look.
+    const noticeDoc = useMemo(() => sampleNotice(madeAt.current), []);
+    const avisos = renderer && prefViewKey(path, pref) === "/CommunicationProjection" && !shown.communication ? { ...shown, communication: noticeDoc.communication } : shown;
+    // Ajustes › Aviso rápido › Ver exemplo (Rodada E3): an example bar on
+    // the canvas while the settings half is open, unless one is on air.
+    const [alertSample, setAlertSample] = useState(null);
+    const live = alertSample && tab === "ajustes" && !avisos.alert ? { ...avisos, alert: alertSample } : avisos;
+    // On: the example shows (a fresh one when asked, so its entrance plays).
+    const showAlertSample = (on, fresh = false) => setAlertSample((cur) => (on ? (cur && !fresh ? cur : sampleAlert(Date.now())) : null));
     // The preview is always THIS screen, with its real settings: prefState +
     // the kp-out vars (renderer pages), the Escala alone (Palco e Pastor).
     const ctxTheme = renderer && pref.themeId ? themes.find((t) => t.id === pref.themeId) || null : null;
+    const screenState = renderer ? prefState(path, live, pref, ctxTheme) : undefined;
+    // The Aviso rápido over the whole drawing, in this screen's look, as the
+    // page draws it (OutputScreen, StageView); the Pastor's draws none.
+    const canvasAlert = renderer ? screenState?.alert ?? null : path === "/StageView" ? (live.content ? alertOf(live, pref) : null) : undefined;
 
     const upload = async (file, apply) => {
         if (!file) return;
@@ -485,7 +500,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                             drawing's draft — their own half since Rodada C. */}
                         {(isStream || tab === "ajustes") && <>
                             <div className="listhead"><span className="kx-section">Ajustes <span className="kx-count">· valem também para as telas na rede desta página</span></span></div>
-                            <OutputPrefCard inEditor output={{ key: path, label: name }} row={row} themes={themes} c={cLike} />
+                            <OutputPrefCard inEditor output={{ key: path, label: name }} row={row} themes={themes} c={cLike} alertSample={Boolean(alertSample)} onAlertSample={showAlertSample} />
                         </>}
                     </div>
                     {draft && !isStream && !hosted && (
@@ -509,7 +524,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                         <div className="le-stage">
                             <div ref={screenRef} className="le-screen" onPointerDown={() => setSel(null)}>
                                 <div className={`le-fill ${renderer ? "kp-out" : ""}`} style={renderer ? prefVars(pref) || undefined : undefined}>
-                                    <LayoutRenderer layout={draft} live={live} screenState={renderer ? prefState(path, live, pref, ctxTheme) : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} scale={!renderer ? pref.scale : undefined} embed ghost />
+                                    <LayoutRenderer layout={draft} live={live} screenState={screenState} alert={canvasAlert} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} scale={!renderer ? pref.scale : undefined} embed ghost />
                                 </div>
                                 <div className="le-over" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
                                     {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}

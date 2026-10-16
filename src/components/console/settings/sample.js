@@ -22,6 +22,12 @@ export function sampleLive(now, style = {}) {
     }, now);
 }
 
+// An Aviso rápido on air (its `since` replays the bar's entrance), for the
+// Editor's look at the bar a screen draws (Rodada E3).
+export function sampleAlert(now) {
+    return applyOp(emptyState(now), "alert.show", { message: "Carro placa ABC-1234, procure a recepção", type: "message" }, now).alert;
+}
+
 // An aviso on air, for the outputs whose view only shows avisos.
 export function sampleNotice(now) {
     return applyOp(emptyState(now), "communication.show", {

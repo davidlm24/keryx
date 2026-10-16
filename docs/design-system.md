@@ -172,9 +172,12 @@ to the 960 × 600 window minimum); one live column that never stacks below
 anything; the Setlist a column when wide and the Biblioteca's first tab
 otherwise; Camadas a section above the Setlist in that column when wide
 (owner's request, 2026-10-10; a horizontal splitter between them) and a
-drawer from the Programa's header otherwise; **Ver** (beside the bell) and the
-screen actions (Tela preta, Logo, Limpar, Encerrar: one chip of glyphs since
-2026-10-10) in the top bar, which fits on one line at every width.
+drawer from the Programa's pill otherwise; **Ver** (beside the bell) in the
+top bar, which fits on one line at every width. The screen actions (Tela
+preta, Logo, Limpar, Encerrar: one chip of glyphs in the top bar from
+2026-10-10) are glyphs in the Programa's pill since Rodada E1 (2026-10-16):
+the Programa has no header, its caption and controls sit in one pill inside
+the screen, bottom-right.
 
 **Editar layout (2026-10-12):** Ver › *Editar layout* lets the operator move
 the columns and the cards stacked in a column, in the console and in the
@@ -314,8 +317,8 @@ app follows the full modular layout of artboards 1–7. The top bar is a menu
 bar, drawn straight on the window (`bg-0`, no panel, 2026-10-09): the KERYX
 mark (menu), the environment tabs **KERYX | Bíblia** (`kx-tabs`, underline in
 brand), the search, the service clock, a compact clock, the outputs status,
-Ver and the bell, and the screen actions as one chip of glyphs, on one line at
-every width.
+Ver and the bell, on one line at every width (the screen actions moved into
+the Programa's pill in Rodada E1, 2026-10-16).
 The Bible quick jump (Holyrics-style "jo 3 16") is a `kx-pop` with Livro /
 Capítulo / Versículo captions over the typed text and the candidate books.
 

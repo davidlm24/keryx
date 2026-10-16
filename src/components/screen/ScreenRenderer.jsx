@@ -1,6 +1,7 @@
 import React from "react";
 import "./screen.css";
 import GeneratorBackground from "./GeneratorBackground";
+import AlertBar from "./AlertBar";
 import { mainLayer, currentSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
@@ -68,7 +69,7 @@ export default function ScreenRenderer({ state, now, logoUrl = "", preview = fal
                 <div className="ks-vidcover"><LiveVideo item={state.video} muted className="ks-vidcover-v" /></div>
             )}
             <Overlays overlays={state.overlays} z={z("overlays")} />
-            {state.alert && <div className={`ks-alert ks-alert-${state.alert.type}`}>{state.alert.message}</div>}
+            <AlertBar alert={state.alert} />
         </div>
     );
 }

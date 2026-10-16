@@ -24,7 +24,7 @@ export default function OutputScreen({ page, live, prefs, now, logoUrl, audio })
     const state = prefState(page, live, pref, theme);
     const vars = prefVars(pref);
     const screen = layout
-        ? <LayoutRenderer layout={layout} live={live} screenState={state} nowMs={now} logoUrl={logoUrl} upcoming={upcoming} hasService={hasService} church={church} audio={audio} />
+        ? <LayoutRenderer layout={layout} live={live} screenState={state} alert={state?.alert ?? null} nowMs={now} logoUrl={logoUrl} upcoming={upcoming} hasService={hasService} church={church} audio={audio} />
         : <ScreenRenderer fill state={state} now={now} logoUrl={logoUrl} audio={audio} />;
     return vars ? <div className="kp-out" style={vars}>{screen}</div> : screen;
 }

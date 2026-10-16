@@ -92,3 +92,19 @@ test("service clock: past the end, and a service long over", () => {
     assert.equal(serviceClock({ service: { date: "2026-10-09", startTime: "23:00" }, now: new Date(2026, 9, 10, 0, 30).getTime() }).text, "Culto 1:30:00");
     assert.equal(serviceClock({ service: { date: "2026-10-05", startTime: "19:00" }, now: at(10, 0) }).text, "Culto de 05/10 às 19:00");
 });
+
+test("service clock, compact (the top bar, Rodada E1): the short form, the sentence in the tooltip", () => {
+    const soon = serviceClock({ service: svc, now: at(9, 14), compact: true });
+    assert.deepEqual([soon.text, soon.more], ["19:00 · 9h46", ""]);
+    assert.ok(soon.title.startsWith("Começa às 19:00 · em 9h46 · "), soon.title);
+    assert.equal(serviceClock({ service: svc, now: sec(18, 48, 30), compact: true }).text, "19:00 · 12 min");
+    assert.equal(serviceClock({ service: { date: "2026-10-12", startTime: "19:00" }, now: at(18, 0), compact: true }).text, "12/10 · 19:00");
+    assert.equal(serviceClock({ service: { date: "2026-10-05", startTime: "19:00" }, now: at(10, 0), compact: true }).text, "05/10 · 19:00");
+    const none = serviceClock({ service: { date: "2026-10-09" }, now: at(19, 30), compact: true });
+    assert.deepEqual([none.text, none.muted], ["Sem horário", true]);
+    assert.ok(none.title.startsWith("Culto sem horário · Defina"), none.title);
+    assert.equal(serviceClock({ service: null, now: at(18, 0), compact: true }).text, "Sem culto");
+    // Running: the same words as the full form (the forecast stays droppable).
+    const run = serviceClock({ service: svc, seconds: 70 * 60, now: sec(19, 42, 10), forecast: true, compact: true });
+    assert.deepEqual([run.text, run.more], ["Culto 0:42:10", "termina ~20:10"]);
+});
