@@ -17,7 +17,7 @@ import { MenuBarButtons } from "./MenuBar";
 // Encerrar) live in the Programa's pill since Rodada E1 (owner's pick B).
 // Nothing wraps: as the window narrows the bar drops the service's end,
 // then the clock, then shortens the search (container queries in console.css).
-export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svc, onPlanner, sync = null, onSync, menuKeysOff = false }) {
+export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svc, onPlanner, sync = null, onSync, menuKeysOff = false, inert = false }) {
     const { now } = c;
     const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const toggle = (name) => setOpen(open === name ? null : name);
@@ -25,7 +25,7 @@ export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outs
         <button type="button" role="tab" aria-selected={env === value} className={`kx-t ${env === value ? "is-on" : ""}`} title={title} onClick={() => setEnv(value)}>{label}</button>
     );
     return (
-        <div className="topbar">
+        <div className="topbar" inert={inert ? "" : undefined}>
             <div className="tb-l">
                 <button type="button" className={`markbtn kx-t ${open === "menu" ? "is-on" : ""}`} onClick={() => toggle("menu")} aria-haspopup="menu" aria-expanded={open === "menu"} title="Menu" aria-label="Menu">
                     {logoUrl ? <img src={logoUrl} alt="" /> : <span className="kx-mark" />}

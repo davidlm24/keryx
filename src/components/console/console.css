@@ -212,7 +212,7 @@
    (z-index 85–200) never paint over a popover or drawer that covers the monitor. */
 .console .kx-mon-screen, .console .ed-th, .console .mv-th, .console .nv-screen { isolation: isolate; }
 .console .kx-mon .kx-mon-screen::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--frame, var(--line)); border-radius: inherit; pointer-events: none; z-index: 200; }
-.console .kx-mon.is-air { --frame: var(--air); } /* only the Bíblia's and Escola's monitors: the Programa is unframed on air */
+.console .kx-mon.is-air { --frame: var(--air); } /* only the Bíblia's and Escola's monitors, and only with something on air: the Programa is unframed */
 .console .kx-mon.is-prev { --frame: var(--prev); }
 .console .kx-mon.is-rh { --frame: var(--rh); }
 .console .kx-mon.is-warn { --frame: var(--warn); }
@@ -257,14 +257,12 @@
 /* Notas do operador (the Notas tab's free field, Service.operator_notes). */
 .console .op-notes { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-height: 0; }
 .console .op-notes-f { flex: 1; }
-.console .op-notes-f { min-height: 96px; resize: vertical; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 6px var(--space-2); font: inherit; font-size: 12px; line-height: 18px; color-scheme: dark; outline: none; }
-.console .op-notes-f::placeholder { color: var(--fg-3); }
-.console .op-notes-f:focus { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .op-notes-f { min-height: 96px; resize: vertical; padding: 6px var(--space-2); line-height: 18px; }
 .console .tabs-menu .tabs-menu-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .tabs-menu [aria-disabled="true"] { color: var(--fg-3); }
 /* Aviso rápido and the timer minutes (QuickTools.jsx). */
 .console .qt-row { display: flex; gap: var(--space-1); padding: 0 var(--space-2) var(--space-1); }
-.console .qt-min { width: 52px; height: 24px; background: var(--bg-2); border: 0; border-radius: 4px; color: var(--fg-1); padding: 0 6px; font: inherit; }
+.console .qt-min { width: 52px; }
 .console .lines-pick { display: inline-flex; align-items: center; gap: 4px; }
 .console .lines-pick .qt-min { width: 46px; }
 
@@ -410,7 +408,6 @@
 .console .layerprops .k { font-size: 11px; color: var(--fg-3); }
 /* Camadas' choices: the Seg small's 24 px segments (bundle.css), each at least square. */
 .console .layerprops .kx-seg > button { min-width: 24px; justify-content: center; }
-.console .layerprops select { height: 24px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; }
 .console .warnline { display: flex; align-items: center; gap: 6px; padding: 0 var(--space-1) 0 var(--space-3); height: var(--row); color: var(--warn-fg); font-size: 11px; white-space: nowrap; overflow: hidden; }
 .console .warnline .kx-i { color: var(--warn); flex: none; }
 .console .warnline span { overflow: hidden; text-overflow: ellipsis; }
@@ -529,7 +526,7 @@
    it is an amber dot on the select, the words in its tooltip (owner
    2026-10-16: no line of text under the header). */
 .console .bpick-books .bver { position: relative; flex: none; display: inline-flex; }
-.console .bpick-books .bver > select { width: 52px; height: 24px; padding: 0 2px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); font: inherit; }
+.console .bpick-books .bver > select { width: 52px; padding: 0 2px; }
 .console .bpick-books .bver-dot { position: absolute; top: -2px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--bg-1); pointer-events: none; }
 .console .bpick-books > .kx-panel-h .kx-seg > button { padding: 0 4px; }
 .console .kx-panel-h .addmenu > .kx-btn-icon { width: 24px; height: 24px; }
@@ -550,13 +547,25 @@
 .console .bpick-chapters .bchap { border-top: 0; padding: var(--space-1); }
 .console .bpick-chapters .chapters { max-height: none; overflow: visible; }
 .console .bpick-verses .bverses { padding: var(--space-1); }
+/* The title never gives way (audit C-47: "LIVR…" at 1366): when the
+   header cannot hold it all, Abrev | Nomes leaves it and lives in the view
+   menu (BibleEnv's grid button lists it while the Seg is hidden). The header
+   needs 272 px — title 57, select 52, Seg 83, + and grid 24 each, four 8 px
+   gaps — so the column's default 300 px (276 inside) keeps the Seg; a
+   change to those widths changes this number. */
+.console .bpick-books > .kx-panel-h { container: bbooks-h / inline-size; }
+.console .bpick-books > .kx-panel-h > .kx-section { flex: 1 0 auto; }
+@container bbooks-h (width < 276px) { .console .bpick-books > .kx-panel-h > .kx-seg { display: none; } }
 /* The text column: recent chapters, favourites and notes on top, the
    reading (or Buscar, Comparar) below, scrolling. */
 /* Its header is one line, like every panel's: the chapter, two icons
    (Selecionar todos, Limpar seleção) and Ler | Comparar. No hint and no
-   search field (owner 2026-10-16: the console's search covers the Bíblia). */
-.console .bread > .kx-panel-h { overflow: hidden; }
-.console .bread > .kx-panel-h > .kx-section { min-width: 64px; }
+   search field (owner 2026-10-16: the console's search covers the Bíblia).
+   The chapter never truncates (audit C-47): a narrow column drops the two
+   icons first, and the header's overflow only clips past that. */
+.console .bread > .kx-panel-h { overflow: hidden; container: bread-h / inline-size; }
+.console .bread > .kx-panel-h > .kx-section { flex: 1 0 auto; }
+@container bread-h (width < 330px) { .console .bread > .kx-panel-h > .bread-sel { display: none; } }
 .console .bread > .kx-panel-b { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 .console .bread-b { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .console .bread-b > .reading { overflow: visible; }
@@ -778,7 +787,7 @@
 .console .qj-step.is-on .kx-section { color: var(--brand); }
 .console .qj-step b { font-weight: 500; color: var(--fg-1); font-size: 16px; line-height: 22px; min-height: 22px; }
 .console .qj-input { height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-2); background: var(--bg-3); border-radius: var(--radius-control); }
-.console .qj-input:focus-within { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .qj-input:focus-within { outline: 1px solid var(--fg-3); outline-offset: -1px; }
 .console .qj-input input, .console .qj-input input:focus-visible { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--fg-1); font: inherit; font-size: 16px; }
 .console .qj-cands { display: flex; flex-wrap: wrap; gap: 4px var(--space-2); font-size: 12px; color: var(--fg-3); min-height: 18px; }
 .console .qj-cands button { color: var(--fg-2); padding: 0 2px; border-radius: 3px; }
@@ -802,11 +811,24 @@
 .console .rund { position: relative; display: flex; flex-direction: column; min-height: 100%; }
 .console .rund-tail { flex: 1; min-height: 28px; }
 
-/* Fields: no gold ring while typing (the design system's focus ring is for
-   keyboard navigation of buttons); a quiet inner line says where you type. */
-.console .kx-field:focus-within { outline: none; box-shadow: inset 0 0 0 1px var(--line-strong); }
-.console .kx-field input:focus-visible, .console .kx-field input:focus { outline: 0; }
-.console select:focus-visible { outline: 0; box-shadow: inset 0 0 0 1px var(--line-strong); }
+/* Fields (C-21, owner 2026-10-16): one look, the design system's kx-input /
+   kx-select / kx-field (bundle.css) — 28 px, 24 small, a line on hover, a
+   QUIET focus (1 px fg-3, 5.5:1 on bg-2; never the gold ring while typing,
+   which is for buttons), disabled dimmed, [aria-invalid] amber. The
+   console's own field classes wear that look here (:where, so their own
+   rules below keep only their width, place or a ground of their own) — a
+   new field takes kx-input / kx-select instead of a class of its own. */
+.console :where(.pl-input, .ed-text, .op-notes-f, .lyr-paste textarea, .cfg-select, .cfg-inline, .pl-pick, .fg-input, .mv-rename, .qt-min, .sync-time, .layerprops :is(select, input:not([type])), .bver > select) {
+  height: var(--row); min-width: 0; box-sizing: border-box; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control);
+  background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 12px; color-scheme: dark; outline: none; }
+.console :where(.cfg .cfg-select, .cfg-inline, .pl-pick, .fg-input, .mv-rename, .qt-min, .sync-time, .layerprops :is(select, input:not([type])), .bver > select) { height: 24px; padding: 0 6px; }
+.console :where(.ed-text, .op-notes-f, .lyr-paste textarea) { height: auto; }
+.console :where(.ed-text, .op-notes-f, .lyr-paste textarea)::placeholder { color: var(--fg-3); }
+.console :where(.pl-input, .ed-text, .op-notes-f, .lyr-paste textarea, .cfg-select, .cfg-inline, .pl-pick, .fg-input, .mv-rename, .qt-min, .sync-time, .layerprops :is(select, input:not([type])), .bver > select):hover:not(:disabled, :focus-visible, [aria-invalid="true"], .is-bad) { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.kx.console :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), select, textarea):focus-visible { box-shadow: none; outline: 1px solid var(--fg-3); outline-offset: -1px; }
+.console :where(.pl-input, .ed-text, .op-notes-f, .lyr-paste textarea, .cfg-select, .cfg-inline, .pl-pick, .fg-input, .mv-rename, .qt-min, .sync-time, .layerprops :is(select, input:not([type])), .bver > select):disabled { opacity: var(--dim); }
+.console :where(.pl-input, .ed-text, .cfg-select, .cfg-inline, .fg-input, .mv-rename, .qt-min, .sync-time)[aria-invalid="true"] { box-shadow: inset 0 0 0 1px var(--warn); outline-color: var(--warn); }
+.console .kx-field input:focus-visible { outline: 0; }
 
 /* Bíblia: "No ar agora" fills the column (no Prévia here: the selection in
    the chapter is what goes next). */
@@ -837,8 +859,7 @@
 .console .lyr-t b { font-weight: 500; }
 .console .lyr-text { margin: 0; font: inherit; font-size: 13px; line-height: 19px; white-space: pre-wrap; color: var(--fg-1); user-select: text; }
 .console .lyr-paste { display: flex; flex-direction: column; gap: var(--space-2); flex: 1; min-height: 0; align-items: flex-start; }
-.console .lyr-paste textarea { width: 100%; flex: 1; min-height: 180px; resize: none; background: var(--bg-3); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: var(--space-2); font: inherit; font-size: 13px; line-height: 19px; outline: none; user-select: text; }
-.console .lyr-paste textarea:focus { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .lyr-paste textarea { width: 100%; flex: 1; min-height: 180px; resize: none; background: var(--bg-3); padding: var(--space-2); font-size: 13px; line-height: 19px; user-select: text; }
 .console .lyr-f { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line); flex: none; font-size: 12px; }
 .console .lyr-legal { max-width: 360px; }
 
@@ -878,12 +899,19 @@
    no edges (the system window resizes); the dialogs a page opens sit
    near its top. */
 .console.janela { --pop-top: 16px; padding: 0; }
+/* On Windows a detached page has no native bar (main.cjs titleBarOverlay):
+   its WinBar is the title bar — dragged by its empty parts, its right end
+   left to the system's buttons (the strip env() reports; unset elsewhere,
+   where nothing changes). */
+.console.janela .win-bar { -webkit-app-region: drag; padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 6px); }
+.console.janela .win-bar :is(button, input, select, textarea, a, [role], .win-tools) { -webkit-app-region: no-drag; }
 .console .win-dialog.is-detached { position: relative; left: auto; top: auto; transform: none; width: auto; height: auto; flex: 1; min-height: 0; border-radius: 0; box-shadow: none; transition: none; }
 /* The bar: the Configurações header, now every page's. */
 .console .win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
 /* The title gives way first (an ellipsis; its whole text is the page) so the
    tools and actions never leave the bar (D5: Relatórios at 960 px). */
 .console .win-bar .win-title { flex: 0 1 auto; color: var(--fg-1); font-size: 12px; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .win-bar .win-title:focus { outline: none; } /* the focus parks here (C-12); it is not a control */
 .console .win-bar .kx-btn-back { height: 26px; margin-left: -6px; flex: none; }
 .console .win-bar .win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
 .console .win-bar .win-gap { flex: 1; }
@@ -977,7 +1005,7 @@
 .console .cfg .cfg-out { gap: var(--space-1) var(--space-2); flex: none; flex-wrap: wrap; height: auto; min-height: 40px; padding-block: 4px; }
 .console .cfg .cfg-out > .kx-row-main { flex: 1 1 170px; min-width: 150px; }
 .console .cfg .cfg-tune { flex: none; width: 84px; display: flex; justify-content: flex-end; }
-.console .cfg .cfg-select { height: 24px; max-width: 220px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; }
+.console .cfg .cfg-select { max-width: 220px; }
 .console .cfg .cfg-launch { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .console .cfg .cfg-outprefs { display: flex; gap: var(--space-3); align-items: flex-start; flex: none; margin: 0 0 var(--space-2) 34px; border-left: 2px solid var(--line); background: var(--bg-1); border-radius: 0 var(--radius-control) var(--radius-control) 0; }
 .console .cfg .cfg-acts { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
@@ -992,7 +1020,7 @@
 .console .cfg .cfg-path { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; user-select: text; }
 .console .cfg .cfg-restore { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 560px; }
 .console .cfg .cfg-restore-row { display: grid; grid-template-columns: 96px 1fr auto; align-items: center; gap: var(--space-2); padding: 3px 0; border-bottom: 1px solid var(--line); }
-.console .cfg .cfg-inline { height: 22px; width: 100%; max-width: 320px; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; box-shadow: inset 0 0 0 1px var(--line-strong); outline: none; }
+.console .cfg .cfg-inline { width: 100%; max-width: 320px; }
 .console .cfg .kx-row .kx-row-meta { white-space: normal; }
 /* A row of Configurações grows with its text (a title and a line under it
    never overflow a 32 px row; the owner's review 2026-10-14). */
@@ -1009,18 +1037,17 @@
 /* ---------- Editor de música (canvas artboard 16) ---------- */
 .console .song-ed-l .frm, .console .song-ed-r .frm { display: grid; grid-template-columns: var(--win-label, 96px) minmax(0, 1fr); gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2); }
 .console .song-ed-l .frm .k { font-size: 11px; color: var(--fg-3); }
-.console .song-ed-l .frm .kx-field { height: 26px; min-width: 0; }
+.console .song-ed-l .frm .kx-field { min-width: 0; }
 .console .song-ed-l .frm .kx-seg { max-width: 100%; justify-self: start; }
 .console .song-ed-l .frm .kx-seg > button { padding: 0 7px; min-width: 0; }
 /* Three-column views at 1024 px: the middle column gives up the console's minimum. */
 .console .win-body > .col.center.song-ed-r, .console .win-body > .col.center.sv-center { min-width: 320px; }
-.console .song-ed-l .cfg-select, .console .song-ed-r .cfg-select { height: 26px; width: 100%; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; }
+.console .song-ed-l .cfg-select, .console .song-ed-r .cfg-select { width: 100%; }
 .console .ed-pad { padding: 0 var(--space-2) var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); }
 /* A song that follows a theme: what it follows, and the way out. */
 .console .ed-linked { align-items: flex-start; }
 .console .ed-linked b { color: var(--fg-1); font-weight: 500; }
-.console .ed-text { width: 100%; box-sizing: border-box; background: var(--bg-2); border: 0; border-radius: var(--radius-control); color: var(--fg-1); font: 13px/19px var(--font-sans, inherit); padding: var(--space-2); resize: none; outline: none; user-select: text; }
-.console .ed-text:focus { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .ed-text { width: 100%; font-size: 13px; line-height: 19px; padding: var(--space-2); resize: none; user-select: text; }
 .console .ed-mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; line-height: 17px; }
 .console .swatches { display: flex; gap: var(--space-1); align-items: center; }
 .console .swatches button { width: 20px; height: 20px; border-radius: var(--radius-round); box-shadow: inset 0 0 0 1px #ffffff2e; }
@@ -1067,11 +1094,10 @@
 /* Service planner (Planejador de culto, canvas artboard 17) */
 .console .pl-frm { display: grid; grid-template-columns: var(--win-label, 96px) 1fr; gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-2); }
 .console .pl-frm .k { font-size: 11px; color: var(--fg-3); }
-.console .pl-frm .kx-field { height: 26px; min-width: 0; }
-.console .pl-input { height: 26px; min-width: 0; width: 100%; box-sizing: border-box; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 var(--space-2); font: inherit; font-size: 12px; color-scheme: dark; outline: none; }
-.console .pl-input:focus { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .pl-frm .kx-field { min-width: 0; }
+.console .pl-input { width: 100%; }
 .console .pl-dur { width: 80px; font-variant-numeric: tabular-nums; }
-.console .pl-pick { height: 22px; max-width: 210px; min-width: 0; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 4px; font: inherit; font-size: 12px; }
+.console .pl-pick { max-width: 210px; }
 .console .pl-pad { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2); }
 .console .pl-danger { display: flex; justify-content: flex-end; padding: 0 var(--space-2) var(--space-2); }
 .console .cfg-wall { width: 48px; height: 27px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
@@ -1133,7 +1159,7 @@
 .console .mv-title { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .mv-sub { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .mv-cell > .kx-btn { align-self: flex-start; }
-.console .mv-rename { height: 24px; width: 100%; box-sizing: border-box; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; outline: none; box-shadow: inset 0 0 0 1px var(--line-strong); user-select: text; }
+.console .mv-rename { width: 100%; user-select: text; }
 .console .mv-row.is-sel { background: var(--prev-fill, var(--bg-2)); }
 .console .mv-row.is-air { box-shadow: inset 2px 0 0 var(--air); }
 
@@ -1374,7 +1400,7 @@
 .console .fg-name .kx-i { flex: none; color: var(--fg-1); }
 .console .cfg .fg-detail { flex: 0 0 380px; position: sticky; top: 0; padding: 0; grid-template-columns: 84px minmax(0, 1fr); }
 .console .fg-sample { width: 100%; }
-.console .fg-input { height: 24px; flex: 1; min-width: 0; background: var(--bg-2); color: var(--fg-1); border: 0; border-radius: var(--radius-control); padding: 0 6px; font: inherit; font-size: 12px; }
+.console .fg-input { flex: 1; }
 @media (max-width: 1180px) { .console .fg-body { flex-direction: column; } .console .cfg .fg-detail { flex: none; width: 100%; position: static; } }
 
 /* The Prévia as Palco or Pastor: the pages' own screens inside the monitor;
@@ -1600,10 +1626,31 @@
 .console .sync .sync-row .n { flex: none; width: 20px; text-align: right; font-size: 11px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
 .console .sync .sync-row .sync-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--fg-1); }
 .console .sync .sync-row .sync-txt b { font-weight: 500; color: var(--fg-3); }
-.console .sync .sync-time { flex: none; width: 74px; height: 24px; padding: 0 6px; border: 0; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-1); font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+.console .sync .sync-time { flex: none; width: 74px; font-variant-numeric: tabular-nums; text-align: right; }
 .console .sync .sync-time.is-bad { box-shadow: inset 0 0 0 1px var(--warn); }
 .console .sync .sync-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; opacity: .35; }
 .console .sync .sync-row:hover .sync-acts, .console .sync .sync-row.is-sel .sync-acts, .console .sync .sync-row:focus-within .sync-acts { opacity: 1; }
+
+/* ---- While live (audit 0.2.19, Minors C-45/46) ---- */
+/* An empty layer (Camadas: nothing on air, nothing on the Fundo, no overlay
+   yet) is not a hidden one: the name muted with "vazio", the eye faint, no
+   eye-off (that is only for a layer really hidden). */
+.console .kx-layer.is-empty .kx-layer-name, .console .kx-layer .kx-layer-vazio { color: var(--fg-3); }
+.console .kx-layer .kx-btn.is-empty { color: var(--fg-3); opacity: .45; }
+/* Tela preta or the Logo cover the screens: the working lists (Slides, No ar,
+   the Setlist) keep their on-air row but dimmed, and the header says
+   "coberto · Tela preta" (Console.jsx coverTag), never cut by the title. */
+.console .kx-panel-h > .kx-covered { flex: none; font-size: 11px; line-height: 16px; color: var(--fg-2); white-space: nowrap; }
+/* Dimmed only outside a Windows contrast theme: there the fill below
+   (forced colours) keeps the row on air, and the header's tag tells. */
+@media (forced-colors: none) {
+  .console .is-covered :is(.kx-slide, .onair-card).is-air:not(.is-prev) { background: color-mix(in srgb, var(--brand) 9%, var(--bg-2)); }
+  .console .is-covered :is(.kx-slide, .onair-card).is-air :is(.kx-slide-n, .kx-slide-lab),
+  .console .is-covered .kx-row.is-air .kx-row-title { color: var(--fg-2); }
+  .console .is-covered :is(.kx-slide, .onair-card).is-air .kx-slide-body { opacity: .7; }
+  .console .is-covered .kx-row.is-air { background: var(--bg-2); }
+  .console .is-covered .kx-row.is-air::before { opacity: .35; }
+}
 
 /* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
    the console's side of the cues in bundle.css, at the console's

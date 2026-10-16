@@ -92,12 +92,14 @@ export function WinBar({ title, sub, tools, actions, detach }) {
                     <Icon name="arrow-left" />{w.back}
                 </button>
             )}
-            <span className="kx-section win-title" title={sub ? `${title} · ${sub}` : title}>{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
+            {/* Where the focus lands when the page opens with the mouse, or
+                has no control (C-12): inside the window, holding no keys. */}
+            <span className="kx-section win-title" title={sub ? `${title} · ${sub}` : title} tabIndex={-1} data-live-keys="">{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
             {tools && <span className="win-tools">{tools}</span>}
             <span className="win-gap" />
             {actions}
             {onDetach && <IconBtn name="external" title="Destacar em janela: esta página numa janela própria, para usar vendo outra tela" onClick={onDetach} />}
-            <IconBtn name="x" title="Fechar · Esc" onClick={w.onCloseAll} />
+            {!w.systemFrame && <IconBtn name="x" title="Fechar · Esc" onClick={w.onCloseAll} />}
         </div>
     );
 }

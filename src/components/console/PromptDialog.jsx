@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Btn, Field } from "./kx";
+import { useDialogFocus } from "./useDialogFocus";
 
 // One question with a text field, asked by the panels' + menus (a section's
 // name, a free text, an aviso rápido; Console.jsx askText). Enter answers
@@ -9,6 +10,9 @@ import { Btn, Field } from "./kx";
 export default function PromptDialog({ ask, onAnswer }) {
     const [value, setValue] = useState("");
     const ref = useRef(null);
+    // Tab stays here; the focus goes back to the opener after a keyboard open (C-12).
+    const boxRef = useRef(null);
+    useDialogFocus(boxRef, Boolean(ask));
     useEffect(() => {
         setValue(ask?.initial || "");
         if (ask) setTimeout(() => ref.current?.focus(), 0);
@@ -18,7 +22,7 @@ export default function PromptDialog({ ask, onAnswer }) {
     return (
         <>
             <div className="scrim is-dim confirm-scrim" onClick={() => onAnswer(null)} />
-            <div className="dialog confirm-dialog" role="dialog" aria-label={ask.title}>
+            <div ref={boxRef} className="dialog confirm-dialog" role="dialog" aria-modal="true" aria-label={ask.title}>
                 <div className="kx-section" style={{ color: "var(--fg-1)" }}>{ask.title}</div>
                 {ask.multiline
                     ? <textarea ref={ref} className="ed-text" rows={4} value={value} onChange={(e) => setValue(e.target.value)} placeholder={ask.placeholder} aria-label={ask.placeholder}
