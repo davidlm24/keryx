@@ -1,7 +1,6 @@
 import React from "react";
 import "./screen.css";
 import GeneratorBackground from "./GeneratorBackground";
-import ActivityView from "./ActivityView";
 import { mainLayer, currentSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
@@ -13,6 +12,7 @@ import { verseSegments, withoutVerseMarks } from "@/lib/verseMarks";
 import { refLine } from "@/lib/bibleDisplay";
 import { fitScale } from "@/lib/console/lyricFit";
 import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
+import ActivityView from "./ActivityView";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
