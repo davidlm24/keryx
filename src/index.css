@@ -109,10 +109,11 @@ button:focus-visible {
     --sidebar-accent-foreground: 96 18% 89%;
     --sidebar-border: 30 8% 21%;
     --sidebar-ring: 78 9% 48%;
-    /* Geist ships with the app (src/fonts.css): no font comes from the internet. */
+    /* Geist ships with the app (src/fonts.css): no font comes from the internet.
+       --font-display is the design system's (tokens.css): a token it names is
+       never redefined here (src/lib/designTokens.test.mjs). */
     --font-heading: "Geist", system-ui, sans-serif;
     --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-display: "Geist", system-ui, sans-serif;
   }
   .dark {
     --background: 30 10% 9%;

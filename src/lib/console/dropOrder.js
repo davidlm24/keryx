@@ -90,3 +90,15 @@ export function moveTo(list, from, over) {
     out.splice(Math.max(0, Math.min(out.length, placeIndex(from, over))), 0, it);
     return out;
 }
+
+// Subir / Descer without dragging (a row's menu, Alt+↑ / Alt+↓ on a focused
+// row; audit C-16): the slot that moves row `from` one place up (dir -1) or
+// down (+1) in a list of `n`, or null at the end it cannot pass.
+export function stepSlot(from, dir, n) {
+    if (from < 0 || from >= n) return null;
+    if (dir < 0) return from > 0 ? from - 1 : null;
+    return from < n - 1 ? from + 2 : null;
+}
+
+// The step a key press on a focused row asks for: Alt+↑ -1, Alt+↓ +1, else 0.
+export const stepKey = (e) => (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey ? ({ ArrowUp: -1, ArrowDown: 1 }[e.key] || 0) : 0);

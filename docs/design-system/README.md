@@ -17,7 +17,7 @@ Use these words exactly and never a synonym: **Programa, Prévia, Próximo, Trav
 
 Captions follow one pattern, middle dots as separators, counts as `2/5`: `Prévia · Firme na rocha · 2/5`, `2 telas`, `Nenhuma saída aberta`, `Palco desconectada às 19:42`, `Reconectando… tentativa 2`. The Programa's pill sets its caption in parts: the state's dot, the title (unless the player already names it), the position (`2/6`) and how many screens show it (`2 telas`; amber when fewer than expected). Times are `19:46`, durations `4:30`. Numbers are always tabular (the `sans` family is loaded with `tnum`).
 
-A warning names the thing and the way out in one line: `Arquivo não encontrado · Localizar…`, `Fonte "Bebas Neue" não instalada · usando Geist`. A question that deletes or discards says what happens and keeps **Cancelar** as its default button: Enter on an untouched dialog and Esc both keep everything.
+A warning names the thing and the way out in one line: `Arquivo não encontrado · Localizar…`, `Fonte "Bebas Neue" não instalada · usando Geist`. A question says what happens; its buttons are in Windows order, the action then **Cancelar** on the right. A question that cannot be taken back (Excluir, Descartar, any `danger` action) opens on **Cancelar**, so Enter on an untouched dialog and Esc both keep everything; *Encerrar*, which has Desfazer, keeps its action focused.
 
 ## Colour
 

@@ -77,11 +77,34 @@ anything that changes what is on air (*Enviar ao ar*, *Ir para o item*,
 *Encerrar…*) is last, after a separator (`orderItems`). Text fields keep the
 system's Recortar / Copiar / Colar.
 
+**Menus** (audit C-14/C-15): every menu is one component, `MenuList` in
+`src/components/console/Menu.jsx` (the menu bar, the logo's menu, Ver, the
+(+) menus, right-click menus, the tabs lists, the Bíblia's lists;
+`MenuButton` for a button with its menu). It takes the focus when it opens
+(its first item), ↑/↓ walk it round the ends, Home/End jump, disabled items
+are skipped, → opens a submenu and ← leaves it, Enter/Space choose, Esc and
+Tab close; one frame (`.kx-pop`) and the gold focus ring. When it closes the
+focus goes back to what opened it only if the keyboard opened and closed it
+— after a mouse open, to nothing, so the live keys work (`useFocusReturn`,
+`focusAfterClose` in `menuNav.js`). The menu bar answers **F10** or **Alt**
+alone (the focus on the bar: ←/→ walk it, ↓ or Enter opens, Esc leaves it)
+and **Alt + C/M/D/F** (Culto, Música, Mídia, Ferramentas; the letter
+underlined only while Alt is held or the bar has the keyboard). Setlist and
+planner rows move with **Alt+↑/↓** on a focused row and Subir/Descer in
+their menu, as Camadas' do (`useRowStep`). A focused select is a control,
+never text: it keeps ↑/↓, PageUp/PageDown, Space and its type-ahead letters,
+and the live keys stay the console's.
+
 **Questions.** Anything that deletes or discards asks through `useConfirm()`
-(`ConfirmDialog.jsx`): *Excluir…*, *Tirar da setlist…*, *Descartar as
-mudanças?*. **Cancelar is the default button** of a destructive question
-(owner 2026-10-16): Enter on an untouched dialog keeps everything, and Esc
-answers no before anything else.
+(`ConfirmDialog.jsx`), its buttons in Windows order: the action, then
+**Cancelar** on the right. **A question that cannot be taken back opens on
+Cancelar** (owner 2026-10-16, audit C-10, `focusesCancel` in
+`src/lib/console/confirm.js`): *Excluir* and *Descartar* by their verb, and
+any other action marked `danger` (Trocar o código, Juntar, Substituir,
+Voltar ao padrão, Tirar da turma), so Enter — the operator's send reflex —
+answers no and the action takes Tab or a click. The others (*Tirar da
+setlist*, *Remover saída*, *Sair…*) open on the action; *Encerrar* keeps its
+action focused, since it has Desfazer. Esc answers no before anything else.
 
 **The command palette** (`/`, the top bar's search) opens centred over the
 console, on the dimmed scrim. Enter puts the result in the Prévia and
@@ -354,6 +377,22 @@ open the Programa monitor draws one still frame (the air never pauses).
 - **Cursor.** Buttons keep the Windows arrow cursor (owner 2026-10-16), as
   in a desktop program; the pointer hand is for links only. Text fields
   show the text cursor, splitters and window edges their resize cursors.
+- **Windows contrast themes** (audit C-05): under forced colours Chromium
+  repaints backgrounds and borders in the system's colours and drops
+  shadows, so the states (all of them backgrounds) and the controls drawn
+  with fills or shadows would vanish. One `@media (forced-colors: active)`
+  block at the end of `bundle.css` (and the console's at the end of
+  `console.css`) gives them cues in system colours only: on air,
+  `Highlight` fills the row with `HighlightText` (still the row's
+  background); Prévia, a 2 px dashed `LinkText` ring; next, a 2 px dotted
+  ring; chosen, pressed or open (`is-on`, `is-selected`, Seg, tabs), a 2 px
+  `Highlight` ring; switches, fields and outline or filled buttons get
+  `ButtonText` / `FieldText` borders, panels and popovers a 1 px edge. A
+  ring never replaces the keyboard's focus ring, and the normal look does
+  not change. The monitors (`.kx-mon-screen`, `.kx-pip`, `.cfg-prev`) and
+  every output opt out (`forced-color-adjust: none`): what the congregation
+  sees keeps its own colours. A new state or control drawn as a background
+  gets its line there (`src/lib/forcedColors.test.mjs`).
 - Output health (`src/lib/console/outputs.js`, tested) decides the Saídas
   status in the top bar, the popover's rows, the pill's "2 telas" and the
   banner, from what the main process reports and a memory of the session: a
