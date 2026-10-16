@@ -99,7 +99,7 @@ export function WinBar({ title, sub, tools, actions, detach }) {
             <span className="win-gap" />
             {actions}
             {onDetach && <IconBtn name="external" title="Destacar em janela: esta página numa janela própria, para usar vendo outra tela" onClick={onDetach} />}
-            <IconBtn name="x" title="Fechar · Esc" onClick={w.onCloseAll} />
+            {!w.systemFrame && <IconBtn name="x" title="Fechar · Esc" onClick={w.onCloseAll} />}
         </div>
     );
 }
