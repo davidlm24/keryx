@@ -1164,9 +1164,18 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(600);
         await click(".kx-tabs button", "Avisos");
         await waitText(webContents, "BBB aviso fundo");
+        // The console in front first: this double click was lost only while
+        // another program was in front (3 runs; the 0.2.19 audit traced it to
+        // the injected input, not the app). If it still never reaches the
+        // console with another program in front, the pair is inconclusive.
+        if (operatorWin) { operatorWin.show(); operatorWin.focus(); }
+        await sleep(200);
         await dblclick(".kx-row", "BBB aviso fundo");
-        result.noticePrefStamped = await waitFor(() => { const it = live.get().communication && live.get().communication.item; return Boolean(it && it.background_dim === 0.7 && it.background_blur === 6); }, 5000);
-        result.noticePrefDrawn = Boolean(main) && await waitFor(() => main.webContents.executeJavaScript("(() => { const d = document.querySelector('.ks-bg-dim'); const i = document.querySelector('.ks-bg-img'); return Boolean(d && i && getComputedStyle(d).backgroundColor === 'rgba(0, 0, 0, 0.7)' && getComputedStyle(i).filter.startsWith('blur(')); })()").catch(() => false), 3000);
+        const noticeOnAir = await waitFor(() => Boolean(live.get().communication), 5000);
+        const noticeLost = !noticeOnAir && !BrowserWindow.getFocusedWindow();
+        result.noticeOnAir = noticeOnAir; // what a failure was: never on air, or on air without the look
+        result.noticePrefStamped = noticeLost ? verdict("noticePrefStamped", "outro programa na frente") : noticeOnAir && await waitFor(() => { const it = live.get().communication && live.get().communication.item; return Boolean(it && it.background_dim === 0.7 && it.background_blur === 6); }, 5000);
+        result.noticePrefDrawn = noticeLost ? verdict("noticePrefDrawn", "outro programa na frente") : Boolean(main) && noticeOnAir && await waitFor(() => main.webContents.executeJavaScript("(() => { const d = document.querySelector('.ks-bg-dim'); const i = document.querySelector('.ks-bg-img'); return Boolean(d && i && getComputedStyle(d).backgroundColor === 'rgba(0, 0, 0, 0.7)' && getComputedStyle(i).filter.startsWith('blur(')); })()").catch(() => false), 3000);
         live.call("clear", {});
         await waitFor(() => !live.get().communication);
         if (bgNotice && bgNotice.id) await js(`window.keryxDesktop.db.call("CommunicationVideo", "delete", [${JSON.stringify(bgNotice.id)}])`);

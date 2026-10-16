@@ -6,7 +6,11 @@
 // Trinitariana do Brasil) and AA (Imprensa Bíblica Brasileira) are copyrighted
 // editions. Each church downloads its own copy, as the web app always did.
 
+const { withDeadline, TimeoutError } = require("./deadline.cjs");
+
 const SOURCES = { NVI: "nvi", ACF: "acf", AA: "aa" };
+// A whole edition (a few MB) on a slow church connection; never for ever.
+const INSTALL_TIMEOUT_MS = 120000;
 const sourceUrl = (version) => `https://raw.githubusercontent.com/thiagobodruk/biblia/master/json/${SOURCES[version]}.json`;
 
 // Canonical order; the source files list the books in this order. Must match
@@ -88,16 +92,22 @@ function installFromJson(store, version, raw) {
     return { version, verses: rows.length };
 }
 
-async function installFromSource(store, version, fetchImpl = fetch) {
+async function installFromSource(store, version, fetchImpl = fetch, { timeoutMs = INSTALL_TIMEOUT_MS } = {}) {
     assertVersion(version);
-    let response;
+    let raw;
     try {
-        response = await fetchImpl(sourceUrl(version));
-    } catch {
+        // The answer and its body within the deadline (deadline.cjs).
+        raw = await withDeadline(async (signal) => {
+            const response = await fetchImpl(sourceUrl(version), { signal });
+            if (!response.ok) throw new BibleError(`Não foi possível baixar a ${version} (HTTP ${response.status}).`, 502);
+            return response.text();
+        }, timeoutMs);
+    } catch (err) {
+        if (err instanceof BibleError) throw err;
+        if (err instanceof TimeoutError) throw new BibleError(`O download da ${version} não terminou a tempo. Verifique a internet e tente de novo, ou instale a partir de um arquivo.`, 504);
         throw new BibleError("Sem conexão com a internet. Tente de novo quando estiver online, ou instale a partir de um arquivo.", 503);
     }
-    if (!response.ok) throw new BibleError(`Não foi possível baixar a ${version} (HTTP ${response.status}).`, 502);
-    return installFromJson(store, version, await response.text());
+    return installFromJson(store, version, raw);
 }
 
 // One chapter from abibliadigital.com.br, for versions not installed. It runs
