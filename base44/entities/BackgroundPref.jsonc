@@ -37,7 +37,7 @@
     "hidden": {
       "type": "boolean",
       "default": false,
-      "description": "Fora das galerias (continua em Configurações › Aparência)"
+      "description": "Excluído da biblioteca de fundos (os que vêm com o KERYX voltam por Excluídos › Restaurar)"
     },
     "favorite": {
       "type": "boolean",

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    sourceOf, backgroundList, visibleBackgrounds, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults,
+    sourceOf, backgroundList, visibleBackgrounds, backgroundActions, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults,
     CATEGORY_SUGGESTIONS, normalizeCategories, categoryList, managedCategories, addCategory, renameCategory, removeCategory, moveCategory, inCategory,
 } from "./backgroundPrefs.js";
 
@@ -92,6 +92,23 @@ test("a background is listed once, however many times Mídia holds it", () => {
     assert.deepEqual(sources, ["bundled:a", "bundled:b", "bundled:c", "http://h/media/x.png", "http://h/media/v.mp4"]);
     assert.equal(list[0].category, "Natureza", "the factory entry wins");
     assert.equal(list[3].name, "Cruz");
+});
+
+test("every background can leave the library, each by its origin (owner 2026-10-16)", () => {
+    const list = backgroundList({
+        bundled,
+        images: [{ id: "m1", url: "http://h/media/own.png" }, { id: "m2", url: "http://h/media/midia.png", origin: "media" }],
+        prefs: [{ source: "bundled:b", hidden: true }, { source: "http://h/media/midia.png", hidden: true }],
+    });
+    const by = (s) => list.find((b) => b.source === s);
+    assert.deepEqual(list.map((b) => b.origin), ["keryx", "keryx", "keryx", "own", "media"]);
+    assert.equal(by("http://h/media/own.png").mediaId, "m1");
+    assert.deepEqual(backgroundActions(by("bundled:a")), ["exclude"], "a factory photo is excluded, never its file");
+    assert.deepEqual(backgroundActions(by("bundled:b")), ["restore"], "excluded: it comes back");
+    assert.deepEqual(backgroundActions(by("http://h/media/own.png")), ["delete"]);
+    assert.deepEqual(backgroundActions(by("http://h/media/midia.png")), ["restore", "untrack"], "an old Oculto Mídia picture: back, or out of the backgrounds");
+    assert.deepEqual(backgroundActions(null), []);
+    assert.deepEqual(visibleBackgrounds(list).map((b) => b.source), ["bundled:a", "bundled:c", "http://h/media/own.png"], "the excluded ones are not offered");
 });
 
 test("an item's background brings its dim and blur, unless the item has its own", () => {

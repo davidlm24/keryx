@@ -27,6 +27,11 @@ export async function mediaFromYouTube(url, { title = "Vídeo do YouTube", categ
     return keryx.entities.Media.create({ title, type: "video", file_url: u, category, duration: 0 });
 }
 
+// The Media rows made in this window, so a PDF sent here gets its pages at
+// once and one that came from another computer waits for that one's
+// (pagesWait in presentation.js).
+export const madeHere = new Set();
+
 // A PowerPoint file is not copied (Rodada F3, "Só PDF"): it comes back in
 // `refused`, and the caller says how to save it as PDF (PPTX_HINT). A PDF's
 // pages are made after, by the console (usePagesBackfill).
@@ -49,6 +54,7 @@ export async function importMediaFiles(files, { title = "", description = "", ca
                 category,
                 duration: 0,
             });
+            if (row?.id) madeHere.add(row.id);
             created.push(row);
         } catch (err) {
             failed.push({ name: file.name, message: err?.message || "falhou" });
@@ -57,12 +63,22 @@ export async function importMediaFiles(files, { title = "", description = "", ca
     return { created, failed, refused };
 }
 
-// What the Mídia says after an import: how many came in, which failed and,
-// for PowerPoint files, how to send them as PDF.
+// Why the failed files failed, when they all failed for one reason: no space
+// on the disk, a file too big to come that way (electron/mediaImport.cjs
+// says it in a sentence the operator can act on). "" when the reasons differ.
+export function failureReason(failed = []) {
+    const reasons = new Set(failed.map((x) => x?.message).filter((m) => m && m !== "falhou"));
+    return reasons.size === 1 ? [...reasons][0] : "";
+}
+
+// What the Mídia says after an import: how many came in, which failed (and
+// why, when it is one reason) and, for PowerPoint files, how to send them as PDF.
 export function importSummary({ created = [], failed = [], refused = [] }, where = "") {
     const parts = [];
     if (created.length || !refused.length) parts.push(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}${where}`);
     if (failed.length) parts.push(`falhou: ${failed.map((x) => x.name).join(", ")}`);
+    const why = failureReason(failed);
+    if (why) parts.push(why);
     if (refused.length) parts.push(PPTX_HINT);
     return parts.join(" · ").replace(/([^.])$/, "$1.");
 }

@@ -56,6 +56,15 @@ ipcRenderer.on("keryx:notifications", (_event, list) => {
     }
 });
 
+// Sync between the church's computers: media files rows name that have not
+// come down yet (electron/sync.cjs), as keryx-media names.
+const syncMissingListeners = new Set();
+ipcRenderer.on("keryx:sync:missing", (_event, names) => {
+    for (const listener of syncMissingListeners) {
+        try { listener(names); } catch (err) { console.error("[keryx] sync listener failed:", err); }
+    }
+});
+
 const levelListeners = new Set();
 ipcRenderer.on("keryx:audio-level", (_event, level) => {
     for (const listener of levelListeners) {
@@ -165,7 +174,10 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
     },
     media: {
         // Files picked from disk are copied by path in the main process, so a
-        // large video never travels over IPC; anything else is sent as bytes.
+        // large video never travels over IPC; anything else is sent as bytes,
+        // up to the main process's limit: past it the file is not even read,
+        // and the main process answers with the refusal
+        // (electron/mediaImport.cjs).
         async importFile(file) {
             let sourcePath = "";
             try {
@@ -174,9 +186,20 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
                 sourcePath = "";
             }
             if (sourcePath) return ipcRenderer.invoke("keryx:media-import", { sourcePath, name: file.name });
+            if (file.size > config.mediaImportMaxBytes) return ipcRenderer.invoke("keryx:media-import", { size: file.size, name: file.name });
             const bytes = new Uint8Array(await file.arrayBuffer());
             return ipcRenderer.invoke("keryx:media-import", { bytes, name: file.name });
         },
         info: (names) => ipcRenderer.invoke("keryx:media-info", { names }),
+    },
+    // Configurações › Sincronização (electron/syncControl.cjs), and the media
+    // rows name that have not come down yet.
+    sync: {
+        call: (op, args) => ipcRenderer.invoke("keryx:sync", { op, args }),
+        missing: () => ipcRenderer.invoke("keryx:sync:missing"),
+        onMissing(listener) {
+            syncMissingListeners.add(listener);
+            return () => syncMissingListeners.delete(listener);
+        },
     },
 });

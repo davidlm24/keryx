@@ -13,7 +13,7 @@
 
 const crypto = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
-const { isSynced, syncRow, LOCAL_USER_FIELDS } = require("./syncScope.cjs");
+const { isSynced, syncRow, SYNC_ENTITIES, LOCAL_USER_FIELDS } = require("./syncScope.cjs");
 
 // Deletes of synced entities leave a mark (entity, id, when) so the delete can
 // travel to the church's other computers instead of the row coming back from
@@ -29,6 +29,13 @@ const TOMBSTONES = "_tombstone";
 const META = "_meta";
 const OUTBOX = "_outbox";
 const VERSIONS = "_version";
+// What a newer KERYX on another computer sends that this version cannot
+// store yet (an entity it does not know, fields its tables do not have),
+// kept as it came and filled in when a version that knows them opens this
+// database (replayParked). Without it, an older computer would lose those
+// values, and its next edit would erase them everywhere.
+const PARKED = "_parked";
+const PARKED_LIMIT = 50000;
 
 const SYSTEM_FIELDS = new Set(["id", "created_date", "updated_date", "created_by", "created_by_id"]);
 const SQL_TYPES = { text: "TEXT", real: "REAL", integer: "INTEGER", boolean: "INTEGER", json: "TEXT" };
@@ -150,6 +157,7 @@ function createStore({ file, schema, log = console.warn }) {
     db.exec(`CREATE TABLE IF NOT EXISTS ${quote(META)} (key TEXT PRIMARY KEY, value TEXT)`);
     db.exec(`CREATE TABLE IF NOT EXISTS ${quote(OUTBOX)} (seq INTEGER PRIMARY KEY AUTOINCREMENT, entity TEXT NOT NULL, id TEXT NOT NULL, op TEXT NOT NULL, row TEXT, at TEXT NOT NULL, pc TEXT NOT NULL)`);
     db.exec(`CREATE TABLE IF NOT EXISTS ${quote(VERSIONS)} (entity TEXT NOT NULL, id TEXT NOT NULL, at TEXT NOT NULL, pc TEXT NOT NULL, PRIMARY KEY (entity, id))`);
+    db.exec(`CREATE TABLE IF NOT EXISTS ${quote(PARKED)} (entity TEXT NOT NULL, id TEXT NOT NULL, kind TEXT NOT NULL, op TEXT, row TEXT, at TEXT NOT NULL, pc TEXT NOT NULL, PRIMARY KEY (entity, id, kind))`);
 
     // This computer's id: made once, kept in the database.
     let pcId = db.prepare(`SELECT value FROM ${quote(META)} WHERE key = 'pc_id'`).get()?.value;
@@ -251,6 +259,12 @@ function createStore({ file, schema, log = console.warn }) {
         return v ? { at: v.at, pc: v.pc } : null;
     };
 
+    // Whether local changes go to the outbox: only while this computer syncs
+    // (main says so, electron/syncControl.cjs). Off, the outbox would grow
+    // forever; joining sends everything anyway (snapshot). Versions are kept
+    // either way.
+    let recording = true;
+
     // A local change, in the same transaction as the write itself: `data` is
     // what the write set (the whole row for a create). A profile write that
     // touches only this computer's fields (a new density) records nothing.
@@ -269,6 +283,7 @@ function createStore({ file, schema, log = console.warn }) {
             if (op === "upsert") body = syncRow(entity, row);
             setVersion(entity, row.id, at, pcId);
         }
+        if (!recording) return;
         prepare(`INSERT INTO ${quote(OUTBOX)} (entity, id, op, row, at, pc) VALUES (?, ?, ?, ?, ?, ?)`)
             .run(entity, String(row.id), op, body && JSON.stringify(body), at, pcId);
     }
@@ -549,17 +564,110 @@ function createStore({ file, schema, log = console.warn }) {
         return Number(prepare(`DELETE FROM ${quote(OUTBOX)} WHERE seq <= ?`).run(upTo).changes);
     }
 
+    // Everything this computer holds of the church's content, into the outbox
+    // (docs/desktop-architecture.md §8b, the first join): what joining the
+    // sync, or a new code, sends to the others, since the outbox only holds
+    // what changed after it started recording. Whatever the outbox held is
+    // forgotten first: the rows are the state it led to. Each row goes at the
+    // version it is at here (`_version`, else its date), so the other
+    // computers' newer copies still win, and every delete at its tombstone's
+    // date. The profile only sends the church fields this computer set (a
+    // version of their own, or a value other than the factory one), at their
+    // own versions: a fresh install never sends its defaults over the
+    // church's logo. `bump`: the rows go as edits made now (a backup restored
+    // for every computer), deletes still at their dates. Returns the count.
+    function snapshot({ bump = false } = {}) {
+        const now = new Date().toISOString();
+        return transaction(() => {
+            prepare(`DELETE FROM ${quote(OUTBOX)}`).run();
+            const put = prepare(`INSERT INTO ${quote(OUTBOX)} (entity, id, op, row, at, pc) VALUES (?, ?, ?, ?, ?, ?)`);
+            let n = 0;
+            for (const entity of SYNC_ENTITIES) {
+                const def = schema.entities[entity];
+                if (!def) continue;
+                if (entity === "User") {
+                    n += snapshotProfile(def, put, bump, now);
+                    continue;
+                }
+                for (const raw of prepare(`SELECT * FROM ${quote(def.table)} ORDER BY rowid`).all()) {
+                    const row = decodeRow(def, raw);
+                    let at = now;
+                    if (bump) setVersion(entity, row.id, now, pcId);
+                    else at = localVersion(entity, String(row.id), row)?.at || toIso(row.updated_date) || now;
+                    put.run(entity, String(row.id), "upsert", JSON.stringify(syncRow(entity, row)), at, pcId);
+                    n += 1;
+                }
+            }
+            for (const mark of prepare(`SELECT entity, id, deleted_at FROM ${quote(TOMBSTONES)} ORDER BY deleted_at`).all()) {
+                if (!isSynced(mark.entity)) continue;
+                put.run(mark.entity, mark.id, "delete", null, mark.deleted_at, pcId);
+                n += 1;
+            }
+            return n;
+        });
+    }
+
+    function snapshotProfile(def, put, bump, now) {
+        const row = getRow(def, PROFILE_ID);
+        if (!row) return 0;
+        const byAt = new Map();
+        for (const field of churchFields(def, row)) {
+            const value = row[field];
+            if (value === null || value === undefined) continue;
+            let at = getVersion("User", fieldKey(field))?.at;
+            if (!at) {
+                const factory = field in PROFILE_DEFAULTS ? PROFILE_DEFAULTS[field] : def.columns[field].default;
+                if (factory !== undefined && JSON.stringify(factory) === JSON.stringify(value)) continue;
+                at = toIso(row.updated_date) || now;
+            }
+            if (bump) {
+                at = now;
+                setVersion("User", fieldKey(field), now, pcId);
+            }
+            if (!byAt.has(at)) byAt.set(at, { id: PROFILE_ID });
+            byAt.get(at)[field] = value;
+        }
+        for (const [at, body] of byAt) put.run("User", PROFILE_ID, "upsert", JSON.stringify(body), at, pcId);
+        return byAt.size;
+    }
+
+    // Keeps what this version cannot store: a whole change of an entity it
+    // does not know ("row"), or the fields of a row its table lacks
+    // ("fields"), the newest per row winning.
+    function park(entity, id, kind, op, row, at, pc) {
+        const was = prepare(`SELECT at, pc FROM ${quote(PARKED)} WHERE entity = ? AND id = ? AND kind = ?`).get(entity, id, kind);
+        if (was && !newer({ at, pc }, was)) return;
+        if (!was && Number(prepare(`SELECT COUNT(*) AS n FROM ${quote(PARKED)}`).get().n) >= PARKED_LIMIT) {
+            if (!warned.has(PARKED)) {
+                warned.add(PARKED);
+                log("[keryx-db] dados de uma versão mais nova do KERYX demais para guardar; atualize este computador");
+            }
+            return;
+        }
+        prepare(`INSERT OR REPLACE INTO ${quote(PARKED)} (entity, id, kind, op, row, at, pc) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+            .run(entity, id, kind, op, row == null ? null : JSON.stringify(row), at, pc);
+    }
+
+    // The fields of a remote row this version's table does not have.
+    const unknownFields = (def, row) => Object.keys(row || {}).filter((k) => !def.columns[k] && !SYSTEM_FIELDS.has(k) && row[k] !== undefined);
+    const pick = (row, keys) => Object.fromEntries(keys.map((k) => [k, row[k]]));
+
     // One remote change, inside applyRemote's transaction. Returns false when
     // it is not taken (unknown, ours, or not newer than what is here), else
-    // { event } (null when a delete found nothing to delete).
+    // { event } (null when a delete found nothing to delete). An entity this
+    // version does not know is parked, not taken.
     function applyOne(change) {
         if (!isPlainObject(change)) return false;
         const { entity, op } = change;
-        if (!isSynced(entity) || !schema.entities[entity]) return false;
         if (op !== "upsert" && op !== "delete") return false;
         const at = toIso(change.at);
         const pc = change.pc == null ? "" : String(change.pc);
-        if (!at || !pc || pc === pcId || change.id == null || change.id === "") return false;
+        if (!at || !pc || pc === pcId || change.id == null || change.id === "" || typeof entity !== "string") return false;
+        if (!schema.entities[entity]) {
+            if (/^[A-Z][A-Za-z0-9]{0,63}$/.test(entity)) park(entity, String(change.id), "row", op, isPlainObject(change.row) ? change.row : null, at, pc);
+            return false;
+        }
+        if (!isSynced(entity)) return false;
         const def = entityDef(entity);
         if (entity === "User") return applyProfile(def, change, at, pc);
         const id = String(change.id);
@@ -575,7 +683,13 @@ function createStore({ file, schema, log = console.warn }) {
         }
 
         if (!isPlainObject(change.row)) return false;
-        const row = insert(entity, def, { ...syncRow(entity, change.row), id, updated_date: at }, { keepSystem: true, replace: true });
+        // Over what is here: a sender on an older version does not know every
+        // column, and what it does not mention stays (a sender that knows a
+        // column always sends it, empty or not).
+        const incoming = syncRow(entity, change.row);
+        const extra = unknownFields(def, incoming);
+        if (extra.length) park(entity, id, "fields", "upsert", pick(incoming, extra), at, pc);
+        const row = insert(entity, def, { ...(old || {}), ...incoming, id, updated_date: at }, { keepSystem: true, replace: true });
         setVersion(entity, id, at, pc);
         return { event: event(entity, old ? "update" : "create", row) };
     }
@@ -586,6 +700,8 @@ function createStore({ file, schema, log = console.warn }) {
     // computer's profile is the one local row, never deleted.
     function applyProfile(def, change, at, pc) {
         if (change.op !== "upsert" || !isPlainObject(change.row)) return false;
+        const extra = unknownFields(def, change.row).filter((k) => !LOCAL_USER_FIELDS.has(k));
+        if (extra.length) park("User", PROFILE_ID, "fields", "upsert", pick(change.row, extra), at, pc);
         const taken = {};
         for (const field of churchFields(def, change.row)) {
             const here = getVersion("User", fieldKey(field));
@@ -627,6 +743,53 @@ function createStore({ file, schema, log = console.warn }) {
         return result;
     }
 
+    // What was parked and this version now knows (KERYX was updated): a
+    // parked change of an entity applied as it came; parked fields filled
+    // into the row (this computer never had them, so the latest value seen
+    // is the best there is). The rest stays parked. Runs when the store opens.
+    function replayParked() {
+        const rows = prepare(`SELECT entity, id, kind, op, row, at, pc FROM ${quote(PARKED)}`).all();
+        let done = 0;
+        for (const p of rows) {
+            const def = schema.entities[p.entity];
+            if (!def) continue;
+            const drop = () => prepare(`DELETE FROM ${quote(PARKED)} WHERE entity = ? AND id = ? AND kind = ?`).run(p.entity, p.id, p.kind);
+            let row = null;
+            try {
+                row = p.row == null ? null : JSON.parse(p.row);
+            } catch { /* unreadable: dropped below */ }
+            try {
+                if (p.kind === "row") {
+                    transaction(() => {
+                        if (isSynced(p.entity)) applyOne({ entity: p.entity, id: p.id, op: p.op, row, at: p.at, pc: p.pc });
+                        drop();
+                    });
+                    done += 1;
+                    continue;
+                }
+                const known = Object.keys(row || {}).filter((k) => def.columns[k]);
+                if (!known.length) {
+                    if (!row) drop();
+                    continue;
+                }
+                const left = Object.keys(row).filter((k) => !def.columns[k]);
+                transaction(() => {
+                    const names = known;
+                    prepare(`UPDATE ${quote(def.table)} SET ${names.map((n) => `${quote(n)} = ?`).join(", ")} WHERE id = ?`)
+                        .run(...names.map((n) => encode(def.columns[n], row[n])), p.id);
+                    if (left.length) prepare(`UPDATE ${quote(PARKED)} SET row = ? WHERE entity = ? AND id = ? AND kind = ?`).run(JSON.stringify(pick(row, left)), p.entity, p.id, p.kind);
+                    else drop();
+                });
+                done += 1;
+            } catch (err) {
+                log(`[keryx-db] dado guardado de outra versão não aplicado (${p.entity} ${p.id}): ${err.message}`);
+            }
+        }
+        if (done) log(`[keryx-db] ${done} registro(s) de uma versão mais nova do KERYX aplicados agora`);
+        return done;
+    }
+    replayParked();
+
     // This database's own bookkeeping (_meta, never synced): the transport's
     // cursors and file numbers. Values are JSON; null removes the key. The
     // computer's id is not settable.
@@ -660,7 +823,12 @@ function createStore({ file, schema, log = console.warn }) {
         pruneTombstones,
         outbox,
         pruneOutbox,
+        snapshot,
         applyRemote,
+        replayParked,
+        parkedCount: () => Number(prepare(`SELECT COUNT(*) AS n FROM ${quote(PARKED)}`).get().n),
+        setRecording: (on) => { recording = Boolean(on); },
+        isRecording: () => recording,
         pcId,
         getMeta,
         setMeta,

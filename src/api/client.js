@@ -19,6 +19,7 @@ import { createNetworkBridge } from "./backends/network";
 import { createPreviewBridge } from "./backends/preview";
 import { createLiveClient } from "./liveClient";
 import { ClientError } from "./errors";
+import { createPendingMedia } from "../lib/pendingMedia";
 
 // `npm run dev` in a plain browser (Claude's side panel included): the
 // preview bridge (backends/preview.js) stands in for the desktop one, on the
@@ -47,6 +48,7 @@ function unavailableBackend() {
         integrations: { Core: anyMethod },
         appLogs: { async logUserInApp() {} },
         live: createLiveClient({ get: reply, call: reply, onChange: () => () => {} }),
+        pendingMedia: createPendingMedia(null, ""),
     };
 }
 
@@ -57,7 +59,9 @@ const backend = isDesktop
         ? createDesktopBackend(networkBridge)
         : unavailableBackend();
 
-export const { entities, auth, integrations, appLogs, live } = backend;
+// pendingMedia: media files the sync between the church's computers has not
+// brought yet (src/lib/pendingMedia.js; read with usePendingMedia()).
+export const { entities, auth, integrations, appLogs, live, pendingMedia } = backend;
 
 // The link to the KERYX computer, for a screen on the network to show while
 // it (re)connects (src/lib/network/connection.js). Everywhere else there is
@@ -65,5 +69,5 @@ export const { entities, auth, integrations, appLogs, live } = backend;
 const OPEN = Object.freeze({ phase: "open", attempt: 0, everOpen: true });
 export const connection = networkBridge ? networkBridge.connection : { current: () => OPEN, subscribe: () => () => {} };
 
-export const keryx = { entities, auth, integrations, appLogs, live, connection, isDesktop, isNetworkScreen, isPreview };
+export const keryx = { entities, auth, integrations, appLogs, live, pendingMedia, connection, isDesktop, isNetworkScreen, isPreview };
 export default keryx;

@@ -15,6 +15,7 @@ import CultoSection from "./CultoSection";
 import ConsoleSection from "./ConsoleSection";
 import DadosSection from "./DadosSection";
 import SobreSection from "./SobreSection";
+import SyncSection from "./SyncSection";
 import { useWinCol } from "../winLayout";
 
 const BODIES = {
@@ -25,6 +26,7 @@ const BODIES = {
     biblia: BibliaSection,
     culto: CultoSection,
     backup: DadosSection,
+    sincronizacao: SyncSection,
 };
 const ICON = Object.fromEntries(SECTIONS.map((s) => [s.id, s.icon]));
 

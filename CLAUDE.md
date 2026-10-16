@@ -49,7 +49,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   override it per list. Edge to edge only where the owner asks (the Slides
   column and No ar, to gain room). docs/design-system.md has it too.
 - **One padding rule for panels** (owner 2026-10-16, Rodada F4): a panel's
-  header text sits 12 px (`--space-3`) from its edge; anything with a box
+  header text sits 12 px (`--space-3`) from its edge and its last button
+  12 px from the right one (symmetric, owner 2026-10-16 after the Bíblia
+  review; the first row under a header — cells, the edition line — starts
+  4 px below it); anything with a box
   of its own — list cards, verse cards, the cells of Livros/Capítulos/
   Versículos, the Temas tiles, the search field, tabs, the No ar agora
   monitor — sits 4 px (`--space-1`) in from the column, with its text at
@@ -84,6 +87,26 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   writes through the store's operations reach the sync outbox (`_outbox`;
   `importRows` and `applyRemote` record nothing, so remote changes never
   echo back).
+- **Sincronização entre computadores** (owner 2026-10-16; docs/desktop-architecture.md
+  §8b): a folder Google Drive para computador (or OneDrive, Dropbox) keeps
+  in step, no server, no sign-in, last edit wins per row. Only computers
+  with the church's code count (`shared/syncCode.mjs`: 8 symbols,
+  `K7QM-2HXP`; every line signed, `electron/syncPairing.cjs`). The engine
+  is `electron/sync.cjs`, Configurações › Sincronização's main side
+  `electron/syncControl.cjs` (`keryx:sync`; the key and code sealed with
+  safeStorage), the section `settings/SyncSection.jsx` (pt-BR status in
+  `src/lib/console/syncView.js`, one poll in `useSyncStatus`), the cloud
+  beside Ver only on a computer that syncs. Joining merges
+  (`store.snapshot`), never replaces; likely duplicate songs are
+  `shared/syncDuplicates.mjs` (Juntar em uma / Manter as duas,
+  `User.song_duplicates_kept`; "parece repetida" in the Biblioteca).
+  "Tirar" pauses a computer (the code file's `removed` list); "Trocar o
+  código" cuts it. Restoring or importing on a computer that syncs asks
+  ("Voltar todos", by default, or "Só este computador", which leaves).
+  The outbox records only while syncing; what a newer version sends is
+  parked (`_parked`) and a remote row never erases a column its sender
+  does not know. Tests use temp stores and a temp folder; only real Drive
+  folders confirm the rest (docs/checklist-pc-igreja.md, item 8).
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by
@@ -191,10 +214,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   sent there are Media rows of category "background" (`isBackgroundMedia`),
   left out of `useLibrary().media` (Biblioteca, media library, editors) and
   listed by `useBackgrounds()` (plus Mídia pictures that already have a
-  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. The factory
-  photos are never deleted, only hidden (Oculto). **The categories are the
-  church's** (owner 2026-10-16, Configurações › Temas e fundos › Categorias
-  de fundos, `FundoCategories.jsx`): `User.background_categories` names and
+  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. **Every
+  background can leave the library** (owner 2026-10-16, the factory photos
+  too): its right click goes by its origin (`backgroundActions`, `origin`
+  keryx/own/media in `backgroundList`, tested) — a factory photo is
+  excluded (`BackgroundPref.hidden`; its file is the app's, never deleted)
+  and comes back from the **Excluídos** chip (Restaurar, menu or the side
+  panel); a file sent or brought in is deleted (its Media row, and its
+  BackgroundPref unless another copy is a background); a Mídia picture is
+  "Tirar dos fundos" (its BackgroundPref goes, the Mídia keeps it). There
+  is no "Oculto" any more: an old hidden row is in Excluídos. **The
+  categories are the church's** (owner 2026-10-16), **edited inside the
+  library** (its "Categorias…" chip, `library/FundoCategories.jsx`;
+  Configurações › Temas e fundos › Categorias de fundos only opens the
+  library there, `pick({ manage: true, view: "categories" })`); a
+  background's category is picked from that list (a select in its panel,
+  never a free name), and a file sent with a category chip on lands in it:
+  `User.background_categories` names and
   orders them, even empty (null = `CATEGORY_SUGGESTIONS`); a background's
   own category is still `BackgroundPref.category`, so a rename or a delete
   rewrites those rows (a factory photo gets its first one) and a delete
@@ -1092,3 +1128,13 @@ so a release follows these rules. The steps and commands are in README ›
   Público, Palco, Transmissão). `/StreamView` (Transmissão) is network only:
   an OBS Browser Source, a transparent lower third, text only
   (`src/lib/streamCaption.js`); it is not an output window.
+  **Every page is a lazy chunk** (Codex audit 2026-10-16): `lazy()` with
+  its Suspense fallback (an output black, Transmissão transparent, the
+  console's ground elsewhere — never a spinner), so an output loads the
+  renderer and never the console's code. `scripts/bundle-budget.cjs` (a
+  Vite plugin, tested) fails the build when an output's JS passes its
+  budget or a stylesheet leaves the entry: every stylesheet is imported in
+  App.jsx's list, in the old bundle's order (Tailwind last), so splitting
+  changed no cascade. A new network page goes in its `OUTPUT_PAGES` too
+  (`npm test` checks it against `NETWORK_SCREENS`); a heavy library the
+  console needs only on demand is a dynamic `import()` (jspdf, pdf.js).

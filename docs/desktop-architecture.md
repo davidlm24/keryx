@@ -821,7 +821,7 @@ Recorded so the decision is not lost (2026-10-08; nothing built):
 - `supabase/` (migrations, Edge Functions) is kept, unused, as the starting
   point for that.
 
-### Sincronização entre computadores (owner 2026-10-16; being built)
+### Sincronização entre computadores (owner 2026-10-16; built in PRs 1–6)
 
 The owner chose **two-way sync through a shared folder** (as Holyrics'
 Drive sync): every verified computer edits, and each one writes to and reads
@@ -858,9 +858,8 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    remote copies never touch them. What is taken emits the usual change
    event (windows refresh); nothing applied from elsewhere is recorded in
    the outbox (no echo). Returns `{ applied, skipped, failed }`; a change
-   that fails is rolled back alone (a savepoint). Known edge for later
-   PRs: an entity this version does not know is skipped, not kept for a
-   newer version.
+   that fails is rolled back alone (a savepoint). What a newer version
+   sends that this one cannot store is kept (PR 6).
 3. **The folder, main-process side (done):** `electron/sync.cjs`
    (`createSyncEngine`, pure Node, tested with three temp stores and one
    folder). The folder chosen holds:
@@ -869,6 +868,8 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    <folder>/sync/<pc>/changes-000001.jsonl   this computer's outbox entries,
                                              one JSON line each, appended only;
                                              a new file past 256 KB
+   <folder>/sync/<pc>/state.json             what it has read and the media it
+                                             uses (for the cleanup, below)
    <folder>/sync/media/<file>                the media its rows name, by uuid name
    ```
 
@@ -901,20 +902,202 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    synced entity (not after what a pass applied), when a folder is set in
    the electron settings (`"sync": { "folder": "…" }`, off by default;
    `engine.status()` is what the UI will show: state, last pass, sent,
-   received, missing media, the computers seen and when each last wrote).
+   received, missing media, media collected, the computers seen and when each last wrote).
    **The sync id is the computer's**: `applyPendingImport` (Importar,
    Restaurar um backup) gives the staged database the id of the one it
    replaces, else none (a new one), so a clone never writes another
-   computer's folder. Restoring a backup on a computer that syncs does not
-   push the restored rows to the others (they keep their newer copies):
-   for PR 5/6.
+   computer's folder. Restoring a backup or importing on a computer that
+   syncs asks first (PR 6).
+   **A file that has not come down yet** (the row arrived first): the
+   engine's `missing()` (the names in `sync.state.missing`; none with sync
+   off) reaches the windows through `keryx:sync:missing` (asked once by
+   preload's `sync.missing()`, pushed by main when the list changes) and
+   `keryx.pendingMedia` in the renderer (`src/lib/pendingMedia.js`, tested;
+   `usePendingMedia()`; empty on network screens). The Biblioteca and the
+   Mídia say "Baixando…" instead of "Arquivo não encontrado" (no Localizar…,
+   no broken still; `useMediaFiles` marks `syncing`/`posterSyncing`), the
+   background library keeps the tile with "Baixando…" and does not let it
+   be chosen, a theme whose background is coming shows "Baixando…" in Temas
+   and the library (`ThemeThumb`, `themePending`) and is not applied, the
+   Prévia says it over the screen, and the console refuses to send any
+   stage — or the theme that would dress it — naming a pending file
+   (`send` in useConsole.js, `PENDING_SAY`; a video's still does not
+   count). A file no row here names any more (its row deleted meanwhile)
+   leaves the list.
+   **The cleanup of `sync/media`** (it would only grow: a video deleted on
+   every computer held the Drive's space for ever). After each pass a
+   computer writes `<pc>/state.json` (temp + rename, only when it
+   changed): `read` (its cursors, by file), `refs` (every `keryx-media`
+   name its synced rows use) and `collected`. At most every 10 minutes
+   (`collect`) it looks at `sync/media`: a file that no row here and no
+   other computer's `refs` names becomes a candidate, with a mark of every
+   change file's size at that moment (`sync.state.gc`); it is deleted only
+   when it has stayed unused for 7 days and every computer seen (each
+   folder in `sync/`, this one included) has read past the mark in every
+   file but its own — so each had taken the deletes that freed it. A
+   computer with a folder and no `state.json` (an older KERYX, one never
+   run) holds every file; a computer that left the church holds them until
+   it is taken out ("Tirar", PR 4/5: then it holds nothing back). Only the
+   shared copy goes: no computer's media folder is ever touched. Safety
+   nets for a row that names a file again: a new outbox line copies its
+   files into `sync/media` again when they are not there (`shipMedia`), and
+   a computer that still uses a name another announced in `collected` (a
+   row edited while it was away) puts it back from its media folder. A file
+   merely absent from the shared folder is never copied back blindly (Drive
+   may still be bringing it). Deleting there sends the file to the Drive's
+   trash (30 days), outside KERYX.
    What only a real run with Drive can confirm: Drive's own temp and
    conflict names, files read while Drive downloads them, a video of
-   hundreds of MB copied while the console projects.
-4. Pairing: a church sync code; files signed with a key from it, so only
-   verified computers count.
-5. Configurações › Sincronização; the first join merges (never replaces) and
-   flags likely duplicate songs.
+   hundreds of MB copied while the console projects, the cleanup's
+   deletes reaching the other computers.
+4. **Pairing, "PCs verificados" (done):** whoever has the church's sync
+   code syncs; nobody else counts.
+   - **The code** (`shared/syncCode.mjs`, tested; shared by main and the
+     console, which checks it as it is typed): 8 symbols in two groups,
+     `K7QM-2HXP` (the owner chose short over long, 2026-10-16), Crockford's
+     base32 (no I, L, O or U), 7 random (35 bits) and a check symbol
+     (weighted sum mod 31), so a typo says "alguma letra está errada"
+     instead of looking like another church's code. Typing forgives lower
+     case, spaces or dots for the dash, O for zero, I or L for one.
+   - **The folder's code file**, `sync/keryx-sync.json` `{ v, id, check,
+     made, by, removed, mac }` (`electron/syncPairing.cjs`, tested in
+     `sync.test.cjs`): `id` is random, made with the code; `check` (an HMAC
+     of the id with the key) proves a typed code is this folder's before a
+     line is read; `removed` lists the computers taken out ("Tirar", below)
+     and counts only under a valid `mac` (an HMAC of the file's fields with
+     the key). The code and the key are never in the folder. `createPairing` writes it only
+     where there is none (`wx`; two computers making a code at once leave a
+     conflict copy, and only the file named `keryx-sync.json` counts);
+     `joinPairing` answers the typed code with the key, or `short`/`check`/…
+     (a typo), `nocode` (the folder has none yet), `busy` (its file is still
+     arriving) or `wrong` (a valid code, another folder's).
+   - **The key** is `scrypt(code, "keryx-sync:" + id)` (N 2^16, r 8: about
+     half a second and 64 MB a try, paid once when the code is made or
+     typed; the code is short, so each guess from a line someone copied out
+     of the folder has to be slow: 2^35 tries is centuries of one core). Each computer keeps it (PR 5: the code itself,
+     encrypted with the system's own protection, Electron `safeStorage`, so
+     "Mostrar o código" works when a third computer joins months later).
+   - **What is signed: each line.** A line is the entry's JSON with `"sig"`
+     last: an HMAC-SHA256 (16 bytes, base64url) of the line's own bytes
+     before it, with a key derived from the code's key. A line is checked
+     alone, so everything §3 made harmless (files still arriving, conflict
+     copies, a file read again) stays harmless. A line that does not verify
+     (a computer that never had the code, the old code, an edited line) is
+     counted for its computer and never applied; the reader moves past it.
+     `engine.status().computers[]` adds `verified` (the last line read from
+     it verified; null = nothing read yet) and `rejected`, kept per computer
+     in `sync.state` (`peers`), and `status.rejected` counts a pass's.
+   - **States**: `unpaired` (a folder, no code here: nothing read or
+     written), `mismatch` (the folder's code file is another code's: the
+     code changed; nothing read or written, the outbox waits), `removed`
+     (this computer is on the code file's `removed` list: the same, with
+     who took it out), `offline` also while the code file is arriving
+     half-written. A missing code file
+     is written back by any computer with the code. A new code (joining
+     again, or the code changed) resets the cursors: every file is read again
+     under the new key.
+   - **Taking a computer out** (owner's pick: both): **"Tirar"** in the list
+     of computers adds it to the code file's `removed` list
+     (`updateRemoved`): it stops (`removed`, its changes wait) and the
+     others skip its folder, until the code is typed on it again (joining
+     takes it off the list). It pauses an honest computer; with one shared
+     key a computer that wanted to could sign as another, so **"Trocar o
+     código"** is the real cut: a new id and code over the old file;
+     computers that should stay type the new code, the one left out keeps
+     the old key, sees `mismatch`, and its lines no longer verify anywhere.
+     A computer retired on purpose just leaves the sync (Sair da
+     sincronização); a dead one stays quiet in the list — "Tirar" it, so it
+     no longer holds the cleanup of `sync/media` back.
+   - **The cleanup counts only computers with the code**: each
+     `state.json` is signed like a line; a computer whose files never
+     verified (no code, an old one) or that was taken out does not hold a
+     file back, and one with the code but no `state.json` yet still does.
+5. **Configurações › Sincronização and the first join (done; the owner's
+   picks of 2026-10-16 on the decision page):**
+   - **Main side** (`electron/syncControl.cjs`, tested in
+     `syncControl.test.cjs` with temp stores, one folder and the picker,
+     the protection and the bell faked; reached through `keryx:sync`):
+     choose the folder (native picker; a new folder forgets the old one's
+     code), create / type / show / change the code, pause, sync now, open
+     the folder, Tirar / Deixar voltar, leave. settings.json keeps `"sync":
+     { folder, paused, pairing: { id, key, code, joinedAt } }`, the key and
+     the code sealed with Electron `safeStorage` (Windows' DPAPI;
+     "Mostrar o código" was the owner's pick); a key that will not open
+     here (settings brought from another account) asks for the code again
+     (`keyLost`). Each computer writes a signed `sync/<pc>/computer.json`
+     (its Windows name and KERYX version, again when either changes and
+     twice a day), so the list says "NOTEBOOK-PASTOR · escreveu há 3 min ·
+     0.2.20". The bell: when the code changed, when the folder is gone for
+     10 minutes, and once after a join when songs look repeated.
+   - **The first join merges** (`store.snapshot()`, tested): creating or
+     typing a code (and changing it) puts everything this computer holds
+     into the outbox at the versions it is at, so the others' newer copies
+     still win and nothing is replaced; every delete goes at its
+     tombstone's date; the profile sends only the church fields this
+     computer set (a version of its own, or a value other than the factory
+     one), so a fresh install never sends its defaults over the church's
+     logo. Media all go (the owner's pick: no question first).
+   - **The section** (`settings/SyncSection.jsx`, machine scope, between
+     Console and Backup): three steps (`syncStep` in
+     `src/lib/console/syncView.js`, tested, with the status in pt-BR):
+     the folder; the code (make it where the folder has none — shown big
+     once, with Copiar —, or type it, checked as it is typed by
+     `shared/syncCode.mjs`; also after `mismatch`, `removed` or
+     `keyLost`); then Sincronizar (pause), Pasta, Estado with "Sincronizar
+     agora", Desde que abriu, Mídias, Computadores (Tirar… / Deixar
+     voltar), Código da igreja (Mostrar, Copiar, Trocar o código…), Músicas
+     repetidas and Sair. Every question goes through `useConfirm`. One
+     poll for the window (`src/hooks/useSyncStatus.js`, every 4 s while
+     someone listens). The browser preview has no main process: the section
+     shows its first step with the button off and says why.
+   - **The top bar's cloud** (owner's pick B): beside Ver, only on a
+     computer that syncs, its dot green (in step), amber (something waits)
+     or grey (paused); a click opens the section.
+   - **Músicas repetidas** (`shared/syncDuplicates.mjs`, tested; shared so
+     the main process can ring the bell): the same title and lyrics once
+     case, accents, punctuation, chords and spacing are set aside. The
+     section lists them; **Juntar em uma** keeps the newest copy, points
+     every setlist item, template item and history row at it and deletes
+     the others (`mergePlan`, after `useConfirm`); **Manter as duas**
+     keeps them on every computer (`User.song_duplicates_kept`, a church
+     field of pairs "a|b"). On a computer that syncs the Biblioteca says
+     "parece repetida" in the row, and its menu has "Ver as repetidas…".
+6. **Hardening (done):**
+   - **No outbox while this computer does not sync** (`store.setRecording`,
+     set by `syncControl` at launch: a folder and a code, paused
+     included): before, every change was recorded forever on a computer
+     that never synced. Joining sends everything anyway (the snapshot);
+     choosing another folder or leaving forgets what waited. Versions are
+     kept either way.
+   - **Restoring a backup or importing on a computer that syncs** asks
+     (`syncQuestion` in `system.cjs`, the owner's picks): **"Voltar todos a
+     dd/mm"** (chosen by default; for an import, "Usar em todos os
+     computadores") — after the restart the restored database goes out as
+     edits made now (`store.snapshot({ bump: true })` through
+     `syncControl.afterImport("all")`), so its rows win on every computer
+     while what was made after stays; or **"Só este computador"** — it goes
+     back and leaves the sync (`afterImport("leave")`). The answer waits in
+     settings.json (`syncAfterImport`) and is applied only when the swap
+     really happened. Without sync nothing changes.
+   - **The same PDF converted once** (`pagesWait` in `presentation.js`,
+     tested; `usePagesBackfill`): the computer a PDF was sent on makes its
+     pages at once (`madeHere` in `mediaImport.js`); every other one waits
+     5 minutes from the row's date for those pages to arrive with the row,
+     and makes them itself only if they do not (old rows go at once).
+   - **Computers on different versions** (`_parked` in `store.cjs`,
+     tested): a change of an entity this version does not know, and the
+     fields of a row its table lacks, are kept as they came (the newest per
+     row) and filled in when a version that knows them opens the database
+     (`replayParked`); and a remote row is written over what is here, so a
+     sender on an older version, which does not know a column, never
+     erases it (a sender that knows a column always sends it, empty or
+     not). Without this, an older computer would lose a newer one's values
+     and its next edit would erase them everywhere.
+   What only the real thing can confirm (docs/checklist-pc-igreja.md, item
+   8): two PCs on Google Drive para computador, the first join of the
+   church PC copying every media file into Drive while it projects, a code
+   typed on the second PC, edits in about 30 s, Tirar, leaving, and a
+   restore for everyone.
 
 ## 9. Project layout after the change
 

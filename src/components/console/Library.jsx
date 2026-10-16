@@ -34,7 +34,7 @@ const dragProps = (stage, time = "") => ({
 // The picture a media row shows on hover: an image itself, a video's still
 // (Media.thumbnail_url, src/lib/mediaPosterCapture.js) or a PDF's first page
 // (src/lib/pdfPagesCapture.js); nothing else has one.
-const peekOf = (m) => (m.missing ? "" : m.type === "image" || m.type === "gif" ? m.file_url : m.type === "video" || m.type === "pdf" ? m.thumbnail_url || "" : "");
+const peekOf = (m) => (m.missing || m.posterSyncing ? "" : m.type === "image" || m.type === "gif" ? m.file_url : m.type === "video" || m.type === "pdf" ? m.thumbnail_url || "" : "");
 const PEEK_DELAY_MS = 350;
 const PEEK_W = 240;
 
@@ -102,7 +102,10 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // double click sends it to air (onGo). The Avisos tab also holds the Aviso
 // rápido and the Ferramentas where the panel beside the Prévia does not
 // (`elsewhere`: what that panel shows now).
-export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice }) {
+// dupIds: the songs that look repeated (shared/syncDuplicates.mjs), on a
+// computer that syncs: "parece repetida" in the row, "Ver as repetidas…"
+// in its menu (onDuplicates, Configurações › Sincronização).
+export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
@@ -205,7 +208,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                 key={s.id}
                                 icon="music"
                                 title={s.title}
-                                meta={[s.artist, s.song_key, s.duration && mmss(s.duration), s.audio_url && (isVideoUrl(s.audio_url) ? "vídeo" : "playback"), (s.slides || []).some((x) => Number.isFinite(x?.start)) && "sincronizada"].filter(Boolean).join(" · ")}
+                                meta={[s.artist, s.song_key, s.duration && mmss(s.duration), s.audio_url && (isVideoUrl(s.audio_url) ? "vídeo" : "playback"), (s.slides || []).some((x) => Number.isFinite(x?.start)) && "sincronizada", dupIds?.has(s.id) && "parece repetida"].filter(Boolean).join(" · ")}
                                 state={state(`song:${s.id}`)}
                                 onClick={() => onPrepare(stageFromSong(s, {}, data.themes))}
                                 onDoubleClick={onGo && (() => onGo(stageFromSong(s, {}, data.themes)))}
@@ -214,6 +217,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                     onAddSong && { label: "Adicionar à setlist", icon: "plus", onSelect: () => onAddSong(s) },
                                     onEditSong && { label: "Editar", icon: "edit", onSelect: () => onEditSong(s.id) },
                                     { label: s.is_favorite ? "Tirar dos favoritos" : "Favoritar", icon: "star", onSelect: () => toggleFav(s) },
+                                    dupIds?.has(s.id) && onDuplicates && { label: "Ver as repetidas…", icon: "copy", onSelect: onDuplicates },
                                     { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Song", s, "a música", s.title, "Música excluída.") },
                                     onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromSong(s, {}, data.themes)) },
                                 ] })}
@@ -246,8 +250,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         key={m.id}
                         icon={MEDIA_ICON[m.type] || "film"}
                         title={m.title}
-                        meta={m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
-                        metaClass={m.missing ? "kx-warn" : ""}
+                        meta={m.syncing ? `${MEDIA_LABEL[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
+                        metaClass={m.missing && !m.syncing ? "kx-warn" : ""}
                         state={m.type === "audio" ? (c.cur?.audio?.id === m.id ? "is-air" : c.prev?.id === `media:${m.id}` ? "is-prev" : "") : state(`media:${m.id}`)}
                         onClick={() => onPrepare(stageFromMedia(m))}
                         onDoubleClick={onGo && (() => onGo(stageFromMedia(m)))}

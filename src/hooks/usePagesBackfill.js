@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { keryx } from "@/api/keryxClient";
-import { needsPages } from "@/lib/presentation";
+import { needsPages, pagesWait } from "@/lib/presentation";
+import { madeHere } from "@/lib/mediaImport";
 import { savePages } from "@/lib/pdfPagesCapture";
 
 const PAUSE_MS = 300;
@@ -25,15 +26,24 @@ const tried = new Set();
 
 // Gives every PDF of the Mídia its pages as pictures (Media.pages), one PDF
 // at a time: those sent now (their row arrives through subscribe) and the
-// ones from before there were presentations. The console only, where files
+// ones from before there were presentations. A PDF sent on another computer
+// waits a few minutes for that computer's pages (pagesWait). The console only, where files
 // can be sent; never a screen on the network.
 export function usePagesBackfill(rows) {
     const [tick, setTick] = useState(0);
     const [busy, setBusy] = useState(false);
     useEffect(() => {
         if (busy || !keryx.isDesktop || keryx.isNetworkScreen) return undefined;
-        const row = rows.find((m) => needsPages(m) && !tried.has(`${m.id}|${m.file_url}`));
-        if (!row) return undefined;
+        const due = rows.filter((m) => needsPages(m) && !tried.has(`${m.id}|${m.file_url}`));
+        const now = Date.now();
+        const row = due.find((m) => pagesWait(m, { mine: madeHere.has(m.id), now }) === 0);
+        if (!row) {
+            // A PDF from another computer: its pages are probably on the way.
+            const wait = Math.min(...due.map((m) => pagesWait(m, { mine: madeHere.has(m.id), now })));
+            if (!Number.isFinite(wait)) return undefined;
+            const later = setTimeout(() => setTick((n) => n + 1), wait + 500);
+            return () => clearTimeout(later);
+        }
         const id = setTimeout(() => {
             tried.add(`${row.id}|${row.file_url}`);
             setBusy(true);

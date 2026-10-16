@@ -36,6 +36,21 @@ export function needsPages(row) {
     return String(row.file_url || "").startsWith("http");
 }
 
+// How long to wait before making a PDF's pages here (ms; 0 = now). With the
+// sync between the church's computers (docs/desktop-architecture.md §8b) a
+// PDF sent on another computer arrives here before its pages do, and both
+// would make them: the computer it was sent on starts at once, every other
+// one waits PAGES_WAIT_MS from when the row was made, and the pages usually
+// arrive with the row's next change. `mine`: the row was made in this
+// window (importMediaFiles). Rows from before (no date, or older) go now.
+export const PAGES_WAIT_MS = 5 * 60 * 1000;
+export function pagesWait(row, { mine = false, now = Date.now() } = {}) {
+    if (mine) return 0;
+    const made = Date.parse(row?.created_date || "");
+    if (!Number.isFinite(made)) return 0;
+    return Math.max(0, made + PAGES_WAIT_MS - now);
+}
+
 // The pages as the live state's slides (content.show, kind "presentation").
 export const presentationSlides = (pages) => (pages || []).map((p, i) => ({ text: "", image_url: p.url, label: `Página ${i + 1}` }));
 

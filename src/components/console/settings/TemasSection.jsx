@@ -4,7 +4,6 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
 import { CfgKey } from "./parts";
-import FundoCategories from "./FundoCategories";
 import { ThemeThumb, NoBgMark } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
@@ -13,6 +12,7 @@ import { bgFields } from "@/lib/console/backgroundSpec";
 import { useLibraryPicker, ALL_KINDS } from "../library/libraryContext";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { openEditor } from "@/lib/editorWindow";
+import { categoryList } from "@/lib/console/backgroundPrefs";
 
 const SIZE = Object.fromEntries(TEXT_SIZES);
 const FONT = Object.fromEntries(THEME_FONTS);
@@ -72,6 +72,7 @@ export default function TemasSection({ c }) {
     const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["settings", "themes"] })), [client]);
     const reload = () => client.invalidateQueries({ queryKey: ["settings", "themes"] });
+    const storedCats = usePrefs().background_categories;
     const run = async (p, message) => {
         try { await p; if (message) c.say(message); } catch (err) { c.say(err?.message || "Não foi possível."); }
         reload();
@@ -127,9 +128,15 @@ export default function TemasSection({ c }) {
             {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Use "Novo tema…", ou ajuste o texto em Camadas e salve como novo.</Empty>}
             {/* The backgrounds live in the library (BackgroundLibrary, manage
                 mode); this is its door in Configurações — it was Aparência's
-                until the section dissolved (Rodada B 2026-10-14). */}
+                until the section dissolved (Rodada B 2026-10-14). The
+                categories are edited in the library too (owner 2026-10-16):
+                the row opens it on them. */}
             <CfgKey k="Fundos" className="listhead"><span className="kx-section">Fundos <span className="kx-count">· imagens, vídeos, gerados e cores para temas e papéis de parede</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca…</Btn></CfgKey>
-            <FundoCategories c={c} />
+            <CfgKey k="Categorias de fundos" className="kx-row">
+                <span className="kx-glyph"><Icon name="image" /></span>
+                <span className="kx-row-main"><span className="kx-row-title">Categorias de fundos</span><span className="kx-row-meta">{categoryList(storedCats).join(" · ")}</span></span>
+                <Btn small onClick={() => pick({ title: "Fundos", manage: true, view: "categories" })}>Editar…</Btn>
+            </CfgKey>
         </>
     );
 }

@@ -39,8 +39,41 @@ function cachedSize(measure = dirSize, ttl = SIZE_TTL_MS) {
 }
 
 const UPDATES_KEY = "updates";
+// What restoring or importing on a computer that syncs leaves for the next
+// launch (main.cjs hands it to syncControl.afterImport once the swap is in).
+const AFTER_IMPORT_KEY = "syncAfterImport";
 
-function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications = null }) {
+// Restoring a backup, or importing, on a computer that syncs with others
+// (docs/desktop-architecture.md §8b; the owner's picks of 2026-10-16): the
+// question, with "everyone" first and chosen by default, and what each
+// answer means: "all" (the restored rows win on every computer; what was
+// made after stays), "leave" (only this computer goes back, and it leaves
+// the sync), null (cancel).
+function syncQuestion(kind, { day = "", others = 0 } = {}) {
+    const many = others > 0 ? `mais ${others} ${others === 1 ? "computador" : "computadores"}` : "outros computadores";
+    const q = kind === "restore"
+        ? {
+            title: "Restaurar backup",
+            message: `Restaurar o backup de ${day}. Este computador sincroniza com ${many}: o que fazer com eles?`,
+            detail: `Voltar todos a ${day}: as músicas, setlists e avisos do backup voltam como estavam em ${day} em todos os computadores. O que foi criado depois continua.\n\n`
+                + "Só este computador: ele volta ao backup e sai da sincronização. Os outros continuam como estão.\n\n"
+                + "Os dados de hoje deste computador ficam numa pasta “before-import-…” dentro da pasta de dados. O KERYX vai reiniciar agora.",
+            buttons: [`Voltar todos a ${day}`, "Só este computador", "Cancelar"],
+        }
+        : {
+            title: "Importar dados",
+            message: `Importar substitui os dados deste computador pelos do arquivo. Este computador sincroniza com ${many}: o que fazer com eles?`,
+            detail: "Usar em todos: as músicas, setlists e avisos do arquivo passam a valer em todos os computadores. O que só existe nos outros continua.\n\n"
+                + "Só neste computador: ele fica com os dados do arquivo e sai da sincronização. Os outros continuam como estão.\n\n"
+                + "Os dados de hoje ficam salvos numa pasta “before-import-…” dentro da pasta de dados. O KERYX vai reiniciar agora.",
+            buttons: ["Usar em todos os computadores", "Só neste computador", "Cancelar"],
+        };
+    return { ...q, defaultId: 0, cancelId: 2, modes: ["all", "leave", null] };
+}
+
+// syncInfo() -> the sync's status (syncControl.status), or null: whether
+// this computer syncs, and with how many others.
+function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications = null, syncInfo = null }) {
     const dataSize = cachedSize();
     const autoUpdates = () => Boolean((settings.get(UPDATES_KEY, {}) || {}).auto);
     const updateState = () => ({ ...updater.state(), auto: autoUpdates() });
@@ -56,6 +89,28 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
     const configuredDir = () => prefs().dir;
     const parentWindow = (event) => (event ? BrowserWindow.fromWebContents(event.sender) : BrowserWindow.getFocusedWindow()) || undefined;
     const message = (event, options) => dialog.showMessageBox(parentWindow(event), { noLink: true, ...options });
+    // Syncing with others: { others } (how many, none taken out), else null.
+    const syncing = () => {
+        let st = null;
+        try {
+            st = syncInfo ? syncInfo() : null;
+        } catch { /* no sync */ }
+        if (!st || !st.folder || !st.paired) return null;
+        return { others: (st.engine?.computers || []).filter((c) => !c.removed).length };
+    };
+    // The question for a computer that syncs: false when cancelled, else
+    // true with the answer kept for the next launch.
+    async function askSync(event, kind, day, before = "") {
+        const sync = syncing();
+        if (!sync) return null;
+        const q = syncQuestion(kind, { day, others: sync.others });
+        const answer = await message(event, { type: "warning", title: q.title, message: q.message, detail: before + q.detail, buttons: q.buttons, defaultId: q.defaultId, cancelId: q.cancelId });
+        const mode = q.modes[answer.response];
+        if (!mode) return false;
+        settings.set(AFTER_IMPORT_KEY, { mode, kind, at: new Date().toISOString() });
+        logger.info(`[keryx-sync] ${kind === "restore" ? "restaurar" : "importar"}: ${mode === "all" ? "para todos os computadores" : "só este computador, que sai da sincronização"}`);
+        return true;
+    }
 
     // The chosen folder when it is usable (a USB stick may be unplugged), else
     // the default one, so a backup is never silently skipped.
@@ -182,7 +237,13 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
 
         // Validate and unpack first, so a bad file is reported before anything is decided.
         const staged = await archive.stageImport({ zipFile: filePaths[0], dataDir });
-        const answer = await message(event, {
+        const exported = String(staged.manifest.exportedAt || "").slice(0, 10) || "data desconhecida";
+        const synced = await askSync(event, "import", "", `O arquivo tem ${staged.media} arquivo(s) de mídia (exportado em ${exported}).\n\n`);
+        if (synced === false) {
+            archive.discardPendingImport(dataDir);
+            return { cancelled: true };
+        }
+        const answer = synced ? { response: 0 } : await message(event, {
             type: "warning",
             title: "Importar dados",
             message: "Importar substitui todos os dados atuais pelos do arquivo.",
@@ -223,7 +284,12 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
         const mirrorDir = path.join(dir, "media");
         const staged = await archive.stageRestore({ dataDir, dbFile: found.file, mediaDir, mirrorDir: fs.existsSync(mirrorDir) ? mirrorDir : null });
         const day = found.day.split("-").reverse().join("/");
-        const answer = await message(event, {
+        const synced = await askSync(event, "restore", day, staged.fromBackup ? `${staged.fromBackup} arquivo(s) de mídia apagados desde então voltam da cópia no backup.\n\n` : "");
+        if (synced === false) {
+            archive.discardPendingImport(dataDir);
+            return { cancelled: true };
+        }
+        const answer = synced ? { response: 0 } : await message(event, {
             type: "warning",
             title: "Restaurar backup",
             message: `Restaurar o backup de ${day} substitui os dados atuais.`,
@@ -355,4 +421,4 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
 // The arguments for app.setLoginItemSettings.
 const loginItemArgs = (on, exe) => ({ openAtLogin: Boolean(on), path: exe });
 
-module.exports = { createSystem, cachedSize, loginItemArgs };
+module.exports = { createSystem, cachedSize, loginItemArgs, syncQuestion, AFTER_IMPORT_KEY };

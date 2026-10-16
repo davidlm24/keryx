@@ -239,10 +239,13 @@ bulkUpdate / subscribe`, `auth.*`, `integrations.Core.*`) over:
   to the store in the main process (`electron/db/store.cjs`, SQLite via
   `node:sqlite`). Writes broadcast change events to every window, which is
   what `subscribe()` listens to. `auth.me()` is the single local operator
-  profile; there is no login. `UploadFile` copies the file into `media/`; the
-  database stores `keryx-media://<file>` and the adapter hands pages
-  `http://127.0.0.1:7700/media/<file>`. `FileInfo` says which media files are
-  on disk. AI features are not part of the app (they reject with 501).
+  profile; there is no login. `UploadFile` copies the file into `media/`
+  (`electron/mediaImport.cjs`: a file from the computer by its path, with no
+  size cap, once the disk has room; one with no path behind it as bytes, up
+  to 256 MB); the database stores `keryx-media://<file>` and the adapter
+  hands pages `http://127.0.0.1:7700/media/<file>`. `FileInfo` says which
+  media files are on disk. AI features are not part of the app (they reject
+  with 501).
 - **Network screens** (`src/api/backends/network.js`, a browser that opened a
   screen page from the KERYX computer): the same store read over HTTP and
   the change events over Server-Sent Events (`electron/lan.cjs`), read-only.

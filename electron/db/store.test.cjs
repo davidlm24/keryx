@@ -468,3 +468,136 @@ test("meta: this database's own bookkeeping, JSON values, the computer's id not 
     assert.equal(s.getMeta("pc_id"), null, "a plain string id is not JSON");
     assert.equal(s.outbox().length, 0, "nothing in the outbox");
 });
+
+test("snapshot: joining sends everything here, merging with what the others have", async () => {
+    const a = fresh();
+    const b = fresh();
+    // Rows from before the outbox existed (an old install, the Base44 import).
+    a.importRows("Song", [
+        { id: "velha", title: "Velha", created_date: "2024-01-01T00:00:00.000Z", updated_date: "2024-01-01T00:00:00.000Z" },
+        { id: "comum", title: "Comum (A)", created_date: "2024-01-01T00:00:00.000Z", updated_date: "2024-02-01T00:00:00.000Z" },
+    ]);
+    const gone = a.call("Song", "create", [{ title: "Apagada" }]);
+    a.call("Song", "delete", [gone.id]);
+    a.call("User", "update", [PROFILE_ID, { church_name: "Igreja Gerar", console_density: "compact" }]);
+    assert.ok(a.outbox().length > 0);
+
+    const n = a.snapshot();
+    const out = a.outbox();
+    assert.equal(out.length, n);
+    const songs = out.filter((c) => c.entity === "Song");
+    assert.deepEqual(songs.filter((c) => c.op === "upsert").map((c) => c.id).sort(), ["comum", "velha"]);
+    assert.equal(songs.find((c) => c.id === "velha").at, "2024-01-01T00:00:00.000Z", "a row goes at its own version");
+    assert.deepEqual(songs.filter((c) => c.op === "delete").map((c) => c.id), [gone.id], "and a delete at its tombstone's");
+    const profile = out.filter((c) => c.entity === "User");
+    assert.equal(profile.length, 1);
+    assert.deepEqual(profile[0].row, { id: PROFILE_ID, church_name: "Igreja Gerar" }, "only what the church set; nothing of this computer's, no factory colours");
+
+    // B had its own songs, and a later edit of the same row (a backup both had).
+    b.call("Song", "create", [{ title: "Só de B" }]);
+    b.importRows("Song", [{ id: "comum", title: "Comum (B)", created_date: "2024-01-01T00:00:00.000Z", updated_date: "2025-05-01T00:00:00.000Z" }]);
+    b.applyRemote(a.outbox());
+    const titles = (s) => s.call("Song", "list", []).map((r) => r.title).sort();
+    assert.deepEqual(titles(b), ["Comum (B)", "Só de B", "Velha"], "both sets; the later edit of a shared row stays");
+
+    // B's join: a fresh profile sends none of its defaults over A's (only
+    // what it got from A, at A's version).
+    assert.equal(b.snapshot() >= 2, true);
+    assert.deepEqual(b.outbox().filter((c) => c.entity === "User").map((c) => Object.keys(c.row).sort()), [["church_name", "id"]]);
+    a.applyRemote(b.outbox());
+    assert.deepEqual(titles(a), ["Comum (B)", "Só de B", "Velha"]);
+    assert.equal(a.call("User", "get", [PROFILE_ID]).church_name, "Igreja Gerar");
+    assert.equal(a.tombstones().length, 1, "the delete stays a delete");
+});
+
+test("snapshot with bump: the rows here win everywhere (a backup restored for every computer)", async () => {
+    const a = fresh();
+    const b = fresh();
+    a.importRows("Song", [{ id: "s", title: "Do backup", created_date: "2024-01-01T00:00:00.000Z", updated_date: "2024-01-01T00:00:00.000Z" }]);
+    b.importRows("Song", [{ id: "s", title: "Editada depois", created_date: "2024-01-01T00:00:00.000Z", updated_date: "2025-01-01T00:00:00.000Z" }]);
+    a.snapshot();
+    b.applyRemote(a.outbox());
+    assert.equal(b.call("Song", "get", ["s"]).title, "Editada depois", "without bump the newer copy wins");
+    await tick();
+    a.snapshot({ bump: true });
+    assert.ok(a.outbox().find((c) => c.id === "s").at > "2025-01-01", "sent as an edit made now");
+    b.applyRemote(a.outbox());
+    assert.equal(b.call("Song", "get", ["s"]).title, "Do backup");
+    assert.equal(a.snapshot(), a.outbox().length, "a second snapshot replaces the first");
+});
+
+test("recording: while this computer does not sync nothing goes to the outbox; versions are kept", async () => {
+    const s = fresh();
+    s.setRecording(false);
+    assert.equal(s.isRecording(), false);
+    const song = s.call("Song", "create", [{ title: "Sem sincronização" }]);
+    s.call("Song", "update", [song.id, { title: "Ainda sem" }]);
+    s.call("User", "update", [PROFILE_ID, { church_name: "Gerar" }]);
+    assert.equal(s.outbox().length, 0);
+    // Joining sends it all anyway, at the versions kept meanwhile.
+    s.setRecording(true);
+    s.snapshot();
+    const out = s.outbox();
+    assert.ok(out.some((c) => c.id === song.id && c.row.title === "Ainda sem"));
+    assert.deepEqual(out.find((c) => c.entity === "User").row, { id: PROFILE_ID, church_name: "Gerar" });
+    await tick();
+    s.call("Song", "update", [song.id, { title: "Agora sim" }]);
+    assert.equal(s.outbox().at(-1).row.title, "Agora sim");
+});
+
+// A database opened by an older KERYX: the same schema without what came later.
+function olderSchema({ withoutEntity, withoutField }) {
+    const entities = { ...schema.entities };
+    if (withoutEntity) delete entities[withoutEntity];
+    if (withoutField) {
+        const [entity, field] = withoutField;
+        const columns = Object.fromEntries(Object.entries(entities[entity].columns).filter(([k]) => k !== field));
+        entities[entity] = { ...entities[entity], columns };
+    }
+    return { entities };
+}
+
+test("a newer version's entity is kept, never lost, and applied once this computer is updated", () => {
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "keryx-")), "old.db");
+    const old = createStore({ file, schema: olderSchema({ withoutEntity: "TimerPreset" }), log: () => {} });
+    const at = new Date().toISOString();
+    const change = { entity: "TimerPreset", id: "t1", op: "upsert", row: { id: "t1", minutes: 40 }, at, pc: "newer" };
+    assert.deepEqual(old.applyRemote([change, { entity: "not an entity", id: "x", op: "upsert", row: {}, at, pc: "newer" }]), { applied: 0, skipped: 2, failed: 0 });
+    assert.equal(old.parkedCount(), 1);
+    old.close();
+    const updated = createStore({ file, schema, log: () => {} });
+    assert.equal(updated.call("TimerPreset", "get", ["t1"]).minutes, 40);
+    assert.equal(updated.parkedCount(), 0);
+    assert.equal(updated.outbox().length, 0, "what came from elsewhere is not this computer's");
+    updated.close();
+});
+
+test("a newer version's fields: kept by the older computer, never erased by its edits, filled in after its update", () => {
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "keryx-")), "old.db");
+    const newer = fresh();
+    const old = createStore({ file, schema: olderSchema({ withoutField: ["Song", "lines_per_slide"] }), log: () => {} });
+    const song = newer.call("Song", "create", [{ title: "Hino", lines_per_slide: 2 }]);
+    old.applyRemote(newer.outbox());
+    assert.equal(old.call("Song", "get", [song.id]).title, "Hino");
+    assert.equal(old.parkedCount(), 1);
+
+    // The older computer edits the song: its line does not carry the field,
+    // and the newer computer keeps it.
+    old.call("Song", "update", [song.id, { title: "Hino (editado)" }]);
+    newer.applyRemote(old.outbox());
+    const there = newer.call("Song", "get", [song.id]);
+    assert.equal(there.title, "Hino (editado)");
+    assert.equal(there.lines_per_slide, 2, "an older computer never erases what it cannot see");
+    old.close();
+
+    const updated = createStore({ file, schema, log: () => {} });
+    const here = updated.call("Song", "get", [song.id]);
+    assert.equal(here.title, "Hino (editado)");
+    assert.equal(here.lines_per_slide, 2, "filled in once the version knows the field");
+    assert.equal(updated.parkedCount(), 0);
+    updated.close();
+});

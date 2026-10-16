@@ -4,7 +4,9 @@
 // through prefsOf(): null or a bad value is the default here, never a
 // default in the jsonc. What belongs to this computer (window sizes, the
 // outputs, the network PIN) stays out: localStorage or settings.json.
-import { DENSITIES, MODULES } from "../console/layout.js";
+// The plain lists, not layout.js: every output reads these preferences and
+// must not load the console's dock with them.
+import { DENSITIES, MODULES } from "../console/layoutChoices.js";
 import { normalizeCategories } from "../console/backgroundPrefs.js";
 
 const oneOf = (list, fallback) => (v) => (list.includes(v) ? v : fallback);
@@ -55,6 +57,9 @@ export const PREF_FIELDS = {
     // The background library's categories, in order (backgroundPrefs.js
     // categoryList): null = never edited, the suggestions.
     background_categories: { default: null, normalize: normalizeCategories },
+    // Músicas repetidas the church kept apart (Configurações › Sincronização,
+    // Manter as duas): pairKeys "a|b" (shared/syncDuplicates.mjs).
+    song_duplicates_kept: { default: [], normalize: (v) => (Array.isArray(v) ? v.filter((k) => typeof k === "string" && /^[^|]{1,100}\|[^|]{1,100}$/.test(k)).slice(0, 5000) : []) },
     console_density: { default: "auto", normalize: oneOf(DENSITY_KEYS, "auto") },
     console_hidden_modules: {
         default: [],
