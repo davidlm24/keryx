@@ -125,7 +125,7 @@ test("rowStatus: one switch and one text per row", () => {
     const local = (state, droppedAt = null) => ({ local: true, state, droppedAt });
     assert.deepEqual(rowStatus(local("connected")), { switchOn: true, text: "Aberta", tone: "ok", hint: null });
     assert.deepEqual(rowStatus(local("connected"), { locked: true }), { switchOn: true, text: "Aberta · travada", tone: "rh", hint: null });
-    assert.deepEqual(rowStatus(local("reconnecting")), { switchOn: true, text: "Tela desligada", tone: "warn", hint: "mostrando numa janela até ela ligar" });
+    assert.deepEqual(rowStatus(local("reconnecting")), { switchOn: true, text: "Tela desligada", tone: "warn", hint: "volta sozinha quando ela ligar" });
     assert.deepEqual(rowStatus(local("unused")), { switchOn: false, text: "Fechada", tone: "off", hint: null });
     const closed = rowStatus(local("closed", at(19, 42)));
     assert.equal(closed.switchOn, false);
