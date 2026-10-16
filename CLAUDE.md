@@ -50,7 +50,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).
-  `npm test` fails if schema.json and the jsonc drift apart.
+  `npm test` fails if schema.json and the jsonc drift apart. A new entity
+  also goes in `SYNC_ENTITIES` or `LOCAL_ENTITIES`
+  (`electron/db/syncScope.cjs`, sync between the church's computers,
+  desktop-architecture.md §8b), and a User field that belongs to one
+  computer in `LOCAL_USER_FIELDS`; `npm test` checks the entity.
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by

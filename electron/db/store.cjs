@@ -13,6 +13,12 @@
 
 const crypto = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
+const { isSynced } = require("./syncScope.cjs");
+
+// Deletes of synced entities leave a mark (entity, id, when) so the delete can
+// travel to the church's other computers instead of the row coming back from
+// one that still has it. Not an entity: nothing in the app reads it.
+const TOMBSTONES = "_tombstone";
 
 const SYSTEM_FIELDS = new Set(["id", "created_date", "updated_date", "created_by", "created_by_id"]);
 const SQL_TYPES = { text: "TEXT", real: "REAL", integer: "INTEGER", boolean: "INTEGER", json: "TEXT" };
@@ -130,6 +136,7 @@ function createStore({ file, schema, log = console.warn }) {
             db.exec(`CREATE INDEX IF NOT EXISTS ${quote(name)} ON ${quote(def.table)} (${columns.map(quote).join(", ")})`);
         }
     }
+    db.exec(`CREATE TABLE IF NOT EXISTS ${quote(TOMBSTONES)} (entity TEXT NOT NULL, id TEXT NOT NULL, deleted_at TEXT NOT NULL, PRIMARY KEY (entity, id))`);
 
     const entityDef = (entity) => {
         const def = schema.entities[entity];
@@ -191,6 +198,8 @@ function createStore({ file, schema, log = console.warn }) {
             if (/UNIQUE constraint failed/.test(err.message)) throw new StoreError("Já existe um registro com este id.", 409);
             throw err;
         }
+        // A row that exists again is no longer deleted.
+        if (isSynced(entity)) prepare(`DELETE FROM ${quote(TOMBSTONES)} WHERE entity = ? AND id = ?`).run(entity, String(row.id));
         return getRow(def, row.id);
     }
 
@@ -378,7 +387,13 @@ function createStore({ file, schema, log = console.warn }) {
         delete(entity, def, [id]) {
             const old = getRow(def, id);
             if (old) {
-                prepare(`DELETE FROM ${quote(def.table)} WHERE id = ?`).run(String(id));
+                transaction(() => {
+                    prepare(`DELETE FROM ${quote(def.table)} WHERE id = ?`).run(String(id));
+                    if (isSynced(entity)) {
+                        prepare(`INSERT OR REPLACE INTO ${quote(TOMBSTONES)} (entity, id, deleted_at) VALUES (?, ?, ?)`)
+                            .run(entity, String(id), new Date().toISOString());
+                    }
+                });
                 emit([event(entity, "delete", old)]);
             }
             return { success: true };
@@ -412,6 +427,21 @@ function createStore({ file, schema, log = console.warn }) {
         return Object.fromEntries(rows.filter((r) => r.value !== null).map((r) => [r.value, r.n]));
     }
 
+    // Deletes of synced entities after `since` (ISO; none = all), oldest first.
+    function tombstones(since) {
+        const after = toIso(since);
+        const sql = `SELECT entity, id, deleted_at FROM ${quote(TOMBSTONES)}`
+            + (after ? " WHERE deleted_at > ?" : "") + " ORDER BY deleted_at, entity, id";
+        return prepare(sql).all(...(after ? [after] : [])).map((r) => ({ ...r }));
+    }
+
+    // Forgets the marks older than `before` (every computer has seen them).
+    function pruneTombstones(before) {
+        const until = toIso(before);
+        if (!until) throw new StoreError("Data inválida.", 400);
+        return Number(prepare(`DELETE FROM ${quote(TOMBSTONES)} WHERE deleted_at < ?`).run(until).changes);
+    }
+
     // A consistent copy of the whole database while it is in use (VACUUM INTO
     // takes its own read transaction); the target must not exist.
     function backupTo(target) {
@@ -422,6 +452,8 @@ function createStore({ file, schema, log = console.warn }) {
         call,
         importRows,
         countBy,
+        tombstones,
+        pruneTombstones,
         backupTo,
         onChange(listener) {
             listeners.add(listener);

@@ -821,6 +821,33 @@ Recorded so the decision is not lost (2026-10-08; nothing built):
 - `supabase/` (migrations, Edge Functions) is kept, unused, as the starting
   point for that.
 
+### Sincronização entre computadores (owner 2026-10-16; being built)
+
+The owner chose **two-way sync through a shared folder** (as Holyrics'
+Drive sync): every verified computer edits, and each one writes to and reads
+from one folder that Google Drive para computador (or OneDrive, Dropbox)
+keeps in sync. No sign-in inside KERYX, no server, nothing to pay, and it
+syncs whenever Drive does. Conflict rule: last edit wins per row
+(`updated_date`, the computer's id breaking ties). Planned PRs:
+
+1. **Groundwork (done):** what travels is `electron/db/syncScope.cjs` —
+   `SYNC_ENTITIES` (the church's content) and `LOCAL_ENTITIES` (Bibles
+   installed per computer, OutputPref, the live and retired tables); every
+   entity is in exactly one (`npm test`). The profile travels without this
+   computer's fields (`LOCAL_USER_FIELDS`: who operates it, `prefs_version`,
+   the console density; `syncRow`). Deleting a synced row leaves a
+   tombstone (`_tombstone`: entity, id, deleted_at; `store.tombstones(since)`,
+   `pruneTombstones(before)`), cleared when the row exists again.
+2. A persistent outbox from `onChange`; remote changes applied with
+   `importRows` plus an event, last edit wins, never echoed back.
+3. The folder: `sync/<pc>/changes-<n>.jsonl` (append-only), `sync/media/`
+   (files by their uuid name), cursors per computer, tolerant of
+   half-written files and Drive's conflict copies.
+4. Pairing: a church sync code; files signed with a key from it, so only
+   verified computers count.
+5. Configurações › Sincronização; the first join merges (never replaces) and
+   flags likely duplicate songs.
+
 ## 9. Project layout after the change
 
 ```
