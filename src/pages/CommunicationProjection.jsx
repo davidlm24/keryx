@@ -4,22 +4,17 @@ import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useNoticeAdvance } from "@/hooks/useNoticeAdvance";
 import OutputScreen from "@/components/screen/OutputScreen";
-import AlertOverlayRenderer from "@/components/projection/AlertOverlayRenderer";
 
 // A screen for avisos only (countdowns, announcements, image + text): the
 // live state's communication layer, whatever the main projector shows,
 // drawn by the same ScreenRenderer as every other output, with this output's
-// settings (OutputScreen). On the network too.
+// settings (OutputScreen) — the Aviso rápido too, in this screen's look
+// (Rodada E3). On the network too.
 export default function CommunicationProjection() {
     const live = useLiveState();
     const communication = live?.communication;
     const now = useLiveNow(1000);
     const logo = useChurchLogo();
     useNoticeAdvance(communication);
-    return (
-        <>
-            <OutputScreen page="/CommunicationProjection" live={live} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />
-            <AlertOverlayRenderer />
-        </>
-    );
+    return <OutputScreen page="/CommunicationProjection" live={live} now={now} logoUrl={logo} audio={!keryx.isNetworkScreen} />;
 }

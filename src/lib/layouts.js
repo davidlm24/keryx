@@ -193,7 +193,20 @@ export const FACTORY_LAYOUTS = [
             el("timer", 56, 78, 41, 17, { size: 8, weight: "bold", align: "right", valign: "middle", when: "tool", box: true }),
         ],
     }),
+    // The output's own view, full screen: Letras, Vídeo and Comunicação as
+    // their pages draw themselves (Rodada E3: their start in the Editor; the
+    // timer model would add a clock their views never show).
+    normalizeLayout({
+        id: "factory:tela", factory: true, name: "Projeção em tela cheia (modelo)", category: "publico",
+        background: { song_image: false },
+        elements: [el("screen", 0, 0, 100, 100)],
+    }),
 ];
+// The ready design a screen starts from in the Editor de telas, before it
+// has one of its own: the Palco's and the Pastor's, the Projeção with the
+// timer in the corner, every other output its view full screen.
+const SEEDS = { "/StageView": "factory:palco", "/PastorView": "factory:pastor", "/Projection": "factory:projecao" };
+export const seedLayoutId = (path) => SEEDS[path] || "factory:tela";
 // A layout with a timer element shows the tool (clock, timer, texto livre)
 // there, so its Projeção element leaves the full-screen tool layer out.
 export const layoutHasTimer = (layout) => (layout?.elements || []).some((e) => e.type === "timer");

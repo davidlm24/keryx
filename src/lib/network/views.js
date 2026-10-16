@@ -23,12 +23,18 @@ export function nextItems(items, session, count = 3) {
     return items.slice(from, from + count);
 }
 
+// Every screen shows the Aviso rápido (Rodada E3: one bar on every output,
+// each in its own look; the output's Mostrar can leave it out).
+const withAlert = (view, live) => (live?.alert ? { ...view, alert: live.alert } : view);
+
 // Vídeo: the clip on the video channel while there is one (the page plays it
 // full screen, whatever Tela preta says), else the idle look.
-export const videoView = (live) => (live && live.video ? { screen: "show", video: live.video, idle: live.idle, idleUrl: live.idleUrl, idleDim: live.idleDim, idleBlur: live.idleBlur } : standbyView(live));
+export const videoView = (live) => (live && live.video ? withAlert({ screen: "show", video: live.video, idle: live.idle, idleUrl: live.idleUrl, idleDim: live.idleDim, idleBlur: live.idleBlur }, live) : standbyView(live));
 
-// Avisos: only the aviso on air; nothing (null) when there is none.
-export const noticeView = (live) => (live && live.communication ? { screen: "show", communication: live.communication } : null);
+// Avisos: only the aviso on air (and the Aviso rápido); nothing (null) when
+// there is neither.
+export const noticeView = (live) => (live && live.communication ? withAlert({ screen: "show", communication: live.communication }, live)
+    : live?.alert ? { screen: "show", alert: live.alert } : null);
 
 // The outputs drawn by ScreenRenderer, and what each shows from a live state:
 // the console's Prévia rail previews a stage "as that output will show it".
