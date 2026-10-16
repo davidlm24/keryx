@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -279,6 +279,7 @@ test("the No ar strip exists only while lyrics are on air", () => {
     assert.equal(lyricsOnAir({ ...song, media: { url: "x.mp4" } }), false, "a video or a picture over it");
     assert.equal(lyricsOnAir({ ...song, tool: { mode: "timer" } }), false);
     assert.equal(lyricsOnAir({ ...song, communication: { item: {} } }), false, "an aviso");
+    assert.equal(lyricsOnAir({ content: { kind: "presentation", slides: [{ text: "", image_url: "p1.jpg" }] } }), true, "a PDF's pages (Rodada F3)");
     assert.deepEqual(goneModules(song), []);
     assert.deepEqual(goneModules({}), ["onair"]);
 
@@ -398,6 +399,7 @@ test("the No ar strip is as tall as the slide with the most lines", () => {
     assert.equal(onAirHeight([{ text: "a\nb" }, { text: "a\nb\nc\nd" }]), 72 + 4 * 18, "4 lines a slide (the song's editor)");
     assert.ok(onAirHeight([{ text: "1\n2\n3\n4\n5\n6" }]) > onAirHeight([{ text: "1\n2\n3\n4" }]), "a whole stanza");
     assert.equal(onAirHeight([{ text: "a\nb\nc" }], 28), 72 + 3 * 18 - 4, "a compact header is 4 px shorter");
+    assert.equal(onAirHeight([{ text: "", image_url: "p1.jpg", label: "Página 1" }]), 72 + ONAIR_PAGE_LINES * 18, "a presentation's page: a thumbnail of ONAIR_PAGE_LINES lines");
 });
 
 // The Bíblia's dock: the same engine, its own modules.

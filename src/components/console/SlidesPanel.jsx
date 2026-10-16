@@ -77,7 +77,7 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
                             onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
                                 { label: "Pôr na prévia", icon: "eye", disabled: !hand && i === index, onSelect: () => pick(i) },
                                 { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
-                            ] })} title={`${onAir ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || ""}`}>
+                            ] })} title={`${onAir ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || sl.label || ""}`}>
                             <span className="kx-slide-n">{i + 1}</span>
                             <SlideText slide={sl} />
                         </button>
@@ -99,6 +99,15 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
 // whole text is in the card's tooltip and in the Prévia).
 export function SlideText({ slide }) {
     const label = slide.label || (slide.is_chorus ? "Refrão" : "");
+    // A presentation's page (Rodada F3): its picture and its name.
+    if (!slide.text && slide.image_url) {
+        return (
+            <span className="kx-slide-body is-page">
+                <img className="kx-slide-page" src={slide.image_url} alt="" loading="lazy" draggable={false} />
+                {label && <span className="kx-slide-lab">{label}</span>}
+            </span>
+        );
+    }
     return (
         <span className="kx-slide-body">
             {label && <span className="kx-slide-lab">{label}</span>}

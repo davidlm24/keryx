@@ -787,6 +787,24 @@ test("Escola bíblica: activities are checked", () => {
     assert.equal(activitySteps({ activity: show({ kind: "memorize", order: [], rounds: 3 }) }), 3);
 });
 
+test("a presentation (Rodada F3): a PDF's pages as picture slides, walked like a song, over what was on air", () => {
+    const pages = [1, 2, 3].map((n) => ({ image_url: `keryx-media://p${n}.jpg`, label: `Página ${n}` }));
+    let s = run([["content.show", song], ["media.show", { kind: "image", url: "keryx-media://a.png" }]]);
+    s = applyOp(s, "content.show", { kind: "presentation", title: "Missões 2026", ref: { mediaId: "m1" }, slides: pages }, T0 + 10);
+    assert.equal(mainLayer(s), "content", "it takes the media off, as any item sent");
+    assert.equal(s.media, null);
+    assert.equal(s.content.kind, "presentation");
+    assert.deepEqual(s.content.ref, { mediaId: "m1" });
+    assert.deepEqual(s.content.slides[1], { text: "", image_url: "keryx-media://p2.jpg", label: "Página 2" }, "no text, the page's picture and name");
+    assert.equal(s.history[0].layer, "media", "Voltar ao anterior remembers what it covered");
+    s = applyOp(s, "content.next", {}, T0 + 20);
+    assert.equal(currentSlide(s.content).label, "Página 2");
+    assert.equal(nextSlide(s.content).image_url, "keryx-media://p3.jpg");
+    s = applyOp(s, "content.prev", {}, T0 + 30);
+    assert.equal(s.content.index, 0);
+    assert.throws(() => applyOp(s, "content.show", { kind: "slides", slides: pages }, T0), LiveError, "unknown kinds are still refused");
+});
+
 // One sound at a time (owner 2026-10-16, Rodada F2): the console adds the
 // church's transition to the ops that start a sound.
 const FADE = { mode: "fade", ms: 500 };

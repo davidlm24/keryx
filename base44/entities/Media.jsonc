@@ -30,6 +30,27 @@
       "type": "number",
       "description": "Dura\u00e7\u00e3o em segundos (para v\u00eddeos)"
     },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Imagem da p\u00e1gina (arquivo na pasta de m\u00eddia)"
+          },
+          "w": {
+            "type": "number",
+            "description": "Largura da imagem em px"
+          },
+          "h": {
+            "type": "number",
+            "description": "Altura da imagem em px"
+          }
+        }
+      },
+      "description": "As p\u00e1ginas de um PDF como imagens, na ordem, feitas pelo console ao importar (Apresenta\u00e7\u00f5es)"
+    },
     "description": {
       "type": "string",
       "description": "Descri\u00e7\u00e3o da m\u00eddia"

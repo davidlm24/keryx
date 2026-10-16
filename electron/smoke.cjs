@@ -2368,6 +2368,42 @@ async function checkConsole(webContents, { live, outputs }) {
         await press("Escape");
         result.mvClosed = await waitFor(() => js("!document.querySelector('.console .mv') && Boolean(document.querySelector('.console .main .dock'))"));
 
+        // Apresentações (Rodada F3, "Só PDF"): a 2-page PDF made here (jspdf)
+        // reaches the Mídia as an import does (the file copied, a Media row);
+        // the console makes its pages with pdf.js (usePagesBackfill: 2
+        // pictures in the media folder, the first one the thumbnail); a double
+        // click in Biblioteca › Imagens sends it as a presentation, page 1 on
+        // air, drawn full screen; PageDown (what a clicker sends) turns to page 2.
+        const { jsPDF } = require("jspdf");
+        const pdfDoc = new jsPDF({ orientation: "landscape", unit: "pt", format: [960, 540] });
+        pdfDoc.setFontSize(64);
+        pdfDoc.text("Página um", 80, 280);
+        pdfDoc.addPage([960, 540], "landscape");
+        pdfDoc.text("Página dois", 80, 280);
+        const pdfB64 = Buffer.from(pdfDoc.output("arraybuffer")).toString("base64");
+        const pdfFile = await js(`(async () => {
+            const bytes = Uint8Array.from(atob(${JSON.stringify(pdfB64)}), (ch) => ch.charCodeAt(0));
+            const res = await window.keryxDesktop.media.importFile(new File([bytes], "apresentacao-smoke.pdf", { type: "application/pdf" }));
+            return res.data && res.data.fileName;
+        })()`);
+        const pdfRow = pdfFile ? (await js(`window.keryxDesktop.db.call("Media", "create", [${JSON.stringify({ title: "PDF do smoke", type: "pdf", file_url: `keryx-media://${pdfFile}`, category: "other", duration: 0 })}])`)).data : null;
+        mvRows.push(pdfRow);
+        result.pdfPages = Boolean(pdfRow) && await waitFor(async () => {
+            const row = (await js(`window.keryxDesktop.db.call("Media", "get", [${JSON.stringify(pdfRow.id)}])`)).data;
+            return row?.pages?.length === 2 && row.pages.every((p) => /^keryx-media:\/\/.+\.jpg$/.test(p.url) && p.w >= 1900) && row.thumbnail_url === row.pages[0].url;
+        }, 20000);
+        await click(".kx-tabs button", "Imagens");
+        await waitFor(() => js("[...document.querySelectorAll('.console .kx-row')].some((n) => n.textContent.includes('PDF do smoke') && n.textContent.includes('2 páginas'))"), 6000);
+        await dblclick(".kx-row", "PDF do smoke");
+        result.pdfSent = await waitFor(() => {
+            const c = live.get().content;
+            return c?.kind === "presentation" && c.slides.length === 2 && c.index === 0 && c.slides[0].label === "Página 1" && c.ref?.mediaId === pdfRow?.id && !live.get().media;
+        }, 6000);
+        result.pdfDrawn = await waitFor(() => js("Boolean(document.querySelector('.prog .ks-pres img')) && !document.querySelector('.prog .ks-text')"), 4000);
+        await press("PageDown");
+        result.pdfNext = await waitFor(() => live.get().content?.kind === "presentation" && live.get().content.index === 1, 4000);
+        live.call("clear");
+
         // The aviso editor: "Novo aviso", the kind "Chamar atenção" shows its
         // flag in the live preview, Ctrl+S saves; "Tocar todos" in
         // Biblioteca › Avisos goes on air and the projector moves it on.
@@ -2701,6 +2737,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.edMenuOnScreen === true && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edSplitLive && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed
+        && result.pdfPages && result.pdfSent && result.pdfDrawn && result.pdfNext
         && result.nvOpen && result.nvFlag && result.nvPreviewText && result.nvSaved && result.nvClosed && result.nvPlaylist && result.nvAdvanced && result.presetKept && result.presetListed && result.presetNoDup && result.presetFills && result.presetShown && result.presetDeleted && result.timerChips && result.timerKept && result.timerListed && result.timerPrepared && result.timerOn && result.timerAdjusted && result.timerDeleted && result.mvOn && result.mvShows && result.mvPicked && result.mvOff
         && result.bsOpen && result.bsFound && result.bsWalked && result.bsSent && result.bsPhrase && result.bcShown
         && result.noteBox && result.noteSaved && result.noteMarked && result.favSaved && result.favListed && result.paletteBible && result.paletteSearch && result.paletteClear && result.paletteRefHere && result.paletteRefAdded

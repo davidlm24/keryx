@@ -13,6 +13,9 @@ test("lyricView keeps the slides and drops media, avisos and tools", () => {
     assert.equal(mainLayer(lyricView({ screen: "show", media })), "none");
     assert.equal(mainLayer(lyricView({ screen: "black", content: song })), "black");
     assert.equal(lyricView(null), null);
+    // A PDF's pages go where pictures go, not to Letras (Rodada F3).
+    const pres = { kind: "presentation", title: "Missões", slides: [{ text: "", image_url: "p1.jpg" }], index: 0 };
+    assert.equal(mainLayer(lyricView({ screen: "show", content: pres })), "none");
 });
 
 test("standbyView shows the idle look, black only under Tela preta", () => {

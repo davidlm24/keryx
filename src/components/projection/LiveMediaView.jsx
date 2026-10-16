@@ -7,8 +7,8 @@ import LiveVideo from "@/components/projection/LiveVideo";
 const IMAGE_SECONDS = 5;
 
 /**
- * The main projector's media layer (live.media): a video, image, GIF, PDF or
- * PowerPoint from the Mídia library, alone or as a looping playlist.
+ * The main projector's media layer (live.media): a video, image or GIF from
+ * the Mídia library, alone or as a looping playlist.
  * A playlist moves on when an item ends; the projector on the KERYX computer
  * reports that (media.advance, which ignores duplicate reports).
  * fadeOut ({ at, until }): the media is leaving (ScreenRenderer's ghost,
@@ -70,30 +70,8 @@ export default function LiveMediaView({ media, fadeOut = null }) {
         );
     }
 
-    if (media.kind === "pdf") {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center relative">
-                {counter}
-                <iframe key={media.url} src={media.url} title={media.title} className="w-full h-screen border-0" />
-            </div>
-        );
-    }
-
-    if (media.kind === "powerpoint") {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-background via-primary/20 to-accent/20 flex flex-col items-center justify-center p-8">
-                <h2 className="text-3xl font-semibold text-white mb-4">{media.title}</h2>
-                <div className="bg-white/10 p-8 rounded-lg backdrop-blur-sm">
-                    <p className="text-2xl text-blue-300 mb-4">
-                        PowerPoint carregado
-                    </p>
-                    <a href={media.url} download className="text-blue-400 hover:text-blue-300 underline">
-                        Baixar apresentação
-                    </a>
-                </div>
-            </div>
-        );
-    }
-
+    // A PDF or a PowerPoint sent as media before Rodada F3: black. A PDF goes
+    // on air as a presentation now (its pages, the content layer), a
+    // PowerPoint not at all (the operator saves it as PDF).
     return <div className="min-h-screen bg-black" />;
 }

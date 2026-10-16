@@ -75,6 +75,8 @@ function useJanelaConsole() {
     }, []);
     const setPrev = useCallback((stage) => {
         if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
+        // A PowerPoint, or a PDF whose pages are being made (presentation.js).
+        else if (stage?.blocked) say(stage.blocked);
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
@@ -175,8 +177,9 @@ export default function Janela() {
         c, data, logoUrl, askText,
         push: (spec, from) => setStack((s) => winPush(s, spec, from)),
         replaceTop: (props, opts) => setStack((s) => winReplaceTop(s, props, opts)),
-        sendNow: (s) => toConsole("stage.send", { stage: s }),
-        sendStage: (s) => toConsole("stage.send", { stage: s }),
+        // Said here too: the console refuses it, but its toast is over there.
+        sendNow: (s) => (s?.blocked ? (say(s.blocked), false) : toConsole("stage.send", { stage: s })),
+        sendStage: (s) => (s?.blocked ? (say(s.blocked), false) : toConsole("stage.send", { stage: s })),
         songSaved: (row) => { if (row?.id) relaySend("janela", "song.saved", { song: row }); },
         addMaterial: (m) => toConsole("setlist.material", { material: { id: m.id, title: m.title || "Material" } }),
         cfg, setCfg, uiLayout: null, setUiLayout: () => {}, restoreLayout: () => {},

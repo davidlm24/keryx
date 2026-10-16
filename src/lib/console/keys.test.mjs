@@ -65,6 +65,17 @@ test("↑/↓ move the selection, ←/→ the air (Holyrics)", () => {
     assert.equal(key("ArrowDown", nothing, { ctrlKey: true }), null);
 });
 
+test("a presentation clicker's PageDown / PageUp move what is on air, as → / ← (Rodada F3)", () => {
+    assert.equal(key("PageDown", nothing), "next");
+    assert.equal(key("PageUp", nothing), "prev");
+    assert.equal(key("PageDown", button), "next", "a plain button does not use them");
+    assert.equal(key("PageDown", liveArea), "next");
+    assert.equal(key("PageDown", tab), null, "a tab list keeps its keys");
+    assert.equal(key("PageDown", el("SELECT", ["select"], ["select"])), null, "a select keeps them");
+    assert.equal(key("PageDown", input), null, "typing");
+    assert.equal(key("PageDown", nothing, { ctrlKey: true }), null, "Ctrl+PageDown is not a slide");
+});
+
 test("a splitter focused with Tab keeps the arrows: nothing moves on air", () => {
     // <div class="kx-split" role="separator" tabindex="0">
     const splitter = el("DIV", ["[tabindex]:not([data-live-keys])", "[role='separator']"]);

@@ -738,16 +738,20 @@ export const ONAIR_LINE = 18;
 // and its padding.
 const ONAIR_CHROME = 32 + 12 + 16 + 12;
 // `head`: the panel header at the density on screen (28 compact, else 32).
+// A presentation's page (a picture, no text: Rodada F3) is a thumbnail as
+// tall as this many lines (console.css, .kx-slide-page).
+export const ONAIR_PAGE_LINES = 3;
 export function onAirHeight(slides, head = 32) {
-    const lines = Math.max(1, ...(slides || []).map((s) => String(s?.text ?? "").split("\n").length));
+    const lines = Math.max(1, ...(slides || []).map((s) => (!s?.text && s?.image_url ? ONAIR_PAGE_LINES : String(s?.text ?? "").split("\n").length)));
     return Math.max(ONAIR_H, ONAIR_CHROME + lines * ONAIR_LINE) - (32 - head);
 }
 
 const folds = (node) => leaves(node).every((id) => MODULES[id]?.fold);
 
 // Lyrics on air, so the No ar strip has something to show: text slides on
-// the projector (a song, a passage, free text, an Escola material) not
-// covered by Tela preta, the Logo, a timer, an aviso, a picture or a video.
+// the projector (a song, a passage, free text, an Escola material) or a
+// presentation's pages, not covered by Tela preta, the Logo, a timer, an
+// aviso, a picture or a video.
 export function lyricsOnAir(live) {
     if (!live?.content?.slides?.length) return false;
     if (live.screen && live.screen !== "show") return false;

@@ -3,9 +3,12 @@
 // page only choosing which layers it shows.
 
 // Letras (a tablet or TV with the song): the slides with their background,
-// logo, overlays and alerts; not media, avisos or tools, which belong to the
-// projector and the avisos screen. Tela preta and Logo still apply.
-export const lyricView = (live) => (live ? { ...live, media: null, communication: null, tool: null } : live);
+// logo, overlays and alerts; not media, presentations (a PDF's pages go
+// where pictures go), avisos or tools, which belong to the projector and the
+// avisos screen. Tela preta and Logo still apply.
+export const lyricView = (live) => (live
+    ? { ...live, media: null, communication: null, tool: null, ...(live.content?.kind === "presentation" ? { content: null } : {}) }
+    : live);
 
 // A screen waiting for its own content (Vídeo with no clip): the live idle
 // look (the church logo, or black, as the operator set it in Saídas), never a

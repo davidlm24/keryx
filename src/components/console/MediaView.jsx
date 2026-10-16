@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar } from "./kx";
-import { importMediaFiles, mediaFromYouTube } from "@/lib/mediaImport";
+import { importMediaFiles, importSummary, mediaFromYouTube } from "@/lib/mediaImport";
+import { playsInSequence } from "@/lib/presentation";
+import PagesMeta from "./PagesMeta";
 import { stageFromMedia, stageFromMediaList, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
@@ -16,8 +18,10 @@ const ICON = { video: "film", image: "image", gif: "image", pdf: "film", powerpo
 export const CATEGORY = [["sermon", "Pregação"], ["worship", "Louvor"], ["announcement", "Avisos"], ["testimony", "Testemunho"], ["other", "Outros"]];
 const catLabel = (c) => CATEGORY.find(([k]) => k === c)?.[1] || "Outros";
 const isYouTube = (m) => m.type === "video" && /youtu/.test(m.file_url || "");
-// A thumbnail with a picture: the image itself, or a local video's frame.
-const hasPoster = (m) => !m.missing && (m.type === "image" || m.type === "gif" || (m.type === "video" && !isYouTube(m)));
+// A thumbnail with a picture: the image itself, a local video's frame, or a
+// PDF's first page once its pages are made (Rodada F3).
+const hasPoster = (m) => !m.missing && (m.type === "image" || m.type === "gif" || (m.type === "video" && !isYouTube(m)) || (m.type === "pdf" && Boolean(m.thumbnail_url)));
+const isDoc = (m) => m.type === "pdf" || m.type === "powerpoint";
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const bytes = (n) => (n >= 1e9 ? `${(n / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} GB` : n >= 1e6 ? `${Math.round(n / 1e6)} MB` : n > 0 ? `${Math.max(1, Math.round(n / 1e3))} KB` : "");
 const match = (q, ...f) => !q || f.some((x) => String(x || "").toLowerCase().includes(q));
@@ -74,20 +78,22 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const sequence = () => {
         const list = (picked.length ? picked : shown).filter((m) => !m.missing);
         const audios = list.filter((m) => m.type === "audio");
-        const visual = list.filter((m) => m.type !== "audio" && m.type !== "powerpoint");
-        const skipped = list.filter((m) => m.type === "powerpoint").length;
+        // A PDF goes on air by itself, page by page; a PowerPoint not at all (presentation.js).
+        const visual = list.filter(playsInSequence);
+        const skipped = list.filter(isDoc).length;
         if (!visual.length && audios.length) { onSend(stageFromAudioList(audios)); c.say(`${audios.length} áudios em sequência no canal de áudio · Esc não para a música.`); return; }
-        if (!visual.length) { c.say("Nada para tocar: escolha vídeos ou imagens."); return; }
+        if (!visual.length) { c.say(skipped ? "Apresentações não tocam em sequência: envie uma por vez." : "Nada para tocar: escolha vídeos ou imagens."); return; }
         onSend(stageFromMediaList(visual));
-        c.say(`${visual.length} em sequência nas telas${audios.length ? " · os áudios ficam de fora (use Áudios)" : ""}${skipped ? ` · ${skipped} PowerPoint não toca em sequência (salve como PDF)` : ""} · Esc interrompe.`);
+        c.say(`${visual.length} em sequência nas telas${audios.length ? " · os áudios ficam de fora (use Áudios)" : ""}${skipped ? ` · ${skipped === 1 ? "a apresentação fica" : "as apresentações ficam"} de fora (envie uma por vez)` : ""} · Esc interrompe.`);
     };
     const upload = async (files) => {
         const list = Array.from(files || []);
         if (!list.length) return;
         setUploads({ names: list.map((f) => f.name), at: 0, failed: [] });
-        const { created, failed } = await importMediaFiles(list, { category: category || "other", onProgress: (i) => setUploads((u) => (u ? { ...u, at: i } : u)) });
+        const result = await importMediaFiles(list, { category: category || "other", onProgress: (i) => setUploads((u) => (u ? { ...u, at: i } : u)) });
+        const { created } = result;
         setUploads(null);
-        c.say(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}${failed.length ? ` · falhou: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
+        c.say(importSummary(result));
         if (created.length) setSel(created.map((r) => r.id));
     };
     // Link do YouTube… (the Enviar menu): the url comes from one question
@@ -257,6 +263,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                             ? <img src={m.thumbnail_url} alt="" loading="lazy" />
                                             : <video src={`${m.file_url}#t=1`} preload="metadata" muted onLoadedMetadata={(e) => learn(m, e.currentTarget.duration)} />)}
                                         {m.type === "audio" && !m.missing && <audio src={m.file_url} preload="metadata" onLoadedMetadata={(e) => learn(m, e.currentTarget.duration)} />}
+                                        {m.type === "pdf" && !m.missing && m.thumbnail_url && <img src={m.thumbnail_url} alt="" loading="lazy" />}
                                         {!hasPoster(m) && (
                                             <span className={`mv-th-t ${m.missing ? "is-warn" : ""}`}>{m.missing ? "Arquivo não encontrado" : <><Icon name={ICON[m.type] || "film"} size={22} />{isYouTube(m) ? "YouTube" : KIND[m.type]}</>}</span>
                                         )}
@@ -264,6 +271,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                         {(m.duration > 0 || isYouTube(m)) && <span className="mv-n">{isYouTube(m) ? "link" : mmss(m.duration)}</span>}
                                     </button>
                                     {renaming === m.id ? renameField(m) : <span className="mv-title" onDoubleClick={() => setRenaming(m.id)}>{m.title}</span>}
+                                    {isDoc(m) && !m.missing && <span className="kx-meta mv-sub"><PagesMeta row={m} /></span>}
                                     {m.missing && <Btn small kind="outline" onClick={() => locate(m)}>Localizar…</Btn>}
                                 </div>
                             ))}
@@ -274,7 +282,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             <span className="kx-glyph"><Icon name={ICON[m.type] || "film"} /></span>
                             <div className="kx-row-main">
                                 {renaming === m.id ? renameField(m) : <div className="kx-row-title">{m.title}</div>}
-                                <div className={`kx-row-meta ${m.missing ? "kx-warn" : ""}`}>{m.missing ? "Arquivo não encontrado · Localizar…" : [isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}</div>
+                                <div className={`kx-row-meta ${m.missing ? "kx-warn" : ""}`}>{m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : [isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}</div>
                             </div>
                             <span className="kx-row-time kx-hide-on-hover">{m.duration ? mmss(m.duration) : ""}</span>
                             <span className="kx-row-acts">

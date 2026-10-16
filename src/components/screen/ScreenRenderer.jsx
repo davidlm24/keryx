@@ -2,7 +2,7 @@ import React from "react";
 import "./screen.css";
 import GeneratorBackground from "./GeneratorBackground";
 import AlertBar from "./AlertBar";
-import { mainLayer, currentSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
+import { mainLayer, currentSlide, nextSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
 import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
@@ -84,7 +84,9 @@ function Screen({ state, now, logoUrl = "", preview = false, motion = false, aud
             {!sameFundo && <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>}
             <div className="ks-z" style={{ zIndex: z("content") }}>
                 {layer === "none" && !fundo && !sameFundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
-                {layer === "content" && !layerHidden(state, "content") && (currentSlide(state.content)?.activity
+                {layer === "content" && !layerHidden(state, "content") && (state.content.kind === "presentation"
+                    ? <Presentation content={state.content} still={still} />
+                    : currentSlide(state.content)?.activity
                     ? <ActivityView content={state.content} now={now} audio={sound} look={activityLook(state.content, showTitle, still)} />
                     : <Content content={state.content} showTitle={showTitle} still={still} />)}
                 {layer === "tool" && <Tool tool={state.tool} now={now} />}
@@ -98,7 +100,7 @@ function Screen({ state, now, logoUrl = "", preview = false, motion = false, aud
             {!preview && sound && state.track?.src && !(layer === "content" && state.content?.audio) && (
                 <audio key={state.track.startedAt} src={state.track.src} autoPlay className="hidden" />
             )}
-            {state.logo?.visible && logoUrl && layer !== "media" && (
+            {state.logo?.visible && logoUrl && layer !== "media" && !isPresentation(state, layer) && (
                 <div className="ks-z" style={{ zIndex: z("logo") }}><img className={`ks-logo ks-${state.logo.size} ks-${state.logo.corner}`} style={logoLook(state.logo)} src={logoUrl} alt="" /></div>
             )}
             {preview && motion && state.video && !(ghost && under?.video?.shownAt === state.video.shownAt && !covered) && (
@@ -115,7 +117,8 @@ function Screen({ state, now, logoUrl = "", preview = false, motion = false, aud
 // draws the same (a video Fundo would start over in the ghost).
 function bgKey(state, layer) {
     if (!state) return "";
-    if (layer === "media") return "black";
+    // A presentation draws on black, as a picture of the Mídia (Background).
+    if (layer === "media" || isPresentation(state, layer)) return "black";
     const hidden = layerHidden(state, "background");
     if (layer === "none") return state.background && !hidden ? `fundo:${JSON.stringify(state.background)}` : `idle:${state.idle}:${state.idleUrl}:${state.idleDim}:${state.idleBlur}`;
     if (hidden && layer === "content") return "black";
@@ -171,7 +174,7 @@ const slideStyle = (content) => {
 };
 
 function Background({ state, layer, preview, motion }) {
-    if (layer === "media") return <div className="ks-black" />;
+    if (layer === "media" || isPresentation(state, layer)) return <div className="ks-black" />;
     // Camadas' eye on the Fundo: no Fundo, and no picture of a song's own
     // either; an aviso's or a tool's own look stays (it is theirs, not the
     // Fundo's), and without one the screen is black.
@@ -345,6 +348,25 @@ function Content({ content, showTitle = true, still = false }) {
                 </div>
             </div>
         </>
+    );
+}
+
+// A presentation (a PDF's pages, Rodada F3): the page on air whole on the
+// screen, on black, as the PDF draws it — no theme, no item title, no Fundo
+// behind it (Background) and no corner logo over it, as a picture of the
+// Mídia. It fades in when it goes on air; a page turns at once, as in a PDF
+// viewer (a fade through black flashed between white pages), with the next
+// page already loaded. Previews show it without the fade.
+const isPresentation = (state, layer) => layer === "content" && state.content?.kind === "presentation";
+function Presentation({ content, still = false }) {
+    const slide = currentSlide(content);
+    const next = nextSlide(content);
+    if (!isUrl(slide?.image_url)) return null;
+    return (
+        <div key={content.startedAt} className={`ks-pres ${still ? "" : "ks-anim-fade"}`}>
+            <img src={slide.image_url} alt={slide.label || content.title || ""} />
+            {!still && isUrl(next?.image_url) && <img className="ks-pres-next" src={next.image_url} alt="" aria-hidden="true" />}
+        </div>
     );
 }
 

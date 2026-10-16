@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS, alertDefaults } from "./outputPrefs.js";
+import { SHOW_KINDS, normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS, alertDefaults } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -144,13 +144,26 @@ test("Mostrar: a hidden kind on air goes, the rest stays; the same state when no
 });
 
 test("Mostrar offers only what the output's view can show", () => {
-    assert.deepEqual(showKindsFor("/Projection", normalizePref({})).map((k) => k.id), ["lyrics", "bible", "text", "media", "tool", "communication", "alert"]);
+    assert.deepEqual(showKindsFor("/Projection", normalizePref({})).map((k) => k.id), ["lyrics", "bible", "text", "media", "presentation", "tool", "communication", "alert"]);
     assert.deepEqual(showKindsFor("/LyricProjection", normalizePref({})).map((k) => k.id), ["lyrics", "bible", "text", "alert"]);
     // Vídeo and Comunicação show the Aviso rápido too (Rodada E3), so it can be left out there.
     assert.deepEqual(showKindsFor("/VideoProjection", normalizePref({})).map((k) => k.id), ["alert"]);
     assert.deepEqual(showKindsFor("/CommunicationProjection", normalizePref({})).map((k) => k.id), ["alert"]);
     // A projector set to "Só letras" offers the Letras kinds.
     assert.deepEqual(showKindsFor("/Projection", normalizePref({ content: "lyrics" })).map((k) => k.id), ["lyrics", "bible", "text", "alert"]);
+});
+
+test("Mostrar › Apresentações (Rodada F3): offered where Imagens e vídeos are; unchecked, a presentation leaves that output", () => {
+    const pres = { ...songLive, tool: null, communication: null, content: { kind: "presentation", title: "Missões", ref: { mediaId: "m1" }, slides: [{ text: "", image_url: "keryx-media://p1.jpg", label: "Página 1" }], index: 0, startedAt: 9 } };
+    assert.equal(SHOW_KINDS.find((k) => k.id === "presentation").name, "Apresentações");
+    assert.ok(!showKindsFor("/LyricProjection", normalizePref({})).some((k) => k.id === "presentation"), "Letras does not show pictures, nor pages");
+    assert.equal(prefState("/Projection", pres, normalizePref({})).content.kind, "presentation", "shown by default");
+    assert.equal(prefState("/Projection", pres, normalizePref({ hidden_kinds: ["presentation"] })).content, null);
+    assert.equal(prefState("/Projection", pres, normalizePref({ hidden_kinds: ["media"] })).content.kind, "presentation", "Imagens e vídeos is its own switch");
+    assert.equal(hideKinds(songLive, ["presentation"]), songLive, "a song stays");
+    assert.equal(prefState("/LyricProjection", pres, normalizePref({})).content, null, "Letras leaves it out");
+    assert.equal(stageHidden("presentation", normalizePref({ hidden_kinds: ["presentation"] })), "Apresentações");
+    assert.equal(hiddenOnAir(pres, normalizePref({ hidden_kinds: ["presentation"] })), "Apresentações");
 });
 
 test("the Prévia says when the output it previews hides the prepared kind", () => {

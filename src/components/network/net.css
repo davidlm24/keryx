@@ -86,6 +86,12 @@
 .ns-chords pre { flex: 1; min-height: 0; overflow: auto; margin: 0; font: 500 calc(2.2cqmin * var(--kp-text, 1))/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; color: var(--fg-1); }
 .ns-next { flex: none; display: flex; align-items: baseline; gap: 2cqmin; padding: 1.4cqmin 2cqmin; border-radius: 1.4cqmin; background: color-mix(in srgb, var(--bg-1) 85%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .ns-next p { margin: 0; flex: 1; min-width: 0; font-size: calc(3cqmin * var(--kp-text, 1)); line-height: 1.3; color: var(--fg-2); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* A presentation (Rodada F3): the page on air, and the next one smaller beside it */
+.ns-pres { flex: 1; min-height: 0; display: grid; grid-template-columns: 2fr 1fr; gap: 2.5cqmin; align-items: center; }
+.ns-pres.is-alone { grid-template-columns: 1fr; }
+.ns-page { margin: 0; min-width: 0; min-height: 0; height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 1.2cqmin; }
+.ns-page img { display: block; width: 100%; min-height: 0; max-height: 100%; object-fit: contain; border-radius: 1cqmin; background: #000; box-shadow: inset 0 0 0 1px var(--line); }
+.ns-page.is-next img { opacity: .85; }
 .ns-dots { flex: none; display: flex; justify-content: center; gap: .8cqmin; }
 .ns-dots i { height: 1cqmin; min-height: 5px; width: 1cqmin; min-width: 5px; border-radius: 999px; background: var(--line-strong); }
 .ns-dots i.is-on { width: 5cqmin; background: var(--air); }
