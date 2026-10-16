@@ -67,6 +67,8 @@ import { EditBanner } from "@/components/console/Arrange";
 import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, ZONE_LABEL } from "@/components/console/Dock";
 import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, nameProblem } from "@/lib/console/dockPresets";
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
+import Toast from "@/components/console/Toast";
+import { useDialogFocus, useWinPageFocus } from "@/components/console/useDialogFocus";
 import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
@@ -163,6 +165,12 @@ export default function Console() {
     // bar's empty area brings the default size back.
     const winKind = winOpen ? winSize(win) : null;
     const winDialogRef = useRef(null);
+    // The focus goes into the window and stays there (design audit C-12):
+    // Tab walks only its page on top, the console behind is inert (below),
+    // the page shown takes the focus when it changes, and closing gives the
+    // focus back to what opened it after a keyboard open.
+    useDialogFocus(winDialogRef, winOpen);
+    useWinPageFocus(winDialogRef, win);
     const [winRect, setWinRect] = useState(null);
     useEffect(() => { setWinRect(null); }, [winKind]);
     useEffect(() => {
@@ -760,7 +768,7 @@ export default function Console() {
                 // As the Esc: everything off, with Desfazer on the console.
                 const before = c.cur;
                 await c.callOp("clear");
-                c.say("Celular: projeção encerrada.", { label: "Desfazer", run: () => c.undoEnd(before) });
+                c.say("Celular: projeção encerrada.", { label: "Desfazer", undo: true, run: () => c.undoEnd(before) });
                 return { ok: true, message: "Projeção encerrada." };
             }
             case "sendNext":
@@ -866,6 +874,10 @@ export default function Console() {
             else if (action === "black") { e.preventDefault(); c.toggleScreen("black"); }
             else if (action === "logo") { e.preventDefault(); c.toggleScreen("logo"); }
             else if (action === "clear") { e.preventDefault(); c.clearText(); }
+            else if (action === "undo") {
+                // Ctrl+Z: the toast's Desfazer after Esc / Encerrar (C-13).
+                if (c.toastAction?.undo) { e.preventDefault(); c.toastAction.run(); }
+            }
             else if (action === "end") {
                 e.preventDefault();
                 c.end(); // nothing open (escapeTarget above); its toast offers Desfazer
@@ -1032,6 +1044,14 @@ export default function Console() {
     const camadasOn = onScreen("camadas");
     // Camadas on screen: no drawer left open behind it (Esc would close that first).
     useEffect(() => { if (camadasOn) setDrawer(false); }, [camadasOn]);
+    // Tela preta or the Logo over what is on air (audit C-46): the working
+    // lists (Slides, No ar, the Setlist) dim their on-air state and say so
+    // in their header while it lasts — a tag of its own on the right, so a
+    // long title's "…" never cuts it; the Programa's pill is not the only
+    // place that tells.
+    const coveredBy = c.cur?.screen === "black" ? "Tela preta" : c.cur?.screen === "logo" ? "Logo" : "";
+    const coverCls = coveredBy ? "is-covered" : "";
+    const coverTag = coveredBy ? <span className="kx-covered" title={`As telas mostram ${coveredBy === "Logo" ? "o logo" : "a tela preta"}: o que está no ar fica coberto`}>coberto · {coveredBy}</span> : null;
     // The Setlist: its header (title, count, Planejar, +) and the whole
     // rundown, scrolled to the item in hand (Rundown).
     // A second menu where the first was (the timers): the first's place.
@@ -1063,8 +1083,8 @@ export default function Console() {
         ] });
     };
     const setlistPanel = (
-        <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
-            actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
+        <Panel title="Setlist" className={coverCls} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
+            actions={<>{coverTag}<IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
         </Panel>
     );
@@ -1123,13 +1143,13 @@ export default function Console() {
         </Panel>
     );
     const slidesPanel = (
-        <Panel title="Slides" count={handTitle(c) || "—"} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="Slides" className={coverCls} count={handTitle(c) || "—"} actions={coverTag} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} airTabs={!onScreen("onair")} />
         </Panel>
     );
     // What is on air, slide by slide, whatever the Slides column holds.
     const onAirPanel = (
-        <Panel title="No ar" count={onAirCount(c, Boolean(layout.folded?.onair)) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="No ar" count={onAirCount(c, Boolean(layout.folded?.onair)) || "—"} actions={coverTag} className={`onair-panel ${coverCls}`} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <OnAirPanel c={c} />
         </Panel>
     );
@@ -1323,12 +1343,12 @@ export default function Console() {
         <ConfirmContext.Provider value={askConfirm}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)}
+            <TopBar inert={winOpen} c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)}
                 sync={syncTop} onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
-                <div className="kx-banner is-warn" role="alert">
+                <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
                     <span className="kx-alert-title">{health.banner.row.key === "/Projection" ? "Projetor" : health.banner.row.name} · Reconectando… tentativa {tries}</span>
                     <span className="kx-sub">ATENÇÃO · {health.banner.row.key === "/Projection" ? `última conexão boa às ${hhmm(lastOkAt)} · ` : ""}o monitor escolhido não está ligado</span>
                     <span className="kx-spacer" />
@@ -1338,7 +1358,7 @@ export default function Console() {
                 </div>
             )}
             {health.banner && health.banner.kind !== "reconnecting" && (
-                <div className="kx-banner is-warn" role="alert">
+                <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
                     <span className="kx-alert-title">{health.banner.title}{health.banner.more ? ` · e mais ${health.banner.more}` : ""}</span>
                     <span className="kx-sub">{health.banner.sub}</span>
                     <span className="kx-spacer" />
@@ -1357,9 +1377,10 @@ export default function Console() {
                 </EditBanner>
             )}
             {c.locked && (
-                <div className="kx-banner is-rh" role="status"><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
+                <div className="kx-banner is-rh" role="status" inert={winOpen ? "" : undefined}><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
-            <div className="main" ref={mainRef}>
+            {/* Behind THE window nothing takes the focus (C-12); its keys still listen on window. */}
+            <div className="main" ref={mainRef} inert={winOpen ? "" : undefined}>
                 {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold }} />}
@@ -1432,12 +1453,7 @@ export default function Console() {
                 <BibleQuickJump initial={quick} onCancel={() => setQuick(null)}
                     onPick={(r) => { setQuick(null); setBibleRequest({ book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart, at: Date.now() }); }} />
             )}
-            {c.toast && (
-                <div className="toast" role="status">
-                    <span className="toast-t">{c.toast}</span>
-                    {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
-                </div>
-            )}
+            <Toast c={c} />
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
         </ConfirmContext.Provider>
