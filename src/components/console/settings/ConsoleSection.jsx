@@ -73,7 +73,7 @@ export default function ConsoleSection({ c, layout, setLayout, restoreLayout }) 
                 <FormRow k="Zoom">
                     <Seg small label="Zoom do console" value={String(machine?.zoom ?? 1)} options={ZOOMS.map(([v, l]) => [v, l, machine?.zoom === undefined ? { disabled: true } : undefined])}
                         onChange={(v) => machine?.zoom !== undefined && change("machineSet", { zoom: Number(v) })} />
-                    <span className="kx-meta">{machine?.zoom === undefined ? "só no aplicativo" : "tudo no console maior ou menor · Ctrl+= Ctrl+− Ctrl+0 · as saídas não mudam · deste computador"}</span>
+                    <span className="kx-meta">{machine?.zoom === undefined ? "só no aplicativo" : "tudo no console maior ou menor · Ctrl+= Ctrl+− Ctrl+0 ou Ctrl+roda · as saídas não mudam · deste computador"}</span>
                 </FormRow>
                 <FormRow k="Ao fechar">
                     <Switch on={machine ? machine.confirmClose : true} disabled={!system || !machine} label="Perguntar antes de fechar o KERYX"

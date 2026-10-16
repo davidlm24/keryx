@@ -131,7 +131,7 @@ export function shortcutsFor(letters = "on") {
             ? { keys: "/  Ctrl+F", label: "Buscar em tudo (em Configurações: buscar nas configurações)", action: "search", probe: { key: "/" }, also: [["search", { key: "f", ctrlKey: true }]] }
             : { keys: "Ctrl+F", label: "Buscar em tudo", action: "search", probe: { key: "f", ctrlKey: true } },
         ...(mode === "off" ? [] : [{ keys: "?", label: "Esta lista", action: "help", probe: { key: "?", shiftKey: true } }]),
-        { keys: "Ctrl+=  Ctrl+−", label: "Zoom do console: aumentar / diminuir (Ctrl+0 volta a 100 %; as saídas não mudam)", action: null, probe: null },
+        { keys: "Ctrl+=  Ctrl+−", label: "Zoom do console: aumentar / diminuir, também Ctrl+roda do mouse (Ctrl+0 volta a 100 %; as saídas não mudam)", action: null, probe: null },
     ];
 }
 const SHORTCUTS_HEAD = [

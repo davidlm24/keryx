@@ -77,12 +77,14 @@ test("Console: confirm on close is on unless turned off; login only when install
 test("Console: the zoom is this computer's, through the console's zoom", async () => {
     const { createConsoleZoom } = require("./consoleZoom.cjs");
     const holder = {};
-    const { system, saved, store } = sys({}, { consoleZoom: { get: () => holder.zoom.get(), set: (z) => holder.zoom.set(z) } });
+    const { system, saved, store } = sys({}, { consoleZoom: { get: () => holder.zoom.get(), set: (z) => holder.zoom.set(z), command: (cmd) => holder.zoom.command(cmd) } });
     holder.zoom = createConsoleZoom({ settings: { get: (k, d) => (k in saved ? saved[k] : d), set: (k, v) => { saved[k] = v; } }, getWindow: () => null });
     assert.equal((await system.ops.machineGet()).zoom, 1);
     assert.equal((await system.ops.machineSet(null, { zoom: 1.25 })).zoom, 1.25);
     assert.equal(saved.consoleZoom, 1.25);
     assert.equal((await system.ops.machineSet(null, { confirmClose: false })).zoom, 1.25, "the other choice leaves it");
+    assert.deepEqual(await system.ops.zoomStep(null, { dir: 1 }), { zoom: 1.5 }, "Ctrl+wheel up: one step in");
+    assert.deepEqual(await system.ops.zoomStep(null, { dir: -1 }), { zoom: 1.25 });
     store.close();
 });
 

@@ -379,6 +379,8 @@ function createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, media
                 if (zoom !== undefined && consoleZoom) consoleZoom.set(zoom);
                 return machineInfo();
             },
+            // Ctrl+wheel on the console (audit C-91): one step in or out.
+            zoomStep: async (_event, { dir } = {}) => ({ zoom: consoleZoom ? consoleZoom.command(Number(dir) > 0 ? "in" : "out") : 1 }),
             loginSet: async (_event, { on } = {}) => {
                 if (!app.isPackaged) throw Object.assign(new Error("Só no KERYX instalado."), { status: 400 });
                 app.setLoginItemSettings(loginItemArgs(Boolean(on), process.execPath));

@@ -67,6 +67,7 @@ import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, ZONE_LABEL }
 import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, nameProblem } from "@/lib/console/dockPresets";
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import { liveAction, quickJumpKey, escapeTarget, keyHint } from "@/lib/console/keys";
+import { wheelZoomStep } from "@/lib/wheelZoom";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
@@ -796,11 +797,25 @@ export default function Console() {
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Ctrl+= / Ctrl+− / Ctrl+0 zoom the console (main process,
-    // electron/consoleZoom.cjs): say where it stands.
+    // electron/consoleZoom.cjs): say where it stands. Ctrl+wheel (and a
+    // touchpad's pinch) steps the same zoom (audit C-91; src/main.jsx keeps
+    // Chromium's own wheel zoom off).
     useEffect(() => {
         const sys = window.keryxDesktop?.system;
         if (!sys?.onZoom) return undefined;
-        return sys.onZoom((z) => c.say(`Zoom do console: ${Math.round(z * 100)} %${z === 1 ? "" : " · Ctrl+0 volta a 100 %"}`));
+        const off = sys.onZoom((z) => c.say(`Zoom do console: ${Math.round(z * 100)} %${z === 1 ? "" : " · Ctrl+0 volta a 100 %"}`));
+        let acc = 0;
+        let idle = null;
+        const onWheel = (e) => {
+            if (!e.ctrlKey) return;
+            clearTimeout(idle);
+            idle = setTimeout(() => { acc = 0; }, 300);
+            const step = wheelZoomStep(acc, e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY);
+            acc = step.acc;
+            if (step.dir) sys.call("zoomStep", { dir: step.dir }).catch(() => {});
+        };
+        window.addEventListener("wheel", onWheel, { passive: true });
+        return () => { off(); clearTimeout(idle); window.removeEventListener("wheel", onWheel); };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const searchBibleFor = (text) => { setBibleRequest({ search: text, at: Date.now() }); setOpen(null); setEnv("biblia"); };

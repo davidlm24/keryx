@@ -157,6 +157,16 @@ function guardWindow(win) {
         if (/^https?:/i.test(url)) shell.openExternal(url);
     });
 
+    // No free zoom in any window (audit C-91): pinch stays at 100 % (Electron's
+    // default, pinned), and should Chromium zoom on its own (the page blocks
+    // Ctrl+wheel, src/main.jsx) the console goes back to its saved step and
+    // any other window to 100 % — the projector never zooms.
+    webContents.on("did-finish-load", () => { webContents.setVisualZoomLevelLimits(1, 1).catch(() => {}); });
+    webContents.on("zoom-changed", () => {
+        if (win === mainWindow && consoleZoom) consoleZoom.apply(win);
+        else if (!win.isDestroyed()) webContents.setZoomFactor(1);
+    });
+
     webContents.on("did-create-window", (child, details) => {
         guardWindow(child);
         if (outputs) outputs.track(child, details.url);
