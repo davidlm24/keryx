@@ -56,3 +56,18 @@ export function airFor(doc, nowMs) {
     const two = (n) => String(n).padStart(2, "0");
     return s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor((s % 3600) / 60))}:${two(s % 60)}` : `${Math.floor(s / 60)}:${two(s % 60)}`;
 }
+
+// A title cut in two for a narrow caption (C-17): the head gives way with
+// its "…" and the tail — the part after the last " · " / " - ", else the last
+// word — stays whole, so "Canção de exemplo · Manhã" and "· Graça" still
+// differ when the start is clipped. Short titles, or a tail too long to be
+// worth keeping, stay one piece ({ head: title, tail: "" }).
+export function titleParts(title, { min = 16, maxTail = 16 } = {}) {
+    const t = String(title || "").trim();
+    if (t.length < min) return { head: t, tail: "" };
+    const sep = Math.max(t.lastIndexOf(" · "), t.lastIndexOf(" - "), t.lastIndexOf(" — "));
+    const at = sep > 0 ? sep + 3 : t.lastIndexOf(" ") + 1;
+    const tail = at > 0 ? t.slice(at).trim() : "";
+    if (!tail || tail.length > maxTail || at >= t.length) return { head: t, tail: "" };
+    return { head: t.slice(0, at).trimEnd(), tail };
+}

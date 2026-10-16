@@ -3,6 +3,7 @@ import Icon from "./Icon";
 import { Btn, Empty } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import useKeepInView from "./useKeepInView";
+import ClipTitle from "./ClipTitle";
 import { stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { lyricsOnAir } from "@/lib/console/dock";
 
@@ -57,11 +58,11 @@ export default function SlidesPanel({ c, onGo, airTabs = false }) {
         <>
             {twoItems && (
                 <div className="dock-tabs slides-tabs" role="tablist" aria-label="O que a coluna mostra">
-                    <button type="button" role="tab" aria-selected={showAir} className={`dock-tab ${showAir ? "is-on" : ""}`} onClick={() => setSide("air")} title={`No ar: ${air.title || "Sem título"}`}>
-                        <span className="slides-dot is-air" aria-hidden="true" />No ar · {air.title || "Sem título"} · {air.index + 1}/{air.slides.length}
+                    <button type="button" role="tab" aria-selected={showAir} className={`dock-tab ${showAir ? "is-on" : ""}`} onClick={() => setSide("air")} title={`No ar: ${air.title || "Sem título"} · ${air.index + 1}/${air.slides.length}`} aria-label={`No ar: ${air.title || "Sem título"}, slide ${air.index + 1} de ${air.slides.length}`}>
+                        <span className="slides-dot is-air" aria-hidden="true" /><span className="slides-tab-w" aria-hidden="true">No ar</span><ClipTitle className="slides-tab-t" text={air.title || "Sem título"} /><span className="slides-tab-n">{air.index + 1}/{air.slides.length}</span>
                     </button>
-                    <button type="button" role="tab" aria-selected={!showAir} className={`dock-tab ${showAir ? "" : "is-on"}`} onClick={() => setSide("prev")} title={`Na prévia: ${prev.title || "Sem título"}`}>
-                        <span className="slides-dot is-prev" aria-hidden="true" />Prévia · {prev.title || "Sem título"}
+                    <button type="button" role="tab" aria-selected={!showAir} className={`dock-tab ${showAir ? "" : "is-on"}`} onClick={() => setSide("prev")} title={`Na prévia: ${prev.title || "Sem título"}`} aria-label={`Na prévia: ${prev.title || "Sem título"}`}>
+                        <span className="slides-dot is-prev" aria-hidden="true" /><span className="slides-tab-w" aria-hidden="true">Prévia</span><ClipTitle className="slides-tab-t" text={prev.title || "Sem título"} />
                     </button>
                 </div>
             )}

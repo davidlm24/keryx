@@ -18,7 +18,7 @@ export const plannedTimes = (service, items) => plan(service, items).rows.map((r
 // The service's items in order: click (or Enter on the row) prepares; the
 // "Ir" button prepares and sends — the only send here. Drag reorders
 // (ServiceItem.order), as Cultos does.
-export default function Rundown({ service, items, airItemId, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true }) {
+export default function Rundown({ service, items, airItemId, airNow = true, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true }) {
     const menu = useContextMenu();
     const ask = useConfirm();
     // "Tirar da setlist…" (owner 2026-10-16, 0.2.18): asks, then the item
@@ -50,7 +50,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
     // The list follows the service: when the item on air (or in the Prévia)
     // changes, it is scrolled into view, so the next rows stay in sight.
     const listRef = sort.listProps.ref;
-    useKeepInView(listRef, airItemId ? ".is-air" : ".is-prev", [airItemId, prevItemId]);
+    useKeepInView(listRef, airItemId ? ".is-air, .is-last" : ".is-prev", [airItemId, prevItemId]);
 
 
     return (
@@ -74,14 +74,17 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                         </div>
                     );
                 }
-                const state = it.id === airItemId ? "is-air" : it.id === prevItemId ? "is-prev" : airIdx >= 0 && i < airIdx ? "is-done" : "";
+                // Red only while the screens show it; after Esc (or under Tela preta) the
+                // session's item is the "último", a quiet mark (C-08).
+                const last = it.id === airItemId && !airNow;
+                const state = it.id === airItemId && airNow ? "is-air" : [it.id === prevItemId && "is-prev", last && "is-last"].filter(Boolean).join(" ") || (airIdx >= 0 && i < airIdx ? "is-done" : "");
                 const dragProps = { ...sort.rowProps(i, { label: it.title || typeLabel(it.type), icon: typeIcon(it.type), time: it.duration ? span(it.duration) : "" }), style: sort.rowStyle(i) };
                 return (
                     <Row
                         key={it.id}
                         icon={typeIcon(it.type)}
                         title={it.title || typeLabel(it.type)}
-                        meta={[typeLabel(it.type), it.notes].filter(Boolean).join(" · ")}
+                        meta={[last && "último", typeLabel(it.type), it.notes].filter(Boolean).join(" · ")}
                         time={<>{p.rows[i]?.at != null ? clockAt(p.rows[i].at) : ""}<br />{it.duration ? span(it.duration) : ""}</>}
                         state={state}
                         onClick={() => onPrepare(it, i)}

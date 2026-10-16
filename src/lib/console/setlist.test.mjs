@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { plan, templateItems, itemsFor, playableItems, statusOf, parseMember, clockAt, span, startOf, total } from "./setlist.js";
+import { plan, templateItems, itemsFor, playableItems, statusOf, parseMember, clockAt, span, startOf, total, itemOnAir } from "./setlist.js";
 
 const items = [
     { id: "s1", type: "SECTION", title: "Pré-culto" },
@@ -43,4 +43,34 @@ test("status and team members", () => {
     assert.deepEqual(parseMember("Ana Souza · Ministra, voz"), { member_name: "Ana Souza", role: "Ministra, voz" });
     assert.deepEqual(parseMember("Pedro"), { member_name: "Pedro", role: "Equipe" });
     assert.equal(parseMember("  "), null);
+});
+
+test("itemOnAir: the session's item is on air only while the screens still show it (C-08)", () => {
+    const song = { content: { kind: "lyrics", ref: { songId: "song1", serviceItemId: "b" }, slides: [{ text: "x" }], index: 0 } };
+    const at = (itemId, rest) => ({ session: { itemId }, ...rest });
+    assert.equal(itemOnAir(at("b", song), items), true);
+    // After Esc the session keeps its item; nothing is on air.
+    assert.equal(itemOnAir(at("b", {}), items), false);
+    // Covered by Tela preta or the Logo: the audience does not see it.
+    assert.equal(itemOnAir(at("b", { ...song, screen: "black" }), items), false);
+    assert.equal(itemOnAir(at("b", { ...song, screen: "logo" }), items), false);
+    // Another item (or a song from the Biblioteca) over it.
+    assert.equal(itemOnAir(at("b", { content: { kind: "lyrics", ref: { songId: "song9" } } }), items), false);
+    assert.equal(itemOnAir(at("b", { content: { kind: "lyrics", ref: { songId: "song1", serviceItemId: "x" } } }), items), false);
+    assert.equal(itemOnAir(at("b", { ...song, tool: { mode: "clock" } }), items), false);
+    // The same song sent from the Biblioteca is still the item.
+    assert.equal(itemOnAir(at("b", { content: { kind: "lyrics", ref: { songId: "song1" } } }), items), true);
+    // An aviso, a passage and a timer, each by its own layer.
+    assert.equal(itemOnAir(at("a", { communication: { item: { id: "p1" } } }), items), true);
+    assert.equal(itemOnAir(at("a", { communication: { item: { id: "p2" } } }), items), false);
+    assert.equal(itemOnAir(at("d", { content: { kind: "bible", ref: { passageId: "bp1" } } }), items), true);
+    const more = [...items, { id: "t", type: "TIMER" }, { id: "m", type: "AUDIO", contentId: "aud1" }, { id: "v", type: "VIDEO", contentId: "vid1" }];
+    assert.equal(itemOnAir(at("t", { tool: { mode: "timer" } }), more), true);
+    assert.equal(itemOnAir(at("m", { audio: { id: "aud1" } }), more), true);
+    assert.equal(itemOnAir(at("m", {}), more), false);
+    assert.equal(itemOnAir(at("v", { media: { id: "vid1" } }), more), true);
+    // No session, or an item no longer in the Setlist.
+    assert.equal(itemOnAir({ ...song }, items), false);
+    assert.equal(itemOnAir(at("gone", song), items), false);
+    assert.equal(itemOnAir(null, items), false);
 });

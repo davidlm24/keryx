@@ -25,6 +25,30 @@ export const isSection = (item) => String(item?.type || "").toUpperCase() === "S
 // What the console can put on air (sections and disabled items cannot).
 export const playableItems = (items) => (items || []).filter((i) => !isSection(i) && i.enabled !== false);
 
+const MEDIA_TYPES = ["VIDEO", "IMAGE", "PDF", "POWERPOINT"];
+
+// Whether the session's Setlist item (live.session.itemId) is what the
+// audience sees now (the design audit's C-08): after Esc, under Tela preta or
+// the Logo, or once something else went on air, it is only the last item sent
+// — the Setlist marks it "último", never red. Read from what is on top, in
+// mainLayer's order (shared/live-state.mjs); a sound item counts while the
+// audio channel plays it.
+export function itemOnAir(live, items) {
+    const id = live?.session?.itemId;
+    const it = id ? (items || []).find((x) => x.id === id) : null;
+    if (!it || live.screen === "black" || live.screen === "logo") return false;
+    const type = String(it.type || "").toUpperCase();
+    const own = it.contentId || null;
+    if (type === "AUDIO") return Boolean(own) && live.audio?.id === own;
+    if (live.tool) return type === "TIMER" && live.tool.mode === "timer";
+    if (live.communication) return type === "ANNOUNCEMENT" && Boolean(own) && live.communication.item?.id === own;
+    if (live.media) return MEDIA_TYPES.includes(type) && Boolean(own) && live.media.id === own;
+    const ref = live.content?.ref;
+    if (!ref) return false;
+    if (ref.serviceItemId) return ref.serviceItemId === id;
+    return Boolean(own) && [ref.songId, ref.passageId, ref.materialId, ref.mediaId].includes(own);
+}
+
 const minutesOf = (hhmm) => {
     const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || ""));
     return m ? Number(m[1]) * 60 + Number(m[2]) : null;

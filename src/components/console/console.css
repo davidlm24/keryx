@@ -159,7 +159,7 @@
 .console .prog-pill.is-air .pp-dot { background: var(--air-fg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--air) 30%, transparent); }
 .console .prog-pill.is-rh .pp-dot { background: var(--rh-fg); }
 .console .prog-pill.is-warn .pp-dot { background: var(--warn-fg); }
-.console .prog-pill .pp-title { max-width: 30cqw; font-size: 13px; line-height: 16px; font-weight: 600; color: var(--fg-1); } /* a long title ends in "…" and never stretches the pill across the lyrics */
+.console .prog-pill .pp-title { max-width: 46cqw; font-size: 13px; line-height: 16px; font-weight: 600; color: var(--fg-1); } /* a long title ends in "…" (its whole name in the tooltip) and never stretches the pill across the lyrics; 46 % so two similar names still differ on a notebook (C-17) */
 .console .prog-pill .kx-meta { color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .prog-pill .prog-where { flex: none; }
 .console .prog-pill .prog-where.kx-warn { color: var(--warn-fg); }
@@ -338,6 +338,18 @@
 .console .slides-tabs { padding: 0 var(--space-1); }
 .console .slides-tabs .dock-tab { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; }
 .console .slides-tabs .dock-tab.is-on { background: var(--bg-3); color: var(--fg-1); }
+/* ClipTitle: the head ends in "…", the tail stays whole. */
+.console .kx-clip { display: flex; min-width: 0; max-width: 100%; overflow: hidden; white-space: nowrap; }
+.console .kx-clip-h { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.console .kx-clip-t { flex: none; margin-left: 0.3em; }
+/* The title is the part that gives way, with its "…" (C-17): the position
+   stays whole, and on a narrow column the words go and the dots (gold on
+   air, green Prévia; both named in the tooltip) stand for them. */
+.console .slides-tabs { container-type: inline-size; }
+.console .slides-tabs .slides-tab-w { flex: none; color: var(--fg-3); }
+.console .slides-tabs .slides-tab-t { min-width: 0; }
+.console .slides-tabs .slides-tab-n { flex: none; color: var(--fg-3); font-variant-numeric: tabular-nums; }
+@container (max-width: 420px) { .console .slides-tabs .slides-tab-w { display: none; } }
 .console .slides-dot { flex: none; width: 7px; height: 7px; border-radius: var(--radius-round); }
 .console .slides-dot.is-air { background: var(--live); }
 .console .slides-dot.is-prev { background: var(--prev); }
@@ -789,6 +801,10 @@
    does; the Setlist's tail takes a drop after the last item. */
 .console .rund { position: relative; display: flex; flex-direction: column; min-height: 100%; }
 .console .rund-tail { flex: 1; min-height: 28px; }
+/* The session's last item once nothing of it is on air (C-08): a quiet bar and
+   "último" in its meta, never the red of the air; the Prévia's green wins. */
+.console .rund .kx-row.is-last:not(.is-prev)::before { background: var(--fg-3); }
+.console .rund .kx-row.is-last .kx-row-meta { color: var(--fg-2); }
 
 /* Fields: no gold ring while typing (the design system's focus ring is for
    keyboard navigation of buttons); a quiet inner line says where you type. */
