@@ -263,6 +263,21 @@ for keyboard focus on buttons). Monitor frames are drawn inside the box, so
 narrowing the window never cuts them. The player's seek is a 6 px progress
 bar (red while live) with the remaining time and the length beside it.
 
+**Windows contrast themes (2026-10-16, design audit C-05):** under forced
+colours Chromium repaints backgrounds and borders in the system's colours and
+drops shadows, so the states (all of them backgrounds) and the controls drawn
+with fills or shadows would vanish. One `@media (forced-colors: active)` block
+at the end of `bundle.css` (and the console's at the end of `console.css`)
+gives them cues in system colours only: on air, `Highlight` fills the row with
+`HighlightText` (still the row's background); Prévia, a 2 px dashed
+`LinkText` ring; next, a 2 px dotted ring; chosen, pressed or open (`is-on`,
+`is-selected`, Seg, tabs), a 2 px `Highlight` ring; switches, fields and
+outline or filled buttons get `ButtonText` / `FieldText` borders, panels and
+popovers a 1 px edge. A ring never replaces the keyboard's focus ring, and
+the normal look does not change. The monitors (`.kx-mon-screen`, `.kx-pip`)
+and every output opt out (`forced-color-adjust: none`): the picture, its
+frame included, keeps its own colours.
+
 **Screens on the network (2026-10-10):** every page a tablet, TV or stage
 monitor opens is on this system (`src/components/network/net.css`): `bg-0`
 ground, Geist, tokens, sized in container units so a phone, an upright
