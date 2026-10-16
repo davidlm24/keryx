@@ -68,9 +68,20 @@ export function videoSwap(doc, layer) {
     if (!item) return null;
     if (layer === "media" && item.kind === "youtube") return { action: "audioOnly", disabled: true, title: "Um vídeo do YouTube não toca só o som" };
     if (layer === "media" && item.kind === "video") return { action: "audioOnly", title: "Tirar o vídeo · o som continua" };
-    if (layer === "audio" && item.kind === "video") return { action: "showVideo", title: "Mostrar o vídeo" };
+    if (layer === "audio" && item.kind === "video") return { action: "showVideo", title: "Mostrar o vídeo · agora só o som" };
     return null;
 }
+
+// The progress bar can be dragged (owner 2026-10-16, Rodada F1): where a
+// pointer at clientX falls on the bar's box, in seconds of `duration`
+// (clamped to the bar; 0 when the length is unknown).
+export function seekAt(clientX, box, duration) {
+    if (!(duration > 0) || !box || !(box.width > 0)) return 0;
+    return Math.min(1, Math.max(0, (clientX - box.left) / box.width)) * duration;
+}
+
+// ← / → on the bar focused with Tab: seconds per press.
+export const SEEK_KEY_SECONDS = 5;
 
 const two = (n) => String(n).padStart(2, "0");
 export function clock(seconds) {
