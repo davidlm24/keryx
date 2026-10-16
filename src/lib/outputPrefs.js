@@ -214,17 +214,27 @@ export function bandBackground(opts) {
 // draws the bar — Posição (Alto | Baixo), Estilo (Faixa: the full width |
 // Pílula: centred), the colours, Tamanho (P/M/G) and Entrada (Deslizar |
 // Aparecer | Nenhuma). Flat `alert_*` keys of OutputPref.options; a missing
-// or unknown key is the bar as the Projeção always drew it.
+// or unknown key is the bar as the Projeção always drew it — AlertBar draws
+// ALERT_DEFAULTS when the alert brings no look.
 export const ALERT_DEFAULTS = { position: "top", style: "band", bg: "#f5a524", fg: "#1a1300", size: "m", entrance: "slide" };
+// A screen whose bar starts elsewhere (owner 2026-10-16): the Palco puts it
+// at the bottom, where its old pill sat — its header (title, Tom, BPM, the
+// clock) is what the musicians read. Its Ajustes can still say Alto.
+const PAGE_ALERT_DEFAULTS = { "/StageView": { position: "bottom" } };
+export const alertDefaults = (page) => ({ ...ALERT_DEFAULTS, ...(PAGE_ALERT_DEFAULTS[page] || {}) });
 const ALERT_CHOICES = { position: ["top", "bottom"], style: ["band", "pill"], size: ["s", "m", "l"], entrance: ["slide", "fade", "none"] };
 const alertValue = (k, v) => {
     if (k === "bg" || k === "fg") return typeof v === "string" && HEX6.test(v) ? v.toLowerCase() : undefined;
     return ALERT_CHOICES[k]?.includes(v) ? v : undefined;
 };
-export function alertOptions(pref) {
+// One screen's bar: its own choices over its page's defaults.
+export function alertOptions(pref, page) {
     const o = pref?.options || {};
-    return Object.fromEntries(Object.keys(ALERT_DEFAULTS).map((k) => [k, alertValue(k, o[`alert_${k}`]) ?? ALERT_DEFAULTS[k]]));
+    const d = alertDefaults(page);
+    return Object.fromEntries(Object.keys(d).map((k) => [k, alertValue(k, o[`alert_${k}`]) ?? d[k]]));
 }
+// Whether a look is what AlertBar draws with none (ALERT_DEFAULTS), so the
+// alert can go without one.
 export const isDefaultAlert = (opts) => Object.keys(ALERT_DEFAULTS).every((k) => opts?.[k] === ALERT_DEFAULTS[k]);
 // The options with their alert_* keys checked: a valid one kept (a colour
 // in lower case), anything else dropped (the Exportar/Importar file).
@@ -248,9 +258,9 @@ export function showsAlert(page, pref) {
 // The alert as this screen draws it (with its look), else null: for the
 // pages that draw the bar over something of their own (the Palco, the
 // Vídeo's clip). Renderer views get it from prefState.
-export function alertOf(live, pref) {
+export function alertOf(live, pref, page) {
     if (!live?.alert || pref?.hidden?.includes("alert")) return null;
-    const look = alertOptions(pref);
+    const look = alertOptions(pref, page);
     return isDefaultAlert(look) ? live.alert : { ...live.alert, look };
 }
 
@@ -273,7 +283,7 @@ export function prefState(page, live, pref, theme = null) {
     state = hideKinds(state, pref.hidden);
     // The Aviso rápido in this output's look (none set: the bar as always).
     if (state.alert) {
-        const look = alertOptions(pref);
+        const look = alertOptions(pref, page);
         if (!isDefaultAlert(look)) state = { ...state, alert: { ...state.alert, look } };
     }
     // The renderer draws chords and part names only where this output asks.

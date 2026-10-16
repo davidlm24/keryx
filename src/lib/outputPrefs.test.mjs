@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS } from "./outputPrefs.js";
+import { normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS, alertDefaults } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
@@ -260,4 +260,19 @@ test("Aviso rápido: cleanAlertOptions keeps valid alert_* keys, drops the rest,
     assert.deepEqual(out, { chords: true, band: "#000000", alert_position: "bottom", alert_bg: "#abcdef", alert_style: "pill", alert_entrance: "none" });
     assert.deepEqual(cleanAlertOptions(null), {});
     assert.deepEqual(cleanAlertOptions(["x"]), {});
+});
+
+test("Aviso rápido: the Palco's bar starts at the bottom, where its old pill sat (owner 2026-10-16)", () => {
+    assert.deepEqual(alertDefaults("/StageView"), { ...ALERT_DEFAULTS, position: "bottom" });
+    for (const page of [undefined, "/Projection", "/LyricProjection", "/VideoProjection", "/CommunicationProjection"]) assert.deepEqual(alertDefaults(page), ALERT_DEFAULTS, String(page));
+    assert.equal(alertOptions(null, "/StageView").position, "bottom");
+    assert.equal(alertOptions({ options: { alert_position: "top" } }, "/StageView").position, "top", "its Ajustes can still say Alto");
+    assert.equal(alertOptions({ options: { alert_style: "pill" } }, "/StageView").position, "bottom", "other choices keep the Palco's default");
+    // The look rides with the alert, since AlertBar alone draws it at the top.
+    const alert = { message: "Oi", type: "message", since: 1 };
+    assert.deepEqual(alertOf({ alert }, normalizePref({}), "/StageView").look, { ...ALERT_DEFAULTS, position: "bottom" });
+    assert.equal(alertOf({ alert }, normalizePref({ options: { alert_position: "top" } }), "/StageView"), alert, "Alto on the Palco: no look needed");
+    // A Palco set to show another output's content is still the Palco.
+    assert.equal(prefState("/StageView", { screen: "show", alert }, normalizePref({ content: "all" })).alert.look.position, "bottom");
+    assert.equal(prefState("/Projection", { screen: "show", alert }, normalizePref({})).alert, alert);
 });
