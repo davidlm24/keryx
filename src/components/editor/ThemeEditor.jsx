@@ -24,6 +24,9 @@ import { TRANSITIONS, TRANSITION_MS, NATURAL_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 import { ConfirmContext, deleteQuestion } from "../console/ConfirmDialog";
 import { useWinCol } from "@/components/console/winLayout";
+import useDraftHistory from "@/hooks/useDraftHistory";
+import { historyKey, hasOwnUndo } from "@/lib/editorHistory";
+import UndoRedo from "./UndoRedo";
 // The samples the canvas dresses (as ThemeStudio had them, folded in here
 // 2026-10-13): what the theme looks like on a song, a passage and a text,
 // with their own slides.
@@ -67,6 +70,10 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
     const isNew = themeId === "new";
     const [draft, setDraft] = useState(() => (isNew ? { ...BLANK } : null));
     const [saved, setSaved] = useState(null);
+    // Desfazer / Refazer over the theme (audit C-33): a load and Salvar
+    // empty it; another theme remounts the editor.
+    const history = useDraftHistory(draft, setDraft);
+    const resetHistory = history.reset; // one identity for the editor's life
     const [error, setError] = useState("");
     const [confirm, setConfirm] = useState(null); // "delete" | "discard" (detached only)
     // Both windows (the console's, a detached /Janela) provide the
@@ -85,10 +92,10 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         if (isNew || loaded.current) return undefined;
         let alive = true;
         keryx.entities.ProjectionTheme.get(themeId)
-            .then((row) => { if (!alive) return; loaded.current = true; setDraft(pick(row)); setSaved(pick(row)); })
+            .then((row) => { if (!alive) return; loaded.current = true; const start = pick(row); setDraft(start); setSaved(pick(row)); resetHistory(start); })
             .catch((err) => { if (alive) setError(err?.message || "Tema não encontrado."); });
         return () => { alive = false; };
-    }, [themeId, isNew]);
+    }, [themeId, isNew, resetHistory]);
 
     const savedId = useRef(isNew ? "" : themeId);
     const dirty = useMemo(() => draft && !sameJson(draft, saved ?? { ...BLANK }), [draft, saved]);
@@ -115,7 +122,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
             const row = isNew && !saved ? await keryx.entities.ProjectionTheme.create(data) : await keryx.entities.ProjectionTheme.update(savedId.current, data);
             savedId.current = row.id;
             setSaved(pick(row));
-            setDraft(pick(row));
+            const fresh = pick(row);
+            setDraft(fresh);
+            history.reset(fresh);
             say("Tema salvo. O que já está no ar não muda; o próximo envio sai com ele.");
             onSaved?.(row);
             setBusy(false);
@@ -155,7 +164,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         return () => window.removeEventListener("beforeunload", guard);
     }, [dirty]);
 
-    // Keys: Ctrl+S saves; Esc leaves a field, then the window (asking).
+    // Keys: Ctrl+S saves; Ctrl+Z undoes and Ctrl+Y / Ctrl+Shift+Z redo (a
+    // text field keeps its own while it has the focus, audit C-33); Esc
+    // leaves a field, then the window (asking).
     // Hosted in the console's window (escRef set), Esc comes routed from
     // the console instead (keys.js ESC_ORDER "window") and the dirty guard
     // still asks; the (x) ("all") leaves the whole stack the same way.
@@ -175,6 +186,8 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         if (document.querySelector(".console .ctx-scrim, .console .confirm-scrim")) return;
         const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft) save(); return; }
+        const hk = draft ? historyKey(e, hasOwnUndo(e.target)) : null;
+        if (hk) { e.preventDefault(); e.stopPropagation(); setConfirm(null); history[hk](); return; }
         if (e.key === "Escape") {
             if (escRef) return; // the console routes it
             e.preventDefault(); e.stopPropagation();
@@ -215,6 +228,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         e.preventDefault(); e.stopPropagation();
         e.currentTarget.setPointerCapture?.(e.pointerId);
         drag.current = { handle, from: pct(e), rect0: rect };
+        history.begin(`drag:${Date.now()}`); // the whole drag is one step
         setDragging(true);
     };
     const onMove = (e) => {
@@ -228,7 +242,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         else r = { ...d.rect0, x: d.rect0.x + dx, y: d.rect0.y + dy };
         set(rectToTheme(r, { box: draft.text_box }));
     };
-    const endDrag = () => { drag.current = null; setDragging(false); };
+    const endDrag = () => { if (drag.current) history.end(); drag.current = null; setDragging(false); };
 
     const wrap = (inner) => (hosted ? <><WinBar title="Editor de temas" sub="" detach={onDetach} /><div className="win-body is-ed">{inner}</div></> : inner);
     if (error) return wrap(<div className="col center"><Panel noHead={hosted} title="Editor de tema"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div className="pl-pad"><Btn onClick={() => onClose()}>Fechar</Btn></div></Panel></div>);
@@ -421,6 +435,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
             <WinBar title="Editor de temas" sub={`${themeTitle}${dirty ? " · não salvo" : ""}`}
                 tools={pickTheme}
                 actions={<>
+                    <UndoRedo history={history} />
                     {deleteBtn}
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={busy || !bg} onClick={save} title={bg ? "Ctrl+S" : NEEDS_BG}>Salvar tema</Btn>

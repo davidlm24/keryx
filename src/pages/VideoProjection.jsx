@@ -2,6 +2,7 @@ import React from "react";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { useScreenKeys } from "@/hooks/useScreenKeys";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import OutputScreen from "@/components/screen/OutputScreen";
 import { useOutputPref } from "@/hooks/useOutputPref";
@@ -24,6 +25,7 @@ export default function VideoProjection() {
     const live = useLiveState();
     const now = useLiveNow(1000);
     const logo = useChurchLogo();
+    useScreenKeys(live);
     const video = live?.video || null;
     const prefs = useOutputPref("/VideoProjection");
     const other = prefs.pref.content && prefs.pref.content !== "video";

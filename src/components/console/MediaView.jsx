@@ -11,6 +11,8 @@ import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStag
 import { useConfirm } from "./ConfirmDialog";
 import { setDragGhost, stageGhost } from "./dragGhost";
 import { PENDING_SAY } from "@/lib/pendingMedia";
+import { useContextMenu } from "./ContextMenu";
+import { gridStep, columnsOf } from "@/lib/console/gridNav";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
 const inCat = (m, cat) => cat === "todas" || (cat === "image" ? m.type === "image" || m.type === "gif" : cat === "doc" ? m.type === "pdf" || m.type === "powerpoint" : m.type === cat);
@@ -42,6 +44,9 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const [adding, setAdding] = useState(false); // the Enviar menu in the bar
     const [sel, setSel] = useState([]);
     const [anchor, setAnchor] = useState(null);
+    const [lead, setLead] = useState(null); // where the arrows move from (C-72)
+    const menu = useContextMenu();
+    const gridRef = useRef(null);
     const [renaming, setRenaming] = useState(null);
     const confirm = useConfirm();
     const [uploads, setUploads] = useState(null); // { names, at, failed }
@@ -66,11 +71,31 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
             const b = shown.findIndex((x) => x.id === m.id);
             const range = shown.slice(Math.min(a, b), Math.max(a, b) + 1).map((x) => x.id);
             setSel((s) => [...new Set([...s, ...range])]);
+            setLead(m.id);
             return;
         }
-        if (e?.ctrlKey || e?.metaKey) { setSel((s) => (s.includes(m.id) ? s.filter((x) => x !== m.id) : [...s, m.id])); setAnchor(m.id); return; }
+        if (e?.ctrlKey || e?.metaKey) { setSel((s) => (s.includes(m.id) ? s.filter((x) => x !== m.id) : [...s, m.id])); setAnchor(m.id); setLead(m.id); return; }
         setSel([m.id]);
         setAnchor(m.id);
+        setLead(m.id);
+    };
+    // The arrows move the selection (C-72): ↑/↓ in the list; in the grid
+    // ←/→ a card and ↑/↓ a row; Home/End; Shift extends from the anchor.
+    // The card or row moved to stays in view.
+    const step = (e) => {
+        const cols = view === "grid" ? columnsOf([...(gridRef.current?.children || [])].map((el) => el.offsetTop)) : 1;
+        const from = shown.findIndex((x) => x.id === (lead && sel.includes(lead) ? lead : sel[sel.length - 1]));
+        const to = gridStep(from, e.key, shown.length, cols);
+        if (to === null || to === from) return to !== null;
+        const m = shown[to];
+        if (e.shiftKey && anchor && shown.some((x) => x.id === anchor)) {
+            const a = shown.findIndex((x) => x.id === anchor);
+            setSel(shown.slice(Math.min(a, to), Math.max(a, to) + 1).map((x) => x.id));
+        } else { setSel([m.id]); setAnchor(m.id); }
+        setLead(m.id);
+        setRenaming(null);
+        requestAnimationFrame(() => document.querySelector(`[data-media-id="${CSS.escape(m.id)}"]`)?.scrollIntoView({ block: "nearest" }));
+        return true;
     };
     const send = (m) => {
         if (m.syncing) { c.say(PENDING_SAY); return; }
@@ -128,20 +153,30 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     const recategorise = (value) => Promise.all(picked.map((m) => keryx.entities.Media.update(m.id, { category: value }))).then(() => c.say(`Categoria: ${catLabel(value)}.`)).catch(fail);
     // Excluir asks first (useConfirm, as every Excluir does); the files stay
     // in the media folder.
-    const remove = async () => {
-        if (!picked.length) return;
-        const one = picked.length === 1;
+    const remove = async (rows = picked) => {
+        if (!rows.length) return;
+        const one = rows.length === 1;
         const ok = await confirm({
-            title: one ? "Excluir da Mídia?" : `Excluir ${picked.length} arquivos da Mídia?`,
-            text: `${one ? `"${picked[0].title}" sai` : "Eles saem"} da Mídia; ${one ? "o arquivo continua" : "os arquivos continuam"} na pasta de mídia do computador.`,
+            title: one ? "Excluir da Mídia?" : `Excluir ${rows.length} arquivos da Mídia?`,
+            text: `${one ? `"${rows[0].title}" sai` : "Eles saem"} da Mídia; ${one ? "o arquivo continua" : "os arquivos continuam"} na pasta de mídia do computador.`,
         });
         if (!ok) return;
         try {
-            for (const m of picked) await keryx.entities.Media.delete(m.id);
-            c.say(`${one ? "Excluído" : `${picked.length} excluídos`} da Mídia · os arquivos continuam na pasta de mídia.`);
-            setSel([]);
+            for (const m of rows) await keryx.entities.Media.delete(m.id);
+            c.say(`${one ? "Excluído" : `${rows.length} excluídos`} da Mídia · os arquivos continuam na pasta de mídia.`);
+            setSel((s) => s.filter((id) => !rows.some((m) => m.id === id)));
         } catch (err) { fail(err); }
     };
+    // A file's right-click menu (C-72), as the Biblioteca's: it acts on
+    // the file under the pointer; what goes on air is last.
+    const fileMenu = (m) => (e) => menu(e, { title: m.title, items: [
+        !m.missing && !m.syncing && { label: "Pôr na prévia", icon: "eye", onSelect: () => c.setPrev(stageFromMedia(m)) },
+        !m.missing && !m.syncing && m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => c.setPrev(stageFromMedia(m, { toVideo: true })) },
+        { label: "Renomear", icon: "edit", kbd: "F2", onSelect: () => { setSel([m.id]); setAnchor(m.id); setLead(m.id); setRenaming(m.id); } },
+        m.missing && !m.syncing && { label: "Localizar…", icon: "folder", onSelect: () => locate(m) },
+        { label: "Excluir…", icon: "trash", kbd: "Delete", onSelect: () => remove([m]) },
+        !m.missing && !m.syncing && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => send(m) },
+    ] });
     const locate = (m) => { locating.current = m; locateRef.current?.click(); };
     const located = async (file) => {
         const m = locating.current;
@@ -163,7 +198,8 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     // The Voltar chip ("back") and the (x) ("all") leave at once — nothing
     // to guard, the Mídia saves as it goes.
     // The other keys stay the page's own: Enter sends one selected file;
-    // Delete asks to take it out; Ctrl+A selects what is shown. They defer
+    // Delete asks to take it out (Backspace never does: on Windows it is
+    // not a delete key, audit C-11); Ctrl+A selects what is shown. They defer
     // to a dialog over the page (its own scrim does not count) and sleep
     // while another page covers this one; the console's B and L still
     // reach the screens.
@@ -175,9 +211,10 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         const field = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if (field) return;
         if (e.key === "Enter" && picked.length === 1) { e.preventDefault(); e.stopPropagation(); send(picked[0]); }
-        else if ((e.key === "Delete" || e.key === "Backspace") && picked.length) { e.preventDefault(); e.stopPropagation(); remove(); }
+        else if (e.key === "Delete" && picked.length) { e.preventDefault(); e.stopPropagation(); remove(); }
         else if (e.key === "a" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); setSel(shown.map((m) => m.id)); }
         else if (e.key === "F2" && picked.length === 1) { e.preventDefault(); setRenaming(picked[0].id); }
+        else if (!e.ctrlKey && !e.metaKey && !e.altKey && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key) && step(e)) { e.preventDefault(); e.stopPropagation(); }
     };
     useEffect(() => {
         const onKey = (e) => keysRef.current(e);
@@ -249,16 +286,16 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             <option value="">Categoria…</option>
                             {CATEGORY.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                         </select>
-                        <Btn small onClick={remove} title="Excluir da Mídia · Delete">Excluir…</Btn>
+                        <Btn small onClick={() => remove()} title="Excluir da Mídia · Delete">Excluir…</Btn>
                         <IconBtn name="x" small title="Limpar seleção · Esc" onClick={() => setSel([])} />
                     </div>
                 )}
                 <div className="mv-body" onClick={(e) => { if (e.target === e.currentTarget) setSel([]); }}>
                     {!shown.length && <Empty icon="film" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Enviar arquivos (vídeos, áudios, imagens, PDF, PowerPoint) ou adicione um link do YouTube."}</Empty>}
                     {view === "grid" && shown.length > 0 && (
-                        <div className="mv-grid">
+                        <div className="mv-grid" ref={gridRef}>
                             {shown.map((m) => (
-                                <div key={m.id} className="mv-cell">
+                                <div key={m.id} className="mv-cell" data-media-id={m.id} onContextMenu={fileMenu(m)}>
                                     <button type="button" className={`mv-th kx-t ${state(m)}`} title={m.title} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} {...drag(m)}>
                                         {(m.type === "image" || m.type === "gif") && !m.missing && <img src={m.file_url} alt="" loading="lazy" />}
                                         {m.type === "video" && !isYouTube(m) && !m.missing && (m.thumbnail_url && m.duration > 0 && !m.posterSyncing
@@ -280,7 +317,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                         </div>
                     )}
                     {view === "list" && shown.map((m) => (
-                        <div key={m.id} className={`kx-row kx-t mv-row ${state(m)}`} role="button" tabIndex={0} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} {...drag(m)}>
+                        <div key={m.id} className={`kx-row kx-t mv-row ${state(m)}`} role="button" tabIndex={0} data-media-id={m.id} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} onContextMenu={fileMenu(m)} {...drag(m)}>
                             <span className="kx-glyph"><Icon name={ICON[m.type] || "film"} /></span>
                             <div className="kx-row-main">
                                 {renaming === m.id ? renameField(m) : <div className="kx-row-title">{m.title}</div>}
