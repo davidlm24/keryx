@@ -56,6 +56,15 @@ ipcRenderer.on("keryx:notifications", (_event, list) => {
     }
 });
 
+// Sync between the church's computers: media files rows name that have not
+// come down yet (electron/sync.cjs), as keryx-media names.
+const syncMissingListeners = new Set();
+ipcRenderer.on("keryx:sync:missing", (_event, names) => {
+    for (const listener of syncMissingListeners) {
+        try { listener(names); } catch (err) { console.error("[keryx] sync listener failed:", err); }
+    }
+});
+
 const levelListeners = new Set();
 ipcRenderer.on("keryx:audio-level", (_event, level) => {
     for (const listener of levelListeners) {
@@ -178,5 +187,12 @@ contextBridge.exposeInMainWorld("keryxDesktop", {
             return ipcRenderer.invoke("keryx:media-import", { bytes, name: file.name });
         },
         info: (names) => ipcRenderer.invoke("keryx:media-info", { names }),
+    },
+    sync: {
+        missing: () => ipcRenderer.invoke("keryx:sync:missing"),
+        onMissing(listener) {
+            syncMissingListeners.add(listener);
+            return () => syncMissingListeners.delete(listener);
+        },
     },
 });
