@@ -56,6 +56,15 @@ test("other live keys", () => {
     assert.equal(focusKind(input), "text");
 });
 
+test("Ctrl+Z is Desfazer, except in a text field (design audit C-13)", () => {
+    assert.equal(key("z", nothing, { ctrlKey: true }), "undo");
+    assert.equal(key("Z", button, { ctrlKey: true }), "undo", "Caps Lock, or a button focused with Tab");
+    assert.equal(key("z", nothing, { metaKey: true }), "undo");
+    assert.equal(key("z", input, { ctrlKey: true }), null, "the field's own undo");
+    assert.equal(key("z", nothing, { ctrlKey: true, shiftKey: true }), null, "Ctrl+Shift+Z is not Desfazer");
+    assert.equal(key("z", nothing), null, "z alone types nothing on the console");
+});
+
 test("↑/↓ move the selection, ←/→ the air (Holyrics)", () => {
     assert.equal(key("ArrowUp", nothing), "selUp");
     assert.equal(key("ArrowDown", nothing), "selDown");
@@ -187,7 +196,7 @@ test("the shortcut list and the keys never drift apart", () => {
     }
     // Every action the console handles is in the list ("blur" is only
     // leaving a text field).
-    for (const action of ["send", "next", "prev", "selUp", "selDown", "black", "logo", "clear", "end", "search", "help", "play"]) {
+    for (const action of ["send", "next", "prev", "selUp", "selDown", "black", "logo", "clear", "end", "undo", "search", "help", "play"]) {
         assert.ok(listed.has(action), `${action} is not in the shortcut list`);
     }
 });

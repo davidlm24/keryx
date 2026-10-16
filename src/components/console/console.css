@@ -900,6 +900,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* The title gives way first (an ellipsis; its whole text is the page) so the
    tools and actions never leave the bar (D5: Relatórios at 960 px). */
 .console .win-bar .win-title { flex: 0 1 auto; color: var(--fg-1); font-size: 12px; min-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .win-bar .win-title:focus { outline: none; } /* the focus parks here (C-12); it is not a control */
 .console .win-bar .kx-btn-back { height: 26px; margin-left: -6px; flex: none; }
 .console .win-bar .win-tools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 0 1 auto; margin-left: var(--space-3); }
 .console .win-bar .win-gap { flex: 1; }
@@ -1624,6 +1625,27 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .sync .sync-time.is-bad { box-shadow: inset 0 0 0 1px var(--warn); }
 .console .sync .sync-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; opacity: .35; }
 .console .sync .sync-row:hover .sync-acts, .console .sync .sync-row.is-sel .sync-acts, .console .sync .sync-row:focus-within .sync-acts { opacity: 1; }
+
+/* ---- While live (audit 0.2.19, Minors C-45/46) ---- */
+/* An empty layer (Camadas: nothing on air, nothing on the Fundo, no overlay
+   yet) is not a hidden one: the name muted with "vazio", the eye faint, no
+   eye-off (that is only for a layer really hidden). */
+.console .kx-layer.is-empty .kx-layer-name, .console .kx-layer .kx-layer-vazio { color: var(--fg-3); }
+.console .kx-layer .kx-btn.is-empty { color: var(--fg-3); opacity: .45; }
+/* Tela preta or the Logo cover the screens: the working lists (Slides, No ar,
+   the Setlist) keep their on-air row but dimmed, and the header says
+   "coberto · Tela preta" (Console.jsx coverTag), never cut by the title. */
+.console .kx-panel-h > .kx-covered { flex: none; font-size: 11px; line-height: 16px; color: var(--fg-2); white-space: nowrap; }
+/* Dimmed only outside a Windows contrast theme: there the fill below
+   (forced colours) keeps the row on air, and the header's tag tells. */
+@media (forced-colors: none) {
+  .console .is-covered :is(.kx-slide, .onair-card).is-air:not(.is-prev) { background: color-mix(in srgb, var(--brand) 9%, var(--bg-2)); }
+  .console .is-covered :is(.kx-slide, .onair-card).is-air :is(.kx-slide-n, .kx-slide-lab),
+  .console .is-covered .kx-row.is-air .kx-row-title { color: var(--fg-2); }
+  .console .is-covered :is(.kx-slide, .onair-card).is-air .kx-slide-body { opacity: .7; }
+  .console .is-covered .kx-row.is-air { background: var(--bg-2); }
+  .console .is-covered .kx-row.is-air::before { opacity: .35; }
+}
 
 /* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
    the console's side of the cues in bundle.css, at the console's
