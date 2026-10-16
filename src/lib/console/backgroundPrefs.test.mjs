@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { sourceOf, backgroundList, visibleBackgrounds, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults } from "./backgroundPrefs.js";
+import {
+    sourceOf, backgroundList, visibleBackgrounds, categoriesOf, backgroundDefaults, backgroundLook, withBackgroundDefaults,
+    CATEGORY_SUGGESTIONS, normalizeCategories, categoryList, managedCategories, addCategory, renameCategory, removeCategory, moveCategory, inCategory,
+} from "./backgroundPrefs.js";
 
 test("a bundled background has one key whatever serves it", () => {
     assert.equal(sourceOf("http://127.0.0.1:7700/media/bundled/backgrounds/1557672172-298e090bd0f1.webp"), "bundled:1557672172-298e090bd0f1");
@@ -30,6 +33,46 @@ test("the list: settings over the factory names and categories", () => {
     assert.deepEqual(visibleBackgrounds(list, { only: "Natureza" }).map((b) => b.source), ["bundled:a"]);
     assert.deepEqual(visibleBackgrounds(list, { except: "Suas imagens" }).map((b) => b.source), ["bundled:b", "bundled:a"]);
     assert.deepEqual(categoriesOf([...list, { category: "Páscoa" }, { category: "Batismo" }]), ["Natureza", "Cruz e igreja", "Batismo", "Páscoa", "Suas imagens"]);
+});
+
+test("the church's categories: a stored list, the suggestions until it edits one", () => {
+    assert.equal(normalizeCategories(null), null);
+    assert.equal(normalizeCategories("Natureza"), null);
+    assert.deepEqual(normalizeCategories(["  Páscoa ", "páscoa", "", 7, "Suas imagens", "Santa  Ceia"]), ["Páscoa", "Santa Ceia"], "trimmed, once each, never the church's own images");
+    assert.deepEqual(normalizeCategories([]), [], "all deleted is a list too");
+    assert.deepEqual(categoryList(null), CATEGORY_SUGGESTIONS);
+    assert.deepEqual(categoryList(["Batismo", "Natureza"]), ["Batismo", "Natureza"]);
+
+    const entries = [{ category: "Natureza" }, { category: "Batismo" }, { category: "Páscoa" }, { category: "Suas imagens" }];
+    assert.deepEqual(categoriesOf(entries, ["Páscoa", "Natureza", "Ceia"]), ["Páscoa", "Natureza", "Batismo", "Suas imagens"], "the church's order, then names in use outside it; empty ones not as chips");
+    assert.deepEqual(managedCategories(["Páscoa", "Ceia"], entries), ["Páscoa", "Ceia", "Batismo", "Natureza"], "Configurações lists the empty ones and the strays");
+});
+
+test("create, rename, delete and reorder a category", () => {
+    const list = ["Adoração", "Natureza", "Outros"];
+    assert.deepEqual(addCategory(list, "  Páscoa "), { list: ["Adoração", "Natureza", "Outros", "Páscoa"], name: "Páscoa" });
+    assert.ok(addCategory(list, "natureza").error, "no twin, whatever the case");
+    assert.ok(addCategory(list, "   ").error);
+    assert.ok(addCategory(list, "Seus vídeos").error);
+
+    assert.deepEqual(renameCategory(list, "Natureza", "Paisagens"), { list: ["Adoração", "Paisagens", "Outros"], name: "Paisagens" });
+    assert.deepEqual(renameCategory(list, "Natureza", "natureza").list, ["Adoração", "natureza", "Outros"], "a change of case is a rename");
+    assert.ok(renameCategory(list, "Natureza", "Adoração").error);
+    assert.ok(renameCategory(list, "Outros", "Diversos").error, "Outros keeps its name");
+    assert.deepEqual(renameCategory(list, "Batismo", "Batismos").list, ["Adoração", "Natureza", "Outros", "Batismos"], "a name in use outside the list joins it");
+
+    assert.deepEqual(removeCategory(list, "Natureza").list, ["Adoração", "Outros"]);
+    assert.ok(removeCategory(list, "Outros").error);
+
+    assert.deepEqual(moveCategory(list, "Natureza", -1), ["Natureza", "Adoração", "Outros"]);
+    assert.deepEqual(moveCategory(list, "Outros", 1), list, "at the end: the same");
+    assert.deepEqual(moveCategory(list, "Nenhuma", 1), list);
+});
+
+test("a rename or a delete moves the factory photos with no settings too", () => {
+    const list = backgroundList({ bundled, images, prefs: [{ source: "bundled:b", category: "Natureza" }] });
+    assert.deepEqual(inCategory(list, "Natureza").map((b) => b.source), ["bundled:a", "bundled:b", "bundled:c"]);
+    assert.deepEqual(inCategory(list, "Natureza").map((b) => Boolean(b.pref)), [false, true, false], "two of them get their first BackgroundPref");
 });
 
 test("a background is listed once, however many times Mídia holds it", () => {

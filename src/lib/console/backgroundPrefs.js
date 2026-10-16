@@ -65,13 +65,89 @@ export function visibleBackgrounds(list, { only, except } = {}) {
     return [...shown.filter((b) => b.favorite), ...shown.filter((b) => !b.favorite)];
 }
 
-// The categories in use, in a stable order: the suggestions first, then the
-// church's own, alphabetically.
-export function categoriesOf(list) {
+// The categories in use, in a stable order: the church's list first (the
+// suggestions while it never edited one), then names in use that are not in
+// it, alphabetically, then its own images and videos.
+export function categoriesOf(list, stored = null) {
     const used = new Set(list.map((b) => b.category));
-    const extra = [...used].filter((c) => !CATEGORY_SUGGESTIONS.includes(c) && c !== OWN_IMAGES && c !== OWN_VIDEOS).sort((a, b) => a.localeCompare(b, "pt-BR"));
-    return [...CATEGORY_SUGGESTIONS.filter((c) => used.has(c)), ...extra, ...(used.has(OWN_IMAGES) ? [OWN_IMAGES] : []), ...(used.has(OWN_VIDEOS) ? [OWN_VIDEOS] : [])];
+    const lead = categoryList(stored);
+    const extra = [...used].filter((c) => !lead.includes(c) && c !== OWN_IMAGES && c !== OWN_VIDEOS).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return [...lead.filter((c) => used.has(c)), ...extra, ...(used.has(OWN_IMAGES) ? [OWN_IMAGES] : []), ...(used.has(OWN_VIDEOS) ? [OWN_VIDEOS] : [])];
 }
+
+// The church's categories (User.background_categories, Configurações ›
+// Temas e fundos › Categorias de fundos, owner 2026-10-16): an ordered list
+// it creates, renames, reorders and deletes, even while empty. Null = never
+// edited: the suggestions. A category lives on each background's
+// BackgroundPref.category; the list only names and orders them, so a name in
+// use outside it still shows (after it). "Outros" is where a deleted
+// category's backgrounds go: it is never renamed or deleted.
+export const FALLBACK_CATEGORY = "Outros";
+const CATEGORY_MAX = 40;
+const fold = (s) => s.toLocaleLowerCase("pt-BR");
+const cleanName = (v) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ").slice(0, CATEGORY_MAX).trim() : "");
+const ownName = (n) => n === OWN_IMAGES || n === OWN_VIDEOS;
+
+export function normalizeCategories(v) {
+    if (!Array.isArray(v)) return null;
+    const seen = new Set();
+    const out = [];
+    for (const raw of v) {
+        const name = cleanName(raw);
+        if (!name || ownName(name) || seen.has(fold(name))) continue;
+        seen.add(fold(name));
+        out.push(name);
+    }
+    return out;
+}
+
+export const categoryList = (stored) => normalizeCategories(stored) ?? [...CATEGORY_SUGGESTIONS];
+
+// What Configurações lists: the church's list, then the names in use outside it.
+export function managedCategories(stored, entries) {
+    const lead = categoryList(stored);
+    const extra = [...new Set(entries.map((b) => b.category))].filter((c) => c && !lead.includes(c) && !ownName(c)).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return [...lead, ...extra];
+}
+
+const taken = (list, name, except = null) => ownName(name) || list.some((c) => c !== except && fold(c) === fold(name));
+
+// Each change answers { list, name } or { error } (the message to show).
+export function addCategory(list, name) {
+    const n = cleanName(name);
+    if (!n) return { error: "Dê um nome à categoria." };
+    if (taken(list, n)) return { error: `Já existe a categoria "${n}".` };
+    return { list: [...list, n], name: n };
+}
+
+// A name in use outside the list joins it with its new name.
+export function renameCategory(list, from, to) {
+    const n = cleanName(to);
+    if (from === FALLBACK_CATEGORY) return { error: `"${FALLBACK_CATEGORY}" não muda de nome: é onde ficam os fundos de uma categoria excluída.` };
+    if (!n) return { error: "Dê um nome à categoria." };
+    if (taken(list, n, from)) return { error: `Já existe a categoria "${n}".` };
+    return { list: list.includes(from) ? list.map((c) => (c === from ? n : c)) : [...list, n], name: n };
+}
+
+export function removeCategory(list, name) {
+    if (name === FALLBACK_CATEGORY) return { error: `"${FALLBACK_CATEGORY}" não se exclui: é onde ficam os fundos de uma categoria excluída.` };
+    return { list: list.filter((c) => c !== name), name };
+}
+
+// One step up (by -1) or down (by 1); the same list at an end.
+export function moveCategory(list, name, by) {
+    const i = list.indexOf(name);
+    const j = i + by;
+    if (i < 0 || j < 0 || j >= list.length) return list;
+    const next = [...list];
+    [next[i], next[j]] = [next[j], next[i]];
+    return next;
+}
+
+// The backgrounds a rename or a delete moves: every one in that category,
+// the factory photos with no settings yet included (their category comes
+// from the code, so they get a BackgroundPref saying the new one).
+export const inCategory = (entries, name) => entries.filter((b) => b.category === name);
 
 // A background's dim and blur from its pref, as live-state values; null
 // where the church set nothing.

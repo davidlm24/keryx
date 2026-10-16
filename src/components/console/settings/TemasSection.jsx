@@ -4,6 +4,7 @@ import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
 import { CfgKey } from "./parts";
+import FundoCategories from "./FundoCategories";
 import { ThemeThumb, NoBgMark } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
@@ -128,6 +129,7 @@ export default function TemasSection({ c }) {
                 mode); this is its door in Configurações — it was Aparência's
                 until the section dissolved (Rodada B 2026-10-14). */}
             <CfgKey k="Fundos" className="listhead"><span className="kx-section">Fundos <span className="kx-count">· imagens, vídeos, gerados e cores para temas e papéis de parede</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca…</Btn></CfgKey>
+            <FundoCategories c={c} />
         </>
     );
 }

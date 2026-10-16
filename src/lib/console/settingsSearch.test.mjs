@@ -17,6 +17,7 @@ const FILES = {
     "RemoteBlock.jsx": "rede",
     "IdleBlock.jsx": "culto",
     "TemasSection.jsx": "temas",
+    "FundoCategories.jsx": "temas",
     "BibliaSection.jsx": "biblia",
     "CultoSection.jsx": "culto",
     "ConsoleSection.jsx": "console",

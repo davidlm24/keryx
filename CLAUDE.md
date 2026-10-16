@@ -188,7 +188,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   sent there are Media rows of category "background" (`isBackgroundMedia`),
   left out of `useLibrary().media` (Biblioteca, media library, editors) and
   listed by `useBackgrounds()` (plus Mídia pictures that already have a
-  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. **A default
+  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. The factory
+  photos are never deleted, only hidden (Oculto). **The categories are the
+  church's** (owner 2026-10-16, Configurações › Temas e fundos › Categorias
+  de fundos, `FundoCategories.jsx`): `User.background_categories` names and
+  orders them, even empty (null = `CATEGORY_SUGGESTIONS`); a background's
+  own category is still `BackgroundPref.category`, so a rename or a delete
+  rewrites those rows (a factory photo gets its first one) and a delete
+  sends them to "Outros", which is never renamed or deleted (helpers in
+  backgroundPrefs.js, tested). Both sync. **A default
   theme per kind** (`themeForKind`, `THEME_KINDS`): Música (the theme in
   use, else the theme marked padrão), Bíblia, Texto and Timer (`User.bible_theme_id`, `text_theme_id`,
   `timer_theme_id`; "" = Música's, "none" = factory), chosen in Temas ›
