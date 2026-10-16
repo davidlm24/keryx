@@ -191,10 +191,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   sent there are Media rows of category "background" (`isBackgroundMedia`),
   left out of `useLibrary().media` (Biblioteca, media library, editors) and
   listed by `useBackgrounds()` (plus Mídia pictures that already have a
-  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. The factory
-  photos are never deleted, only hidden (Oculto). **The categories are the
-  church's** (owner 2026-10-16, Configurações › Temas e fundos › Categorias
-  de fundos, `FundoCategories.jsx`): `User.background_categories` names and
+  BackgroundPref); "Trazer da Mídia…" copies a Mídia row in. **Every
+  background can leave the library** (owner 2026-10-16, the factory photos
+  too): its right click goes by its origin (`backgroundActions`, `origin`
+  keryx/own/media in `backgroundList`, tested) — a factory photo is
+  excluded (`BackgroundPref.hidden`; its file is the app's, never deleted)
+  and comes back from the **Excluídos** chip (Restaurar, menu or the side
+  panel); a file sent or brought in is deleted (its Media row, and its
+  BackgroundPref unless another copy is a background); a Mídia picture is
+  "Tirar dos fundos" (its BackgroundPref goes, the Mídia keeps it). There
+  is no "Oculto" any more: an old hidden row is in Excluídos. **The
+  categories are the church's** (owner 2026-10-16), **edited inside the
+  library** (its "Categorias…" chip, `library/FundoCategories.jsx`;
+  Configurações › Temas e fundos › Categorias de fundos only opens the
+  library there, `pick({ manage: true, view: "categories" })`); a
+  background's category is picked from that list (a select in its panel,
+  never a free name), and a file sent with a category chip on lands in it:
+  `User.background_categories` names and
   orders them, even empty (null = `CATEGORY_SUGGESTIONS`); a background's
   own category is still `BackgroundPref.category`, so a rename or a delete
   rewrites those rows (a factory photo gets its first one) and a delete

@@ -10,7 +10,8 @@ import { applyOp, emptyState } from "@shared/live-state.mjs";
 import { importMediaFiles } from "@/lib/mediaImport";
 import { keryx } from "@/api/keryxClient";
 import { usePrefs } from "@/hooks/useUser";
-import { visibleBackgrounds, categoriesOf, sourceOf } from "@/lib/console/backgroundPrefs";
+import { visibleBackgrounds, categoriesOf, managedCategories, sourceOf, backgroundActions, OWN_IMAGES, OWN_VIDEOS } from "@/lib/console/backgroundPrefs";
+import FundoCategories from "./FundoCategories";
 import { cleanSpec, bgArgs, bgSpec, bgLabel, sameBg } from "@/lib/console/backgroundSpec";
 import { themeStyle, themeBackgroundArgs, themeName, themeHasBackground } from "@/lib/console/themes";
 import { GENERATORS } from "@/lib/generators";
@@ -22,9 +23,10 @@ import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 // one window for every picker of a background or a theme — Camadas, the
 // song editor, the themes, the planner, the idle screen… Tabs Temas ·
 // Imagens · Vídeos · Gerados · Cor, as many as the picker accepts; the
-// church's categories and favourites (BackgroundPref, managed here too),
-// files sent from the computer (they become Mídia rows), and a sample of
-// the choice on the real renderer. A click chooses, a double click (or
+// church's categories (edited here too, "Categorias…") and favourites
+// (BackgroundPref), files sent from the computer (background rows of the
+// Media table, never in the Mídia), and a sample of the choice on the real
+// renderer. A click chooses, a double click (or
 // Usar) takes it; Esc or Cancelar closes without choosing. Gerados shows the
 // background big and moving while it is edited (owner's request 2026-10-12,
 // as SPresenter does). (Its "Ao vivo" mode, for the Fundo on air from
@@ -54,25 +56,51 @@ export default function BackgroundLibrary({ c, request, onDone }) {
     // when brought on purpose (Trazer da Mídia…, a copy of its row).
     const { media, backgroundMedia } = useLibrary();
     const themes = useThemes();
-    // Right click on one of the church's own backgrounds: Excluir… (asks first).
+    const list = useBackgrounds();
+    // What the main area shows for Imagens and Vídeos: the backgrounds, the
+    // Mídia's files to bring in, or the categories (owner 2026-10-16: they are
+    // edited here, where they are used).
+    const [view, setView] = useState(() => (request.view === "categories" ? "categories" : "grid"));
+    const save = useSaveBackgroundPref(c.say);
+    // Right click: every background can leave the library, each as its origin
+    // says (backgroundActions; owner 2026-10-16 — the factory ones too).
     const menu = useContextMenu();
     const confirm = useConfirm();
-    const tileMenu = (e, b) => {
-        const row = backgroundMedia.find((m) => m.file_url === b.url);
-        menu(e, { title: b.name, items: [
-            { label: "Usar", icon: "check", onSelect: () => take({ kind: b.kind, value: b.url }) },
-            row ? { label: "Excluir…", icon: "trash", onSelect: async () => {
-                if (!(await confirm(deleteQuestion(b.kind === "video" ? "o vídeo de fundo" : "a imagem de fundo", b.name)))) return;
-                try { await keryx.entities.Media.delete(row.id); if (sel?.value === b.url) setSel(null); c.say("Fundo excluído."); } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
-            } } : media.some((m) => m.file_url === b.url)
-                // A Mídia picture set up as a background (it has a BackgroundPref): it is the Mídia's.
-                ? { label: "Está na Mídia: exclua por lá, ou use Oculto", disabled: true }
-                : { label: "Os fundos que vêm com o KERYX não se excluem: use Oculto", disabled: true },
-        ] });
+    const what = (b) => (b.kind === "video" ? "o vídeo de fundo" : "a imagem de fundo");
+    const gone = (b) => { if (sel?.value === b.url) setSel(null); };
+    const act = {
+        exclude: async (b) => {
+            if (!(await confirm({ title: `Excluir ${what(b)}?`, text: `"${b.name}" sai da biblioteca. Ele vem com o KERYX: em Excluídos, Restaurar traz de volta.` }))) return;
+            await save(b, { hidden: true, favorite: false }, "Fundo excluído.");
+            gone(b);
+        },
+        delete: async (b) => {
+            if (!(await confirm(deleteQuestion(what(b), b.name)))) return;
+            try {
+                await keryx.entities.Media.delete(b.mediaId);
+                // Its settings go with it, unless another copy of the file is
+                // still a background: a Mídia picture with a BackgroundPref
+                // would come back here on its own.
+                if (b.pref?.id && !backgroundMedia.some((m) => m.id !== b.mediaId && m.file_url === b.url)) await keryx.entities.BackgroundPref.delete(b.pref.id);
+                gone(b);
+                c.say("Fundo excluído.");
+            } catch (err) { c.say(err?.message || "Não foi possível excluir."); }
+        },
+        untrack: async (b) => {
+            try { if (b.pref?.id) await keryx.entities.BackgroundPref.delete(b.pref.id); gone(b); c.say(`"${b.name}" saiu dos fundos. Continua na Mídia.`); } catch (err) { c.say(err?.message || "Não foi possível tirar dos fundos."); }
+        },
+        restore: (b) => save(b, { hidden: false }, `"${b.name}" voltou para a biblioteca.`),
     };
-    const list = useBackgrounds();
-    const [fromMedia, setFromMedia] = useState(false);
-    const save = useSaveBackgroundPref(c.say);
+    const ACTION = {
+        exclude: { label: "Excluir…", icon: "trash" },
+        delete: { label: "Excluir…", icon: "trash" },
+        untrack: { label: "Tirar dos fundos (fica na Mídia)", icon: "x" },
+        restore: { label: "Restaurar", icon: "undo" },
+    };
+    const tileMenu = (e, b) => menu(e, { title: b.name, items: [
+        { label: "Usar", icon: "check", onSelect: () => take({ kind: b.kind, value: b.url }) },
+        ...backgroundActions(b).map((k) => ({ ...ACTION[k], onSelect: () => act[k](b) })),
+    ] });
     const withBg = useMemo(() => themes.filter((t) => { const s = bgSpec(t); return s && kinds.includes(s.kind); }), [themes, kinds.join()]); // eslint-disable-line react-hooks/exhaustive-deps
     const tabs = TABS.filter(([k]) => (k === "temas" ? themeMode || withBg.length > 0 : kinds.includes(k)));
     const start = cleanSpec(request.value);
@@ -82,19 +110,22 @@ export default function BackgroundLibrary({ c, request, onDone }) {
     const [selTheme, setSelTheme] = useState(() => (themeMode ? themes.find((t) => t.id === request.value) || null : null));
     useEffect(() => { if (themeMode && !selTheme && request.value) setSelTheme(themes.find((t) => t.id === request.value) || null); }, [themes]); // eslint-disable-line react-hooks/exhaustive-deps
     const [filter, setFilter] = useState(ALL);
-    useEffect(() => { setFilter(ALL); setFromMedia(false); }, [tab]);
+    useEffect(() => { setFilter(ALL); setView((v) => (v === "media" ? "grid" : v)); }, [tab]);
 
-    // Files from the computer: they land in Mídia (one row each), show up
-    // here and in every gallery; the first one sent is chosen.
+    // Files from the computer: background rows of the Media table (out of the
+    // Mídia), here only; the first one sent is chosen. With a category chip
+    // on, they go in that category.
     const fileRef = useRef(null);
     const [uploading, setUploading] = useState(false);
     const upload = async (files) => {
         setUploading(true);
         try {
             const { created, failed } = await importMediaFiles(files, { category: "background" });
-            c.say(`${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
+            const into = filter !== ALL && filter !== HIDDEN && filter !== OWN_IMAGES && filter !== OWN_VIDEOS ? filter : null;
+            if (into) for (const m of created) if (m.file_url) await keryx.entities.BackgroundPref.create({ source: sourceOf(m.file_url), category: into }).catch(() => {});
+            c.say(`${created.length} ${created.length === 1 ? "arquivo enviado" : "arquivos enviados"}${into ? ` para ${into}` : ""}${failed.length ? ` · não deu: ${failed.map((x) => x.name).join(", ")}` : ""}.`);
             const first = created.find((m) => (m.type === "image" || m.type === "video") && kinds.includes(m.type));
-            if (first) { setTab(first.type); setSel({ kind: first.type, value: first.file_url }); }
+            if (first) { setTab(first.type); setSel({ kind: first.type, value: first.file_url }); setView("grid"); }
         } catch (err) { c.say(err?.message || "Não foi possível enviar."); }
         setUploading(false);
     };
@@ -106,7 +137,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
     const bring = async (m) => {
         try {
             await keryx.entities.Media.create({ title: m.title || "Fundo", type: m.type, file_url: m.file_url, category: "background", duration: m.duration || 0 });
-            setFromMedia(false);
+            setView("grid");
             setSel({ kind: m.type, value: m.file_url });
             c.say(`"${m.title || "Arquivo"}" está nos fundos.`);
         } catch (err) { c.say(err?.message || "Não foi possível trazer da Mídia."); }
@@ -120,6 +151,9 @@ export default function BackgroundLibrary({ c, request, onDone }) {
     const storedCats = usePrefs().background_categories;
     const cats = useMemo(() => categoriesOf(entries, storedCats), [entries, storedCats]);
     const hiddenCount = entries.filter((b) => b.hidden).length;
+    // A chip that went away (the last excluded one restored, a category
+    // emptied or renamed) leaves its filter: back to Todos.
+    useEffect(() => { if (filter !== ALL && (filter === HIDDEN ? !hiddenCount : !cats.includes(filter))) setFilter(ALL); }, [filter, hiddenCount, cats]);
     const shown = filter === HIDDEN ? entries.filter((b) => b.hidden) : visibleBackgrounds(entries, filter === ALL ? {} : { only: filter });
     const entry = sel && (sel.kind === "image" || sel.kind === "video") ? list.find((b) => b.source === sourceOf(sel.value)) || null : null;
 
@@ -149,7 +183,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                     </div>
                     <span className="win-gap" />
                     {(kinds.includes("image") || kinds.includes("video")) && <>
-                        {(tab === "image" || tab === "video") && <Btn small on={fromMedia} onClick={() => setFromMedia(!fromMedia)} title="Usar como fundo uma imagem ou vídeo que já está na Mídia">Trazer da Mídia…</Btn>}
+                        {(tab === "image" || tab === "video") && <Btn small on={view === "media"} onClick={() => setView(view === "media" ? "grid" : "media")} title="Usar como fundo uma imagem ou vídeo que já está na Mídia">Trazer da Mídia…</Btn>}
                         <Btn small disabled={uploading} onClick={() => fileRef.current?.click()}><Icon name="download" />{uploading ? "Enviando…" : "Do computador…"}</Btn>
                         <input ref={fileRef} type="file" multiple hidden accept={[kinds.includes("image") && "image/*,.gif", kinds.includes("video") && "video/mp4,video/webm"].filter(Boolean).join(",")} onChange={(e) => { const files = Array.from(e.target.files || []); e.target.value = ""; if (files.length) upload(files); }} />
                     </>}
@@ -175,7 +209,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                 {!(themeMode ? themes : withBg).length && <span className="kx-meta">Nenhum tema ainda. Crie em Configurações › Temas, ou salve o que está no ar em Camadas.</span>}
                             </div>
                         )}
-                        {(tab === "image" || tab === "video") && fromMedia && (
+                        {(tab === "image" || tab === "video") && view === "categories" && <FundoCategories c={c} entries={list} onDone={() => setView("grid")} />}
+                        {(tab === "image" || tab === "video") && view === "media" && (
                             <>
                                 <div className="listhead"><span className="kx-section">Da Mídia <span className="kx-count">· clique para trazer para os fundos (a Mídia continua com o arquivo)</span></span></div>
                                 <div className="lib-grid">
@@ -189,17 +224,22 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                 </div>
                             </>
                         )}
-                        {(tab === "image" || tab === "video") && !fromMedia && <>
-                            <div className="fg-filters" role="radiogroup" aria-label="Categoria">
-                                {[[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Ocultos · ${hiddenCount}`]] : [])].map(([k, name]) => (
-                                    <button type="button" key={k} role="radio" aria-checked={filter === k} className={`kx-t fg-chip ${filter === k ? "is-on" : ""}`} onClick={() => setFilter(k)}>{name}</button>
-                                ))}
+                        {(tab === "image" || tab === "video") && view === "grid" && <>
+                            <div className="fg-filters">
+                                <div className="fg-chips" role="radiogroup" aria-label="Categoria">
+                                    {[[ALL, "Todos"], ...cats.map((k) => [k, k]), ...(hiddenCount ? [[HIDDEN, `Excluídos · ${hiddenCount}`]] : [])].map(([k, name]) => (
+                                        <button type="button" key={k} role="radio" aria-checked={filter === k} className={`kx-t fg-chip ${filter === k ? "is-on" : ""}`} onClick={() => setFilter(k)}>{name}</button>
+                                    ))}
+                                </div>
+                                <button type="button" className="kx-t fg-chip fg-chip-edit" title="Criar, renomear, ordenar e excluir as categorias" onClick={() => setView("categories")}><Icon name="edit" size={12} />Categorias…</button>
                             </div>
+                            {filter === HIDDEN && <span className="kx-meta">Fora da biblioteca. Clique com o botão direito para restaurar.</span>}
                             <div className="lib-grid">
                                 {shown.map((b) => {
                                     const on = sel?.kind === b.kind && sourceOf(sel.value) === b.source;
+                                    const tip = `${b.name}${b.origin === "keryx" ? " · vem com o KERYX" : b.origin === "media" ? " · também na Mídia" : ""}`;
                                     return (
-                                        <button type="button" key={b.source} className={`kx-t fg-tile ${on ? "is-on" : ""} ${b.hidden ? "is-hidden" : ""}`} aria-pressed={on} aria-label={b.name} title={b.name}
+                                        <button type="button" key={b.source} className={`kx-t fg-tile ${on ? "is-on" : ""} ${b.hidden ? "is-hidden" : ""}`} aria-pressed={on} aria-label={b.name} title={tip}
                                             onClick={() => setSel({ kind: b.kind, value: b.url })} onDoubleClick={() => take({ kind: b.kind, value: b.url })} onContextMenu={(e) => tileMenu(e, b)}>
                                             <span className="fg-img">{b.kind === "video" ? <video src={b.url} preload="metadata" muted /> : <img src={b.url} alt="" loading="lazy" />}{b.kind === "video" && <span className="fg-kind"><Icon name="film" size={12} /></span>}</span>
                                             <span className="fg-name">{b.favorite && <Icon name="star" size={12} />}{b.name}</span>
@@ -240,7 +280,8 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                     {!big && <div className="lib-side">
                         <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} now={c.now} preview motion />}</div>
                         <div className="lib-label"><span className="kx-meta">Escolhido</span><span className="t">{label}</span></div>
-                        {entry && <FundoDetail key={entry.source} b={entry} save={save} now={c.now} sample={false} />}
+                        {entry && <FundoDetail key={entry.source} b={entry} save={save} now={c.now} sample={false}
+                            categories={managedCategories(storedCats, list)} onCategories={() => setView("categories")} onRestore={() => act.restore(entry)} />}
                     </div>}
                 </div>
                 <div className="lib-foot">
