@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
-const { app, BrowserWindow, Menu, dialog, ipcMain, powerMonitor, safeStorage, screen, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, powerMonitor, safeStorage, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
@@ -19,6 +19,7 @@ const { createLive, loadLiveRules } = require("./live.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
+const windowState = require("./windowState.cjs");
 const schema = require("./db/schema.json");
 
 // A projection window covered by another window is still projecting. Windows
@@ -212,12 +213,30 @@ function openOutputWindow(url, placement) {
     return win;
 }
 
-function createMainWindow() {
+// Where the console opens (windowState.cjs): as it was left on this computer
+// when that fits a monitor connected now, else maximized on the primary one.
+// Smoke runs keep the fixed size their checks resize from.
+function consolePlacement(settings) {
+    if (SMOKE) return { bounds: { ...windowState.DEFAULT }, maximized: false };
+    const primaryId = screen.getPrimaryDisplay().id;
+    const displays = screen.getAllDisplays().map((d) => ({ primary: d.id === primaryId, bounds: d.bounds, workArea: d.workArea }));
+    return windowState.restoreWindow(settings.get(windowState.SETTINGS_KEY, null), displays);
+}
+
+// Kept when the console closes: its normal bounds and whether it was maximized.
+function keepConsolePlacement(win, settings) {
+    if (SMOKE || win.isDestroyed()) return;
+    const previous = settings.get(windowState.SETTINGS_KEY, null);
+    const state = windowState.windowStateToSave({ normal: win.getNormalBounds(), maximized: win.isMaximized() || win.isFullScreen(), minimized: win.isMinimized() }, previous);
+    if (state) settings.set(windowState.SETTINGS_KEY, state);
+}
+
+function createMainWindow(settings) {
+    const placement = consolePlacement(settings);
     mainWindow = new BrowserWindow({
-        width: 1440,
-        height: 900,
-        minWidth: 960,
-        minHeight: 600,
+        ...placement.bounds,
+        minWidth: windowState.MIN.width,
+        minHeight: windowState.MIN.height,
         show: false,
         backgroundColor: BG,
         title: "KERYX",
@@ -231,7 +250,10 @@ function createMainWindow() {
         webPreferences,
     });
     guardWindow(mainWindow);
-    mainWindow.once("ready-to-show", () => mainWindow.show());
+    mainWindow.once("ready-to-show", () => {
+        if (placement.maximized) mainWindow.maximize();
+        mainWindow.show();
+    });
     // Closing the console closes KERYX. The outputs are not in the taskbar, so
     // otherwise the app could keep running unseen (and the network server up).
     // "close" (not "closed"): the import restart's app.exit() destroys windows
@@ -242,6 +264,7 @@ function createMainWindow() {
     // close before the quit: one with unsaved changes asks, and "Continuar
     // editando" keeps KERYX open, console and all.
     mainWindow.on("close", (event) => {
+        keepConsolePlacement(mainWindow, settings);
         if (quitting) return; // a quit already decided closes every window
         event.preventDefault();
         const enabled = closeGuard.machinePrefs(appSettings?.get(closeGuard.MACHINE_KEY, {})).confirmClose;
@@ -276,6 +299,11 @@ app.on("child-process-gone", (_e, details) => logger.error(`child-process-gone: 
 app.whenReady().then(async () => {
     if (!gotLock) return;
     Menu.setApplicationMenu(null);
+    // KERYX is dark only (the owner's decision): Windows draws the title bars
+    // of the detached pages and windowed outputs, the text fields' Recortar /
+    // Copiar / Colar menu and the native dialogs dark too, whatever the
+    // system's own theme.
+    nativeTheme.themeSource = "dark";
     logger.info(`KERYX ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
     if (importOutcome && importOutcome.error) {
         dialog.showErrorBox("Importação não aplicada", `Os dados anteriores foram mantidos.\n\n${importOutcome.error}`);
@@ -534,7 +562,7 @@ app.whenReady().then(async () => {
     sync.start();
     powerMonitor.on("resume", () => sync.poke());
 
-    const win = createMainWindow();
+    const win = createMainWindow(settings);
     // Outputs set to "Abrir ao iniciar" in Telas e saídas.
     win.once("ready-to-show", () => outputs.openAtLaunch());
     if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, settings, network, live, dataDir, importOutcome });
