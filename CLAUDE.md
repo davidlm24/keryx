@@ -48,6 +48,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and the states never run edge to edge. One rule in `console.css`; don't
   override it per list. Edge to edge only where the owner asks (the Slides
   column and No ar, to gain room). docs/design-system.md has it too.
+- **Windows contrast themes** (forced colours; design audit C-05,
+  2026-10-16): the states and controls that are backgrounds or shadows get
+  system-colour cues in ONE `@media (forced-colors: active)` block at the
+  end of `bundle.css` and of `console.css` — on air = `Highlight` filling
+  the row (still its background), Prévia = a dashed `LinkText` ring, next =
+  a dotted ring, chosen/pressed/open = a solid `Highlight` ring, switches,
+  fields and buttons with `ButtonText`/`FieldText` borders — and nothing in
+  the normal look changes. What the congregation sees never takes the
+  theme: `forced-color-adjust: none` on every output document
+  (`html.ks-output-doc`, set by App.jsx), the renderer roots (screen.css)
+  and the console's monitors and stills (`.kx-mon-screen`, `.cfg-prev`). A
+  new state or control drawn as a background gets its line there;
+  `src/lib/forcedColors.test.mjs` checks the blocks (system colours only).
 - **One padding rule for panels** (owner 2026-10-16, Rodada F4): a panel's
   header text sits 12 px (`--space-3`) from its edge and its last button
   12 px from the right one (symmetric, owner 2026-10-16 after the Bíblia
@@ -253,7 +266,18 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   materials `inherit` like songs.
   Deleting from a right-click menu ("Excluir…": songs, media, avisos,
   themes) always asks first through `useConfirm()` (`ConfirmDialog.jsx`;
-  Esc answers no, before anything else). The Prévia's width is the
+  Esc answers no, before anything else). **A question that cannot be
+  taken back opens on Cancelar** (audit C-10, `focusesCancel` in
+  `src/lib/console/confirm.js`, tested): Excluir and Descartar by their
+  verb, any other action with `danger: true` (Trocar o código, Juntar,
+  Substituir, Voltar ao padrão, Tirar da turma), so Enter — the
+  operator's send reflex — answers no; the action is Tab or a click. The
+  others (Tirar da setlist, Remover saída, Sair…) open on the action.
+  Encerrar (`EndDialog`) keeps its action focused: it has Desfazer.
+  **Buttons in Windows order** (audit C-74): the action, then Cancelar on
+  the right — ConfirmDialog, PromptDialog, Encerrar, the background
+  library and the native close guard (`closeGuard.cjs`, safe answer the
+  default and Esc), as the import/restore questions already were. The Prévia's width is the
   operator's (`layout.prevPct`, the splitter beside it; the Programa gives
   way, `--prev` in console.css); the Próximo sits beside it.
   **Temas** (owner's reviews 2026-10-14, as Holyrics' theme column): a
@@ -774,7 +798,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   element from the window's pool by url (`src/lib/mediaPool.js`, tested),
   so the player that unmounts hands it to the one that mounts in the same
   commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
-  a test); a mouse click must not leave focus on a control, Esc closes the
+  a test); a mouse click must not leave focus on a control (a select
+  gives it back on the `change` that ends a mouse pick, never on the
+  click, which would close its list: `blurSelectsAfterPick` in
+  `src/lib/console/selectPick.js`, tested, in the console and `/Janela`).
+  **A focused select is a control, never text** (audit C-03: as text it
+  took every live key, and typing a reference switched the Bíblia's
+  edition): it keeps ↑/↓, PageUp/PageDown, Space and the letters the
+  console does not use (its type-ahead); Enter, ←/→, B/L/C, Esc, / and
+  the Bíblia's quick jump are the console's, which prevents the select's
+  own default where it acts on one. Esc closes the
   topmost thing open (`escapeTarget`: a right-click menu, the background
   library, a popover, then THE window — one level of its stack, routed to
   the top page's close request — then the Camadas drawer) and with nothing

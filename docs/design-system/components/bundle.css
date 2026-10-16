@@ -175,7 +175,7 @@
 .kx-banner .kx-btn { height: 22px; padding: 0 var(--space-2); }
 
 /* ---- Popover, menu, tooltip ---- */
-.kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--popover); padding: 6px; min-width: 180px; }
+.kx-pop { background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--shadow-popover); padding: 6px; min-width: 180px; }
 .kx-menu-item { display: flex; align-items: center; gap: var(--space-2); width: 100%; height: var(--row); padding: 0 var(--space-2); border-radius: var(--radius-control); color: var(--fg-1); text-align: left; }
 .kx-menu-item:hover { background: var(--bg-3); }
 .kx-menu-item .kx-kbd { margin-left: auto; color: var(--fg-3); font-size: 11px; }
@@ -183,7 +183,7 @@
 .kx-menu-item.is-checked .kx-glyph { color: var(--fg-1); }
 .kx-menu-sep { height: 1px; background: var(--line); margin: var(--space-1) 0; }
 .kx-menu-h { height: 24px; display: flex; align-items: center; padding: 0 var(--space-2); }
-.kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; }
+.kx-tip { display: inline-flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; }
 .kx-tip .kx-kbd { color: var(--fg-3); font-size: 11px; }
 
 /* ---- Splitter: invisible until hover ---- */
@@ -280,3 +280,37 @@
 .kx-route.kx-route-right > .kx-pop { left: auto; right: 0; }
 .kx-out .kx-route { margin-top: 2px; }
 .kx-out.is-tall { min-height: 56px; align-items: start; padding-top: 6px; }
+
+/* ---- Windows contrast themes (forced colours; design audit C-05, 2026-10-16) ----
+   Under a contrast theme Chromium repaints every background and border in the system's colours and drops every
+   shadow, so the states that are a background (on air, Prévia, next, chosen) and the controls drawn with fills or
+   shadows would vanish. Only there they get cues in system colours; the normal look never changes. The states keep
+   one language: on air = the system's selection (Highlight) filling the row, still its background; Prévia = a dashed
+   ring; next = a dotted ring; chosen = a solid Highlight ring. A monitor's screen is the output's picture: it keeps
+   its own colours, frame included, as the outputs do (screen.css). */
+.kx-mon-screen, .kx-pip { forced-color-adjust: none; }
+@media (forced-colors: active) {
+  .kx-panel:not(.kx-panel-bare) { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .kx-pop, .kx-tip { outline: 1px solid CanvasText; }
+  .kx-btn:is(.kx-btn-outline, .kx-btn-prev, .kx-btn-rh, .kx-btn-air, .kx-btn-brand) { border: 1px solid ButtonText; }
+  .kx-btn:is(.kx-btn-outline, .kx-btn-prev, .kx-btn-rh, .kx-btn-air, .kx-btn-brand):disabled { border-color: GrayText; }
+  .kx-btn.is-on, .kx-tool.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
+  .kx-seg { outline: 1px solid ButtonText; outline-offset: -1px; }
+  .kx-seg > button.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
+  .kx-field { border: 1px solid FieldText; }
+  .kx-tabs > button.is-on::after { height: 2px; background: Highlight; }
+  :is(.kx-row, .kx-slide, .kx-verse):is(.is-air, .is-prev, .is-rh, .is-next)::before { background: none; }
+  .kx-row.is-warn::before, .kx-alert::before { background: CanvasText; }
+  :is(.kx-row, .kx-slide, .kx-verse).is-air { background: Highlight; color: HighlightText; }
+  :is(.kx-row, .kx-slide, .kx-verse).is-air * { color: HighlightText; }
+  :is(.kx-row, .kx-slide, .kx-verse).is-prev { outline: 2px dashed LinkText; outline-offset: -2px; }
+  :is(.kx-row, .kx-slide, .kx-verse).is-air.is-prev { outline-color: HighlightText; }
+  .kx-row.is-rh { outline: 2px solid LinkText; outline-offset: -2px; }
+  .kx-slide.is-next { outline: 2px dotted CanvasText; outline-offset: -2px; }
+  :is(.kx-row, .kx-layer, .kx-book).is-selected { outline: 2px solid Highlight; outline-offset: -2px; }
+  .kx-banner { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .kx-transport .kx-seek { background: CanvasText; }
+  .kx-transport .kx-seek > :is(i, b) { background: Highlight; }
+  .kx-meter > i > b { background: CanvasText; }
+  .kx-meter > i > b.is-hot { background: Highlight; }
+}
