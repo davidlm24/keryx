@@ -422,6 +422,27 @@ app.whenReady().then(async () => {
         mainWindow.webContents.send("keryx:remote", { id, action, args });
     });
 
+    // Destacar em janela (Rodada F5): a page in a window of its own (/Janela;
+    // /Editor is its old name) and the console talk through here — a page's
+    // message goes to the console, the console's to every detached page.
+    // Main only says who sent it; the side that receives checks the message
+    // against its closed list (src/lib/janelaRelay.js, checkMessage).
+    const isJanelaUrl = (url) => {
+        try { const u = new URL(url); return u.origin === appOrigin && (u.pathname === "/Janela" || u.pathname === "/Editor"); } catch { return false; }
+    };
+    ipcMain.on("keryx:janela", (event, msg) => {
+        if (!mainWindow || mainWindow.isDestroyed() || !msg || typeof msg !== "object" || typeof msg.type !== "string") return;
+        try { if (JSON.stringify(msg).length > 1024 * 1024) return; } catch { return; }
+        if (event.sender === mainWindow.webContents) {
+            const out = { ...msg, from: "console" };
+            for (const w of BrowserWindow.getAllWindows()) {
+                if (w !== mainWindow && !w.isDestroyed() && isJanelaUrl(w.webContents.getURL())) w.webContents.send("keryx:janela", out);
+            }
+        } else if (isJanelaUrl(event.senderFrame && event.senderFrame.url)) {
+            mainWindow.webContents.send("keryx:janela", { ...msg, from: "janela" });
+        }
+    });
+
     // Tablets and TVs on the church network (off until enabled in Settings).
     // KERYX_LAN_PORT=0 lets a smoke run use a free port.
     network = createNetwork({

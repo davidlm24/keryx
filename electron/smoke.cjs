@@ -1921,7 +1921,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Temas: Configurações keeps only the list; "Novo tema…" opens the
         // Editor de temas e telas as a floating dialog over Configurações
         // (.win-dialog.is-editor, owner 2026-10-14 "janelas flutuantes"; "Destacar em
-        // janela" still opens the /Editor window — the shutdown check keeps
+        // janela" opens it in a /Janela window — the shutdown check keeps
         // covering that path), where the theme gets a name and a font with a
         // live sample, Salvar writes the row, and Esc closes back to
         // Configurações. Element clicks (not coordinates): the dialog
@@ -3081,8 +3081,9 @@ function runSmokeTest(win, { dev, outputs, screen, system, settings, network, li
             let editorAsked = false;
             let editorKept = false;
             try {
-                const editor = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/Editor"));
-                await webContents.executeJavaScript('window.open(location.origin + "/Editor?theme=new", "keryx-editor"); true');
+                // A detached page (Destacar em janela, Rodada F5): /Janela.
+                const editor = () => BrowserWindow.getAllWindows().find((w) => !w.isDestroyed() && w.webContents.getURL().includes("/Janela"));
+                await webContents.executeJavaScript('window.open(location.origin + "/Janela?page=theme&theme=new", "keryx-janela-theme"); true');
                 for (let i = 0; i < 40 && !editor(); i += 1) await sleep(200);
                 // userGesture: the typing comes as an operator's would.
                 const ejs = (code) => editor().webContents.executeJavaScript(code, true);

@@ -12,8 +12,6 @@
 /* Side columns shrink down to their minimum (inline flex-basis/min-width
    from Console.jsx); the center keeps room for the monitors. */
 .console .main > .col.center { min-width: 480px; }
-/* The detached Editor (/Editor): its canvas gives way before the columns beside it leave the window (D5, 960 px). */
-.console.edw .main > .col.center { min-width: 320px; }
 /* Narrow tier: Biblioteca over Slides in one column. */
 .console .col.source > .kx-panel { flex: 1 1 0; }
 .console .col.source > .kx-panel.is-collapsed { flex: none; }
@@ -787,6 +785,12 @@
 .console .win-page[hidden] { display: none; }
 @keyframes win-page-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .console .win-dialog { transition: none; } .console .win-page { animation: none; } }
+/* A page detached into a window of its own (/Janela, src/pages/Janela.jsx;
+   Rodada F5): the same frame, filling that window — no scrim, no shadow,
+   no edges (the system window resizes); the dialogs a page opens sit
+   near its top. */
+.console.janela { --pop-top: 16px; padding: 0; }
+.console .win-dialog.is-detached { position: relative; left: auto; top: auto; transform: none; width: auto; height: auto; flex: 1; min-height: 0; border-radius: 0; box-shadow: none; transition: none; }
 /* The bar: the Configurações header, now every page's. */
 .console .win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
 /* The title gives way first (an ellipsis; its whole text is the page) so the
@@ -1308,10 +1312,6 @@
 .console .le-nums label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--fg-3); }
 .console .le-num { width: 58px; }
 .console .le-range { flex: 1 1 80px; min-width: 60px; accent-color: var(--brand); }
-/* The Editor de temas e layouts window (/Editor, src/pages/Editor.jsx):
-   the console's shell without its top bar; a one-line footer instead. */
-.console .edw-foot { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-top: 1px solid var(--line); font-size: 11px; color: var(--fg-3); }
-.console.edw .kx-gap { flex: none; width: var(--gutter); }
 
 /* Biblioteca de temas e fundos (library/BackgroundLibrary.jsx): one window
    for every picker, above Configurações (it opens from there too), below the

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, WinBar } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, WinBar, useUnloadGuard } from "./kx";
 import { stageFromMaterial } from "@/lib/console/stage";
 import { MATERIAL_TYPES, VERSE_TYPES, MAX_OPTIONS, MEMORIZE_ROUNDS, DISCUSSION_MINUTES, quizQuestions, textFromSlides, slidesFromEdit, materialSlides, blankMaterial, blankQuestion, blankVerse, moveItem, remapBlanks } from "@/lib/console/school";
 import { wordsOf, LETTERS } from "@/lib/activity";
@@ -57,6 +57,8 @@ export default function MaterialView({ c, materialId = null, classId = "", media
         orig.current = JSON.stringify(d);
     }, [materials, materialId, isNew, draft]);
     const dirty = useMemo(() => draft && JSON.stringify(draft) !== orig.current, [draft]);
+    // Detached (/Janela), unsaved changes hold the window: closing it asks.
+    useUnloadGuard(dirty);
     const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
     const [slidesText, setSlidesText] = useState(null);
     useEffect(() => { if (draft && slidesText === null) setSlidesText(textFromSlides(draft.slides)); }, [draft, slidesText]);
