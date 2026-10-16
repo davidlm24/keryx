@@ -7,14 +7,22 @@
 //
 // target: the event target, read through `closest(selector)` and `tagName`
 // (window or document when nothing has focus).
+//
+// A <select> is a control, not a text field (audit C-03: as text it took
+// every live key, and typing a reference switched the Bíblia's edition). A
+// mouse pick gives the focus back (selectPick.js); one reached with Tab
+// keeps ↑/↓, PageUp/PageDown and Space (they walk or open it) and the
+// letters the console does not use (its type-ahead). Enter, ←/→, B/L/C,
+// Esc, / and the Bíblia's quick jump are the console's.
 
-const TEXT = "input, textarea, select, [contenteditable='true'], [contenteditable='']";
-const CONTROL = "button, a[href], [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='option'], [role='slider'], summary, [tabindex]:not([data-live-keys])";
+const TEXT = "input, textarea, [contenteditable='true'], [contenteditable='']";
+const CONTROL = "button, a[href], select, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='option'], [role='slider'], summary, [tabindex]:not([data-live-keys])";
 // Areas whose focus means "aimed at what goes on air": Enter sends there.
 const LIVE_AREA = "[data-live-keys]";
 const ARROW_CONTROLS = "[role='radiogroup'], [role='tablist'], [role='menu'], [role='separator'], [role='slider']";
 
 const isElement = (t) => Boolean(t && typeof t.closest === "function" && t.tagName);
+const isSelect = (t) => isElement(t) && Boolean(t.closest("select"));
 
 export function focusKind(target) {
     if (!isElement(target) || target.tagName === "BODY" || target.tagName === "HTML") return "none";
@@ -44,21 +52,24 @@ export function liveAction(e, letters = "on") {
     const mod = (e.ctrlKey || e.metaKey) && !altGr;
     // In a text field the first Esc leaves the field; every other key is typing.
     if (kind === "text") return e.key === "Escape" ? "blur" : null;
+    // A closed select does nothing with Enter on Windows: it sends, as
+    // with nothing focused.
     if (e.key === "Enter") {
         if (mod) return "send";
-        return kind === "control" ? null : "send";
+        return kind === "control" && !isSelect(e.target) ? null : "send";
     }
     // Ctrl+F searches whatever the letter keys are (with them off it is the
     // keyboard's way to the search).
     if (mod && !e.altKey && !e.shiftKey && (e.key === "f" || e.key === "F")) return "search";
     if (mod || (e.altKey && !altGr)) return null;
     // Arrows belong to the control when it uses them itself: radio groups,
-    // tab lists, menus, a splitter focused with Tab (it resizes) and the
-    // player's progress bar focused with Tab (5 s a press, Rodada F1).
+    // tab lists, menus, a splitter focused with Tab (it resizes), the
+    // player's progress bar focused with Tab (5 s a press, Rodada F1) and a
+    // select's ↑/↓ (←/→ on it move the air; the console prevents the select's own).
     const ownsArrows = kind === "control" && e.target.closest(ARROW_CONTROLS);
     if (ARROWS[e.key]) {
         const vertical = VERTICAL.has(e.key);
-        return ownsArrows || (vertical && kind === "control" && e.target.closest("select")) ? null : ARROWS[e.key];
+        return ownsArrows || (vertical && isSelect(e.target)) ? null : ARROWS[e.key];
     }
     if (e.key === " ") return kind === "control" ? null : "play";
     if (e.key === "Escape") return "end";
@@ -132,6 +143,8 @@ export function shortcutsFor(letters = "on") {
             : { keys: "Ctrl+F", label: "Buscar em tudo", action: "search", probe: { key: "f", ctrlKey: true } },
         ...(mode === "off" ? [] : [{ keys: "?", label: "Esta lista", action: "help", probe: { key: "?", shiftKey: true } }]),
         { keys: "Ctrl+=  Ctrl+−", label: "Zoom do console: aumentar / diminuir, também Ctrl+roda do mouse (Ctrl+0 volta a 100 %; as saídas não mudam)", action: null, probe: null },
+        // Pressed in the output's own window (electron/outputs-manager.cjs), not in the console.
+        { keys: "Ctrl+W", label: "Numa saída (projetor, palco…): fechar essa saída", action: null, probe: null },
     ];
 }
 const SHORTCUTS_HEAD = [
@@ -174,10 +187,11 @@ export function escapeTarget(layers = {}) {
 // Holyrics): a letter or digit, nothing focused, no modifier. "B" stays Tela
 // preta (no book of the Portuguese canon starts with B); L and C start books
 // (Lucas, Levítico, Crônicas, Colossenses…), so there they type — unless
-// the letter keys are "com Shift": then Shift+B/L/C are the screen keys.
+// the letter keys are "com Shift": then Shift+B/L/C are the screen keys. A
+// focused select does not keep them (its type-ahead switched the edition, C-03).
 // -> the character to start with, or null.
 export function quickJumpKey(e, letters = "on") {
-    if (focusKind(e.target) !== "none") return null;
+    if (focusKind(e.target) !== "none" && !isSelect(e.target)) return null;
     if ((e.ctrlKey || e.metaKey || e.altKey) && !isAltGr(e)) return null;
     if (typeof e.key !== "string" || e.key.length !== 1) return null;
     if (e.key === "b" || e.key === "B") return null;

@@ -54,20 +54,43 @@ function externalDisplays(displays) {
         .sort((a, b) => a.bounds.x - b.bounds.x || a.bounds.y - b.bounds.y);
 }
 
+// An output whose monitor is gone (a cable bumped, the projector off, Win+P ›
+// Duplicar) waits hidden, and comes back full screen when the monitor does
+// (audit WIN-02). As a window it would land on the console's monitor: made
+// full screen, it has no frame, no taskbar button and no pointer, and it
+// covered the console and its "Reconectando…" banner. The banner is the
+// signal; the choice is kept, so the output returns with the monitor.
+const WAITING = Object.freeze({ mode: "hidden", missing: true });
+
 // assignment: undefined | { target: "auto" | "window" | <display ref> }
-// -> { mode: "fullscreen", display } | { mode: "window", missing?: true }
-function resolvePlacement(output, displays, assignment) {
+// waiting: this output's window was full screen on a monitor (or is hidden
+// waiting for one): the manager knows, from what it did to the window.
+// -> { mode: "fullscreen", display } | { mode: "window" } | { mode: "hidden", missing: true }
+function resolvePlacement(output, displays, assignment, { waiting = false } = {}) {
     const target = assignment && assignment.target !== undefined ? assignment.target : "auto";
     if (target === "window") return { mode: "window" };
     if (target === "auto") {
         if (!output.autoExternal) return { mode: "window" };
         const external = externalDisplays(displays)[0];
-        return external ? { mode: "fullscreen", display: external } : { mode: "window" };
+        if (external) return { mode: "fullscreen", display: external };
+        // Only the console's monitor: opened so (a notebook alone), a window
+        // the operator can see; the projector it was on left, it waits.
+        return waiting ? WAITING : { mode: "window" };
     }
     const display = findDisplay(displays, target);
-    // The chosen display is unplugged: fall back to a window the operator can
-    // see, and remember the choice so it returns with the monitor.
-    return display ? { mode: "fullscreen", display } : { mode: "window", missing: true };
+    return display ? { mode: "fullscreen", display } : WAITING;
+}
+
+// Already where a full-screen placement puts it: shown, full screen, at its
+// monitor's bounds. A change on another monitor (the taskbar, a scale, a
+// resolution) then leaves it alone — leaving and entering full screen again
+// flashed the projector's desktop in front of the church (audit WIN-16).
+// current: { fullScreen, visible, bounds } of the window now.
+function inPlace(placement, current) {
+    if (!placement || placement.mode !== "fullscreen" || !current) return false;
+    const want = placement.display.bounds;
+    const have = current.bounds || {};
+    return Boolean(current.fullScreen && current.visible) && ["x", "y", "width", "height"].every((k) => have[k] === want[k]);
 }
 
 // An output stays above every other window while it is full screen on a
@@ -122,6 +145,7 @@ const canRemove = (key) => key !== "/Projection";
 
 module.exports = {
     staysOnTop,
+    inPlace,
     OUTPUTS,
     outputForKey,
     outputKeyForUrl,
