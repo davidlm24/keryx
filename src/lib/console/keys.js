@@ -42,10 +42,11 @@ const isAltGr = (e) => e.ctrlKey && e.altKey && typeof e.key === "string" && e.k
 // keeps its own Enter/Space, as before.
 //
 // -> "send" | "next" | "prev" | "selUp" | "selDown" | "black" | "logo" |
-//    "clear" | "end" | "blur" | "search" | "help" | "play" | null
+//    "clear" | "end" | "undo" | "blur" | "search" | "help" | "play" | null
 // ←/→ move what is on air; ↑/↓ move the selection (Holyrics): the selected
 // slide or verse turns green and goes out with Enter or a double click.
-export function liveAction(e) {
+// letters: the church's "Teclas de uma letra" (LETTER_KEYS, letterKeys).
+export function liveAction(e, letters = "on") {
     const kind = focusKind(e.target);
     const altGr = isAltGr(e);
     const mod = (e.ctrlKey || e.metaKey) && !altGr;
@@ -57,6 +58,12 @@ export function liveAction(e) {
         if (mod) return "send";
         return kind === "control" && !isSelect(e.target) ? null : "send";
     }
+    // Ctrl+F searches whatever the letter keys are (with them off it is the
+    // keyboard's way to the search).
+    if (mod && !e.altKey && !e.shiftKey && (e.key === "f" || e.key === "F")) return "search";
+    // Ctrl+Z: Desfazer while the toast after Esc / Encerrar offers it (design
+    // audit C-13); in a text field (above) it stays the field's own undo.
+    if (mod && !e.shiftKey && !e.altKey && (e.key === "z" || e.key === "Z")) return "undo";
     if (mod || (e.altKey && !altGr)) return null;
     // Arrows belong to the control when it uses them itself: radio groups,
     // tab lists, menus, a splitter focused with Tab (it resizes), the
@@ -68,8 +75,48 @@ export function liveAction(e) {
         return ownsArrows || (vertical && isSelect(e.target)) ? null : ARROWS[e.key];
     }
     if (e.key === " ") return kind === "control" ? null : "play";
-    return PLAIN[e.key] || null;
+    if (e.key === "Escape") return "end";
+    return letterAction(e, letters);
 }
+
+// "Teclas de uma letra" (owner 2026-10-16, after the audit's WCAG 2.1.4
+// question: a dictated word or a stray key must not take the screens): B, L,
+// C, / and ? act alone, as in Holyrics (ligadas, the default), only with
+// Shift (com Shift), or never (desligadas). "?" is Shift+/ on every
+// keyboard, so with Shift it stays and "/" has no key (Ctrl+F searches).
+// User.letter_keys, the church's; null = ligadas.
+export const LETTER_KEYS = [["on", "Ligadas"], ["shift", "Com Shift"], ["off", "Desligadas"]];
+export const letterKeys = (v) => (LETTER_KEYS.some(([k]) => k === v) ? v : "on");
+const LETTER = { b: "black", l: "logo", c: "clear" };
+function letterAction(e, letters) {
+    const mode = letterKeys(letters);
+    const k = typeof e.key === "string" ? e.key : "";
+    if (mode === "off" || k.length !== 1) return null;
+    if (k === "?") return "help";
+    if (k === "/") return mode === "on" ? "search" : null;
+    const action = LETTER[k.toLowerCase()];
+    if (!action) return null;
+    return mode === "on" || e.shiftKey ? action : null;
+}
+
+// The key a menu or a tooltip names for an action under that choice, or
+// null when no key does it (Tela preta with the letters off).
+export function keyHint(action, letters = "on") {
+    const mode = letterKeys(letters);
+    if (action === "search") return mode === "on" ? "/" : "Ctrl+F";
+    if (mode === "off") return null;
+    if (action === "help") return "?";
+    const k = Object.keys(LETTER).find((x) => LETTER[x] === action);
+    if (!k) return null;
+    return mode === "shift" ? `Shift+${k.toUpperCase()}` : k.toUpperCase();
+}
+
+// What each choice means, for Configurações › Console (under the choice).
+export const LETTER_KEYS_HINT = {
+    on: "B, L, C, / e ? agem sozinhas, como no Holyrics",
+    shift: "Shift+B, Shift+L e Shift+C; ? mostra os atalhos; Ctrl+F busca",
+    off: "nenhuma letra age sozinha; Ctrl+F busca",
+};
 
 // The keys without a modifier (besides Enter, the arrows and Space above).
 // PageDown / PageUp are what a presentation clicker sends (Rodada F3): the
@@ -77,14 +124,33 @@ export function liveAction(e) {
 // that uses them keeps them, as it keeps ↑/↓.
 const ARROWS = { ArrowRight: "next", ArrowLeft: "prev", ArrowUp: "selUp", ArrowDown: "selDown", PageDown: "next", PageUp: "prev" };
 const VERTICAL = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown"]);
-const PLAIN = { b: "black", B: "black", l: "logo", L: "logo", c: "clear", C: "clear", Escape: "end", "/": "search", "?": "help" };
 
 // Every shortcut, as the operator reads it: the ? list and Configurações ›
 // Console draw this table, and keys.test.mjs checks it against liveAction
-// both ways (a key the console handles is listed; a listed key does what
-// it says). probe: a key press that triggers it (null: not a key — a
-// double click, typing a reference).
-export const SHORTCUTS = [
+// both ways, for each choice of the letter keys (a key the console handles
+// is listed; a listed key does what it says). probe: a key press that
+// triggers it (null: not a key — a double click, typing a reference, the
+// zoom, which the main process handles: electron/consoleZoom.cjs).
+export function shortcutsFor(letters = "on") {
+    const mode = letterKeys(letters);
+    const shift = mode === "shift";
+    const letter = (k, label, action) => (mode === "off" ? [] : [{ keys: shift ? `Shift+${k}` : k, label, action, probe: { key: shift ? k : k.toLowerCase(), shiftKey: shift } }]);
+    return [
+        ...SHORTCUTS_HEAD,
+        ...letter("B", "Tela preta (na hora)", "black"),
+        ...letter("L", "Mostrar logo", "logo"),
+        ...letter("C", "Limpar texto", "clear"),
+        ...SHORTCUTS_MID,
+        mode === "on"
+            ? { keys: "/  Ctrl+F", label: "Buscar em tudo (em Configurações: buscar nas configurações)", action: "search", probe: { key: "/" }, also: [["search", { key: "f", ctrlKey: true }]] }
+            : { keys: "Ctrl+F", label: "Buscar em tudo", action: "search", probe: { key: "f", ctrlKey: true } },
+        ...(mode === "off" ? [] : [{ keys: "?", label: "Esta lista", action: "help", probe: { key: "?", shiftKey: true } }]),
+        { keys: "Ctrl+=  Ctrl+−", label: "Zoom do console: aumentar / diminuir, também Ctrl+roda do mouse (Ctrl+0 volta a 100 %; as saídas não mudam)", action: null, probe: null },
+        // Pressed in the output's own window (electron/outputs-manager.cjs), not in the console.
+        { keys: "Ctrl+W", label: "Numa saída (projetor, palco…): fechar essa saída", action: null, probe: null },
+    ];
+}
+const SHORTCUTS_HEAD = [
     { keys: "Ctrl+Enter", label: "Enviar a Prévia ao ar (de qualquer lugar)", action: "send", probe: { key: "Enter", ctrlKey: true } },
     { keys: "Enter", label: "Enviar ao ar (depois de clicar numa música ou versículo)", action: "send", probe: { key: "Enter" } },
     { keys: "2 cliques", label: "Enviar o item ao ar na hora (biblioteca, setlist, slides, versículos)", action: null, probe: null },
@@ -92,16 +158,13 @@ export const SHORTCUTS = [
     { keys: "PageUp PageDown", label: "Passador de slides: anterior / próximo no ar (como ← →)", action: "prev", probe: { key: "PageUp" }, also: [["next", { key: "PageDown" }]] },
     { keys: "↑ ↓", label: "Mover a seleção (verde) sem mudar o que está no ar", action: "selUp", probe: { key: "ArrowUp" }, also: [["selDown", { key: "ArrowDown" }]] },
     { keys: "Espaço", label: "Tocar / pausar", action: "play", probe: { key: " " } },
-    { keys: "B", label: "Tela preta (na hora)", action: "black", probe: { key: "b" } },
-    { keys: "L", label: "Mostrar logo", action: "logo", probe: { key: "l" } },
-    { keys: "C", label: "Limpar texto", action: "clear", probe: { key: "c" } },
-    { keys: "Esc", label: "Tirar tudo do ar na hora (o aviso traz Desfazer) ou fechar o que está aberto", action: "end", probe: { key: "Escape" } },
-    { keys: "Letra", label: "Na Bíblia: digitar a referência (ex.: jo 3 16)", action: null, probe: null },
-    { keys: "/", label: "Buscar em tudo (em Configurações: buscar nas configurações)", action: "search", probe: { key: "/" } },
-    { keys: "?", label: "Esta lista", action: "help", probe: { key: "?" } },
-    // Pressed in the output's own window (electron/outputs-manager.cjs), not in the console.
-    { keys: "Ctrl+W", label: "Numa saída (projetor, palco…): fechar essa saída", action: null, probe: null },
 ];
+const SHORTCUTS_MID = [
+    { keys: "Esc", label: "Tirar tudo do ar na hora (o aviso traz Desfazer) ou fechar o que está aberto", action: "end", probe: { key: "Escape" } },
+    { keys: "Ctrl+Z", label: "Desfazer o Esc ou o Encerrar (enquanto o aviso mostra Desfazer)", action: "undo", probe: { key: "z", ctrlKey: true } },
+    { keys: "Letra", label: "Na Bíblia: digitar a referência (ex.: jo 3 16)", action: null, probe: null },
+];
+export const SHORTCUTS = shortcutsFor("on");
 
 // Esc closes the topmost thing open over the console, one per press, and
 // only with nothing open ends the projection (live safety: closing a menu
@@ -127,13 +190,15 @@ export function escapeTarget(layers = {}) {
 // In the Bible environment, typing a reference opens the quick jump (as in
 // Holyrics): a letter or digit, nothing focused, no modifier. "B" stays Tela
 // preta (no book of the Portuguese canon starts with B); L and C start books
-// (Lucas, Levítico, Crônicas, Colossenses…), so there they type. A focused
-// select does not keep them (its type-ahead switched the edition, C-03).
+// (Lucas, Levítico, Crônicas, Colossenses…), so there they type — unless
+// the letter keys are "com Shift": then Shift+B/L/C are the screen keys. A
+// focused select does not keep them (its type-ahead switched the edition, C-03).
 // -> the character to start with, or null.
-export function quickJumpKey(e) {
+export function quickJumpKey(e, letters = "on") {
     if (focusKind(e.target) !== "none" && !isSelect(e.target)) return null;
     if ((e.ctrlKey || e.metaKey || e.altKey) && !isAltGr(e)) return null;
     if (typeof e.key !== "string" || e.key.length !== 1) return null;
     if (e.key === "b" || e.key === "B") return null;
+    if (letterKeys(letters) === "shift" && e.shiftKey && LETTER[e.key.toLowerCase()]) return null;
     return /[\p{L}\d]/u.test(e.key) ? e.key : null;
 }

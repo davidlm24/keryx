@@ -40,6 +40,12 @@ import useSortable from "./useSortable";
 // on air looks otherwise, Restaurar / Salvar como novo; Fundo has no options
 // of its own.
 
+// What a layer button acts on, said with it (C-27: "Ocultar o Fundo",
+// never a bare "Ocultar"), and a row's hidden/locked state in words.
+const LAYER_OF = { logo: "a Logo", text: "o Texto principal", bg: "o Fundo" };
+const ovOf = (name) => (name ? `a sobreposição “${name}”` : "a sobreposição");
+const layerState = (hidden, locked, empty = false) => [empty ? "camada vazia" : hidden && "camada oculta", locked && "camada travada"].filter(Boolean).join(", ") || undefined;
+
 const LAYERS = [
     { id: "logo", name: "Logo", key: "logo" },
     { id: "text", name: "Texto principal", key: "content" },
@@ -88,6 +94,10 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     const modified = Boolean(theme && content && !sameLook(style, theme));
 
     const visible = { logo: logo.visible, text: Boolean(content) && !layerHidden(cur, "content"), bg: Boolean(cur?.background) && !layerHidden(cur, "background") };
+    // Empty (nothing in the layer) is not hidden: its own look, the name
+    // muted with "vazio" and no eye-off (audit C-45). The logo always has
+    // one (the church's, else KERYX's), so it is only ever hidden.
+    const empty = { logo: false, text: !content, bg: !cur?.background };
     const op = (name, args) => c.callOp(name, args).catch(() => {});
     const locked = { ...localLocks, bg: layerLocked(cur, "background") };
     const toggleLock = (id) => {
@@ -226,10 +236,10 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     const fixedRow = (L) => {
         const i = order.indexOf(L.key);
         return (
-            <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"}`}
-                onClick={() => setSel(L.id)} role="button" tabIndex={0}
+            <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${empty[L.id] ? "is-empty" : visible[L.id] ? "" : "is-hidden"}`}
+                onClick={() => setSel(L.id)} role="listitem" tabIndex={0} aria-label={L.name} aria-description={layerState(!visible[L.id], locked[L.id], empty[L.id])}
                 onContextMenu={(e) => menu(e, { title: L.id === "bg" ? fundoTitle() : L.name, items: [
-                    { label: visible[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] ? "eye-off" : "eye", onSelect: () => toggleEye(L.id) },
+                    { label: visible[L.id] || empty[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] || empty[L.id] ? "eye-off" : "eye", disabled: empty[L.id], onSelect: () => toggleEye(L.id) },
                     { label: locked[L.id] ? "Destravar" : "Travar", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => toggleLock(L.id) },
                     ...(L.id === "bg" ? fundoItems : [{ label: "Editar…", icon: "edit", onSelect: EDIT[L.id].run }]),
                     { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
@@ -238,9 +248,11 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                 {...layerDrag(i, L.name)}
                 title="Arraste para mudar a ordem das camadas">
                 <span className="kx-glyph"><Icon name="grip" /></span>
-                <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>
-                <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={locked[L.id] ? "Destravar" : "Travar"} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Destravar" : "Travar"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
-                <span className="kx-layer-name">{L.name}</span>
+                {empty[L.id]
+                    ? <button type="button" className="kx-btn kx-t is-empty" onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-disabled="true" aria-label={`${L.name}: vazio`} title={L.id === "bg" ? "Vazio: nada no Fundo" : "Vazio: nada no ar"}><Icon name="eye" /></button>
+                    : <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={`${visible[L.id] ? "Ocultar" : "Mostrar"} ${LAYER_OF[L.id]}`} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>}
+                <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={`${locked[L.id] ? "Destravar" : "Travar"} ${LAYER_OF[L.id]}`} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Destravar" : "Travar"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
+                <span className="kx-layer-name">{L.name}{empty[L.id] && <span className="kx-layer-vazio"> · vazio</span>}</span>
                 <button type="button" className={`kx-btn kx-t layer-edit ${open === L.id ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); EDIT[L.id].run(e); }} aria-label={EDIT[L.id].title} title={EDIT[L.id].title} aria-expanded={L.id === "bg" ? undefined : open === L.id} aria-haspopup={L.id === "bg" ? "menu" : undefined}><Icon name="edit" /></button>
             </div>
         );
@@ -257,7 +269,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
         const dragProps = anchor ? layerDrag(oi, name || "Sobreposição") : { ...ovSort.rowProps(r, { label: name || "Sobreposição", icon: "text" }), style: ovSort.rowStyle(r) };
         return (
             <div key={o.id} className={`kx-layer kx-t ${anchor ? "" : "is-ov"} ${sel === o.id ? "is-selected" : ""} ${on ? "" : "is-hidden"}`}
-                onClick={() => setSel(o.id)} role="button" tabIndex={0}
+                onClick={() => setSel(o.id)} role="listitem" tabIndex={0} aria-label={name ? `Sobreposição: ${name}` : "Sobreposição vazia"} aria-description={layerState(!on, isLocked)}
                 onContextMenu={(e) => menu(e, { title: name || "Sobreposição", items: [
                     { label: on ? "Ocultar" : "Mostrar", icon: on ? "eye-off" : "eye", onSelect: () => toggleOvEye(o) },
                     { label: isLocked ? "Destravar" : "Travar", icon: isLocked ? "unlock" : "lock", onSelect: () => toggleLock(o.id) },
@@ -272,10 +284,10 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                 {...dragProps}
                 title={anchor ? "Arraste para mudar a ordem das camadas" : "Arraste para mudar quem fica por cima, entre as sobreposições"}>
                 <span className="kx-glyph"><Icon name="grip" /></span>
-                <button type="button" className={`kx-btn kx-t ${on ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleOvEye(o); }} aria-label={on ? "Ocultar" : "Mostrar"} title={on ? "Ocultar" : "Mostrar"}><Icon name={on ? "eye" : "eye-off"} /></button>
-                <button type="button" className="kx-btn kx-t" style={isLocked ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(o.id); }} aria-label={isLocked ? "Destravar" : "Travar"} title={isLocked ? "Destravar" : "Travar"}><Icon name={isLocked ? "lock" : "unlock"} /></button>
+                <button type="button" className={`kx-btn kx-t ${on ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleOvEye(o); }} aria-label={`${on ? "Ocultar" : "Mostrar"} ${ovOf(name)}`} title={on ? "Ocultar" : "Mostrar"}><Icon name={on ? "eye" : "eye-off"} /></button>
+                <button type="button" className="kx-btn kx-t" style={isLocked ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(o.id); }} aria-label={`${isLocked ? "Destravar" : "Travar"} ${ovOf(name)}`} title={isLocked ? "Destravar" : "Travar"}><Icon name={isLocked ? "lock" : "unlock"} /></button>
                 <span className={`kx-layer-name${name ? "" : " is-ph"}`}>{name || "Sobreposição"}</span>
-                <button type="button" className={`kx-btn kx-t layer-edit ${open === o.id ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); toggleOpen(o.id); }} aria-label="Ajustes da sobreposição" title="Ajustes da sobreposição" aria-expanded={open === o.id}><Icon name="edit" /></button>
+                <button type="button" className={`kx-btn kx-t layer-edit ${open === o.id ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); toggleOpen(o.id); }} aria-label={`Ajustes d${ovOf(name)}`} title="Ajustes da sobreposição" aria-expanded={open === o.id}><Icon name="edit" /></button>
             </div>
         );
     };
@@ -285,19 +297,19 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     const emptyOverlayRow = () => {
         const oi = order.indexOf("overlays");
         return (
-            <div key="ov-empty" className={`kx-layer kx-t is-hidden ${sel === "ov" ? "is-selected" : ""}`}
-                onClick={() => setSel("ov")} role="button" tabIndex={0}
+            <div key="ov-empty" className={`kx-layer kx-t is-empty ${sel === "ov" ? "is-selected" : ""}`}
+                onClick={() => setSel("ov")} role="listitem" tabIndex={0} aria-label="Sobreposição" aria-description="camada vazia"
                 onContextMenu={(e) => menu(e, { title: "Sobreposição", items: [
-                    { label: "Mostrar", icon: "eye", onSelect: addOverlay },
+                    { label: "Criar a primeira", icon: "plus", onSelect: addOverlay },
                     { label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
                     { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) },
                 ] })}
                 {...layerDrag(oi, "Sobreposição")}
                 title="Arraste para mudar a ordem das camadas">
                 <span className="kx-glyph"><Icon name="grip" /></span>
-                <button type="button" className="kx-btn kx-t is-off" onClick={(e) => { e.stopPropagation(); addOverlay(); }} aria-label="Mostrar" title="Mostrar (cria a primeira sobreposição)"><Icon name="eye-off" /></button>
-                <button type="button" className="kx-btn kx-t" onClick={(e) => e.stopPropagation()} aria-label="Travar" title="Travar"><Icon name="unlock" /></button>
-                <span className="kx-layer-name is-ph">Sobreposição</span>
+                <button type="button" className="kx-btn kx-t is-empty" onClick={(e) => { e.stopPropagation(); addOverlay(); }} aria-label="Criar a primeira sobreposição" title="Vazio · cria a primeira sobreposição"><Icon name="plus" /></button>
+                <button type="button" className="kx-btn kx-t" onClick={(e) => e.stopPropagation()} aria-label="Travar a sobreposição" title="Travar"><Icon name="unlock" /></button>
+                <span className="kx-layer-name is-ph">Sobreposição<span className="kx-layer-vazio"> · vazio</span></span>
                 <button type="button" className="kx-btn kx-t layer-edit" onClick={(e) => { e.stopPropagation(); addOverlay(); }} aria-label="Ajustes da sobreposição" title="Ajustes da sobreposição (cria a primeira)"><Icon name="edit" /></button>
             </div>
         );
@@ -308,7 +320,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     const ovGroup = () => {
         const oi = order.indexOf("overlays");
         return (
-            <div key="ovgroup" className="kx-ovgroup" {...layerDrag(oi, `Sobreposições · ${ovRows.length}`)}>
+            <div key="ovgroup" className="kx-ovgroup" role="listitem" aria-label={`Sobreposições · ${ovRows.length}`} {...layerDrag(oi, `Sobreposições · ${ovRows.length}`)}>
                 <div className="kx-ovhead kx-t"
                     onContextMenu={(e) => menu(e, { title: "Sobreposições", items: [
                         { label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
@@ -319,7 +331,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                     <span className="kx-glyph"><Icon name="grip" /></span>
                     <span className="kx-section">Sobreposições<span className="kx-count"> · {ovRows.length}</span></span>
                 </div>
-                <div className={`kx-ovlist ${ovSort.sorting ? "is-sorting" : ""}`} {...ovSort.listProps}>
+                <div className={`kx-ovlist ${ovSort.sorting ? "is-sorting" : ""}`} role="list" {...ovSort.listProps}>
                     {ovRows.map((o, r) => overlayRow(o, r, false))}
                 </div>
             </div>
@@ -340,7 +352,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
 
     return (
         <>
-            <div className={`kx-layers ${layerSort.sorting ? "is-sorting" : ""}`} {...layerSort.listProps}>{rows}</div>
+            <div className={`kx-layers ${layerSort.sorting ? "is-sorting" : ""}`} role="list" aria-label="Camadas" {...layerSort.listProps}>{rows}</div>
             {open && <div className="layerprops">
                 <span className="kx-section" style={{ gridColumn: "1 / -1", paddingTop: 2 }}>{sectionLabel}{disabled ? " · travada" : ""}</span>
                 {/* Texto principal: the look is the theme's, edited only in the
@@ -349,7 +361,7 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                     when what is on air looks otherwise (a song's own look). */}
                 {open === "text" && <span className="layeracts" style={{ gridColumn: "1 / -1" }}><Btn small onClick={editTheme} title={inUseName ? `O tema em uso (${inUseName}) no Editor de temas` : "O tema em uso no Editor de temas"}>Editar tema…</Btn></span>}
                 {open === "text" && (!content ? <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>Nada no ar.</span> : <>
-                    <span className="k">Título</span><Seg small value={style.title || (showTitle ? "show" : "hide")} options={[["show", "Com"], ["hide", "Sem"]]} onChange={(v) => !disabled && setTitle(v)} />
+                    <span className="k">Título</span><Seg small label="Título" value={style.title || (showTitle ? "show" : "hide")} options={[["show", "Com"], ["hide", "Sem"]]} onChange={(v) => !disabled && setTitle(v)} />
                     {modified && <>
                         <span className="kx-meta" style={{ gridColumn: "1 / -1" }}>{inUseName ? <>Diferente do tema <b>{inUseName}</b></> : "Diferente do tema em uso"}</span>
                         <span className="layeracts" style={{ gridColumn: "1 / -1" }}>
@@ -363,20 +375,20 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                     <select value={logo.corner} disabled={disabled} onChange={(e) => op("logo.set", { corner: e.target.value })} aria-label="Canto do logo">
                         <option value="top-left">Alto esq.</option><option value="top-right">Alto dir.</option><option value="bottom-left">Baixo esq.</option><option value="bottom-right">Baixo dir.</option>
                     </select>
-                    <span className="k">Tamanho</span><Seg small value={logo.width ? "" : logo.size} options={SIZES} onChange={(v) => !disabled && op("logo.set", { size: v, width: null })} />
+                    <span className="k">Tamanho</span><Seg small label="Tamanho" value={logo.width ? "" : logo.size} options={SIZES} onChange={(v) => !disabled && op("logo.set", { size: v, width: null })} />
                     <span className="k">Largura</span>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         <input type="range" min={4} max={30} step={1} disabled={disabled} value={logo.width ?? ({ small: 5, medium: 8, large: 12 }[logo.size] || 8)} onChange={(e) => op("logo.set", { width: Number(e.target.value) })} aria-label="Largura do logo (% da tela)" style={{ flex: 1, minWidth: 0 }} />
                         <span className="kx-meta" style={{ width: 34, textAlign: "right" }}>{logo.width ? `${logo.width}%` : "—"}</span>
                     </span>
-                    <span className="k">Opacidade</span><Seg small value={num(logo.opacity ?? 1)} options={[["1", "100%"], ["0.7", "70%"], ["0.4", "40%"]]} onChange={(v) => !disabled && op("logo.set", { opacity: v === "1" ? null : Number(v) })} />
-                    <span className="k">Margem</span><Seg small value={num(logo.margin ?? 3)} options={[["1.5", "Junto"], ["3", "Normal"], ["6", "Afastado"]]} onChange={(v) => !disabled && op("logo.set", { margin: v === "3" ? null : Number(v) })} />
+                    <span className="k">Opacidade</span><Seg small label="Opacidade" value={num(logo.opacity ?? 1)} options={[["1", "100%"], ["0.7", "70%"], ["0.4", "40%"]]} onChange={(v) => !disabled && op("logo.set", { opacity: v === "1" ? null : Number(v) })} />
+                    <span className="k">Margem</span><Seg small label="Margem" value={num(logo.margin ?? 3)} options={[["1.5", "Junto"], ["3", "Normal"], ["6", "Afastado"]]} onChange={(v) => !disabled && op("logo.set", { margin: v === "3" ? null : Number(v) })} />
                     <span className="layeracts" style={{ gridColumn: "1 / -1" }}><Btn small onClick={() => onSettings?.("igreja")} title="O logo da igreja · Configurações › Igreja">Logo da igreja…</Btn></span>
                 </>)}
                 {openIsOv && (<>
                     <span className="k">Texto</span>
-                    <input ref={ovInput} value={openOv?.content || ""} disabled={disabled || !openOv} onChange={(e) => openOv && setOverlays(overlays.map((o) => (o === openOv ? { ...o, content: e.target.value } : o)))} aria-label="Texto da sobreposição" style={{ height: 24, background: "var(--bg-2)", border: 0, borderRadius: 4, color: "var(--fg-1)", padding: "0 6px", font: "inherit", minWidth: 0 }} />
-                    <span className="k">Posição</span><Seg small value={openOv ? (openOv.y > 50 ? (openOv.x > 30 ? "bc" : "bl") : "tl") : "bl"} options={[["bl", "Baixo esq."], ["bc", "Baixo centro"], ["tl", "Alto esq."]]} onChange={(v) => { if (!openOv || disabled) return; const pos = { bl: { x: 4, y: 86 }, bc: { x: 30, y: 86 }, tl: { x: 4, y: 4 } }[v]; setOverlays(overlays.map((o) => (o === openOv ? { ...o, ...pos } : o))); }} />
+                    <input ref={ovInput} value={openOv?.content || ""} disabled={disabled || !openOv} onChange={(e) => openOv && setOverlays(overlays.map((o) => (o === openOv ? { ...o, content: e.target.value } : o)))} aria-label="Texto da sobreposição" style={{ minWidth: 0 }} />
+                    <span className="k">Posição</span><Seg small label="Posição" value={openOv ? (openOv.y > 50 ? (openOv.x > 30 ? "bc" : "bl") : "tl") : "bl"} options={[["bl", "Baixo esq."], ["bc", "Baixo centro"], ["tl", "Alto esq."]]} onChange={(v) => { if (!openOv || disabled) return; const pos = { bl: { x: 4, y: 86 }, bc: { x: 30, y: 86 }, tl: { x: 4, y: 4 } }[v]; setOverlays(overlays.map((o) => (o === openOv ? { ...o, ...pos } : o))); }} />
                     <span className="layeracts" style={{ gridColumn: "1 / -1" }}><Btn small disabled={disabled || !openOv} onClick={() => openOv && removeOverlay(openOv)} title="Apaga esta sobreposição">Excluir…</Btn></span>
                 </>)}
             </div>}

@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Split } from "./kx";
-import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct } from "@/lib/console/dock";
+import { Split, onTabsKey } from "./kx";
+import { MODULES, moveModules, hideModule, setActive, resizeChild, defaultSize, canTray, isPinned, rebaseDock, snapPct, dockMotion, easesBetween } from "@/lib/console/dock";
 
 // Ver › Editar disposição for the culto environment (2026-10-13; the
 // prototype "Disposição do console", model Livre): the console as a tree of
@@ -21,6 +21,8 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const nameOf = (id) => MODULES[id]?.name || id;
 // The first module in a frame: a stable React key for its cell.
 const firstOf = (f) => (f.kind === "group" ? f.tabs[0] : firstOf(f.children[0].frame));
+// Every module under a frame, by name: what a splitter resizes (C-62).
+const allNames = (f) => (f.kind === "group" ? f.tabs.map(nameOf) : f.children.flatMap((ch) => allNames(ch.frame)));
 
 export const ZONE_LABEL = { center: "Juntar como aba", left: "Pôr à esquerda", right: "Pôr à direita", top: "Pôr em cima", bottom: "Pôr embaixo" };
 
@@ -205,6 +207,9 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
     // The tab in front of a group made of a split that does not fit (it is
     // not in the dock: a bigger screen splits it again).
     const [shown, setShown] = useState({});
+    const box = useRef(null);
+    useDockEase(box, frame, editing);
+    useKeyingFlag();
     if (!frame) return null;
 
     const chip = (id) => {
@@ -246,9 +251,9 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             );
         } else if (f.tabs.length > 1) {
             head = (
-                <div className="dock-tabs" role="tablist">
+                <div className="dock-tabs" role="tablist" onKeyDown={onTabsKey}>
                     {f.tabs.map((id) => (
-                        <button key={id} type="button" role="tab" aria-selected={id === active} className={`dock-tab ${id === active ? "is-on" : ""}`} onClick={() => pick(id)}>{nameOf(id)}</button>
+                        <button key={id} type="button" role="tab" aria-selected={id === active} tabIndex={id === active ? 0 : -1} className={`dock-tab ${id === active ? "is-on" : ""}`} onClick={() => pick(id)}>{nameOf(id)}</button>
                     ))}
                 </div>
             );
@@ -277,7 +282,7 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             // place; gone, it takes no room and has no splitter beside it.
             const cls = `${ch.fold ? ` dock-fold${ch.gone ? " is-gone" : ""}` : ""}${ch.locked ? " dock-locked" : ""}${ch.folded ? " dock-folded" : ""}`;
             out.push(
-                <div key={firstOf(ch.frame)} className={`dock-cell${cls}`} aria-hidden={ch.gone || undefined} inert={ch.gone ? "" : undefined}
+                <div key={firstOf(ch.frame)} className={`dock-cell${cls}`} aria-hidden={ch.gone || undefined} inert={ch.gone ? "" : undefined} data-ease={`${JSON.stringify(f.path)}/${ch.at.join(",")}`}
                     style={ch.fixed ? { flex: `0 0 ${Math.round(ch.size)}px` } : { flex: "1 1 0" }}>
                     {node(ch.frame)}
                 </div>,
@@ -305,6 +310,8 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
             const share = total > 0 ? Math.round((size / total) * 100) : null;
             out.push(
                 <Split key={`s${i}`} horizontal={f.dir === "col"} size={size} sign={sign}
+                    name={`${f.dir === "row" ? "Largura" : "Altura"} · ${allNames(f.children[owner].frame).join(", ")}`}
+                    value={share ?? undefined} min={share !== null ? 0 : undefined} max={share !== null ? 100 : undefined} valueText={share !== null ? `${share}%` : undefined}
                     onSize={(v) => onDock(resizeAll(v))}
                     onReset={() => { const d = defaultSize(dock, f.path, index); if (d !== null) onDock(resizeAll(d)); }}
                     clamp={(v) => Math.round(v)}
@@ -315,6 +322,79 @@ export default function DockView({ frame, dock, onDock, render, editing, dnd, on
         return <div className={`dock-split is-${f.dir}`}>{out}</div>;
     };
 
-    return <div className="dock">{node(frame)}</div>;
+    return <div className="dock" ref={box}>{node(frame)}</div>;
+}
+
+// Easing the dock (POL-01): a panel folded or opened, the No ar strip
+// coming or going, a measured height changing (dockMotion) — every cell
+// whose size changed goes from the size it had to the new one together,
+// along its split, with one Web Animation each (its flex pinned to pixels,
+// then back to its own flex), so a neighbour that turns flexible or fixed
+// never collapses to 0 and opening eases like folding. Interrupted, a cell
+// starts again from where it is drawn. Nothing eases for a moment after
+// the dock appears (the first measured heights land at once, POL-07),
+// while editing the arrangement, or with reduced motion.
+const SETTLE_MS = 1000;
+
+// The keys walking a list (arrows, a clicker's PageUp/PageDown, outside a
+// text field) mark the page until the pointer moves: console.css then
+// shows no hover on the slide that scrolls under a resting pointer (POL-09).
+const WALK_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "PageUp", "PageDown"]);
+function useKeyingFlag() {
+    useEffect(() => {
+        const html = document.documentElement;
+        const typing = (t) => t?.closest?.("input, textarea, select, [contenteditable=''], [contenteditable='true']");
+        const down = (e) => { if (WALK_KEYS.has(e.key) && !typing(e.target)) html.dataset.keying = ""; };
+        const move = () => { if ("keying" in html.dataset) delete html.dataset.keying; };
+        window.addEventListener("keydown", down, true);
+        window.addEventListener("pointermove", move, true);
+        return () => { window.removeEventListener("keydown", down, true); window.removeEventListener("pointermove", move, true); move(); };
+    }, []);
+}
+const reduced = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
+const running = new WeakMap(); // cell -> its running Animation
+
+function useDockEase(box, frame, editing) {
+    const prev = useRef(null);
+    const born = useRef(0);
+    useEffect(() => { born.current = performance.now(); }, []);
+    useLayoutEffect(() => {
+        const was = prev.current;
+        const now = frame ? dockMotion(frame) : null;
+        prev.current = now;
+        const root = box.current;
+        if (!root || !now) return;
+        // Any other render (the clock, the live state) leaves an ease alone.
+        if (was && was.w === now.w && was.h === now.h && was.motion === now.motion) return;
+        const cells = [...root.querySelectorAll("[data-ease]")];
+        // Where each cell still easing is drawn right now (all read before
+        // any stops, so one stopping does not move the others), then stop them.
+        const at = new Map();
+        const busy = cells.filter((el) => running.has(el));
+        for (const el of busy) {
+            const r = el.getBoundingClientRect();
+            at.set(el, el.parentElement?.classList.contains("is-row") ? r.width : r.height);
+        }
+        for (const el of busy) {
+            running.get(el).cancel();
+            running.delete(el);
+            delete el.dataset.easing;
+        }
+        if (!easesBetween(was, now) || editing || reduced() || performance.now() - born.current < SETTLE_MS) return;
+        const css = getComputedStyle(root);
+        const ms = parseFloat(css.getPropertyValue("--fold-ms")) || 180;
+        const curve = css.getPropertyValue("--ease-fold").trim() || "cubic-bezier(0.32, 0.72, 0, 1)";
+        for (const el of cells) {
+            const k = el.dataset.ease;
+            const from = at.has(el) ? at.get(el) : was.sizes[k];
+            const to = now.sizes[k];
+            if (!Number.isFinite(from) || !Number.isFinite(to) || Math.abs(from - to) < 1) continue;
+            const px = (v) => ({ flexGrow: 0, flexShrink: 0, flexBasis: `${Math.max(0, Math.round(v))}px` });
+            const a = el.animate([px(from), px(to)], { duration: ms, easing: curve });
+            running.set(el, a);
+            el.dataset.easing = "";
+            a.onfinish = () => { if (running.get(el) === a) { running.delete(el); delete el.dataset.easing; } };
+        }
+    }, [box, frame, editing]);
 }
 

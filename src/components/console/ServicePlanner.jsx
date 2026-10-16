@@ -5,7 +5,9 @@ import { useChurch } from "@/hooks/useChurch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "./kx";
+import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar, rowKeyDown } from "./kx";
+import { useContextMenu } from "./ContextMenu";
+import useRowStep from "./useRowStep";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { takeOut, takeOutQuestion } from "./setlistActions";
 import useSortable from "./useSortable";
@@ -23,7 +25,7 @@ import { useWinCol } from "./winLayout";
 
 const ADD = [
     ["SONG", "music", "Música"], ["BIBLE", "book", "Bíblia"], ["VIDEO", "film", "Vídeo"], ["AUDIO", "volume", "Áudio"],
-    ["IMAGE", "image", "Imagem"], ["ANNOUNCEMENT", "megaphone", "Aviso"], ["TEXT", "text", "Texto"], ["TIMER", "clock", "Timer"], ["MATERIAL", "book", "EBD"], ["SECTION", "list", "Seção"],
+    ["IMAGE", "image", "Imagem"], ["ANNOUNCEMENT", "megaphone", "Aviso"], ["TEXT", "text", "Texto"], ["TIMER", "clock", "Timer"], ["MATERIAL", "book", "Escola bíblica"], ["SECTION", "list", "Seção"],
 ];
 const MEDIA_FOR = { VIDEO: ["video"], AUDIO: ["audio"], IMAGE: ["image", "gif", "pdf", "powerpoint"] };
 const MEDIA_TYPE = { video: "VIDEO", audio: "AUDIO", image: "IMAGE", gif: "IMAGE", pdf: "PDF", powerpoint: "POWERPOINT" };
@@ -38,7 +40,7 @@ const today = () => { const d = new Date(); const two = (n) => String(n).padStar
 // nothing here touches the screens.
 export default function ServicePlanner({ c, services, serviceId, setServiceId, data, focusId = null, onClose, escRef, onEditSong = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colCulto = useWinCol("planner.culto", { def: 360, min: 300, max: 640 });
+    const colCulto = useWinCol("planner.culto", { name: "Culto", def: 360, min: 300, max: 640 });
     const church = useChurch();
     const client = useQueryClient();
     const svc = services.find((s) => s.id === serviceId) || null;
@@ -92,6 +94,10 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
     // A row dropped at a slot of the setlist, lit in gold while it is dragged
     // (useSortable; dropOrder.js).
     const sort = useSortable({ keys: items.map((it) => it.id), onDrop: (from, over) => { if (from >= 0) run(renumber(moveTo(items, from, over))); } });
+    // Without dragging (C-16): the row's menu (Subir, Descer) and Alt+↑ /
+    // Alt+↓ on a focused row; Enter or Space opens its details (Row).
+    const step = useRowStep({ ids: items.map((it) => it.id), listRef: sort.listProps.ref, onMove: (from, over) => run(renumber(moveTo(items, from, over))) });
+    const menu = useContextMenu();
     const updateItem = (id, patch) => run(keryx.entities.ServiceItem.update(id, patch));
     const duplicate = async (it) => {
         const at = items.findIndex((x) => x.id === it.id) + 1;
@@ -246,17 +252,17 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
             <div className="col" style={colCulto.style}>
                 <Panel title="Culto" style={{ flex: "none" }}>
                     <div className="frm pl-frm">
-                        <span className="k">Nome</span><Field icon={null} {...f("title")} placeholder="Culto de domingo" />
+                        <span className="k">Nome</span><Field label="Nome" icon={null} {...f("title")} placeholder="Culto de domingo" />
                         <span className="k">Data</span><input type="date" className="pl-input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} onBlur={() => commit("date")} aria-label="Data" />
                         <span className="k">Hora</span><input type="time" className="pl-input" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} onBlur={() => commit("startTime")} aria-label="Hora de início" />
-                        <span className="k">Local</span><Field icon={null} {...f("location")} placeholder="Templo principal" />
-                        <span className="k">Tipo</span><Seg small value={form.service_type} onChange={(v) => { setForm({ ...form, service_type: v }); saveSvc({ service_type: v }); }} options={[["culto", "Culto"], ["evento", "Evento"]]} />
-                        {form.service_type === "evento" && <><span className="k">Evento</span><Field icon={null} {...f("event_description")} placeholder="Descrição do evento" /></>}
-                        <span className="k">Status</span><Seg small value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
-                        <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
+                        <span className="k">Local</span><Field label="Local" icon={null} {...f("location")} placeholder="Templo principal" />
+                        <span className="k">Tipo</span><Seg small label="Tipo" value={form.service_type} onChange={(v) => { setForm({ ...form, service_type: v }); saveSvc({ service_type: v }); }} options={[["culto", "Culto"], ["evento", "Evento"]]} />
+                        {form.service_type === "evento" && <><span className="k">Evento</span><Field label="Evento" icon={null} {...f("event_description")} placeholder="Descrição do evento" inputProps={{ spellCheck: true }} /></>}
+                        <span className="k">Status</span><Seg small label="Status" value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
+                        <span className="k">Notas</span><Field label="Notas" icon={null} {...f("notes")} placeholder="Notas gerais do culto" inputProps={{ spellCheck: true }} />
                         <span className="k">Papel de parede</span>
                         <div className="pl-wall">
-                            <BgChip value={look.background} title="Papel de parede do culto" empty="o de qualquer outro culto" noneLabel={look.background ? "Sem papel de parede próprio (o de qualquer outro culto)" : undefined}
+                            <BgChip value={look.background} title="Papel de parede do culto" empty="Qualquer outro culto" emptyHint="Sem papel de parede próprio: o culto usa o de qualquer outro culto (Configurações › Culto)" noneLabel={look.background ? "Sem papel de parede próprio (o de qualquer outro culto)" : undefined}
                                 onPick={(spec) => saveSvc(lookFields({ ...look, background: spec }), spec ? "Papel de parede do culto salvo." : "O culto volta ao papel de parede da igreja.")} />
                         </div>
                         <span className="k">Tema do culto</span>
@@ -270,7 +276,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                 <Panel title={<>Equipe <span className="kx-count">· {(svc.worship_team || []).length}</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {(svc.worship_team || []).map((m, i) => (
                         <Row key={`${m.member_name}${i}`} icon="user" title={m.member_name} meta={m.role}
-                            actions={<IconBtn name="x" small title="Tirar da equipe" onClick={(e) => { e.stopPropagation(); saveSvc({ worship_team: svc.worship_team.filter((_, k) => k !== i) }); }} />} />
+                            actions={<IconBtn name="x" small title="Tirar da equipe" aria-label={`Tirar ${m.member_name} da equipe`} onClick={(e) => { e.stopPropagation(); saveSvc({ worship_team: svc.worship_team.filter((_, k) => k !== i) }); }} />} />
                     ))}
                     <div className="pl-pad">
                         <Field icon={null} value={member} onChange={setMember} placeholder="Nome · função (Enter adiciona)" inputProps={{ list: "pl-team" }} onKeyDown={(e) => { if (e.key === "Enter") addMember(); }} />
@@ -290,7 +296,10 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                             if (isSection(it)) {
                                 const sec = p.sections[i] || { count: 0, seconds: 0 };
                                 return (
-                                    <div key={it.id} className={`kx-row pl-sec ${sel === it.id ? "is-selected" : ""}`} onClick={() => setSel(sel === it.id ? null : it.id)} {...dragProps}>
+                                    <div key={it.id} className={`kx-row pl-sec ${sel === it.id ? "is-selected" : ""}`} role="button" tabIndex={0} aria-label={`Seção ${it.title}`}
+                                        onClick={() => setSel(sel === it.id ? null : it.id)} onKeyDown={rowKeyDown(() => setSel(sel === it.id ? null : it.id), step.onKey(i))}
+                                        onContextMenu={(e) => menu(e, { title: it.title, items: [{ label: "Tirar a seção…", icon: "x", onSelect: () => removeItem(it) }, ...step.menuItems(i)] })}
+                                        {...dragProps} {...step.rowAttrs(i)}>
                                         <span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span>
                                         <span className="kx-section">{it.title}</span><span className="kx-count"> · {sec.count} {sec.count === 1 ? "item" : "itens"} · {total(sec.seconds)}</span>
                                         <span style={{ flex: 1 }} />
@@ -301,12 +310,20 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                             const open = sel === it.id;
                             return (
                                 <div key={it.id} className="pl-sortrow" {...dragProps}>
-                                    <div className={`kx-row pl-item ${open ? "is-selected" : ""} ${it.enabled === false ? "is-done" : ""}`} onClick={() => setSel(open ? null : it.id)}>
-                                        <span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span>
-                                        <span className="kx-glyph"><Icon name={typeIcon(it.type)} /></span>
-                                        <div className="kx-row-main"><div className="kx-row-title">{it.title}</div><div className="kx-row-meta">{[typeLabel(it.type), it.enabled === false ? "desativado" : "", it.notes && it.type !== "TEXT" ? it.notes : ""].filter(Boolean).join(" · ")}</div></div>
+                                    <Row className={`pl-item ${it.enabled === false ? "is-done" : ""}`} state={open ? "is-selected" : ""} expanded={open}
+                                        lead={<span className="kx-glyph" title="Arraste para reordenar"><Icon name="grip" /></span>}
+                                        icon={typeIcon(it.type)} title={it.title}
+                                        meta={[typeLabel(it.type), it.enabled === false ? "desativado" : "", it.notes && it.type !== "TEXT" ? it.notes : ""].filter(Boolean).join(" · ")}
+                                        onClick={() => setSel(open ? null : it.id)} onKey={step.onKey(i)} dragProps={step.rowAttrs(i)}
+                                        onContextMenu={(e) => menu(e, { title: it.title, items: [
+                                            { label: open ? "Fechar os detalhes" : "Abrir os detalhes", icon: "edit", onSelect: () => setSel(open ? null : it.id) },
+                                            { label: it.enabled === false ? "Ativar" : "Desativar", onSelect: () => updateItem(it.id, { enabled: it.enabled === false }) },
+                                            { label: "Duplicar", icon: "copy", onSelect: () => duplicate(it) },
+                                            { label: "Tirar da setlist…", icon: "x", onSelect: () => removeItem(it) },
+                                            ...step.menuItems(i),
+                                        ] })}>
                                         <span className="kx-row-time">{at != null ? clockAt(at) : ""}<br />{it.duration ? span(it.duration) : ""}</span>
-                                    </div>
+                                    </Row>
                                     {open && (
                                         <div className="pl-detail">
                                             <div className="frm pl-frm">
@@ -345,8 +362,9 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                             </div>
                         </div>
                     )}
-                    <div className="pl-add">
-                        {ADD.map(([t, icon, label]) => <Btn key={t} kind={t === "SONG" ? "outline" : ""} on={adding === t} onClick={() => { setAdding(adding === t ? null : t); setPick(""); }}><Icon name={icon} />{label}</Btn>)}
+                    <div className="pl-add" role="group" aria-label="Adicionar à setlist">
+                        <span className="kx-meta pl-add-k">Adicionar:</span>
+                        {ADD.map(([t, icon, label]) => <Btn key={t} on={adding === t} onClick={() => { setAdding(adding === t ? null : t); setPick(""); }}><Icon name={icon} />{label}</Btn>)}
                     </div>
                 </Panel>
             </div>

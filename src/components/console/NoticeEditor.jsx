@@ -27,7 +27,7 @@ const pickFields = (row) => Object.fromEntries(FIELDS.filter((k) => row[k] !== u
 // Saving changes the library only; "Pôr na prévia do console" prepares it.
 export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onSaved, escRef, active = true }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colAviso = useWinCol("notice.ajustes", { def: 420, min: 340, max: 720 });
+    const colAviso = useWinCol("notice.ajustes", { name: "Ajustes", def: 420, min: 340, max: 720 });
     const chimeOn = usePrefs().chime_on;
     const isNew = noticeId === "new";
     const [draft, setDraft] = useState(() => (isNew ? newNotice("countdown") : null));
@@ -38,6 +38,9 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
     const [pick, setPick] = useState(null); // "video" | "audio" | "files"
     const ask = useConfirm();
     const [busy, setBusy] = useState(false);
+    // One save at a time: a held Ctrl+S or a double click created a new
+    // aviso twice before the page swapped "new" for its id.
+    const saving = useRef(false);
     const fileRef = useRef(null);
     const fileKind = useRef(null);
 
@@ -69,6 +72,8 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         return { ...d, title, duration: Math.max(0, Number(d.duration) || 0) };
     };
     const save = async () => {
+        if (saving.current) return;
+        saving.current = true;
         setBusy(true);
         try {
             const row = isNew ? await keryx.entities.CommunicationVideo.create(payload()) : await keryx.entities.CommunicationVideo.update(noticeId, payload());
@@ -77,6 +82,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
             c.say("Aviso salvo na Biblioteca · Avisos.");
             onSaved?.(row);
         } catch (err) { c.say(err?.message || "Não foi possível salvar."); }
+        saving.current = false;
         setBusy(false);
     };
     const remove = async () => {
@@ -123,6 +129,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
         if (!((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") || !active) return;
         if (document.querySelector(".console .scrim:not(.win-scrim)")) return;
         e.preventDefault(); e.stopPropagation();
+        if (e.repeat || busy) return;
         if (draft) save();
     };
     useEffect(() => {
@@ -153,7 +160,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
             <WinBar title="Aviso" sub={`${isNew ? "Novo aviso" : draft.title}${dirty ? " · não salvo" : ""}`} actions={<>
                 {!isNew && <Btn small onClick={remove}>Excluir…</Btn>}
                 <Btn small onClick={() => leave()}>Cancelar</Btn>
-                <Btn small kind="brand" disabled={busy} onClick={save} title="Ctrl+S">Salvar aviso</Btn>
+                <Btn small kind="brand" disabled={busy} onClick={save} title="Ctrl+S">{busy ? "Salvando…" : "Salvar aviso"}</Btn>
             </>} />
             <div className="win-body">
             <div className="col nv-l" style={colAviso.style}>
@@ -163,7 +170,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                         <div className="listhead"><span className="kx-section">Tipo</span></div>
                         {NOTICE_TYPES.map(([t, icon, label]) => <Row key={t} single icon={icon} title={label} className={draft.type === t ? "is-selected" : ""} onClick={() => chooseType(t)} />)}
                         <div className="frm nv-frm">
-                            <span className="k">Título</span><Field icon={null} value={draft.text || ""} onChange={(v) => set({ text: v })} placeholder={timed ? "Ex.: O culto começa em" : "Ex.: Bem-vindos"} />
+                            <span className="k">Título</span><Field label="Título" icon={null} value={draft.text || ""} onChange={(v) => set({ text: v })} placeholder={timed ? "Ex.: O culto começa em" : "Ex.: Bem-vindos"} inputProps={{ spellCheck: true }} />
                             <span className="k">Texto</span><textarea className="ed-text nv-sub" rows={2} value={draft.subtext || ""} onChange={(e) => set({ subtext: e.target.value })} placeholder="Linha de apoio (opcional)" aria-label="Texto" />
                             <span className="k">Duração</span>
                             <span className="nv-inline">
@@ -171,7 +178,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                                 <span className="kx-meta">{draft.type === "countdown" ? "conta até zero" : draft.type === "timer" ? "0:00 = sem limite" : "tempo na tela em Tocar todos"}</span>
                             </span>
                             <span className="k">Canto do logo</span>
-                            <Seg small value={draft.show_logo === false ? "none" : draft.logo_position || "top-left"} onChange={(v) => set(v === "none" ? { show_logo: false } : { show_logo: true, logo_position: v })} options={LOGO} />
+                            <Seg small label="Canto do logo" value={draft.show_logo === false ? "none" : draft.logo_position || "top-left"} onChange={(v) => set(v === "none" ? { show_logo: false } : { show_logo: true, logo_position: v })} options={LOGO} />
                             <span className="k">Som de alerta</span>
                             <span className="nv-inline">
                                 <button type="button" role="switch" aria-checked={Boolean(draft.sound_alert)} aria-label="Som de alerta" className={`sw2 kx-t ${draft.sound_alert ? "is-on" : ""}`} onClick={() => set({ sound_alert: !draft.sound_alert })} />
@@ -181,7 +188,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
 
                         <div className="listhead"><span className="kx-section">Texto na tela</span></div>
                         <div className="frm nv-frm">
-                            <span className="k">Tamanho</span><Seg small value={draft.font_size || "large"} onChange={(v) => set({ font_size: v })} options={SIZES} />
+                            <span className="k">Tamanho</span><Seg small label="Tamanho" value={draft.font_size || "large"} onChange={(v) => set({ font_size: v })} options={SIZES} />
                             <span className="k">Fonte</span>
                             <select className="pl-input" value={draft.font_family || "sans"} onChange={(e) => set({ font_family: e.target.value })} aria-label="Fonte">
                                 {FONTS.map(([k, label]) => <option key={k} value={k} style={{ fontFamily: FONT_MAP[k] }}>{label}</option>)}
@@ -197,8 +204,8 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                             <select className="pl-input" value={draft.text_effect || "shadow"} onChange={(e) => set({ text_effect: e.target.value })} aria-label="Efeito do texto">
                                 {EFFECTS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                             </select>
-                            <span className="k">Alinhar</span><Seg small value={draft.text_position_h || "center"} onChange={(v) => set({ text_position_h: v })} options={[["left", "Esq."], ["center", "Centro"], ["right", "Dir."]]} />
-                            <span className="k">Posição</span><Seg small value={draft.text_position_v || "middle"} onChange={(v) => set({ text_position_v: v })} options={[["top", "Topo"], ["middle", "Meio"], ["bottom", "Base"]]} />
+                            <span className="k">Alinhar</span><Seg small label="Alinhar" value={draft.text_position_h || "center"} onChange={(v) => set({ text_position_h: v })} options={[["left", "Esq."], ["center", "Centro"], ["right", "Dir."]]} />
+                            <span className="k">Posição</span><Seg small label="Posição" value={draft.text_position_v || "middle"} onChange={(v) => set({ text_position_v: v })} options={[["top", "Topo"], ["middle", "Meio"], ["bottom", "Base"]]} />
                         </div>
 
                         <div className="listhead"><span className="kx-section">Fundo</span></div>

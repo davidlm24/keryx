@@ -39,9 +39,9 @@ export function QuickAlert({ c, data }) {
     return (
         <>
             <div className="qt-row">
-                <Field icon={null} value={alertText} onChange={setAlertText} placeholder="Aviso para as telas" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") showAlert(); }} />
+                <Field icon={null} value={alertText} onChange={setAlertText} placeholder="Aviso para as telas" style={{ flex: 1 }} inputProps={{ spellCheck: true }} onKeyDown={(e) => { if (e.key === "Enter") showAlert(); }} />
                 <Btn onClick={showAlert} title="Mostrar nas telas agora · Enter">Mostrar</Btn>
-                <IconBtn name="star" on={Boolean(kept)} disabled={!kept && !alertText.trim()} title={kept ? "Esta mensagem já está salva" : "Salvar esta mensagem como pronta"} onClick={keepAlert} />
+                <IconBtn name="star" on={Boolean(kept)} disabled={!kept && !alertText.trim()} title={kept ? "Esta mensagem já está salva" : "Salvar esta mensagem como pronta"} aria-label="Mensagem pronta" onClick={keepAlert} />
             </div>
             <div className="kx-presets" role="list" aria-label="Mensagens prontas">
                 {!presets.length && <span className="kx-meta kx-presets-empty">Escreva um aviso e use a estrela para guardá-lo como mensagem pronta. Ex.: Chamar pessoa, Kids, Carro.</span>}
@@ -137,7 +137,7 @@ export function ToolsPicker({ c, data, onPrepare, onGo }) {
             {tool === "timer" && <ReadyTimers c={c} data={data} onPrepare={onPrepare} onGo={onGo} onPrepared={() => setTool(null)} />}
             {tool === "freetext" && (
                 <div className="kx-tool-pick">
-                    <Field icon={null} value={freeText} onChange={setFreeText} placeholder="Texto livre" style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === "Enter") sendText(); }} />
+                    <Field icon={null} value={freeText} onChange={setFreeText} placeholder="Texto livre" style={{ flex: 1 }} inputProps={{ spellCheck: true }} onKeyDown={(e) => { if (e.key === "Enter") sendText(); }} />
                     <Btn onClick={sendText}>Pôr na prévia</Btn>
                 </div>
             )}

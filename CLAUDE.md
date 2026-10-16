@@ -154,7 +154,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `transition` says `mix` (Tocar junto; no transition = the same, for
   senders that say nothing). The console adds `transition` and the exit
   `fade` in `liveOp` (`withTransitions`, `src/lib/console/transitions.js`,
-  tested; the projector window's own keys too); the live state never reads
+  tested; every output window's screen keys too, `useScreenKeys` → `screenKeyOp` in `src/lib/screenKeys.js`, tested: ← → PageUp/PageDown, B, L, C, Esc as on the console, no Space, no click-to-advance, desktop only); the live state never reads
   prefs. Never hush in `media.toAudio`/`audio.toMedia`, `content.show` or
   `clear` (the audio channel survives Esc); a list counts by the item it
   starts with, advances never hush, the Fundo's video is muted. Esc
@@ -207,7 +207,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   5 = A"): it always follows the console, so Telas e saídas has no Tema
   row for it and `normalizePref`/`prefState` never read `theme_id` of
   `/Projection` (`ownsTheme`, tested; an old value stays in the row,
-  unread). Letras, Vídeo and Comunicação keep an optional own theme ("O
+  unread). Letras, Vídeo and Avisos keep an optional own theme ("O
   mesmo da Projeção" is their default).
   **The Fundo layer is the screen's background** (2026-10-12): an item's
   own background (the song's, its theme's, the default theme's) rides in
@@ -451,7 +451,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   its search indexes every row in `settingsSearch.js` — a new `FormRow k`
   goes in the index, or `npm test` fails). **Sobre** is the last section
   (owner 2026-10-14, `SobreSection.jsx`; also the KERYX menu's "Sobre o
-  KERYX…", `openSettings("sobre")`): version (the `info` call of Backup;
+  KERYX", `openSettings("sobre")`): version (the `info` call of Backup;
   "Prévia de desenvolvimento" without the desktop), Ver novidades (the
   console's popover, not a second one), the church's name, Electron and
   Chromium, the Geist license (read from `/fonts/Geist-OFL.txt`) and the
@@ -519,7 +519,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   page's own keys (Ctrl+S, Mídia's Enter/Delete) sleep while covered
   (prop `active`) and defer to `.scrim:not(.win-scrim)`. Pickers that
   answer (the background library, ConfirmDialog, menus) stay ON TOP,
-  never in the stack. While the window is open the Programa monitor and
+  never in the stack. **Focus** (design audit C-12): the console behind
+  the window is `inert`, Tab stays in the window or dialog on top
+  (`useDialogFocus`, rules in `src/lib/console/focusTrap.js`, tested), the
+  page shown takes the focus (`useWinPageFocus`: from the keyboard its first
+  control, with the mouse the bar's title, which holds no keys), and closing
+  gives it back to the opener only after a keyboard open. While the window is open the Programa monitor and
   the Multiview draw one still frame (`still` on CenterPanel — the air
   itself never pauses). The pages are one switch, `winPage` in
   `WinPages.jsx`, for both hosts below; a new page goes there.
@@ -582,7 +587,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `layout.dock` (per computer; null = the one the old columns make,
   `fromArrangement`, so an old save keeps its look). Every module is built
   apart from where it goes (`modulePanels` in Console.jsx: Biblioteca,
-  Slides, Programa, `PreviaPanel`, the Painel de abas, Setlist, Camadas,
+  Slides, Programa, `PreviaPanel`, the Painel, Setlist, Camadas,
   No ar, `PlayerSlot`). Ver › Editar disposição: drag a module by its name to a
   side of another (splits) or its middle (tabs), a click on the name opens
   "Mover para…", × puts it in the tray (the edit banner). While editing,
@@ -608,6 +613,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tier's. The Bíblia's dock stays one. Splits have one
   flexible child and fixed pixel sizes (`allocate`); what cannot fit side
   by side joins as tabs, a pair at a time, the Programa last (`fitDock`).
+  The Programa alone in a split never takes more than its 16:9 and the
+  player (`programaNatural`, design audit C-51): the rest goes to its
+  neighbour (the Prévia's band), never a locked or folded one; the
+  dock's sizes stay the operator's. The band starts as tall as the
+  Prévia's screen (no +84 for the header and button it lost). In the
+  medium and narrow tiers (No ar in the tray, so the Programa's height
+  is steady) the Slides start wider by what the Programa's 16:9 cannot
+  use at that height (`fromArrangement`; the Prévia keeps its width, the
+  Setlist beside it gives the room); the wide tier keeps its columns, which
+  would otherwise move each time the No ar strip comes and goes.
   A new module is an entry in
   dock.js `MODULES` and in `modulePanels`. **Disposições com nome**
   (`src/lib/console/dockPresets.js`, tested): the edit banner saves the dock
@@ -730,7 +745,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the tray and the named arrangements are untouched, so it comes back
   where it was. It folds wherever it is placed alone (not as a tab beside
   another module), never while editing the arrangement, and eases in and
-  out in 180 ms (`.dock-fold`, off with reduced motion). The Bíblia's
+  out in 180 ms, like every fold and locked height (`useDockEase` in
+  Dock.jsx: each changed cell eases from its drawn px to the new one,
+  `dockMotion`/`easesBetween` in dock.js, tested; nothing eases the first
+  second after the dock appears, while editing, or with reduced motion;
+  never a CSS `flex-basis` transition, which collapsed a neighbour turning
+  fixed to 0 px). The Bíblia's
   No ar is another module (`air`) and never folds away (its header's
   chevron still folds it, Rodada F4). In both a click prepares that slide, a double click
   sends it; ↑/↓ walk the Slides column, ←/→ move what is on air. **Lists
@@ -798,7 +818,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   element from the window's pool by url (`src/lib/mediaPool.js`, tested),
   so the player that unmounts hands it to the one that mounts in the same
   commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
-  a test); a mouse click must not leave focus on a control (a select
+  a test); **B, L, C, / and ? follow the church's "Teclas de uma letra"**
+  (`User.letter_keys`: ligadas / com Shift / desligadas, Configurações ›
+  Console; `liveAction(e, letters)`, `shortcutsFor`, `keyHint` for every
+  menu or tooltip that names one; Ctrl+F searches in every choice); tab
+  lists use `onTabsKey` + `tabStop` (kx.jsx, ARIA tabs: roving tabindex,
+  ←/→ Home End). **The console's zoom** (Ctrl+= / Ctrl+− / Ctrl+0,
+  Configurações › Console › Zoom, 90–150 %, settings.json per computer:
+  `electron/consoleZoom.cjs`) runs in the main window's `zoomMode:
+  "isolated"`: Chromium's default zoom is per host and every output is on
+  the same 127.0.0.1, so never zoom without it — the projector would zoom too; a mouse click must not leave focus on a control (a select
   gives it back on the `change` that ends a mouse pick, never on the
   click, which would close its list: `blurSelectsAfterPick` in
   `src/lib/console/selectPick.js`, tested, in the console and `/Janela`).
@@ -815,7 +844,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Transições says (Rodada F2) (music on the audio channel keeps playing; the Fundo
   stays on screen, and the idle look shows only with no Fundo); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
-  `src/lib/console/restore.js`). Camadas' eyes on Texto principal and Fundo
+  `src/lib/console/restore.js`); Ctrl+Z runs it too (keys.js "undo", out of
+  text fields), and a plain toast waits behind it while its time stands
+  still under the pointer or the focus (`toastQueue.js`, `Toast.jsx`; C-13). Camadas' eyes on Texto principal and Fundo
   hide the layer and keep it on air (`layers.hide`/`layers.show`,
   `hiddenLayers`, `layerHidden`; hiding works locked): the next send shows
   the text again, choosing a Fundo shows the Fundo again. The Fundo hidden
@@ -969,7 +1000,7 @@ displays stay awake** (WIN-01): one `powerSaveBlocker`
 `prevent-display-sleep`, started with the first output and stopped
 after the last (`keepAwake` in outputs-manager.cjs, injected in tests;
 `keepsAwake()` for the smoke) — Chromium holds a wake lock only while a
-video plays, so a verse through a sermon went black. **The Saídas popover is one switch per local row** (2026-10-13): ligado = the window exists, the name of an open output brings it forward, states are plain text (`rowStatus` in `src/lib/console/outputs.js`, tested) and the banner stays the active alert; network rows keep Esquecer. **Remover saída** (Telas e saídas; also "Adicionar saída" there and in the popover) hides an output from the popover, the tabs and Verificar and never opens it at launch: the flag is `removed` on the electron settings `"outputs"` entry (per computer, carried by Exportar/Importar ajustes), the OutputPref row stays, so re-adding restores everything; `/Projection` is not removable (the Prévia mirrors it and send auto-opens it), and a network screen showing a removed page keeps working and keeps its row. Each renderer output (Projeção, Letras, Vídeo, Comunicação) has its own settings, one `OutputPref` row per page path shared by the window and network screens showing that page: pages draw through `OutputScreen` (`src/lib/outputPrefs.js`, tested); no row means the output exactly as before. **Telas e saídas is a thumbnail grid** (owner 2026-10-13, no more vertical tabs — old `telas/<tab>` links just resolve to the section): one card per output showing a real still of what that screen draws now (`OutputPreview` in OutputPrefCard.jsx — the card and the grid share it; connected network screens get the same still in Telas na rede); the card keeps only the placement (Automático/Tela N, Abrir ao iniciar, Abrir/Fechar; Remover no clique direito), and clicking the thumb opens the Editor on that screen — every visual setting lives there. **Mostrar** (`hidden_kinds`) leaves kinds out of one output (Letras, Bíblia, Texto, Imagens e vídeos, Apresentações, Relógio e timer, Avisos, Aviso rápido; `hideKinds`): the layer goes, the output shows what is under it or its idle look, and a song's playback track keeps playing (`track`); the console's Prévia says when the output it previews hides the prepared kind (`stageHidden`). A new kind of content gets its entry in `SHOW_KINDS`. **The Aviso rápido is one bar on every screen, in each screen's look** (Rodada E3, owner 2026-10-16): `alert.show` is drawn by `AlertBar` (`src/components/screen/AlertBar.jsx`, `.ks-alert` in screen.css) — inside ScreenRenderer, over a design (LayoutRenderer's `alert`, never inside its Projeção element), over the Vídeo's clip and beside the Palco's StageScreen (`AlertLayer`, a fixed box: `.net-stage` pulls its children into the flow); the old framer-motion pill (AlertOverlayRenderer) is gone, don't bring a second look back. Each output picks Posição (Alto/Baixo), Estilo (Faixa/Pílula), Cores, Tamanho (P/M/G) and Entrada (Deslizar/Aparecer/Nenhuma) in the Editor's Ajustes › Aviso rápido: flat `alert_*` keys of `OutputPref.options`, read by `alertOptions(pref, page)` (tested; no key = `ALERT_DEFAULTS`, the amber band across the top as the Projeção always drew it — except **the Palco, whose bar starts at the bottom** (owner 2026-10-16, `alertDefaults`: its header with title, Tom, BPM and clock is what the musicians read, and its old pill sat there; its Ajustes can still say Alto) — so every caller passes the page) and carried as `alert.look` by `prefState` (only when not the default, so no row = the same state) or `alertOf` (Palco, Vídeo's clip); the entrance respects reduced motion, and a type `"alert"` stays red. Every view keeps the alert (views.js: Vídeo and Comunicação too, so their Mostrar offers Aviso rápido); the Palco shows it while a song is on air, the Pastor's page never (`showsAlert`). The Programa monitor draws the raw live state, so it shows the default bar. **Exportar / Importar ajustes das saídas** (Telas e saídas) is one JSON file with every output's placement and every page's `OutputPref` settings (`src/lib/outputsFile.js`, tested; the theme travels by name): the main process only saves and reads the file (`keryx:displays:export-file` / `import-file`, 1 MB at most); the console checks it, says what will not come out the same on this computer, and applies it through `displays.set` and `OutputPref` (rows updated or created, never deleted). A new setting on `OutputPref` goes in that file too (the Aviso rápido's `alert_*` options ride in `options`, checked both ways by `cleanAlertOptions`). **Cada tela é dona do seu desenho** (owner 2026-10-13; reverte a decisão
+video plays, so a verse through a sermon went black. **The Saídas popover is one switch per local row** (2026-10-13): ligado = the window exists, the name of an open output brings it forward, states are plain text (`rowStatus` in `src/lib/console/outputs.js`, tested) and the banner stays the active alert; network rows keep Esquecer. **Remover saída** (Telas e saídas; also "Adicionar saída" there and in the popover) hides an output from the popover, the tabs and Verificar and never opens it at launch: the flag is `removed` on the electron settings `"outputs"` entry (per computer, carried by Exportar/Importar ajustes), the OutputPref row stays, so re-adding restores everything; `/Projection` is not removable (the Prévia mirrors it and send auto-opens it), and a network screen showing a removed page keeps working and keeps its row. Each renderer output (Projeção, Letras, Vídeo, Avisos) has its own settings, one `OutputPref` row per page path shared by the window and network screens showing that page: pages draw through `OutputScreen` (`src/lib/outputPrefs.js`, tested); no row means the output exactly as before. **Telas e saídas is a thumbnail grid** (owner 2026-10-13, no more vertical tabs — old `telas/<tab>` links just resolve to the section): one card per output showing a real still of what that screen draws now (`OutputPreview` in OutputPrefCard.jsx — the card and the grid share it; connected network screens get the same still in Telas na rede); the card keeps only the placement (Automático/Tela N, Abrir ao iniciar, Abrir/Fechar; Remover no clique direito), and clicking the thumb opens the Editor on that screen — every visual setting lives there. **Mostrar** (`hidden_kinds`) leaves kinds out of one output (Letras, Bíblia, Texto, Imagens e vídeos, Apresentações, Relógio e timer, Avisos, Aviso rápido; `hideKinds`): the layer goes, the output shows what is under it or its idle look, and a song's playback track keeps playing (`track`); the console's Prévia says when the output it previews hides the prepared kind (`stageHidden`). A new kind of content gets its entry in `SHOW_KINDS`. **The Aviso rápido is one bar on every screen, in each screen's look** (Rodada E3, owner 2026-10-16): `alert.show` is drawn by `AlertBar` (`src/components/screen/AlertBar.jsx`, `.ks-alert` in screen.css) — inside ScreenRenderer, over a design (LayoutRenderer's `alert`, never inside its Projeção element), over the Vídeo's clip and beside the Palco's StageScreen (`AlertLayer`, a fixed box: `.net-stage` pulls its children into the flow); the old framer-motion pill (AlertOverlayRenderer) is gone, don't bring a second look back. Each output picks Posição (Alto/Baixo), Estilo (Faixa/Pílula), Cores, Tamanho (P/M/G) and Entrada (Deslizar/Aparecer/Nenhuma) in the Editor's Ajustes › Aviso rápido: flat `alert_*` keys of `OutputPref.options`, read by `alertOptions(pref, page)` (tested; no key = `ALERT_DEFAULTS`, the amber band across the top as the Projeção always drew it — except **the Palco, whose bar starts at the bottom** (owner 2026-10-16, `alertDefaults`: its header with title, Tom, BPM and clock is what the musicians read, and its old pill sat there; its Ajustes can still say Alto) — so every caller passes the page) and carried as `alert.look` by `prefState` (only when not the default, so no row = the same state) or `alertOf` (Palco, Vídeo's clip); the entrance respects reduced motion, and a type `"alert"` stays red. Every view keeps the alert (views.js: Vídeo and Avisos too, so their Mostrar offers Aviso rápido); the Palco shows it while a song is on air, the Pastor's page never (`showsAlert`). The Programa monitor draws the raw live state, so it shows the default bar. **Exportar / Importar ajustes das saídas** (Telas e saídas) is one JSON file with every output's placement and every page's `OutputPref` settings (`src/lib/outputsFile.js`, tested; the theme travels by name): the main process only saves and reads the file (`keryx:displays:export-file` / `import-file`, 1 MB at most); the console checks it, says what will not come out the same on this computer, and applies it through `displays.set` and `OutputPref` (rows updated or created, never deleted). A new setting on `OutputPref` goes in that file too (the Aviso rápido's `alert_*` options ride in `options`, checked both ways by `cleanAlertOptions`). **Cada tela é dona do seu desenho** (owner 2026-10-13; reverte a decisão
 de 2026-10-12 dos layouts avulsos): o desenho mora em **`OutputPref.design`**
 ({ elements, background } no formato de `normalizeLayout`) — `designOf(pref,
 layoutRows)` em `src/lib/outputPrefs.js` (testado) resolve: o design da
@@ -1013,7 +1044,7 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     card tem o estilo das Configurações). **Clicar numa tela já é editar**
     (owner 2026-10-13): sem design, o canvas abre semeado com o desenho
     pronto da página (`seedFor` → `seedLayoutId` em layouts.js, testado:
-    `factory:palco`/`pastor`/`projecao`; Letras, Vídeo e Comunicação
+    `factory:palco`/`pastor`/`projecao`; Letras, Vídeo e Avisos
     começam de `factory:tela`, a Projeção em tela cheia, como as páginas
     delas se desenham — Rodada E3),
     a semente é a base (`saved`), então só mudança real é "não salvo" e
@@ -1021,11 +1052,11 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     com design próprio ou mudanças) zera a linha e semeia de novo. Não há
     mais "Desenhar esta tela"/"Começar do zero". A Transmissão não tem
     canvas, só os ajustes. **Todas as telas são iguais no Editor** (Rodada
-    E3, owner 2026-10-16): a Comunicação (avisos em sequência) tem desenho
+    E3, owner 2026-10-16): a de Avisos (avisos em sequência) tem desenho
     e ajustes como as outras; o canvas de uma tela que só mostra avisos
     ganha um aviso de exemplo quando não há aviso no ar (como o still de
     Telas e saídas), e Cifra/Nome da parte só aparecem onde a vista mostra
-    letras (não em Vídeo nem Comunicação).
+    letras (não em Vídeo nem Avisos).
   - um TEMA (`ThemeEditor.jsx`): o ÚNICO lugar em que um tema se edita —
     Configurações › Temas é só a lista; Camadas ajusta o ar e captura com
     "Salvar como novo". `text_align`/`text_position` em `EXTRA_KEYS`
@@ -1194,7 +1225,10 @@ so a release follows these rules. The steps and commands are in README ›
   (`/Projection`, `/LyricProjection`, `/StageView`, `/VideoProjection`,
   `/CommunicationProjection`, `/PastorView`, `/StreamView`), the same output
   pages for network screens. A new output page goes there, in
-  `electron/outputs.cjs` and, if screens on the network may open it, in
+  `electron/outputs.cjs`, its one factory name in `shared/outputNames.json`
+  (main, the network list and the renderer all read it; the stored `name` of
+  an output the operator renamed still wins) and, if screens on the network
+  may open it, in
   `NETWORK_SCREENS`, and in a group of `GROUPS` (`src/lib/console/outputs.js`:
   Público, Palco, Transmissão). `/StreamView` (Transmissão) is network only:
   an OBS Browser Source, a transparent lower third, text only

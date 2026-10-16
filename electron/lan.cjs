@@ -26,15 +26,17 @@ const path = require("node:path");
 const { MEDIA_PREFIX, BUNDLED_PREFIX, within, sendFile } = require("./server.cjs");
 
 // Pages that work from the live state and the database alone (no
-// window.opener to talk to).
+// window.opener to talk to), under the outputs' factory names
+// (shared/outputNames.json, the same as Saídas and the Editor de telas).
+const NAMES = require("../shared/outputNames.json");
 const NETWORK_SCREENS = [
-    { path: "/Projection", label: "Projeção principal", hint: "O mesmo que o projetor: letras, Bíblia, mídia e avisos" },
-    { path: "/LyricProjection", label: "Letras", hint: "Tablet ou TV com a letra da música" },
-    { path: "/StageView", label: "Palco", hint: "Monitor do palco: letra atual, próxima e relógio" },
-    { path: "/VideoProjection", label: "Vídeo", hint: "Recebe os vídeos enviados pelo operador" },
-    { path: "/CommunicationProjection", label: "Avisos", hint: "Contagens regressivas e avisos" },
-    { path: "/PastorView", label: "Tela do pastor", hint: "O que está projetado, relógio e tempo do culto" },
-    { path: "/StreamView", label: "Transmissão", hint: "Legenda para a live: no OBS, Fonte de navegador 1920 × 1080, fundo transparente" },
+    { path: "/Projection", label: NAMES["/Projection"], hint: "O mesmo que o projetor: letras, Bíblia, mídia e avisos" },
+    { path: "/LyricProjection", label: NAMES["/LyricProjection"], hint: "Tablet ou TV com a letra da música" },
+    { path: "/StageView", label: NAMES["/StageView"], hint: "Monitor do palco: letra atual, próxima e relógio" },
+    { path: "/VideoProjection", label: NAMES["/VideoProjection"], hint: "Recebe os vídeos enviados pelo operador" },
+    { path: "/CommunicationProjection", label: NAMES["/CommunicationProjection"], hint: "Contagens regressivas e avisos" },
+    { path: "/PastorView", label: NAMES["/PastorView"], hint: "O que está projetado, relógio e tempo do culto" },
+    { path: "/StreamView", label: NAMES["/StreamView"], hint: "Legenda para a live: no OBS, Fonte de navegador 1920 × 1080, fundo transparente" },
 ];
 const SCREEN_PATHS = new Set(NETWORK_SCREENS.map((s) => s.path));
 

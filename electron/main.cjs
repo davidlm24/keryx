@@ -1,13 +1,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
-const { app, BrowserWindow, Menu, dialog, ipcMain, powerMonitor, safeStorage, screen, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, powerMonitor, safeStorage, screen, session, shell } = require("electron");
 const { startStaticServer, MEDIA_PREFIX } = require("./server.cjs");
 const { createStore } = require("./db/store.cjs");
 const { registerDataIpc } = require("./data-ipc.cjs");
-const { createOutputManager } = require("./outputs-manager.cjs");
+const { createOutputManager, createReloadLimiter } = require("./outputs-manager.cjs");
 const { createSettings } = require("./settings.cjs");
-const { outputKeyForUrl } = require("./outputs.cjs");
+const { outputKeyForUrl, outputForKey } = require("./outputs.cjs");
 const { createLogger, captureConsole } = require("./logger.cjs");
 const { applyPendingImport } = require("./archive.cjs");
 const { createUpdater, installedNote } = require("./updater.cjs");
@@ -19,6 +19,8 @@ const { createLive, loadLiveRules } = require("./live.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
+const { createConsoleZoom, zoomCommand } = require("./consoleZoom.cjs");
+const windowState = require("./windowState.cjs");
 const schema = require("./db/schema.json");
 
 // A projection window covered by another window is still projecting. Windows
@@ -27,6 +29,10 @@ const schema = require("./db/schema.json");
 // the projector. No window of this app is ever background.
 app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
 app.commandLine.appendSwitch("disable-background-media-suspend");
+// The app speaks pt-BR whatever the system's language: Chromium's own
+// strings (spelling, form validation, media controls) and what it tells
+// Narrator follow this, with <html lang="pt-BR"> in index.html.
+app.commandLine.appendSwitch("lang", "pt-BR");
 
 const HOST = "127.0.0.1";
 // KERYX_PORT=0 picks a free port; smoke runs do, so a test never collides with
@@ -38,6 +44,10 @@ const PORT = process.env.KERYX_PORT !== undefined ? Number(process.env.KERYX_POR
 const BG = "#0d0d0c";
 const TITLEBAR_SYMBOLS = "#bbb6ac"; // --fg-2
 const TITLEBAR_HEIGHT = 32;
+// A detached page's bar (.win-bar in console.css, 40 px with its 1 px line
+// under it) is its title bar: the system's buttons sit at its right end,
+// down to that line.
+const JANELA_BAR_HEIGHT = 39;
 
 // KERYX_DEV_URL: a running Vite dev server (npm run desktop:dev).
 // KERYX_DATA_DIR: where the database and media live (tests use a temp dir).
@@ -89,6 +99,10 @@ let sync = null;
 // for the close guard (electron/closeGuard.cjs).
 let liveRules = null;
 let appSettings = null;
+// The console's zoom (Ctrl+= / Ctrl+− / Ctrl+0, electron/consoleZoom.cjs).
+let consoleZoom = null;
+// The bell, set once the notifications exist (a window can crash before then).
+let notify = () => {};
 // A quit already decided (app.quit: the updater, the menu, the guard's
 // "Fechar o KERYX"): the console's X no longer asks.
 let quitting = false;
@@ -124,6 +138,56 @@ function isAppUrl(url) {
     }
 }
 
+// A renderer that dies or hangs reloads itself (ARCH-001): the live state is
+// held by the main process and pages ignore stale revisions, so a reload comes
+// back on the same slide. Before, a dead projector stayed dead.
+const UNRESPONSIVE_MS = 4000;
+const RELOAD_DELAY_MS = 300;
+function recoverFromCrashes(win) {
+    const { webContents } = win;
+    const limiter = createReloadLimiter();
+    let hung = null;
+    const name = () => {
+        const output = outputForKey(outputKeyForUrl(webContents.getURL(), appOrigin) || "");
+        return output ? `A saída ${output.label}` : win === mainWindow ? "O console" : "Uma janela do KERYX";
+    };
+    const alive = () => !quitting && !win.isDestroyed() && !webContents.isDestroyed();
+
+    webContents.on("render-process-gone", (_event, details) => {
+        if (details.reason === "clean-exit" || !alive()) return;
+        const who = name();
+        if (!limiter.allow()) {
+            logger.error(`[keryx-crash] ${who} reiniciou 3 vezes em 1 minuto; não vai reiniciar de novo (${details.reason})`);
+            notify({ key: `crash:${who}`, kind: "warn", title: `${who} reiniciou 3 vezes`, body: "Veja o diagnóstico em Configurações › Dados e backup." });
+            return;
+        }
+        logger.error(`[keryx-crash] ${who} caiu (${details.reason}); reiniciando`);
+        setTimeout(() => {
+            if (!alive()) return;
+            webContents.reload();
+            if (win === mainWindow) {
+                webContents.once("did-finish-load", () => notify({ key: "console-restarted", kind: "info", title: "O console foi reiniciado", body: "Nada saiu do ar." }));
+            }
+        }, RELOAD_DELAY_MS);
+    });
+    // A page silent for 4 s is crashed on purpose, which goes through the
+    // handler above (log, limit, reload).
+    webContents.on("unresponsive", () => {
+        if (hung) return;
+        hung = setTimeout(() => {
+            hung = null;
+            if (!alive()) return;
+            logger.error(`[keryx-crash] ${name()} parou de responder; reiniciando`);
+            webContents.forcefullyCrashRenderer();
+        }, UNRESPONSIVE_MS);
+    });
+    webContents.on("responsive", () => {
+        if (hung) clearTimeout(hung);
+        hung = null;
+    });
+    win.on("closed", () => { if (hung) clearTimeout(hung); });
+}
+
 function guardWindow(win) {
     const { webContents } = win;
 
@@ -132,14 +196,17 @@ function guardWindow(win) {
     webContents.setWindowOpenHandler(({ url }) => {
         if (isAppUrl(url) || url === "about:blank") {
             // Outputs (projector, stage, ...) land on the display the operator
-            // chose; any other popup opens where the page asked.
+            // chose; a detached page (/Janela) where it was left; any other
+            // popup opens where the page asked.
             const key = outputKeyForUrl(url, appOrigin);
+            const kind = !key && windowState.janelaKind(url, appOrigin);
             return {
                 action: "allow",
                 overrideBrowserWindowOptions: {
                     backgroundColor: "#000000",
                     autoHideMenuBar: true,
                     ...(key && outputs ? outputs.windowOptions(key) : {}),
+                    ...(kind ? janelaWindowOptions(kind) : {}),
                     webPreferences,
                 },
             };
@@ -154,9 +221,24 @@ function guardWindow(win) {
         if (/^https?:/i.test(url)) shell.openExternal(url);
     });
 
+    // No free zoom in any window (audit C-91): pinch stays at 100 % (Electron's
+    // default, pinned), and should Chromium zoom on its own (the page blocks
+    // Ctrl+wheel, src/main.jsx) the console goes back to its saved step and
+    // any other window to 100 % — the projector never zooms.
+    webContents.on("did-finish-load", () => { webContents.setVisualZoomLevelLimits(1, 1).catch(() => {}); });
+    webContents.on("zoom-changed", () => {
+        if (win === mainWindow && consoleZoom) consoleZoom.apply(win);
+        else if (!win.isDestroyed()) webContents.setZoomFactor(1);
+    });
+
     webContents.on("did-create-window", (child, details) => {
         guardWindow(child);
         if (outputs) outputs.track(child, details.url);
+        const kind = windowState.janelaKind(details.url, appOrigin);
+        if (kind) {
+            if (janelaPlacement(kind).maximized) child.maximize();
+            child.on("close", () => keepJanelaPlacement(child, kind));
+        }
     });
 
     // A page with unsaved changes (the Editor) holds its window with
@@ -169,14 +251,21 @@ function guardWindow(win) {
         else win.emit(closeGuard.KEPT_OPEN);
     });
 
-    // Right click: in a text field, the system's own Recortar / Copiar /
-    // Colar; everywhere else the console draws its own menus
+    // Right click: in a text field, the spellchecker's suggestions (when it
+    // marked the word), Desfazer / Refazer and the system's own Recortar /
+    // Copiar / Colar; everywhere else the console draws its own menus
     // (src/components/console/ContextMenu.jsx), and a page that shows none
     // gets nothing.
     webContents.on("context-menu", (_event, params) => {
         if (!params.isEditable) return;
         const can = params.editFlags || {};
+        const words = params.misspelledWord ? (params.dictionarySuggestions || []).slice(0, 5) : [];
         Menu.buildFromTemplate([
+            ...words.map((word) => ({ label: word, click: () => webContents.replaceMisspelling(word) })),
+            ...(words.length ? [{ type: "separator" }] : []),
+            { label: "Desfazer", role: "undo", enabled: Boolean(can.canUndo) },
+            { label: "Refazer", role: "redo", enabled: Boolean(can.canRedo) },
+            { type: "separator" },
             { label: "Recortar", role: "cut", enabled: Boolean(can.canCut) },
             { label: "Copiar", role: "copy", enabled: Boolean(can.canCopy) },
             { label: "Colar", role: "paste", enabled: Boolean(can.canPaste) },
@@ -184,6 +273,8 @@ function guardWindow(win) {
             { label: "Selecionar tudo", role: "selectAll", enabled: Boolean(can.canSelectAll) },
         ]).popup({ window: BrowserWindow.fromWebContents(webContents) || undefined });
     });
+
+    recoverFromCrashes(win);
 
     if (DEVTOOLS) {
         webContents.on("before-input-event", (event, input) => {
@@ -212,12 +303,65 @@ function openOutputWindow(url, placement) {
     return win;
 }
 
-function createMainWindow() {
+// Where the console opens (windowState.cjs): as it was left on this computer
+// when that fits a monitor connected now, else maximized on the primary one.
+// Smoke runs keep the fixed size their checks resize from.
+function consolePlacement(settings) {
+    if (SMOKE) return { bounds: { ...windowState.DEFAULT }, maximized: false };
+    const primaryId = screen.getPrimaryDisplay().id;
+    const displays = screen.getAllDisplays().map((d) => ({ primary: d.id === primaryId, bounds: d.bounds, workArea: d.workArea }));
+    return windowState.restoreWindow(settings.get(windowState.SETTINGS_KEY, null), displays);
+}
+
+// Kept when the console closes: its normal bounds and whether it was maximized.
+function keepConsolePlacement(win, settings) {
+    if (SMOKE || win.isDestroyed()) return;
+    const previous = settings.get(windowState.SETTINGS_KEY, null);
+    const state = windowState.windowStateToSave({ normal: win.getNormalBounds(), maximized: win.isMaximized() || win.isFullScreen(), minimized: win.isMinimized() }, previous);
+    if (state) settings.set(windowState.SETTINGS_KEY, state);
+}
+
+// A detached page (/Janela, one window per kind of page): the console's
+// chrome — no native bar, the system's buttons over the page's own bar (its
+// WinBar, which leaves them room and drops its ×) — at least 760 × 480, where
+// that kind was left on this computer, else its default size centred on the
+// console's monitor (windowState.cjs).
+function janelaPlacement(kind) {
+    const saved = (appSettings?.get(windowState.JANELA_KEY, {}) || {})[kind] || null;
+    let home = null;
+    try {
+        if (mainWindow && !mainWindow.isDestroyed()) home = screen.getDisplayMatching(mainWindow.getBounds()).id;
+    } catch { /* the primary below */ }
+    if (home === null) home = screen.getPrimaryDisplay().id;
+    const displays = screen.getAllDisplays().map((d) => ({ primary: d.id === home, bounds: d.bounds, workArea: d.workArea }));
+    return windowState.restoreWindow(saved, displays, windowState.JANELA);
+}
+
+function janelaWindowOptions(kind) {
+    return {
+        ...janelaPlacement(kind).bounds,
+        minWidth: windowState.JANELA.min.width,
+        minHeight: windowState.JANELA.min.height,
+        backgroundColor: BG,
+        ...(process.platform === "win32"
+            ? { titleBarStyle: "hidden", titleBarOverlay: { color: BG, symbolColor: TITLEBAR_SYMBOLS, height: JANELA_BAR_HEIGHT } }
+            : {}),
+    };
+}
+
+function keepJanelaPlacement(win, kind) {
+    if (SMOKE || !appSettings || win.isDestroyed()) return;
+    const all = appSettings.get(windowState.JANELA_KEY, {}) || {};
+    const state = windowState.windowStateToSave({ normal: win.getNormalBounds(), maximized: win.isMaximized(), minimized: win.isMinimized() }, all[kind]);
+    if (state) appSettings.set(windowState.JANELA_KEY, { ...all, [kind]: state });
+}
+
+function createMainWindow(settings) {
+    const placement = consolePlacement(settings);
     mainWindow = new BrowserWindow({
-        width: 1440,
-        height: 900,
-        minWidth: 960,
-        minHeight: 600,
+        ...placement.bounds,
+        minWidth: windowState.MIN.width,
+        minHeight: windowState.MIN.height,
         show: false,
         backgroundColor: BG,
         title: "KERYX",
@@ -228,10 +372,22 @@ function createMainWindow() {
         ...(process.platform === "win32"
             ? { titleBarStyle: "hidden", titleBarOverlay: { color: BG, symbolColor: TITLEBAR_SYMBOLS, height: TITLEBAR_HEIGHT } }
             : {}),
-        webPreferences,
+        // Zoom per window, never per host: every output is on the same
+        // 127.0.0.1, and the default mode would zoom the projector with the
+        // console (electron/consoleZoom.cjs).
+        webPreferences: { ...webPreferences, zoomMode: "isolated", zoomFactor: consoleZoom ? consoleZoom.get() : 1 },
     });
     guardWindow(mainWindow);
-    mainWindow.once("ready-to-show", () => mainWindow.show());
+    mainWindow.webContents.on("before-input-event", (event, input) => {
+        const cmd = consoleZoom && zoomCommand(input);
+        if (!cmd) return;
+        event.preventDefault();
+        consoleZoom.command(cmd);
+    });
+    mainWindow.once("ready-to-show", () => {
+        if (placement.maximized) mainWindow.maximize();
+        mainWindow.show();
+    });
     // Closing the console closes KERYX. The outputs are not in the taskbar, so
     // otherwise the app could keep running unseen (and the network server up).
     // "close" (not "closed"): the import restart's app.exit() destroys windows
@@ -242,6 +398,7 @@ function createMainWindow() {
     // close before the quit: one with unsaved changes asks, and "Continuar
     // editando" keeps KERYX open, console and all.
     mainWindow.on("close", (event) => {
+        keepConsolePlacement(mainWindow, settings);
         if (quitting) return; // a quit already decided closes every window
         event.preventDefault();
         const enabled = closeGuard.machinePrefs(appSettings?.get(closeGuard.MACHINE_KEY, {})).confirmClose;
@@ -276,6 +433,11 @@ app.on("child-process-gone", (_e, details) => logger.error(`child-process-gone: 
 app.whenReady().then(async () => {
     if (!gotLock) return;
     Menu.setApplicationMenu(null);
+    // KERYX is dark only (the owner's decision): Windows draws the title bars
+    // of the detached pages and windowed outputs, the text fields' Recortar /
+    // Copiar / Colar menu and the native dialogs dark too, whatever the
+    // system's own theme.
+    nativeTheme.themeSource = "dark";
     logger.info(`KERYX ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
     if (importOutcome && importOutcome.error) {
         dialog.showErrorBox("Importação não aplicada", `Os dados anteriores foram mantidos.\n\n${importOutcome.error}`);
@@ -311,6 +473,10 @@ app.whenReady().then(async () => {
     appUrl = DEV_URL || serverUrl;
     appOrigin = new URL(appUrl).origin;
 
+    // The spellchecker reads Portuguese whatever the PC's language: on an
+    // English Windows "palavrra" offered "palabra" and "palaver".
+    try { session.defaultSession.setSpellCheckerLanguages(["pt-BR"]); } catch (err) { console.warn("[keryx] spellchecker:", err?.message || err); }
+
     // The console's level meters read the sound the PC is putting out
     // (system loopback, Windows), so measuring can never disturb playback.
     // getDisplayMedia needs a video source; the page is given its own frame
@@ -329,6 +495,11 @@ app.whenReady().then(async () => {
 
     const settings = createSettings(path.join(dataDir, "settings.json"), (m) => console.warn(m));
     appSettings = settings;
+    consoleZoom = createConsoleZoom({
+        settings,
+        getWindow: () => mainWindow,
+        notify: (z) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("keryx:zoom", z); },
+    });
     // First run: the main projector opens with the app (the operator can
     // turn it off in Telas e saídas). Smoke runs manage outputs themselves.
     if (!SMOKE && settings.get("outputs") === undefined) {
@@ -349,6 +520,7 @@ app.whenReady().then(async () => {
         for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, payload);
     };
     const notifications = createNotifications({ settings, onChange: (list) => broadcast("keryx:notifications", list) });
+    notify = (n) => notifications.add(n);
     const autoUpdates = () => Boolean((settings.get("updates", {}) || {}).auto);
     const updater = createUpdater({
         app,
@@ -383,7 +555,7 @@ app.whenReady().then(async () => {
         settings.set("lastVersion", version);
         settings.set("pendingNotes", null);
     }
-    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, syncInfo: () => (sync ? sync.status() : null) });
+    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, consoleZoom, syncInfo: () => (sync ? sync.status() : null) });
     try {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }
@@ -534,7 +706,7 @@ app.whenReady().then(async () => {
     sync.start();
     powerMonitor.on("resume", () => sync.poke());
 
-    const win = createMainWindow();
+    const win = createMainWindow(settings);
     // Outputs set to "Abrir ao iniciar" in Telas e saídas.
     win.once("ready-to-show", () => outputs.openAtLaunch());
     if (SMOKE) require("./smoke.cjs").runSmokeTest(win, { dev: Boolean(DEV_URL), outputs, screen, system, settings, network, live, dataDir, importOutcome });

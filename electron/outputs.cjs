@@ -4,14 +4,16 @@
 
 // key is the page path. windowName is what the pages pass to window.open;
 // autoExternal outputs go to the first external display when the operator has
-// not chosen one.
+// not chosen one. The label is the output's one factory name, the same the
+// renderer shows (shared/outputNames.json).
+const NAMES = require("../shared/outputNames.json");
 const OUTPUTS = [
-    { key: "/Projection", label: "Projeção principal", windowName: "keryx_projection", autoExternal: true },
-    { key: "/LyricProjection", label: "Letras (tela de letras)", windowName: "lyricProjection" },
-    { key: "/VideoProjection", label: "Vídeo", windowName: "videoProjection" },
-    { key: "/StageView", label: "Palco", windowName: "stageView" },
-    { key: "/PastorView", label: "Tela do pastor", windowName: "pastorView" },
-    { key: "/CommunicationProjection", label: "Comunicação", windowName: "communicationProjection" },
+    { key: "/Projection", label: NAMES["/Projection"], windowName: "keryx_projection", autoExternal: true },
+    { key: "/LyricProjection", label: NAMES["/LyricProjection"], windowName: "lyricProjection" },
+    { key: "/VideoProjection", label: NAMES["/VideoProjection"], windowName: "videoProjection" },
+    { key: "/StageView", label: NAMES["/StageView"], windowName: "stageView" },
+    { key: "/PastorView", label: NAMES["/PastorView"], windowName: "pastorView" },
+    { key: "/CommunicationProjection", label: NAMES["/CommunicationProjection"], windowName: "communicationProjection" },
 ];
 
 const WINDOWED = { width: 1280, height: 720 };

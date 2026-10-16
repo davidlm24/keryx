@@ -3,7 +3,7 @@
 // One row per output page ("/Projection", "/LyricProjection", ...): the
 // desktop window and a network screen showing the same page share it. No row,
 // or a row with nothing set, is the output exactly as before.
-import { outputView, RAIL_VIEWS } from "./network/views.js";
+import { outputView, RAIL_VIEWS, OUTPUT_NAMES } from "./network/views.js";
 import { themeBackgroundArgs } from "./console/themes.js";
 import { normalizeLayout, findLayout } from "./layouts.js";
 
@@ -86,17 +86,16 @@ export function hiddenOnAir(state, pref) {
 // Every output's factory name and icon: the rail's list (views.js) plus
 // Transmissão, which only exists on the network. "No row" means these.
 const META = Object.fromEntries(RAIL_VIEWS.map((v) => [v.key, { name: v.name, icon: v.icon }]));
-META["/StreamView"] = { name: "Transmissão", icon: "external" };
+META["/StreamView"] = { name: OUTPUT_NAMES["/StreamView"], icon: "external" };
 export const outputMeta = (path) => META[path] || { name: path, icon: "monitor" };
 // The icons an output may pick (Configurações › Telas e saídas › Ajustes);
 // every name exists in the design-system set.
 export const ICON_CHOICES = ["projector", "tv", "monitor", "tablet", "film", "megaphone", "book", "image", "text", "star", "layers", "external"];
 const ICON_RE = /^[a-z0-9-]{1,32}$/;
 // The name and icon an output shows everywhere (the rail, Saídas, Telas e
-// saídas, the network pages). Each surface has its own factory label
-// ("Projeção principal" on the window row, "Projeção" on the rail), so
-// `custom` is empty when the operator named nothing and the surface keeps
-// its own label; `name` falls back to the rail's.
+// saídas, the network pages). `custom` is empty when the operator named
+// nothing, and the surface keeps the factory name (shared/outputNames.json,
+// one for every surface); `name` falls back to it.
 export function outputLook(path, row) {
     const meta = outputMeta(path);
     const custom = typeof row?.name === "string" && row.name.trim() ? row.name.trim().slice(0, 40) : "";
@@ -108,7 +107,7 @@ export function outputLook(path, row) {
 }
 
 // Whether an output may pick a theme of its own. The main Projeção never
-// does (it always follows the console); Letras, Vídeo and Comunicação may.
+// does (it always follows the console); Letras, Vídeo and Avisos may.
 export const ownsTheme = (page) => page !== "/Projection";
 
 export const SCALE_RANGE = [80, 140];

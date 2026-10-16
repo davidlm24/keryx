@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { remember, forget, localId } from "@/lib/console/outputs";
-import { BACKGROUNDS, backgroundUrl } from "@/lib/backgrounds";
+import { bundledBackgrounds } from "@/lib/backgrounds";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { backgroundList, sourceOf } from "@/lib/console/backgroundPrefs";
 import { useUser } from "@/hooks/useUser";
@@ -71,25 +71,32 @@ export const useServiceTemplates = () => useList("ServiceTemplate", ["name"]).da
 // media library, the aviso and layout editors.
 export const isBackgroundMedia = (m) => m?.category === "background";
 
+// A list has answered (or failed): before that, an empty list is not
+// "nothing yet" and the Biblioteca shows no empty state (POL-03).
+const answered = (q) => !q.isPending;
+
 export function useLibrary() {
-    const songs = useList("Song", ["title"]).data;
-    const allMedia = useMediaFiles(useList("Media", ["-created_date"]).data);
+    const songsQ = useList("Song", ["title"]);
+    const mediaQ = useList("Media", ["-created_date"]);
+    const piecesQ = useList("CommunicationVideo", ["title"]);
+    const songs = songsQ.data;
+    const allMedia = useMediaFiles(mediaQ.data);
     const media = useMemo(() => allMedia.filter((m) => !isBackgroundMedia(m)), [allMedia]);
     const backgroundMedia = useMemo(() => allMedia.filter(isBackgroundMedia), [allMedia]);
-    const pieces = useList("CommunicationVideo", ["title"]).data;
+    const pieces = piecesQ.data;
     const themes = useList("ProjectionTheme", ["name"]).data;
     const materials = useList("BibleMaterial", ["-created_date"]).data;
     const alertPresets = useList("AlertPreset", ["created_date"]).data;
     const timerPresets = useList("TimerPreset", ["minutes"]).data;
-    return { songs, media, backgroundMedia, pieces, themes, materials, alertPresets, timerPresets };
+    const loaded = { songs: answered(songsQ), media: answered(mediaQ), pieces: answered(piecesQ) };
+    return { songs, media, backgroundMedia, pieces, themes, materials, alertPresets, timerPresets, loaded };
 }
 
 // Every background the galleries can offer, with the church's settings
 // (BackgroundPref, src/lib/console/backgroundPrefs.js): the ones that ship
 // with KERYX by factory category, then the church's own backgrounds (Media
 // rows of category "background": sent or brought in through the library).
-const BUNDLED = [...new Set(Object.values(BACKGROUNDS).flat())]
-    .map((id) => ({ id, url: backgroundUrl(id), category: Object.keys(BACKGROUNDS).find((k) => BACKGROUNDS[k].includes(id)) }));
+const BUNDLED = bundledBackgrounds();
 // Whether the church wants the forecast of the service's end and the delay
 // ("termina ~", "passou N min"): Configurações › Culto, off by default.
 export function useShowForecast() {
@@ -122,14 +129,18 @@ export function useBackgrounds() {
 // default, else the most recent).
 export function useRundown(serviceId) {
     const client = useQueryClient();
-    const services = useList("Service", ["-date"]).data;
+    const servicesQ = useList("Service", ["-date"]);
+    const services = servicesQ.data;
     useEffect(() => keryx.entities.ServiceItem.subscribe(() => client.invalidateQueries({ queryKey: ["console", "serviceItems"] })), [client]);
-    const items = useQuery({
+    const itemsQ = useQuery({
         queryKey: ["console", "serviceItems", serviceId],
         queryFn: () => keryx.entities.ServiceItem.filter({ serviceId }, "order"),
         enabled: Boolean(serviceId),
-    }).data ?? EMPTY;
-    return { services, items: items.filter((i) => i.enabled !== false).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)) };
+    });
+    const items = itemsQ.data ?? EMPTY;
+    // The Setlist's empty state waits for the services and its items (POL-03).
+    const loaded = answered(servicesQ) && (!serviceId || answered(itemsQ));
+    return { services, items: items.filter((i) => i.enabled !== false).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), loaded };
 }
 
 export function pickDefaultService(services) {

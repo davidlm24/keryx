@@ -56,7 +56,7 @@ export const MODULES = {
     // and the Prévia are screens, the player a slot.
     programa: { name: "Programa", minW: 320, minH: 172, required: true, noFold: true },
     previa: { name: "Prévia", minW: 220, minH: 200, required: true, noFold: true },
-    abas: { name: "Painel de abas", minW: 220, minH: 140 },
+    abas: { name: "Painel", minW: 220, minH: 140 },
     // Never out of reach (the console audit, 2026-10-13).
     setlist: { name: "Setlist", minW: 220, minH: 120, required: true },
     camadas: { name: "Camadas", minW: 280, minH: 120 },
@@ -364,7 +364,7 @@ export const isPinned = (id) => Boolean(MODULES[id]?.pinned);
 //   wide    the four columns of the 2026-10-13 console audit, the No ar
 //           strip under all of them, edge to edge (2026-10-14);
 //   medium  no right column: Camadas is a drawer (in the tray, with No ar) and the
-//           Setlist sits beside the Prévia, where the Painel de abas was;
+//           Setlist sits beside the Prévia, where the Painel was;
 //   narrow  the same, and the Biblioteca over the Slides in one column.
 // `width`, `height`: the console's grid, to turn the Prévia's percentage
 // and a stacked column into pixels.
@@ -372,7 +372,7 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     const hidden = layout?.hidden || {};
     const px = (k, d) => pxOrNull(layout?.[k]) ?? d;
     const libW = px("libW", 260);
-    const slidesW = px("slidesW", 300);
+    let slidesW = px("slidesW", 300);
     const rightW = px("rightW", 320);
     const camadasH = px("camadasH", 280);
     const wide = tier !== "medium" && tier !== "narrow";
@@ -380,6 +380,7 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     // Narrow: the Biblioteca and the Slides share a column, in the stack's order.
     const pair = normalizeOrder(layout?.stacks?.source, ["lib", "slides"]).filter((id) => !hidden[id]);
     let centre = width - (wide ? rightW + G : 0);
+    const slidesShown = narrow ? pair.length > 0 : !hidden.slides;
     if (narrow) { if (pair.length) centre -= slidesW + G; }
     else {
         if (!hidden.lib) centre -= libW + G;
@@ -387,9 +388,24 @@ export function fromArrangement(layout = {}, { width = 1908, height = 900, tier 
     }
     const pct = Number.isFinite(layout?.prevPct) ? layout.prevPct : 44;
     const prevW = Math.round(Math.min(900, Math.max(MODULES.previa.minW, (centre * pct) / 100)));
-    // The bottom band was as tall as the Prévia's column: its 16:9 monitor,
-    // Enviar ao ar and the panel's header and padding.
-    const bottomH = Math.round((prevW * 9) / 16 + 84);
+    // The bottom band is as tall as the Prévia's 16:9 screen: it has no
+    // header nor Enviar ao ar since 2026-10-14 (the 84 px they took left an
+    // empty band under it and squeezed the Programa; design audit C-51).
+    // What the Programa cannot use comes back to it (fitDock, programaNatural).
+    const bottomH = Math.max(MODULES.previa.minH, Math.round((prevW * 9) / 16));
+    // Medium and narrow (the No ar strip in the tray, so the Programa's
+    // height never changes during a service): the Slides start wider by what
+    // the Programa's 16:9 cannot use at this height (design audit C-51), so
+    // the centre is as wide as its screen; the Prévia keeps its width and
+    // the Setlist beside it gives the room, down to its minimum. Never over a
+    // width of its own an old layout gave the Slides (layout.js keeps the
+    // default 300 in every layout; nothing writes another since the dock).
+    // The wide console keeps its columns: there the strip comes and goes
+    // with the lyrics, and the columns would move with it.
+    if (!wide && slidesShown && slidesW === 300) {
+        const fill = Math.max(MODULES.programa.minW, prevW + G + MODULES.setlist.minW, programaNatural(true, 0, height - bottomH - G));
+        if (fill < centre) { slidesW += Math.round(centre - fill); centre = fill; }
+    }
     const band = split("row", [group(["previa"]), group([wide ? "abas" : "setlist"])], [prevW, null]);
     const live = split("col", [group(["programa"]), band], [null, bottomH]);
     // Camadas over the Setlist (or under it), Camadas with its own height and
@@ -702,6 +718,13 @@ export function allocate(sizes, mins, avail) {
 // splitter beside it, Dock.jsx) and never gives way; across a row, or as a
 // tab beside other modules, the lock does not apply.
 //
+// The Programa alone in a split never takes more than its screen can use
+// (programaNatural; design audit C-51): what it would get past that goes to
+// its neighbour in the split (the next one, else the one before; never a
+// locked or folded one), so no empty band sits under the player or beside
+// the screen. The operator's sizes are untouched: a splitter still makes
+// the neighbour bigger, only not the Programa past its 16:9.
+//
 // `folded`: the modules the operator folded (their header's chevron, owner
 // 2026-10-16, Rodada F4; layout.folded). A child of a split that is one of
 // them alone locks, as above, to its header (`head` px, the density's)
@@ -712,6 +735,39 @@ export function allocate(sizes, mins, avail) {
 // them takes the rest. Every group alone in a split carries `fold`:
 // { dir, on, can } — how it folds there, whether it is folded, whether its
 // chevron may act (folded, or another child of the split is open).
+// What the dock moves by itself (Dock.jsx eases it, POL-01): every cell of
+// a fitted frame, keyed by its split's path and its place there, with its
+// size along the split. `shape` names the cells; `motion` adds what folds,
+// goes or locks. Between two frames of one window size and one shape, a
+// different `motion` is a panel folded or opened, the No ar strip coming or
+// going, or a measured height changing: eased. A new shape (another
+// arrangement, editing it, a group joined as tabs) or a new window size is
+// drawn at once, and so is a splitter drag (it moves no lock).
+export function dockMotion(frame) {
+    const cells = [];
+    const sizes = {};
+    const walk = (f) => {
+        if (!f || f.kind !== "split") return;
+        for (const ch of f.children) {
+            const k = `${JSON.stringify(f.path)}/${ch.at.join(",")}`;
+            sizes[k] = ch.size;
+            cells.push({ k, m: `${ch.folded ? "f" : ""}${ch.gone ? "g" : ""}${ch.locked ? Math.round(ch.size) : ""}` });
+            walk(ch.frame);
+        }
+    };
+    walk(frame);
+    return {
+        w: frame?.w ?? 0,
+        h: frame?.h ?? 0,
+        shape: cells.map((c) => c.k).join("|"),
+        motion: cells.map((c) => `${c.k}:${c.m}`).join("|"),
+        sizes,
+    };
+}
+
+// Whether the change from one dockMotion to the next is eased (see above).
+export const easesBetween = (a, b) => Boolean(a && b) && a.w === b.w && a.h === b.h && a.shape === b.shape && a.motion !== b.motion;
+
 export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head = 32 } = {}) {
     if (!dock?.tree) return null;
     const folding = new Set(gone.filter((id) => MODULES[id]?.fold));
@@ -748,6 +804,18 @@ export function onAirHeight(slides, head = 32) {
 }
 
 const folds = (node) => leaves(node).every((id) => MODULES[id]?.fold);
+
+// The Programa's size along a split when its other side is `w` × `h`: its
+// screen is 16:9 (CenterPanel's .liveblock, the Multiview too) and the player
+// slot rides under it while the player is not placed elsewhere (console.css
+// --live-k = PLAYER_SLOT). Down a column, as tall as its width allows; across
+// a row, as wide as its height allows.
+export const PROGRAMA_RATIO = 16 / 9;
+export function programaNatural(row, w, h, playerDocked = true) {
+    const slot = playerDocked ? PLAYER_SLOT : 0;
+    return row ? Math.round(Math.max(0, h - slot) * PROGRAMA_RATIO) : Math.round(w / PROGRAMA_RATIO) + slot;
+}
+const isProgramaAlone = (node) => isGroup(node) && node.tabs.length === 1 && node.tabs[0] === "programa";
 
 // Lyrics on air, so the No ar strip has something to show: text slides on
 // the projector (a song, a passage, free text, an Escola material) or a
@@ -826,6 +894,13 @@ function fitNode(node, path, w, h, ctx) {
         return tabsFrame([node], path, w, h, target);
     }
     const dims = allocate(items.map((it) => it.size), items.map((it) => it.min), avail - G * (items.length - 1));
+    // The Programa's room past its 16:9 goes to its neighbour.
+    const pi = items.findIndex((it) => it.at.length === 1 && !it.locked && isProgramaAlone(node.children[it.at[0]]));
+    if (pi >= 0) {
+        const spare = Math.floor(dims[pi] - Math.max(items[pi].min, programaNatural(row, w, h, ctx.playerDocked)));
+        const to = [pi + 1, pi - 1].find((k) => items[k] && !items[k].locked);
+        if (spare > 0 && to !== undefined) { dims[pi] -= spare; dims[to] += spare; }
+    }
     const children = items.map((it, k) => {
         const cw = row ? dims[k] : w;
         const ch = row ? h : dims[k];

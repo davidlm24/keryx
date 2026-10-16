@@ -14,6 +14,21 @@ const {
 const SETTINGS_KEY = "outputs";
 const HIDE_CURSOR_CSS = "html, body, * { cursor: none !important; }";
 
+// A window whose renderer keeps dying must not reload in a loop: at most `max`
+// reloads in `windowMs`, then allow() says no and the caller warns instead.
+function createReloadLimiter({ max = 3, windowMs = 60000, now = Date.now } = {}) {
+    let times = [];
+    return {
+        allow() {
+            const t = now();
+            times = times.filter((at) => t - at < windowMs);
+            if (times.length >= max) return false;
+            times.push(t);
+            return true;
+        },
+    };
+}
+
 // BrowserWindow and powerSaveBlocker are injectable for tests (in plain
 // Node, require("electron") is a path, and both are undefined).
 function createOutputManager({
@@ -273,7 +288,7 @@ function createOutputManager({
     // restores the same screen and "Abrir ao iniciar".
     function setAssignment(key, assignment) {
         if (!outputForKey(key)) throw new Error(`Saída desconhecida: ${key}`);
-        if (assignment && assignment.removed === true && !canRemove(key)) throw new Error("A Projeção principal não pode ser removida.");
+        if (assignment && assignment.removed === true && !canRemove(key)) throw new Error("A Projeção não pode ser removida.");
         const next = normalizeAssignment({ ...assignmentFor(key), ...(assignment || {}) });
         settings.set(SETTINGS_KEY, { ...assignments(), [key]: next });
         const win = windows.get(key);
@@ -288,7 +303,15 @@ function createOutputManager({
     function open(key) {
         if (!outputForKey(key)) throw new Error(`Saída desconhecida: ${key}`);
         if (assignmentFor(key).removed) throw new Error("Saída removida. Adicione-a de novo em Telas e saídas.");
-        const existing = windows.get(key);
+        let existing = windows.get(key);
+        // A crashed renderer is a dead window: focusing it changes nothing.
+        // Drop it and open a fresh one (ARCH-001).
+        if (existing && !existing.isDestroyed() && existing.webContents.isCrashed && existing.webContents.isCrashed()) {
+            log(`[keryx-outputs] ${key} travou; abrindo de novo`);
+            windows.delete(key);
+            existing.destroy();
+            existing = null;
+        }
         if (existing && !existing.isDestroyed()) {
             // Waiting for its monitor, it stays hidden: the banner says so.
             if (placementFor(key).mode !== "hidden") {
@@ -362,4 +385,4 @@ function createOutputManager({
     };
 }
 
-module.exports = { createOutputManager };
+module.exports = { createOutputManager, createReloadLimiter };

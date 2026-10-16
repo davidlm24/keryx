@@ -24,6 +24,9 @@ import { TRANSITIONS, TRANSITION_MS, NATURAL_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
 import { ConfirmContext, deleteQuestion } from "../console/ConfirmDialog";
 import { useWinCol } from "@/components/console/winLayout";
+import useDraftHistory from "@/hooks/useDraftHistory";
+import { historyKey, hasOwnUndo } from "@/lib/editorHistory";
+import UndoRedo from "./UndoRedo";
 // The samples the canvas dresses (as ThemeStudio had them, folded in here
 // 2026-10-13): what the theme looks like on a song, a passage and a text,
 // with their own slides.
@@ -60,13 +63,17 @@ const pick = (row) => { const out = { ...BLANK }; for (const k of FIELDS) if (ro
 // /Janela — mount it hosted; unhosted it keeps the panel header and footer.
 export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colAjustes = useWinCol("theme.ajustes", { def: 400, min: 340, max: 720 });
+    const colAjustes = useWinCol("theme.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["editor", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["editor", "themes"] })), [client]);
     const isNew = themeId === "new";
     const [draft, setDraft] = useState(() => (isNew ? { ...BLANK } : null));
     const [saved, setSaved] = useState(null);
+    // Desfazer / Refazer over the theme (audit C-33): a load and Salvar
+    // empty it; another theme remounts the editor.
+    const history = useDraftHistory(draft, setDraft);
+    const resetHistory = history.reset; // one identity for the editor's life
     const [error, setError] = useState("");
     const [confirm, setConfirm] = useState(null); // "delete" | "discard" (detached only)
     // Both windows (the console's, a detached /Janela) provide the
@@ -85,10 +92,10 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         if (isNew || loaded.current) return undefined;
         let alive = true;
         keryx.entities.ProjectionTheme.get(themeId)
-            .then((row) => { if (!alive) return; loaded.current = true; setDraft(pick(row)); setSaved(pick(row)); })
+            .then((row) => { if (!alive) return; loaded.current = true; const start = pick(row); setDraft(start); setSaved(pick(row)); resetHistory(start); })
             .catch((err) => { if (alive) setError(err?.message || "Tema não encontrado."); });
         return () => { alive = false; };
-    }, [themeId, isNew]);
+    }, [themeId, isNew, resetHistory]);
 
     const savedId = useRef(isNew ? "" : themeId);
     const dirty = useMemo(() => draft && !sameJson(draft, saved ?? { ...BLANK }), [draft, saved]);
@@ -115,7 +122,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
             const row = isNew && !saved ? await keryx.entities.ProjectionTheme.create(data) : await keryx.entities.ProjectionTheme.update(savedId.current, data);
             savedId.current = row.id;
             setSaved(pick(row));
-            setDraft(pick(row));
+            const fresh = pick(row);
+            setDraft(fresh);
+            history.reset(fresh);
             say("Tema salvo. O que já está no ar não muda; o próximo envio sai com ele.");
             onSaved?.(row);
             setBusy(false);
@@ -155,7 +164,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         return () => window.removeEventListener("beforeunload", guard);
     }, [dirty]);
 
-    // Keys: Ctrl+S saves; Esc leaves a field, then the window (asking).
+    // Keys: Ctrl+S saves; Ctrl+Z undoes and Ctrl+Y / Ctrl+Shift+Z redo (a
+    // text field keeps its own while it has the focus, audit C-33); Esc
+    // leaves a field, then the window (asking).
     // Hosted in the console's window (escRef set), Esc comes routed from
     // the console instead (keys.js ESC_ORDER "window") and the dirty guard
     // still asks; the (x) ("all") leaves the whole stack the same way.
@@ -175,6 +186,8 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         if (document.querySelector(".console .ctx-scrim, .console .confirm-scrim")) return;
         const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); e.stopPropagation(); if (draft) save(); return; }
+        const hk = draft ? historyKey(e, hasOwnUndo(e.target)) : null;
+        if (hk) { e.preventDefault(); e.stopPropagation(); setConfirm(null); history[hk](); return; }
         if (e.key === "Escape") {
             if (escRef) return; // the console routes it
             e.preventDefault(); e.stopPropagation();
@@ -215,6 +228,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         e.preventDefault(); e.stopPropagation();
         e.currentTarget.setPointerCapture?.(e.pointerId);
         drag.current = { handle, from: pct(e), rect0: rect };
+        history.begin(`drag:${Date.now()}`); // the whole drag is one step
         setDragging(true);
     };
     const onMove = (e) => {
@@ -228,7 +242,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
         else r = { ...d.rect0, x: d.rect0.x + dx, y: d.rect0.y + dy };
         set(rectToTheme(r, { box: draft.text_box }));
     };
-    const endDrag = () => { drag.current = null; setDragging(false); };
+    const endDrag = () => { if (drag.current) history.end(); drag.current = null; setDragging(false); };
 
     const wrap = (inner) => (hosted ? <><WinBar title="Editor de temas" sub="" detach={onDetach} /><div className="win-body is-ed">{inner}</div></> : inner);
     if (error) return wrap(<div className="col center"><Panel noHead={hosted} title="Editor de tema"><Empty icon="warn" title="Não foi possível abrir">{error}</Empty><div className="pl-pad"><Btn onClick={() => onClose()}>Fechar</Btn></div></Panel></div>);
@@ -268,7 +282,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                                 <select className="pl-input" style={{ width: "auto" }} value={draft.font_family} onChange={(e) => set({ font_family: e.target.value })} aria-label="Fonte do tema">
                                     {THEME_FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                                 </select>
-                                <Seg small value={draft.font_size} options={TEXT_SIZES} onChange={(v) => set({ font_size: v })} />
+                                <Seg small label="Tamanho da fonte" value={draft.font_size} options={TEXT_SIZES} onChange={(v) => set({ font_size: v })} />
                             </span>
                             <span className="k">Efeito e cor</span>
                             <span className="nv-inline">
@@ -289,12 +303,12 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             </span>
                             <span className="k">Entrelinhas</span>
                             <span className="nv-inline">
-                                <Seg small value={draft.line_height || ""} options={LINES} onChange={(v) => set({ line_height: v })} />
+                                <Seg small label="Entrelinhas" value={draft.line_height || ""} options={LINES} onChange={(v) => set({ line_height: v })} />
                                 <Switch on={draft.text_case === "upper"} onChange={(on) => set({ text_case: on ? "upper" : "" })} label="Maiúsculas" /><span className="kx-meta">Maiúsculas</span>
                             </span>
                             <span className="k">Caixa do texto</span>
                             <span className="nv-inline">
-                                <Seg small value={draft.text_box || ""} options={BOXES} onChange={(v) => set({ text_box: v, ...(v ? { text_box_color: draft.text_box_color || "#000000", text_box_opacity: draft.text_box_opacity || 0.55 } : { text_box_color: "", text_box_opacity: "" }) })} />
+                                <Seg small label="Caixa do texto" value={draft.text_box || ""} options={BOXES} onChange={(v) => set({ text_box: v, ...(v ? { text_box_color: draft.text_box_color || "#000000", text_box_opacity: draft.text_box_opacity || 0.55 } : { text_box_color: "", text_box_opacity: "" }) })} />
                                 {draft.text_box && <input type="color" className="ed-color" value={draft.text_box_color || "#000000"} onChange={(e) => set({ text_box_color: e.target.value })} aria-label="Cor da caixa" title="Cor da caixa" />}
                             </span>
                             {/* The box's opacity was fixed at 55% with no
@@ -312,9 +326,9 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                         <div className="listhead"><span className="kx-section">Texto na tela</span></div>
                         <div className="frm nv-frm">
                             <span className="k">Alinhamento</span>
-                            <Seg small value={draft.text_align || ""} options={H_ALIGNS} onChange={(v) => set({ text_align: v })} />
+                            <Seg small label="Alinhamento" value={draft.text_align || ""} options={H_ALIGNS} onChange={(v) => set({ text_align: v })} />
                             <span className="k">Posição</span>
-                            <Seg small value={draft.text_position || ""} options={V_POS} onChange={(v) => set({ text_position: v, text_nudge: "" })} />
+                            <Seg small label="Posição" value={draft.text_position || ""} options={V_POS} onChange={(v) => set({ text_position: v, text_nudge: "" })} />
                             <span className="k">Largura</span>
                             <span className="nv-inline">
                                 <input type="range" className="le-range" min={MIN_WIDTH} max={100} step={1} value={band ? 100 : Number(draft.text_max_width) || 100} disabled={band} onChange={(e) => set({ text_max_width: Number(e.target.value) >= 100 ? "" : Number(e.target.value) })} aria-label="Largura do texto" />
@@ -344,12 +358,12 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             </span>
                             {bg && bg.kind !== "color" && bg.kind !== "generator" && <>
                                 <span className="k">Ajuste do fundo</span>
-                                <Seg small value={bg.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => setBg({ fit: v === "cover" ? undefined : v })} />
+                                <Seg small label="Ajuste do fundo" value={bg.fit || "cover"} options={[["cover", "Cobrir"], ["contain", "Conter"]]} onChange={(v) => setBg({ fit: v === "cover" ? undefined : v })} />
                                 {/* Which part of the picture stays on screen
                                     (the spec always carried it; no UI until
                                     Rodada C, fase d). */}
                                 <span className="k">Posição do fundo</span>
-                                <Seg small value={bg.position || "center"} options={[["top", "Topo"], ["center", "Centro"], ["bottom", "Base"]]} onChange={(v) => setBg({ position: v === "center" ? undefined : v })} />
+                                <Seg small label="Posição do fundo" value={bg.position || "center"} options={[["top", "Topo"], ["center", "Centro"], ["bottom", "Base"]]} onChange={(v) => setBg({ position: v === "center" ? undefined : v })} />
                             </>}
                             {bg && bg.kind !== "color" && <>
                                 <span className="k">Escurecer</span>
@@ -367,7 +381,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
                             </>}
                             <span className="k">Transição</span>
                             <span className="nv-inline">
-                                <Seg small value={draft.transition || ""} options={[["", `Padrão (Esmaecer · ${NATURAL_MS.fade} ms)`], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
+                                <Seg small label="Transição" value={draft.transition || ""} options={[["", `Padrão (Esmaecer · ${NATURAL_MS.fade} ms)`], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
                                 {draft.transition && draft.transition !== "cut" && <><input type="range" className="le-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-meta">{Number(draft.transition_ms) || 400} ms</span></>}
                             </span>
                         </div>
@@ -421,6 +435,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
             <WinBar title="Editor de temas" sub={`${themeTitle}${dirty ? " · não salvo" : ""}`}
                 tools={pickTheme}
                 actions={<>
+                    <UndoRedo history={history} />
                     {deleteBtn}
                     <Btn small onClick={() => leave()}>Cancelar</Btn>
                     <Btn small kind="brand" disabled={busy || !bg} onClick={save} title={bg ? "Ctrl+S" : NEEDS_BG}>Salvar tema</Btn>

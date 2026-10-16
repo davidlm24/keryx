@@ -36,14 +36,18 @@ const dragProps = (stage, time = "") => ({
 // (src/lib/pdfPagesCapture.js); nothing else has one.
 const peekOf = (m) => (m.missing || m.posterSyncing ? "" : m.type === "image" || m.type === "gif" ? m.file_url : m.type === "video" || m.type === "pdf" ? m.thumbnail_url || "" : "");
 const PEEK_DELAY_MS = 350;
+const PEEK_HANDOVER_MS = 120;
 const PEEK_W = 240;
 
 // Hovering a row of Imagens or Vídeos shows its picture beside the
 // Biblioteca, so the rows stay one line. The card never takes the mouse.
+// The first one waits a moment; once one shows, the next row's takes its
+// place at once (as tooltips do, POL-05), and leaving the rows hides it.
 function usePeek() {
     const [peek, setPeek] = useState(null);
     const timer = useRef(0);
-    const hide = useCallback(() => { clearTimeout(timer.current); setPeek(null); }, []);
+    const shown = useRef(false);
+    const hide = useCallback(() => { clearTimeout(timer.current); shown.current = false; setPeek(null); }, []);
     useEffect(() => {
         if (!peek) return undefined;
         const off = () => hide();
@@ -67,9 +71,14 @@ function usePeek() {
                 const row = e.currentTarget.getBoundingClientRect();
                 const panel = (e.currentTarget.closest(".kx-panel") || e.currentTarget).getBoundingClientRect();
                 clearTimeout(timer.current);
-                timer.current = setTimeout(() => setPeek({ src, row, panel }), PEEK_DELAY_MS);
+                const show = () => { shown.current = true; setPeek({ src, row, panel }); };
+                if (shown.current) show();
+                else timer.current = setTimeout(show, PEEK_DELAY_MS);
             },
-            onMouseLeave: hide,
+            onMouseLeave: () => {
+                clearTimeout(timer.current);
+                if (shown.current) timer.current = setTimeout(hide, PEEK_HANDOVER_MS);
+            },
         };
     };
     return { peek, rowProps };
@@ -167,24 +176,24 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
         : tab === "imagens"
             ? [
                 { label: "Do computador…", icon: "folder", accept: shownIds.includes("apresentacoes") ? "image/*,.gif" : "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
-                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
         : tab === "audios"
             ? [
                 { label: "Do computador…", icon: "folder", accept: "audio/*", onFiles: importMedia },
                 { label: "Uma pasta inteira…", icon: "folder", accept: "audio/*", directory: true, onFiles: (files) => importMedia(files.filter((f) => f.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(f.name))) },
-                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
         : tab === "apresentacoes"
             ? [
                 { label: "Do computador…", icon: "folder", accept: ".pdf,.ppt,.pptx", onFiles: importMedia },
-                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
         : tab === "videos"
             ? [
                 { label: "Do computador…", icon: "folder", accept: shownIds.includes("audios") ? "video/*" : "video/*,audio/*", onFiles: importMedia },
                 { label: "Link do YouTube", icon: "film", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
-                { label: "Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia?.() },
+                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
             ]
             : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => onEditNotice?.("new") }];
 
@@ -194,15 +203,15 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
 
             <div className="searchrow">
                 <Field value={q} onChange={setQ} placeholder="Buscar…" />
-                {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} onClick={() => setFavOnly((f) => !f)} />}
+                {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} aria-label="Só favoritas" onClick={() => setFavOnly((f) => !f)} />}
                 <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
             </div>
 
             {tab === "letras" && (() => {
                 const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, stripChords(s.lyrics || "")));
                 return (
-                    <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
-                        {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
+                    <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
+                        {!songs.length && data.loaded?.songs !== false && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
                         {songs.map((s) => (
                             <Row
                                 key={s.id}
@@ -223,9 +232,9 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                 ] })}
                                 dragProps={dragProps(stageFromSong(s, {}, data.themes), s.duration ? mmss(s.duration) : "")}
                                 actions={<>
-                                    <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
-                                    {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música" aria-label="Editar"><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>}
-                                    {onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist" aria-label="Adicionar"><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar</span></Btn>}
+                                    <IconBtn name="star" small on={s.is_favorite} title={s.is_favorite ? "Tirar dos favoritos" : "Favoritar"} aria-label={`Favorita: ${s.title}`} onClick={(e) => { e.stopPropagation(); toggleFav(s); }} />
+                                    {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música" aria-label={`Editar ${s.title}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>}
+                                    {onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist" aria-label={`Adicionar ${s.title} à setlist`}><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar</span></Btn>}
                                 </>}
                             />
                         ))}
@@ -258,13 +267,14 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         onContextMenu={(e) => menu(e, { title: m.title, items: [
                             { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromMedia(m)) },
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
-                            onOpenMedia && { label: "Abrir a biblioteca de mídia", icon: "film", onSelect: () => onOpenMedia() },
+                            onOpenMedia && { label: "Abrir a Mídia", icon: "film", onSelect: () => onOpenMedia() },
                             { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Media", m, MEDIA_WORD[m.type] || "o arquivo", m.title || "sem título", "Excluído da Mídia.") },
                             onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
                         ] })}
                         dragProps={dragProps(stageFromMedia(m), m.duration ? mmss(m.duration) : "")}
                         {...rowProps(m)}
-                        actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label="Telas de vídeo"><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
+                        item
+                        actions={m.type === "video" && <Btn onClick={(e) => { e.stopPropagation(); onPrepare(stageFromMedia(m, { toVideo: true })); }} title="Pôr na prévia para as telas de vídeo" aria-label={`${m.title}: pôr na prévia para as telas de vídeo`}><span className="kx-act-i"><Icon name="tv" /></span><span className="kx-act-l">Telas de vídeo</span></Btn>}
                     />
                 );
                 return (
@@ -277,12 +287,12 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             <Btn onClick={saveYt} title="Salvar o link na lista de Vídeos, para a setlist e os cultos">Salvar</Btn>
                         </div>
                         </>}
-                        <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a biblioteca de mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir a Mídia…</Btn>}</div>
+                        <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a Mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir a Mídia</Btn>}</div>
                         {audios.length > 1 && (
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}
-                        <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
-                            {!media.length && <Empty icon={{ imagens: "image", audios: "music" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
+                        <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
+                            {!media.length && data.loaded?.media !== false && <Empty icon={{ imagens: "image", audios: "music" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
                             {media.map(mediaRow)}
                         </div>
                     </>
@@ -302,17 +312,17 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         <ToolsPicker c={c} data={data} onPrepare={onPrepare} onGo={onGo} />
                         </>}
                         <div className="listhead"><span className="kx-section">Todos os avisos <span className="kx-count">· {pieces.length}</span></span><span style={{ flex: 1 }} />{pieces.length > 1 && <Btn small onClick={() => onPrepare(stageFromPieceList(pieces))} title="Pôr na prévia todos os avisos desta lista, um depois do outro, em loop">Tocar todos</Btn>}</div>
-                        <div className="kx-acts-list" style={{ overflow: "auto", flex: 1 }}>
-                            {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
+                        <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
+                            {!pieces.length && data.loaded?.pieces !== false && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (
-                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")}
+                                <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")} item
                                     onContextMenu={(e) => menu(e, { title: p.title || p.text, items: [
                                         { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromPiece(p)) },
                                         onEditNotice && { label: "Editar", icon: "edit", onSelect: () => onEditNotice(p.id) },
                                         { label: "Excluir…", icon: "trash", onSelect: () => removeRow("CommunicationVideo", p, "o aviso", p.title || p.text || "sem título", "Aviso excluído.") },
                                         onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromPiece(p)) },
                                     ] })}
-                                    actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso" aria-label="Editar"><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>} />
+                                    actions={onEditNotice && <Btn onClick={(e) => { e.stopPropagation(); onEditNotice(p.id); }} title="Abrir no editor de aviso" aria-label={`Editar ${p.title || p.text}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>} />
                             ))}
                         </div>
                     </>

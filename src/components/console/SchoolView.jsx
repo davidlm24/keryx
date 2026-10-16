@@ -11,6 +11,8 @@ import { currentSlide, activitySteps, revealStep } from "@shared/live-state.mjs"
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { LOCKED_SAY } from "./useConsole";
 import { useWinCol } from "./winLayout";
+import { useContextMenu } from "./ContextMenu";
+import { rowKey } from "@/lib/console/gridNav";
 
 const EMPTY = [];
 const CLASSES = ["console", "bibleClasses"];
@@ -25,10 +27,10 @@ const MATERIALS = ["console", "bibleMaterials"];
 // it again), and the material's list of questions jumps to one. Materials
 // are edited here; they also go into the Setlist (planner, "Setlist" here)
 // and the palette.
-export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, onClose, escRef, onEditMaterial = null }) {
+export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, onClose, escRef, onEditMaterial = null, askText = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colTurmas = useWinCol("school.turmas", { def: 340, min: 280, max: 600 });
-    const colMaterial = useWinCol("school.material", { def: 400, min: 300, max: 700, sign: -1 });
+    const colTurmas = useWinCol("school.turmas", { name: "Turmas", def: 340, min: 280, max: 600 });
+    const colMaterial = useWinCol("school.material", { name: "Material", def: 400, min: 300, max: 700, sign: -1 });
     const client = useQueryClient();
     useEffect(() => keryx.entities.BibleSchoolClass.subscribe(() => client.invalidateQueries({ queryKey: CLASSES })), [client]);
     useEffect(() => keryx.entities.BibleMaterial.subscribe(() => client.invalidateQueries({ queryKey: MATERIALS })), [client]);
@@ -39,6 +41,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     const [student, setStudent] = useState("");
     const [onlyClass, setOnlyClass] = useState(true);
     const ask = useConfirm();
+    const menu = useContextMenu();
     const [minutes, setMinutes] = useState(5);
     const today = dayOf();
     const refresh = () => { client.invalidateQueries({ queryKey: CLASSES }); client.invalidateQueries({ queryKey: MATERIALS }); };
@@ -62,9 +65,9 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
             c.say("Nova turma: dê um nome e a faixa etária.");
         } catch (err) { fail(err); }
     };
-    const removeClass = async () => {
-        if (!(await ask(deleteQuestion("a turma", cls.name, "Os materiais ficam.")))) return;
-        try { await keryx.entities.BibleSchoolClass.delete(cls.id); setClassId(null); refresh(); c.say("Turma excluída."); } catch (err) { fail(err); }
+    const removeClass = async (k = cls) => {
+        if (!(await ask(deleteQuestion("a turma", k.name, "Os materiais ficam.")))) return;
+        try { await keryx.entities.BibleSchoolClass.delete(k.id); if (k.id === cls?.id) setClassId(null); refresh(); c.say("Turma excluída."); } catch (err) { fail(err); }
     };
     const addStudent = () => {
         const name = student.trim();
@@ -78,6 +81,58 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
         const name = cls.students[i].name;
         if (!(await ask({ title: "Tirar da turma?", text: `"${name}" sai da turma ${cls.name}, com as presenças registradas.`, ok: "Tirar", danger: true }))) return;
         saveClass({ students: cls.students.filter((_, k) => k !== i) });
+    };
+
+    // Renomear (F2 or the row's menu): one question (PromptDialog).
+    const renameRow = async (title, current, save) => {
+        const name = ((await askText?.({ title, initial: current, placeholder: "Nome", ok: "Renomear" })) || "").trim();
+        if (name && name !== current) save(name);
+    };
+    const renameClass = (k) => renameRow("Renomear a turma", k.name, (name) => keryx.entities.BibleSchoolClass.update(k.id, { name }).then(refresh).catch(fail));
+    const renameStudent = (i) => renameRow("Renomear o aluno", cls.students[i].name, (name) => saveClass({ students: cls.students.map((s, k) => (k === i ? { ...s, name } : s)) }));
+    const renameMaterial = (m) => renameRow("Renomear o material", m.title, (title) => keryx.entities.BibleMaterial.update(m.id, { title }).then(refresh).catch(fail));
+    const removeMaterial = async (m) => {
+        if (!(await ask(deleteQuestion("o material", m.title)))) return;
+        try { await keryx.entities.BibleMaterial.delete(m.id); refresh(); c.say("Material excluído."); } catch (err) { fail(err); }
+    };
+
+    // The rows' menus and keys (audit C-72, as the console's lists): a right
+    // click acts on the row under the pointer; on a focused row Delete asks
+    // to take it out and F2 renames (gridNav.js rowKey).
+    const classItems = (k) => [
+        { label: "Dados da turma", icon: "edit", onSelect: () => { setClassId(k.id); setShowForm(true); } },
+        askText && { label: "Renomear", kbd: "F2", onSelect: () => renameClass(k) },
+        { label: "Excluir turma…", icon: "trash", kbd: "Delete", onSelect: () => removeClass(k) },
+    ];
+    const studentItems = (i) => [
+        { label: isPresent(cls.students[i], today) ? "Desmarcar a presença de hoje" : "Marcar presença hoje", icon: "check", onSelect: () => togglePresence(i) },
+        askText && { label: "Renomear", kbd: "F2", onSelect: () => renameStudent(i) },
+        { label: "Tirar da turma…", icon: "x", kbd: "Delete", onSelect: () => removeStudent(i) },
+    ];
+    const materialItems = (m) => [
+        { label: "Pôr na prévia", icon: "eye", onSelect: () => prepare(m) },
+        onEditMaterial && { label: "Editar", icon: "edit", onSelect: () => onEditMaterial(m.id) },
+        askText && { label: "Renomear", kbd: "F2", onSelect: () => renameMaterial(m) },
+        onAddToSetlist && { label: "Adicionar à setlist", icon: "plus", onSelect: () => onAddToSetlist(m) },
+        { label: "Excluir…", icon: "trash", kbd: "Delete", onSelect: () => removeMaterial(m) },
+        { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => send(m) },
+    ];
+    const rowKeys = (e, onDelete, onRename) => {
+        const k = rowKey(e);
+        if (!k) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (k === "delete") onDelete();
+        else if (askText) onRename();
+    };
+    // Turmas and materials are Rows: their keys come from the list around
+    // them, by the focused row's data-row ("class:<id>", "material:<id>").
+    const listKeys = (e) => {
+        const [kind, id] = String(e.target.dataset?.row || "").split(":");
+        const k = kind === "class" && classes.find((x) => x.id === id);
+        const m = kind === "material" && materials.find((x) => x.id === id);
+        if (k) rowKeys(e, () => removeClass(k), () => renameClass(k));
+        else if (m) rowKeys(e, () => removeMaterial(m), () => renameMaterial(m));
     };
 
     // -- Materials ---------------------------------------------------------------
@@ -125,12 +180,12 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
             <div className="win-body">
             <div className="col" style={colTurmas.style}>
                 <Panel title={<>Turmas <span className="kx-count">· {classes.length}</span></>} actions={<><IconBtn name="plus" small title="Nova turma" onClick={newClass} /></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                    <div className="sv-scroll">
+                    <div className="sv-scroll" onKeyDown={listKeys}>
                         {!classes.length && <Empty icon="user" title="Nenhuma turma">Crie uma turma com +. Os materiais funcionam mesmo sem turma.</Empty>}
                         {classes.map((k) => (
                             <Row key={k.id} icon="user" title={k.name} className={cls?.id === k.id ? "is-selected" : ""}
                                 meta={[ageLabel(k.age_group), `${(k.students || []).length} alunos`, k.room, presentCount(k, today) ? `${presentCount(k, today)} presentes hoje` : ""].filter(Boolean).join(" · ")}
-                                onClick={() => setClassId(k.id)} />
+                                onClick={() => setClassId(k.id)} onContextMenu={(e) => menu(e, { title: k.name, items: classItems(k) })} dragProps={{ "data-row": `class:${k.id}` }} />
                         ))}
                         {cls && (
                             <>
@@ -149,7 +204,9 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                                 )}
                                 <div className="listhead"><span className="kx-section">Alunos <span className="kx-count">· {(cls.students || []).length} · {presentCount(cls, today)} presentes hoje</span></span></div>
                                 {(cls.students || []).map((s, i) => (
-                                    <div key={`${s.name}${i}`} className={`kx-row kx-row-1 kx-t sv-student ${isPresent(s, today) ? "is-here" : ""}`} role="button" tabIndex={0} onClick={() => togglePresence(i)} title="Clique marca ou desmarca a presença de hoje">
+                                    <div key={`${s.name}${i}`} className={`kx-row kx-row-1 kx-t sv-student ${isPresent(s, today) ? "is-here" : ""}`} role="button" tabIndex={0} onClick={() => togglePresence(i)} title="Clique marca ou desmarca a presença de hoje"
+                                        onContextMenu={(e) => menu(e, { title: s.name, items: studentItems(i) })}
+                                        onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togglePresence(i); } else rowKeys(e, () => removeStudent(i), () => renameStudent(i)); }}>
                                         <span className="kx-glyph"><Icon name={isPresent(s, today) ? "check" : "dot"} /></span>
                                         <div className="kx-row-main"><div className="kx-row-title">{s.name}</div></div>
                                         <span className="kx-meta kx-hide-on-hover">{attendanceNote(s, today)}</span>
@@ -165,21 +222,21 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
             {colTurmas.split}
             <div className="col center sv-center">
                 <Panel title={<>Materiais da lição <span className="kx-count">· {onlyClass && cls ? cls.name : "todas as turmas"}</span></>} actions={<>
-                        {cls && <Seg small value={onlyClass ? "turma" : "todos"} onChange={(v) => setOnlyClass(v === "turma")} options={[["turma", "Desta turma"], ["todos", "Todos"]]} />}
+                        {cls && <Seg small label="Materiais de" value={onlyClass ? "turma" : "todos"} onChange={(v) => setOnlyClass(v === "turma")} options={[["turma", "Desta turma"], ["todos", "Todos"]]} />}
                         <IconBtn name="plus" small title="Novo material" onClick={() => onEditMaterial?.(null, onlyClass ? cls?.id : "")} />
                     </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
-                        <div className="sv-scroll">
+                        <div className="sv-scroll" onKeyDown={listKeys}>
                             {!shown.length && <Empty icon="book" title="Nenhum material">Use + para criar slides, um quiz, um texto, um vídeo ou uma imagem para a lição.</Empty>}
                             {lessons.map(([lesson, list]) => (
                                 <React.Fragment key={lesson}>
                                     <div className="listhead"><span className="kx-section">{lesson}</span><span className="kx-count">&nbsp;· {list.length}</span></div>
                                     {list.map((m) => (
                                         <Row key={m.id} icon={materialIcon(m.type)} title={m.title} meta={[materialMeta(m), !onlyClass && m.class_name, m.description ? "tem notas" : ""].filter(Boolean).join(" · ")} state={stateOf(m)}
-                                            onClick={() => prepare(m)} onDoubleClick={() => send(m)}
+                                            onClick={() => prepare(m)} onDoubleClick={() => send(m)} onContextMenu={(e) => menu(e, { title: m.title, items: materialItems(m) })} dragProps={{ "data-row": `material:${m.id}` }}
                                             actions={<>
-                                                <Btn onClick={(e) => { e.stopPropagation(); onEditMaterial?.(m.id); }}>Editar</Btn>
-                                                {onAddToSetlist && <Btn onClick={(e) => { e.stopPropagation(); onAddToSetlist(m); }} title="Adicionar ao fim da setlist">Setlist</Btn>}
-                                                <Btn onClick={(e) => { e.stopPropagation(); send(m); }} title="Enviar ao ar · duplo clique">Projetar</Btn>
+                                                <Btn onClick={(e) => { e.stopPropagation(); onEditMaterial?.(m.id); }} aria-label={`Editar ${m.title}`}>Editar</Btn>
+                                                {onAddToSetlist && <Btn onClick={(e) => { e.stopPropagation(); onAddToSetlist(m); }} title="Adicionar ao fim da setlist" aria-label={`Adicionar ${m.title} à setlist`}>Setlist</Btn>}
+                                                <Btn onClick={(e) => { e.stopPropagation(); send(m); }} title="Enviar ao ar · duplo clique" aria-label={`Projetar ${m.title}`}>Projetar</Btn>
                                             </>} />
                                     ))}
                                 </React.Fragment>

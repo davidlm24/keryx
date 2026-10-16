@@ -25,7 +25,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import "@ds/tokens.css";
 import "@ds/components/bundle.css";
 import "@/components/console/console.css";
-import { WinCtx } from "@/components/console/kx";
+import { WinCtx, useLiveRegion } from "@/components/console/kx";
 import { winPage } from "@/components/console/WinPages";
 import { useStamp, useToast, useLiveOps, THEME_IN_USE_KEY } from "@/components/console/useConsole";
 import { useLibrary, useRundown, pickDefaultService } from "@/components/console/useConsoleData";
@@ -37,11 +37,14 @@ import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
 import PromptDialog from "@/components/console/PromptDialog";
+import Toast from "@/components/console/Toast";
+import { useWinPageFocus } from "@/components/console/useDialogFocus";
 import { setEditorHost } from "@/lib/editorWindow";
 import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { PAGE_TITLES, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
 import { resolveSection } from "@/lib/console/settings";
 import { liveAction, escapeTarget } from "@/lib/console/keys";
+import { usePrefs } from "@/hooks/useUser";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 
 // Where a control keeps the focus after a mouse click: overlays that run
@@ -70,7 +73,7 @@ function useJanelaConsole() {
     const now = useLiveNow(1000);
     const themeId = useThemeInUse();
     const { stamp, bgPrefs } = useStamp(themeId);
-    const { toast, toastAction, say } = useToast();
+    const { toast, toastAction, say, holdToast } = useToast();
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);
     useEffect(() => {
@@ -85,7 +88,7 @@ function useJanelaConsole() {
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
-    return { live, now, cur: live, bgPrefs, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, detached: true };
+    return { live, now, cur: live, bgPrefs, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
 }
 
 // The stack this window opens with: its params (nav.js stackFromParams), or,
@@ -96,12 +99,18 @@ const firstStack = () => {
 
 export default function Janela() {
     const c = useJanelaConsole();
+    // The toasts, said by one polite region that is always there (C-25).
+    const [liveRegion, announce] = useLiveRegion();
+    useEffect(() => { if (c.toast) announce(c.toast); }, [c.toast, announce]);
     const data = useLibrary();
     const logoUrl = useChurchLogo();
     const [stack, setStack] = useState(firstStack);
     const stackRef = useRef(stack);
     stackRef.current = stack;
     const winTop = winTopOf(stack);
+    // The focus moves into the page shown when it changes (C-12), as in the console.
+    const boxRef = useRef(null);
+    useWinPageFocus(boxRef, stack);
     useWindowTitle(winTop ? PAGE_TITLES[winTop.page] : "");
 
     // Configurações' section, and the culto Planejar o culto shows (the
@@ -200,9 +209,10 @@ export default function Janela() {
     // Logo work on every page, as behind the console's window; the Escola
     // bíblica is the projecting page, so there every live key works — Enter
     // sends the console's Prévia, ↑/↓ walk it, ←/→ move what is on air, C clears.
+    const letters = usePrefs().letter_keys;
     const keysRef = useRef(null);
     keysRef.current = (e) => {
-        const action = liveAction(e);
+        const action = liveAction(e, letters);
         if (!action) return;
         if (action === "blur") { e.target.blur?.(); return; }
         if (action === "end") {
@@ -235,10 +245,15 @@ export default function Janela() {
     // back after a mouse pick (selectPick.js, audit C-03).
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
-        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href]");
+        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='listitem'][tabindex], a[href]");
         if (t && !t.closest(KEEPS_FOCUS)) setTimeout(() => t.blur?.(), 0);
     };
     useEffect(() => blurSelectsAfterPick(window, { skip: KEEPS_FOCUS }), []);
+
+    // On the desktop (Windows) the system draws its buttons over the page
+    // (main.cjs titleBarOverlay): the WinBar is then the title bar and its
+    // own × would be a second close button.
+    const systemFrame = typeof navigator !== "undefined" && Boolean(navigator.windowControlsOverlay?.visible);
 
     return (
         <ContextMenuProvider value={openMenu}>
@@ -246,12 +261,12 @@ export default function Janela() {
         <ConfirmContext.Provider value={askConfirm}>
         <div className="kx console janela" onClick={onMouseClick}>
             {stack.length > 0 && (
-                <div className="win-dialog is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
+                <div ref={boxRef} className="win-dialog is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
                     {stack.map((entry, i) => {
                         const active = i === stack.length - 1;
                         const page = winPage(entry, { active, escRef: winRef(entry.key), onClose: (all = false) => leaveTop(Boolean(all)) }, host);
                         return (
-                            <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: null, onDetach: null, detached: true }}>
+                            <WinCtx.Provider key={entry.key} value={{ back: entry.back, onBack: () => winEsc("back"), onCloseAll: () => winEsc("all"), onResetSize: null, onDetach: null, detached: true, systemFrame }}>
                                 <div className="win-page" hidden={!active}>{page}</div>
                             </WinCtx.Provider>
                         );
@@ -261,12 +276,8 @@ export default function Janela() {
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             <PromptDialog ask={ask} onAnswer={answerAsk} />
-            {c.toast && (
-                <div className="toast" role="status">
-                    <span className="toast-t">{c.toast}</span>
-                    {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
-                </div>
-            )}
+            <Toast c={c} />
+            {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={() => setCtxMenu(null)} />
         </div>
         </ConfirmContext.Provider>

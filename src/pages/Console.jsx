@@ -16,7 +16,8 @@ import { useConsole, LOCKED_SAY } from "@/components/console/useConsole";
 import { withBackgroundDefaults } from "@/lib/console/backgroundPrefs";
 import { useAudioFeed } from "@/components/console/useAudioFeed";
 import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService } from "@/components/console/useConsoleData";
-import { Panel, IconBtn, Measure, Seg, WinCtx } from "@/components/console/kx";
+import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion } from "@/components/console/kx";
+import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
 import { MenuBarPop } from "@/components/console/MenuBar";
 import { buildMenus, songInHand } from "@/lib/console/menuBar";
@@ -50,6 +51,7 @@ import { syncState } from "@/lib/console/syncView";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
+import { useFocusReturn } from "@/components/console/Menu";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
@@ -66,13 +68,16 @@ import { EditBanner } from "@/components/console/Arrange";
 import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, ZONE_LABEL } from "@/components/console/Dock";
 import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, nameProblem } from "@/lib/console/dockPresets";
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
-import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
+import Toast from "@/components/console/Toast";
+import { useDialogFocus, useWinPageFocus } from "@/components/console/useDialogFocus";
+import { liveAction, quickJumpKey, escapeTarget, keyHint } from "@/lib/console/keys";
+import { wheelZoomStep } from "@/lib/wheelZoom";
 import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
 import { presentationBlock } from "@/lib/presentation";
-import { plan, playableItems, isSection, total } from "@/lib/console/setlist";
+import { plan, playableItems, isSection, total, itemOnAir } from "@/lib/console/setlist";
 import { serviceTiming, serviceClock } from "@/lib/console/timeline";
 import { referenceNums, passageOf } from "@/lib/console/bibleVerses";
 import { readChapter } from "@/lib/bibleText";
@@ -101,6 +106,16 @@ const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LO
 // docs/design-system.md is the look; docs/desktop-architecture.md the plumbing.
 export default function Console() {
     const c = useConsole();
+    // What a screen reader hears (C-25): one polite region, always mounted —
+    // the toasts, and what is on air when it really changes (a new item, a
+    // new slide, Tela preta, Esc), never the clock; the screens locked too.
+    const [liveRegion, announce] = useLiveRegion();
+    useEffect(() => { if (c.toast) announce(c.toast); }, [c.toast, announce]);
+    const airSaid = airAnnouncement(c.cur);
+    const heardAir = useRef(airSaid);
+    useEffect(() => { if (heardAir.current !== airSaid) { heardAir.current = airSaid; announce(airSaid); } }, [airSaid, announce]);
+    const heardLock = useRef(c.locked);
+    useEffect(() => { if (heardLock.current !== c.locked) { heardLock.current = c.locked; announce(c.locked ? "Telas travadas" : "Telas destravadas"); } }, [c.locked, announce]);
     // A generated background following the sound: the console feeds the level.
     useAudioFeed(c.live);
     const logoUrl = useChurchLogo();
@@ -162,6 +177,12 @@ export default function Console() {
     // bar's empty area brings the default size back.
     const winKind = winOpen ? winSize(win) : null;
     const winDialogRef = useRef(null);
+    // The focus goes into the window and stays there (design audit C-12):
+    // Tab walks only its page on top, the console behind is inert (below),
+    // the page shown takes the focus when it changes, and closing gives the
+    // focus back to what opened it after a keyboard open.
+    useDialogFocus(winDialogRef, winOpen);
+    useWinPageFocus(winDialogRef, win);
     const [winRect, setWinRect] = useState(null);
     useEffect(() => { setWinRect(null); }, [winKind]);
     useEffect(() => {
@@ -266,6 +287,9 @@ export default function Console() {
     const openReports = useCallback(() => { setOpen(null); setWin(openStack({ page: "reports" })); }, []);
     const [plannerFocus, setPlannerFocus] = useState(null);
     const [open, setOpen] = useState(null);
+    // A popover or menu opened from the keyboard gives the focus back to
+    // what opened it; opened with the mouse, to nothing (Menu.jsx; C-14).
+    useFocusReturn(Boolean(open));
     const [libTab, setLibTab] = useState(() => {
         try { return new URLSearchParams(window.location.search).get("lib") === "avisos" ? "avisos" : "letras"; } catch { return "letras"; }
     });
@@ -356,7 +380,7 @@ export default function Console() {
         if (!tabLists.lib.includes("avisos")) setTabList("lib", showTab("lib", tabLists.lib, "avisos"));
     };
 
-    const { services, items } = useRundown(serviceId);
+    const { services, items, loaded: rundownLoaded } = useRundown(serviceId);
     useEffect(() => { if (!serviceId && services.length) setServiceId(pickDefaultService(services)?.id || null); }, [services, serviceId]);
     useEffect(() => { if (serviceId) setLog(loadLog(serviceId)); }, [serviceId]);
     const service = services.find((s) => s.id === serviceId) || null;
@@ -404,7 +428,10 @@ export default function Console() {
     const projector = outputs.find((o) => o.key === "/Projection");
 
     // The live state says where the service is; the Prévia says what is next in hand.
+    // The session's item, and whether the screens still show it (after Esc it
+    // is only the last one sent: "último" in the Setlist, never red; C-08).
     const airItemId = c.cur?.session?.itemId || null;
+    const airNow = itemOnAir(c.cur, items);
     const prevItemId = c.prev?.args?.ref?.serviceItemId || null;
     const airIdx = items.findIndex((i) => i.id === airItemId);
     // Sections (Pré-culto, Culto…) are headers: never prepared, never next.
@@ -733,7 +760,7 @@ export default function Console() {
         };
         switch (action) {
             case "state":
-                return { ok: true, data: remoteState({ service, items, airItemId, nextItemId: nextItem?.id || null, live: c.cur }) };
+                return { ok: true, data: remoteState({ service, items, airItemId: airNow ? airItemId : null, nextItemId: nextItem?.id || null, live: c.cur }) };
             case "next": case "prev":
                 if (!c.cur?.content) return refuse("Nada com slides no ar.");
                 await c.callOp(action === "next" ? "content.next" : "content.prev");
@@ -756,7 +783,7 @@ export default function Console() {
                 // As the Esc: everything off, with Desfazer on the console.
                 const before = c.cur;
                 await c.callOp("clear");
-                c.say("Celular: projeção encerrada.", { label: "Desfazer", run: () => c.undoEnd(before) });
+                c.say("Celular: projeção encerrada.", { label: "Desfazer", undo: true, run: () => c.undoEnd(before) });
                 return { ok: true, message: "Projeção encerrada." };
             }
             case "sendNext":
@@ -800,8 +827,33 @@ export default function Console() {
         });
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Ctrl+= / Ctrl+− / Ctrl+0 zoom the console (main process,
+    // electron/consoleZoom.cjs): say where it stands. Ctrl+wheel (and a
+    // touchpad's pinch) steps the same zoom (audit C-91; src/main.jsx keeps
+    // Chromium's own wheel zoom off).
+    useEffect(() => {
+        const sys = window.keryxDesktop?.system;
+        if (!sys?.onZoom) return undefined;
+        const off = sys.onZoom((z) => c.say(`Zoom do console: ${Math.round(z * 100)} %${z === 1 ? "" : " · Ctrl+0 volta a 100 %"}`));
+        let acc = 0;
+        let idle = null;
+        const onWheel = (e) => {
+            if (!e.ctrlKey) return;
+            clearTimeout(idle);
+            idle = setTimeout(() => { acc = 0; }, 300);
+            const step = wheelZoomStep(acc, e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY);
+            acc = step.acc;
+            if (step.dir) sys.call("zoomStep", { dir: step.dir }).catch(() => {});
+        };
+        window.addEventListener("wheel", onWheel, { passive: true });
+        return () => { off(); clearTimeout(idle); window.removeEventListener("wheel", onWheel); };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const searchBibleFor = (text) => { setBibleRequest({ search: text, at: Date.now() }); setOpen(null); setEnv("biblia"); };
 
+    // The church's "Teclas de uma letra" (B, L, C, / and ?: ligadas, com
+    // Shift or desligadas; keys.js LETTER_KEYS).
+    const letters = prefs.letter_keys;
     // Keys (src/lib/console/keys.js). A mouse click never leaves focus on a
     // control (see onMouseClick), so after clicking a song Enter sends it, as
     // in Holyrics; a control focused with Tab keeps its own Enter/Space.
@@ -812,10 +864,10 @@ export default function Console() {
     useEffect(() => {
         const onKey = (e) => {
             if (env === "biblia" && !open && quick === null && !winOpen) {
-                const ch = quickJumpKey(e);
+                const ch = quickJumpKey(e, letters);
                 if (ch) { e.preventDefault(); setQuick(ch); return; }
             }
-            const action = liveAction(e);
+            const action = liveAction(e, letters);
             if (!action) return;
             if (action === "blur") { e.target.blur?.(); return; }
             // Esc closes the topmost thing open (src/lib/console/keys.js,
@@ -862,6 +914,10 @@ export default function Console() {
             else if (action === "black") { e.preventDefault(); c.toggleScreen("black"); }
             else if (action === "logo") { e.preventDefault(); c.toggleScreen("logo"); }
             else if (action === "clear") { e.preventDefault(); c.clearText(); }
+            else if (action === "undo") {
+                // Ctrl+Z: the toast's Desfazer after Esc / Encerrar (C-13).
+                if (c.toastAction?.undo) { e.preventDefault(); c.toastAction.run(); }
+            }
             else if (action === "end") {
                 e.preventDefault();
                 c.end(); // nothing open (escapeTarget above); its toast offers Desfazer
@@ -876,7 +932,7 @@ export default function Console() {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm]);
+    }, [c, ctxMenu, open, drawer, editing, sendStage, env, quick, playerPick, selectSlide, winOpen, winTop, winEsc, libReq, closeLibrary, confirmReq, answerConfirm, letters]);
     useEffect(() => { if (winOpen) setEditing(false); }, [winOpen]);
 
     // A mouse click must not leave focus on the control it hit: the live keys
@@ -887,7 +943,7 @@ export default function Console() {
     // it back after a mouse pick, on its change (selectPick.js, audit C-03).
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
-        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href], input[type='range']");
+        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='listitem'][tabindex], a[href], input[type='range']");
         if (t && !t.closest(KEEPS_FOCUS)) setTimeout(() => t.blur?.(), 0);
     };
     useEffect(() => blurSelectsAfterPick(window, { skip: KEEPS_FOCUS }), []);
@@ -1028,6 +1084,14 @@ export default function Console() {
     const camadasOn = onScreen("camadas");
     // Camadas on screen: no drawer left open behind it (Esc would close that first).
     useEffect(() => { if (camadasOn) setDrawer(false); }, [camadasOn]);
+    // Tela preta or the Logo over what is on air (audit C-46): the working
+    // lists (Slides, No ar, the Setlist) dim their on-air state and say so
+    // in their header while it lasts — a tag of its own on the right, so a
+    // long title's "…" never cuts it; the Programa's pill is not the only
+    // place that tells.
+    const coveredBy = c.cur?.screen === "black" ? "Tela preta" : c.cur?.screen === "logo" ? "Logo" : "";
+    const coverCls = coveredBy ? "is-covered" : "";
+    const coverTag = coveredBy ? <span className="kx-covered" title={`As telas mostram ${coveredBy === "Logo" ? "o logo" : "a tela preta"}: o que está no ar fica coberto`}>coberto · {coveredBy}</span> : null;
     // The Setlist: its header (title, count, Planejar, +) and the whole
     // rundown, scrolled to the item in hand (Rundown).
     // A second menu where the first was (the timers): the first's place.
@@ -1049,7 +1113,7 @@ export default function Console() {
     const setlistMenu = (e) => {
         const at = menuAt(e);
         openMenu(e, { title: "Adicionar à setlist", items: [
-            { label: "Buscar música, versículo, mídia…", icon: "search", kbd: "/", onSelect: () => setOpen("palette") },
+            { label: "Buscar música, versículo, mídia…", icon: "search", kbd: keyHint("search", letters), onSelect: () => setOpen("palette") },
             "sep",
             { label: "Seção…", icon: "list", onSelect: async () => { const t = await askText({ title: "Seção da setlist", placeholder: "Pré-culto, Louvor, Palavra…", ok: "Adicionar" }); if (t) addRowToSetlist({ type: "SECTION", title: t, duration: 0 }); } },
             { label: "Texto…", icon: "text", onSelect: async () => { const t = await askText({ title: "Texto na setlist", placeholder: "O texto que vai às telas", ok: "Adicionar", multiline: true, hint: "Ctrl+Enter adiciona" }); if (t) addRowToSetlist({ type: "TEXT", title: t.split("\n")[0].slice(0, 60), notes: t, duration: 60 }); } },
@@ -1059,9 +1123,9 @@ export default function Console() {
         ] });
     };
     const setlistPanel = (
-        <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
-            actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
-            <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
+        <Panel title="Setlist" className={coverCls} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
+            actions={<>{coverTag}<IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
+            <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} airNow={airNow} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
         </Panel>
     );
     // Temas: its own module under Camadas (owner 2026-10-14); a click makes
@@ -1109,7 +1173,7 @@ export default function Console() {
     const prepareAndSend = (s) => { c.setPrev(s); sendStage(s); };
     const tabsPanel = (
         <TabsPanel c={c} data={data} tabs={panelTabsShown} active={panelTabNow} setActive={setPanelTab} onMenu={() => setOpen(open === "tabs:panel" ? null : "tabs:panel")} menuOpen={open === "tabs:panel"}
-            items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend} />
+            items={items} prevItemId={prevItemId} airItemId={airNow ? airItemId : null} service={service} onSaveNotes={saveOperatorNotes} onPrepare={prepare} onGo={prepareAndSend} />
     );
     const libraryPanel = (
         <Panel title="Biblioteca" actions={<TabsPlus row="lib" onMenu={() => setOpen(open === "tabs:lib" ? null : "tabs:lib")} menuOpen={open === "tabs:lib"} />} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -1119,13 +1183,13 @@ export default function Console() {
         </Panel>
     );
     const slidesPanel = (
-        <Panel title="Slides" count={handTitle(c) || "—"} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="Slides" className={coverCls} count={handTitle(c) || "—"} actions={coverTag} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} airTabs={!onScreen("onair")} />
         </Panel>
     );
     // What is on air, slide by slide, whatever the Slides column holds.
     const onAirPanel = (
-        <Panel title="No ar" count={onAirCount(c, Boolean(layout.folded?.onair)) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="No ar" count={onAirCount(c, Boolean(layout.folded?.onair)) || "—"} actions={coverTag} className={`onair-panel ${coverCls}`} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <OnAirPanel c={c} />
         </Panel>
     );
@@ -1149,9 +1213,9 @@ export default function Console() {
     // The Programa's menu: its right click and the pill's "…" (which holds
     // what a folded pill leaves out, Camadas included while in the tray).
     const progMenu = (e) => openMenu(e, { title: "Programa", items: [
-        { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: "B", onSelect: () => c.toggleScreen("black") },
-        { label: c.cur?.screen === "logo" ? "Tirar o logo" : "Mostrar logo", icon: "logo", kbd: "L", onSelect: () => c.toggleScreen("logo") },
-        { label: "Limpar texto", icon: "eraser", kbd: "C", onSelect: c.clearText },
+        { label: c.cur?.screen === "black" ? "Tirar a tela preta" : "Tela preta", icon: "black", kbd: keyHint("black", letters), onSelect: () => c.toggleScreen("black") },
+        { label: c.cur?.screen === "logo" ? "Tirar o logo" : "Mostrar logo", icon: "logo", kbd: keyHint("logo", letters), onSelect: () => c.toggleScreen("logo") },
+        { label: "Limpar texto", icon: "eraser", kbd: keyHint("clear", letters), onSelect: c.clearText },
         { label: "Voltar ao anterior…", icon: "undo", onSelect: () => setOpen("hist") },
         !camadasOn && { label: drawer ? "Fechar Camadas" : "Camadas…", icon: "layers", onSelect: () => setDrawer((d) => !d) },
         { label: layout.multiview ? "Ver só o Programa" : "Multiview: quatro saídas", icon: "grid", onSelect: toggleMultiview },
@@ -1319,13 +1383,13 @@ export default function Console() {
         <ConfirmContext.Provider value={askConfirm}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)}
-                sync={syncTop} onSync={() => openSettings("sincronizacao")} />
+            <TopBar inert={winOpen} c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)}
+                sync={syncTop} onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
-                <div className="kx-banner is-warn" role="alert">
-                    <span className="kx-alert-title">{health.banner.row.key === "/Projection" ? "Projetor" : health.banner.row.name} · Reconectando… tentativa {tries}</span>
+                <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
+                    <span className="kx-alert-title">{health.banner.row.name} · Reconectando… tentativa {tries}</span>
                     <span className="kx-sub">ATENÇÃO · {health.banner.row.key === "/Projection" ? `última conexão boa às ${hhmm(lastOkAt)} · ` : ""}o monitor escolhido não está ligado</span>
                     <span className="kx-spacer" />
                     <button type="button" className="kx-btn kx-t" onClick={() => c.toggleScreen("black")}>Tela preta</button>
@@ -1334,7 +1398,7 @@ export default function Console() {
                 </div>
             )}
             {health.banner && health.banner.kind !== "reconnecting" && (
-                <div className="kx-banner is-warn" role="alert">
+                <div className="kx-banner is-warn" role="alert" inert={winOpen ? "" : undefined}>
                     <span className="kx-alert-title">{health.banner.title}{health.banner.more ? ` · e mais ${health.banner.more}` : ""}</span>
                     <span className="kx-sub">{health.banner.sub}</span>
                     <span className="kx-spacer" />
@@ -1347,20 +1411,21 @@ export default function Console() {
             {editing && (
                 <EditBanner onRestore={() => { setLayout(restoreHere()); c.say(env === "biblia" ? "A Bíblia voltou à disposição padrão." : "Posições e larguras padrão restauradas."); }} onDone={() => setEditing(false)}>
                     {!winOpen && <DockTray dock={envDock} dnd={dockDrag} onChipMenu={moveMenu} />}
-                    {!winOpen && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Sob as colunas", { title: "A faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela toda", { title: "A faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
-                    {!winOpen && <span className="dock-presets dock-span"><span className="kx-meta">Tamanhos:</span><Seg small value={dockMode(envDock)} onChange={setEnvMode} options={[["free", "Livre", { title: "Os divisores param onde você soltar; os tamanhos ficam em pixels" }], ["pct", "Por %", { title: "Os divisores encaixam de 5 em 5 %; numa tela menor ou maior, as proporções se mantêm" }]]} /></span>}
+                    {!winOpen && env === "culto" && <span className="dock-presets dock-span"><span className="kx-meta">No ar:</span><Seg small label="No ar" value={layout.onairSpan} onChange={setOnairSpan} options={[["columns", "Sob as colunas", { title: "A faixa sob a Biblioteca, os Slides e o Programa; o Setlist desce até embaixo" }], ["window", "Janela toda", { title: "A faixa de ponta a ponta, sob todas as colunas" }]]} /></span>}
+                    {!winOpen && <span className="dock-presets dock-span"><span className="kx-meta">Tamanhos:</span><Seg small label="Tamanhos" value={dockMode(envDock)} onChange={setEnvMode} options={[["free", "Livre", { title: "Os divisores param onde você soltar; os tamanhos ficam em pixels" }], ["pct", "Por %", { title: "Os divisores encaixam de 5 em 5 %; numa tela menor ou maior, as proporções se mantêm" }]]} /></span>}
                     {!winOpen && <DockPresetsBar preset={preset} changed={presetDirty} onSave={savePreset} onSaveAs={savePresetAs} onDelete={deletePreset} problemOf={(name) => nameProblem(presets, name)} />}
                 </EditBanner>
             )}
             {c.locked && (
-                <div className="kx-banner is-rh" role="status"><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
+                <div className="kx-banner is-rh" role="status" inert={winOpen ? "" : undefined}><span className="kx-alert-title">TELAS TRAVADAS — nada novo vai às telas</span><span className="kx-sub">Prepare à vontade; Tela preta, Logo, Limpar e Esc continuam valendo.</span><span className="kx-spacer" /><button type="button" className="kx-btn kx-btn-rh kx-t" onClick={() => c.setLocked(false)}>Destravar</button></div>
             )}
-            <div className="main" ref={mainRef}>
+            {/* Behind THE window nothing takes the focus (C-12); its keys still listen on window. */}
+            <main className="main" ref={mainRef} inert={winOpen ? "" : undefined}>
                 {env === "biblia" && <BibleEnv c={c} logoUrl={logoUrl} request={bibleRequest} stageRef={bibleStageRef} apiRef={bibleApiRef} serviceId={serviceId} itemsCount={items.length} ensureService={ensureService} onSend={(s) => sendStage(s)} onEnd={() => setOpen("encerrar")}
                     grid={layout.bibleGrid} setGrid={(v) => setLayout({ ...layout, bibleGrid: v })} onChaptersH={setChaptersFitH}
                     dockProps={{ frame: bibleFrame, dock: bibleDock, onDock: setBibleDock, editing, dnd: dockDrag, onChipMenu: moveMenu, onFold }} />}
                 {env === "culto" && <DockView frame={dockFrame} dock={dock} onDock={setDock} render={renderModule} editing={editing} dnd={dockDrag} onChipMenu={moveMenu} playerDocked={playerDocked} onFold={onFold} />}
-            </div>
+            </main>
             {dockDrag.drag && <DockHint drag={dockDrag.drag} />}
 
             {/* THE window (Rodada C): one dialog, its pages stacked by
@@ -1404,7 +1469,7 @@ export default function Console() {
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} />
-            <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} />
+            <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
@@ -1428,12 +1493,8 @@ export default function Console() {
                 <BibleQuickJump initial={quick} onCancel={() => setQuick(null)}
                     onPick={(r) => { setQuick(null); setBibleRequest({ book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart, at: Date.now() }); }} />
             )}
-            {c.toast && (
-                <div className="toast" role="status">
-                    <span className="toast-t">{c.toast}</span>
-                    {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
-                </div>
-            )}
+            <Toast c={c} />
+            {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
         </ConfirmContext.Provider>

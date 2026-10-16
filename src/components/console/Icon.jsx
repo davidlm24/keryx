@@ -16,12 +16,18 @@ const EXTRA = {
     cloud: '<path d="M7.5 18.5h9.5a3.75 3.75 0 0 0 .4-7.48 5.5 5.5 0 0 0-10.6 1.26A3.1 3.1 0 0 0 7.5 18.5z"/>',
     // Two ticks: select all (the Bíblia's verses).
     checks: '<path d="m3.5 12.5 3.5 3.5 7-8"/><path d="m11 15.5.5.5 8-9"/>',
+    // The set's undo, mirrored (Refazer in the editors).
+    redo: '<path d="M15.5 13.5 20 9l-4.5-4.5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H14"/>',
 };
+
+// The stroke in the glyphs' 24-unit box: 1.5 at the set's 16 px, scaled so
+// it stays one pixel at any size (a 12 px mark drew 0.75 px, faint; POL-15).
+const strokeFor = (size) => String(Math.round((24 / size) * 100) / 100);
 
 // The glyph's SVG markup, for a node built outside React (the drag ghost).
 export const iconSvg = (name, size = 14) => {
     const path = window.KERYX?.ICONS[name] || EXTRA[name];
-    return path ? `<svg class="kx-i" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>` : "";
+    return path ? `<svg class="kx-i" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeFor(size)}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>` : "";
 };
 
 export default function Icon({ name, size = 16, className = "" }) {
@@ -35,7 +41,7 @@ export default function Icon({ name, size = 16, className = "" }) {
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.5"
+            strokeWidth={strokeFor(size)}
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
