@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, dockMotion, easesBetween } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -539,4 +539,28 @@ test("Por %: splitters snap to 5 %", () => {
     assert.equal(snapPct(5, 1000), 50);
     assert.equal(snapPct(999, 1000), 950);
     assert.equal(snapPct(100, 0), 100);
+});
+
+test("dockMotion: folds, the strip and measured heights ease; a new window or shape does not (POL-01)", () => {
+    const d = defaultDock(W);
+    const locked = { camadas: 152, temas: 220 };
+    const open = dockMotion(fitDock(d, 1908, 1000, { locked, gone: ["onair"] }));
+    // Folding the Setlist (the right column's flexible child) eases, and
+    // every cell keeps a size to ease from and to (none collapses to 0).
+    const shut = dockMotion(fitDock(d, 1908, 1000, { locked, gone: ["onair"], folded: ["setlist"] }));
+    assert.equal(easesBetween(open, shut), true);
+    assert.equal(easesBetween(shut, open), true);
+    assert.equal(open.shape, shut.shape);
+    const changed = Object.keys(open.sizes).filter((k) => Math.abs(open.sizes[k] - shut.sizes[k]) > 1);
+    assert.ok(changed.length >= 2);
+    assert.ok(changed.every((k) => open.sizes[k] > 0 && shut.sizes[k] > 0));
+    // The No ar strip coming: eased; Camadas measuring another height: eased.
+    assert.equal(easesBetween(open, dockMotion(fitDock(d, 1908, 1000, { locked }))), true);
+    assert.equal(easesBetween(open, dockMotion(fitDock(d, 1908, 1000, { locked: { ...locked, camadas: 300 }, gone: ["onair"] }))), true);
+    // Nothing changed, another window size, another arrangement: drawn at once.
+    assert.equal(easesBetween(open, dockMotion(fitDock(d, 1908, 1000, { locked, gone: ["onair"] }))), false);
+    assert.equal(easesBetween(open, dockMotion(fitDock(d, 1600, 900, { locked, gone: ["onair"], folded: ["setlist"] }))), false);
+    const moved = moveModules(d, ["camadas"], { kind: "group", path: [0, 2, 0], zone: "center" });
+    assert.equal(easesBetween(open, dockMotion(fitDock(moved, 1908, 1000, { locked, gone: ["onair"] }))), false);
+    assert.equal(easesBetween(null, open), false);
 });

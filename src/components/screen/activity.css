@@ -37,7 +37,8 @@
 
 @keyframes ks-act-in { from { opacity: 0; } }
 @keyframes ks-act-pop { from { opacity: 0; transform: translateY(.35em) scale(.9); } }
+/* Only the console's monitors (.kx) honour reduced motion: the outputs keep the reveals. */
 @media (prefers-reduced-motion: reduce) {
-    .ks-act-opt, .ks-act-opt > b { transition: none; }
-    .ks-act-opt > i, .ks-act-ref, .ks-word-in.is-new { animation: none; }
+    .kx .ks-act-opt, .kx .ks-act-opt > b { transition: none; }
+    .kx .ks-act-opt > i, .kx .ks-act-ref, .kx .ks-word-in.is-new { animation: none; }
 }

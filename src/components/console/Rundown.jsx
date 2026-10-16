@@ -18,7 +18,7 @@ export const plannedTimes = (service, items) => plan(service, items).rows.map((r
 // The service's items in order: click (or Enter on the row) prepares; the
 // "Ir" button prepares and sends — the only send here. Drag reorders
 // (ServiceItem.order), as Cultos does.
-export default function Rundown({ service, items, airItemId, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true }) {
+export default function Rundown({ service, items, loaded = true, airItemId, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true }) {
     const menu = useContextMenu();
     const ask = useConfirm();
     // "Tirar da setlist…" (owner 2026-10-16, 0.2.18): asks, then the item
@@ -55,12 +55,12 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
 
     return (
         <div className={`rund kx-acts-list ${sort.sorting ? "is-sorting" : ""}`} {...sort.listProps}>
-            {!items.length && (
+            {!items.length && loaded && (
                 <Empty icon="list" title={service ? "Setlist vazia" : "Setlist de hoje"}>
                     {service ? "Arraste da Biblioteca, busque (/) ou use +." : "Arraste da Biblioteca ou use + para começar a setlist de hoje. Ou escolha um culto no menu KERYX."}
                 </Empty>
             )}
-            {onPlan && !items.length && <div className="rund-plan"><Btn small onClick={() => onPlan(null)}><Icon name="list" />Planejar o culto</Btn></div>}
+            {onPlan && !items.length && loaded && <div className="rund-plan"><Btn small onClick={() => onPlan(null)}><Icon name="list" />Planejar o culto</Btn></div>}
             {items.map((it, i) => {
                 if (isSection(it)) {
                     const sec = p.sections[i] || { count: 0, seconds: 0 };

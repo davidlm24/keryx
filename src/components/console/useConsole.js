@@ -64,17 +64,26 @@ export function useStamp(themeId) {
 
 // A toast: one line, 3 s (6 s for a long one, such as how to send a
 // PowerPoint as PDF); with an action ({ label, run }) a button and 8 s, so
-// there is time to reach it.
+// there is time to reach it. The one with a button (Desfazer after Esc) is
+// kept apart (POL-11): a plain message that follows shows above it instead
+// of taking its place, and its time stops while the pointer or the focus is
+// on it (`holdToast(true)`), then 3 s more once they leave.
+// -> { toasts: [{ key, text, action }] (plain first, the action one last), say, holdToast }
+const ACTION_MS = 8000;
+const RESUME_MS = 3000;
 export function useToast() {
-    const [toast, setToastState] = useState(null);
-    const toastTimer = useRef(null);
+    const [plain, setPlain] = useState(null);
+    const [held, setHeld] = useState(null);
+    const timers = useRef({});
+    const arm = useCallback((k, ms, set) => { clearTimeout(timers.current[k]); timers.current[k] = setTimeout(() => set(null), ms); }, []);
     const say = useCallback((text, action = null) => {
-        setToastState({ text, action });
-        clearTimeout(toastTimer.current);
-        toastTimer.current = setTimeout(() => setToastState(null), action ? 8000 : String(text).length > 80 ? 6000 : 3000);
-    }, []);
-    useEffect(() => () => clearTimeout(toastTimer.current), []);
-    return { toast: toast?.text || null, toastAction: toast?.action || null, say };
+        if (action) { setHeld({ key: "held", text, action }); arm("held", ACTION_MS, setHeld); }
+        else { setPlain({ key: "plain", text, action: null }); arm("plain", String(text).length > 80 ? 6000 : 3000, setPlain); }
+    }, [arm]);
+    const holdToast = useCallback((on) => { if (on) clearTimeout(timers.current.held); else arm("held", RESUME_MS, setHeld); }, [arm]);
+    useEffect(() => () => { clearTimeout(timers.current.held); clearTimeout(timers.current.plain); }, []);
+    const toasts = useMemo(() => [plain, held].filter(Boolean), [plain, held]);
+    return { toasts, say, holdToast };
 }
 
 // The operations on what is on air that need nothing of the console's own
@@ -146,7 +155,7 @@ export function useConsole() {
         try { if (id) localStorage.setItem(THEME_IN_USE_KEY, id); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
     }, []);
     const { stamp, bgPrefs } = useStamp(themeId);
-    const { toast, toastAction, say } = useToast();
+    const { toasts, say, holdToast } = useToast();
     const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen, clearText } = useLiveOps(live, say, bgPrefs);
 
     // The idle wallpaper follows its settings: editing its dim or blur in
@@ -290,5 +299,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say };
+    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toasts, holdToast, say };
 }

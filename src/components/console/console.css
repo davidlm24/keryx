@@ -115,7 +115,7 @@
    (owner 2026-10-16, Rodada E0), so it does not stamp a hard box there. */
 .console .ctx-menu { position: fixed; z-index: 46; min-width: 220px; max-width: 320px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent), 0 6px 16px #00000059; }
 .console .ctx-menu .ctx-l { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.console .ctx-menu .kx-menu-item:focus-visible { outline: none; background: var(--bg-3); }
+.console .ctx-menu .kx-menu-item:focus-visible { outline: var(--bar) solid var(--brand); outline-offset: -1px; background: var(--bg-3); } /* the same keyboard focus as the other menus (POL-14) */
 .console .ctx-menu .kx-menu-item:disabled { opacity: var(--dim); }
 .console .ctx-menu .kx-menu-item:disabled:hover { background: none; }
 .console .scrim { position: absolute; inset: 0; z-index: 25; }
@@ -168,6 +168,7 @@
 .console .prog-pill .pp-btns, .console .prog-pill .pp-screens { display: inline-flex; align-items: center; gap: 2px; flex: none; }
 .console .prog-pill .kx-btn { flex: none; width: 24px; height: 24px; padding: 0; border-radius: var(--radius-round); background: transparent; color: var(--fg-1); }
 .console .prog-pill .kx-btn:hover { background: #ffffff1f; }
+.console .prog-pill .kx-btn:active { background: #ffffff33; } /* pressed: Tela preta, Logo, Limpar answer the hand at once (POL-10) */
 .console .prog-pill .kx-btn.is-on { background: var(--bg-3); }
 .console .prog-pill .pp-more { display: none; }
 @container prog-screen (max-width: 560px) { .console .prog-pill .prog-where { display: none; } }
@@ -285,6 +286,7 @@
 .console .kx-btn.kx-btn-send { height: 40px; padding: 0 var(--space-4); font-size: 13px; }
 .console .topbar .kx-btn.kx-btn-icon { width: 32px; height: 32px; border-radius: var(--radius-round); background: var(--bg-1); }
 .console .topbar .kx-btn.kx-btn-icon:hover { background: var(--bg-2); }
+.console .topbar .kx-btn.kx-btn-icon:active { background: var(--bg-3); }
 .console .topbar .kx-btn.kx-btn-icon.is-on, .console .topbar .kx-btn.kx-btn-icon[aria-expanded="true"] { background: var(--bg-3); color: var(--fg-1); }
 .console .topbar .tb-r { gap: 6px; }
 .console .sendrow { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex-wrap: wrap; }
@@ -316,6 +318,20 @@
 .console .kx-slide::before, .console .kx-verse::before { content: none; }
 .console .kx-slide:hover, .console .onair-card:hover { background: var(--bg-2); }
 .console .kx-verse:hover { background: var(--bg-3); }
+/* The keys move these states hundreds of times a service (↑/↓ the Prévia,
+   ←/→ the air): the highlight lands with the key, only the pointer's hover
+   eases in (POL-08). */
+.console :is(.kx-slide, .onair-card, .kx-verse).kx-t { transition: none; }
+.console :is(.kx-slide, .onair-card, .kx-verse).kx-t:hover:not(.is-prev, .is-air, .is-next) { transition: background-color var(--duration-fast) var(--ease-out); }
+/* While the keys walk the list (Dock.jsx sets data-keying until the pointer
+   moves), the row that scrolls under a resting pointer shows no hover: a grey
+   row one step from the next slide's would read as a second "next" (POL-09). */
+html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { background: none; box-shadow: inset 0 -1px 0 var(--line); }
+/* Pressed (POL-10): a row, a slide, a verse or a theme answers the hand on
+   press, before the click prepares it; a state (Prévia, no ar) keeps its colour. */
+.console :is(.kx-row, .kx-slide, .onair-card, .kx-layer):active:not(.is-prev, .is-air) { background: var(--bg-3); }
+.console .kx-verse:active:not(.is-prev, .is-air) { background: color-mix(in srgb, var(--fg-1) 7%, var(--bg-3)); }
+.console .fg-tile:active .fg-img { filter: brightness(.85); }
 /* A row with a background (a state, the pointer) drops its separator. */
 .console :is(.kx-slide, .onair-card):is(.is-air, .is-prev, .is-next, :hover) { box-shadow: none; }
 .console .kx-slide-body { display: flex; flex-direction: column; min-width: 0; }
@@ -424,15 +440,15 @@
 .console .dock { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .console .dock-split { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .console .dock-split.is-col { flex-direction: column; }
-.console { --fold-ms: 240ms; --ease-fold: cubic-bezier(0.32, 0.72, 0, 1); }
+/* The dock eases its cells (Dock.jsx useDockEase, POL-01): a panel folded or
+   opened, the No ar strip coming or going (only while lyrics are on air), a
+   locked height changing (a pencil opening Camadas, a song with more
+   lines). The length and curve are read from here; 180 ms as documented. */
+.console { --fold-ms: 180ms; --ease-fold: cubic-bezier(0.32, 0.72, 0, 1); }
 .console .dock-cell { display: flex; min-width: 0; min-height: 0; }
-/* A folding module (the No ar strip, only while lyrics are on air): it eases
-   in and out of its place so the columns do not jump; gone, it takes no room. */
-.console .dock-cell.dock-fold { overflow: hidden; transition: flex-basis var(--fold-ms) var(--ease-fold); }
-.console .dock-cell.dock-fold.is-gone { visibility: hidden; transition: flex-basis var(--fold-ms) var(--ease-fold), visibility 0s var(--fold-ms); }
-/* A locked height (dock.js `locked`): it eases to its new size (a pencil
-   opening Camadas, a song with more lines); the gap beside it has no handle. */
-.console .dock-cell.dock-locked { transition: flex-basis var(--fold-ms) var(--ease-fold); }
+.console .dock-cell[data-easing], .console .dock-cell.dock-fold { overflow: hidden; }
+/* Gone, the strip takes no room; it stays visible while it eases out. */
+.console .dock-cell.dock-fold.is-gone { visibility: hidden; transition: visibility 0s var(--fold-ms); }
 /* Folding a panel (owner 2026-10-16, Rodada F4; kx.jsx FoldBtn/FoldStrip,
    dock.js fitDock's `folded`): the chevron right of the header's +, up
    while open, turned while folded; the last open panel of a split keeps
@@ -440,11 +456,11 @@
    Compacta); across a row a 28 px strip, the chevron over the module's
    name standing up, a click anywhere on it opens the panel. */
 .console .kx-fold { flex: none; }
-.console .kx-fold .kx-i { transition: transform 220ms var(--ease-fold); }
+.console .kx-fold .kx-i { transition: transform var(--fold-ms) var(--ease-fold); }
 .console .kx-fold.is-folded .kx-i { transform: rotate(180deg); }
 /* Folded down a column the body stays under the shrinking cell (clipped by
    the panel) and fades, instead of vanishing before the box moves. */
-.console .kx-panel > .kx-panel-b { transition: opacity 200ms var(--ease-fold) 60ms; }
+.console .kx-panel > .kx-panel-b { transition: opacity 160ms var(--ease-fold) 40ms; }
 .console .kx-panel.is-collapsed:not(.kx-strip) > .kx-panel-b { display: block; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms var(--ease-fold), visibility 0s var(--fold-ms); }
 /* aria-expanded (open) must not read as "pressed" (the base rule gives it the
    hover look): the chevron rests like the (+), a background only on hover. */
@@ -465,7 +481,7 @@
 .console .kx-split-pct:hover { color: var(--fg-1); }
 .console .kx-split-pct-in { width: 48px; text-align: center; font-size: 11px; color: var(--fg-1); cursor: text; appearance: textfield; -moz-appearance: textfield; outline: none; }
 .console .dock-span { gap: var(--space-2); }
-@media (prefers-reduced-motion: reduce) { .console .dock-cell.dock-fold, .console .dock-cell.dock-fold.is-gone, .console .dock-cell.dock-locked { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .console .dock-cell.dock-fold.is-gone { transition: none; } }
 .console .dock-group { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; outline: 0; }
 .console .dock-group > .kx-panel { flex: 1 1 0; min-width: 0; min-height: 0; }
 .console .dock-group > .kx-panel.bb-side { contain: size; }
@@ -597,6 +613,10 @@
 .console .listhead .kx-section { font-size: 10px; color: var(--fg-3); }
 .console .listhead .kx-count, .console .listhead .kx-section .kx-count { text-transform: none; letter-spacing: normal; font-weight: 400; }
 .console .kx-tabs .grow { flex: 1; }
+/* The toasts (Toasts.jsx): a plain message stacked over the one with a
+   button (Desfazer), bottom centre (POL-11). */
+.console .toasts { position: absolute; z-index: 50; left: 50%; bottom: 44px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: var(--space-1); max-width: calc(100vw - 24px); pointer-events: none; }
+.console .toasts > .toast { position: static; transform: none; pointer-events: auto; max-width: 100%; }
 .console .toast { position: absolute; z-index: 50; left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
 .console .kx-row .kx-row-acts .kx-btn { color: var(--fg-1); }
 .console .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
@@ -625,7 +645,7 @@
    fades (.is-gone). Built on <body>, outside .console, so it reads the
    tokens from :root. */
 .drag-card { position: fixed; left: 0; top: 0; z-index: 1000; pointer-events: none; will-change: transform; }
-.drag-card-in { box-sizing: border-box; display: flex; align-items: center; gap: var(--space-2); width: 100%; height: 100%; padding: 0 var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font: 500 13px/18px var(--font-sans); white-space: nowrap; box-shadow: 0 0 0 1px var(--line-strong), 0 14px 30px #000000a0; transform: scale(1.03) rotate(-0.6deg); transition: transform 120ms var(--ease-out), box-shadow 180ms var(--ease-out); animation: kx-lift 120ms var(--ease-out); }
+.drag-card-in { box-sizing: border-box; display: flex; align-items: center; gap: var(--space-2); width: 100%; height: 100%; padding: 0 var(--space-3); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-1); font: 500 13px/18px var(--font-sans); white-space: nowrap; box-shadow: 0 0 0 1px var(--line-strong), 0 14px 30px #000000a0; transform: scale(1.03); transition: transform 120ms var(--ease-out), box-shadow 180ms var(--ease-out); animation: kx-lift 120ms var(--ease-out); }
 @keyframes kx-lift { from { transform: none; box-shadow: 0 0 0 1px var(--line-strong); } }
 .drag-card-in .kx-i { flex: none; color: var(--brand); }
 .drag-card-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1268,7 +1288,15 @@
 .console .upd-bar.is-error > b { background: var(--warn); }
 .console .upd-bar.is-busy > b { right: auto; width: 30%; animation: upd-busy 1.2s ease-in-out infinite; }
 @keyframes upd-busy { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
-@media (prefers-reduced-motion: reduce) { .console .upd-bar.is-busy > b { animation: none; } .console .upd-bar > b { transition: none; } }
+/* Reduced motion (POL-06): an unknown progress is never a fixed partial bar
+   (it read as stalled at 30 %): the whole bar breathes, opacity only — the
+   one motion reduced motion keeps (it beats bundle.css's `.kx *` rule). */
+@keyframes kx-busy-breathe { from { opacity: .4; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .console .upd-bar > b { transition: none; }
+  .console .upd-bar.is-busy > b { right: 0; width: auto; transform: none; animation: kx-busy-breathe 1.4s ease-in-out infinite alternate !important; }
+  .console .prog2 > i.is-busy { animation: kx-busy-breathe 1.4s ease-in-out infinite alternate !important; }
+}
 .console .upd-line { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .notifs .note { display: grid; grid-template-columns: 16px 1fr 22px; gap: var(--space-2); align-items: start; padding: var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); }
 .console .notifs .note + .note { border-top: 1px solid var(--line); }
@@ -1328,7 +1356,7 @@
 .console .cfg .frm .cfg-frm-head .grow { flex: 1; }
 
 /* Configurações' sliders and sample screens (Fundos, Gerados, a tema's length). */
-.console .ap-range { width: 180px; accent-color: var(--prev); }
+.console .ap-range { width: 180px; accent-color: var(--brand); } /* one slider accent, gold: green is the Prévia's colour (POL-13) */
 .console .ap-ms { min-width: 64px; font-variant-numeric: tabular-nums; }
 .console .ap-sample { width: 240px; max-width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; container-type: inline-size; background: #000; box-shadow: inset 0 0 0 1px var(--line); }
 .console .ap-sample > .ks-box { width: 100%; }

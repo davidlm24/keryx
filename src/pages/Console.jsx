@@ -50,6 +50,7 @@ import { syncState } from "@/lib/console/syncView";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
+import Toasts from "@/components/console/Toasts";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
@@ -351,7 +352,7 @@ export default function Console() {
         if (!tabLists.lib.includes("avisos")) setTabList("lib", showTab("lib", tabLists.lib, "avisos"));
     };
 
-    const { services, items } = useRundown(serviceId);
+    const { services, items, loaded: rundownLoaded } = useRundown(serviceId);
     useEffect(() => { if (!serviceId && services.length) setServiceId(pickDefaultService(services)?.id || null); }, [services, serviceId]);
     useEffect(() => { if (serviceId) setLog(loadLog(serviceId)); }, [serviceId]);
     const service = services.find((s) => s.id === serviceId) || null;
@@ -1052,7 +1053,7 @@ export default function Console() {
     const setlistPanel = (
         <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
             actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
-            <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
+            <Rundown service={service} items={items} loaded={rundownLoaded} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
         </Panel>
     );
     // Temas: its own module under Camadas (owner 2026-10-14); a click makes
@@ -1419,12 +1420,7 @@ export default function Console() {
                 <BibleQuickJump initial={quick} onCancel={() => setQuick(null)}
                     onPick={(r) => { setQuick(null); setBibleRequest({ book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart, at: Date.now() }); }} />
             )}
-            {c.toast && (
-                <div className="toast" role="status">
-                    <span className="toast-t">{c.toast}</span>
-                    {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
-                </div>
-            )}
+            <Toasts c={c} />
             <ContextMenuLayer menu={ctxMenu} onClose={closeMenu} />
         </div>
         </ConfirmContext.Provider>
