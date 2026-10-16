@@ -47,6 +47,31 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and the states never run edge to edge. One rule in `console.css`; don't
   override it per list. Edge to edge only where the owner asks (the Slides
   column and No ar, to gain room). docs/design-system.md has it too.
+- **One padding rule for panels** (owner 2026-10-16, Rodada F4): a panel's
+  header text sits 12 px (`--space-3`) from its edge; anything with a box
+  of its own — list cards, verse cards, the cells of Livros/Capítulos/
+  Versículos, the Temas tiles, the search field, tabs, the No ar agora
+  monitor — sits 4 px (`--space-1`) in from the column, with its text at
+  12 px; listheads and sub-titles (Recentes, "Selecionado", a Temas
+  heading inside Camadas) at 12 px; every panel header is 32 px, 28 in
+  Compacta (`panelHead`), one line — a header never wraps into a taller
+  block (the Bíblia's Texto drops its hint, then Selecionar todos/Limpar,
+  container queries). Don't give one panel its own inset.
+- **Every panel folds** (owner 2026-10-16, Rodada F4): a chevron right of
+  the header's + (`FoldBtn` in kx.jsx; "Dobrar"/"Abrir"), on every module
+  but the Programa, the Prévia and the player (`noFold` in dock.js
+  `MODULES`). The state is `layout.folded` (`{ [moduleId]: true }`, per
+  computer, both environments; `normalizeFolded` migrates the old
+  `onairMin`). `fitDock`'s `folded` (dock.js, tested) locks a folded module
+  alone in a split: down a column to its header (`head`, the density's),
+  across a row to a 28 px strip (`FOLD_STRIP`; `FoldStrip`, its name
+  standing, a click opens it); the fold wins over Camadas'/Temas' measured
+  heights. A split keeps one open child: the last open one's chevron is
+  inert ("Um painel da coluna fica sempre aberto"), and when only measured
+  heights stay open the last of them takes the rest. As a tab beside
+  others, or while editing the arrangement, nothing folds. The body stays
+  mounted, hidden. Don't confuse it with the dock frames' `collapsed`
+  (joined as tabs) or No ar's `fold`/`gone` (no lyrics on air).
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).
@@ -555,8 +580,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tiers, or the tray), while lyrics are on air and another item is in the
   Prévia, the Slides column has two tabs, No ar · Prévia (`airTabs` in
   SlidesPanel.jsx): the tab only changes what the column shows, the keys
-  do as always. The strip's header chevron minimizes it to its header
-  (`layout.onairMin`, per computer; its count adds the slide's part).
+  do as always. The strip's header chevron folds it to its header, like
+  every panel (`layout.folded.onair`; its count adds the slide's part).
   **Densidade Automática** is the default (`shownDensity`, layout.js):
   Compacta when the console's grid is under `AUTO_COMPACT_H` (820 px; a
   notebook), with 28 px panel headers (`panelHead`, which the locked

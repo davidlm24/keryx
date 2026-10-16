@@ -52,8 +52,10 @@ export const MODULES = {
     // No header since Rodada E1 (its caption is a pill inside the screen):
     // the 28 px it gave back pay for the player's second row, so the column
     // needs what it did before (172 + PLAYER_SLOT = the old 200 + 44).
-    programa: { name: "Programa", minW: 320, minH: 172, required: true },
-    previa: { name: "Prévia", minW: 220, minH: 200, required: true },
+    // `noFold`: no chevron in its header (fitDock's `folded`): the Programa
+    // and the Prévia are screens, the player a slot.
+    programa: { name: "Programa", minW: 320, minH: 172, required: true, noFold: true },
+    previa: { name: "Prévia", minW: 220, minH: 200, required: true, noFold: true },
     abas: { name: "Painel de abas", minW: 220, minH: 140 },
     // Never out of reach (the console audit, 2026-10-13).
     setlist: { name: "Setlist", minW: 220, minH: 120, required: true },
@@ -74,7 +76,7 @@ export const MODULES = {
     // As a module of its own: the panel's header (32) over the slot (64); in
     // a column it comes in at its own height (`size.col`), not half of its
     // neighbour's.
-    player: { name: "Player", minW: 280, minH: 96, home: "programa", size: { col: 100 } },
+    player: { name: "Player", minW: 280, minH: 96, home: "programa", size: { col: 100 }, noFold: true },
     // The Bíblia (BibleEnv.jsx): the three pickers (the version and the
     // search live in their headers since 2026-10-14; an old save's "Versão
     // e busca" module is dropped by clean); the text; what is on air with
@@ -86,6 +88,11 @@ export const MODULES = {
     air: { name: "No ar", minW: 300, minH: 300, required: true, env: "biblia" },
 };
 export const ENVS = ["culto", "biblia"];
+// A module the operator can fold (its header's chevron; layout.folded).
+export const canFoldModule = (id) => Boolean(MODULES[id]) && !MODULES[id].noFold;
+// A folded module across a row: a strip of this width, its name standing up
+// (owner 2026-10-16, Rodada F4, pick A).
+export const FOLD_STRIP = 28;
 const envOf = (id) => MODULES[id]?.env || "culto";
 export const envModules = (env) => Object.keys(MODULES).filter((id) => envOf(id) === env);
 export const dockEnv = (d) => (d?.env === "biblia" ? "biblia" : "culto");
@@ -693,12 +700,27 @@ export function allocate(sizes, mins, avail) {
 // module alone takes exactly that height, comes out `locked: true` (no
 // splitter beside it, Dock.jsx) and never gives way; across a row, or as a
 // tab beside other modules, the lock does not apply.
-export function fitDock(dock, w, h, { gone = [], locked = {} } = {}) {
+//
+// `folded`: the modules the operator folded (their header's chevron, owner
+// 2026-10-16, Rodada F4; layout.folded). A child of a split that is one of
+// them alone locks, as above, to its header (`head` px, the density's)
+// down a column and to a FOLD_STRIP strip across a row, `folded: true`;
+// the fold wins over a measured lock (Camadas, Temas). A split keeps one
+// open child: when every child left would fold, its flexible one (else the
+// last) stays open, and when only locked heights stay open, the last of
+// them takes the rest. Every group alone in a split carries `fold`:
+// { dir, on, can } — how it folds there, whether it is folded, whether its
+// chevron may act (folded, or another child of the split is open).
+export function fitDock(dock, w, h, { gone = [], locked = {}, folded = [], head = 32 } = {}) {
     if (!dock?.tree) return null;
     const folding = new Set(gone.filter((id) => MODULES[id]?.fold));
+    const shut = new Set(folded.filter(canFoldModule));
     const tree = treeFor(dock, w, h);
-    return fitNode(tree, [], w, h, { ...contextOf(tree), folding, locked });
+    return fitNode(tree, [], w, h, { ...contextOf(tree), folding, locked, shut, head });
 }
+
+// The module a node is when the operator can fold it there: a group of one.
+const foldable = (node) => (isGroup(node) && node.tabs.length === 1 && canFoldModule(node.tabs[0]) ? node.tabs[0] : null);
 
 // A node's locked height (fitDock's `locked`): a group of one module that has one.
 const lockedPx = (node, ctx) => {
@@ -746,13 +768,34 @@ function fitNode(node, path, w, h, ctx) {
     if (isGroup(node)) return { kind: "group", path, tabs: node.tabs, active: node.active, w, h };
     const row = node.dir === "row";
     const out = node.children.map((c, i) => (folds(c) && leaves(c).every((id) => ctx.folding?.has(id)) ? i : -1)).filter((i) => i >= 0);
+    // The operator's folds (fitDock's `folded`): one open child stays.
+    const shown = node.children.map((_, i) => i).filter((i) => !out.includes(i));
+    let shut = shown.filter((i) => ctx.shut?.has(foldable(node.children[i])));
+    if (shut.length && shut.length === shown.length) {
+        const keep = shown.find((i) => node.sizes[i] === null) ?? shown[shown.length - 1];
+        shut = shut.filter((i) => i !== keep);
+    }
+    const open = shown.length - shut.length;
+    const foldOf = (i) => (foldable(node.children[i]) ? { dir: node.dir, on: shut.includes(i), can: shut.includes(i) || open > 1 } : null);
+    const foldPx = row ? FOLD_STRIP : Math.round(ctx.head || 32);
     let items = node.children.map((c, i) => {
+        if (shut.includes(i)) return { at: [i], min: foldPx, size: foldPx, locked: true, folded: true };
         const px = row ? null : lockedPx(c, ctx);
         return px === null ? { at: [i], min: minSize(c, row, ctx), size: node.sizes[i] } : { at: [i], min: px, size: px, locked: true };
     }).filter((it) => !out.includes(it.at[0]));
     // The flexible child gone (or locked): the largest free one left takes the rest.
     if (items.length && !items.some((it) => it.size === null)) {
-        const free = items.filter((it) => !it.locked);
+        let free = items.filter((it) => !it.locked);
+        // Only locked heights open (Camadas and Temas over a folded Setlist):
+        // the last of them takes the rest, never an empty band under them.
+        if (!free.length) {
+            const last = items.findLast((it) => !it.folded);
+            if (last) {
+                last.locked = false;
+                last.min = minSize(node.children[last.at[0]], row, ctx);
+                free = [last];
+            }
+        }
         if (free.length) free.reduce((a, it) => (it.size > a.size ? it : a), free[0]).size = null;
     }
     const need = () => items.reduce((a, it) => a + it.min, 0) + G * (items.length - 1);
@@ -782,10 +825,13 @@ function fitNode(node, path, w, h, ctx) {
         const cw = row ? dims[k] : w;
         const ch = row ? h : dims[k];
         const first = [...path, it.at[0]];
-        const frame = it.at.length === 1
+        const one = it.at.length === 1;
+        const fold = one ? foldOf(it.at[0]) : null;
+        const sub = one
             ? fitNode(node.children[it.at[0]], first, cw, ch, ctx)
             : tabsFrame(it.at.map((i) => node.children[i]), first, cw, ch, firstGroupPath(node.children[it.at[0]], first));
-        const child = { index: it.at[0], at: it.at, size: dims[k], fixed: it.size !== null, frame, ...(it.locked && it.at.length === 1 ? { locked: true } : {}) };
+        const frame = fold ? { ...sub, fold } : sub;
+        const child = { index: it.at[0], at: it.at, size: dims[k], fixed: it.size !== null, frame, ...(it.locked && one ? { locked: true } : {}), ...(it.folded && one ? { folded: true } : {}) };
         return it.at.length === 1 && folds(node.children[it.at[0]]) ? { ...child, fold: true, gone: false } : child;
     });
     // The gone ones in their places, at no size.
