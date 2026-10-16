@@ -7,18 +7,24 @@ import { restoreArgs } from "@/lib/projection";
 import { stageFromHistory } from "@/lib/console/stage";
 
 // A row of tabs the operator trims (the Biblioteca's, the panel beside the
-// Prévia): the tabs that show, then the (+) that lists them all with check
-// marks (TabsMenu in Popovers.jsx; src/lib/console/panelTabs.js). The (+)
-// carries `data-tabs-plus` so its list opens under it.
-export function TabRow({ row, tabs, active, onPick, onMenu, menuOpen = false }) {
+// Prévia): only the tabs that show. Which ones is the (+) in the panel's
+// header (TabsPlus).
+export function TabRow({ tabs, active, onPick }) {
     return (
         <div className="kx-tabs tabrow" role="tablist">
             {tabs.map((t) => <button type="button" role="tab" aria-selected={active === t.id} key={t.id} className={`kx-t ${active === t.id ? "is-on" : ""}`} onClick={() => onPick(t.id)}>{t.name}</button>)}
-            {onMenu && (
-                <button type="button" className={`kx-t tabs-plus ${menuOpen ? "is-on" : ""}`} data-tabs-plus={row} aria-expanded={menuOpen} aria-haspopup="menu"
-                    title="Escolher as abas que aparecem aqui" aria-label="Escolher as abas" onClick={onMenu}><Icon name="plus" /></button>
-            )}
         </div>
+    );
+}
+
+// The (+) of a trimmable tab row, in its panel's header at the level of the
+// title like every module's + (owner 2026-10-16, Rodada E1): it lists every
+// tab with check marks (TabsMenu in Popovers.jsx; src/lib/console/panelTabs.js)
+// and carries `data-tabs-plus` so that list opens under it.
+export function TabsPlus({ row, onMenu, menuOpen = false }) {
+    return (
+        <button type="button" className={`kx-btn kx-btn-icon kx-t tabs-plus ${menuOpen ? "is-on" : ""}`} data-tabs-plus={row} aria-expanded={menuOpen} aria-haspopup="menu"
+            title="Escolher as abas que aparecem aqui" aria-label="Escolher as abas" onClick={onMenu}><Icon name="plus" /></button>
     );
 }
 
@@ -100,11 +106,16 @@ function AirHistory({ c, onPrepare, onGo }) {
 }
 
 // The panel beside the Prévia (owner's design 2026-10-13, the console
-// audit): one tab at a time, the ones the operator checked in its (+).
+// audit): one tab at a time, the ones the operator checked in its (+). Its
+// thin header (title "Painel", the + at its right) is Rodada E1's.
 export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo }) {
     return (
         <div className="kx-panel bb-side tabs-panel" data-panel-tab={active}>
-            <TabRow row="panel" tabs={tabs} active={active} onPick={setActive} onMenu={onMenu} menuOpen={menuOpen} />
+            <div className="kx-panel-h tabs-panel-h">
+                <span className="kx-section">Painel</span>
+                {onMenu && <TabsPlus row="panel" onMenu={onMenu} menuOpen={menuOpen} />}
+            </div>
+            <TabRow tabs={tabs} active={active} onPick={setActive} />
             <div className="kx-panel-b">
                 {active === "notas" && <ItemNotes c={c} items={items} prevItemId={prevItemId} airItemId={airItemId} service={service} onSaveNotes={onSaveNotes} />}
                 {active === "aviso" && <div className="tabs-pad"><QuickAlert c={c} data={data} /></div>}

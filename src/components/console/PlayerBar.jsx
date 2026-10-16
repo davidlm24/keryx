@@ -149,41 +149,51 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
     const pct = duration ? Math.min(100, (shownPos / duration) * 100) : 0;
     const off = !item;
 
+    // Two rows (owner 2026-10-16, Rodada E1: "o necessário, de forma
+    // responsiva"): what plays, the transport, the time and the progress bar
+    // with the whole width; under them what controls it (the layer, the
+    // letra automática), where the sound goes, the volume and the meters.
+    // As the player narrows the secondary bits go first (console.css).
     return (
         <div className={`player ${off ? "is-idle" : ""}`} role="group" aria-label="Player de mídia">
-            <span className="pl-what" title={item ? `${item.title || kindWord} · ${kindWord}` : undefined}>
-                <Icon name={item?.kind === "clock" ? "clock" : item?.kind === "audio" ? "music" : "film"} />
-                <span className="t">{item ? item.title || kindWord : "Nenhum áudio ou vídeo tocando"}</span>
-                {item && <span className="kx-meta pl-kind">{kindWord}{list ? ` · ${at + 1}/${list.length}` : ""}</span>}
-            </span>
-            {layers.length > 1 && (
-                <Seg small value={layer} onChange={setPicked} options={layers.map((l) => [l, LAYER_LABEL[l], { title: `Controlar: ${LAYER_LABEL[l]}` }])} />
-            )}
-            <span className="pl-btns">
-                <IconBtn name="skip-back" title={list && at > 0 ? "Anterior da lista" : "Voltar ao início"} disabled={off || clockOnly} onClick={() => run("prev")} />
-                <button type="button" className="kx-btn kx-t pl-skip" disabled={off || clockOnly} onClick={() => run("back")} title="Voltar 10 segundos">−10</button>
-                <IconBtn name={pb && !pb.paused ? "pause" : "play"} className="pl-play" title={pb && !pb.paused ? "Pausar · Espaço" : "Tocar · Espaço"} disabled={off} onClick={() => run("toggle")} />
-                <button type="button" className="kx-btn kx-t pl-skip" disabled={off || clockOnly} onClick={() => run("forward")} title="Avançar 10 segundos">+10</button>
-                <IconBtn name="skip-fwd" title="Próximo da lista" disabled={off || !list || at >= list.length - 1} onClick={() => run("next")} />
-                {swap && <IconBtn name={swap.action === "audioOnly" ? "eye-off" : "eye"} title={swap.title} disabled={swap.disabled} onClick={() => run(swap.action)} />}
-                <IconBtn name="stop" title="Parar e tirar do ar" disabled={off || clockOnly} onClick={() => run("stop")} />
-            </span>
-            <span className="kx-time pl-time">{clock(shownPos)}</span>
-            <span className={`pl-seek is-live ${duration ? "" : "is-unknown"}`} role="slider" aria-label="Posição" aria-valuemin={0} aria-valuemax={Math.round(duration || 0)} aria-valuenow={Math.round(shownPos)}
-                onClick={(e) => { if (!duration || off) return; const r = e.currentTarget.getBoundingClientRect(); run("seek", { pos: ((e.clientX - r.left) / r.width) * duration }); }}>
-                <i style={{ width: `${duration ? pct : 0}%` }} />
-                {ticks.map((t) => <span key={t.i} className="pl-tick" style={{ left: `${t.pct}%` }} title={`Slide ${t.label}`} />)}
-                <b style={{ left: `${duration ? pct : 0}%` }} />
-            </span>
-            <span className="kx-time pl-left" title="Tempo restante · duração">{duration ? `-${clock(Math.max(0, duration - shownPos))}` : "--:--"}<small>{duration ? clock(duration) : ""}</small></span>
-            <FollowChip follow={follow} onAction={followOp} disabled={Boolean(cur?.locked)} />
-            <Volume volume={pb?.volume} disabled={off || clockOnly} onVolume={(v) => run("volume", { volume: v })} />
-            <Meters />
-            {media && (
-                <span className={`kx-meta pl-where ${silent ? "kx-warn" : ""}`} title={silent ? "A janela do projetor está fechada: o som não sai. Abra em Saídas." : `Onde o som sai: ${where}`}>
-                    <Icon name={silent ? "warn" : "tv"} /><span className="lbl">{silent ? "Projetor fechado" : where}</span>
+            <div className="pl-row pl-row1">
+                <span className="pl-what" title={item ? `${item.title || kindWord} · ${kindWord}` : undefined}>
+                    <Icon name={item?.kind === "clock" ? "clock" : item?.kind === "audio" ? "music" : "film"} />
+                    <span className="t">{item ? item.title || kindWord : "Nenhum áudio ou vídeo tocando"}</span>
+                    {item && <span className="kx-meta pl-kind">{kindWord}{list ? ` · ${at + 1}/${list.length}` : ""}</span>}
                 </span>
-            )}
+                <span className="pl-btns">
+                    <IconBtn name="skip-back" title={list && at > 0 ? "Anterior da lista" : "Voltar ao início"} disabled={off || clockOnly} onClick={() => run("prev")} />
+                    <button type="button" className="kx-btn kx-t pl-skip" disabled={off || clockOnly} onClick={() => run("back")} title="Voltar 10 segundos">−10</button>
+                    <IconBtn name={pb && !pb.paused ? "pause" : "play"} className="pl-play" title={pb && !pb.paused ? "Pausar · Espaço" : "Tocar · Espaço"} disabled={off} onClick={() => run("toggle")} />
+                    <button type="button" className="kx-btn kx-t pl-skip" disabled={off || clockOnly} onClick={() => run("forward")} title="Avançar 10 segundos">+10</button>
+                    <IconBtn name="skip-fwd" title="Próximo da lista" disabled={off || !list || at >= list.length - 1} onClick={() => run("next")} />
+                    {swap && <IconBtn name={swap.action === "audioOnly" ? "eye-off" : "eye"} title={swap.title} disabled={swap.disabled} onClick={() => run(swap.action)} />}
+                    <IconBtn name="stop" title="Parar e tirar do ar" disabled={off || clockOnly} onClick={() => run("stop")} />
+                </span>
+                <span className="kx-time pl-time">{clock(shownPos)}</span>
+                <span className={`pl-seek is-live ${duration ? "" : "is-unknown"}`} role="slider" aria-label="Posição" aria-valuemin={0} aria-valuemax={Math.round(duration || 0)} aria-valuenow={Math.round(shownPos)}
+                    onClick={(e) => { if (!duration || off) return; const r = e.currentTarget.getBoundingClientRect(); run("seek", { pos: ((e.clientX - r.left) / r.width) * duration }); }}>
+                    <i style={{ width: `${duration ? pct : 0}%` }} />
+                    {ticks.map((t) => <span key={t.i} className="pl-tick" style={{ left: `${t.pct}%` }} title={`Slide ${t.label}`} />)}
+                    <b style={{ left: `${duration ? pct : 0}%` }} />
+                </span>
+                <span className="kx-time pl-left" title="Tempo restante · duração">{duration ? `-${clock(Math.max(0, duration - shownPos))}` : "--:--"}<small>{duration ? clock(duration) : ""}</small></span>
+            </div>
+            <div className="pl-row pl-row2">
+                {layers.length > 1 && (
+                    <Seg small value={layer} onChange={setPicked} label="Controlar" options={layers.map((l) => [l, LAYER_LABEL[l], { title: `Controlar: ${LAYER_LABEL[l]}` }])} />
+                )}
+                <FollowChip follow={follow} onAction={followOp} disabled={Boolean(cur?.locked)} />
+                {media && (
+                    <span className={`kx-meta pl-where ${silent ? "kx-warn" : ""}`} title={silent ? "A janela do projetor está fechada: o som não sai. Abra em Saídas." : `Onde o som sai: ${where}`}>
+                        <Icon name={silent ? "warn" : "tv"} /><span className="lbl">{silent ? "Projetor fechado" : where}</span>
+                    </span>
+                )}
+                <span className="pl-gap" />
+                <Volume volume={pb?.volume} disabled={off || clockOnly} onVolume={(v) => run("volume", { volume: v })} />
+                <Meters />
+            </div>
         </div>
     );
 }

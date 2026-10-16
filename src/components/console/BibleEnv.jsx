@@ -20,6 +20,7 @@ import { useLibraryPicker } from "./library/libraryContext";
 import { useThemes } from "./useConsoleData";
 import { themeForKind, themeName } from "@/lib/console/themes";
 import useKeepInView from "./useKeepInView";
+import { ScreenActions } from "./CenterPanel";
 
 // Book groups, by position in the canon, for the colour bar of each book.
 const GROUPS = [[0, 4, "#b08a5a"], [5, 16, "#9a7a4a"], [17, 21, "#8d8a6a"], [22, 38, "#8a6a9a"], [39, 43, "#5a8ab0"], [44, 64, "#6a9a7a"], [65, 65, "#7a9a5a"]];
@@ -83,7 +84,7 @@ function ListMenu({ icon, label, count, empty, rows }) {
     );
 }
 
-export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, dockProps, grid = "medium", setGrid }) {
+export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, serviceId, itemsCount, ensureService, onSend, onEnd, dockProps, grid = "medium", setGrid }) {
     const [mem, setMem] = useState(load);
     const [version, setVersion] = useState(null);
     const [book, setBook] = useState(mem.book || "João");
@@ -480,7 +481,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
         air: (
             <Panel className="bible-air-col" title={<span className={c.locked ? "kx-rh" : "kx-air"}>{c.locked ? "No ar · travado" : "No ar agora"}</span>} count={airTitle} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                 <div className="bible-air">
-                    <div className={`kx-mon ${c.locked ? "is-rh" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview /></div></div>
+                    {/* The screen actions ride a pill on this monitor (Rodada E1: they left the top bar for the Programa's pill). */}
+                    <div className={`kx-mon ${c.locked ? "is-rh" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview /><div className="prog-pill scr-pill"><ScreenActions c={c} onEnd={onEnd} /></div></div></div>
                 </div>
                 <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
                     <span className="kx-section">Selecionado <span className="kx-count">· {sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>

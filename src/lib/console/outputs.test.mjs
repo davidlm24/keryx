@@ -9,8 +9,8 @@ const at = (h, m) => new Date(2026, 9, 9, h, m).getTime();
 
 test("live with nothing open: amber, never a green zero", () => {
     const h = outputHealth({ outputs: [proj(false), stage(false)], seen: {} });
-    assert.deepEqual(h.status, { label: "Nenhuma saída aberta", short: "0", state: "warn" });
-    assert.deepEqual(h.onAir, { text: "em nenhuma tela", warn: true });
+    assert.deepEqual(h.status, { label: "Nenhuma saída aberta", compact: "Nenhuma tela", state: "warn" });
+    assert.deepEqual(h.onAir, { text: "em nenhuma tela", short: "nenhuma tela", warn: true });
     assert.equal(h.banner, null); // never opened this session: nothing dropped
     assert.equal(h.rows.find((r) => r.key === "/Projection").state, "unused");
 });
@@ -19,8 +19,9 @@ test("everything there: the count, and what each one shows", () => {
     const seen = remember({}, { outputs: [proj(true)], clients: [tv] }, at(19, 0));
     const h = outputHealth({ outputs: [proj(true), stage(false)], seen, air: "Canto · 2/6" });
     assert.equal(h.status.label, "Saídas · 2 conectadas");
+    assert.equal(h.status.compact, "2 telas", "what the top bar shows");
     assert.equal(h.status.state, "");
-    assert.deepEqual(h.onAir, { text: "em 2 telas", warn: false });
+    assert.deepEqual(h.onAir, { text: "em 2 telas", short: "2 telas", warn: false });
     assert.equal(h.rows.find((r) => r.key === "/Projection").shows, "Canto · 2/6");
     assert.equal(h.rows.find((r) => !r.local).shows, "Canto · 2/6");
     assert.equal(h.rows.find((r) => !r.local).ip, "192.168.0.24");
@@ -33,8 +34,9 @@ test("a network screen that drops stays as Desconectada until it comes back", ()
     const row = h.rows.find((r) => !r.local);
     assert.equal(row.state, "disconnected");
     assert.equal(h.status.label, "Saídas · 1 com problema");
+    assert.equal(h.status.compact, "1 com problema");
     assert.equal(h.status.state, "warn");
-    assert.deepEqual(h.onAir, { text: "em 1 de 2 telas", warn: true });
+    assert.deepEqual(h.onAir, { text: "em 1 de 2 telas", short: "1 de 2 telas", warn: true });
     assert.equal(h.banner.kind, "disconnected");
     assert.equal(h.banner.title, "Letras desconectada às 19:42");
     assert.equal(h.banner.sub, "Rede · 192.168.0.24 · a outra tela continua no ar");
@@ -65,7 +67,7 @@ test("an output window that closes is Fechada with Reabrir; it clears when reope
     assert.equal(h.rows[0].state, "closed");
     assert.equal(h.banner.kind, "closed");
     assert.equal(h.banner.title, "Projeção principal fechada às 19:30");
-    assert.deepEqual(h.onAir, { text: "em nenhuma tela", warn: true });
+    assert.deepEqual(h.onAir, { text: "em nenhuma tela", short: "nenhuma tela", warn: true });
     seen = remember(seen, { outputs: [proj(true)] }, at(19, 31));
     h = outputHealth({ outputs: [proj(true)], seen });
     assert.equal(h.rows[0].state, "connected");
@@ -94,8 +96,8 @@ test("the projector on the wrong monitor wins the banner", () => {
 test("Telas travadas: blue status unless something is wrong; the Programa still says where it is", () => {
     const seen = remember({}, { outputs: [proj(true)] }, at(19, 0));
     let h = outputHealth({ outputs: [proj(true)], seen, locked: true });
-    assert.deepEqual(h.status, { label: "Telas travadas", short: "Travadas", state: "rh" });
-    assert.deepEqual(h.onAir, { text: "em 1 tela", warn: false });
+    assert.deepEqual(h.status, { label: "Telas travadas", compact: "Travadas", state: "rh" });
+    assert.deepEqual(h.onAir, { text: "em 1 tela", short: "1 tela", warn: false });
     // A dropped output still wins: amber over blue.
     const dropped = remember(seen, { outputs: [proj(false)] }, at(19, 1));
     h = outputHealth({ outputs: [proj(false)], seen: dropped, locked: true });

@@ -94,12 +94,12 @@ const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(
 const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLowerCase().includes(q));
 
 // The library: Letras, Imagens, Vídeos and Avisos — the tabs the operator
-// keeps (the (+) at the end of the row, panelTabs.js; `tabs` is what shows,
-// `onTabsMenu` opens the list). A click prepares the item in the Prévia; a
+// keeps (the (+) in the Biblioteca's header, Console.jsx and panelTabs.js;
+// `tabs` is what shows). A click prepares the item in the Prévia; a
 // double click sends it to air (onGo). The Avisos tab also holds the Aviso
 // rápido and the Ferramentas where the panel beside the Prévia does not
 // (`elsewhere`: what that panel shows now).
-export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMenuOpen = false, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice }) {
+export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
@@ -185,7 +185,7 @@ export default function Library({ c, data, tab, setTab, tabs, onTabsMenu, tabsMe
 
     return (
         <>
-            <TabRow row="lib" tabs={tabs} active={tab} onPick={setTab} onMenu={onTabsMenu} menuOpen={tabsMenuOpen} />
+            <TabRow tabs={tabs} active={tab} onPick={setTab} />
 
             <div className="searchrow">
                 <Field value={q} onChange={setQ} placeholder="Buscar…" />
