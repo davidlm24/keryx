@@ -745,7 +745,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the tray and the named arrangements are untouched, so it comes back
   where it was. It folds wherever it is placed alone (not as a tab beside
   another module), never while editing the arrangement, and eases in and
-  out in 180 ms (`.dock-fold`, off with reduced motion). The Bíblia's
+  out in 180 ms, like every fold and locked height (`useDockEase` in
+  Dock.jsx: each changed cell eases from its drawn px to the new one,
+  `dockMotion`/`easesBetween` in dock.js, tested; nothing eases the first
+  second after the dock appears, while editing, or with reduced motion;
+  never a CSS `flex-basis` transition, which collapsed a neighbour turning
+  fixed to 0 px). The Bíblia's
   No ar is another module (`air`) and never folds away (its header's
   chevron still folds it, Rodada F4). In both a click prepares that slide, a double click
   sends it; ↑/↓ walk the Slides column, ←/→ move what is on air. **Lists

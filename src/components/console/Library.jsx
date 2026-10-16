@@ -36,14 +36,18 @@ const dragProps = (stage, time = "") => ({
 // (src/lib/pdfPagesCapture.js); nothing else has one.
 const peekOf = (m) => (m.missing || m.posterSyncing ? "" : m.type === "image" || m.type === "gif" ? m.file_url : m.type === "video" || m.type === "pdf" ? m.thumbnail_url || "" : "");
 const PEEK_DELAY_MS = 350;
+const PEEK_HANDOVER_MS = 120;
 const PEEK_W = 240;
 
 // Hovering a row of Imagens or Vídeos shows its picture beside the
 // Biblioteca, so the rows stay one line. The card never takes the mouse.
+// The first one waits a moment; once one shows, the next row's takes its
+// place at once (as tooltips do, POL-05), and leaving the rows hides it.
 function usePeek() {
     const [peek, setPeek] = useState(null);
     const timer = useRef(0);
-    const hide = useCallback(() => { clearTimeout(timer.current); setPeek(null); }, []);
+    const shown = useRef(false);
+    const hide = useCallback(() => { clearTimeout(timer.current); shown.current = false; setPeek(null); }, []);
     useEffect(() => {
         if (!peek) return undefined;
         const off = () => hide();
@@ -67,9 +71,14 @@ function usePeek() {
                 const row = e.currentTarget.getBoundingClientRect();
                 const panel = (e.currentTarget.closest(".kx-panel") || e.currentTarget).getBoundingClientRect();
                 clearTimeout(timer.current);
-                timer.current = setTimeout(() => setPeek({ src, row, panel }), PEEK_DELAY_MS);
+                const show = () => { shown.current = true; setPeek({ src, row, panel }); };
+                if (shown.current) show();
+                else timer.current = setTimeout(show, PEEK_DELAY_MS);
             },
-            onMouseLeave: hide,
+            onMouseLeave: () => {
+                clearTimeout(timer.current);
+                if (shown.current) timer.current = setTimeout(hide, PEEK_HANDOVER_MS);
+            },
         };
     };
     return { peek, rowProps };
@@ -202,7 +211,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 const songs = data.songs.filter((s) => (!favOnly || s.is_favorite) && match(ql, s.title, s.artist, stripChords(s.lyrics || "")));
                 return (
                     <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
-                        {!songs.length && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
+                        {!songs.length && data.loaded?.songs !== false && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
                         {songs.map((s) => (
                             <Row
                                 key={s.id}
@@ -283,7 +292,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}
                         <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
-                            {!media.length && <Empty icon={{ imagens: "image", audios: "music" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
+                            {!media.length && data.loaded?.media !== false && <Empty icon={{ imagens: "image", audios: "music" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
                             {media.map(mediaRow)}
                         </div>
                     </>
@@ -304,7 +313,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         </>}
                         <div className="listhead"><span className="kx-section">Todos os avisos <span className="kx-count">· {pieces.length}</span></span><span style={{ flex: 1 }} />{pieces.length > 1 && <Btn small onClick={() => onPrepare(stageFromPieceList(pieces))} title="Pôr na prévia todos os avisos desta lista, um depois do outro, em loop">Tocar todos</Btn>}</div>
                         <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
-                            {!pieces.length && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
+                            {!pieces.length && data.loaded?.pieces !== false && <Empty icon="megaphone" title={ql ? `Nenhum aviso com "${q}"` : "Nenhum aviso"}>Use + › Novo aviso para criar contagens, anúncios e avisos.</Empty>}
                             {pieces.map((p) => (
                                 <Row key={p.id} icon={noticeIcon(p.type)} title={p.title || p.text} meta={[noticeLabel(p.type), p.duration && mmss(p.duration)].filter(Boolean).join(" · ")} state={state(`piece:${p.id}`)} onClick={() => onPrepare(stageFromPiece(p))} onDoubleClick={onGo && (() => onGo(stageFromPiece(p)))} dragProps={dragProps(stageFromPiece(p), p.duration ? mmss(p.duration) : "")} item
                                     onContextMenu={(e) => menu(e, { title: p.title || p.text, items: [
