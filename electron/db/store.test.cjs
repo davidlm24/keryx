@@ -551,7 +551,7 @@ function olderSchema({ withoutEntity, withoutField }) {
     if (withoutEntity) delete entities[withoutEntity];
     if (withoutField) {
         const [entity, field] = withoutField;
-        const { [field]: _gone, ...columns } = entities[entity].columns;
+        const columns = Object.fromEntries(Object.entries(entities[entity].columns).filter(([k]) => k !== field));
         entities[entity] = { ...entities[entity], columns };
     }
     return { entities };
