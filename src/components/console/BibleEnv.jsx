@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
-import { Panel, Btn, IconBtn, Row, Seg, Empty, Measure } from "./kx";
+import { Panel, Btn, IconBtn, Row, Seg, Empty, Measure, SrState } from "./kx";
 import DockView from "./Dock";
 import { useContextMenu } from "./ContextMenu";
 import AddMenu from "./AddMenu";
@@ -375,7 +375,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     <select value={wanted} onChange={(e) => setWanted(e.target.value)} aria-label={badge ? `Versão: ${badge.text}` : "Versão"} style={{ background: "var(--bg-2)", color: "var(--fg-1)", border: 0, borderRadius: "var(--radius-control)", font: "inherit" }}>{BIBLE_VERSIONS.map((v) => <option key={v.id} value={v.id}>{v.id}</option>)}</select>
                     {badge && <i className="bver-dot" aria-hidden="true" />}
                 </span>
-                <Seg small value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
+                <Seg small label="Nomes dos livros" value={fullNames ? "full" : "short"} onChange={setBookNames} options={[["short", "Abrev", { title: "Livros abreviados (Gn, Ex…)" }], ["full", "Nomes", { title: "Livros com o nome inteiro" }]]} />
                 <AddMenu title="Instalar uma versão da Bíblia" items={BIBLE_VERSIONS.filter((v) => v.install).map((v) => ({ label: `Instalar ${v.id}${v.name ? ` · ${v.name}` : ""}${installHint}`, icon: "book", onClick: () => installVersion(v.id) }))} />
                 <IconBtn name="grid" small title="Mais: tema da Bíblia, tamanho das células" onClick={(e) => menu(e, { title: "Bíblia", items: [
                     { label: `Tema da Bíblia… · ${bibleTheme ? themeName(bibleTheme) : "estilo de fábrica"}${prefs.bible_theme_id ? "" : " (o mesmo das músicas)"}`, icon: "star", onSelect: chooseTheme },
@@ -391,7 +391,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     </div>
                 )}
                 <div className={`bgrid is-${grid}`} ref={gridRef}>
-                    {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{fullNames ? b.name : b.short}</button>)}
+                    {bibleBooks.map((b, i) => <button type="button" key={b.name} className={`kx-book kx-t ${b.name === book ? "is-selected" : ""}`} style={{ "--group": groupColor(i) }} title={b.name} aria-label={b.name} aria-current={b.name === book ? "true" : undefined} onClick={() => { setBook(b.name); setChapter(1); setSel([]); }}>{fullNames ? b.name : b.short}</button>)}
                 </div>
             </Panel>
         ),
@@ -400,7 +400,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 {/* As tall as its cells (Console.jsx locks the height, capped). */}
                 <Measure onHeight={onChaptersH}><div className="bchap">
                     <div className={`chapters is-${grid}`}>
-                        {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
+                        {Array.from({ length: bookRow.chapters }, (_, i) => i + 1).map((n) => <button type="button" key={n} className={`kx-t ${n === chapter ? "is-on" : ""}`} aria-current={n === chapter ? "true" : undefined} onClick={() => { setChapter(n); setSel([]); }}>{n}</button>)}
                     </div>
                 </div></Measure>
             </Panel>
@@ -412,8 +412,9 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                         {verses.map((v) => (
                             <button type="button" key={v.number}
                                 className={`kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`}
+                                aria-current={airHere && airVerseNums.includes(v.number) ? "true" : undefined}
                                 onClick={(e) => pickCell(v.number, e)} onDoubleClick={() => sendCell(v.number)}
-                                title={`${book} ${chapter}:${v.number} · clique seleciona · 2 cliques projetam`}>{v.number}</button>
+                                title={`${book} ${chapter}:${v.number} · clique seleciona · 2 cliques projetam`}>{v.number}<SrState cls={`${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`} /></button>
                         ))}
                     </div></div>
                 )}
@@ -423,7 +424,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
             <Panel className="bread bible-center" title={mode === "buscar" ? "Buscar na Bíblia" : `${book} ${chapter}`}
                 actions={<>
                     {mode === "ler" && <><IconBtn small name="checks" className="bread-sel" title="Selecionar todos" onClick={() => setSel(verses.map((v) => v.number))} /><IconBtn small name="x" className="bread-sel" title="Limpar seleção" onClick={() => setSel([])} /></>}
-                    <Seg small value={mode} onChange={setMode} options={MODES} />
+                    <Seg small label="Modo do texto" value={mode} onChange={setMode} options={MODES} />
                 </>}>
                 <div className="bband-lists">
                     <ListMenu icon="history" label="Recentes" unit={["capítulo", "capítulos"]} empty="Os capítulos que você abrir aparecem aqui."
@@ -455,6 +456,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                                 {verses.map((v) => (
                                     <button type="button" key={v.number} data-verse={v.number}
                                         className={`kx-verse kx-t ${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""} ${marked.has(v.number) ? "has-note" : ""}`}
+                                        aria-current={airHere && airVerseNums.includes(v.number) ? "true" : undefined}
                                         onClick={(e) => pick(v.number, e)}
                                         onDoubleClick={() => { const st = verseStage(v.number); if (st) { setSel([v.number]); setAnchor(v.number); onSend(st); } }}
                                         onContextMenu={(e) => menu(e, { title: `${book} ${chapter}:${v.number}`, items: [
@@ -463,7 +465,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                                             { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => sendCell(v.number) },
                                         ] })}
                                         title={marked.has(v.number) ? `Anotação: ${notesApi.noteOf(book, chapter, v.number)?.note_text || ""}` : "Clique seleciona · 2 cliques projetam a partir deste versículo"}>
-                                        <span className="kx-verse-n">{v.number}</span><span>{v.text}{marked.has(v.number) && <span className="be-notemark" aria-label="tem anotação"><Icon name="text" size={12} /></span>}</span>
+                                        <span className="kx-verse-n">{v.number}</span><SrState cls={`${sel.includes(v.number) ? "is-prev" : ""} ${airHere && airVerseNums.includes(v.number) ? "is-air" : ""}`} /><span>{v.text}{marked.has(v.number) && <span className="be-notemark" aria-label="tem anotação"><Icon name="text" size={12} /></span>}</span>
                                     </button>
                                 ))}
                             </div>
@@ -487,8 +489,8 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                 <div className="kx-panel-h" style={{ borderTop: "1px solid var(--line)" }}>
                     <span className="kx-section">Selecionado <span className="kx-count">· {sel.length ? `${reference}${sel.length > 1 ? ` · ${slides.length} ${slides.length === 1 ? "slide" : "slides"}` : " · capítulo a partir daqui"}` : "nenhum"}</span></span>
                     {sel.length > 1 && (
-                        <div className="kx-seg" style={{ height: 22, padding: 1 }}>
-                            {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} style={{ height: 20, padding: "0 7px", fontSize: 11 }} onClick={() => setHow(v)} title={v === "auto" ? "Pelo tamanho do texto" : `${v} por slide`}>{l}</button>)}
+                        <div className="kx-seg" style={{ height: 22, padding: 1 }} role="group" aria-label="Versículos por slide">
+                            {[["1", "1"], ["2", "2"], ["3", "3"], ["auto", "Auto"]].map(([v, l]) => <button type="button" key={v} className={`kx-t ${how === v ? "is-on" : ""}`} style={{ height: 20, padding: "0 7px", fontSize: 11 }} aria-pressed={how === v} onClick={() => setHow(v)} title={v === "auto" ? "Pelo tamanho do texto" : `${v} por slide`}>{l}</button>)}
                         </div>
                     )}
                 </div>

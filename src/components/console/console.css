@@ -33,6 +33,8 @@
 .console .topbar .tb-c { flex: 1; justify-content: center; }
 .console .topbar .tb-search { width: 100%; max-width: 320px; min-width: 0; height: 32px; padding: 0 var(--space-3); border-radius: var(--radius-round); background: var(--bg-1); cursor: text; }
 .console .topbar .tb-search:hover { box-shadow: inset 0 0 0 1px var(--line); }
+/* The search is a button that looks like a field (C-27): its hint as the field placeholder was. */
+.console .topbar .tb-search-ph { flex: 1; min-width: 0; text-align: left; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .topbar .kx-seg { background: var(--bg-1); height: 32px; padding: 3px; border-radius: var(--radius-control); }
 .console .topbar .kx-seg > button { height: 26px; }
 .console .topbar .kx-status { height: 32px; }
@@ -95,7 +97,7 @@
 @container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
 @container topbar (max-width: 1080px) {
     .console .topbar .tb-search { width: 32px; max-width: 32px; padding: 0; justify-content: center; }
-    .console .topbar .tb-search input, .console .topbar .tb-search kbd { display: none; }
+    .console .topbar .tb-search input, .console .topbar .tb-search .tb-search-ph, .console .topbar .tb-search kbd { display: none; }
     .console .topbar .tb-svc { max-width: 168px; }
 }
 /* Popovers from the top bar open just under it (the Windows title strip included). */
@@ -1476,6 +1478,8 @@
    the 2 px padding keeps the ring of the theme in use from being cut; an
    empty slot is a dashed + (a new theme). */
 .console .tm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1) var(--space-2); padding: 2px; align-items: start; }
+/* Each slot is the grid's list item (C-27); the tile or the + inside it is the grid's child as before. */
+.console .tm-slot { display: contents; }
 .console .tm-grid.is-large { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .console .tm-tile .fg-name { font-size: 11px; }
 .console .tm-empty { aspect-ratio: 16 / 10; width: 100%; border-radius: var(--radius-control); border: 1px dashed var(--line-strong); background: none; color: var(--fg-3); display: grid; place-items: center; cursor: pointer; }

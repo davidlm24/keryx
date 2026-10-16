@@ -197,12 +197,12 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
             {/* Travar telas: rehearse with the screens frozen (shared/live-state.mjs, WHILE_LOCKED). */}
             <div className="kx-menu-h" title="Com as telas travadas o console prepara normalmente; nada novo vai ao ar. Tela preta, Logo, Limpar e Esc continuam valendo.">
                 <span className="kx-section">Travar telas</span><span style={{ flex: 1 }} />
-                <Seg small value={locked ? "on" : "off"} onChange={(v) => onLock?.(v === "on")} options={[["off", "Destravadas"], ["on", "Travadas"]]} />
+                <Seg small label="Travar telas" value={locked ? "on" : "off"} onChange={(v) => onLock?.(v === "on")} options={[["off", "Destravadas"], ["on", "Travadas"]]} />
             </div>
             <div className="kx-menu-h"><span className="kx-section">Tela ociosa</span><span style={{ flex: 1 }} />
                 {/* Logo or Preto when nothing is on air and there is no Fundo; a
                     picture for those moments is the papel de parede. */}
-                <Seg small value={idle === "black" ? "black" : "logo"} onChange={(m) => onIdle(m)}
+                <Seg small label="Tela ociosa" value={idle === "black" ? "black" : "logo"} onChange={(m) => onIdle(m)}
                     options={[["logo", "Logo da igreja"], ["black", "Preto"]]} />
             </div>
             <div className="kx-menu-sep" />
@@ -341,7 +341,7 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
                     <React.Fragment key={g.name}>
                         <div className="kx-menu-h"><span className="kx-section">{g.name}</span></div>
                         {g.list.map((r) => { n += 1; const i = n; return (
-                            <Row key={`${g.name}${i}`} icon={r.icon} title={r.title} meta={r.meta} state={i === idx ? "is-selected" : ""} onClick={() => run(i, false)} actions={<><Btn onClick={(e) => { e.stopPropagation(); run(i, false); }} title={`${r.act || "Pôr na prévia"} · Enter`}>{r.act || "Pôr na prévia"}</Btn>{r.add && <Btn onClick={(e) => { e.stopPropagation(); run(i, true); }} title="Adicionar à setlist · Shift+Enter">Adicionar à setlist</Btn>}</>} />
+                            <Row key={`${g.name}${i}`} icon={r.icon} title={r.title} meta={r.meta} state={i === idx ? "is-selected" : ""} onClick={() => run(i, false)} actions={<><Btn onClick={(e) => { e.stopPropagation(); run(i, false); }} title={`${r.act || "Pôr na prévia"} · Enter`} aria-label={`${r.act || "Pôr na prévia"}: ${r.title}`}>{r.act || "Pôr na prévia"}</Btn>{r.add && <Btn onClick={(e) => { e.stopPropagation(); run(i, true); }} title="Adicionar à setlist · Shift+Enter" aria-label={`Adicionar ${r.title} à setlist`}>Adicionar à setlist</Btn>}</>} />
                         ); })}
                     </React.Fragment>
                 ))}

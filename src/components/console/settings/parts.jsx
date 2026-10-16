@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
+import { RowLabel } from "../kx";
 
 // Small pieces shared by the Configurações sections (console design system).
 
@@ -66,14 +67,32 @@ export function useFlash(k) {
 }
 
 // One "label · control" line of a section form (design: .frm). The label
-// names the controls beside it for screen readers (a group).
+// names the controls beside it for screen readers (a group), and each one
+// with no name of its own (C-29: a Field or Seg through RowLabel, a plain
+// input or select directly). It is a real label: a click on it toggles the
+// row's switch or puts the cursor in its field, as a label does.
 export function FormRow({ k, children }) {
     const flash = useFlash(k);
     const id = useId();
+    const box = useRef(null);
+    useEffect(() => {
+        if (!k || !box.current) return;
+        box.current.querySelectorAll("input:not([type=hidden]), select, textarea").forEach((el) => {
+            if (!el.hasAttribute("aria-label") && !el.hasAttribute("aria-labelledby") && !el.labels?.length) el.setAttribute("aria-labelledby", id);
+        });
+    });
+    const operate = () => {
+        const el = box.current?.querySelector("input:not([type=hidden]), select, textarea, [role=switch], [type=checkbox]");
+        if (!el || el.disabled) return;
+        if (el.getAttribute("role") === "switch" || el.type === "checkbox") el.click();
+        else el.focus();
+    };
     return (
         <>
-            <span className={`k ${flash}`} id={k ? id : undefined} data-cfg-k={k || undefined}>{k}</span>
-            <div className={`frm-v ${flash}`} role={k ? "group" : undefined} aria-labelledby={k ? id : undefined}>{children}</div>
+            <label className={`k ${flash}`} id={k ? id : undefined} data-cfg-k={k || undefined} onClick={k ? operate : undefined}>{k}</label>
+            <div ref={box} className={`frm-v ${flash}`} role={k ? "group" : undefined} aria-labelledby={k ? id : undefined}>
+                <RowLabel.Provider value={k ? id : null}>{children}</RowLabel.Provider>
+            </div>
         </>
     );
 }

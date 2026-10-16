@@ -38,7 +38,7 @@ const today = () => { const d = new Date(); const two = (n) => String(n).padStar
 // nothing here touches the screens.
 export default function ServicePlanner({ c, services, serviceId, setServiceId, data, focusId = null, onClose, escRef, onEditSong = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colCulto = useWinCol("planner.culto", { def: 360, min: 300, max: 640 });
+    const colCulto = useWinCol("planner.culto", { name: "Culto", def: 360, min: 300, max: 640 });
     const church = useChurch();
     const client = useQueryClient();
     const svc = services.find((s) => s.id === serviceId) || null;
@@ -246,14 +246,14 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
             <div className="col" style={colCulto.style}>
                 <Panel title="Culto" style={{ flex: "none" }}>
                     <div className="frm pl-frm">
-                        <span className="k">Nome</span><Field icon={null} {...f("title")} placeholder="Culto de domingo" />
+                        <span className="k">Nome</span><Field label="Nome" icon={null} {...f("title")} placeholder="Culto de domingo" />
                         <span className="k">Data</span><input type="date" className="pl-input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} onBlur={() => commit("date")} aria-label="Data" />
                         <span className="k">Hora</span><input type="time" className="pl-input" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} onBlur={() => commit("startTime")} aria-label="Hora de início" />
-                        <span className="k">Local</span><Field icon={null} {...f("location")} placeholder="Templo principal" />
-                        <span className="k">Tipo</span><Seg small value={form.service_type} onChange={(v) => { setForm({ ...form, service_type: v }); saveSvc({ service_type: v }); }} options={[["culto", "Culto"], ["evento", "Evento"]]} />
-                        {form.service_type === "evento" && <><span className="k">Evento</span><Field icon={null} {...f("event_description")} placeholder="Descrição do evento" /></>}
-                        <span className="k">Status</span><Seg small value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
-                        <span className="k">Notas</span><Field icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
+                        <span className="k">Local</span><Field label="Local" icon={null} {...f("location")} placeholder="Templo principal" />
+                        <span className="k">Tipo</span><Seg small label="Tipo" value={form.service_type} onChange={(v) => { setForm({ ...form, service_type: v }); saveSvc({ service_type: v }); }} options={[["culto", "Culto"], ["evento", "Evento"]]} />
+                        {form.service_type === "evento" && <><span className="k">Evento</span><Field label="Evento" icon={null} {...f("event_description")} placeholder="Descrição do evento" /></>}
+                        <span className="k">Status</span><Seg small label="Status" value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
+                        <span className="k">Notas</span><Field label="Notas" icon={null} {...f("notes")} placeholder="Notas gerais do culto" />
                         <span className="k">Papel de parede</span>
                         <div className="pl-wall">
                             <BgChip value={look.background} title="Papel de parede do culto" empty="o de qualquer outro culto" noneLabel={look.background ? "Sem papel de parede próprio (o de qualquer outro culto)" : undefined}
@@ -270,7 +270,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                 <Panel title={<>Equipe <span className="kx-count">· {(svc.worship_team || []).length}</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {(svc.worship_team || []).map((m, i) => (
                         <Row key={`${m.member_name}${i}`} icon="user" title={m.member_name} meta={m.role}
-                            actions={<IconBtn name="x" small title="Tirar da equipe" onClick={(e) => { e.stopPropagation(); saveSvc({ worship_team: svc.worship_team.filter((_, k) => k !== i) }); }} />} />
+                            actions={<IconBtn name="x" small title="Tirar da equipe" aria-label={`Tirar ${m.member_name} da equipe`} onClick={(e) => { e.stopPropagation(); saveSvc({ worship_team: svc.worship_team.filter((_, k) => k !== i) }); }} />} />
                     ))}
                     <div className="pl-pad">
                         <Field icon={null} value={member} onChange={setMember} placeholder="Nome · função (Enter adiciona)" inputProps={{ list: "pl-team" }} onKeyDown={(e) => { if (e.key === "Enter") addMember(); }} />

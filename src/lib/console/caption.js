@@ -56,3 +56,14 @@ export function airFor(doc, nowMs) {
     const two = (n) => String(n).padStart(2, "0");
     return s >= 3600 ? `${Math.floor(s / 3600)}:${two(Math.floor((s % 3600) / 60))}:${two(s % 60)}` : `${Math.floor(s / 60)}:${two(s % 60)}`;
 }
+
+// What a screen reader hears when what is on air changes (C-25): "No ar:
+// Hino · 1/3", "No ar: Tela preta", "Nada no ar". The words stay the same
+// while the same thing stays on air (no clock in them), so the console
+// speaks once per real change, never per tick.
+export function airAnnouncement(doc) {
+    const { title, pos } = captionParts(doc);
+    if (title === "nada") return airInPlayer(doc) && doc.audio?.title ? `No ar: ${doc.audio.title}` : "Nada no ar";
+    if (!title) return "Nada no ar";
+    return `No ar: ${title}${pos ? ` · ${pos}` : ""}`;
+}

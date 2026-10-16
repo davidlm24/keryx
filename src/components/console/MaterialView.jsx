@@ -178,8 +178,8 @@ export default function MaterialView({ c, materialId = null, classId = "", media
                                     </button>
                                 ))}
                             </div>
-                            <span className="k">Título</span><Field icon={null} value={draft.title} onChange={(v) => set({ title: v })} placeholder="Ex.: Pergunta · o filho pródigo" inputProps={{ autoFocus: !draft.id }} />
-                            <span className="k">Lição</span><Field icon={null} value={draft.subject || ""} onChange={(v) => set({ subject: v })} placeholder="Ex.: Lição 12 · Parábolas" />
+                            <span className="k">Título</span><Field label="Título" icon={null} value={draft.title} onChange={(v) => set({ title: v })} placeholder="Ex.: Pergunta · o filho pródigo" inputProps={{ autoFocus: !draft.id }} />
+                            <span className="k">Lição</span><Field label="Lição" icon={null} value={draft.subject || ""} onChange={(v) => set({ subject: v })} placeholder="Ex.: Lição 12 · Parábolas" />
                             <span className="k">Turma</span>
                             <select className="pl-input" value={draft.class_id || ""} onChange={(e) => set({ class_id: e.target.value })} aria-label="Turma"><option value="">Todas as turmas</option>{classes.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}</select>
                             {(draft.type === "slides" || draft.type === "text") && (
@@ -238,7 +238,7 @@ export default function MaterialView({ c, materialId = null, classId = "", media
                                         {qs.map((q, i) => (
                                             <div key={i} className="sv-q">
                                                 <div className="sv-q-head"><b className="kx-meta">{i + 1}.</b><Field icon={null} value={q.question || ""} onChange={(v) => setQ(i, { question: v })} placeholder="A afirmação" style={{ flex: 1 }} />{tools("quiz_questions", qs, i, "a afirmação")}</div>
-                                                <div className="nv-inline sv-tf"><span className="kx-meta">A resposta</span><Seg small value={Number(q.correct) === 1 ? "F" : "V"} onChange={(v) => setQ(i, { correct: v === "F" ? 1 : 0 })} options={[["V", "Verdadeiro"], ["F", "Falso"]]} /></div>
+                                                <div className="nv-inline sv-tf"><span className="kx-meta">A resposta</span><Seg small label="A resposta" value={Number(q.correct) === 1 ? "F" : "V"} onChange={(v) => setQ(i, { correct: v === "F" ? 1 : 0 })} options={[["V", "Verdadeiro"], ["F", "Falso"]]} /></div>
                                                 {extras(q, (v) => setQ(i, { explain: v }), (v) => setQ(i, { notes: v }), "Referência ou explicação · na tela ao revelar")}
                                             </div>
                                         ))}
@@ -272,8 +272,8 @@ export default function MaterialView({ c, materialId = null, classId = "", media
                                                             <span className="kx-meta sv-tf">{blanks.length ? `${blanks.length} ${blanks.length === 1 ? "lacuna" : "lacunas"} · cada clique em Revelar traz uma de volta` : "Clique nas palavras que a turma vai completar."}</span>
                                                         </>
                                                     )}
-                                                    {draft.type === "memorize" && <div className="nv-inline sv-tf"><span className="kx-meta">Cliques até sumir tudo</span><Seg small value={String(v.rounds || 4)} onChange={(n) => setV(i, { rounds: Number(n) })} options={MEMORIZE_ROUNDS.map((n) => [String(n), String(n)])} /></div>}
-                                                    {draft.type === "discussion" && <div className="nv-inline sv-tf"><span className="kx-meta">Timer</span><Seg small value={String(v.minutes || 5)} onChange={(n) => setV(i, { minutes: Number(n) })} options={DISCUSSION_MINUTES.map((n) => [String(n), `${n} min`])} /></div>}
+                                                    {draft.type === "memorize" && <div className="nv-inline sv-tf"><span className="kx-meta">Cliques até sumir tudo</span><Seg small label="Cliques até sumir tudo" value={String(v.rounds || 4)} onChange={(n) => setV(i, { rounds: Number(n) })} options={MEMORIZE_ROUNDS.map((n) => [String(n), String(n)])} /></div>}
+                                                    {draft.type === "discussion" && <div className="nv-inline sv-tf"><span className="kx-meta">Timer</span><Seg small label="Timer" value={String(v.minutes || 5)} onChange={(n) => setV(i, { minutes: Number(n) })} options={DISCUSSION_MINUTES.map((n) => [String(n), `${n} min`])} /></div>}
                                                     <div className="sv-q-sub">
                                                         <span className="nv-inline" style={{ flexWrap: "nowrap" }}>
                                                             <Field icon={null} value={v.ref || ""} onChange={(x) => setV(i, { ref: x })} placeholder={draft.type === "discussion" ? "Texto base (opcional) · ex.: Efésios 2:8" : "Referência · ex.: João 3:16"} style={{ flex: 1 }} />

@@ -28,7 +28,7 @@ export default function AddMenu({ title = "Adicionar", items }) {
     }, [open]);
     return (
         <span className="addmenu" ref={box}>
-            <IconBtn name="plus" title={title} on={open} onClick={() => setOpen((o) => !o)} />
+            <IconBtn name="plus" title={title} on={open} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} />
             {open && (
                 <div ref={pop} className="kx-pop addmenu-pop" role="menu">
                     {items.map((it, i) => (it.node ? (

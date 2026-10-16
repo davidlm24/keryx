@@ -17,6 +17,8 @@
 @media (prefers-reduced-motion: reduce) { .kx *, .kx-t { transition: none !important; animation: none !important; } }
 .kx-i { flex: none; display: inline-block; vertical-align: -3px; }
 .kx-meta { font-size: 11px; line-height: 16px; color: var(--fg-3); }
+/* Said to a screen reader, never shown: a state in words, the live region. */
+.kx-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
 .kx-section { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
 .kx-content { font-size: 13px; line-height: 18px; color: var(--fg-1); }
 .kx-content-lg { font-size: 14px; line-height: 20px; color: var(--fg-1); }
@@ -69,7 +71,7 @@
 .kx-seg { height: var(--row); display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--radius-control); background: var(--bg-2); }
 .kx-seg > button { height: 24px; padding: 0 10px; border-radius: calc(var(--radius-control) - 2px); color: var(--fg-2); display: inline-flex; align-items: center; gap: 6px; }
 .kx-seg > button:hover { color: var(--fg-1); }
-.kx-seg > button.is-on { background: var(--bg-3); color: var(--fg-1); font-weight: 500; }
+.kx-seg > button.is-on { background: var(--bg-3); color: var(--fg-1); font-weight: 500; box-shadow: inset 0 0 0 1px var(--fg-3); }
 .kx-seg.kx-seg-mode > button.is-on[data-mode="live"] { background: var(--air-fill); color: var(--on-state); }
 .kx-seg.kx-seg-mode > button.is-on[data-mode="ensaio"] { background: var(--rh-fill); color: var(--on-state); }
 .kx-dot { width: 6px; height: 6px; border-radius: var(--radius-round); background: currentColor; flex: none; display: inline-block; }
@@ -91,7 +93,8 @@
 .kx-row.is-prev { background: var(--prev-tint); } .kx-row.is-prev::before { background: var(--prev); }
 .kx-row.is-rh { background: var(--rh-tint); } .kx-row.is-rh::before { background: var(--rh); }
 .kx-row.is-warn::before { background: var(--warn); }
-.kx-row.is-done { opacity: var(--dim); }
+/* Done (before the one on air): the glyph and title dim, the meta and time keep fg-3 (≥4.5:1) — still usable. */
+.kx-row.is-done :is(.kx-glyph, .kx-row-title) { opacity: var(--dim); }
 .kx-row .kx-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 4px 0; }
 .kx-row .kx-row-title { font-size: 13px; line-height: 18px; color: var(--fg-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kx-row.is-air .kx-row-title { color: var(--air-fg); } .kx-row.is-prev .kx-row-title { color: var(--prev-fg); }

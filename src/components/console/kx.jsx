@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import Icon from "./Icon";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 
@@ -17,11 +17,16 @@ export function Panel({ title, count, lead, caption, actions, fold, bare = false
     // title and tools ride the win-bar (Rodada C).
     const head = !noHead && (!bare || title || caption || actions || lead || fold);
     const strip = foldStrip(fold);
+    // A screen reader's map of the console (C-28): each panel is a region
+    // named by its title, and the title a heading to jump between panels.
+    const headId = useId();
+    const named = head && !strip && Boolean(caption || title);
     return (
-        <div className={`kx-panel ${bare ? "kx-panel-bare" : ""} ${fold?.on ? "is-collapsed" : ""} ${strip ? "kx-strip" : ""} ${className}`} style={style}>
+        <div className={`kx-panel ${bare ? "kx-panel-bare" : ""} ${fold?.on ? "is-collapsed" : ""} ${strip ? "kx-strip" : ""} ${className}`} style={style}
+            role={named || (strip && fold.name) ? "region" : undefined} aria-labelledby={named ? headId : undefined} aria-label={strip ? fold.name || undefined : undefined}>
             {strip ? <FoldStrip fold={fold} /> : head && <div className="kx-panel-h">
                 {lead}
-                {caption ? <span className="kx-panel-cap">{caption}</span> : <span className="kx-section">{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>}
+                {caption ? <span className="kx-panel-cap" id={headId} role="heading" aria-level={2}>{caption}</span> : <span className="kx-section" id={title ? headId : undefined} role={title ? "heading" : undefined} aria-level={title ? 2 : undefined}>{title}{count ? <span className="kx-count"> · {count}</span> : null}</span>}
                 {actions}
                 <FoldBtn fold={fold} />
             </div>}
@@ -119,12 +124,20 @@ export function useUnloadGuard(dirty) {
 
 export function IconBtn({ name, title, small, on, className = "", ...rest }) {
     const size = small ? { height: 24, width: 24 } : undefined;
+    // A toggle says whether it is on (as Btn does); a button whose `on` only
+    // means its menu or popover is open says that with aria-expanded instead.
+    const opens = rest["aria-expanded"] !== undefined || Boolean(rest["aria-haspopup"]);
     return (
-        <button type="button" className={`kx-btn kx-btn-icon kx-t ${on ? "is-on" : ""} ${className}`} style={size} aria-label={title} title={title} {...rest}>
+        <button type="button" className={`kx-btn kx-btn-icon kx-t ${on ? "is-on" : ""} ${className}`} style={size} aria-label={title} title={title} aria-pressed={typeof on === "boolean" && !opens ? on : undefined} {...rest}>
             <Icon name={name} />
         </button>
     );
 }
+
+// The id of the visible label of the form row a control sits in
+// (settings/parts.jsx FormRow): a Field or Seg with no name of its own is
+// named by it (C-29).
+export const RowLabel = createContext(null);
 
 // A radio group: the arrows move the choice when it has the keyboard focus
 // (the console leaves arrows to radio groups, keys.js); label names it.
@@ -141,9 +154,10 @@ export function Seg({ value, options, onChange, mode, className = "", small, lab
         const box = e.currentTarget;
         setTimeout(() => box.querySelector('[aria-checked="true"]')?.focus(), 50);
     };
+    const rowLabel = useContext(RowLabel);
     const hasValue = options.some(([v]) => v === value);
     return (
-        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${className}`} style={small ? { height: 24, padding: 2 } : undefined} role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
+        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${className}`} style={small ? { height: 24, padding: 2 } : undefined} role="radiogroup" aria-label={label} aria-labelledby={label ? undefined : rowLabel || undefined} onKeyDown={onKeyDown}>
             {options.map(([v, label, extra], i) => (
                 <button type="button" key={v} className={`kx-t ${value === v ? "is-on" : ""}`} data-mode={v} role="radio" aria-checked={value === v} tabIndex={value === v || (!hasValue && i === 0) ? 0 : -1} onClick={() => onChange(v)} style={small ? { height: 20, padding: "0 8px", fontSize: 11 } : undefined} {...(extra || {})}>
                     {label}
@@ -153,11 +167,16 @@ export function Seg({ value, options, onChange, mode, className = "", small, lab
     );
 }
 
-export function Field({ icon = "search", value, onChange, placeholder, onKeyDown, kbd, inputRef, inputProps, ...rest }) {
+// `label`: the field's name when a visible label sits beside it (C-29);
+// `id`: for a <label htmlFor> that names it instead. Neither: the
+// placeholder names it (a search box, whose hint is its name).
+export function Field({ icon = "search", value, onChange, placeholder, label, id, onKeyDown, kbd, inputRef, inputProps, ...rest }) {
+    const rowLabel = useContext(RowLabel);
+    const byRow = !id && !label && rowLabel;
     return (
         <div className="kx-field kx-t" {...rest}>
             {icon && <Icon name={icon} />}
-            <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} onKeyDown={onKeyDown} {...inputProps} />
+            <input ref={inputRef} id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={id || byRow ? undefined : label || placeholder} aria-labelledby={byRow || undefined} onKeyDown={onKeyDown} {...inputProps} />
             {kbd && <kbd>{kbd}</kbd>}
         </div>
     );
@@ -166,19 +185,74 @@ export function Field({ icon = "search", value, onChange, placeholder, onKeyDown
 // A list row: a glyph, a title and one grey line, time on the right, actions
 // on hover. Click, Enter and Space on the row all prepare (onClick); a
 // double click sends to air (onDoubleClick), as in Holyrics.
-export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, onClick, onDoubleClick, onContextMenu, onMouseEnter, onMouseLeave, dragProps, single, className = "", current, children }) {
+// A row with actions of its own (`actions`, or `item` in a list where only
+// some rows have them) is a list item, never a button that holds buttons
+// (C-27): named by its title, its meta, time and state as its description,
+// its actions sibling buttons named by what they act on; its list is
+// role="list". Without actions it stays one button. Either way it takes
+// the focus, and Enter or Space prepare it.
+export function Row({ icon, title, meta, metaClass = "", time, state = "", actions, item, onClick, onDoubleClick, onContextMenu, onMouseEnter, onMouseLeave, dragProps, single, className = "", current, children }) {
+    const id = useId();
+    const listItem = Boolean(item || actions);
+    const cls = `${state} ${className}`;
+    const words = stateWords(cls);
+    const hasMeta = meta != null && meta !== "";
+    const described = listItem ? [hasMeta && `${id}m`, time != null && `${id}t`, words && `${id}s`].filter(Boolean).join(" ") : "";
     return (
-        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} role="button" tabIndex={0} aria-current={current || undefined} onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
+        <div className={`kx-row kx-t ${state} ${single ? "kx-row-1" : ""} ${className}`} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onContextMenu} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
+            role={listItem ? "listitem" : "button"} tabIndex={0} aria-labelledby={listItem ? `${id}n` : undefined} aria-describedby={described || undefined}
+            aria-current={current || (isAir(cls) ? "true" : undefined)}
+            onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); } }} {...dragProps}>
             {icon && <span className="kx-glyph"><Icon name={icon} /></span>}
             <div className="kx-row-main">
-                <div className="kx-row-title">{title}</div>
-                {meta != null && meta !== "" && <div className={`kx-row-meta ${metaClass}`}>{meta}</div>}
+                <div className="kx-row-title" id={`${id}n`}>{title}</div>
+                {hasMeta && <div className={`kx-row-meta ${metaClass}`} id={`${id}m`}>{meta}</div>}
             </div>
             {children}
-            {time != null && <span className="kx-row-time kx-hide-on-hover">{time}</span>}
+            {time != null && <span className="kx-row-time kx-hide-on-hover" id={`${id}t`}>{time}</span>}
+            {words && <span className="kx-sr" id={`${id}s`}>, {words}</span>}
             {actions && <span className="kx-row-acts">{actions}</span>}
         </div>
     );
+}
+
+// The live states in words (C-26): a slide, verse or row shows the eye
+// what it is by its background (on air gold, the Prévia green: colour
+// only, owner 2026-10-16) and tells a screen reader by these words and
+// aria-current. `cls`: the element's classes.
+export const isAir = (cls = "") => /(^|\s)is-air(\s|$)/.test(cls);
+export function stateWords(cls = "") {
+    const words = [];
+    if (isAir(cls)) words.push("no ar");
+    if (/(^|\s)is-prev(\s|$)/.test(cls)) words.push("na prévia");
+    return words.join(", ");
+}
+// Inside a button named by its content: the state words after its own
+// text, said but not shown.
+export function SrState({ cls }) {
+    const words = stateWords(cls);
+    return words ? <span className="kx-sr">, {words}. </span> : null;
+}
+
+// One polite live region, always mounted and empty until something is said
+// (C-25): a region that appears with its text already in it is often
+// skipped by NVDA and Narrator. `say(text)` writes into it; what is said
+// in the same moment is said together, and the same words twice are said
+// twice (the region empties first).
+export function useLiveRegion() {
+    const [text, setText] = useState("");
+    const queue = useRef([]);
+    const timer = useRef(null);
+    const say = useCallback((msg) => {
+        if (!msg) return;
+        if (!queue.current.includes(msg)) queue.current.push(msg);
+        clearTimeout(timer.current);
+        setText("");
+        timer.current = setTimeout(() => { setText(queue.current.join(". ")); queue.current = []; }, 150);
+    }, []);
+    useEffect(() => () => clearTimeout(timer.current), []);
+    const region = <div className="kx-sr" role="status" aria-live="polite" aria-atomic="true">{text}</div>;
+    return [region, say];
 }
 
 // A monitor: caption line (state word first) and the screen, 16:9. `cap`
@@ -210,7 +284,10 @@ export function Monitor({ state, caption, cap, noCap = false, live, now, logoUrl
 // (sign: +1 when dragging right/down grows the module, -1 otherwise).
 // `label`: shown on the splitter (the size in %, while editing the
 // arrangement); a click makes it a field and Enter gives `onPercent` the number.
-export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp, label = null, onPercent }) {
+// `name`: what it resizes ("Largura · Biblioteca", C-62); `value` with
+// `min`/`max` and `valueText`: what a screen reader says (the dock, the %
+// of its split; a window column, its pixels between its limits).
+export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp, label = null, onPercent, name, value, min, max, valueText }) {
     const drag = useRef(null);
     const [typing, setTyping] = useState(null);
     useEffect(() => {
@@ -237,8 +314,12 @@ export function Split({ horizontal, size, onSize, onReset, sign = 1, clamp, labe
             className={`kx-split ${horizontal ? "kx-split-h" : ""} ${drag.current ? "is-dragging" : ""}`}
             role="separator"
             aria-orientation={horizontal ? "horizontal" : "vertical"}
-            aria-valuenow={Math.round(size)}
-            aria-label="Redimensionar · setas ajustam, Enter restaura"
+            aria-valuenow={Math.round(value ?? size)}
+            aria-valuemin={min}
+            aria-valuemax={max}
+            aria-valuetext={valueText}
+            aria-label={name || (horizontal ? "Altura do painel" : "Largura do painel")}
+            aria-description="Setas ajustam, Enter restaura"
             tabIndex={0}
             title="Arraste para redimensionar · duplo clique restaura"
             onMouseDown={(e) => { if (e.target.closest?.(".kx-split-pct")) return; e.preventDefault(); drag.current = { x: e.clientX, y: e.clientY, size }; document.body.style.cursor = horizontal ? "row-resize" : "col-resize"; }}
@@ -268,9 +349,15 @@ export function Empty({ icon, title, children }) {
     );
 }
 
+// `checked` (on/off, given as a boolean) says its state (C-26): inside a
+// role="menu" (the item given a menu role) as a menuitemcheckbox with
+// aria-checked, in a plain popover list as a pressed button.
 export function MenuItem({ icon, checked, kbd, children, ...rest }) {
+    const toggle = typeof checked === "boolean";
+    const inMenu = /^menuitem/.test(rest.role || "");
+    const state = !toggle ? {} : inMenu ? { role: "menuitemcheckbox", "aria-checked": checked } : { "aria-pressed": checked };
     return (
-        <button type="button" className={`kx-menu-item kx-t ${checked ? "is-checked" : ""}`} {...rest}>
+        <button type="button" className={`kx-menu-item kx-t ${checked ? "is-checked" : ""}`} {...rest} {...state}>
             <span className="kx-glyph">{icon ? <Icon name={icon} /> : checked ? <Icon name="check" /> : null}</span>
             {children}
             {kbd && <span className="kx-kbd">{kbd}</span>}

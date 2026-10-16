@@ -25,7 +25,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import "@ds/tokens.css";
 import "@ds/components/bundle.css";
 import "@/components/console/console.css";
-import { WinCtx } from "@/components/console/kx";
+import { WinCtx, useLiveRegion } from "@/components/console/kx";
 import { winPage } from "@/components/console/WinPages";
 import { useStamp, useToast, useLiveOps, THEME_IN_USE_KEY } from "@/components/console/useConsole";
 import { useLibrary, useRundown, pickDefaultService } from "@/components/console/useConsoleData";
@@ -91,6 +91,9 @@ const firstStack = () => {
 
 export default function Janela() {
     const c = useJanelaConsole();
+    // The toasts, said by one polite region that is always there (C-25).
+    const [liveRegion, announce] = useLiveRegion();
+    useEffect(() => { if (c.toast) announce(c.toast); }, [c.toast, announce]);
     const data = useLibrary();
     const logoUrl = useChurchLogo();
     const [stack, setStack] = useState(firstStack);
@@ -228,7 +231,7 @@ export default function Janela() {
     // would then be that control's), as in the console.
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
-        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href]");
+        const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], [role='listitem'][tabindex], a[href]");
         if (t && !t.closest(".dialog, .palette, .lyr, .addmenu")) setTimeout(() => t.blur?.(), 0);
     };
 
@@ -254,11 +257,12 @@ export default function Janela() {
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             <PromptDialog ask={ask} onAnswer={answerAsk} />
             {c.toast && (
-                <div className="toast" role="status">
+                <div className="toast">
                     <span className="toast-t">{c.toast}</span>
                     {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
                 </div>
             )}
+            {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={() => setCtxMenu(null)} />
         </div>
         </ConfirmContext.Provider>

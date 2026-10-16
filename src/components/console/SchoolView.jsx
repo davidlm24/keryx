@@ -27,8 +27,8 @@ const MATERIALS = ["console", "bibleMaterials"];
 // and the palette.
 export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, onClose, escRef, onEditMaterial = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
-    const colTurmas = useWinCol("school.turmas", { def: 340, min: 280, max: 600 });
-    const colMaterial = useWinCol("school.material", { def: 400, min: 300, max: 700, sign: -1 });
+    const colTurmas = useWinCol("school.turmas", { name: "Turmas", def: 340, min: 280, max: 600 });
+    const colMaterial = useWinCol("school.material", { name: "Material", def: 400, min: 300, max: 700, sign: -1 });
     const client = useQueryClient();
     useEffect(() => keryx.entities.BibleSchoolClass.subscribe(() => client.invalidateQueries({ queryKey: CLASSES })), [client]);
     useEffect(() => keryx.entities.BibleMaterial.subscribe(() => client.invalidateQueries({ queryKey: MATERIALS })), [client]);
@@ -165,7 +165,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
             {colTurmas.split}
             <div className="col center sv-center">
                 <Panel title={<>Materiais da lição <span className="kx-count">· {onlyClass && cls ? cls.name : "todas as turmas"}</span></>} actions={<>
-                        {cls && <Seg small value={onlyClass ? "turma" : "todos"} onChange={(v) => setOnlyClass(v === "turma")} options={[["turma", "Desta turma"], ["todos", "Todos"]]} />}
+                        {cls && <Seg small label="Materiais de" value={onlyClass ? "turma" : "todos"} onChange={(v) => setOnlyClass(v === "turma")} options={[["turma", "Desta turma"], ["todos", "Todos"]]} />}
                         <IconBtn name="plus" small title="Novo material" onClick={() => onEditMaterial?.(null, onlyClass ? cls?.id : "")} />
                     </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                         <div className="sv-scroll">
@@ -177,9 +177,9 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                                         <Row key={m.id} icon={materialIcon(m.type)} title={m.title} meta={[materialMeta(m), !onlyClass && m.class_name, m.description ? "tem notas" : ""].filter(Boolean).join(" · ")} state={stateOf(m)}
                                             onClick={() => prepare(m)} onDoubleClick={() => send(m)}
                                             actions={<>
-                                                <Btn onClick={(e) => { e.stopPropagation(); onEditMaterial?.(m.id); }}>Editar</Btn>
-                                                {onAddToSetlist && <Btn onClick={(e) => { e.stopPropagation(); onAddToSetlist(m); }} title="Adicionar ao fim da setlist">Setlist</Btn>}
-                                                <Btn onClick={(e) => { e.stopPropagation(); send(m); }} title="Enviar ao ar · duplo clique">Projetar</Btn>
+                                                <Btn onClick={(e) => { e.stopPropagation(); onEditMaterial?.(m.id); }} aria-label={`Editar ${m.title}`}>Editar</Btn>
+                                                {onAddToSetlist && <Btn onClick={(e) => { e.stopPropagation(); onAddToSetlist(m); }} title="Adicionar ao fim da setlist" aria-label={`Adicionar ${m.title} à setlist`}>Setlist</Btn>}
+                                                <Btn onClick={(e) => { e.stopPropagation(); send(m); }} title="Enviar ao ar · duplo clique" aria-label={`Projetar ${m.title}`}>Projetar</Btn>
                                             </>} />
                                     ))}
                                 </React.Fragment>

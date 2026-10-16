@@ -37,9 +37,10 @@ export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outs
                 {menus.length > 0 && <><span className="tb-div" aria-hidden="true" /><MenuBarButtons menus={menus} open={open} setOpen={setOpen} /></>}
             </div>
             <div className="tb-c">
-                <div className="kx-field kx-t tb-search" onClick={() => setOpen("palette")} title="Buscar ou comandar · /" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") setOpen("palette"); }}>
-                    <Icon name="search" /><input placeholder="Buscar em tudo" aria-label="Buscar em tudo" readOnly tabIndex={-1} /><kbd>/</kbd>
-                </div>
+                {/* A real button (C-27): Enter and Space open the search; it only looks like a field. */}
+                <button type="button" className="kx-field kx-t tb-search" onClick={() => setOpen("palette")} title="Buscar ou comandar · /" aria-label="Buscar em tudo" aria-keyshortcuts="/" aria-haspopup="dialog">
+                    <Icon name="search" /><span className="tb-search-ph" aria-hidden="true">Buscar em tudo</span><kbd aria-hidden="true">/</kbd>
+                </button>
             </div>
             <div className="tb-r">
                 {svc && (
