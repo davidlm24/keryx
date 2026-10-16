@@ -163,7 +163,8 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     // The Voltar chip ("back") and the (x) ("all") leave at once — nothing
     // to guard, the Mídia saves as it goes.
     // The other keys stay the page's own: Enter sends one selected file;
-    // Delete asks to take it out; Ctrl+A selects what is shown. They defer
+    // Delete asks to take it out (Backspace never does: on Windows it is
+    // not a delete key, audit C-11); Ctrl+A selects what is shown. They defer
     // to a dialog over the page (its own scrim does not count) and sleep
     // while another page covers this one; the console's B and L still
     // reach the screens.
@@ -175,7 +176,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
         const field = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName);
         if (field) return;
         if (e.key === "Enter" && picked.length === 1) { e.preventDefault(); e.stopPropagation(); send(picked[0]); }
-        else if ((e.key === "Delete" || e.key === "Backspace") && picked.length) { e.preventDefault(); e.stopPropagation(); remove(); }
+        else if (e.key === "Delete" && picked.length) { e.preventDefault(); e.stopPropagation(); remove(); }
         else if (e.key === "a" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); setSel(shown.map((m) => m.id)); }
         else if (e.key === "F2" && picked.length === 1) { e.preventDefault(); setRenaming(picked[0].id); }
     };
