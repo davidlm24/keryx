@@ -37,11 +37,6 @@ const songs = (pc) => pc.store.call("Song", "list", [])
     .sort((a, b) => (a.id < b.id ? -1 : 1));
 
 const tick = () => new Promise((r) => setTimeout(r, 5));
-// Waits for a condition (a pass on a timer), at most `ms`.
-async function until(cond, ms = 3000) {
-    const end = Date.now() + ms;
-    while (!cond() && Date.now() < end) await new Promise((r) => setTimeout(r, 10));
-}
 
 async function rounds(pcs, n = 3) {
     for (let i = 0; i < n; i++) {
@@ -507,19 +502,35 @@ test("a pass runs at a time; local changes ask for one; remote ones do not echo"
     assert.equal(first, second);
     await first;
 
+    // A pass's disk work can outlast any fixed wait (Windows, an antivirus
+    // scanning the temp folder), so the test waits for the passes it expects
+    // to finish and counts the ones that START (each reads the folder first,
+    // synchronously when the debounce fires) to see that no other was asked.
+    let started = 0;
     let passes = 0;
-    const counted = createSyncEngine({ store: b.store, mediaDir: b.mediaDir, getFolder: () => folder, getPairing: () => CHURCH, log: () => {}, onStatus: () => { passes += 1; } });
+    const counted = createSyncEngine({
+        store: b.store,
+        mediaDir: b.mediaDir,
+        getFolder: () => { started += 1; return folder; },
+        getPairing: () => CHURCH,
+        log: () => {},
+        onStatus: () => { passes += 1; },
+    });
+    const finished = async (n) => {
+        const until = Date.now() + 10000;
+        while (passes < n && Date.now() < until) await tick();
+        assert.equal(passes, n, `pass ${n} finished`);
+    };
     counted.start({ intervalMs: 60000, debounce: 10 });
-    await until(() => passes >= 1);
-    assert.equal(passes, 1, "the first pass after start");
+    await finished(1);
+    assert.equal(started, 1, "the first pass after start");
     assert.equal(songs(b).length, 1);
     await new Promise((r) => setTimeout(r, 60));
-    assert.equal(passes, 1, "what the pass applied does not ask for another");
+    assert.equal(started, 1, "what the pass applied does not ask for another");
     b.store.call("Song", "create", [{ title: "Outra" }]);
     b.store.call("OutputPref", "create", [{ page: "/Projection" }]);
-    await until(() => passes >= 2);
-    await new Promise((r) => setTimeout(r, 60));
-    assert.equal(passes, 2);
+    await finished(2);
+    assert.equal(started, 2, "both changes ask for one pass");
     assert.equal(b.store.outbox().length, 0);
     counted.stop();
     a.close();
