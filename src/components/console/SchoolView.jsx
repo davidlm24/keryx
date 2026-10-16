@@ -76,7 +76,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     // "Tirar", never "Excluir" (copy rules): the student leaves this class.
     const removeStudent = async (i) => {
         const name = cls.students[i].name;
-        if (!(await ask({ title: "Tirar da turma?", text: `"${name}" sai da turma ${cls.name}, com as presenças registradas.`, ok: "Tirar" }))) return;
+        if (!(await ask({ title: "Tirar da turma?", text: `"${name}" sai da turma ${cls.name}, com as presenças registradas.`, ok: "Tirar", danger: true }))) return;
         saveClass({ students: cls.students.filter((_, k) => k !== i) });
     };
 

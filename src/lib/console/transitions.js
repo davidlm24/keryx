@@ -7,7 +7,7 @@
 //   - Ao tirar da tela: Esc and Limpar say how long what leaves fades out
 //     (`fade`, ms; nothing = a cut).
 //   - Tela preta e Logo: screen.set takes the same fade while the switch is on.
-// Pure: the console's liveOp and the projector window's own keys use it.
+// Pure: the console's liveOp and every output window's screen keys (src/lib/screenKeys.js) use it.
 
 export const SOUND_OPS = ["video.show", "audio.show", "audio.playlist", "media.show", "media.playlist"];
 // Esc (clear), Limpar (text.clear: the text layers in one change) and the
