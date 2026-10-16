@@ -33,6 +33,8 @@
 .console .topbar .tb-c { flex: 1; justify-content: center; }
 .console .topbar .tb-search { width: 100%; max-width: 320px; min-width: 0; height: 32px; padding: 0 var(--space-3); border-radius: var(--radius-round); background: var(--bg-1); cursor: text; }
 .console .topbar .tb-search:hover { box-shadow: inset 0 0 0 1px var(--line); }
+/* The search is a button that looks like a field (C-27): its hint as the field placeholder was. */
+.console .topbar .tb-search-ph { flex: 1; min-width: 0; text-align: left; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .console .topbar .kx-seg { background: var(--bg-1); height: 32px; padding: 3px; border-radius: var(--radius-control); }
 .console .topbar .kx-seg > button { height: 26px; }
 .console .topbar .kx-status { height: 32px; }
@@ -95,7 +97,7 @@
 @container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
 @container topbar (max-width: 1080px) {
     .console .topbar .tb-search { width: 32px; max-width: 32px; padding: 0; justify-content: center; }
-    .console .topbar .tb-search input, .console .topbar .tb-search kbd { display: none; }
+    .console .topbar .tb-search input, .console .topbar .tb-search .tb-search-ph, .console .topbar .tb-search kbd { display: none; }
     .console .topbar .tb-svc { max-width: 168px; }
 }
 /* Popovers from the top bar open just under it (the Windows title strip included). */
@@ -213,7 +215,7 @@
    (z-index 85–200) never paint over a popover or drawer that covers the monitor. */
 .console .kx-mon-screen, .console .ed-th, .console .mv-th, .console .nv-screen { isolation: isolate; }
 .console .kx-mon .kx-mon-screen::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--frame, var(--line)); border-radius: inherit; pointer-events: none; z-index: 200; }
-.console .kx-mon.is-air { --frame: var(--air); } /* only the Bíblia's and Escola's monitors: the Programa is unframed on air */
+.console .kx-mon.is-air { --frame: var(--air); } /* only the Bíblia's and Escola's monitors, and only with something on air: the Programa is unframed */
 .console .kx-mon.is-prev { --frame: var(--prev); }
 .console .kx-mon.is-rh { --frame: var(--rh); }
 .console .kx-mon.is-warn { --frame: var(--warn); }
@@ -563,13 +565,25 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .bpick-chapters .bchap { border-top: 0; padding: var(--space-1); }
 .console .bpick-chapters .chapters { max-height: none; overflow: visible; }
 .console .bpick-verses .bverses { padding: var(--space-1); }
+/* The title never gives way (audit C-47: "LIVR…" at 1366): when the
+   header cannot hold it all, Abrev | Nomes leaves it and lives in the view
+   menu (BibleEnv's grid button lists it while the Seg is hidden). The header
+   needs 272 px — title 57, select 52, Seg 83, + and grid 24 each, four 8 px
+   gaps — so the column's default 300 px (276 inside) keeps the Seg; a
+   change to those widths changes this number. */
+.console .bpick-books > .kx-panel-h { container: bbooks-h / inline-size; }
+.console .bpick-books > .kx-panel-h > .kx-section { flex: 1 0 auto; }
+@container bbooks-h (width < 276px) { .console .bpick-books > .kx-panel-h > .kx-seg { display: none; } }
 /* The text column: recent chapters, favourites and notes on top, the
    reading (or Buscar, Comparar) below, scrolling. */
 /* Its header is one line, like every panel's: the chapter, two icons
    (Selecionar todos, Limpar seleção) and Ler | Comparar. No hint and no
-   search field (owner 2026-10-16: the console's search covers the Bíblia). */
-.console .bread > .kx-panel-h { overflow: hidden; }
-.console .bread > .kx-panel-h > .kx-section { min-width: 64px; }
+   search field (owner 2026-10-16: the console's search covers the Bíblia).
+   The chapter never truncates (audit C-47): a narrow column drops the two
+   icons first, and the header's overflow only clips past that. */
+.console .bread > .kx-panel-h { overflow: hidden; container: bread-h / inline-size; }
+.console .bread > .kx-panel-h > .kx-section { flex: 1 0 auto; }
+@container bread-h (width < 330px) { .console .bread > .kx-panel-h > .bread-sel { display: none; } }
 .console .bread > .kx-panel-b { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 .console .bread-b { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .console .bread-b > .reading { overflow: visible; }
@@ -903,6 +917,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    no edges (the system window resizes); the dialogs a page opens sit
    near its top. */
 .console.janela { --pop-top: 16px; padding: 0; }
+/* On Windows a detached page has no native bar (main.cjs titleBarOverlay):
+   its WinBar is the title bar — dragged by its empty parts, its right end
+   left to the system's buttons (the strip env() reports; unset elsewhere,
+   where nothing changes). */
+.console.janela .win-bar { -webkit-app-region: drag; padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 6px); }
+.console.janela .win-bar :is(button, input, select, textarea, a, [role], .win-tools) { -webkit-app-region: no-drag; }
 .console .win-dialog.is-detached { position: relative; left: auto; top: auto; transform: none; width: auto; height: auto; flex: 1; min-height: 0; border-radius: 0; box-shadow: none; transition: none; }
 /* The bar: the Configurações header, now every page's. */
 .console .win-bar { flex: none; height: 40px; display: flex; align-items: center; gap: var(--space-2); padding: 0 6px 0 var(--space-3); border-bottom: 1px solid var(--line); }
@@ -1056,6 +1076,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .ed-chords .ed-chip { min-width: 30px; justify-content: center; font-variant-numeric: tabular-nums; }
 .console .ed-key { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .console .ed-key .kx-field { flex: 1; min-width: 0; }
+/* The lyrics syntax help wraps above the textarea, never cut (audit C-38). */
+.console .ed-help { flex: none; margin: 0; padding: 0 var(--space-2) var(--space-1); line-height: 16px; }
 .console .ed-lyrics { flex: 1; min-height: 0; display: flex; padding: 0 var(--space-2) var(--space-2); }
 .console .ed-lyrics .ed-text { flex: 1; font-size: 14px; line-height: 21px; }
 .console .ed-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-2); }
@@ -1098,6 +1120,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .pl-danger { display: flex; justify-content: flex-end; padding: 0 var(--space-2) var(--space-2); }
 .console .cfg-wall { width: 48px; height: 27px; object-fit: cover; border-radius: var(--radius-control); box-shadow: inset 0 0 0 1px var(--line); }
 .console .pl-wall { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+/* "Qualquer outro culto" whole at 1366 (audit C-42): the planner's column is narrow. */
+.console .pl-wall .bgchip { gap: var(--space-1); }
 .console .pl-acts { display: flex; gap: var(--space-1); flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 /* The Setlist header keeps its count, length and end time readable: when the
    four buttons do not fit beside it, they drop to a second line. */
@@ -1118,6 +1142,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .pl-adder .pl-pad { padding-top: 0; }
 .console .pl-adder-list { flex: 1; min-height: 0; overflow: auto; }
 .console .pl-add { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-2); border-top: 1px solid var(--line); }
+.console .pl-add-k { align-self: center; margin-right: var(--space-1); }
 .console .rund-sec { gap: 0; cursor: grab; }
 .console .rund-plan { display: flex; justify-content: center; padding: var(--space-2); }
 
@@ -1532,6 +1557,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    the 2 px padding keeps the ring of the theme in use from being cut; an
    empty slot is a dashed + (a new theme). */
 .console .tm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1) var(--space-2); padding: 2px; align-items: start; }
+/* Each slot is the grid's list item (C-27); the tile or the + inside it is the grid's child as before. */
+.console .tm-slot { display: contents; }
 .console .tm-grid.is-large { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .console .tm-tile .fg-name { font-size: 11px; }
 .console .tm-empty { aspect-ratio: 16 / 10; width: 100%; border-radius: var(--radius-control); border: 1px dashed var(--line-strong); background: none; color: var(--fg-3); display: grid; place-items: center; }
@@ -1581,7 +1608,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .tmg { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); }
 .console .cfg .tmg-meta { font-size: 11px; }
 .console .cfg .tmg-new .fg-img { display: grid; place-items: center; box-shadow: inset 0 0 0 1px var(--line-strong); background: transparent; }
-.console .cfg .tmg-plus { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--fg-2); font-size: 12px; }
 /* Temas padrão: the same tile size as "Todos os temas" (one grid, one size). */
 .console .cfg .tmg-kind { font-size: 11px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .06em; }
 /* Bíblia e músicas: its form aligns with the section's other forms (no

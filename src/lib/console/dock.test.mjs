@@ -8,7 +8,7 @@ const g = (...tabs) => group(tabs);
 // columns band, the default, has its own test below.
 const W = { onairSpan: "window" };
 // The console of the 2026-10-13 audit: Biblioteca | Slides | Programa over
-// Prévia · Painel de abas | Camadas, Temas and the Setlist, and under all of them,
+// Prévia · Painel | Camadas, Temas and the Setlist, and under all of them,
 // edge to edge, the No ar strip (2026-10-14).
 const fourColumns = () => split("col", [split("row", [
     g("lib"), g("slides"),
@@ -245,7 +245,7 @@ test("fitting: what does not fit side by side becomes tabs, the dock itself unch
     assert.deepEqual(wide.children.map((c) => c.size), [260, 300, 1010, 320]);
     assert.equal(JSON.stringify(wide).includes('"collapsed"'), false);
     // 1200 px: the side columns give way to their minimums; the centre is
-    // too narrow for the Prévia and the Painel de abas side by side.
+    // too narrow for the Prévia and the Painel side by side.
     const mid = fitDock(d, 1200, 700).children[0].frame;
     assert.deepEqual(mid.children.map((c) => Math.round(c.size)), [260, 300, 320, 302]);
     const bottom = mid.children[2].frame.children[1];
@@ -536,7 +536,7 @@ test("Ver's module switches over the tray: off goes to the tray, on comes back t
     assert.deepEqual(trayFlags(off, ids), { lib: false, slides: false, camadas: true });
     assert.deepEqual(applyTrayFlags(off, {}, ids), d, "back over the Setlist");
     assert.equal(applyTrayFlags(d, { lib: false }, ids), d, "nothing changed: the same dock");
-    // The Painel de abas is not one of Ver's switches: its tray stays.
+    // A module outside the switches passed (here the Painel) keeps its tray.
     const abas = hideModule(d, "abas");
     assert.deepEqual(applyTrayFlags(abas, {}, ids).hidden, ["abas"]);
 });

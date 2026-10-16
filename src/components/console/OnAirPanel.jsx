@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Empty } from "./kx";
+import { Empty, SrState } from "./kx";
 import { useContextMenu } from "./ContextMenu";
 import useKeepInView from "./useKeepInView";
 import { SlideText } from "./SlidesPanel";
@@ -38,12 +38,12 @@ export default function OnAirPanel({ c }) {
                 {slides.map((sl, i) => {
                     const cls = [i === index && "is-air", i === index + 1 && i !== prevIndex && "is-next", i === prevIndex && "is-prev"].filter(Boolean).join(" ");
                     return (
-                        <button type="button" key={i} className={`onair-card kx-t ${cls}`} onClick={() => pick(i)} onDoubleClick={() => go(i)}
+                        <button type="button" key={i} className={`onair-card kx-t ${cls}`} aria-current={i === index ? "true" : undefined} onClick={() => pick(i)} onDoubleClick={() => go(i)}
                             onContextMenu={(e) => menu(e, { title: `Slide ${i + 1}`, items: [
                                 { label: "Pôr na prévia", icon: "eye", disabled: i === index, onSelect: () => pick(i) },
                                 { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => go(i) },
                             ] })} title={`${i === index ? "No ar" : "Pôr na prévia · 2 cliques enviam"}\n\n${sl.text || sl.label || ""}`}>
-                            <span className="kx-slide-n">{i + 1}</span>
+                            <span className="kx-slide-n">{i + 1}</span><SrState cls={cls} />
                             <SlideText slide={sl} />
                         </button>
                     );

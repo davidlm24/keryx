@@ -50,7 +50,7 @@ export default function BibleSearchPanel({ search, selected, onPick, onSend }) {
             <div className="bs-bar">
                 <span className="kx-meta">{q.trim() ? <>“{q.trim()}”</> : 'Palavra ou frase · "entre aspas" para a frase exata'}</span>
                 <span style={{ flex: 1 }} />
-                <Seg small value={scope} onChange={(v) => { setScope(v); if (q.trim()) run(q, v); }} options={SCOPES} />
+                <Seg small label="Onde buscar" value={scope} onChange={(v) => { setScope(v); if (q.trim()) run(q, v); }} options={SCOPES} />
             </div>
             <div className="listhead bs-status">
                 <span className="kx-meta">

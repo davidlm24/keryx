@@ -57,7 +57,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, prev
 
 
     return (
-        <div className={`rund kx-acts-list ${sort.sorting ? "is-sorting" : ""}`} {...sort.listProps}>
+        <div className={`rund kx-acts-list ${sort.sorting ? "is-sorting" : ""}`} role="list" aria-label="Setlist" {...sort.listProps}>
             {!items.length && loaded && (
                 <Empty icon="list" title={service ? "Setlist vazia" : "Setlist de hoje"}>
                     {service ? "Arraste da Biblioteca, busque (/) ou use +." : "Arraste da Biblioteca ou use + para começar a setlist de hoje. Ou escolha um culto no menu KERYX."}
@@ -68,7 +68,7 @@ export default function Rundown({ service, items, loaded = true, airItemId, prev
                 if (isSection(it)) {
                     const sec = p.sections[i] || { count: 0, seconds: 0 };
                     return (
-                        <div key={it.id} className="listhead rund-sec" {...sort.rowProps(i, { label: it.title, icon: "list", time: sec.seconds ? total(sec.seconds) : "" })} {...step.rowAttrs(i)} style={sort.rowStyle(i)}
+                        <div key={it.id} className="listhead rund-sec" role="listitem" {...sort.rowProps(i, { label: it.title, icon: "list", time: sec.seconds ? total(sec.seconds) : "" })} {...step.rowAttrs(i)} style={sort.rowStyle(i)}
                             tabIndex={canReorder ? 0 : undefined} aria-label={canReorder ? `Seção ${it.title} · Alt+↑ ou Alt+↓ muda de lugar` : undefined} onKeyDown={step.onKey(i)}
                             onContextMenu={(e) => menu(e, { title: it.title, items: [
                                 onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
@@ -100,12 +100,12 @@ export default function Rundown({ service, items, loaded = true, airItemId, prev
                         ] })}
                         onKey={step.onKey(i)}
                         dragProps={dragProps}
-                        actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Enviar ao ar · 2 cliques" aria-label="Ir"><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Ir</span></Btn>{onPlan && <IconBtn name="more" title="Editar no planejador" onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}
+                        actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Enviar ao ar · 2 cliques" aria-label={`Ir para ${it.title || typeLabel(it.type)}`}><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Ir</span></Btn>{onPlan && <IconBtn name="more" title="Editar no planejador" aria-label={`Editar ${it.title || typeLabel(it.type)} no planejador`} onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}
                     />
                 );
             })}
             {sort.slot}
-            {canReorder && <div className="rund-tail" data-sort-tail="" />}
+            {canReorder && <div className="rund-tail" data-sort-tail="" aria-hidden="true" />}
         </div>
     );
 }
