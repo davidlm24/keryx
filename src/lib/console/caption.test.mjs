@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { airSince, airFor, airInPlayer, airAnnouncement } from "./caption.js";
+import { airSince, airFor, airInPlayer, titleParts, airAnnouncement } from "./caption.js";
 
 const song = { content: { title: "Hino", slides: [{ text: "a" }], index: 0, startedAt: 10_000 } };
 
@@ -50,6 +50,17 @@ test("the pill's title only when the player does not name what is on air (Rodada
     assert.equal(airInPlayer({ screen: "logo", audio: music }), false, "Logo");
     assert.equal(airInPlayer({}), false, "nothing: \"Nada no ar\"");
     assert.equal(airInPlayer(null), false);
+});
+
+test("titleParts: the end of a long title stays whole (C-17)", () => {
+    assert.deepEqual(titleParts("Canção de exemplo · Manhã"), { head: "Canção de exemplo ·", tail: "Manhã" });
+    assert.deepEqual(titleParts("Grande é o Senhor - ao vivo"), { head: "Grande é o Senhor -", tail: "ao vivo" });
+    assert.deepEqual(titleParts("Porque Ele vive para sempre"), { head: "Porque Ele vive para", tail: "sempre" });
+    assert.deepEqual(titleParts("Hino curto"), { head: "Hino curto", tail: "" });
+    assert.deepEqual(titleParts("Umapalavrasóquenãotemespaço"), { head: "Umapalavrasóquenãotemespaço", tail: "" });
+    assert.deepEqual(titleParts("Salmo 23 · Versão contemporânea longa"), { head: "Salmo 23 · Versão contemporânea longa", tail: "" });
+    assert.deepEqual(titleParts(""), { head: "", tail: "" });
+    assert.deepEqual(titleParts(null), { head: "", tail: "" });
 });
 
 test("what a screen reader hears when the air changes (C-25)", () => {

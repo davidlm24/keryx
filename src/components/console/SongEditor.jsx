@@ -58,6 +58,9 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
     const [sel, setSel] = useState(0);
     const [cifraOpen, setCifraOpen] = useState(false);
     const [cifraText, setCifraText] = useState("");
+    // The old separate Cifra block (C-19): shown only while the song has text
+    // there, and kept on screen while it is being edited (emptied included).
+    const [cifraKept, setCifraKept] = useState(false);
     const [starts, setStarts] = useState([]);
     const [busy, setBusy] = useState("");
     // One save at a time: a held Ctrl+S or a double click created a new
@@ -86,6 +89,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
 
     useEffect(() => {
         let alive = true;
+        setCifraKept(false);
         if (songId === "new") {
             setSong({ ...NEW_SONG });
             setResplit(true);
@@ -249,22 +253,27 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
         const raw = cifraText.trim();
         if (!raw) return;
         const inline = chordLinesToInline(raw);
-        if (!hasInlineChords(inline)) { c.say("Nenhum acorde sobre a letra encontrado; use Montar a letra."); return; }
+        if (!hasInlineChords(inline)) { c.say("Nenhum acorde sobre a letra encontrado; use Só a letra."); return; }
         set({ lyrics: inline, chords: "" });
         setResplit(true);
         setCifraOpen(false);
         setCifraText("");
         c.say("Letra montada com a cifra nas linhas · os acordes aparecem nas telas com cifra ligada.");
     };
-    // The legacy chords block merged into the lyrics as inline chords.
+    // The legacy chords block merged into the lyrics as inline chords; the
+    // block empties and goes, so the chords live in one place (C-19).
     const chordsToInline = () => {
         const raw = (song.chords || "").trim();
         if (!raw) return;
+        if (hasInlineChords(song.lyrics || "")) { c.say("A letra já tem acordes ([G]) · apague a cifra separada se ela sobrou."); return; }
         const hasLyricLines = raw.split("\n").some((l) => l.trim() && !isChordLine(l));
         if (!hasLyricLines) { c.say("Essa cifra só tem acordes; escreva a letra e use colchetes: [G]Deus é fiel."); return; }
-        setLyrics(chordLinesToInline(raw));
+        set({ lyrics: unCR(chordLinesToInline(raw)), chords: "" });
+        setResplit(true);
+        setCifraKept(false);
         c.say("Letra refeita com os acordes nas linhas · confira e salve.");
     };
+    const showCifra = cifraKept || Boolean((song?.chords || "").trim());
     const upload = async (file, field) => {
         if (!file) return;
         setBusy(field);
@@ -401,15 +410,13 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     </div>
                     <div className="listhead"><span className="kx-section">Notas para os músicos</span></div>
                     <div className="ed-pad"><textarea className="ed-text" style={{ height: 56 }} value={song.musician_notes || ""} onChange={(e) => set({ musician_notes: e.target.value })} aria-label="Notas para os músicos" placeholder="Intro, dinâmica, finais…" /></div>
-                    <div className="listhead"><span className="kx-section">Cifra <span className="kx-count">· nas telas com cifra ligada</span></span><span style={{ flex: 1 }} />{(song.chords || "").trim() && !hasInlineChords(song.lyrics || "") && <Btn small onClick={chordsToInline} title="Põe os acordes do bloco de cifra dentro da letra ([G]Deus é fiel), sobre as sílabas">Colocar na letra</Btn>}
-                        <Btn small onClick={() => setCifraOpen((o) => !o)} title="Colar uma cifra ou ChordPro: a letra é montada a partir dela">Importar cifra</Btn></div>
-                    {cifraOpen && (
-                        <div className="ed-pad ed-cifra">
-                            <textarea className="ed-text ed-mono" style={{ height: 120 }} value={cifraText} onChange={(e) => setCifraText(e.target.value)} placeholder="Cole a cifra (acordes sobre a letra) ou ChordPro" aria-label="Cifra para importar" autoFocus />
-                            <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small disabled={!cifraText.trim()} onClick={importCifraInline} title="Os acordes entram na própria letra, entre colchetes, sobre as sílabas">Montar com cifra na letra</Btn><Btn small kind="brand" disabled={!cifraText.trim()} onClick={importCifra}>Montar a letra</Btn></div>
-                        </div>
-                    )}
-                    <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => set({ chords: e.target.value })} aria-label="Cifra" placeholder="Acordes para o Palco (opcional)" /></div>
+                    {/* The chords live in the Letra ([G]); this old separate block only
+                        shows while a song still has one, to be put in the letra (C-19). */}
+                    {showCifra && <>
+                        <div className="listhead"><span className="kx-section">Cifra separada <span className="kx-count">· os acordes vão na letra</span></span><span style={{ flex: 1 }} />
+                            <Btn small onClick={chordsToInline} title="Põe os acordes desta cifra dentro da letra ([G]Deus é fiel), sobre as sílabas; a cifra separada some">Colocar na letra</Btn></div>
+                        <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => { setCifraKept(true); set({ chords: e.target.value }); }} aria-label="Cifra separada" /></div>
+                    </>}
                     <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Tema desta música</span></div>
                     <div className="frm">
                         <span className="k">Tema</span>
@@ -495,7 +502,15 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         <Btn small onClick={() => insertChord()} title="Põe [ ] no cursor: escreva o acorde dentro, antes da sílaba em que ele entra">Acorde</Btn>
                         {keyChords(song.song_key).map((ch) => <Btn key={ch} small kind="outline" className="ed-chip" onClick={() => insertChord(ch)} title={`Põe [${ch}] no cursor`}>{ch}</Btn>)}
                         {!keyChords(song.song_key).length && <span className="kx-meta">Preencha o Tom para ter os acordes dele aqui.</span>}
+                        <span style={{ flex: 1 }} />
+                        <Btn small on={cifraOpen} onClick={() => setCifraOpen((o) => !o)} title="Colar uma cifra ou ChordPro: a letra é montada a partir dela">Importar cifra</Btn>
                     </div>
+                    {cifraOpen && (
+                        <div className="ed-pad ed-cifra">
+                            <textarea className="ed-text ed-mono" style={{ height: 120 }} value={cifraText} onChange={(e) => setCifraText(e.target.value)} placeholder="Cole a cifra (acordes sobre a letra) ou ChordPro" aria-label="Cifra para importar" autoFocus />
+                            <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}><Btn small onClick={() => setCifraOpen(false)}>Cancelar</Btn><Btn small disabled={!cifraText.trim()} onClick={importCifra} title="Monta só a letra; a cifra fica separada, para pôr na letra depois">Só a letra</Btn><Btn small kind="brand" disabled={!cifraText.trim()} onClick={importCifraInline} title="Os acordes entram na própria letra, entre colchetes, sobre as sílabas">Montar com cifra na letra</Btn></div>
+                        </div>
+                    )}
                     <p className="kx-meta ed-help">[G] dentro da linha é acorde; [Refrão] sozinho na linha é o nome da parte. Cada tela mostra a cifra e o nome da parte se estiverem ligados nela (Configurações › Telas e saídas); o Palco já vem com os dois.</p>
                     <div className="ed-lyrics"><textarea ref={lyricsRef} className="ed-text" value={song.lyrics || ""} onChange={(e) => setLyrics(e.target.value)} aria-label="Letra" placeholder={"[Verso 1]\nPrimeira linha\nsegunda linha\n\n[Refrão]\n…"} spellCheck={false} /></div>
                 </Panel>
