@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, dockMotion, easesBetween } from "./dock.js";
+import { MODULES, normalizeDock, fromArrangement, fromBibleArrangement, defaultDock, moveModules, hideModule, returnModule, trayFlags, applyTrayFlags, defaultSize, setActive, resizeChild, fitDock, goneModules, lyricsOnAir, onAirHeight, bandOf, moveBand, allocate, minSize, leaves, nodeAt, pathOf, group, split, NEW_PX, ONAIR_H, ONAIR_PAGE_LINES, TEMAS_H, PLAYER_SLOT, rebaseDock, setDockMode, snapPct, dockMode, PCT_STEP, FOLD_STRIP, canFoldModule, programaNatural, dockMotion, easesBetween } from "./dock.js";
 
 const g = (...tabs) => group(tabs);
 // The window band: the console's shape before the strip went under the
@@ -12,7 +12,7 @@ const W = { onairSpan: "window" };
 // edge to edge, the No ar strip (2026-10-14).
 const fourColumns = () => split("col", [split("row", [
     g("lib"), g("slides"),
-    split("col", [g("programa"), split("row", [g("previa"), g("abas")], [444, null])], [null, 334]),
+    split("col", [g("programa"), split("row", [g("previa"), g("abas")], [444, null])], [null, 250]),
     split("col", [g("camadas"), g("temas"), g("setlist")], [280, TEMAS_H, null]),
 ], [260, 300, null, 320]), g("onair")], [null, ONAIR_H]);
 
@@ -51,15 +51,15 @@ test("the No ar strip under the columns beside the Setlist: the default band (ow
 });
 
 test("the window band: the four-column console with the strip under every column", () => {
-    // centre = 1908 − 326 − 266 − 306 = 1010; the Prévia 44 % = 444; 444 · 9/16 + 84 = 334
+    // centre = 1908 − 326 − 266 − 306 = 1010; the Prévia 44 % = 444; 444 · 9/16 = 250 (the Prévia has no header nor button since 2026-10-14)
     assert.deepEqual(defaultDock(W), { tree: fourColumns(), hidden: [] });
 });
 
 test("an old layout migrates: its column order, stack order, hidden modules and sizes", () => {
     const d = fromArrangement({ order: { culto: ["live", "side", "lib", "slides"] }, stacks: { side: ["roteiro", "camadas"] }, hidden: { lib: true, camadas: true }, slidesW: 340, prevPct: 25 }, { width: 1500, ...W });
-    // centre = 1500 − 326 − 346 = 828; 25 % = 207, at least the Prévia's 220; 220 · 9/16 + 84 = 208
+    // centre = 1500 − 326 − 346 = 828; 25 % = 207, at least the Prévia's 220; 220 · 9/16 = 124, the Prévia's 200 at least
     assert.deepEqual(d.tree, split("col", [split("row", [
-        split("col", [g("programa"), split("row", [g("previa"), g("abas")], [220, null])], [null, 208]),
+        split("col", [g("programa"), split("row", [g("previa"), g("abas")], [220, null])], [null, 200]),
         g("setlist"),
         g("slides"),
     ], [null, 320, 340]), g("onair")], [null, ONAIR_H]));
@@ -118,7 +118,7 @@ test("a split inside a split of the same direction merges into it", () => {
 
 test("dropping in the middle of a group makes tabs", () => {
     const d = moveModules(defaultDock(W), ["camadas"], { kind: "group", path: [0, 2, 0], zone: "center" });
-    assert.deepEqual(nodeAt(d.tree, [0, 2]), split("col", [group(["programa", "camadas"], "camadas"), split("row", [g("previa"), g("abas")], [444, null])], [null, 334]));
+    assert.deepEqual(nodeAt(d.tree, [0, 2]), split("col", [group(["programa", "camadas"], "camadas"), split("row", [g("previa"), g("abas")], [444, null])], [null, 250]));
     assert.deepEqual(nodeAt(d.tree, [0, 3]), split("col", [g("temas"), g("setlist")], [TEMAS_H, null]), "Temas stays over the Setlist");
 });
 
@@ -135,7 +135,7 @@ test("dropping on a side along the split inserts beside, halving a fixed neighbo
     assert.deepEqual(nodeAt(e.tree, [0, 1, 1]), split("row", [g("previa"), g("abas"), g("lib")], [444, null, 280]));
     // Over the Programa: the centre column takes it.
     const f = moveModules(defaultDock(W), ["slides"], { kind: "group", path: [0, 2, 0], zone: "top" }, { px: 180 });
-    assert.deepEqual(nodeAt(f.tree, [0, 1]).sizes, [180, null, 334]);
+    assert.deepEqual(nodeAt(f.tree, [0, 1]).sizes, [180, null, 250]);
 });
 
 test("dropping on a side across the split wraps the group in a new split", () => {
@@ -249,8 +249,8 @@ test("fitting: what does not fit side by side becomes tabs, the dock itself unch
     const mid = fitDock(d, 1200, 700).children[0].frame;
     assert.deepEqual(mid.children.map((c) => Math.round(c.size)), [260, 300, 320, 302]);
     const bottom = mid.children[2].frame.children[1];
-    assert.equal(Math.round(bottom.size), 334);
-    assert.deepEqual({ ...bottom.frame, w: Math.round(bottom.frame.w), h: Math.round(bottom.frame.h) }, { kind: "group", path: [0, 2, 1], tabs: ["previa", "abas"], active: "previa", w: 320, h: 334, collapsed: true, target: [0, 2, 1, 0] });
+    assert.equal(Math.round(bottom.size), 332, "its 250 and what the Programa cannot use: 590 − 6 − 250 − (320 · 9/16 + 72)");
+    assert.deepEqual({ ...bottom.frame, w: Math.round(bottom.frame.w), h: Math.round(bottom.frame.h) }, { kind: "group", path: [0, 2, 1], tabs: ["previa", "abas"], active: "previa", w: 320, h: 332, collapsed: true, target: [0, 2, 1, 0] });
     // 1000 px: the Biblioteca and the Slides join as tabs (the pair that
     // gives back the most room without touching the Programa); the rest stays.
     const small = fitDock(d, 1000, 700).children[0].frame;
@@ -289,8 +289,59 @@ test("the No ar strip exists only while lyrics are on air", () => {
     const f = fitDock(d, 1908, 1000, { gone: ["onair"] });
     assert.deepEqual(f.children.map((c) => [c.index, c.size, c.fixed, Boolean(c.gone)]), [[0, 1000, false, false], [1, 0, true, true]]);
     assert.deepEqual(f.children[1].frame.path, [1]);
-    assert.equal(f.children[0].frame.children[2].frame.children[0].size, 660, "the Programa takes the strip's 110 px");
+    assert.equal(f.children[0].frame.children[2].frame.children[0].size, 640, "the Programa takes the strip's 110 px up to its 16:9 (1010 · 9/16 + 72)");
     assert.deepEqual(fitDock(d, 1908, 1000, { gone: ["programa"] }), fitDock(d, 1908, 1000), "only a folding module folds");
+});
+
+test("the Programa never takes more than its 16:9: the rest goes to its neighbour (design audit C-51)", () => {
+    assert.equal(programaNatural(false, 1010, 999), 568 + PLAYER_SLOT, "down a column: its width's 16:9 and the player");
+    assert.equal(programaNatural(false, 1010, 999, false), 568, "the player placed elsewhere");
+    assert.equal(programaNatural(true, 999, 432 + PLAYER_SLOT), 768, "across a row: its height's 16:9");
+    // The wide console, nothing on air: the Programa is as tall as its screen
+    // and the player, and the Prévia's band gets the rest — no empty band
+    // under the player. The dock itself keeps the band's 250.
+    const d = defaultDock(W);
+    const centre = fitDock(d, 1908, 1000, { gone: ["onair"] }).children[0].frame.children[2].frame;
+    assert.deepEqual(centre.children.map((c) => [c.size, c.fixed]), [[640, false], [354, true]]);
+    assert.equal(nodeAt(d.tree, [0, 2]).sizes[1], 250);
+    // With the strip on air the Programa is shorter than its 16:9: nothing moves.
+    const onAir = fitDock(d, 1908, 1000).children[0].frame.children[2].frame;
+    assert.deepEqual(onAir.children.map((c) => c.size), [890 - 6 - 250, 250]);
+    // The operator's splitter still makes the band bigger (the Programa then
+    // shorter than its 16:9), never the Programa past it.
+    const taller = resizeChild(d, [0, 2], 1, 400);
+    assert.deepEqual(fitDock(taller, 1908, 1000, { gone: ["onair"] }).children[0].frame.children[2].frame.children.map((c) => c.size), [594, 400]);
+    // The player placed elsewhere: the screen alone.
+    const placedPlayer = normalizeDock({ tree: split("row", [split("col", [g("programa"), split("row", [g("previa"), g("setlist")], [400, null])], [null, 300]), g("player")], [null, 300]) });
+    const col = fitDock(placedPlayer, 1306, 1000).children[0].frame;
+    assert.deepEqual(col.children.map((c) => c.size), [563, 1000 - 6 - 563]);
+    // Across a row: its width past its height's 16:9 goes to the next one.
+    const row = normalizeDock({ tree: split("row", [g("programa"), g("previa"), g("setlist")], [null, 300, 300]) });
+    assert.deepEqual(fitDock(row, 1800, 500).children.map((c) => c.size), [761, 1800 - 12 - 300 - 761, 300]);
+    // A locked or folded neighbour never takes it: the Programa keeps the room.
+    const locked = { tree: split("col", [g("programa"), g("camadas")], [null, 200]), hidden: [] };
+    assert.deepEqual(fitDock(locked, 400, 1000, { locked: { camadas: 150 } }).children.map((c) => c.size), [844, 150]);
+});
+
+test("medium and narrow start with the Slides wider by what the Programa's 16:9 cannot use (C-51)", () => {
+    // 1366 × 768 with the window and top bars: a grid of 1354 × 654. The
+    // Programa's screen fills the centre (668 px) and the Slides take the rest.
+    const spare = (d, w, h) => { const live = fitDock(d, w, h).children[2]; return live.size - programaNatural(true, 0, live.frame.children[0].size); };
+    const medium = fromArrangement({}, { width: 1354, height: 654, tier: "medium" });
+    assert.deepEqual(medium.tree.sizes, [260, 414, null]);
+    assert.equal(spare(medium, 1354, 654), 0);
+    assert.deepEqual(nodeAt(medium.tree, [2, 1]).sizes, [344, null], "the Prévia keeps its width; the Setlist beside it gives the room");
+    assert.deepEqual(fromArrangement({}, { width: 1268, height: 606, tier: "medium" }).tree.sizes, [260, 413, null], "1280 × 720");
+    // Tall enough for the Programa to fill the centre: the Slides keep 300.
+    assert.deepEqual(fromArrangement({}, { width: 1354, height: 768, tier: "medium" }).tree.sizes, [260, 300, null]);
+    // The layout's own width for the Slides wins; the wide console keeps its columns.
+    assert.deepEqual(fromArrangement({ slidesW: 300 }, { width: 1354, height: 654, tier: "medium" }).tree.sizes, [260, 414, null], "300 is every layout's default (layout.js)");
+    assert.deepEqual(fromArrangement({ slidesW: 340 }, { width: 1354, height: 654, tier: "medium" }).tree.sizes, [260, 340, null]);
+    assert.deepEqual(fromArrangement({}, { width: 1908, height: 654, tier: "wide" }).tree.children[0].children[0].sizes, [260, 300, null]);
+    // Narrow: the Biblioteca-over-Slides column takes it.
+    assert.equal(fromArrangement({}, { width: 1000, height: 600, tier: "narrow" }).tree.sizes[0], 422);
+    // Slides in the tray: nothing to give it to.
+    assert.deepEqual(fromArrangement({ hidden: { slides: true } }, { width: 1354, height: 654, tier: "medium" }).tree.sizes, [260, null]);
 });
 
 test("the No ar strip is pinned to the bottom: never moved, only to the tray and back", () => {
@@ -452,7 +503,7 @@ test("a console never edited opens as it looked at its width: medium and narrow"
     const medium = fromArrangement({}, { width: 1354, height: 768, tier: "medium" });
     assert.deepEqual(medium.tree, split("row", [
         g("lib"), g("slides"),
-        split("col", [g("programa"), split("row", [g("previa"), g("setlist")], [344, null])], [null, 278]),
+        split("col", [g("programa"), split("row", [g("previa"), g("setlist")], [344, null])], [null, 200]),
     ], [260, 300, null]));
     assert.deepEqual(medium.hidden, ["camadas", "temas", "abas", "onair"]);
     // The Programa keeps its room, the Prévia and the Setlist side by side.
@@ -463,7 +514,7 @@ test("a console never edited opens as it looked at its width: medium and narrow"
     const narrow = fromArrangement({ stacks: { source: ["slides", "lib"] } }, { width: 1000, height: 700, tier: "narrow" });
     assert.deepEqual(narrow.tree, split("row", [
         split("col", [g("slides"), g("lib")], [347, null]),
-        split("col", [g("programa"), split("row", [g("previa"), g("setlist")], [305, null])], [null, 256]),
+        split("col", [g("programa"), split("row", [g("previa"), g("setlist")], [305, null])], [null, 200]),
     ], [300, null]));
     // Padrão follows the width too.
     assert.deepEqual(defaultDock({ width: 1354, height: 768, tier: "medium" }), medium);
