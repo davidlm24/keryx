@@ -1602,6 +1602,27 @@
 .console .sync .sync-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; opacity: .35; }
 .console .sync .sync-row:hover .sync-acts, .console .sync .sync-row.is-sel .sync-acts, .console .sync .sync-row:focus-within .sync-acts { opacity: 1; }
 
+/* ---- While live (audit 0.2.19, Minors C-45/46) ---- */
+/* An empty layer (Camadas: nothing on air, nothing on the Fundo, no overlay
+   yet) is not a hidden one: the name muted with "vazio", the eye faint, no
+   eye-off (that is only for a layer really hidden). */
+.console .kx-layer.is-empty .kx-layer-name, .console .kx-layer .kx-layer-vazio { color: var(--fg-3); }
+.console .kx-layer .kx-btn.is-empty { color: var(--fg-3); opacity: .45; }
+/* Tela preta or the Logo cover the screens: the working lists (Slides, No ar,
+   the Setlist) keep their on-air row but dimmed, and the header says
+   "coberto · Tela preta" (Console.jsx coverTag), never cut by the title. */
+.console .kx-panel-h > .kx-covered { flex: none; font-size: 11px; line-height: 16px; color: var(--fg-2); white-space: nowrap; }
+/* Dimmed only outside a Windows contrast theme: there the fill below
+   (forced colours) keeps the row on air, and the header's tag tells. */
+@media (forced-colors: none) {
+  .console .is-covered :is(.kx-slide, .onair-card).is-air:not(.is-prev) { background: color-mix(in srgb, var(--brand) 9%, var(--bg-2)); }
+  .console .is-covered :is(.kx-slide, .onair-card).is-air :is(.kx-slide-n, .kx-slide-lab),
+  .console .is-covered .kx-row.is-air .kx-row-title { color: var(--fg-2); }
+  .console .is-covered :is(.kx-slide, .onair-card).is-air .kx-slide-body { opacity: .7; }
+  .console .is-covered .kx-row.is-air { background: var(--bg-2); }
+  .console .is-covered .kx-row.is-air::before { opacity: .35; }
+}
+
 /* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
    the console's side of the cues in bundle.css, at the console's
    specificity. Nothing above changes: this block only applies under a

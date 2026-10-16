@@ -88,6 +88,10 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     const modified = Boolean(theme && content && !sameLook(style, theme));
 
     const visible = { logo: logo.visible, text: Boolean(content) && !layerHidden(cur, "content"), bg: Boolean(cur?.background) && !layerHidden(cur, "background") };
+    // Empty (nothing in the layer) is not hidden: its own look, the name
+    // muted with "vazio" and no eye-off (audit C-45). The logo always has
+    // one (the church's, else KERYX's), so it is only ever hidden.
+    const empty = { logo: false, text: !content, bg: !cur?.background };
     const op = (name, args) => c.callOp(name, args).catch(() => {});
     const locked = { ...localLocks, bg: layerLocked(cur, "background") };
     const toggleLock = (id) => {
@@ -226,10 +230,10 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     const fixedRow = (L) => {
         const i = order.indexOf(L.key);
         return (
-            <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${visible[L.id] ? "" : "is-hidden"}`}
+            <div key={L.id} className={`kx-layer kx-t ${sel === L.id ? "is-selected" : ""} ${empty[L.id] ? "is-empty" : visible[L.id] ? "" : "is-hidden"}`}
                 onClick={() => setSel(L.id)} role="button" tabIndex={0}
                 onContextMenu={(e) => menu(e, { title: L.id === "bg" ? fundoTitle() : L.name, items: [
-                    { label: visible[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] ? "eye-off" : "eye", onSelect: () => toggleEye(L.id) },
+                    { label: visible[L.id] || empty[L.id] ? "Ocultar" : "Mostrar", icon: visible[L.id] || empty[L.id] ? "eye-off" : "eye", disabled: empty[L.id], onSelect: () => toggleEye(L.id) },
                     { label: locked[L.id] ? "Destravar" : "Travar", icon: locked[L.id] ? "unlock" : "lock", onSelect: () => toggleLock(L.id) },
                     ...(L.id === "bg" ? fundoItems : [{ label: "Editar…", icon: "edit", onSelect: EDIT[L.id].run }]),
                     { label: "Subir", disabled: i === 0, onSelect: () => moveLayer(L.key, i - 1) },
@@ -238,9 +242,11 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
                 {...layerDrag(i, L.name)}
                 title="Arraste para mudar a ordem das camadas">
                 <span className="kx-glyph"><Icon name="grip" /></span>
-                <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>
+                {empty[L.id]
+                    ? <button type="button" className="kx-btn kx-t is-empty" onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-disabled="true" aria-label={`${L.name}: vazio`} title={L.id === "bg" ? "Vazio: nada no Fundo" : "Vazio: nada no ar"}><Icon name="eye" /></button>
+                    : <button type="button" className={`kx-btn kx-t ${visible[L.id] ? "" : "is-off"}`} onClick={(e) => { e.stopPropagation(); toggleEye(L.id); }} aria-label={visible[L.id] ? "Ocultar" : "Mostrar"} title={visible[L.id] ? "Ocultar" : "Mostrar"}><Icon name={visible[L.id] ? "eye" : "eye-off"} /></button>}
                 <button type="button" className="kx-btn kx-t" style={locked[L.id] ? { color: "var(--fg-1)" } : undefined} onClick={(e) => { e.stopPropagation(); toggleLock(L.id); }} aria-label={locked[L.id] ? "Destravar" : "Travar"} title={L.id === "bg" ? (locked.bg ? "Destravar o Fundo" : "Travar o Fundo: nada que vai ao ar troca o fundo") : locked[L.id] ? "Destravar" : "Travar"}><Icon name={locked[L.id] ? "lock" : "unlock"} /></button>
-                <span className="kx-layer-name">{L.name}</span>
+                <span className="kx-layer-name">{L.name}{empty[L.id] && <span className="kx-layer-vazio"> · vazio</span>}</span>
                 <button type="button" className={`kx-btn kx-t layer-edit ${open === L.id ? "is-on" : ""}`} onClick={(e) => { e.stopPropagation(); EDIT[L.id].run(e); }} aria-label={EDIT[L.id].title} title={EDIT[L.id].title} aria-expanded={L.id === "bg" ? undefined : open === L.id} aria-haspopup={L.id === "bg" ? "menu" : undefined}><Icon name="edit" /></button>
             </div>
         );
@@ -285,19 +291,19 @@ export default function Layers({ c, themes, onSettings, onFundo, addRef }) {
     const emptyOverlayRow = () => {
         const oi = order.indexOf("overlays");
         return (
-            <div key="ov-empty" className={`kx-layer kx-t is-hidden ${sel === "ov" ? "is-selected" : ""}`}
+            <div key="ov-empty" className={`kx-layer kx-t is-empty ${sel === "ov" ? "is-selected" : ""}`}
                 onClick={() => setSel("ov")} role="button" tabIndex={0}
                 onContextMenu={(e) => menu(e, { title: "Sobreposição", items: [
-                    { label: "Mostrar", icon: "eye", onSelect: addOverlay },
+                    { label: "Criar a primeira", icon: "plus", onSelect: addOverlay },
                     { label: "Subir", disabled: oi === 0, onSelect: () => moveLayer("overlays", oi - 1) },
                     { label: "Descer", disabled: oi === order.length - 1, onSelect: () => moveLayer("overlays", oi + 2) },
                 ] })}
                 {...layerDrag(oi, "Sobreposição")}
                 title="Arraste para mudar a ordem das camadas">
                 <span className="kx-glyph"><Icon name="grip" /></span>
-                <button type="button" className="kx-btn kx-t is-off" onClick={(e) => { e.stopPropagation(); addOverlay(); }} aria-label="Mostrar" title="Mostrar (cria a primeira sobreposição)"><Icon name="eye-off" /></button>
+                <button type="button" className="kx-btn kx-t is-empty" onClick={(e) => { e.stopPropagation(); addOverlay(); }} aria-label="Criar a primeira sobreposição" title="Vazio · cria a primeira sobreposição"><Icon name="plus" /></button>
                 <button type="button" className="kx-btn kx-t" onClick={(e) => e.stopPropagation()} aria-label="Travar" title="Travar"><Icon name="unlock" /></button>
-                <span className="kx-layer-name is-ph">Sobreposição</span>
+                <span className="kx-layer-name is-ph">Sobreposição<span className="kx-layer-vazio"> · vazio</span></span>
                 <button type="button" className="kx-btn kx-t layer-edit" onClick={(e) => { e.stopPropagation(); addOverlay(); }} aria-label="Ajustes da sobreposição" title="Ajustes da sobreposição (cria a primeira)"><Icon name="edit" /></button>
             </div>
         );
