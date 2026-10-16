@@ -43,7 +43,10 @@ export async function renderPdfPages(data, { onCount, onPage } = {}) {
             const canvas = document.createElement("canvas");
             canvas.width = Math.max(1, Math.round(viewport.width));
             canvas.height = Math.max(1, Math.round(viewport.height));
-            await page.render({ canvas, viewport, background: "#ffffff" }).promise;
+            // "print": the page as a document, drawn straight through. The
+            // display intent paces itself on requestAnimationFrame, which stops
+            // while the console is minimized or hidden (the pages never came).
+            await page.render({ canvas, viewport, intent: "print", background: "#ffffff" }).promise;
             const blob = await jpeg(canvas);
             const w = canvas.width;
             const h = canvas.height;
