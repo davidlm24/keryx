@@ -383,7 +383,7 @@ app.whenReady().then(async () => {
         settings.set("lastVersion", version);
         settings.set("pendingNotes", null);
     }
-    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications });
+    system = createSystem({ app, dialog, shell, BrowserWindow, store, dataDir, mediaDir, settings, outputs, updater, logger, screen, notifications, syncInfo: () => (sync ? sync.status() : null) });
     try {
         system.backupNow("ao abrir");
     } catch { /* logged; the app still opens */ }
@@ -517,9 +517,17 @@ app.whenReady().then(async () => {
         log: (m) => console.error(m),
     });
 
+    // A backup restored, or an export imported, on a computer that syncs:
+    // what the operator chose before the restart (system.cjs syncQuestion),
+    // now that the swapped-in database is open.
+    const afterImport = settings.get("syncAfterImport", null);
+    if (afterImport) {
+        settings.set("syncAfterImport", null);
+        if (importOutcome && !importOutcome.error) sync.afterImport(afterImport.mode);
+    }
     // The windows hear which media files rows name that have not come down
     // yet ("Baixando…", and the console refuses to send them): asked once,
-    // then pushed when the list changes (syncControl's onStatus, below).
+    // then pushed when the list changes (syncControl's onStatus, above).
     ipcMain.handle("keryx:sync:missing", (event) => (isAppUrl(event.senderFrame && event.senderFrame.url)
         ? { data: sync.missing() }
         : { error: { message: "Origem não autorizada.", status: 403 } }));

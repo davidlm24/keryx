@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
-const { cachedSize, createSystem, loginItemArgs } = require("./system.cjs");
+const { cachedSize, createSystem, loginItemArgs, syncQuestion } = require("./system.cjs");
 
 // A system over a temp data folder, with settings in memory.
 function sys(initial = {}) {
@@ -17,6 +17,20 @@ function sys(initial = {}) {
     const system = createSystem({ app: { getVersion: () => "0.0.0", isPackaged: false }, dialog: {}, shell: {}, BrowserWindow: {}, store, dataDir, mediaDir: path.join(dataDir, "media"), settings, outputs: null, updater: { state: () => ({ status: "disabled" }), enabled: () => false }, logger: quiet, screen: {} });
     return { system, saved, store, dataDir };
 }
+
+test("restoring or importing on a computer that syncs: everyone first and by default, or only this one", () => {
+    const r = syncQuestion("restore", { day: "12/10", others: 2 });
+    assert.deepEqual(r.buttons, ["Voltar todos a 12/10", "Só este computador", "Cancelar"]);
+    assert.equal(r.defaultId, 0);
+    assert.equal(r.cancelId, 2);
+    assert.deepEqual(r.modes, ["all", "leave", null]);
+    assert.match(r.message, /mais 2 computadores/);
+    assert.match(r.detail, /O que foi criado depois continua/);
+    const i = syncQuestion("import", { others: 1 });
+    assert.deepEqual(i.buttons, ["Usar em todos os computadores", "Só neste computador", "Cancelar"]);
+    assert.match(i.message, /mais 1 computador:/);
+    assert.match(syncQuestion("restore", { day: "1/1" }).message, /outros computadores/);
+});
 
 test("the data folder is measured at most once a minute", () => {
     let walks = 0;
