@@ -83,11 +83,11 @@
 .console .topbar .tb-menu { height: 28px; padding: 0 8px; border-radius: var(--radius-control); font-size: 12.5px; color: var(--fg-3); }
 .console .topbar .tb-menu:hover { background: var(--bg-1); color: var(--fg-1); }
 .console .topbar .tb-menu.is-on { background: var(--bg-2); color: var(--fg-1); }
+/* The access letter (Alt + C/M/D/F, MenuBar.jsx; audit C-14): underlined
+   only while Alt is held or the bar has the keyboard, as in Windows. */
+.console .topbar .tb-menus:is(.show-ak, :focus-within) .tb-ak { text-decoration: underline; text-underline-offset: 3px; }
 .console .mb-pop { min-width: 232px; max-height: calc(100% - var(--pop-top) - 12px); overflow: visible; }
 .console .mb-pop .mb-row { position: relative; }
-.console .mb-pop .mb-l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.console .mb-pop .kx-menu-item:disabled { color: var(--fg-3); cursor: default; }
-.console .mb-pop .kx-menu-item:disabled:hover { background: none; }
 .console .mb-pop .kx-menu-item.is-on { background: var(--bg-3); }
 .console .mb-pop .mb-sub { position: absolute; left: 100%; top: -6px; margin-left: 2px; min-width: 200px; z-index: 1; }
 @container topbar (max-width: 1240px) { .console .topbar .tb-menus, .console .topbar .tb-div { display: none; } }
@@ -107,17 +107,23 @@
 .console .ctx-scrim { position: fixed; z-index: 45; }
 /* Every popover and menu (Ver, Saídas, the (+) menus, right-click menus,
    the tabs lists) stands out from the panels under it: a stronger ring and
-   a deeper shadow than the design system's --popover (owner 2026-10-14,
+   a deeper shadow than the design system's --shadow-popover (owner 2026-10-14,
    who liked the framed menus of the proposal). */
 .console .kx-pop { box-shadow: 0 0 0 1px var(--line-strong), 0 12px 32px #000000a6; }
 /* The right-click menu opens at the pointer, over the row it acts on: a
    fainter ring and a smaller, lighter shadow than the other menus' frame
    (owner 2026-10-16, Rodada E0), so it does not stamp a hard box there. */
-.console .ctx-menu { position: fixed; z-index: 46; min-width: 220px; max-width: 320px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent), 0 6px 16px #00000059; }
-.console .ctx-menu .ctx-l { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.console .ctx-menu .kx-menu-item:focus-visible { outline: none; background: var(--bg-3); }
-.console .ctx-menu .kx-menu-item:disabled { opacity: var(--dim); }
-.console .ctx-menu .kx-menu-item:disabled:hover { background: none; }
+.console .ctx-menu { position: fixed; z-index: 46; min-width: 220px; max-width: 320px; }
+/* One menu, one look (Menu.jsx MenuList; audit C-15, 2026-10-16): every
+   menu wears the .kx-pop frame above (the right-click menu included), its
+   focused item the design system's gold focus ring (bundle.css), a
+   disabled item greyed and inert. */
+.console .kx-menu-l { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .kx-menu-item:disabled { color: var(--fg-3); cursor: default; }
+.console .kx-menu-item:disabled:hover { background: none; }
+.console .kx-menu-item.has-meta { height: auto; min-height: var(--row); padding-top: 4px; padding-bottom: 4px; }
+.console .kx-menu-l2 { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.console .kx-menu-l2 > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .scrim { position: absolute; inset: 0; z-index: 25; }
 .console .scrim.is-dim { background: #0d0d0c99; }
 /* Every floating dialog (Configurações, the background library, the internet
@@ -197,7 +203,7 @@
 /* A drop over the Programa or the Prévia (owner 2026-10-15, Rodada D: never
    a border): the screen dims and one pill says what letting go does. */
 .console .kx-drop-hint { position: absolute; inset: 0; z-index: 210; display: grid; place-items: center; pointer-events: none; background: color-mix(in srgb, var(--bg-0) 45%, transparent); }
-.console .kx-drop-hint > span { padding: 4px var(--space-3); border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-1); box-shadow: var(--popover); font: 600 12px/16px var(--font-sans); }
+.console .kx-drop-hint > span { padding: 4px var(--space-3); border-radius: var(--radius-round); background: var(--bg-3); color: var(--fg-1); box-shadow: var(--shadow-popover); font: 600 12px/16px var(--font-sans); }
 .console .kx-drop-hint.is-air > span { background: var(--air-fill); color: var(--on-state); }
 /* Monitor frames are painted inside the box (a ::after on top), never as an
    outer shadow: an outer shadow is cut by the panel's overflow and the
@@ -292,6 +298,13 @@
 .console .sendrow { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex-wrap: wrap; }
 .console .slidesnav { height: 40px; display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-3) 0 var(--space-1); border-top: 1px solid var(--line); flex: none; white-space: nowrap; min-width: 0; }
 .console .slidesnav > .kx-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Under the Prévia's slides the footer's arrows are the air's (the design
+   audit, C-06): "● No ar", the two arrows and the air's n/m are one group,
+   apart from the column's "prévia n/m" at the right. */
+.console .slidesnav-air { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
+.console .slidesnav-lab { display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--space-1) 0 var(--space-2); font-size: 12px; color: var(--fg-2); }
+.console .slidesnav-air > .kx-meta { padding-left: var(--space-1); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.console .slidesnav .kx-btn-icon.kx-btn-live { width: 32px; padding: 0; }
 /* Rows (owner 2026-10-14, the small-screen review; they were cards): every
    slide in a list (the Slides column, No ar in a column) and every verse
    (Ler, Buscar) is a row with a 1 px separator, no card of its own, so a
@@ -420,7 +433,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .warnline .kx-btn { margin-left: auto; flex: none; color: var(--fg-1); }
 /* Camadas: a drawer over the source columns, so the Programa stays in view while editing what is on air. */
 .console .drawer { position: absolute; z-index: 32; top: calc(env(titlebar-area-height, 0px) + var(--topbar) + 2 * var(--gutter)); left: var(--gutter); bottom: 40px; width: 360px; display: flex; flex-direction: column; gap: var(--gutter); }
-.console .drawer > .kx-panel { flex: 1; box-shadow: var(--popover); }
+.console .drawer > .kx-panel { flex: 1; box-shadow: var(--shadow-popover); }
 /* The Programa first or in the middle: the drawer opens on its right when there is more room there. */
 .console .drawer.is-right { left: auto; right: var(--gutter); }
 
@@ -515,9 +528,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    and its label beside it; never a filled box over the target. */
 .console .dock-hint { position: fixed; z-index: 45; pointer-events: none; border-radius: 2px; background: var(--brand); box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-0) 60%, transparent); }
 .console .dock-hint-label { position: fixed; z-index: 45; pointer-events: none; padding: 2px var(--space-2); border-radius: var(--radius-round); background: var(--brand); color: var(--on-brand); font: 600 11px/16px var(--font-sans); white-space: nowrap; }
-.console .dock-ghost { position: fixed; z-index: 46; pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--popover); color: var(--fg-1); font: 500 12px/16px var(--font-sans); }
+.console .dock-ghost { position: fixed; z-index: 46; pointer-events: none; display: flex; align-items: center; gap: var(--space-1); padding: 4px var(--space-2); border-radius: var(--radius-control); background: var(--bg-3); box-shadow: var(--shadow-popover); color: var(--fg-1); font: 500 12px/16px var(--font-sans); }
 /* A media row's picture on hover (Library.jsx MediaPeek): beside the Biblioteca, 16:9, never under the mouse */
-.console .media-peek { position: fixed; z-index: 44; pointer-events: none; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: var(--popover); outline: 1px solid var(--line); }
+.console .media-peek { position: fixed; z-index: 44; pointer-events: none; aspect-ratio: 16 / 9; border-radius: var(--radius-control); overflow: hidden; background: #000; box-shadow: var(--shadow-popover); outline: 1px solid var(--line); }
 .console .media-peek img { width: 100%; height: 100%; object-fit: contain; display: block; }
 /* The Bíblia in three columns (owner layout 2026-10-12): Livro, Capítulo
    and Versículo stacked, the chosen text, what is on air. Their order and the
@@ -613,7 +626,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .listhead .kx-section { font-size: 10px; color: var(--fg-3); }
 .console .listhead .kx-count, .console .listhead .kx-section .kx-count { text-transform: none; letter-spacing: normal; font-weight: 400; }
 .console .kx-tabs .grow { flex: 1; }
-.console .toast { position: absolute; z-index: 50; left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
+.console .toast { position: absolute; z-index: 50; left: 50%; bottom: 44px; transform: translateX(-50%); height: var(--row); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: var(--bg-3); border-radius: var(--radius-control); box-shadow: var(--shadow-popover); color: var(--fg-1); font-size: 12px; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; }
 .console .kx-row .kx-row-acts .kx-btn { color: var(--fg-1); }
 .console .kx-row .kx-row-acts .kx-btn:hover { background: var(--bg-3); }
 /* Dragging in a list (owner 2026-10-15, Rodada D; Rodada E2, 2026-10-16:
@@ -1600,3 +1613,58 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .sync .sync-time.is-bad { box-shadow: inset 0 0 0 1px var(--warn); }
 .console .sync .sync-acts { flex: none; display: inline-flex; align-items: center; gap: 2px; opacity: .35; }
 .console .sync .sync-row:hover .sync-acts, .console .sync .sync-row.is-sel .sync-acts, .console .sync .sync-row:focus-within .sync-acts { opacity: 1; }
+
+/* Windows contrast themes (forced colours; design audit C-05, 2026-10-16):
+   the console's side of the cues in bundle.css, at the console's
+   specificity. Nothing above changes: this block only applies under a
+   contrast theme, where Chromium repaints backgrounds and borders in the
+   system's colours and drops shadows. One language for the states: on air =
+   Highlight filling the row (still the row's background, as the owner's
+   rule wants), Prévia = a dashed LinkText ring, next = a dotted ring,
+   chosen / pressed / open = a solid Highlight ring; a ring never hides the
+   keyboard's focus ring. What is a picture keeps its own colours: the
+   screens' stills (.cfg-prev, the editor's canvas; the monitors in
+   bundle.css, the outputs in screen.css) and the colour swatches. */
+.console :is(.cfg-prev, .le-screen, .swatches button, .lib-swatch, .bgchip-t, .lyr-gen i, .lyr-preset i) { forced-color-adjust: none; }
+@media (forced-colors: active) {
+  /* Floating surfaces lose their shadow: an edge instead. */
+  .console :is(.pop, .kx-pop, .ctx-menu, .dialog, .palette, .toast, .qj, .verif-overlay, .addmenu-pop, .lyr, .win-dialog, .pl-pop, .lib-dialog, .media-peek) { outline: 1px solid CanvasText; }
+  /* Slides, No ar cards, verses, Setlist, Biblioteca and Mídia rows, the
+     Bíblia's verse cells and Comparar, the Escola's questions, Sincronizar.
+     :is(.is-air, .is-air.is-prev) weighs as much as the both-states rules
+     above, so the fill wins there too. */
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) { background: Highlight; color: HighlightText; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) * { color: HighlightText; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk).is-prev:not(:focus-visible) { outline: 2px dashed LinkText; outline-offset: -2px; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk).is-air.is-prev:not(:focus-visible) { outline-color: HighlightText; }
+  .console :is(.kx-slide, .kx-verse).is-air.is-prev > :is(.kx-slide-n, .kx-verse-n) { background: HighlightText; color: Highlight; }
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) :is(.kx-btn, button):hover,
+  .console :is(.kx-slide, .onair-card, .kx-verse, .kx-row, .verse-cells button, .bc-cell, .bc-n, .sv-qrow, .mv-row, .sync .sync-row, .sync .sync-mk):is(.is-air, .is-air.is-prev) :is(.kx-btn, button):hover * { background: HighlightText; color: Highlight; }
+  .console :is(.kx-slide, .onair-card).is-next:not(:focus-visible) { outline: 2px dotted CanvasText; outline-offset: -2px; }
+  .console .mv-th.is-air { outline: 3px solid Highlight; outline-offset: 2px; }
+  /* Chosen or pressed: tabs, chips, cells, tiles, Seg, an open menu… */
+  .console :is(.is-on, .is-sel, .is-selected):not(.sw2, :focus-visible) { outline: 2px solid Highlight; outline-offset: -2px; }
+  .console .envtabs > button.is-on::after { background: Highlight; }
+  /* The Bíblia's cells are boxes. */
+  .console :is(.bgrid .kx-book, .chapters button, .verse-cells button):not(:focus-visible, .is-on, .is-selected, .is-prev) { outline: 1px solid ButtonText; outline-offset: -1px; }
+  /* Switches: track and knob in the system's colours, Highlight when on. */
+  .console .sw2 { border: 1px solid ButtonText; background: Canvas; }
+  .console .sw2::after { top: 1px; left: 1px; background: ButtonText; }
+  .console .sw2.is-on { border-color: Highlight; background: Highlight; }
+  .console .sw2.is-on::after { left: 13px; background: HighlightText; }
+  .console .sw2:disabled { border-color: GrayText; }
+  .console .sw2:disabled::after { background: GrayText; }
+  .console .sw2.is-on:disabled { background: GrayText; }
+  .console .sw2.is-on:disabled::after { background: Canvas; }
+  /* Fields get a boundary and a focus ring (an input inside a .kx-field or
+     the quick jump takes its box's). */
+  .console :is(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])):not(:is(.kx-field, .qj-input) *), .console .qj-input { border: 1px solid FieldText; }
+  .console :is(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"])):not(:is(.kx-field, .qj-input) *):focus-visible, .console .qj-input:focus-within { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* The player's progress and volume (its meters: bundle.css), the bell's dot. */
+  .console .player .pl-seek::before { background: Canvas; outline: 1px solid CanvasText; }
+  .console .player .pl-seek > i { background: Highlight; }
+  .console .player .pl-seek > :is(b, .pl-tick) { background: CanvasText; }
+  .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
+  .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
+  .console .topbar .tb-bell-dot { background: Highlight; }
+}

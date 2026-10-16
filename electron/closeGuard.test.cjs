@@ -22,13 +22,26 @@ test("the question can be answered by a test", async () => {
     setAsk(null);
 });
 
+// Windows order (audit C-74): the action, then the safe answer on the
+// right, which is the default and what Esc answers (C-10).
+test("closing KERYX: Fechar o KERYX first, the safe answer the default", async () => {
+    let shown = null;
+    const dialog = (response) => ({ showMessageBox: async (_win, opts) => { shown = opts; return { response }; } });
+    assert.equal(await askClose(dialog(1), null), false, "the default keeps KERYX open");
+    assert.deepEqual(shown.buttons, ["Fechar o KERYX", "Cancelar"]);
+    assert.equal(shown.defaultId, 1);
+    assert.equal(shown.cancelId, 1, "Esc keeps it too");
+    assert.equal(await askClose(dialog(0), null, true), true);
+    assert.deepEqual(shown.buttons, ["Fechar o KERYX", "Continuar projetando"]);
+});
+
 test("unsaved changes: the question, or its stand-in, says whether the window may go", () => {
     let shown = null;
-    const dialog = { showMessageBoxSync: (_win, opts) => { shown = opts; return 0; } };
+    const dialog = { showMessageBoxSync: (_win, opts) => { shown = opts; return opts.defaultId; } };
     assert.equal(askLeave(dialog, null), false, "the default keeps the window");
-    assert.deepEqual(shown.buttons, ["Continuar editando", "Descartar as mudanças"]);
-    assert.equal(shown.cancelId, 0, "Esc keeps it too");
-    assert.equal(askLeave({ showMessageBoxSync: () => 1 }, null), true);
+    assert.deepEqual(shown.buttons, ["Descartar as mudanças", "Continuar editando"]);
+    assert.equal(shown.cancelId, 1, "Esc keeps it too");
+    assert.equal(askLeave({ showMessageBoxSync: () => 0 }, null), true);
     setAskLeave(() => true);
     assert.equal(askLeave(null, null), true);
     setAskLeave(null);

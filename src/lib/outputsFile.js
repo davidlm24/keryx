@@ -113,7 +113,7 @@ export function readOutputsFile(text, { themes = [], layouts = [], displays = []
         if (typeof a.target === "object") {
             const t = a.target;
             const here = (displays || []).some((d) => d.id === t.id || (t.label && d.label === t.label && (d.bounds?.width || d.width) === t.width && (d.bounds?.height || d.height) === t.height));
-            if (!here) notes.push(`${label(key)}: a tela ${screenName(t)} não está ligada neste computador; abre numa janela até ela ser ligada.`);
+            if (!here) notes.push(`${label(key)}: a tela ${screenName(t)} não está ligada neste computador; a saída aparece quando ela for ligada.`);
         }
     }
 

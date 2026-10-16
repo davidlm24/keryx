@@ -50,6 +50,7 @@ import { syncState } from "@/lib/console/syncView";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
+import { useFocusReturn } from "@/components/console/Menu";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
@@ -67,6 +68,7 @@ import DockView, { useDockDrag, DockHint, DockTray, DockPresetsBar, ZONE_LABEL }
 import { addPreset, updatePreset, removePreset, presetOf, presetChanged, presetsFor, nameProblem } from "@/lib/console/dockPresets";
 import { deleteQuestion } from "@/components/console/ConfirmDialog";
 import { liveAction, quickJumpKey, escapeTarget } from "@/lib/console/keys";
+import { blurSelectsAfterPick } from "@/lib/console/selectPick";
 import { playerLayer, playerOp } from "@/lib/console/player";
 import { OVERLAY_LIMIT } from "@/lib/console/overlays";
 import { stageFromVerses, stageFromSong, stageFromPassage, stageFromMedia, stageFromPiece, stageFromMaterial, stageFromText, stageFromTool, stageAt, stageAirSlide, liveStageId } from "@/lib/console/stage";
@@ -83,6 +85,10 @@ import { remoteState, remoteSay, passagePreview } from "@/lib/console/remote";
 // church's old preference (console_hidden_modules) only seeds a console
 // whose arrangement was never changed.
 const VER_MODULES = VER_LIST.map(([id]) => id);
+
+// Where a control keeps the focus after a mouse click: overlays that run
+// their own keys (a question, the palette, the quick jump…).
+const KEEPS_FOCUS = ".dialog, .palette, .qj, .lyr, .addmenu";
 
 const LOG_KEY = (serviceId) => `keryx.console.log.${serviceId}`;
 const loadLog = (serviceId) => { try { return JSON.parse(localStorage.getItem(LOG_KEY(serviceId)) || "{}"); } catch { return {}; } };
@@ -261,6 +267,9 @@ export default function Console() {
     const openReports = useCallback(() => { setOpen(null); setWin(openStack({ page: "reports" })); }, []);
     const [plannerFocus, setPlannerFocus] = useState(null);
     const [open, setOpen] = useState(null);
+    // A popover or menu opened from the keyboard gives the focus back to
+    // what opened it; opened with the mouse, to nothing (Menu.jsx; C-14).
+    useFocusReturn(Boolean(open));
     const [libTab, setLibTab] = useState(() => {
         try { return new URLSearchParams(window.location.search).get("lib") === "avisos" ? "avisos" : "letras"; } catch { return "letras"; }
     });
@@ -852,9 +861,11 @@ export default function Console() {
                 if (env === "biblia") bibleApiRef.current?.move(d);
                 else selectSlide(d);
             }
-            else if (action === "black") c.toggleScreen("black");
-            else if (action === "logo") c.toggleScreen("logo");
-            else if (action === "clear") c.clearText();
+            // B, L and C prevent their default: a select focused with Tab
+            // would also jump to its option starting with that letter.
+            else if (action === "black") { e.preventDefault(); c.toggleScreen("black"); }
+            else if (action === "logo") { e.preventDefault(); c.toggleScreen("logo"); }
+            else if (action === "clear") { e.preventDefault(); c.clearText(); }
             else if (action === "end") {
                 e.preventDefault();
                 c.end(); // nothing open (escapeTarget above); its toast offers Desfazer
@@ -876,12 +887,14 @@ export default function Console() {
     // would then belong to that control (the "keys don't work" bug). Keyboard
     // activation (detail 0) keeps focus, so Tab navigation still works. A
     // slider too: one left focused kept PageUp/PageDown, so a presentation
-    // clicker moved the player's volume instead of the page.
+    // clicker moved the player's volume instead of the page. A select gives
+    // it back after a mouse pick, on its change (selectPick.js, audit C-03).
     const onMouseClick = (e) => {
         if (e.detail === 0) return;
         const t = e.target.closest?.("button, [role='button'], [role='tab'], [role='radio'], [role='menuitem'], a[href], input[type='range']");
-        if (t && !t.closest(".dialog, .palette, .qj, .lyr, .addmenu")) setTimeout(() => t.blur?.(), 0);
+        if (t && !t.closest(KEEPS_FOCUS)) setTimeout(() => t.blur?.(), 0);
     };
+    useEffect(() => blurSelectsAfterPick(window, { skip: KEEPS_FOCUS }), []);
 
     // Where the culto environment's modules go (Ver › Editar disposição;
     // src/lib/console/dock.js): the operator's tree, or, until they change
@@ -1311,7 +1324,7 @@ export default function Console() {
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
             <TopBar c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)}
-                sync={syncTop} onSync={() => openSettings("sincronizacao")} />
+                sync={syncTop} onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
@@ -1395,7 +1408,7 @@ export default function Console() {
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
             <Shortcuts open={open} setOpen={setOpen} />
             <Outputs open={open} setOpen={setOpen} health={health} locked={c.locked} onLock={c.setLocked} onOpen={openOutput} onClose={closeOutput} onForget={forgetOutput} removed={removedOutputs} onRestore={restoreOutput} idle={c.live?.idle || "logo"} onIdle={(m) => setIdleMode(c, m)} onSettings={openSettings} />
-            <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} />
+            <TabsMenu open={open} list={tabLists[open?.slice(5)]} onToggle={toggleTabIn} onRestore={(row) => setTabList(row, DEFAULT_TABS[row])} onClose={() => setOpen(null)} />
             <History open={open} setOpen={setOpen} history={c.live?.history || []} onPick={(s) => c.setPrev(s)} anchor={histAnchor} />
             <EndDialog open={open} setOpen={setOpen} onEnd={c.end} />
             <PromptDialog ask={ask} onAnswer={answerAsk} />
