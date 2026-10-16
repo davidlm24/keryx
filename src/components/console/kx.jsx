@@ -145,9 +145,9 @@ export function Seg({ value, options, onChange, mode, className = "", small, lab
     };
     const hasValue = options.some(([v]) => v === value);
     return (
-        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${className}`} style={small ? { height: 24, padding: 2 } : undefined} role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
+        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${small ? "is-small" : ""} ${className}`} role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
             {options.map(([v, label, extra], i) => (
-                <button type="button" key={v} className={`kx-t ${value === v ? "is-on" : ""}`} data-mode={v} role="radio" aria-checked={value === v} tabIndex={value === v || (!hasValue && i === 0) ? 0 : -1} onClick={() => onChange(v)} style={small ? { height: 20, padding: "0 8px", fontSize: 11 } : undefined} {...(extra || {})}>
+                <button type="button" key={v} className={`kx-t ${value === v ? "is-on" : ""}`} data-mode={v} role="radio" aria-checked={value === v} tabIndex={value === v || (!hasValue && i === 0) ? 0 : -1} onClick={() => onChange(v)} {...(extra || {})}>
                     {label}
                 </button>
             ))}
