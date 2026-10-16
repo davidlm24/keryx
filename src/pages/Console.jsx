@@ -1032,6 +1032,14 @@ export default function Console() {
     const camadasOn = onScreen("camadas");
     // Camadas on screen: no drawer left open behind it (Esc would close that first).
     useEffect(() => { if (camadasOn) setDrawer(false); }, [camadasOn]);
+    // Tela preta or the Logo over what is on air (audit C-46): the working
+    // lists (Slides, No ar, the Setlist) dim their on-air state and say so
+    // in their header while it lasts — a tag of its own on the right, so a
+    // long title's "…" never cuts it; the Programa's pill is not the only
+    // place that tells.
+    const coveredBy = c.cur?.screen === "black" ? "Tela preta" : c.cur?.screen === "logo" ? "Logo" : "";
+    const coverCls = coveredBy ? "is-covered" : "";
+    const coverTag = coveredBy ? <span className="kx-covered" title={`As telas mostram ${coveredBy === "Logo" ? "o logo" : "a tela preta"}: o que está no ar fica coberto`}>coberto · {coveredBy}</span> : null;
     // The Setlist: its header (title, count, Planejar, +) and the whole
     // rundown, scrolled to the item in hand (Rundown).
     // A second menu where the first was (the timers): the first's place.
@@ -1063,8 +1071,8 @@ export default function Console() {
         ] });
     };
     const setlistPanel = (
-        <Panel title="Setlist" count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
-            actions={<><IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
+        <Panel title="Setlist" className={coverCls} count={service ? `${service.title}${setPlan.count ? ` · ${setPlan.count} itens · ${total(setPlan.seconds)}` : ""}` : "nenhum culto"}
+            actions={<>{coverTag}<IconBtn name="list" title="Planejar o culto" small onClick={() => openPlanner(serviceId)} /><IconBtn name="plus" title="Adicionar à setlist: buscar, seção, texto, timer" small onClick={setlistMenu} /></>}>
             <Rundown service={service} items={items} airItemId={airItemId} prevItemId={prevItemId} onPrepare={prepareItem} onGo={goItem} onAddStage={addStageToSetlist} onPlan={(it) => openPlanner(serviceId, it?.id || null)} onSay={c.say} />
         </Panel>
     );
@@ -1123,13 +1131,13 @@ export default function Console() {
         </Panel>
     );
     const slidesPanel = (
-        <Panel title="Slides" count={handTitle(c) || "—"} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="Slides" className={coverCls} count={handTitle(c) || "—"} actions={coverTag} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <SlidesPanel c={c} onGo={(s) => sendStage(s)} airTabs={!onScreen("onair")} />
         </Panel>
     );
     // What is on air, slide by slide, whatever the Slides column holds.
     const onAirPanel = (
-        <Panel title="No ar" count={onAirCount(c, Boolean(layout.folded?.onair)) || "—"} className="onair-panel" bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <Panel title="No ar" count={onAirCount(c, Boolean(layout.folded?.onair)) || "—"} actions={coverTag} className={`onair-panel ${coverCls}`} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <OnAirPanel c={c} />
         </Panel>
     );
