@@ -20,11 +20,19 @@
 // order. A last line without its newline is still being written or
 // downloaded: it is left for the next pass, never skipped.
 //
+// Only computers with the church's sync code count (PCs verificados,
+// electron/syncPairing.cjs): the folder holds the code's file
+// (sync/keryx-sync.json), every line is signed with the key the code makes,
+// and a line that does not verify is counted for its computer, never
+// applied. Without a code nothing is read or written; with a code that is no
+// longer the folder's (it changed) neither, and the outbox waits.
+//
 // Pure Node over the store and a folder path, so it runs under node --test.
 
 const fs = require("node:fs");
 const path = require("node:path");
 const { isSynced } = require("./db/syncScope.cjs");
+const { keysFor, readPairing, writePairing, matches, pairingFile } = require("./syncPairing.cjs");
 
 const fsp = fs.promises;
 
@@ -140,7 +148,43 @@ const isEntry = (e, pc) => e && typeof e === "object" && !Array.isArray(e)
     && typeof e.entity === "string" && (e.op === "upsert" || e.op === "delete")
     && String(e.pc || "").toLowerCase() === pc;
 
-function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, fileLimit = FILE_LIMIT, batch = BATCH, now = () => new Date(), onStatus = null }) {
+const syncDirOf = (folder) => path.join(path.resolve(String(folder)), SYNC_DIR);
+
+// What a folder holds, for choosing it and typing the code (before any pass
+// runs there): { exists, code: "missing" | "bad" | "ok", computers: [{ pc,
+// files, lastChange }] }. Reads only.
+async function inspectFolder(folder) {
+    const root = path.resolve(String(folder));
+    if (!(await isDir(root))) return { exists: false, code: "missing", computers: [] };
+    const syncDir = path.join(root, SYNC_DIR);
+    const code = (await readPairing(syncDir)).state;
+    const computers = new Map();
+    for (const d of await fsp.readdir(syncDir, { withFileTypes: true }).catch(() => [])) {
+        const m = d.isDirectory() && PC_DIR.exec(d.name);
+        if (!m) continue;
+        const pc = m[1].toLowerCase();
+        const seen = computers.get(pc) || { pc, files: 0, lastChange: 0 };
+        for (const name of await fsp.readdir(path.join(syncDir, d.name)).catch(() => [])) {
+            if (!ANY_FILE.test(name)) continue;
+            try {
+                const st = await fsp.stat(path.join(syncDir, d.name, name));
+                seen.files += 1;
+                seen.lastChange = Math.max(seen.lastChange, st.mtimeMs);
+            } catch { /* gone while we looked */ }
+        }
+        computers.set(pc, seen);
+    }
+    return {
+        exists: true,
+        code,
+        computers: [...computers.values()].map((c) => ({ ...c, lastChange: c.lastChange ? new Date(c.lastChange).toISOString() : null })),
+    };
+}
+
+// getFolder() -> the folder chosen, or null (off). getPairing() -> { id, key }
+// (the code file's id and the key the code makes, syncPairing.cjs), or null
+// (no code typed on this computer yet).
+function createSyncEngine({ store, mediaDir, getFolder, getPairing = () => null, log = console.warn, fileLimit = FILE_LIMIT, batch = BATCH, now = () => new Date(), onStatus = null }) {
     const pc = String(store.pcId).toLowerCase();
     // A complete line that is not JSON, by file: the file's size when it was
     // seen. Skipped once the file stops changing (it was not still arriving).
@@ -153,6 +197,7 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
     let timer = null;
     let debounce = null;
     let unsubscribe = null;
+    let keys = null; // keysFor the pairing in use, made again when it changes
 
     const setStatus = (next) => {
         status = { pc, ...next };
@@ -172,12 +217,17 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
     // Cursors and the writer's file number belong to one folder; another
     // folder starts over (reading twice is harmless). The writer's state is
     // also this computer's: a database brought from elsewhere drops it.
-    function loadState(folder) {
+    // Another code (it changed, or the computer joined again) reads every
+    // file again: lines skipped under the old key may verify now.
+    function loadState(folder, pairing) {
         const saved = store.getMeta(STATE_KEY);
-        if (!saved || saved.folder !== folder) return { folder, cursors: {}, out: null, missing: [] };
+        const fresh = { folder, pairing, cursors: {}, peers: {}, out: null, missing: [] };
+        if (!saved || saved.folder !== folder) return fresh;
+        const sameCode = saved.pairing === pairing;
         return {
-            folder,
-            cursors: saved.cursors && typeof saved.cursors === "object" ? saved.cursors : {},
+            ...fresh,
+            cursors: sameCode && saved.cursors && typeof saved.cursors === "object" ? saved.cursors : {},
+            peers: sameCode && saved.peers && typeof saved.peers === "object" ? saved.peers : {},
             out: saved.out && saved.out.pc === pc ? saved.out : null,
             missing: Array.isArray(saved.missing) ? saved.missing : [],
         };
@@ -230,7 +280,7 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
                 const media = await shipMedia(syncDir, line.row);
                 if (media) line.media = media;
             }
-            const text = lines.map((line) => JSON.stringify(line) + "\n").join("");
+            const text = lines.map((line) => keys.sign(JSON.stringify(line)) + "\n").join("");
             const n = await outFile(dir, state, Buffer.byteLength(text));
             await appendLines(path.join(dir, fileName(n)), text);
             state.out = { pc, n, used: true };
@@ -349,7 +399,21 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
                     logOnce(`linha ilegível ignorada em ${key}`);
                 }
             }
-            if (isEntry(entry, from)) pending.push(entry);
+            if (isEntry(entry, from)) {
+                // Signed with this church's key, or not taken at all.
+                const peer = state.peers[from] || (state.peers[from] = { ok: 0, rejected: 0, last: null });
+                if (keys.verify(text)) {
+                    delete entry.sig;
+                    pending.push(entry);
+                    peer.ok += 1;
+                    peer.last = "ok";
+                } else {
+                    peer.rejected += 1;
+                    peer.last = "rejected";
+                    totals.rejected += 1;
+                    logOnce(`linhas sem a assinatura do código da igreja ignoradas em ${key}`);
+                }
+            }
             pos = nl + 1;
             if (pending.length >= batch) await flush();
         }
@@ -358,7 +422,7 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
     }
 
     async function readIn(syncDir, state) {
-        const totals = { applied: 0, skipped: 0, failed: 0, bad: 0 };
+        const totals = { applied: 0, skipped: 0, failed: 0, bad: 0, rejected: 0 };
         const computers = new Map();
         for (const d of await fsp.readdir(syncDir, { withFileTypes: true })) {
             const m = d.isDirectory() && PC_DIR.exec(d.name);
@@ -381,9 +445,20 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
             }
             computers.set(from, seen);
         }
+        // verified: the last line read from it carried this church's
+        // signature (false: it writes without the code, or with an old one;
+        // null: nothing read from it yet).
         return {
             totals,
-            computers: [...computers.values()].map((c) => ({ ...c, lastChange: c.lastChange ? new Date(c.lastChange).toISOString() : null })),
+            computers: [...computers.values()].map((c) => {
+                const peer = state.peers[c.pc];
+                return {
+                    ...c,
+                    lastChange: c.lastChange ? new Date(c.lastChange).toISOString() : null,
+                    verified: peer && peer.last ? peer.last === "ok" : null,
+                    rejected: peer ? peer.rejected : 0,
+                };
+            }),
         };
     }
 
@@ -400,6 +475,16 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
         }
         const root = path.resolve(String(folder));
         const at = now().toISOString();
+        let pairing = null;
+        try {
+            pairing = getPairing();
+        } catch { /* unreadable: as if no code */ }
+        // A folder but no code: nothing is read or written (the outbox waits).
+        if (!pairing || !pairing.id || !pairing.key) {
+            setStatus({ state: "unpaired", folder: root, lastPass: at, error: null });
+            return;
+        }
+        if (!keys || keys.id !== pairing.id || keys.key !== pairing.key) keys = { ...keysFor(pairing.key, pairing.id), key: pairing.key };
         // The folder itself is never made here: missing, it is a drive not
         // mounted or a sync service not running, not a place to start one.
         if (!(await isDir(root))) {
@@ -409,13 +494,30 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
         }
         const syncDir = path.join(root, SYNC_DIR);
         try {
+            // The folder's code file: this code's, written back if it went
+            // missing (any computer with the code can), or another code's —
+            // then this computer neither reads nor writes until the new code
+            // is typed here.
+            const code = await readPairing(syncDir);
+            if (code.state === "bad") {
+                setStatus({ ...status, state: "offline", folder: root, lastPass: at, error: "O arquivo do código da igreja ainda está chegando pela pasta." });
+                return;
+            }
+            if (code.state === "missing") {
+                await writePairing(syncDir, pairingFile(keys, pc, now()));
+                logOnce("arquivo do código refeito na pasta");
+            } else if (!matches(code.file, keys)) {
+                setStatus({ ...status, state: "mismatch", folder: root, lastPass: at, error: "O código da igreja mudou nesta pasta. Digite o código novo para voltar a sincronizar." });
+                logOnce("o código da pasta não é o deste computador");
+                return;
+            }
             await fsp.mkdir(path.join(syncDir, MEDIA_DIR), { recursive: true });
-            const state = loadState(root);
+            const state = loadState(root, pairing.id);
             const sent = await writeOut(syncDir, state);
             const { totals, computers } = await readIn(syncDir, state);
             await retryMissing(syncDir, state);
             saveState(state);
-            const { bad, ...received } = totals;
+            const { bad, rejected, ...received } = totals;
             setStatus({
                 state: "ok",
                 folder: root,
@@ -425,6 +527,7 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
                 sent,
                 received,
                 bad,
+                rejected,
                 missingMedia: state.missing.length,
                 computers,
             });
@@ -488,4 +591,4 @@ function createSyncEngine({ store, mediaDir, getFolder, log = console.warn, file
     return { pass, poke, start, stop, status: () => status };
 }
 
-module.exports = { createSyncEngine, mediaRefs, coalesce, SYNC_DIR, MEDIA_DIR, STATE_KEY, fileName };
+module.exports = { createSyncEngine, inspectFolder, syncDirOf, mediaRefs, coalesce, SYNC_DIR, MEDIA_DIR, STATE_KEY, fileName };

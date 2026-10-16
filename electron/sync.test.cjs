@@ -8,10 +8,17 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { createStore, PROFILE_ID } = require("./db/store.cjs");
-const { createSyncEngine, mediaRefs, coalesce, fileName, STATE_KEY } = require("./sync.cjs");
+const { createSyncEngine, inspectFolder, syncDirOf, mediaRefs, coalesce, fileName, STATE_KEY } = require("./sync.cjs");
+const { keysFor, createPairing, joinPairing, readPairing, PAIRING_FILE } = require("./syncPairing.cjs");
 const schema = require("./db/schema.json");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "keryx-sync-"));
+
+// The church's code, already typed on every test computer unless a test says
+// otherwise (the key is what the code would make; the first pass writes the
+// code's file into the folder).
+const CHURCH = { id: "igreja-de-teste-0001", key: crypto.randomBytes(32) };
+const signed = keysFor(CHURCH.key, CHURCH.id);
 
 function computer(folder, opts = {}) {
     const dir = opts.dir || tmp();
@@ -20,8 +27,9 @@ function computer(folder, opts = {}) {
     const file = path.join(dir, "keryx.db");
     const store = createStore({ file, schema, log: () => {} });
     const getFolder = typeof folder === "function" ? folder : () => folder;
-    const engine = createSyncEngine({ store, mediaDir, getFolder, log: () => {}, ...opts.engine });
-    return { dir, file, mediaDir, store, engine, close: () => store.close() };
+    let pairing = opts.pairing === undefined ? CHURCH : opts.pairing;
+    const engine = createSyncEngine({ store, mediaDir, getFolder, getPairing: () => pairing, log: () => {}, ...opts.engine });
+    return { dir, file, mediaDir, store, engine, pair: (p) => { pairing = p; }, close: () => store.close() };
 }
 
 const songs = (pc) => pc.store.call("Song", "list", [])
@@ -79,8 +87,9 @@ test("changes made on three computers converge, whatever order the passes run in
     for (const pc of [a, b, c]) pc.close();
 });
 
-// A computer whose file we write by hand.
-function fakeFolder(folder) {
+// A computer whose file we write by hand: its lines signed with the church's
+// key (`keys`), or with whatever a test passes.
+function fakeFolder(folder, keys = signed) {
     const id = crypto.randomUUID();
     const dir = path.join(folder, "sync", id);
     fs.mkdirSync(dir, { recursive: true });
@@ -89,7 +98,8 @@ function fakeFolder(folder) {
         const at = extra.at || new Date().toISOString();
         return { seq: 1, entity: "Song", id: songId, op: "upsert", row: { id: songId, title, created_date: at }, at, pc: id };
     };
-    return { id, dir, entry, line: (e) => JSON.stringify(e) + "\n" };
+    const line = (e) => (keys ? keys.sign(JSON.stringify(e)) : JSON.stringify(e)) + "\n";
+    return { id, dir, entry, line };
 }
 
 test("the background library's categories and each background's own travel", async () => {
@@ -323,7 +333,7 @@ test("a pass runs at a time; local changes ask for one; remote ones do not echo"
     await first;
 
     let passes = 0;
-    const counted = createSyncEngine({ store: b.store, mediaDir: b.mediaDir, getFolder: () => folder, log: () => {}, onStatus: () => { passes += 1; } });
+    const counted = createSyncEngine({ store: b.store, mediaDir: b.mediaDir, getFolder: () => folder, getPairing: () => CHURCH, log: () => {}, onStatus: () => { passes += 1; } });
     counted.start({ intervalMs: 60000, debounce: 10 });
     await new Promise((r) => setTimeout(r, 60));
     assert.equal(passes, 1, "the first pass after start");
@@ -338,6 +348,146 @@ test("a pass runs at a time; local changes ask for one; remote ones do not echo"
     counted.stop();
     a.close();
     b.close();
+});
+
+// -- PCs verificados ------------------------------------------------------------
+
+test("lines without the church's signature are counted for their computer, never applied", async () => {
+    const folder = tmp();
+    const a = computer(folder);
+    await a.engine.pass(); // writes the code's file
+    const stranger = fakeFolder(folder, null); // never had the code
+    const forger = fakeFolder(folder, keysFor(crypto.randomBytes(32), CHURCH.id)); // the id, not the key
+    const friend = fakeFolder(folder);
+    fs.writeFileSync(path.join(stranger.dir, fileName(1)), stranger.line(stranger.entry("Sem código")));
+    fs.writeFileSync(path.join(forger.dir, fileName(1)), forger.line(forger.entry("Forjada")));
+    // A signed line altered afterwards: the signature covers every byte.
+    const altered = friend.line(friend.entry("Original")).replace("Original", "Alterada");
+    fs.writeFileSync(path.join(friend.dir, fileName(1)), altered + friend.line(friend.entry("Verdadeira")));
+
+    const status = await a.engine.pass();
+    assert.deepEqual(songs(a).map((s) => s.title), ["Verdadeira"]);
+    assert.equal(status.rejected, 3);
+    const seen = Object.fromEntries(status.computers.map((c) => [c.pc, c]));
+    assert.equal(seen[stranger.id].verified, false);
+    assert.equal(seen[stranger.id].rejected, 1);
+    assert.equal(seen[forger.id].verified, false);
+    assert.equal(seen[friend.id].verified, true, "its last line verified");
+    assert.equal(seen[friend.id].rejected, 1);
+
+    // Read once: the next pass does not count them again, and remembers who is who.
+    const again = await a.engine.pass();
+    assert.equal(again.rejected, 0);
+    assert.equal(again.computers.find((c) => c.pc === stranger.id).verified, false);
+    a.close();
+});
+
+test("a computer joins with the church's code; a wrong code or a typo is told apart", async () => {
+    const folder = tmp();
+    const syncDir = syncDirOf(folder);
+    assert.deepEqual(await joinPairing(syncDir, "K7QM-2HXP-9WRT"), { error: "check" });
+    const typo = await joinPairing(syncDir, "K7QM-2HXP");
+    assert.equal(typo.error, "short");
+
+    const a = computer(folder, { pairing: null });
+    assert.equal((await a.engine.pass()).state, "unpaired", "a folder and no code: nothing happens");
+    assert.equal((await inspectFolder(folder)).code, "missing");
+    const nothingYet = await joinPairing(syncDir, (await import("../shared/syncCode.mjs")).makeCode());
+    assert.equal(nothingYet.error, "nocode");
+
+    const made = await createPairing(syncDir, { pc: a.store.pcId });
+    assert.match(made.code, /^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+    const file = JSON.parse(fs.readFileSync(path.join(syncDir, PAIRING_FILE), "utf8"));
+    assert.equal(file.id, made.id);
+    assert.ok(!JSON.stringify(file).includes(made.code.replace(/-/g, "")), "the code is never in the folder");
+    assert.deepEqual(await createPairing(syncDir, { pc: a.store.pcId }), { error: "exists" }, "a second code needs asking");
+
+    a.pair({ id: made.id, key: made.key });
+    a.store.call("Song", "create", [{ title: "Da primeira" }]);
+    assert.equal((await a.engine.pass()).state, "ok");
+
+    // Another church's code, valid but not this folder's.
+    const elsewhere = tmp();
+    const theirs = await createPairing(syncDirOf(elsewhere), { pc: crypto.randomUUID() });
+    assert.deepEqual(await joinPairing(syncDir, theirs.code), { error: "wrong" });
+
+    // Typed the way people type it.
+    const typed = ` ${made.code.toLowerCase().replace(/-/g, " ")} `;
+    const joined = await joinPairing(syncDir, typed);
+    assert.equal(joined.id, made.id);
+    assert.ok(joined.key.equals(made.key));
+    const b = computer(folder, { pairing: { id: joined.id, key: joined.key } });
+    b.store.call("Song", "create", [{ title: "Da segunda" }]);
+    const c = computer(folder, { pairing: { id: joined.id, key: joined.key } });
+    await rounds([a, b, c], 2);
+    for (const pc of [a, b, c]) assert.deepEqual(songs(pc).map((s) => s.title).sort(), ["Da primeira", "Da segunda"]);
+    const seen = await inspectFolder(folder);
+    assert.equal(seen.code, "ok");
+    assert.equal(seen.computers.length, 2, "two computers wrote; the third only read");
+    for (const pc of [a, b, c]) pc.close();
+});
+
+test("the code changes: a computer with the old one stops, keeps its changes, and catches up with the new one", async () => {
+    const folder = tmp();
+    const syncDir = syncDirOf(folder);
+    const first = await createPairing(syncDir, { pc: "x" });
+    const old = { id: first.id, key: first.key };
+    const a = computer(folder, { pairing: old });
+    const b = computer(folder, { pairing: old });
+    a.store.call("Song", "create", [{ title: "Antes" }]);
+    b.store.call("Song", "create", [{ title: "Antes, de B" }]);
+    await rounds([a, b], 2);
+    assert.equal(songs(b).length, 2);
+    const filesFromB = fs.readdirSync(path.join(syncDir, b.store.pcId));
+
+    // A makes a new code (to leave out a computer that should not sync any more).
+    const next = await createPairing(syncDir, { pc: a.store.pcId, replace: true });
+    a.pair({ id: next.id, key: next.key });
+    b.store.call("Song", "create", [{ title: "Enquanto isso" }]);
+    let status = await b.engine.pass();
+    assert.equal(status.state, "mismatch");
+    assert.match(status.error, /código/);
+    assert.equal(b.store.outbox().length, 1, "nothing written with the old code: the change waits");
+    assert.deepEqual(fs.readdirSync(path.join(syncDir, b.store.pcId)), filesFromB, "no new line from B");
+    status = await a.engine.pass();
+    assert.equal(status.state, "ok");
+    assert.equal(songs(a).length, 2);
+
+    // B types the new code.
+    const joined = await joinPairing(syncDir, next.code);
+    b.pair({ id: joined.id, key: joined.key });
+    await rounds([b, a], 2);
+    assert.deepEqual(songs(a).map((s) => s.title).sort(), ["Antes", "Antes, de B", "Enquanto isso"]);
+    assert.equal(b.store.outbox().length, 0);
+    // A read B's folder again from the start under the new code: B's lines
+    // from before the change no longer verify (A had them already), its new
+    // ones do.
+    const fromB = (await a.engine.pass()).computers.find((c) => c.pc === b.store.pcId);
+    assert.equal(fromB.verified, true);
+    assert.ok(fromB.rejected >= 1);
+    a.close();
+    b.close();
+});
+
+test("the code's file: written back when it goes missing, waited for while it arrives", async () => {
+    const folder = tmp();
+    const a = computer(folder);
+    await a.engine.pass();
+    const file = path.join(syncDirOf(folder), PAIRING_FILE);
+    assert.equal((await readPairing(syncDirOf(folder))).file.id, CHURCH.id);
+
+    fs.rmSync(file);
+    assert.equal((await a.engine.pass()).state, "ok");
+    assert.ok(fs.existsSync(file), "any computer with the code writes it back");
+
+    fs.writeFileSync(file, '{"v":1,"id":"igreja');
+    a.store.call("Song", "create", [{ title: "Espera" }]);
+    const status = await a.engine.pass();
+    assert.equal(status.state, "offline");
+    assert.match(status.error, /chegando/);
+    assert.equal(a.store.outbox().length, 1);
+    assert.equal(fs.readFileSync(file, "utf8"), '{"v":1,"id":"igreja', "never written over");
+    a.close();
 });
 
 test("coalesce: one line per row and moment, the later write winning", () => {
