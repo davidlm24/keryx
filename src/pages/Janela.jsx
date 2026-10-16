@@ -37,6 +37,8 @@ import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
 import PromptDialog from "@/components/console/PromptDialog";
+import Toast from "@/components/console/Toast";
+import { useWinPageFocus } from "@/components/console/useDialogFocus";
 import { setEditorHost } from "@/lib/editorWindow";
 import { relaySend, relayListen } from "@/lib/janelaRelay";
 import { PAGE_TITLES, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
@@ -70,7 +72,7 @@ function useJanelaConsole() {
     const now = useLiveNow(1000);
     const themeId = useThemeInUse();
     const { stamp, bgPrefs } = useStamp(themeId);
-    const { toast, toastAction, say } = useToast();
+    const { toast, toastAction, say, holdToast } = useToast();
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);
     useEffect(() => {
@@ -85,7 +87,7 @@ function useJanelaConsole() {
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
-    return { live, now, cur: live, bgPrefs, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, detached: true };
+    return { live, now, cur: live, bgPrefs, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
 }
 
 // The stack this window opens with: its params (nav.js stackFromParams), or,
@@ -105,6 +107,9 @@ export default function Janela() {
     const stackRef = useRef(stack);
     stackRef.current = stack;
     const winTop = winTopOf(stack);
+    // The focus moves into the page shown when it changes (C-12), as in the console.
+    const boxRef = useRef(null);
+    useWinPageFocus(boxRef, stack);
     useWindowTitle(winTop ? PAGE_TITLES[winTop.page] : "");
 
     // Configurações' section, and the culto Planejar o culto shows (the
@@ -249,7 +254,7 @@ export default function Janela() {
         <ConfirmContext.Provider value={askConfirm}>
         <div className="kx console janela" onClick={onMouseClick}>
             {stack.length > 0 && (
-                <div className="win-dialog is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
+                <div ref={boxRef} className="win-dialog is-detached" role="main" aria-label={PAGE_TITLES[winTop.page]}>
                     {stack.map((entry, i) => {
                         const active = i === stack.length - 1;
                         const page = winPage(entry, { active, escRef: winRef(entry.key), onClose: (all = false) => leaveTop(Boolean(all)) }, host);
@@ -264,12 +269,7 @@ export default function Janela() {
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
             <PromptDialog ask={ask} onAnswer={answerAsk} />
-            {c.toast && (
-                <div className="toast">
-                    <span className="toast-t">{c.toast}</span>
-                    {c.toastAction && <button type="button" className="kx-btn kx-t toast-act" onClick={() => c.toastAction.run()}>{c.toastAction.label}</button>}
-                </div>
-            )}
+            <Toast c={c} />
             {liveRegion}
             <ContextMenuLayer menu={ctxMenu} onClose={() => setCtxMenu(null)} />
         </div>

@@ -4,6 +4,7 @@ import { projection } from "@/lib/projection";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
+import { emptyToasts, pushToast, nextToast } from "@/lib/console/toastQueue";
 import { lookDefaults, withLookDefaults } from "@/lib/console/look";
 import { withBackgroundDefaults, backgroundDefaults, backgroundLook } from "@/lib/console/backgroundPrefs";
 import { useBackgroundPrefs, useThemes } from "./useConsoleData";
@@ -63,18 +64,39 @@ export function useStamp(themeId) {
 }
 
 // A toast: one line, 3 s (6 s for a long one, such as how to send a
-// PowerPoint as PDF); with an action ({ label, run }) a button and 8 s, so
-// there is time to reach it.
+// PowerPoint as PDF); with an action ({ label, run, undo? }) a button and
+// 8 s, so there is time to reach it. A plain toast said meanwhile waits
+// behind an action toast instead of replacing it, and the time stands still
+// while the pointer or the focus is on it (holdToast; design audit C-13,
+// src/lib/console/toastQueue.js). Running the action closes its toast first.
+// undo: Ctrl+Z runs it too (keys.js "undo").
 export function useToast() {
-    const [toast, setToastState] = useState(null);
-    const toastTimer = useRef(null);
-    const say = useCallback((text, action = null) => {
-        setToastState({ text, action });
-        clearTimeout(toastTimer.current);
-        toastTimer.current = setTimeout(() => setToastState(null), action ? 8000 : String(text).length > 80 ? 6000 : 3000);
-    }, []);
-    useEffect(() => () => clearTimeout(toastTimer.current), []);
-    return { toast: toast?.text || null, toastAction: toast?.action || null, say };
+    const [toasts, setToasts] = useState(emptyToasts);
+    const ids = useRef(0);
+    const timer = useRef(null);
+    const held = useRef(false);
+    const left = useRef(0);
+    const since = useRef(0);
+    const say = useCallback((text, action = null) => setToasts((s) => pushToast(s, { id: ++ids.current, text, action })), []);
+    const done = useCallback(() => setToasts(nextToast), []);
+    const cur = toasts.cur;
+    useEffect(() => {
+        clearTimeout(timer.current);
+        if (!cur) { held.current = false; return; }
+        left.current = cur.ms;
+        if (!held.current) { since.current = Date.now(); timer.current = setTimeout(done, cur.ms); }
+    }, [cur?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    const holdToast = useCallback((on) => {
+        if (Boolean(on) === held.current) return;
+        held.current = Boolean(on);
+        clearTimeout(timer.current);
+        if (on) left.current = Math.max(0, left.current - (Date.now() - since.current));
+        // Let go: what was left, never less than a moment to read it again.
+        else { since.current = Date.now(); left.current = Math.max(left.current, 1500); timer.current = setTimeout(done, left.current); }
+    }, [done]);
+    useEffect(() => () => clearTimeout(timer.current), []);
+    const toastAction = useMemo(() => (cur?.action ? { ...cur.action, run: () => { done(); cur.action.run(); } } : null), [cur, done]);
+    return { toast: cur?.text || null, toastAction, say, holdToast };
 }
 
 // The operations on what is on air that need nothing of the console's own
@@ -146,7 +168,7 @@ export function useConsole() {
         try { if (id) localStorage.setItem(THEME_IN_USE_KEY, id); else localStorage.removeItem(THEME_IN_USE_KEY); } catch { /* not remembered */ }
     }, []);
     const { stamp, bgPrefs } = useStamp(themeId);
-    const { toast, toastAction, say } = useToast();
+    const { toast, toastAction, say, holdToast } = useToast();
     const { locked, liveOp, callOp, moveSlide, goTo, toggleScreen, clearText } = useLiveOps(live, say, bgPrefs);
 
     // The idle wallpaper follows its settings: editing its dim or blur in
@@ -279,7 +301,7 @@ export function useConsole() {
     const end = useCallback(async () => {
         const before = live;
         try { await callOp("clear"); } catch { return; }
-        if (undoEndOps(before).length) say("Projeção encerrada.", { label: "Desfazer", run: () => undoEnd(before) });
+        if (undoEndOps(before).length) say("Projeção encerrada.", { label: "Desfazer", undo: true, run: () => undoEnd(before) });
         else say("Projeção encerrada.");
     }, [live, callOp, say, undoEnd]);
 
@@ -290,5 +312,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say };
+    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say, holdToast };
 }
