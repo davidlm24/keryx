@@ -6,10 +6,8 @@ import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
-import { mainLayer } from "@shared/live-state.mjs";
 import { useNoticeAdvance } from "@/hooks/useNoticeAdvance";
-import { usePrefs } from "@/hooks/useUser";
-import { withTransitions } from "@/lib/console/transitions";
+import { useScreenKeys } from "@/hooks/useScreenKeys";
 import { leavingAudio } from "@/lib/exitFade";
 
 // The main projector: the live state (shared/live-state.mjs) rendered full
@@ -29,53 +27,11 @@ export default function Projection() {
         if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
     }, []);
 
-    // Arrows, space, a presentation clicker (PageDown / PageUp) and clicks
-    // move the live slide (every screen follows), only while the slides are
-    // what the projector shows.
-    const hasContent = mainLayer(live) === "content";
-    useEffect(() => {
-        if (!keryx.isDesktop || !hasContent) return undefined;
-        const fail = (err) => console.error("[keryx] slide:", err);
-        const handleKeyPress = (e) => {
-            if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
-                e.preventDefault();
-                projection.next().catch(fail);
-            } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
-                e.preventDefault();
-                projection.prev().catch(fail);
-            }
-        };
-        const handleClick = (e) => {
-            if (e.clientX > window.innerWidth / 2) projection.next().catch(fail);
-            else projection.prev().catch(fail);
-        };
-        window.addEventListener("keydown", handleKeyPress);
-        window.addEventListener("click", handleClick);
-        return () => {
-            window.removeEventListener("keydown", handleKeyPress);
-            window.removeEventListener("click", handleClick);
-        };
-    }, [hasContent]);
-
-    // If the operator clicked the projector window, the screen keys still
-    // work there, as on the console: Esc takes everything down, B and L
-    // toggle Tela preta and the logo — with the church's Transições.
-    const screenMode = live?.screen || "show";
-    const prefs = usePrefs();
-    useEffect(() => {
-        if (!keryx.isDesktop) return undefined;
-        const fail = (err) => console.error("[keryx] screen:", err);
-        const onKey = (e) => {
-            if (e.ctrlKey || e.metaKey || e.altKey) return;
-            const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-            const screen = (mode) => projection.setScreen(mode, withTransitions("screen.set", {}, prefs)).catch(fail);
-            if (k === "Escape") { e.preventDefault(); projection.clear(withTransitions("clear", {}, prefs)).catch(fail); }
-            else if (k === "b") screen(screenMode === "black" ? "show" : "black");
-            else if (k === "l") screen(screenMode === "logo" ? "show" : "logo");
-        };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [screenMode, prefs]);
+    // If the operator clicked the projector window, the console's screen
+    // keys still work there (useScreenKeys: ← → and the clicker move the
+    // slide, B, L, C, Esc — with the church's Transições). A click moves
+    // nothing (owner 2026-10-16: a stray click changed the slide on air).
+    useScreenKeys(live);
 
     // Avisos in a sequence ("Tocar todos"): at the end of each piece the
     // projector moves the live state on (communication.advance ignores the
