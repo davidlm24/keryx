@@ -18,6 +18,7 @@ import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates"
 import { byGroup, rowStatus } from "@/lib/console/outputs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { Switch } from "./settings/parts";
+import { useDialogFocus } from "./useDialogFocus";
 
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
@@ -261,11 +262,14 @@ export function EndDialog({ open, setOpen, onEnd }) {
     const goRef = useRef(null);
     const blackKey = keyHint("black", usePrefs().letter_keys);
     useEffect(() => { if (open === "encerrar") setTimeout(() => goRef.current?.focus(), 0); }, [open]);
+    // Tab stays here; back to the pill's button after a keyboard open (C-12).
+    const boxRef = useRef(null);
+    useDialogFocus(boxRef, open === "encerrar");
     if (open !== "encerrar") return null;
     return (
-        <div className="dialog" role="alertdialog" aria-label="Encerrar a projeção">
+        <div ref={boxRef} className="dialog" role="alertdialog" aria-modal="true" aria-label="Encerrar a projeção" aria-describedby="end-dialog-text">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>Encerrar a projeção?</div>
-            <div>Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
+            <div id="end-dialog-text">Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
             <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta{blackKey ? ` (${blackKey})` : ""}.</div>
             <div className="acts">
                 <button ref={goRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => { onEnd(); setOpen(null); }}>Encerrar</button>

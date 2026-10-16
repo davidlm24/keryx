@@ -94,7 +94,9 @@ export function WinBar({ title, sub, tools, actions, detach }) {
                     <Icon name="arrow-left" />{w.back}
                 </button>
             )}
-            <span className="kx-section win-title" title={sub ? `${title} · ${sub}` : title}>{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
+            {/* Where the focus lands when the page opens with the mouse, or
+                has no control (C-12): inside the window, holding no keys. */}
+            <span className="kx-section win-title" title={sub ? `${title} · ${sub}` : title} tabIndex={-1} data-live-keys="">{title}{sub ? <span className="kx-count"> · {sub}</span> : null}</span>
             {tools && <span className="win-tools">{tools}</span>}
             <span className="win-gap" />
             {actions}
@@ -159,9 +161,9 @@ export function Seg({ value, options, onChange, mode, className = "", small, lab
     };
     const hasValue = options.some(([v]) => v === value);
     return (
-        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${className}`} style={small ? { height: 24, padding: 2 } : undefined} role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
+        <div className={`kx-seg ${mode ? "kx-seg-mode" : ""} ${small ? "is-small" : ""} ${className}`} role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
             {options.map(([v, label, extra], i) => (
-                <button type="button" key={v} className={`kx-t ${value === v ? "is-on" : ""}`} data-mode={v} role="radio" aria-checked={value === v} tabIndex={value === v || (!hasValue && i === 0) ? 0 : -1} onClick={() => onChange(v)} style={small ? { height: 20, padding: "0 8px", fontSize: 11 } : undefined} {...(extra || {})}>
+                <button type="button" key={v} className={`kx-t ${value === v ? "is-on" : ""}`} data-mode={v} role="radio" aria-checked={value === v} tabIndex={value === v || (!hasValue && i === 0) ? 0 : -1} onClick={() => onChange(v)} {...(extra || {})}>
                     {label}
                 </button>
             ))}
@@ -173,7 +175,7 @@ export function Field({ icon = "search", value, onChange, placeholder, onKeyDown
     return (
         <div className="kx-field kx-t" {...rest}>
             {icon && <Icon name={icon} />}
-            <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} onKeyDown={onKeyDown} {...inputProps} />
+            <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} onKeyDown={onKeyDown} spellCheck={false} {...inputProps} />
             {kbd && <kbd>{kbd}</kbd>}
         </div>
     );
@@ -196,7 +198,7 @@ export function Row({ icon, lead, title, meta, metaClass = "", time, state = "",
             {lead}
             {icon && <span className="kx-glyph"><Icon name={icon} /></span>}
             <div className="kx-row-main">
-                <div className="kx-row-title">{title}</div>
+                <div className="kx-row-title" title={typeof title === "string" ? title : undefined}>{title}</div>
                 {meta != null && meta !== "" && <div className={`kx-row-meta ${metaClass}`}>{meta}</div>}
             </div>
             {children}

@@ -234,14 +234,21 @@ function guardWindow(win) {
         else win.emit(closeGuard.KEPT_OPEN);
     });
 
-    // Right click: in a text field, the system's own Recortar / Copiar /
-    // Colar; everywhere else the console draws its own menus
+    // Right click: in a text field, the spellchecker's suggestions (when it
+    // marked the word), Desfazer / Refazer and the system's own Recortar /
+    // Copiar / Colar; everywhere else the console draws its own menus
     // (src/components/console/ContextMenu.jsx), and a page that shows none
     // gets nothing.
     webContents.on("context-menu", (_event, params) => {
         if (!params.isEditable) return;
         const can = params.editFlags || {};
+        const words = params.misspelledWord ? (params.dictionarySuggestions || []).slice(0, 5) : [];
         Menu.buildFromTemplate([
+            ...words.map((word) => ({ label: word, click: () => webContents.replaceMisspelling(word) })),
+            ...(words.length ? [{ type: "separator" }] : []),
+            { label: "Desfazer", role: "undo", enabled: Boolean(can.canUndo) },
+            { label: "Refazer", role: "redo", enabled: Boolean(can.canRedo) },
+            { type: "separator" },
             { label: "Recortar", role: "cut", enabled: Boolean(can.canCut) },
             { label: "Copiar", role: "copy", enabled: Boolean(can.canCopy) },
             { label: "Colar", role: "paste", enabled: Boolean(can.canPaste) },
@@ -386,6 +393,10 @@ app.whenReady().then(async () => {
 
     appUrl = DEV_URL || serverUrl;
     appOrigin = new URL(appUrl).origin;
+
+    // The spellchecker reads Portuguese whatever the PC's language: on an
+    // English Windows "palavrra" offered "palabra" and "palaver".
+    try { session.defaultSession.setSpellCheckerLanguages(["pt-BR"]); } catch (err) { console.warn("[keryx] spellchecker:", err?.message || err); }
 
     // The console's level meters read the sound the PC is putting out
     // (system loopback, Windows), so measuring can never disturb playback.

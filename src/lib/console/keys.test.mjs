@@ -56,6 +56,15 @@ test("other live keys", () => {
     assert.equal(focusKind(input), "text");
 });
 
+test("Ctrl+Z is Desfazer, except in a text field (design audit C-13)", () => {
+    assert.equal(key("z", nothing, { ctrlKey: true }), "undo");
+    assert.equal(key("Z", button, { ctrlKey: true }), "undo", "Caps Lock, or a button focused with Tab");
+    assert.equal(key("z", nothing, { metaKey: true }), "undo");
+    assert.equal(key("z", input, { ctrlKey: true }), null, "the field's own undo");
+    assert.equal(key("z", nothing, { ctrlKey: true, shiftKey: true }), null, "Ctrl+Shift+Z is not Desfazer");
+    assert.equal(key("z", nothing), null, "z alone types nothing on the console");
+});
+
 test("↑/↓ move the selection, ←/→ the air (Holyrics)", () => {
     assert.equal(key("ArrowUp", nothing), "selUp");
     assert.equal(key("ArrowDown", nothing), "selDown");
@@ -247,14 +256,14 @@ test("the shortcut list and the keys never drift apart, for every choice of the 
         // Every action the console handles is in the list ("blur" is only
         // leaving a text field): sweep the keys.
         const handled = new Set();
-        for (const k of ["Enter", "Escape", " ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "b", "B", "l", "L", "c", "C", "/", "?", "f"]) {
+        for (const k of ["Enter", "Escape", " ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "b", "B", "l", "L", "c", "C", "/", "?", "f", "z"]) {
             for (const mods of [{}, { shiftKey: true }, { ctrlKey: true }]) {
                 const a = press({ key: k, ...mods });
                 if (a) handled.add(a);
             }
         }
         for (const action of handled) assert.ok(listed.has(action), `${letters}: ${action} is not in the shortcut list`);
-        if (letters === "on") for (const a of ["send", "next", "prev", "selUp", "selDown", "black", "logo", "clear", "end", "search", "help", "play"]) assert.ok(handled.has(a), a);
+        if (letters === "on") for (const a of ["send", "next", "prev", "selUp", "selDown", "black", "logo", "clear", "end", "undo", "search", "help", "play"]) assert.ok(handled.has(a), a);
         if (letters === "off") for (const a of ["black", "logo", "clear", "help"]) assert.ok(!listed.has(a), `off: ${a} listed`);
     }
     assert.deepEqual(SHORTCUTS, shortcutsFor("on"));

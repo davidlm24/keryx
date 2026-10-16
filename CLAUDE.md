@@ -519,7 +519,12 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   page's own keys (Ctrl+S, Mídia's Enter/Delete) sleep while covered
   (prop `active`) and defer to `.scrim:not(.win-scrim)`. Pickers that
   answer (the background library, ConfirmDialog, menus) stay ON TOP,
-  never in the stack. While the window is open the Programa monitor and
+  never in the stack. **Focus** (design audit C-12): the console behind
+  the window is `inert`, Tab stays in the window or dialog on top
+  (`useDialogFocus`, rules in `src/lib/console/focusTrap.js`, tested), the
+  page shown takes the focus (`useWinPageFocus`: from the keyboard its first
+  control, with the mouse the bar's title, which holds no keys), and closing
+  gives it back to the opener only after a keyboard open. While the window is open the Programa monitor and
   the Multiview draw one still frame (`still` on CenterPanel — the air
   itself never pauses). The pages are one switch, `winPage` in
   `WinPages.jsx`, for both hosts below; a new page goes there.
@@ -608,6 +613,16 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tier's. The Bíblia's dock stays one. Splits have one
   flexible child and fixed pixel sizes (`allocate`); what cannot fit side
   by side joins as tabs, a pair at a time, the Programa last (`fitDock`).
+  The Programa alone in a split never takes more than its 16:9 and the
+  player (`programaNatural`, design audit C-51): the rest goes to its
+  neighbour (the Prévia's band), never a locked or folded one; the
+  dock's sizes stay the operator's. The band starts as tall as the
+  Prévia's screen (no +84 for the header and button it lost). In the
+  medium and narrow tiers (No ar in the tray, so the Programa's height
+  is steady) the Slides start wider by what the Programa's 16:9 cannot
+  use at that height (`fromArrangement`; the Prévia keeps its width, the
+  Setlist beside it gives the room); the wide tier keeps its columns, which
+  would otherwise move each time the No ar strip comes and goes.
   A new module is an entry in
   dock.js `MODULES` and in `modulePanels`. **Disposições com nome**
   (`src/lib/console/dockPresets.js`, tested): the edit banner saves the dock
@@ -824,7 +839,9 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Transições says (Rodada F2) (music on the audio channel keeps playing; the Fundo
   stays on screen, and the idle look shows only with no Fundo); its toast offers
   Desfazer, which puts back what was on air (`undoEndOps` in
-  `src/lib/console/restore.js`). Camadas' eyes on Texto principal and Fundo
+  `src/lib/console/restore.js`); Ctrl+Z runs it too (keys.js "undo", out of
+  text fields), and a plain toast waits behind it while its time stands
+  still under the pointer or the focus (`toastQueue.js`, `Toast.jsx`; C-13). Camadas' eyes on Texto principal and Fundo
   hide the layer and keep it on air (`layers.hide`/`layers.show`,
   `hiddenLayers`, `layerHidden`; hiding works locked): the next send shows
   the text again, choosing a Fundo shows the Fundo again. The Fundo hidden
