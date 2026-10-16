@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Btn, IconBtn } from "../kx";
 import Icon from "../Icon";
-import { CfgKey } from "./parts";
-import { useSaveBackgroundPref } from "./FundosGallery";
-import { useBackgrounds } from "../useConsoleData";
+import { useSaveBackgroundPref } from "../settings/FundosGallery";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { FALLBACK_CATEGORY, managedCategories, addCategory, renameCategory, removeCategory, moveCategory, inCategory } from "@/lib/console/backgroundPrefs";
@@ -17,21 +15,21 @@ function CategoryName({ value, onCommit }) {
     return (
         <input className="cfg-inline" style={{ maxWidth: 220 }} value={v} maxLength={40} aria-label={`Nome da categoria ${value}`}
             onChange={(e) => setV(e.target.value)} onBlur={commit}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") { setV(value); e.currentTarget.blur(); } }} />
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") { e.stopPropagation(); setV(value); e.currentTarget.blur(); } }} />
     );
 }
 
-// Categorias de fundos (Configurações › Temas e fundos, owner 2026-10-16):
-// the church creates, renames, orders and deletes the background library's
-// categories, even while empty (User.background_categories; the helpers and
-// their rules are in backgroundPrefs.js). A rename or a delete moves every
-// background in that category (BackgroundPref.category; a factory photo gets
-// its first row), so the library's chips follow. Both are church data: they
-// sync with the other computers and ride the backups. The first change also
-// keeps the names in use outside the list, so nothing moves on its own.
-export default function FundoCategories({ c }) {
+// Categorias de fundos (owner 2026-10-16), a view of the background library
+// (its "Categorias…" chip; Configurações › Temas e fundos opens the library
+// on it): the church creates, renames, orders and deletes the categories,
+// even while empty (User.background_categories; the helpers and their rules
+// are in backgroundPrefs.js). A rename or a delete moves every background in
+// that category (BackgroundPref.category; a factory photo gets its first
+// row), so the library's chips follow. Both are church data: they sync with
+// the other computers and ride the backups. The first change also keeps the
+// names in use outside the list, so nothing moves on its own.
+export default function FundoCategories({ c, entries, onDone }) {
     const stored = usePrefs().background_categories;
-    const entries = useBackgrounds();
     const save = useSaveBackgroundPref(c.say);
     const confirm = useConfirm();
     const names = managedCategories(stored, entries);
@@ -69,8 +67,12 @@ export default function FundoCategories({ c }) {
     const move = (name, by) => run(() => keep(moveCategory(names, name, by)));
 
     return (
-        <>
-            <CfgKey k="Categorias de fundos" className="listhead"><span className="kx-section">Categorias de fundos <span className="kx-count">· na ordem das galerias</span></span></CfgKey>
+        <div className="cfg lib-cats">
+            <div className="listhead">
+                <span className="kx-section">Categorias <span className="kx-count">· na ordem dos filtros</span></span>
+                <span style={{ flex: 1 }} />
+                <Btn small kind="brand" onClick={onDone}>Concluir</Btn>
+            </div>
             {names.map((name, i) => {
                 const n = inCategory(entries, name).length;
                 const fixed = name === FALLBACK_CATEGORY;
@@ -92,6 +94,6 @@ export default function FundoCategories({ c }) {
                     onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
                 <Btn small kind="brand" disabled={busy || !draft.trim()} onClick={add}>Adicionar</Btn>
             </div>
-        </>
+        </div>
     );
 }

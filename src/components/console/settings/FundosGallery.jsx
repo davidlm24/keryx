@@ -1,20 +1,21 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
-import { Btn, Seg } from "../kx";
+import { Btn, IconBtn, Seg } from "../kx";
+import Icon from "../Icon";
 import { FormRow } from "./parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
-import { DIM_PCT, BLUR_PX, categoryList } from "@/lib/console/backgroundPrefs";
-import { usePrefs } from "@/hooks/useUser";
+import { DIM_PCT, BLUR_PX } from "@/lib/console/backgroundPrefs";
 import { SAMPLE_SLIDES } from "./sample";
 
 const SAMPLE = SAMPLE_SLIDES.slice(0, 1);
 
 // A background's own settings (BackgroundPref): its name, category, dim and
-// blur (a starting point for the items that use it), a favourite mark (first
-// in the galleries) and Ocultar (out of the galleries, still in the library).
-// Drawn by the background library (library/BackgroundLibrary.jsx), which
-// manages the backgrounds; its door is Configurações › Temas e fundos (Aparência dissolved 2026-10-14).
+// blur (a starting point for the items that use it), fit and position, and
+// a favourite mark (first in the library). Leaving the library is the
+// tile's right click (Excluir…; the old Oculto is the Excluídos chip now,
+// owner 2026-10-16). Drawn by the background library
+// (library/BackgroundLibrary.jsx); its door in Configurações is Temas e fundos.
 
 // One change to a background's settings (BackgroundPref): the row is
 // created the first time (once, even when two changes race), updated after.
@@ -38,12 +39,12 @@ export function useSaveBackgroundPref(say) {
     }, [say]);
 }
 
-// One background's settings and a sample. (The library
-// window.)
-export function FundoDetail({ b, save, now, sample = true }) {
-    const cats = categoryList(usePrefs().background_categories);
+// One background's settings and a sample. (The library window.) Its
+// category is one of the church's (`categories`; a free name made a
+// category the editor did not list), the editor one click away.
+export function FundoDetail({ b, save, now, sample = true, categories = [], onCategories, onRestore }) {
+    const cats = categories.includes(b.category) ? categories : [...categories, b.category];
     const [name, setName] = useState(b.pref?.name || "");
-    const [category, setCategory] = useState(b.pref?.category || "");
     const [dim, setDim] = useState(b.dim === null ? null : Math.round(b.dim * 100));
     const [blur, setBlur] = useState(b.blur);
 
@@ -62,7 +63,6 @@ export function FundoDetail({ b, save, now, sample = true }) {
 
     const keep = (patch) => save(b, patch);
     const commitName = () => { if (name.trim() !== (b.pref?.name || "").trim()) keep({ name: name.trim() }); };
-    const commitCategory = () => { if (category.trim() !== (b.pref?.category || "").trim()) keep({ category: category.trim() }); };
     // Only a real change is saved (moving through with Tab is not one, and
     // would make a row for a background nobody touched).
     const savedDim = b.dim === null ? null : Math.round(b.dim * 100);
@@ -77,9 +77,15 @@ export function FundoDetail({ b, save, now, sample = true }) {
             <FormRow k="Nome">
                 <input className="fg-input" value={name} placeholder={b.name} maxLength={80} onChange={(e) => setName(e.target.value)} onBlur={commitName} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} aria-label="Nome do fundo" />
             </FormRow>
+            {b.hidden && <FormRow k="">
+                <span className="kx-meta">Excluído: fora da biblioteca.</span>
+                {onRestore && <Btn small onClick={onRestore}><Icon name="undo" size={14} />Restaurar</Btn>}
+            </FormRow>}
             <FormRow k="Categoria">
-                <input className="fg-input" value={category} placeholder={b.category} maxLength={40} list="fg-cats" onChange={(e) => setCategory(e.target.value)} onBlur={commitCategory} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} aria-label="Categoria do fundo" />
-                <datalist id="fg-cats">{cats.map((k) => <option key={k} value={k} />)}</datalist>
+                <select className="fg-input" value={b.category} onChange={(e) => keep({ category: e.target.value })} aria-label="Categoria do fundo">
+                    {cats.map((k) => <option key={k} value={k}>{k}</option>)}
+                </select>
+                {onCategories && <IconBtn small name="edit" title="Editar as categorias" onClick={onCategories} />}
             </FormRow>
             <FormRow k="Escurecer">
                 <input type="range" className="ap-range" min={DIM_PCT[0]} max={DIM_PCT[1]} step={5} value={dim ?? 45} onChange={(e) => setDim(Number(e.target.value))}
@@ -98,10 +104,10 @@ export function FundoDetail({ b, save, now, sample = true }) {
             <FormRow k="Posição">
                 <Seg small value={b.pref?.position || "center"} options={[["top", "Alto"], ["center", "Centro"], ["bottom", "Baixo"]]} onChange={(v) => keep({ position: v === "center" ? "" : v })} />
             </FormRow>
-            <FormRow k="Nas galerias">
-                <Seg small value={b.hidden ? "hidden" : b.favorite ? "fav" : "shown"} options={[["fav", "Favorito"], ["shown", "Aparece"], ["hidden", "Oculto"]]}
-                    onChange={(v) => keep({ favorite: v === "fav", hidden: v === "hidden" })} />
-            </FormRow>
+            {!b.hidden && <FormRow k="Ordem">
+                <Seg small value={b.favorite ? "fav" : "shown"} options={[["fav", "Favorito · primeiro"], ["shown", "Normal"]]}
+                    onChange={(v) => keep({ favorite: v === "fav" })} />
+            </FormRow>}
         </div>
     );
 }
