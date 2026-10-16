@@ -154,6 +154,11 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         bell(state);
     }
 
+    // The outbox records only while this computer syncs (a folder and a code;
+    // paused counts: the changes wait). Joining sends everything anyway.
+    const syncing = () => Boolean(config().folder && config().pairing);
+    store.setRecording(syncing());
+
     const engine = createSyncEngine({
         store,
         mediaDir,
@@ -183,6 +188,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
         pairing = null;
         pairingFrom = null;
         watchDuplicates = now().getTime();
+        store.setRecording(true);
         const sent = store.snapshot();
         log(`[keryx-sync] código ${cur.pairing ? "novo" : "aceito"}; ${sent} registros a enviar`);
         engine.pass().catch(() => {});
@@ -254,6 +260,8 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             if (root !== cur.folder) {
                 pairing = null;
                 pairingFrom = null;
+                store.setRecording(false);
+                store.pruneOutbox(Number.MAX_SAFE_INTEGER);
             }
             engine.poke();
             return { ...status(), inspect: await inspectFolder(root) };
@@ -318,6 +326,7 @@ function createSyncControl({ store, mediaDir, settings, protect, chooseFolder = 
             save(null);
             pairing = null;
             pairingFrom = null;
+            store.setRecording(false);
             store.pruneOutbox(Number.MAX_SAFE_INTEGER);
             await engine.pass();
             if (dismiss) dismiss(BELL);

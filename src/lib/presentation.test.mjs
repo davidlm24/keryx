@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState, mainLayer } from "../../shared/live-state.mjs";
 import { streamCaption } from "./streamCaption.js";
 import {
-    PPTX_HINT, PAGES_PENDING, PAGES_FAILED, pageScale, pagesOf, needsPages, presentationSlides, presentationStage, presentationBlock, stageBlock, pagesLabel, presentationMeta, playsInSequence,
+    PPTX_HINT, PAGES_PENDING, PAGES_FAILED, pageScale, pagesOf, needsPages, presentationSlides, presentationStage, presentationBlock, stageBlock, pagesLabel, presentationMeta, playsInSequence, pagesWait, PAGES_WAIT_MS,
 } from "./presentation.js";
 
 const pages = [{ url: "http://127.0.0.1:7700/media/a-1.jpg", w: 1920, h: 1080 }, { url: "http://127.0.0.1:7700/media/a-2.jpg", w: 1920, h: 1080 }];
@@ -78,4 +78,13 @@ test("the Mídia row's line: progress, pages, what it needs", () => {
 
 test("Tocar todos: pictures and videos only, never a PDF or a PowerPoint", () => {
     assert.deepEqual(["video", "image", "gif", "pdf", "powerpoint", "audio"].filter((type) => playsInSequence({ type })), ["video", "image", "gif"]);
+});
+
+test("pagesWait: a PDF sent here goes now; one from another computer waits for that one's pages", () => {
+    const now = Date.parse("2026-10-16T20:00:00.000Z");
+    const at = (ms) => ({ type: "pdf", created_date: new Date(now - ms).toISOString() });
+    assert.equal(pagesWait(at(1000), { mine: true, now }), 0);
+    assert.equal(pagesWait(at(60 * 1000), { now }), PAGES_WAIT_MS - 60 * 1000);
+    assert.equal(pagesWait(at(PAGES_WAIT_MS + 1), { now }), 0, "nobody sent them: this computer makes them");
+    assert.equal(pagesWait({ type: "pdf" }, { now }), 0, "rows from before have no date to wait from");
 });

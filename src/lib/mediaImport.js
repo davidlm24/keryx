@@ -27,6 +27,11 @@ export async function mediaFromYouTube(url, { title = "Vídeo do YouTube", categ
     return keryx.entities.Media.create({ title, type: "video", file_url: u, category, duration: 0 });
 }
 
+// The Media rows made in this window, so a PDF sent here gets its pages at
+// once and one that came from another computer waits for that one's
+// (pagesWait in presentation.js).
+export const madeHere = new Set();
+
 // A PowerPoint file is not copied (Rodada F3, "Só PDF"): it comes back in
 // `refused`, and the caller says how to save it as PDF (PPTX_HINT). A PDF's
 // pages are made after, by the console (usePagesBackfill).
@@ -49,6 +54,7 @@ export async function importMediaFiles(files, { title = "", description = "", ca
                 category,
                 duration: 0,
             });
+            if (row?.id) madeHere.add(row.id);
             created.push(row);
         } catch (err) {
             failed.push({ name: file.name, message: err?.message || "falhou" });

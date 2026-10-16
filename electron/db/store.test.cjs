@@ -525,3 +525,79 @@ test("snapshot with bump: the rows here win everywhere (a backup restored for ev
     assert.equal(b.call("Song", "get", ["s"]).title, "Do backup");
     assert.equal(a.snapshot(), a.outbox().length, "a second snapshot replaces the first");
 });
+
+test("recording: while this computer does not sync nothing goes to the outbox; versions are kept", async () => {
+    const s = fresh();
+    s.setRecording(false);
+    assert.equal(s.isRecording(), false);
+    const song = s.call("Song", "create", [{ title: "Sem sincronização" }]);
+    s.call("Song", "update", [song.id, { title: "Ainda sem" }]);
+    s.call("User", "update", [PROFILE_ID, { church_name: "Gerar" }]);
+    assert.equal(s.outbox().length, 0);
+    // Joining sends it all anyway, at the versions kept meanwhile.
+    s.setRecording(true);
+    s.snapshot();
+    const out = s.outbox();
+    assert.ok(out.some((c) => c.id === song.id && c.row.title === "Ainda sem"));
+    assert.deepEqual(out.find((c) => c.entity === "User").row, { id: PROFILE_ID, church_name: "Gerar" });
+    await tick();
+    s.call("Song", "update", [song.id, { title: "Agora sim" }]);
+    assert.equal(s.outbox().at(-1).row.title, "Agora sim");
+});
+
+// A database opened by an older KERYX: the same schema without what came later.
+function olderSchema({ withoutEntity, withoutField }) {
+    const entities = { ...schema.entities };
+    if (withoutEntity) delete entities[withoutEntity];
+    if (withoutField) {
+        const [entity, field] = withoutField;
+        const { [field]: _gone, ...columns } = entities[entity].columns;
+        entities[entity] = { ...entities[entity], columns };
+    }
+    return { entities };
+}
+
+test("a newer version's entity is kept, never lost, and applied once this computer is updated", () => {
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "keryx-")), "old.db");
+    const old = createStore({ file, schema: olderSchema({ withoutEntity: "TimerPreset" }), log: () => {} });
+    const at = new Date().toISOString();
+    const change = { entity: "TimerPreset", id: "t1", op: "upsert", row: { id: "t1", minutes: 40 }, at, pc: "newer" };
+    assert.deepEqual(old.applyRemote([change, { entity: "not an entity", id: "x", op: "upsert", row: {}, at, pc: "newer" }]), { applied: 0, skipped: 2, failed: 0 });
+    assert.equal(old.parkedCount(), 1);
+    old.close();
+    const updated = createStore({ file, schema, log: () => {} });
+    assert.equal(updated.call("TimerPreset", "get", ["t1"]).minutes, 40);
+    assert.equal(updated.parkedCount(), 0);
+    assert.equal(updated.outbox().length, 0, "what came from elsewhere is not this computer's");
+    updated.close();
+});
+
+test("a newer version's fields: kept by the older computer, never erased by its edits, filled in after its update", () => {
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "keryx-")), "old.db");
+    const newer = fresh();
+    const old = createStore({ file, schema: olderSchema({ withoutField: ["Song", "lines_per_slide"] }), log: () => {} });
+    const song = newer.call("Song", "create", [{ title: "Hino", lines_per_slide: 2 }]);
+    old.applyRemote(newer.outbox());
+    assert.equal(old.call("Song", "get", [song.id]).title, "Hino");
+    assert.equal(old.parkedCount(), 1);
+
+    // The older computer edits the song: its line does not carry the field,
+    // and the newer computer keeps it.
+    old.call("Song", "update", [song.id, { title: "Hino (editado)" }]);
+    newer.applyRemote(old.outbox());
+    const there = newer.call("Song", "get", [song.id]);
+    assert.equal(there.title, "Hino (editado)");
+    assert.equal(there.lines_per_slide, 2, "an older computer never erases what it cannot see");
+    old.close();
+
+    const updated = createStore({ file, schema, log: () => {} });
+    const here = updated.call("Song", "get", [song.id]);
+    assert.equal(here.title, "Hino (editado)");
+    assert.equal(here.lines_per_slide, 2, "filled in once the version knows the field");
+    assert.equal(updated.parkedCount(), 0);
+    updated.close();
+});

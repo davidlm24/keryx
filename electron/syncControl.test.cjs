@@ -67,6 +67,8 @@ test("two computers: choose the folder, make the code on one, type it on the oth
     b.store.call("Song", "create", [{ title: "Só no notebook" }]);
 
     assert.equal((await a.call("status")).folder, null);
+    assert.equal(a.store.isRecording(), false, "not syncing: the outbox stays empty");
+    assert.equal(a.store.outbox().length, 0);
     await assert.rejects(a.call("create"), /Escolha a pasta/);
     const chosen = await a.call("choose");
     assert.equal(chosen.folder, path.resolve(folder));
@@ -170,7 +172,7 @@ test("pause, sync now, change the code, leave", async () => {
     await settle([a], 1);
     assert.ok(!titles(a).includes("Depois de sair"));
     assert.ok(titles(a).includes("Com o código velho"), "what it sent stays");
-    assert.equal(b.store.outbox().length > 0, true);
+    assert.equal(b.store.outbox().length, 0, "nothing is recorded while it does not sync");
     a.close();
     b.close();
 });
