@@ -1,8 +1,11 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { keryx } from "@/api/keryxClient";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { Row, Btn, IconBtn, Empty } from "./kx";
 import { useContextMenu } from "./ContextMenu";
+import useKeepInView from "./useKeepInView";
+import { useConfirm } from "./ConfirmDialog";
+import { takeOut, takeOutQuestion } from "./setlistActions";
 import Icon from "./Icon";
 import { plan, clockAt, span, total, isSection, typeIcon, typeLabel } from "@/lib/console/setlist";
 import { moveTo } from "@/lib/console/dropOrder";
@@ -15,8 +18,15 @@ export const plannedTimes = (service, items) => plan(service, items).rows.map((r
 // The service's items in order: click (or Enter on the row) prepares; the
 // "Ir" button prepares and sends — the only send here. Drag reorders
 // (ServiceItem.order), as Cultos does.
-export default function Rundown({ service, items, airItemId, prevItemId, onPrepare, onGo, onAddStage, onPlan, canReorder = true }) {
+export default function Rundown({ service, items, airItemId, prevItemId, onPrepare, onGo, onAddStage, onPlan, onSay, canReorder = true }) {
     const menu = useContextMenu();
+    const ask = useConfirm();
+    // "Tirar da setlist…" (owner 2026-10-16, 0.2.18): asks, then the item
+    // leaves this culto's setlist; the song stays in the KERYX.
+    const askTakeOut = async (it) => {
+        if (!(await ask(takeOutQuestion(it)))) return;
+        try { await takeOut(it); onSay?.(isSection(it) ? "Seção tirada da setlist." : "Item tirado da setlist."); } catch (err) { onSay?.(err?.message || "Não foi possível tirar o item."); }
+    };
     const p = plan(service, items);
     const airIdx = items.findIndex((i) => i.id === airItemId);
     // Dragging (owner 2026-10-15, Rodada D): the rows below slide to open
@@ -38,10 +48,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
     // The list follows the service: when the item on air (or in the Prévia)
     // changes, it is scrolled into view, so the next rows stay in sight.
     const listRef = sort.listProps.ref;
-    useEffect(() => {
-        const row = listRef.current?.querySelector(".is-air") || listRef.current?.querySelector(".is-prev");
-        row?.scrollIntoView({ block: "nearest" });
-    }, [airItemId, prevItemId]); // eslint-disable-line react-hooks/exhaustive-deps
+    useKeepInView(listRef, airItemId ? ".is-air" : ".is-prev", [airItemId, prevItemId]);
 
 
     return (
@@ -56,7 +63,11 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                 if (isSection(it)) {
                     const sec = p.sections[i] || { count: 0, seconds: 0 };
                     return (
-                        <div key={it.id} className="listhead rund-sec" {...sort.rowProps(i, { label: it.title, icon: "list" })} style={sort.rowStyle(i)}>
+                        <div key={it.id} className="listhead rund-sec" {...sort.rowProps(i, { label: it.title, icon: "list" })} style={sort.rowStyle(i)}
+                            onContextMenu={(e) => menu(e, { title: it.title, items: [
+                                onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
+                                { label: "Tirar a seção…", icon: "x", onSelect: () => askTakeOut(it) },
+                            ] })}>
                             <span className="kx-section">{it.title}</span><span className="kx-count"> · {sec.count} · {total(sec.seconds)}</span>
                         </div>
                     );
@@ -77,6 +88,7 @@ export default function Rundown({ service, items, airItemId, prevItemId, onPrepa
                             { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(it, i) },
                             onPlan && { label: "Editar no planejador", icon: "list", onSelect: () => onPlan(it) },
                             { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(it, i) },
+                            { label: "Tirar da setlist…", icon: "x", onSelect: () => askTakeOut(it) },
                         ] })}
                         dragProps={dragProps}
                         actions={<><Btn onClick={(e) => { e.stopPropagation(); onGo(it, i); }} title="Enviar ao ar · 2 cliques" aria-label="Ir"><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Ir</span></Btn>{onPlan && <IconBtn name="more" title="Editar no planejador" onClick={(e) => { e.stopPropagation(); onPlan(it); }} />}</>}

@@ -70,6 +70,15 @@ function resolvePlacement(output, displays, assignment) {
     return display ? { mode: "fullscreen", display } : { mode: "window", missing: true };
 }
 
+// An output stays above every other window while it is full screen on a
+// monitor of its own (owner 2026-10-16, as Holyrics): nothing the operator
+// opens or drags there can cover what the church sees. Never on the
+// console's own monitor (one screen only, or the smoke's full-screen run),
+// where it would hide the console for good, and never as a window.
+function staysOnTop(placement, operatorDisplayId) {
+    return Boolean(placement && placement.mode === "fullscreen" && placement.display && placement.display.id !== operatorDisplayId);
+}
+
 // Window bounds for windowed mode: centred on the primary display.
 function windowedBounds(displays) {
     const primary = displays.find((d) => d.primary) || displays[0];
@@ -112,6 +121,7 @@ function normalizeAssignment(value) {
 const canRemove = (key) => key !== "/Projection";
 
 module.exports = {
+    staysOnTop,
     OUTPUTS,
     outputForKey,
     outputKeyForUrl,

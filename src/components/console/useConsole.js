@@ -141,8 +141,16 @@ export function useConsole() {
         const look = backgroundLook(bgPrefs, bg.value);
         // This picture's own settings, not another picture's row (a favourite, a hidden one).
         if (JSON.stringify(look) === JSON.stringify(backgroundLook(prev, bg.value))) return;
-        const patch = Object.fromEntries(Object.entries(look).filter(([k, v]) => v !== null && v !== (bg[k] ?? null)));
-        if (Object.keys(patch).length) keryx.live.call("background.set", { ...bg, ...patch }).catch(() => {});
+        // A setting back to "padrão" (null) leaves the picture without it, so
+        // the screens use their own default again.
+        const next = { ...bg };
+        let changed = false;
+        for (const [k, v] of Object.entries(look)) {
+            if (v === (bg[k] ?? null)) continue;
+            changed = true;
+            if (v === null) delete next[k]; else next[k] = v;
+        }
+        if (changed) keryx.live.call("background.set", next).catch(() => {});
     }, [bgPrefs]);
 
     const setPrev = useCallback((stage) => {

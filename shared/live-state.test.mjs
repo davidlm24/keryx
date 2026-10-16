@@ -630,6 +630,14 @@ test("a generated background: the generator is checked, its numbers clamped and 
 const timed = { title: "Canção", slides: [{ text: "intro" }, { text: "um", start: 10 }, { text: "dois", start: 20 }, { text: "três", start: 30 }] };
 const S = 1000;
 
+test("Esc puts the papel de parede back with the look it was given (0.2.18)", () => {
+    const pic = { kind: "image", value: "keryx-media://p.webp", dim: 0, blur: 0 };
+    let s = run([["background.default", { background: pic }], ["background.set", pic], ["content.show", song]]);
+    s = applyOp(s, "clear", {}, T0);
+    assert.equal(s.background.dim, 0, "not the renderer's 45 % fallback");
+    assert.equal(s.background.value, pic.value);
+});
+
 test("slides keep their start; a song with marks follows its source", () => {
     assert.deepEqual(FOLLOW_SOURCES, ["video", "audio", "clock"]);
     let s = run([["content.show", { ...timed, follow: { source: "audio", url: "/media/a.mp3", length: 200 } }]]);

@@ -8,7 +8,7 @@
 
 const { BrowserWindow } = require("electron");
 const {
-    OUTPUTS, outputForKey, outputKeyForUrl, displayRef, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
+    OUTPUTS, staysOnTop, outputForKey, outputKeyForUrl, displayRef, resolvePlacement, windowedBounds, normalizeAssignment, canRemove,
 } = require("./outputs.cjs");
 
 const SETTINGS_KEY = "outputs";
@@ -44,6 +44,24 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
             .sort((a, b) => Number(b.primary) - Number(a.primary) || a.bounds.x - b.bounds.x || a.bounds.y - b.bounds.y);
     };
 
+    // The monitor the console is on (the operator's): an output full screen
+    // anywhere else stays on top (staysOnTop). Before the console exists,
+    // the primary monitor, where it opens.
+    const operatorDisplayId = () => {
+        const w = operatorWindow();
+        try {
+            if (w && !w.isDestroyed() && screen.getDisplayMatching) return screen.getDisplayMatching(w.getBounds()).id;
+        } catch { /* the primary below */ }
+        return screen.getPrimaryDisplay().id;
+    };
+    const onTop = (placement) => staysOnTop(placement, operatorDisplayId());
+    const applyOnTop = (win, placement) => {
+        if (win.isDestroyed() || !win.setAlwaysOnTop) return;
+        const on = onTop(placement);
+        // "screen-saver": above the taskbar and other topmost windows too.
+        if (on) win.setAlwaysOnTop(true, "screen-saver"); else win.setAlwaysOnTop(false);
+    };
+
     const assignments = () => settings.get(SETTINGS_KEY, {});
     const assignmentFor = (key) => normalizeAssignment(assignments()[key]);
     const placementFor = (key) => resolvePlacement(outputForKey(key), displays(), assignmentFor(key));
@@ -57,7 +75,7 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
         const placement = placementFor(key);
         if (placement.mode !== "fullscreen") return { skipTaskbar: true, type: "toolbar" };
         const { x, y, width, height } = placement.display.bounds;
-        return { x, y, width, height, frame: false, backgroundColor: "#000000", autoHideMenuBar: true, skipTaskbar: true, type: "toolbar" };
+        return { x, y, width, height, frame: false, backgroundColor: "#000000", autoHideMenuBar: true, skipTaskbar: true, type: "toolbar", ...(onTop(placement) ? { alwaysOnTop: true } : {}) };
     }
 
     function present(win, placement) {
@@ -72,6 +90,7 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
             win.setBounds(windowedBounds(displays()));
             hideFromTaskbar(win);
         }
+        applyOnTop(win, placement);
     }
 
     function track(win, url) {
@@ -110,6 +129,7 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
         const { webContents } = win;
         if (placement.mode === "fullscreen") {
             win.setFullScreen(true);
+            applyOnTop(win, placement);
             // Nobody sits at a projector: no pointer, and nothing to click.
             const hideCursor = () => webContents.insertCSS(HIDE_CURSOR_CSS).catch(() => {});
             webContents.on("did-finish-load", hideCursor);
@@ -244,6 +264,7 @@ function createOutputManager({ screen, settings, getOrigin, openWindow = null, o
             bounds: win.getBounds(),
             destroyed: win.isDestroyed(),
             skipTaskbar: offTaskbar.has(win),
+            alwaysOnTop: Boolean(win.isAlwaysOnTop && win.isAlwaysOnTop()),
         })),
     };
 }
