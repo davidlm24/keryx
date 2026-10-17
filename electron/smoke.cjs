@@ -1342,7 +1342,9 @@ async function checkConsole(webContents, { live, outputs }) {
             const row = document.querySelector(".bpick-verses .bverses");
             if (!row || getComputedStyle(row).display === "none") return "dobrada";
             const cells = [...row.querySelectorAll(".verse-cells button")];
-            const sel = cells.filter((b) => b.classList.contains("is-prev")).map((b) => b.textContent);
+            // The cell's number; its state for screen readers rides in a .kx-sr span (#263).
+            const num = (b) => { const c = b.cloneNode(true); c.querySelectorAll(".kx-sr").forEach((n) => n.remove()); return c.textContent.trim(); };
+            const sel = cells.filter((b) => b.classList.contains("is-prev")).map(num);
             return cells.length === 5 && sel.join(",") === "16" ? true : { cells: cells.length, sel };
         })()`);
         await click(".bpick-books .kx-seg button", "Nomes");
