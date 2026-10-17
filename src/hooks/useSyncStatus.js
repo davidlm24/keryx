@@ -1,11 +1,15 @@
 import { useEffect, useSyncExternalStore } from "react";
+import { sameSyncStatus } from "@/lib/console/syncView";
 
 // The sync's status (electron/syncControl.cjs `status`), read by the top
-// bar's cloud, the Biblioteca's "parece repetida" and Configurações ›
-// Sincronização: one poll for the whole window while anyone listens, every
-// few seconds (a pass runs every 30 s; "Sincronizar agora" and the section's
-// actions hand their answer in at once with setSyncStatus). null until the
-// first answer, and outside the desktop app.
+// bar's cloud, the Biblioteca's "parece repetida", the PDF pages' backfill
+// and Configurações › Sincronização: one poll for the whole window while
+// anyone listens, every few seconds (a pass runs every 30 s; "Sincronizar
+// agora" and the section's actions hand their answer in at once with
+// setSyncStatus). null until the first answer, and outside the desktop app.
+// An answer like the last one changes nothing (sameSyncStatus): the console
+// stays still between passes, and a caller that needs one value reads it
+// with useSyncStatusSelect, so only that value changing wakes it.
 
 const POLL_MS = 4000;
 let status = null;
@@ -25,6 +29,7 @@ const emit = () => { for (const fn of listeners) fn(); };
 // An answer the section already has (an action's result): no wait for the poll.
 export function setSyncStatus(next) {
     if (!next || typeof next !== "object") return;
+    if (sameSyncStatus(status, next)) return;
     status = next;
     emit();
 }
@@ -44,7 +49,8 @@ function subscribe(fn) {
     return () => listeners.delete(fn);
 }
 
-export function useSyncStatus() {
+// The poll runs while at least one component listens.
+function usePoll() {
     useEffect(() => {
         users += 1;
         if (users === 1 && syncBridge()) {
@@ -59,5 +65,16 @@ export function useSyncStatus() {
             }
         };
     }, []);
+}
+
+export function useSyncStatus() {
+    usePoll();
     return useSyncExternalStore(subscribe, () => status, () => null);
+}
+
+// One value of the status, never a new object (a string, a boolean, null):
+// useSyncStatusSelect((st) => st?.folder || null).
+export function useSyncStatusSelect(select) {
+    usePoll();
+    return useSyncExternalStore(subscribe, () => select(status), () => select(null));
 }
