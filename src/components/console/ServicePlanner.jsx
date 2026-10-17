@@ -267,7 +267,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         </div>
                         <span className="k">Tema do culto</span>
                         <div className="pl-wall">
-                            <ThemeChip value={look.theme_id} now={c.now}
+                            <ThemeChip value={look.theme_id}
                                 onPick={(id) => saveSvc({ theme_id: id }, id ? "Tema do culto salvo · fica em uso ao escolher o culto." : "O culto fica sem tema próprio.")} />
                         </div>
                     </div>

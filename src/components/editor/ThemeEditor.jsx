@@ -61,7 +61,7 @@ const pick = (row) => { const out = { ...BLANK }; for (const k of FIELDS) if (ro
 // Cancelar and Salvar tema as its actions; ⧉ Destacar from the window, or
 // onDetach) and no footer. Both hosts — the console's window and a detached
 // /Janela — mount it hosted; unhosted it keeps the panel header and footer.
-export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
+export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colAjustes = useWinCol("theme.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
     const client = useQueryClient();
@@ -203,7 +203,7 @@ export default function ThemeEditor({ say, now, themeId, onClose, onSaved, onSwi
 
     // The sample the canvas dresses with the draft (the real renderer on
     // real ops, as the old Configurações editor did).
-    const madeAt = useRef(now);
+    const madeAt = useRef(keryx.live.now());
     const doc = useMemo(() => {
         if (!draft) return null;
         try {

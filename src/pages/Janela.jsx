@@ -29,7 +29,7 @@ import { WinCtx, useLiveRegion } from "@/components/console/kx";
 import { winPage } from "@/components/console/WinPages";
 import { useStamp, useToast, useLiveOps, THEME_IN_USE_KEY } from "@/components/console/useConsole";
 import { useLibrary, useRundown, pickDefaultService } from "@/components/console/useConsoleData";
-import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { useLiveState } from "@/hooks/useLiveState";
 import { useChurchLogo } from "@/hooks/useChurchLogo";
 import { useWindowTitle } from "@/hooks/useChurch";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
@@ -65,12 +65,12 @@ function useThemeInUse() {
 }
 
 // What the pages need of a console, without the console: the live state,
-// the clock, the stamp, a toast and the ops any window may run (useLiveOps);
-// the Prévia is the CONSOLE's — the page's "Pôr na prévia" goes there, and
-// `prev` is what the console says it holds (console.prev).
+// the stamp, a toast and the ops any window may run (useLiveOps); no ticking
+// clock, as in useConsole (what shows the time keeps its own). The Prévia is
+// the CONSOLE's — the page's "Pôr na prévia" goes there, and `prev` is what
+// the console says it holds (console.prev).
 function useJanelaConsole() {
     const live = useLiveState();
-    const now = useLiveNow(1000);
     const themeId = useThemeInUse();
     const { stamp, bgPrefs } = useStamp(themeId);
     const { toast, toastAction, say, holdToast } = useToast();
@@ -88,7 +88,7 @@ function useJanelaConsole() {
         if (relaySend("janela", "prev.set", { stage: stage || null })) setPrevMirror(stage || null);
         else say("Não foi possível pôr na Prévia do console.");
     }, [say]);
-    return { live, now, cur: live, bgPrefs, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
+    return { live, cur: live, bgPrefs, themeId, prev, setPrev, ...ops, stamp, toast, toastAction, say, holdToast, detached: true };
 }
 
 // The stack this window opens with: its params (nav.js stackFromParams), or,

@@ -147,10 +147,10 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     // console's (Enter sends, ←/→ walk the slides, B, L, C).
     if (escRef) escRef.current = (mode) => onClose(mode === "all");
 
-    const { cur, prev, now, locked, stamp } = c;
+    const { cur, prev, locked, stamp } = c;
     // Built with a time fixed per prepared stage, never the ticking clock:
     // a new startedAt each second replayed the slide's transition (the
-    // Prévia "pulsed"). A timer still counts (the renderer gets `now`).
+    // Prévia "pulsed"). A timer still counts (the renderer's own clock).
     const madeAt = useMemo(() => Date.now(), [prev]); // eslint-disable-line react-hooks/exhaustive-deps
     const pdoc = useMemo(() => previewDoc(prev, cur, madeAt, stamp), [prev, cur, madeAt, stamp]);
     const airId = liveStageId(cur);
@@ -249,8 +249,8 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
             <div className="col" style={colMaterial.style}>
                 <Panel title={<>Projetar <span className="kx-count">· o mesmo Programa e Prévia do console</span></>} bodyStyle={{ display: "flex", flexDirection: "column", overflow: "auto" }}>
                     <div className="sv-mons">
-                        <Monitor state={locked ? "rh" : "air"} caption={captionOf(cur, locked ? "No ar · travado" : "No ar")} live={cur} now={now} logoUrl={logoUrl} motion />
-                        <Monitor state={prev ? "prev" : ""} caption={prev ? `Prévia · ${prev.title}${prev.slides?.length > 1 ? ` · ${prev.index + 1}/${prev.slides.length}` : ""}` : "Prévia"} live={pdoc} now={now} logoUrl={logoUrl}>
+                        <Monitor state={locked ? "rh" : "air"} caption={captionOf(cur, locked ? "No ar · travado" : "No ar")} live={cur} logoUrl={logoUrl} motion />
+                        <Monitor state={prev ? "prev" : ""} caption={prev ? `Prévia · ${prev.title}${prev.slides?.length > 1 ? ` · ${prev.index + 1}/${prev.slides.length}` : ""}` : "Prévia"} live={pdoc} logoUrl={logoUrl}>
                             {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
                         </Monitor>
                     </div>
