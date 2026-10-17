@@ -1002,7 +1002,14 @@ async function checkConsole(webContents, { live, outputs }) {
             if (!input) return "sem campo";
             input.focus();
             const field = input.closest(".kx-field");
-            const ok = getComputedStyle(field).outlineStyle === "none" && getComputedStyle(input).outlineStyle === "none";
+            // A focused field draws a quiet fg-3 line (C-21, #244): never the gold.
+            const probe = document.createElement("span");
+            probe.style.color = "var(--brand)";
+            document.body.appendChild(probe);
+            const gold = getComputedStyle(probe).color;
+            probe.remove();
+            const fs = getComputedStyle(field);
+            const ok = getComputedStyle(input).outlineStyle === "none" && (fs.outlineStyle === "none" || fs.outlineColor !== gold) && !fs.boxShadow.includes(gold);
             input.blur();
             return ok;
         })()`);
@@ -2156,7 +2163,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // library (the Programa's header button is gone). A double click
         // takes it; with nothing on air it goes on the Fundo at once.
         const openWallpaper = async () => {
-            const pencil = await js("(() => { const row = [...document.querySelectorAll('.console .kx-layer')].find((n) => ((n.querySelector('.kx-layer-name') || {}).textContent || '') === 'Fundo'); const b = row && row.querySelector('.layer-edit'); if (b) b.click(); return Boolean(b); })()");
+            const pencil = await js("(() => { const row = [...document.querySelectorAll('.console .kx-layer')].find((n) => n.getAttribute('aria-label') === 'Fundo'); const b = row && row.querySelector('.layer-edit'); if (b) b.click(); return Boolean(b); })()");
             if (!pencil) return false;
             await waitFor(() => js("Boolean(document.querySelector('.console .ctx-menu[role=menu]'))"), 3000);
             await click(".console .ctx-menu button", "Trocar o papel de parede");
@@ -2226,7 +2233,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // song's picture); Destravar frees it again.
         await js(`window.keryxDesktop.db.call("Song", "update", [${JSON.stringify(song.id)}, { background_image: "keryx-media://bundled/backgrounds/1557672172-298e090bd0f1.webp" }])`);
         await sleep(600);
-        await js("(() => { const row = [...document.querySelectorAll('.kx-layer')].find((n) => n.textContent.includes('Fundo')); const b = row && row.querySelector('button[aria-label=\"Travar\"]'); if (b) b.click(); return Boolean(b); })()");
+        await js("(() => { const row = [...document.querySelectorAll('.kx-layer')].find((n) => n.textContent.includes('Fundo')); const b = row && row.querySelector('button[aria-label^=\"Travar\"]'); if (b) b.click(); return Boolean(b); })()");
         result.fundoLocked = await waitFor(() => (live.get().lockedLayers || []).includes("background"), 4000);
         await dblclick(".kx-row", "Canto do console");
         await sleep(800);
@@ -2583,12 +2590,12 @@ async function checkConsole(webContents, { live, outputs }) {
         // Marked in the reading, and listed (with its text) under Anotações.
         const verseMarked = await waitFor(() => js("Boolean(document.querySelector('.reading .kx-verse.has-note[data-verse=\"16\"]'))"));
         await click(".bband-lists .bchip", "Anotações");
-        result.noteMarked = verseMarked && await waitFor(() => js("[...document.querySelectorAll('.blist-pop .kx-row')].some((n) => n.textContent.includes('Nota do smoke'))"));
+        result.noteMarked = verseMarked && await waitFor(() => js("[...document.querySelectorAll('.blist-pop [data-mi]')].some((n) => n.textContent.includes('Nota do smoke'))"));
         await click(".bband-lists .bchip", "Anotações");
         await js("(() => { const b = [...document.querySelectorAll('.console .main button')].find((x) => x.getAttribute('title') === 'Favoritar'); if (b) b.click(); return Boolean(b); })()");
         result.favSaved = await waitFor(async () => (await notesOf("favorite")).some((n) => n.reference === "João 3:16"), 6000);
         await click(".bband-lists .bchip", "Favoritos");
-        result.favListed = await waitFor(() => js("[...document.querySelectorAll('.blist-pop .kx-row')].some((n) => n.textContent.includes('João 3:16'))"));
+        result.favListed = await waitFor(() => js("[...document.querySelectorAll('.blist-pop [data-mi]')].some((n) => n.textContent.includes('João 3:16'))"));
         await click(".bband-lists .bchip", "Favoritos");
         await press("/");
         await waitFor(() => js("Boolean(document.querySelector('.palette input'))"));
