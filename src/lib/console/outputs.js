@@ -61,6 +61,21 @@ export function forget(seen, id) {
     return next;
 }
 
+// Whether a poll's answer (the main process's displays and output windows)
+// says the same as the last one. Every answer is a new object over IPC;
+// keeping the old one lets a poll that finds everything as it was leave the
+// console alone, as remember does for the session memory. Plain data; a key
+// order that differs counts as a change, which only costs one render.
+export function sameAnswer(a, b) {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    try {
+        return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+        return false;
+    }
+}
+
 const hhmm = (t) => {
     const d = new Date(t);
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;

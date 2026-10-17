@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Monitor, Panel } from "./kx";
 import PlayerBar from "./PlayerBar";
@@ -156,15 +157,16 @@ export function PlayerSlot({ c, picked, setPicked, videoScreens, projectorOpen }
 // (.liveblock): as wide as its panel allows, limited by the 16:9 of its
 // height. The Prévia is its own module (PreviaPanel); the dock places both.
 export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, onProgMenu, items = [], multiview = null, player = null, pill = null, still = false }) {
-    const { cur, now, locked } = c;
+    const { cur, locked } = c;
     const [dropOn, setDropOn] = useState(null);
     // Under a floating view (owner 2026-10-14) the monitor draws one still
     // frame: no video, no ticking clock (a new `now` each second replays the
     // slide's transition, as the Prévia found) — the air itself never pauses,
-    // only this preview. The frame is the moment the view opened.
+    // only this preview. The frame is the moment the view opened. Otherwise
+    // no `now`: the monitor keeps its own clock (ScreenRenderer, MultiView).
     const frozen = useRef(null);
-    if (still) { if (frozen.current == null) frozen.current = now; } else frozen.current = null;
-    const shownNow = still ? frozen.current : now;
+    if (still) { if (frozen.current == null) frozen.current = keryx.live.now(); } else frozen.current = null;
+    const shownNow = still ? frozen.current : undefined;
     // Locked: the screens keep this image, blue (they are not following). On
     // air there is no frame: the red lives in the pill's dot and title and on
     // the on-air slide and item; only a failure (amber) or a lock (blue) frames it.
@@ -214,10 +216,10 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
 export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notesInTab = false, className = "" }) {
     // A file the sync has not brought yet: said over the Prévia, not drawn broken.
     const pending = usePendingMedia();
-    const { cur, prev, now, locked, stamp } = c;
+    const { cur, prev, locked, stamp } = c;
     // Built with a time fixed per prepared stage, never the ticking clock:
     // a new startedAt each second replayed the slide's transition (the
-    // Prévia "pulsed"). A timer still counts (the renderer gets `now`).
+    // Prévia "pulsed"). A timer still counts (the renderer's own clock).
     const madeAt = useMemo(() => Date.now(), [prev]); // eslint-disable-line react-hooks/exhaustive-deps
     const pdoc = useMemo(() => previewDoc(prev, cur, madeAt, stamp), [prev, cur, madeAt, stamp]);
     const [dropOn, setDropOn] = useState(null);
@@ -246,7 +248,7 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
     };
     return (
         <Panel bare className={`prev-panel ${className}`}>
-            <Monitor className={railVars ? "kp-out" : ""} style={railVars || undefined} state={locked ? "rh" : prev ? "prev" : ""} noCap live={railDoc} now={now} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu, onDoubleClick: () => { if (prev && !locked) onSend?.(); } }}>
+            <Monitor className={railVars ? "kp-out" : ""} style={railVars || undefined} state={locked ? "rh" : prev ? "prev" : ""} noCap live={railDoc} logoUrl={logoUrl} dropProps={{ ...dropProps, onContextMenu: onPrevMenu, onDoubleClick: () => { if (prev && !locked) onSend?.(); } }}>
                 {prevCap}
                 {dropOn && <div className="kx-drop-hint"><span>Solte para preparar</span></div>}
                 {!prev && <div className="kx-screen-empty">Nada na prévia</div>}

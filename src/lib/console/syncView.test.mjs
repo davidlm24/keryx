@@ -1,7 +1,7 @@
 // node --test src/lib/console/syncView.test.mjs   (npm test)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ago, syncStep, syncState, computerRows, sinceLine } from "./syncView.js";
+import { ago, syncStep, syncState, computerRows, sinceLine, sameSyncStatus } from "./syncView.js";
 
 const NOW = Date.parse("2026-10-16T20:00:00.000Z");
 const minus = (ms) => new Date(NOW - ms).toISOString();
@@ -56,4 +56,23 @@ test("the computers: this one first, the others with when they wrote, the ones w
         ["VELHO", "off", "tirado há 1 hora por este computador", "tirado"],
     ]);
     assert.equal(sinceLine(st), "1 mudança enviada · 31 recebidas");
+});
+
+test("sameSyncStatus: a poll that says nothing new changes nothing", () => {
+    // Every poll's answer is a new object from IPC, with the same content between passes.
+    const again = JSON.parse(JSON.stringify(base));
+    assert.notEqual(again, base);
+    assert.equal(sameSyncStatus(base, again), true);
+    assert.equal(sameSyncStatus(base, base), true);
+    // A computer that does not sync: the same answer every 4 s.
+    const off = { available: true, folder: null, paused: false, paired: false, since: { sent: 0 }, engine: { state: "idle" } };
+    assert.equal(sameSyncStatus(off, JSON.parse(JSON.stringify(off))), true);
+    // A pass ran, a counter moved, paused, the folder chosen: each is new.
+    assert.equal(sameSyncStatus(base, { ...base, engine: { ...base.engine, lastPass: minus(1000) } }), false);
+    assert.equal(sameSyncStatus(base, { ...base, since: { ...base.since, applied: 32 } }), false);
+    assert.equal(sameSyncStatus(base, { ...base, paused: true }), false);
+    assert.equal(sameSyncStatus(off, { ...off, folder: "G:\\Meu Drive\\KERYX" }), false);
+    // The first answer is never the same as nothing.
+    assert.equal(sameSyncStatus(null, base), false);
+    assert.equal(sameSyncStatus(base, null), false);
 });

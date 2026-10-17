@@ -5,6 +5,7 @@ import { useConfirm } from "../ConfirmDialog";
 import { useLibrary } from "../useConsoleData";
 import { FormRow, Switch, useBridge, formatWhen, desktopOnly } from "./parts";
 import { useSyncStatus, setSyncStatus } from "@/hooks/useSyncStatus";
+import { useLiveNow } from "@/hooks/useLiveState";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { syncStep, syncState, computerRows, sinceLine, ago } from "@/lib/console/syncView";
 import { parseCode, codeMessage } from "@shared/syncCode.mjs";
@@ -19,6 +20,9 @@ import { duplicateSongs, keepPairs, mergePlan } from "@shared/syncDuplicates.mjs
 export default function SyncSection({ c }) {
     const sync = useBridge("sync");
     const st = useSyncStatus();
+    // Its "há 12 s" count by the second on the section's own clock (the
+    // console around it re-renders only on real changes).
+    useLiveNow(1000, Boolean(st?.folder));
     const [busy, setBusy] = useState("");
     const [made, setMade] = useState(null);
     const [inspect, setInspect] = useState(null);

@@ -46,8 +46,7 @@ import { withSize } from "@/lib/console/winLayout";
 import { PAGE_TITLES, winSize, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec, janelaName } from "@/lib/console/nav";
 import { setIdleMode } from "@/lib/console/idle";
 import { resolveSection } from "@/lib/console/settings";
-import { useSyncStatus } from "@/hooks/useSyncStatus";
-import { syncState } from "@/lib/console/syncView";
+import { useSyncStatusSelect } from "@/hooks/useSyncStatus";
 import { duplicateSongs } from "@shared/syncDuplicates.mjs";
 import { newServiceDefaults, defaultDuration } from "@/lib/console/serviceDefaults";
 import { ContextMenuProvider, ContextMenuLayer, menuRequest } from "@/components/console/ContextMenu";
@@ -306,13 +305,14 @@ export default function Console() {
     const [localLayout, setLayoutState] = useState(() => loadLayout(""));
     const prefs = usePrefs();
     useMigratePrefs();
-    // The sync (Configurações › Sincronização): its cloud in the top bar and
-    // the songs that look repeated, both only on a computer that syncs.
-    const syncSt = useSyncStatus();
-    const syncTop = syncSt?.folder ? syncState(syncSt) : null;
-    const dupIds = useMemo(() => (syncSt?.folder
+    // The sync (Configurações › Sincronização): the songs that look repeated,
+    // only on a computer that syncs. Only the folder is read here, so the
+    // poll's answers never re-render the console; the top bar's cloud reads
+    // the rest itself (SyncCloud in TopBar.jsx).
+    const syncFolder = useSyncStatusSelect((st) => st?.folder || null);
+    const dupIds = useMemo(() => (syncFolder
         ? new Set(duplicateSongs(data.songs, prefs.song_duplicates_kept).flatMap((g) => g.songs.map((s) => s.id)))
-        : null), [syncSt?.folder, data.songs, prefs.song_duplicates_kept]);
+        : null), [syncFolder, data.songs, prefs.song_duplicates_kept]);
     const layout = useMemo(() => ({ ...localLayout, density: prefs.console_density, hidden: hiddenMap(prefs.console_hidden_modules) }),
         [localLayout, prefs.console_density, prefs.console_hidden_modules]);
     // ?planner=<id> (the old /Services/:id) opens on that culto.
@@ -1259,11 +1259,17 @@ export default function Console() {
     };
     const renderModule = (id, fold) => (modulePanels[id] ? React.cloneElement(modulePanels[id], { key: id, fold }) : null);
 
-    // The service clock in the top bar, and how late the item on air runs.
+    // The service clock in the top bar, and how late the item on air runs, at
+    // the time the bar's own clock gives (TopBar's Clocks ticks, never the
+    // console).
     const playAirIdx = playable.findIndex((i) => i.id === airItemId);
-    const late = service ? serviceTiming({ items: playable, times: plannedTimes(service, playable), airIdx: playAirIdx, startedAt: playAirIdx >= 0 ? log[airItemId]?.start : null, now: c.now }).late : 0;
+    const svcTimes = service ? plannedTimes(service, playable) : null;
+    const svcStart = playAirIdx >= 0 ? log[airItemId]?.start : null;
     const showForecast = useShowForecast();
-    const svc = serviceClock({ service, seconds: setPlan.seconds, late, now: c.now, forecast: showForecast, compact: true });
+    const svcAt = (now) => {
+        const late = service ? serviceTiming({ items: playable, times: svcTimes, airIdx: playAirIdx, startedAt: svcStart, now }).late : 0;
+        return serviceClock({ service, seconds: setPlan.seconds, late, now, forecast: showForecast, compact: true });
+    };
 
     // The palette opens centred (owner decision 2026-10-11); the dimmed scrim
     // keeps the console readable behind it.
@@ -1383,8 +1389,8 @@ export default function Console() {
         <ConfirmContext.Provider value={askConfirm}>
         <div className={`kx console is-${tier} is-${density} ${c.locked ? "is-locked" : ""} ${editing ? "is-editing" : ""}`} onClick={onMouseClick}>
             <div className="winbar" aria-hidden="true">KERYX</div>
-            <TopBar inert={winOpen} c={c} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svc={svc} onPlanner={() => openPlanner(serviceId)}
-                sync={syncTop} onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || libReq)} />
+            <TopBar inert={winOpen} menus={menus} env={env} setEnv={setEnv} open={open} setOpen={setOpen} outsLabel={health.status.label} outsCompact={health.status.compact} outsState={health.status.state} logoUrl={logoUrl} unread={upd.unread} svcAt={svcAt} onPlanner={() => openPlanner(serviceId)}
+                onSync={() => openSettings("sincronizacao")} menuKeysOff={winOpen || Boolean(ctxMenu || confirmReq || ask || libReq)} />
 
             {/* A failing output: one line under the top bar, in every view, never over a monitor. One at a time (outputHealth picks it). */}
             {health.banner?.kind === "reconnecting" && (
