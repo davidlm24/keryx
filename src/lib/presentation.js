@@ -43,9 +43,13 @@ export function needsPages(row) {
 // one waits PAGES_WAIT_MS from when the row was made, and the pages usually
 // arrive with the row's next change. `mine`: the row was made in this
 // window (importMediaFiles). Rows from before (no date, or older) go now.
+// `syncs`: this computer syncs (a folder and the church's code). Only then
+// can a row come from another computer, so a computer that does not goes
+// now — a PDF sent from a detached Mídia window included; null (not known
+// yet) waits, as before.
 export const PAGES_WAIT_MS = 5 * 60 * 1000;
-export function pagesWait(row, { mine = false, now = Date.now() } = {}) {
-    if (mine) return 0;
+export function pagesWait(row, { mine = false, syncs = null, now = Date.now() } = {}) {
+    if (mine || syncs === false) return 0;
     const made = Date.parse(row?.created_date || "");
     if (!Number.isFinite(made)) return 0;
     return Math.max(0, made + PAGES_WAIT_MS - now);

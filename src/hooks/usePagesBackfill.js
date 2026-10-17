@@ -3,6 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import { needsPages, pagesWait } from "@/lib/presentation";
 import { madeHere } from "@/lib/mediaImport";
 import { savePages } from "@/lib/pdfPagesCapture";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 
 const PAUSE_MS = 300;
 
@@ -27,19 +28,23 @@ const tried = new Set();
 // Gives every PDF of the Mídia its pages as pictures (Media.pages), one PDF
 // at a time: those sent now (their row arrives through subscribe) and the
 // ones from before there were presentations. A PDF sent on another computer
-// waits a few minutes for that computer's pages (pagesWait). The console only, where files
-// can be sent; never a screen on the network.
+// waits a few minutes for that computer's pages (pagesWait) — only on a
+// computer that syncs: any other makes them at once. The console only, where
+// files can be sent; never a screen on the network.
 export function usePagesBackfill(rows) {
     const [tick, setTick] = useState(0);
     const [busy, setBusy] = useState(false);
+    const st = useSyncStatus();
+    const syncs = st ? Boolean(st.folder && st.paired) : null;
     useEffect(() => {
         if (busy || !keryx.isDesktop || keryx.isNetworkScreen) return undefined;
         const due = rows.filter((m) => needsPages(m) && !tried.has(`${m.id}|${m.file_url}`));
         const now = Date.now();
-        const row = due.find((m) => pagesWait(m, { mine: madeHere.has(m.id), now }) === 0);
+        const waitOf = (m) => pagesWait(m, { mine: madeHere.has(m.id), syncs, now });
+        const row = due.find((m) => waitOf(m) === 0);
         if (!row) {
             // A PDF from another computer: its pages are probably on the way.
-            const wait = Math.min(...due.map((m) => pagesWait(m, { mine: madeHere.has(m.id), now })));
+            const wait = Math.min(...due.map(waitOf));
             if (!Number.isFinite(wait)) return undefined;
             const later = setTimeout(() => setTick((n) => n + 1), wait + 500);
             return () => clearTimeout(later);
@@ -57,5 +62,5 @@ export function usePagesBackfill(rows) {
                 .finally(() => { setBusy(false); setTick((n) => n + 1); });
         }, PAUSE_MS);
         return () => clearTimeout(id);
-    }, [rows, busy, tick]);
+    }, [rows, busy, tick, syncs]);
 }

@@ -88,3 +88,12 @@ test("pagesWait: a PDF sent here goes now; one from another computer waits for t
     assert.equal(pagesWait(at(PAGES_WAIT_MS + 1), { now }), 0, "nobody sent them: this computer makes them");
     assert.equal(pagesWait({ type: "pdf" }, { now }), 0, "rows from before have no date to wait from");
 });
+
+test("pagesWait: only a computer that syncs waits; not known yet waits as before", () => {
+    const now = Date.parse("2026-10-16T20:00:00.000Z");
+    const fresh = { type: "pdf", created_date: new Date(now - 1000).toISOString() };
+    assert.equal(pagesWait(fresh, { syncs: false, now }), 0, "no other computer can send its pages");
+    assert.equal(pagesWait(fresh, { syncs: true, now }), PAGES_WAIT_MS - 1000);
+    assert.equal(pagesWait(fresh, { syncs: null, now }), PAGES_WAIT_MS - 1000, "the status has not come yet");
+    assert.equal(pagesWait(fresh, { mine: true, syncs: true, now }), 0);
+});

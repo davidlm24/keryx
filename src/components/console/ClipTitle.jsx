@@ -9,6 +9,10 @@ export default function ClipTitle({ text, className = "" }) {
     return (
         <span className={`kx-clip ${className}`}>
             <span className="kx-clip-h">{head}</span>
+            {/* The space stays in the text (screen readers, copying, the
+                smoke's title checks); a flex box draws none of it, the
+                tail's margin is the gap. */}
+            {tail && " "}
             {tail && <span className="kx-clip-t">{tail}</span>}
         </span>
     );
