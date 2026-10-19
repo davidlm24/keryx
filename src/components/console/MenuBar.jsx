@@ -1,6 +1,6 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { MenuList } from "./Menu";
-import { nextMenu } from "@/lib/console/menuBar";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { MenuList, usePlaced } from "./Menu";
+import { flattenMenus, nextMenu } from "@/lib/console/menuBar";
 import { ACCESS_KEYS, accessParts, menuBarKey, altTap } from "@/lib/console/menuNav";
 
 // The menu bar (owner 2026-10-15, Rodada D4, "Menus novos" = A; the model
@@ -8,12 +8,13 @@ import { ACCESS_KEYS, accessParts, menuBarKey, altTap } from "@/lib/console/menu
 // logo; the open menu is the console's `open` ("mb:<id>"), so Esc and the
 // scrim close it like any popover. With one open, pointing at another
 // switches to it, and ← / → walk them, as in a desktop program. On a narrow
-// window the bar folds away (console.css) and the logo's menu has it all.
+// window the bar folds away (console.css) and the top bar's Menu button has
+// it all (MenusPop below, Rodada M0).
 //
 // The keyboard (audit C-14, 2026-10-16), as in Windows: F10 or Alt alone
 // puts the focus on the bar (← / → walk it, ↓ / Enter open, Esc leaves it);
 // Alt + the underlined letter opens that menu — C Culto, M Música, D Mídia,
-// F Ferramentas (src/lib/console/menuNav.js; the letter is underlined only
+// F Ferramentas, A Ajuda (src/lib/console/menuNav.js; the letter is underlined only
 // while Alt is held or the bar has the keyboard, so it reads as before).
 // An open menu has the focus (its first item), → enters a submenu, ← leaves
 // it, and ← / → elsewhere go to the next menu.
@@ -32,9 +33,11 @@ export function MenuBarButtons({ menus, open, setOpen, blocked = false }) {
     // F10, Alt alone and Alt + letter, from anywhere in the console.
     useEffect(() => {
         let tap = null;
-        const free = () => !live.current.blocked && (!live.current.open || String(live.current.open).startsWith("mb:"));
+        const free = () => !live.current.blocked && (!live.current.open || live.current.open === "menus" || String(live.current.open).startsWith("mb:"));
+        // Folded: the Menu button's popover is the bar (it toggles).
+        const toggleMenus = () => live.current.setOpen(live.current.open === "menus" ? null : "menus");
         const focusBar = () => {
-            if (!shown()) { live.current.setOpen("menu"); return; } // folded: the logo's menu has it all
+            if (!shown()) { toggleMenus(); return; }
             live.current.setOpen(null);
             const list = buttons();
             if (list.includes(document.activeElement)) { document.activeElement.blur(); return; }
@@ -49,7 +52,8 @@ export function MenuBarButtons({ menus, open, setOpen, blocked = false }) {
             if (!k || !free()) return;
             e.preventDefault();
             if (k === "bar") focusBar();
-            else live.current.setOpen(shown() ? `mb:${k.slice(5)}` : "menu");
+            else if (shown()) live.current.setOpen(`mb:${k.slice(5)}`);
+            else toggleMenus();
         };
         const onUp = (e) => {
             const r = altTap(tap, e);
@@ -126,4 +130,27 @@ export function MenuBarPop({ menus, open, setOpen }) {
         <MenuList listRef={box} key={menu.id} className="pop kx-pop mb-pop" label={menu.label} items={menu.items} style={{ left, top: "var(--pop-top)" }}
             onClose={() => setOpen(null)} onArrow={(d) => setOpen(`mb:${nextMenu(menu.id, d)}`)} />
     );
+}
+
+// The Menu button's popover (Rodada M0): the bar's four menus stacked and all
+// open in one list, submenus inline (flattenMenus), anchored to the button
+// that shows exactly when the bar is hidden (console.css, one container
+// query). The same handlers as the bar. Placed by usePlaced (inside the
+// window, scrolling when it is taller than the room), it takes the focus, the
+// arrows walk it, Esc and Tab close it and so does a pick. When the window
+// grows past the width where the bar is back the button goes, and so does it.
+export function MenusPop({ menus, open, setOpen, onAllServices }) {
+    const on = open === "menus";
+    const box = useRef(null);
+    const anchor = useMemo(() => ({ get current() { return document.querySelector(".topbar .tb-menubtn"); } }), []);
+    const items = useMemo(() => flattenMenus(menus, { onAllServices }), [menus, onAllServices]);
+    usePlaced(box, anchor, { open: on, align: "start" });
+    useEffect(() => {
+        if (!on) return undefined;
+        const folded = () => { if (!anchor.current?.offsetParent) setOpen(null); };
+        window.addEventListener("resize", folded);
+        return () => window.removeEventListener("resize", folded);
+    }, [on, anchor, setOpen]);
+    if (!on) return null;
+    return <MenuList listRef={box} id="tb-menus-pop" className="kx-pop addmenu-pop menus-pop" label="Menu" items={items} onClose={() => setOpen(null)} />;
 }

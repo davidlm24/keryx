@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, Monitor, WinBar } from "./kx";
+import { CfgGroup, setGroupOpen } from "./settings/parts";
 import { previewDoc, captionOf, TeacherNotes } from "./CenterPanel";
 import { stageFromMaterial, stageFromTool, liveStageId, stageAt } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
@@ -37,7 +38,6 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     const classes = useQuery({ queryKey: CLASSES, queryFn: () => keryx.entities.BibleSchoolClass.list("name") }).data ?? EMPTY;
     const materials = useQuery({ queryKey: MATERIALS, queryFn: () => keryx.entities.BibleMaterial.list("-created_date") }).data ?? EMPTY;
     const [classId, setClassId] = useState(() => { try { return localStorage.getItem("keryx.school.class") || null; } catch { return null; } });
-    const [showForm, setShowForm] = useState(false);
     const [student, setStudent] = useState("");
     const [onlyClass, setOnlyClass] = useState(true);
     const ask = useConfirm();
@@ -61,7 +61,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     const newClass = async () => {
         try {
             const row = await keryx.entities.BibleSchoolClass.create({ name: `Turma ${classes.length + 1}`, age_group: "adults", students: [] });
-            setClassId(row.id); setShowForm(true); refresh();
+            setClassId(row.id); setGroupOpen("school.turma", true, false); refresh();
             c.say("Nova turma: dê um nome e a faixa etária.");
         } catch (err) { fail(err); }
     };
@@ -100,7 +100,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
     // click acts on the row under the pointer; on a focused row Delete asks
     // to take it out and F2 renames (gridNav.js rowKey).
     const classItems = (k) => [
-        { label: "Dados da turma", icon: "edit", onSelect: () => { setClassId(k.id); setShowForm(true); } },
+        { label: "Dados da turma", icon: "edit", onSelect: () => { setClassId(k.id); setGroupOpen("school.turma", true, false); } },
         askText && { label: "Renomear", kbd: "F2", onSelect: () => renameClass(k) },
         { label: "Excluir turma…", icon: "trash", kbd: "Delete", onSelect: () => removeClass(k) },
     ];
@@ -189,8 +189,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                         ))}
                         {cls && (
                             <>
-                                <div className="listhead"><span className="kx-section">{cls.name}</span><span style={{ flex: 1 }} /><Btn small on={showForm} onClick={() => setShowForm(!showForm)}>{showForm ? "Fechar dados" : "Dados da turma"}</Btn></div>
-                                {showForm && (
+                                <CfgGroup id="school.turma" title="Dados da turma" summary={[cls.teacher_name, cls.room].filter(Boolean).join(" · ")} defaultOpen={false}>
                                     <div className="frm sv-frm" key={cls.id}>
                                         <span className="k">Nome</span><input className="pl-input" defaultValue={cls.name} aria-label="Nome da turma" onBlur={(e) => e.target.value.trim() && e.target.value !== cls.name && saveClass({ name: e.target.value.trim() })} />
                                         <span className="k">Faixa</span>
@@ -201,7 +200,7 @@ export default function SchoolView({ c, logoUrl, media, onSend, onAddToSetlist, 
                                         <span />
                                         <span><Btn small onClick={removeClass}>Excluir turma…</Btn></span>
                                     </div>
-                                )}
+                                </CfgGroup>
                                 <div className="listhead"><span className="kx-section">Alunos <span className="kx-count">· {(cls.students || []).length} · {presentCount(cls, today)} presentes hoje</span></span></div>
                                 {(cls.students || []).map((s, i) => (
                                     <div key={`${s.name}${i}`} className={`kx-row kx-row-1 kx-t sv-student ${isPresent(s, today) ? "is-here" : ""}`} role="button" tabIndex={0} onClick={() => togglePresence(i)} title="Clique marca ou desmarca a presença de hoje"

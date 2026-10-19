@@ -4,7 +4,7 @@ import Icon from "./Icon";
 import { ThemeThumb, NoBgMark, NO_BG_HINT, themePending, SYNC_WAIT_HINT } from "./library/BackgroundLibrary";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { PENDING_SAY } from "@/lib/pendingMedia";
-import { consoleThemes, defaultTheme, defaultChanges, themeName, themeHasBackground } from "@/lib/console/themes";
+import { consoleThemes, defaultTheme, defaultChanges, themeName, themeNote, themeHasBackground } from "@/lib/console/themes";
 import { bgFields } from "@/lib/console/backgroundSpec";
 import { pickTheme, applyThemeOnAir, songInHand } from "./themeActions";
 import { useContextMenu } from "./ContextMenu";
@@ -135,7 +135,9 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
             <div className={`tm-grid is-${thumb}`} role="list" aria-label="Temas">
                 {slots.map((t, k) => <span key={t ? t.id : `empty-${k}`} role="listitem" className="tm-slot">{t ? (
                     <button type="button" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={themeName(t)}
-                        title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""}${themeHasBackground(t) ? "" : ` · ${NO_BG_HINT}`}${themePending(t, pending) ? ` · fundo ${SYNC_WAIT_HINT}` : ""} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
+                        title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""}${themeHasBackground(t) ? "" : ` · ${NO_BG_HINT}`}${themePending(t, pending) ? ` · fundo ${SYNC_WAIT_HINT}` : ""}${themeNote(t) ? `
+${themeNote(t)}
+` : " · "}clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
                         onClick={() => inUse(t)} onDoubleClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                         <span className="fg-img"><ThemeThumb theme={t} /><NoBgMark theme={t} /></span>
                         {names && (t.id === def?.id || themeName(t, "")) && <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{themeName(t, "")}</span>}

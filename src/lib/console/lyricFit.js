@@ -1,26 +1,30 @@
 import { stripLine } from "../chords.js";
+import { sizeCqw } from "../textSize.js";
 
 // Will a slide's lines fit across the screen? The lyrics sit in 84% of the
 // screen's width (8% margin each side, src/components/screen/screen.css) at
-// a size in % of the width (ScreenRenderer SIZE_CQW). Geist averages about
-// 0.55 em per character, so a line longer than this wraps on the screens.
-// An estimate: a line of wide letters (M, W) wraps a little sooner.
+// a size in % of the width (src/lib/textSize.js: a number in cqw, or a
+// preset's name). Geist averages about 0.55 em per character (a church font
+// measures its own, fontMetrics.js emPerChar), so a line longer than this
+// wraps on the screens. An estimate: a line of wide letters (M, W) wraps a
+// little sooner; the renderer's hidden probe is the truth on screen.
 
-const SIZE_PCT = { xsmall: 2.4, small: 3, medium: 3.8, large: 4.8, xlarge: 5.8, xxlarge: 7 };
 const TEXT_WIDTH_PCT = 84;
-const EM_PER_CHAR = 0.55;
+export const EM_PER_CHAR = 0.55;
 
-// The characters that fit on one line at a font size ("large" if unknown).
-export function lineLimit(fontSize) {
-    const size = SIZE_PCT[fontSize] || SIZE_PCT.large;
-    return Math.floor(TEXT_WIDTH_PCT / (size * EM_PER_CHAR));
+// The characters that fit on one line at a font size (4.8 if unknown).
+// em: the font's average width per character; spacing: the theme's letter
+// spacing (em), added to every character.
+export function lineLimit(fontSize, { em = EM_PER_CHAR, spacing = 0 } = {}) {
+    const per = Math.max(0.2, (Number(em) || EM_PER_CHAR) + (Number(spacing) || 0));
+    return Math.floor(TEXT_WIDTH_PCT / (sizeCqw(fontSize) * per));
 }
 
 // -> { lines, chars, longest, limit, wraps }: wraps lists the 1-based
-// numbers of the lines that will break on screen.
-export function slideFit(text, fontSize) {
+// numbers of the lines that will break on screen. metrics: lineLimit's.
+export function slideFit(text, fontSize, metrics) {
     const rows = String(text || "").split("\n").map((l) => l.trim()).filter(Boolean);
-    const limit = lineLimit(fontSize);
+    const limit = lineLimit(fontSize, metrics);
     const lengths = rows.map((l) => [...l].length);
     return {
         lines: rows.length,

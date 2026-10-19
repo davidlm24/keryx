@@ -774,6 +774,19 @@ async function checkConsole(webContents, { live, outputs }) {
         await sleep(250);
         return true;
     };
+    // An item of the content's menus (Culto, Música, Mídia, Ferramentas): the
+    // logo's menu is the app's now (Rodada M0), so it comes from the bar's own
+    // menus when the bar is shown, else from the Menu button's popover (the bar
+    // folds away under 1240 px; both list the same items, menuBar.js).
+    const contentMenuItem = async (text) => {
+        const bar = await js("Boolean(document.querySelector('.topbar .tb-menus')?.offsetParent)");
+        if (!bar) { await click(".topbar .tb-menubtn", ""); return click(".kx-pop button", text); }
+        for (const id of ["culto", "musica", "midia", "ferramentas"]) {
+            await click(`.topbar .tb-menus [data-menu="${id}"]`, "");
+            if (await click(".kx-pop button", text)) return true;
+        }
+        return false;
+    };
     const dblclick = async (selector, text = "") => {
         const at = await js(`(() => {
             const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((n) => n.textContent.includes(${JSON.stringify(text)}));
@@ -2458,12 +2471,11 @@ async function checkConsole(webContents, { live, outputs }) {
         live.call("clear", {});
         await waitFor(() => !live.get().content);
 
-        // The planner inside the console: from the KERYX menu; the culto's name
+        // The planner inside the console: from the Culto menu; the culto's name
         // saves on blur, a section is added and dragged to the top, the team
         // gets a member, the setlist becomes a template that keeps contentId,
         // Esc goes back and the Setlist shows the section as a header.
-        await click(".topbar .markbtn", "");
-        await click(".kx-pop button", "Planejar o culto");
+        await contentMenuItem("Planejar o culto");
         result.plOpen = await waitFor(() => js("Boolean(document.querySelector('.console .pl-frm'))"));
         const setVal = (selector, v) => js(`(() => {
             const el = document.querySelector(${JSON.stringify(selector)});
@@ -2529,8 +2541,7 @@ async function checkConsole(webContents, { live, outputs }) {
         mvRows.push(await mk({ title: "Arquivo sumido", type: "video", file_url: "keryx-media://nao-existe-smoke.mp4" }));
         mvRows.push(await mk({ title: "Foto um", type: "image", file_url: "keryx-media://bundled/backgrounds/1557672172-298e090bd0f1.webp", duration: 5 }));
         mvRows.push(await mk({ title: "Foto dois", type: "image", file_url: "keryx-media://bundled/backgrounds/1506905925346-21bda4d32df4.webp", duration: 5 }));
-        await click(".topbar .markbtn", "");
-        await click(".kx-pop button", "Mídia");
+        await contentMenuItem("Mídia");
         result.mvOpen = await waitFor(() => js("Boolean(document.querySelector('.console .mv .mv-grid'))"));
         result.mvMissing = await waitFor(() => js("[...document.querySelectorAll('.mv-cell')].some((n) => n.textContent.includes('Arquivo sumido') && n.textContent.includes('Arquivo não encontrado') && n.textContent.includes('Localizar'))"), 6000);
         const thumb = async (name, modifiers = []) => {
@@ -2631,8 +2642,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // The aviso editor: "Novo aviso", the kind "Chamar atenção" shows its
         // flag in the live preview, Ctrl+S saves; "Tocar todos" in
         // Biblioteca › Avisos goes on air and the projector moves it on.
-        await click(".topbar .markbtn", "");
-        await click(".kx-pop button", "Novo aviso");
+        await contentMenuItem("Novo aviso");
         result.nvOpen = await waitFor(() => js("Boolean(document.querySelector('.console .nv-l')) && Boolean(document.querySelector('.nv-screen .ks-comm-big'))"));
         await click(".nv-l .kx-row", "Chamar atenção");
         result.nvFlag = await waitFor(() => js("Boolean(document.querySelector('.nv-screen .ks-comm-flag'))"));
@@ -2818,8 +2828,7 @@ async function checkConsole(webContents, { live, outputs }) {
         const db = async (entity, op, args) => (await js(`window.keryxDesktop.db.call(${JSON.stringify(entity)}, ${JSON.stringify(op)}, ${JSON.stringify(args)})`)).data;
         svClass = await db("BibleSchoolClass", "create", [{ name: "Turma do smoke", age_group: "adults", students: [{ name: "Ana Smoke", attendance: [] }, { name: "Bia Smoke", attendance: [] }] }]);
         svRows.push(await db("BibleMaterial", "create", [{ title: "Quiz do smoke", type: "quiz", subject: "Lição do smoke", description: "Nota do professor smoke", quiz_questions: [{ question: "Quem construiu a arca?", options: ["Moisés", "Noé"], correct: 1 }] }]));
-        await click(".topbar .markbtn", "");
-        await click(".kx-pop button", "Escola bíblica");
+        await contentMenuItem("Escola bíblica");
         result.svOpen = await waitFor(() => js("Boolean(document.querySelector('.console .sv-mons'))"));
         await click(".console .win-dialog .kx-row", "Turma do smoke");
         await waitText(webContents, "Ana Smoke");
@@ -2863,8 +2872,7 @@ async function checkConsole(webContents, { live, outputs }) {
         // Relatórios: the song sent live in this run is the top song, its CCLI
         // number is in the report and Copiar puts it on the clipboard.
         if (song) await db("Song", "update", [song.id, { ccli_number: "7654321" }]);
-        await click(".topbar .markbtn", "");
-        await click(".kx-pop button", "Relatórios");
+        await contentMenuItem("Relatórios");
         result.rpOpen = await waitFor(() => js("Boolean(document.querySelector('.console .rp-grid'))"));
         result.rpTop = await waitFor(() => js("[...document.querySelectorAll('.rp-bar-l')].some((n) => n.textContent.includes('Canto do console'))"), 6000);
         result.rpCcli = await waitFor(() => js("[...document.querySelectorAll('.rp-table td')].some((n) => n.textContent === '7654321')"), 6000);
@@ -3388,11 +3396,13 @@ async function checkUpdates(webContents, { system, live, settings }) {
         push({ status: "none" });
         try { system.notifications.clear(); } catch { /* not there */ }
     }
-    // Novidades: from the menu (every version's notes), and once by itself
-    // after an update (whatsNew in settings.json), cleared when closed.
+    // Novidades: from the Ajuda menu (every version's notes; the bar's menu,
+    // or the Menu button's popover where the bar folds away, Rodada M0), and
+    // once by itself after an update (whatsNew in settings.json), cleared
+    // when closed.
     try {
         await js("document.querySelector('.scrim') && document.querySelector('.scrim').click(); true");
-        await js("document.querySelector('.markbtn').click(); true");
+        await js("(() => { const bar = document.querySelector('.topbar .tb-menus [data-menu=\"ajuda\"]'); (bar && bar.offsetParent ? bar : document.querySelector('.topbar .tb-menubtn')).click(); return true; })()");
         await waitFor(() => clickText(".kx-pop *", "Novidades"), 3000);
         result.whatsNewMenu = await waitFor(() => has(".dialog.wn .wn-h", "O que mudou"), 4000);
         await clickText(".dialog.wn button", "Entendi");

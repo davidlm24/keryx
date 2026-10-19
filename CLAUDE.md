@@ -128,7 +128,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tested; `useCfgGroup`, one store per window, a detached /Janela follows
   through `storage`) — never `layout` (the editors have none, Restaurar
   disposição must not reset it). H1, H2 and HF3 build on it: its API is the
-  contract.
+  contract. **The other pages of THE window** (Rodada H4) use `CfgGroup`
+  too (Editor de música, Planejar o culto, Aviso, Escola bíblica; ids
+  `song.*`, `planner.*`, `notice.*`, `school.turma`; summaries in
+  `src/lib/console/pageGroups.js`): its CSS is scoped `.console .cfg-group*`,
+  not `.console .cfg`, so any column can hold one.
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).
@@ -602,21 +606,37 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **The top bar's left side** (owner 2026-10-15, Rodada D4 + "O topo", pick
   B): the logo, then **KERYX | BÍBLIA** (bold caps, no icons, gold
   underline — places, not commands), a divider, then **the menu bar**: Culto, Música,
-  Mídia, Ferramentas (`MenuBar.jsx`; the model is
+  Mídia, Ferramentas, Ajuda (`MenuBar.jsx`; the model is
   `src/lib/console/menuBar.js`, tested). **There is no Telas menu** (owner
-  2026-10-16, Rodada E0): Tela preta, Logo and Limpar are the top bar's
-  chip, Saídas and Verificar the logo's menu, Travar telas and Telas e
+  2026-10-16, Rodada E0): Tela preta, Logo and Limpar are the Programa's
+  pill, Saídas the logo's menu, Verificar tudo Ajuda's, Travar telas and Telas e
   saídas the Saídas popover — don't put it back. Its open menu is the console's
   `open` (`"mb:<id>"`): Esc and the scrim close it, pointing at another
   menu switches, ← / → walk them. Every item is something the console
   already does (Música › Sincronizar a música… opens the song in the Prévia
   or on air with Sincronizar on top; Letra automática › Iniciar/Pausar/
   Retomar; Mídia › Enviar arquivos… / Link do YouTube… open the Mídia on
-  that step). **Ver stays the eye beside the bell** and **Ajuda's items
-  (Atalhos, Novidades, Sobre, Atualizar) live in the logo's menu** — neither
-  goes back in the bar. Under 1240 px the bar folds away and the logo's
-  menu (every page) has it all. A new top-level action goes in the bar's
-  model, not as another icon in the top bar. **The right side is compact**
+  that step). **Ver stays beside the bell, with the panels glyph**
+  (`panels`, Lucide layout-panel-left; the eye is only for the choosers of
+  what to show). **Ajuda is the bar's last menu** (owner 2026-10-20,
+  Rodada M0; Alt+A): Primeiros passos (a dialog, `firstSteps.js`, tested:
+  seven steps, each with the button that opens what it names, keys per Teclas
+  de uma letra), Atalhos, Novidades · Verificar tudo, Salvar diagnóstico…,
+  Abrir a pasta de dados (the `system` bridge's `diagnostics`/`openDataDir`,
+  as in Backup e atualizações; off in the browser preview) · Atualizar agora
+  while an update is due, else Verificar atualização, and Sobre o KERYX.
+  **The logo's menu is the app's** (owner 2026-10-19, Rodada M0 "app"):
+  Configurações, Saídas, Sobre o KERYX and Atualizar agora when due; never a
+  page of the content (those are the bar's). **Under 1240 px the
+  bar folds away and a ☰ Menu button takes its place** (`.tb-menubtn`, same
+  container query in console.css: one source for the width): `open === "menus"`,
+  ONE popover (`MenusPop`) with the bar's menus stacked and all open, a
+  submenu inline under its parent, the culto's services capped at 5 + "Todos
+  os cultos…"; it is `flattenMenus(buildMenus(ctx))` (menuBar.js, tested: no
+  item of the bar can be lost), so a new top-level action goes in the bar's
+  model and reaches both the bar and the Menu button by construction, not as
+  another icon in the top bar; with the bar folded Alt/F10/Alt+letter open
+  that popover. **The right side is compact**
   (owner 2026-10-16, Rodada E1): the service clock "◷ 19:00 · 9h46"
   (`serviceClock` with `compact`, timeline.js, tested; the whole sentence
   is its tooltip and `label`; a running service keeps "Culto 0:42:10"),
@@ -1097,6 +1117,35 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   says per church font whether it is copied, still coming (Baixando…) or
   gone. `useFitWidth` re-measures on `document.fonts` `loadingdone`, so a
   font that arrives late re-fits the line.
+  **A theme's size is a number** (owner 2026-10-19, Rodada HF2, mockup H3
+  `numero_atalhos`: "tamanho da fonte customizável, não predefinidos"):
+  `ProjectionTheme.font_size` is cqw, % of the screen's width, 1 to 12, one
+  decimal, stored as a string ("4.8": the column stays text, no migration);
+  the old names (xsmall…xxlarge = PP…GGG = 2.4/3/3.8/4.8/5.8/7) read as their
+  number forever and are what songs and avisos still choose. One module,
+  `src/lib/textSize.js` (tested): `sizeCqw` (number, "4,8", a name, "" →
+  4.8), `sizeValue`, `sizePreset`, `sizeLabel` ("G", else "4,5 %"),
+  `sameSize` (`isFactoryLook`/`sameLook` compare with it: "4.8" is the
+  factory "large"), `lineHeightOf`. The renderer sets `--ks-size:
+  <n>cqw` on `.ks-content` and `.ks-text` reads it (no `ks-<size>` class
+  any more); `lineLimit` (lyricFit.js) takes a size and `{ em, spacing }`,
+  `emPerChar(family, weight)` (`src/lib/console/fontMetrics.js`, a cached
+  canvas measure, 0.55 while the font has not loaded) feeding the song
+  editor's "fonte menor" badges from the look the song is sent with; the
+  screens' hidden probe stays the truth. **The theme's typography** (all ""
+  = as before, EXTRA_KEYS so it rides like the box): `font_weight`
+  normal|bold (400/700; "" = the CSS 600, 500 in a passage), `font_style`
+  italic, `line_height` a number 0.9–2 or the old tight|normal|loose (the
+  live state takes either), `letter_spacing` em −0.1…0.5, `text_outline_px`
+  0–8 (px of a 1920 screen, drawn behind the letters with `paint-order`,
+  so the stroke is twice that wide) + `text_outline_color` (#rrggbb, black
+  by default) — independent of `text_effect`, whose hollow `outline` is
+  "Vazado" now — and `note`, the Comentário (≤ 500, never on air: the
+  theme's tooltip in Temas, `themeNote`). `typography(style)` in
+  deviceStyles.js (tested) turns them into the text's inline style. The
+  Editor de temas edits them with `NumBox` (kx.jsx: `− [n] + unit`, 24 px,
+  ↑/↓ step, Shift ×10, typing commits on Enter or blur, clamped); its form
+  stays flat until HF3 groups it.
 - **`window.keryxDesktop.*` returns a fresh object on every access**
   (contextBridge). In a component, read it once into a ref; using it as an
   effect or callback dependency directly re-runs the effect on every render.
@@ -1345,6 +1394,11 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     "Salvar como novo". `text_align`/`text_position` em `EXTRA_KEYS`
     (o estilo explícito do item vence; aplicar um tema no ar os reseta), e
     a caixa do canvas mapeia por `src/lib/console/themeBox.js` (testado).
+    **O formulário é em grupos** (Rodada HF3, owner 2026-10-20: `CfgGroup`, ids
+    `tema.*`, fold per computer; Nome e padrão fixo, Fonte e Fundo abertos, os
+    outros fechados com resumo de `fontSummary`…`transitionSummary` em themes.js);
+    o smoke lê o 1º `.nv-frm input.pl-input` (Nome) e o 1º `.nv-frm select`
+    (Fonte): ambos em grupos abertos, nessa ordem.
 A ScreenRenderer `fill` is `position: fixed`: inside a canvas or preview
 its wrapper needs `contain: layout paint` (`.le-screen`, `.cfg-prev`).
 Every screen is landscape: every still of an output (Telas e saídas'

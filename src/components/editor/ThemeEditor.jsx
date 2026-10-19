@@ -10,15 +10,16 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
-import { Panel, Btn, Seg, Empty, WinBar } from "../console/kx";
-import { Switch } from "../console/settings/parts";
+import { Panel, Btn, Seg, Empty, WinBar, NumBox } from "../console/kx";
+import { Switch, CfgGroup } from "../console/settings/parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import BgChip from "../console/library/BgChip";
 import { useLibraryPicker, ALL_KINDS } from "../console/library/libraryContext";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import Icon from "../console/Icon";
 import { IconBtn } from "../console/kx";
-import { TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName } from "@/lib/console/themes";
+import { TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName, fontSummary, colorSummary, boxSummary, placeSummary, fundoSummary, transitionSummary } from "@/lib/console/themes";
+import { SIZE_RANGE, sizeCqw, sizePreset, sizeValue, lineHeightOf, LINE_HEIGHTS, LINE_HEIGHT_RANGE, LETTER_SPACING_RANGE, OUTLINE_RANGE } from "@/lib/textSize";
 import FontPicker, { fontNote } from "./FontPicker";
 import { useChurchFonts } from "../console/useConsoleData";
 import { themeBoxRect, rectToTheme, MIN_WIDTH } from "@/lib/console/themeBox";
@@ -38,9 +39,10 @@ const SAMPLES = {
     text: { label: "Texto", args: { kind: "text", title: "Avisos", slides: [{ text: "Culto de oração\nquarta-feira às 20h" }] } },
 };
 
-const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
+// "outline" draws hollow letters: it is "Vazado" since the Rodada HF2, when the
+// Contorno became its own row (a width and a colour, with any effect).
+const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["3d", "3D"], ["neon", "Neon"], ["outline", "Vazado"], ["none", "Nenhum"]];
 const BOXES = [["", "Sem"], ["band", "Faixa"], ["block", "Bloco"]];
-const LINES = [["tight", "Justas"], ["", "Normais"], ["loose", "Largas"]];
 const H_ALIGNS = [["left", "Esq."], ["", "Centro"], ["right", "Dir."]];
 const V_POS = [["top", "Alto"], ["", "Meio"], ["bottom", "Baixo"]];
 // show_item_title is the theme's since the Rodada B 2026-10-14 (it was the
@@ -51,6 +53,7 @@ const V_POS = [["top", "Alto"], ["", "Meio"], ["bottom", "Baixo"]];
 const BLANK = {
     name: "", font_family: "sans", font_size: "large", text_effect: "shadow", text_color: "#ffffff", text_color_2: "",
     text_opacity: "", text_max_width: "", line_height: "", text_case: "", text_nudge: "", text_align: "", text_position: "",
+    font_weight: "", font_style: "", letter_spacing: "", text_outline_px: "", text_outline_color: "", note: "",
     text_box: "", text_box_color: "", text_box_opacity: "", transition: "", transition_ms: "", show_item_title: true,
     background_image: "", background_fit: "", background_dim: "", background_blur: "",
 };
@@ -269,7 +272,8 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
             <div className="col nv-l" style={colAjustes.style}>
                 <Panel noHead={hosted} title={<>Tema <span className="kx-count">· {themeTitle}{dirty ? " · não salvo" : ""}</span></>} actions={!hosted && <>{pickTheme}{deleteBtn}</>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-scroll">
-                        <div className="frm nv-frm">
+                        <CfgGroup id="tema.nome" k="tema.nome" title="Nome e padrão" summary={""} fold={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Nome</span><input className="pl-input" value={draft.name} placeholder="Nome do tema" maxLength={60} onChange={(e) => set({ name: e.target.value })} aria-label="Nome do tema" />
                             {/* Tornar padrão lives in the form (Rodada C, fase d;
                                 it was the footer's): one transaction, never two
@@ -280,17 +284,65 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                     ? <span className="kx-meta" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="star" size={12} />é o tema padrão da igreja</span>
                                     : <span className="nv-inline"><Btn small onClick={async () => { try { await keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, savedId.current)); say(`${draft.name || "O tema"} é o tema padrão.`); } catch (err) { say(err?.message || "Não foi possível."); } }}><Icon name="star" />Tornar padrão</Btn></span>}
                             </>}
+                            {/* The theme's comment (Rodada HF2): what it is
+                                for, for whoever picks it; never on air, it
+                                is the theme's tooltip in Temas. */}
+                            <span className="k">Comentário</span>
+                            <input className="pl-input" value={draft.note || ""} placeholder="Para que serve este tema (não vai ao ar)" maxLength={500} onChange={(e) => set({ note: e.target.value })} aria-label="Comentário do tema" />
+                            {/* The item's title over the slide is the theme's
+                                choice (Rodada B 2026-10-14); Camadas › Texto
+                                principal › Título still decides per item on
+                                air. */}
+                            <span className="k">Título do item</span>
+                            <span className="nv-inline">
+                                <Switch on={draft.show_item_title !== false} onChange={(on) => set({ show_item_title: on })} label="Mostrar o título do item sobre o slide" />
+                                <span className="kx-meta">o nome da música ou do texto, no alto do slide</span>
+                            </span>
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.fonte" k="tema.fonte" title="Fonte" summary={fontSummary(draft)}>
+                            <div className="frm nv-frm">
                             {/* The font (Rodada HF1): KERYX's, the church's
                                 (copied into the library) or one brought
                                 from this PC or a file (FontPicker.jsx);
                                 the line under it says where it comes from. */}
                             <span className="k">Fonte</span>
-                            <span className="nv-inline">
-                                <FontPicker value={draft.font_family} onChange={(v) => set({ font_family: v })} say={say} style={{ width: 150 }} />
-                                <Seg small label="Tamanho da fonte" value={draft.font_size} options={TEXT_SIZES} onChange={(v) => set({ font_size: v })} />
-                            </span>
+                            <FontPicker value={draft.font_family} onChange={(v) => set({ font_family: v })} say={say} style={{ width: 190, justifySelf: "start" }} />
                             <span className="k" />
                             <span className="kx-meta le-font-note">{fontNote(draft.font_family, churchFonts.families)}</span>
+                            {/* The size is a number, % of the screen's width
+                                (Rodada HF2, owner's pick "numero_atalhos");
+                                PP…GGG only write their number. An old
+                                theme's name ("large") shows as its number
+                                and stays as saved until it is changed. */}
+                            <span className="k">Tamanho</span>
+                            <span className="nv-inline">
+                                <NumBox label="Tamanho da fonte" value={sizeCqw(draft.font_size)} min={SIZE_RANGE[0]} max={SIZE_RANGE[1]} step={0.1} unit="%" onChange={(n) => set({ font_size: sizeValue(n) })} />
+                                <Seg small label="Atalhos de tamanho" value={sizePreset(draft.font_size)} options={TEXT_SIZES} onChange={(k) => set({ font_size: sizeValue(k) })} />
+                            </span>
+                            <span className="k">Estilo</span>
+                            <span className="nv-inline">
+                                <Btn small on={draft.font_weight === "bold"} className="le-tb" title="Negrito" aria-label="Negrito" onClick={() => set({ font_weight: draft.font_weight === "bold" ? "" : "bold" })}><b>N</b></Btn>
+                                <Btn small on={draft.font_style === "italic"} className="le-tb" title="Itálico" aria-label="Itálico" onClick={() => set({ font_style: draft.font_style === "italic" ? "" : "italic" })}><i>I</i></Btn>
+                                <Switch on={draft.text_case === "upper"} onChange={(on) => set({ text_case: on ? "upper" : "" })} label="Maiúsculas" /><span className="kx-meta">Maiúsculas</span>
+                            </span>
+                            {/* Line and letter spacing as numbers (an old
+                                theme's Justas/Largas show as 1,08/1,45); the
+                                normal ones are saved as "" (the screen's own). */}
+                            <span className="k">Entrelinhas</span>
+                            <span className="nv-inline">
+                                <NumBox label="Entrelinhas" value={draft.line_height === "" ? "" : lineHeightOf(draft.line_height)} empty={LINE_HEIGHTS.normal} min={LINE_HEIGHT_RANGE[0]} max={LINE_HEIGHT_RANGE[1]} step={0.05} onChange={(n) => set({ line_height: n === LINE_HEIGHTS.normal ? "" : n })} />
+                                <span className="kx-meta">1,22 = normal</span>
+                            </span>
+                            <span className="k">Espaçamento</span>
+                            <span className="nv-inline">
+                                <NumBox label="Espaçamento entre as letras" value={draft.letter_spacing} empty={0} min={LETTER_SPACING_RANGE[0]} max={LETTER_SPACING_RANGE[1]} step={0.01} unit="em" onChange={(n) => set({ letter_spacing: n === 0 ? "" : n })} />
+                                <span className="kx-meta">entre as letras</span>
+                            </span>
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.cor" k="tema.cor" title="Cor e efeito" summary={colorSummary(draft)} defaultOpen={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Efeito e cor</span>
                             <span className="nv-inline">
                                 <select className="pl-input" style={{ width: "auto" }} value={draft.text_effect} onChange={(e) => set({ text_effect: e.target.value })} aria-label="Efeito do texto">
@@ -301,6 +353,14 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                     ? <><input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.text_color_2) ? draft.text_color_2 : "#ffffff"} onChange={(e) => set({ text_color_2: e.target.value })} aria-label="Segunda cor (degradê)" title="Segunda cor (degradê)" /><Btn small onClick={() => set({ text_color_2: "" })}>Cor única</Btn></>
                                     : <Btn small onClick={() => set({ text_color_2: "#c9a25b" })} title="O texto em degradê de duas cores">Degradê</Btn>}
                             </span>
+                            {/* An outline of its own (Rodada HF2): px of a
+                                1920 screen, behind the letters, with any
+                                effect (the old hollow one is "Vazado"). */}
+                            <span className="k">Contorno</span>
+                            <span className="nv-inline">
+                                <NumBox label="Contorno" value={draft.text_outline_px} empty={0} min={OUTLINE_RANGE[0]} max={OUTLINE_RANGE[1]} step={1} unit="px" onChange={(n) => set({ text_outline_px: n || "", text_outline_color: n ? draft.text_outline_color || "#000000" : "" })} />
+                                {Number(draft.text_outline_px) > 0 && <input type="color" className="ed-color" value={/^#[0-9a-f]{6}$/i.test(draft.text_outline_color) ? draft.text_outline_color : "#000000"} onChange={(e) => set({ text_outline_color: e.target.value })} aria-label="Cor do contorno" title="Cor do contorno" />}
+                            </span>
                             <span className="k">Opacidade</span>
                             {/* Continuous (Rodada C, fase d): the model always
                                 took 20–100%; the UI offered four presets. */}
@@ -308,11 +368,10 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                 <input type="range" className="le-range" min={20} max={100} step={1} value={Math.round((draft.text_opacity === "" ? 1 : Number(draft.text_opacity)) * 100)} onChange={(e) => { const v = Number(e.target.value); set({ text_opacity: v >= 100 ? "" : v / 100 }); }} aria-label="Opacidade do texto" />
                                 <span className="kx-meta">{Math.round((draft.text_opacity === "" ? 1 : Number(draft.text_opacity)) * 100)}%</span>
                             </span>
-                            <span className="k">Entrelinhas</span>
-                            <span className="nv-inline">
-                                <Seg small label="Entrelinhas" value={draft.line_height || ""} options={LINES} onChange={(v) => set({ line_height: v })} />
-                                <Switch on={draft.text_case === "upper"} onChange={(on) => set({ text_case: on ? "upper" : "" })} label="Maiúsculas" /><span className="kx-meta">Maiúsculas</span>
-                            </span>
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.caixa" k="tema.caixa" title="Caixa do texto" summary={boxSummary(draft)} defaultOpen={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Caixa do texto</span>
                             <span className="nv-inline">
                                 <Seg small label="Caixa do texto" value={draft.text_box || ""} options={BOXES} onChange={(v) => set({ text_box: v, ...(v ? { text_box_color: draft.text_box_color || "#000000", text_box_opacity: draft.text_box_opacity || 0.55 } : { text_box_color: "", text_box_opacity: "" }) })} />
@@ -328,10 +387,10 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                     <span className="kx-meta">{Math.round((Number(draft.text_box_opacity) || 0.55) * 100)}%</span>
                                 </span>
                             </>}
-                        </div>
-                        {/* Where the text sits: the same fields the canvas box writes. */}
-                        <div className="listhead"><span className="kx-section">Texto na tela</span></div>
-                        <div className="frm nv-frm">
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.posicao" k="tema.posicao" title="Posição" summary={placeSummary(draft)} defaultOpen={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Alinhamento</span>
                             <Seg small label="Alinhamento" value={draft.text_align || ""} options={H_ALIGNS} onChange={(v) => set({ text_align: v })} />
                             <span className="k">Posição</span>
@@ -346,18 +405,10 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                 <input type="range" className="le-range" min={-20} max={20} step={1} value={Number(draft.text_nudge) || 0} onChange={(e) => set({ text_nudge: Number(e.target.value) === 0 ? "" : Number(e.target.value) })} aria-label="Ajuste fino vertical" />
                                 <span className="kx-meta">{Number(draft.text_nudge) || 0}%</span>
                             </span>
-                            {/* The item's title over the slide is the theme's
-                                choice (Rodada B 2026-10-14); Camadas › Texto
-                                principal › Título still decides per item on
-                                air. */}
-                            <span className="k">Título do item</span>
-                            <span className="nv-inline">
-                                <Switch on={draft.show_item_title !== false} onChange={(on) => set({ show_item_title: on })} label="Mostrar o título do item sobre o slide" />
-                                <span className="kx-meta">o nome da música ou do texto, no alto do slide</span>
-                            </span>
-                        </div>
-                        <div className="listhead"><span className="kx-section">Fundo e transição</span></div>
-                        <div className="frm nv-frm">
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.fundo" k="tema.fundo" title="Fundo" summary={fundoSummary(draft)}>
+                            <div className="frm nv-frm">
                             <span className="k">Fundo</span>
                             <span className="nv-inline">
                                 <BgChip value={bg} title="Fundo do tema" empty="falta escolher" className={bg ? "" : "is-missing"} onPick={(spec) => spec && set(bgFields(spec))} />
@@ -386,12 +437,17 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                     </span>
                                 </>}
                             </>}
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.transicao" k="tema.transicao" title="Transição" summary={transitionSummary(draft)} defaultOpen={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Transição</span>
                             <span className="nv-inline">
                                 <Seg small label="Transição" value={draft.transition || ""} options={[["", `Padrão (Esmaecer · ${NATURAL_MS.fade} ms)`], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
                                 {draft.transition && draft.transition !== "cut" && <><input type="range" className="le-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-meta">{Number(draft.transition_ms) || 400} ms</span></>}
                             </span>
-                        </div>
+                            </div>
+                        </CfgGroup>
                     </div>
                     {!hosted && (
                         <div className="nv-foot">

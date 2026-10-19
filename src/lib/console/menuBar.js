@@ -1,27 +1,36 @@
 // The menu bar (owner 2026-10-15, Rodada D4, "Menus novos" = A): after the
 // logo and KERYX | Bíblia, as in Holyrics and desktop programs — Culto,
-// Música, Mídia, Ferramentas. Ver stays the eye beside the bell and Ajuda's
-// items live in the logo's menu ("O topo", owner 2026-10-15). There is no
-// Telas menu (owner 2026-10-16, Rodada E0): Tela preta, Logo and Limpar are
-// the top bar's chip, Saídas and Verificar the logo's menu, Travar telas and
-// Telas e saídas the Saídas popover. On a narrow window the bar folds into
-// the logo's menu, as before. Everything here already has a place in the
-// console; the bar puts it one click away. Pure: the console passes
-// what it knows (`ctx`) and its actions (`ctx.act`), the bar draws the result.
+// Música, Mídia, Ferramentas and, last, Ajuda (owner 2026-10-20, Rodada M0:
+// where an operator looks for help; it had lived in the logo's menu since "O
+// topo"). Ver stays beside the bell. There is no Telas menu (owner
+// 2026-10-16, Rodada E0): Tela preta, Logo and Limpar are the Programa's
+// pill, Saídas the logo's menu, Travar telas and Telas e saídas the Saídas
+// popover. On a narrow window the bar folds away and
+// the top bar's Menu button (Rodada M0) opens the same four menus in one
+// popover (`flattenMenus` below: one source, so no item can be lost); the
+// logo's menu is the app's (Configurações, Saídas, Sobre, Atualizar agora).
+// Everything here already has a place in the console; the bar puts it one
+// click away. Pure: the console passes what it knows (`ctx`) and its actions
+// (`ctx.act`), the bar draws the result.
 //
 // "…" ends a label only when the command asks for more before it acts (a
 // file, a link, a text, the marks); one that opens a page has none (design
 // audit C-52).
 //
 // A menu: { id, label, items }. An item: { label, icon?, kbd?, checked?,
-// disabled?, title?, onSelect?, sub?: [items] } or { sep: true } or
+// disabled?, title?, onSelect?, sub?: [items], service? } or { sep: true } or
 // { head: "text" }.
+
+import { hasUpdate } from "./updates.js";
 
 const sep = { sep: true };
 const head = (text) => ({ head: text });
 const date = (d) => (d ? d.split("-").reverse().slice(0, 2).join("/") : "");
 
-export const MENU_IDS = ["culto", "musica", "midia", "ferramentas"];
+export const MENU_IDS = ["culto", "musica", "midia", "ferramentas", "ajuda"];
+
+// What only the desktop app can do (the preview in a browser cannot).
+const DESKTOP_ONLY = "Só no aplicativo do computador";
 
 // The source a song's automatic lyrics follow, in words.
 const FOLLOW_WORD = { video: "o vídeo", audio: "o playback", clock: "o relógio ao vivo" };
@@ -34,7 +43,7 @@ export function buildMenus(ctx) {
 
     const culto = [
         head("Culto de hoje"),
-        ...(services.length ? services.map((s) => ({ label: s.title || "Culto", kbd: date(s.date), checked: s.id === ctx.serviceId, onSelect: call("pickService", s.id) })) : [{ label: "Nenhum culto ainda", disabled: true }]),
+        ...(services.length ? services.map((s) => ({ label: s.title || "Culto", kbd: date(s.date), checked: s.id === ctx.serviceId, service: true, onSelect: call("pickService", s.id) })) : [{ label: "Nenhum culto ainda", disabled: true }]),
         sep,
         { label: "Planejar o culto", icon: "list", onSelect: call("planner", ctx.serviceId) },
         { label: "Novo culto", icon: "plus", onSelect: call("planner", "new") },
@@ -83,12 +92,67 @@ export function buildMenus(ctx) {
         { label: "Relatórios", icon: "history", onSelect: call("reports") },
     ];
 
+    // Ajuda (Rodada M0): learning the console, checking it, and what support
+    // asks for. Atualizar agora only while an update is due (its version, or
+    // the percent while it comes down), else Verificar atualização.
+    const u = ctx.update || null;
+    const updateItem = hasUpdate(u)
+        ? { label: u.status === "downloading" ? "Atualizando…" : "Atualizar agora", icon: "download", kbd: u.status === "downloading" ? `${u.percent}%` : u.version, onSelect: call("updateNow") }
+        : { label: "Verificar atualização", icon: "refresh", disabled: !ctx.desktop || u?.status === "disabled" || u?.status === "checking",
+            title: !ctx.desktop ? DESKTOP_ONLY : u?.status === "disabled" ? "Indisponível nesta instalação" : "Procura uma versão nova do KERYX", onSelect: call("updateCheck") };
+    const ajuda = [
+        { label: "Primeiros passos", icon: "steps", title: "O console em sete passos, para quem está começando", onSelect: call("firstSteps") },
+        { label: "Atalhos", icon: "keyboard", kbd: ctx.helpKey || undefined, onSelect: call("shortcuts") },
+        { label: "Novidades", icon: "star", title: "O que mudou nas últimas versões", onSelect: call("whatsNew") },
+        sep,
+        { label: "Verificar tudo", icon: "check", title: "Telas, mídias e Bíblias antes do culto", onSelect: call("verify") },
+        { label: "Salvar diagnóstico…", icon: "save", disabled: !ctx.desktop, title: ctx.desktop ? "Um .zip com os registros recentes, para enviar a quem dá suporte · sem músicas, mídias nem senhas" : DESKTOP_ONLY, onSelect: call("diagnostics") },
+        { label: "Abrir a pasta de dados", icon: "folder", disabled: !ctx.desktop, title: ctx.desktop ? "Onde ficam o banco, as mídias e os registros deste computador" : DESKTOP_ONLY, onSelect: call("dataDir") },
+        sep,
+        updateItem,
+        { label: "Sobre o KERYX", icon: "info", onSelect: call("settings", "sobre") },
+    ];
+
     return [
         { id: "culto", label: "Culto", items: culto },
         { id: "musica", label: "Música", items: musica },
         { id: "midia", label: "Mídia", items: midia },
         { id: "ferramentas", label: "Ferramentas", items: ferramentas },
+        { id: "ajuda", label: "Ajuda", items: ajuda },
     ];
+}
+
+// The four menus as ONE list for the Menu button's popover (Rodada M0, owner
+// 2026-10-19 "empilhado"): each menu a head and its items, a sep between them,
+// a `sub` list inline under its parent (the parent becomes a minor head, the
+// sub items indented: no side flyout in a narrow popover). The items keep
+// their onSelect, disabled, checked and kbd, so the popover acts exactly as
+// the bar. The culto's services are capped at `maxServices`; "Todos os
+// cultos…" (`onAllServices`) follows when some were left out.
+export function flattenMenus(menus, { maxServices = 5, onAllServices } = {}) {
+    const out = [];
+    menus.forEach((m, i) => {
+        if (i) out.push(sep);
+        out.push(head(m.label));
+        let shown = 0;
+        let cut = 0;
+        let lastService = -1;
+        for (const [n, it] of m.items.entries()) {
+            // The Culto menu's own first head ("Culto de hoje") repeats the menu's.
+            if (it.head != null && n === 0) continue;
+            if (it.service) {
+                if (shown >= maxServices) { cut += 1; continue; }
+                shown += 1;
+                out.push(it);
+                lastService = out.length - 1;
+            } else if (it.sub) {
+                out.push({ head: it.label, minor: true });
+                for (const s of it.sub) out.push({ title: s.label, ...s, indent: true });
+            } else out.push(it);
+        }
+        if (cut) out.splice(lastService + 1, 0, { label: "Todos os cultos…", icon: "list", title: "Planejar o culto", onSelect: onAllServices });
+    });
+    return out;
 }
 
 // The song the Música menu's Sincronizar acts on: the one in the Prévia,

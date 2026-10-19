@@ -93,7 +93,7 @@ anything that changes what is on air (*Enviar ao ar*, *Ir para o item*,
 system's Recortar / Copiar / Colar.
 
 **Menus** (audit C-14/C-15): every menu is one component, `MenuList` in
-`src/components/console/Menu.jsx` (the menu bar, the logo's menu, Ver, the
+`src/components/console/Menu.jsx` (the menu bar, the Menu button's popover, the logo's menu, Ver, the
 (+) menus, right-click menus, the tabs lists, the Bíblia's lists;
 `MenuButton` for a button with its menu). It takes the focus when it opens
 (its first item), ↑/↓ walk it round the ends, Home/End jump, disabled items
@@ -103,7 +103,7 @@ focus goes back to what opened it only if the keyboard opened and closed it
 — after a mouse open, to nothing, so the live keys work (`useFocusReturn`,
 `focusAfterClose` in `menuNav.js`). The menu bar answers **F10** or **Alt**
 alone (the focus on the bar: ←/→ walk it, ↓ or Enter opens, Esc leaves it)
-and **Alt + C/M/D/F** (Culto, Música, Mídia, Ferramentas; the letter
+and **Alt + C/M/D/F/A** (Culto, Música, Mídia, Ferramentas, Ajuda; the letter
 underlined only while Alt is held or the bar has the keyboard). Setlist and
 planner rows move with **Alt+↑/↓** on a focused row and Subir/Descer in
 their menu, as Camadas' do (`useRowStep`). A focused select is a control,
@@ -162,13 +162,15 @@ happens without internet.
 ## Layout
 
 **The top bar** (40 px, on `bg-0`, no panel), one line at every width. Left:
-the logo (its menu holds Saídas, Verificar, Atalhos, Novidades, Sobre,
-Atualizar — and, under 1240 px, the whole menu bar), then **KERYX | BÍBLIA**
-(bold caps, no icons, a gold underline on the one on screen — places, not
-commands), a divider, then the menu bar: Culto, Música, Mídia, Ferramentas
-(`MenuBar.jsx`, model in `src/lib/console/menuBar.js`). Right, compact: the
+the logo (its menu is the app's: Configurações, Saídas, Sobre o KERYX,
+Atualizar agora when due), then **KERYX | BÍBLIA** (bold caps, no icons, a
+gold underline on the one on screen — places, not commands), a divider, then
+the menu bar: Culto, Música, Mídia, Ferramentas and Ajuda (`MenuBar.jsx`,
+model in `src/lib/console/menuBar.js`). Where the bar does not fit it is
+replaced by a **☰ Menu** button (same container query) whose popover stacks
+the menus, all open, submenus inline (`flattenMenus`). Right, compact: the
 search (at most 320 px), the service clock, the clock, the Saídas status
-("2 telas", the full label in its tooltip), **Ver** (the eye) and the bell.
+("2 telas", the full label in its tooltip), **Ver** (the panels glyph, `panels`) and the bell.
 There is no Telas menu and no screen-action chip in the top bar: the screen
 actions live in the Programa's pill. A new top-level action goes in the menu
 bar's model, not as another icon.
@@ -369,7 +371,15 @@ open the Programa monitor draws one still frame (the air never pauses).
   title is the console's grey caption at weight 600 (never gold: gold is the
   brand and what is live). State is the closed summary, never a header hint;
   a page's groups run identity first, then what changes most, then the rare
-  (Rodada H1, every Configurações section).
+  (Rodada H1, every Configurações section). **The window's other pages**
+  (Rodada H4) use it too, its CSS scoped under `.console` (not `.cfg`):
+  the Editor de música (Dados · Notas · Cifra separada · Tema desta música ·
+  Tema por parte), Planejar o culto (Dados · Papel de parede e tema), the
+  Aviso (Tipo · Texto na tela · Fundo) and the Escola bíblica's "Dados da
+  turma"; ids `<página>.<grupo>`, summaries in
+  `src/lib/console/pageGroups.js`. Mídia, Relatórios and Sincronizar keep
+  no groups: only the panel rhythm (a 36 px band, 4 px in and apart; cards
+  12 px apart).
 - **Os cinco blocos dos Ajustes** (Rodada H2, owner 2026-10-19; Editor da tela › Ajustes, `settings/ajustes/`): the output's settings are five `CfgGroup`s in this order — Destino (first, `fold={false}`: where the screen is and its name), Conteúdo (what it receives), Aparência, Comportamento (closed) and Diagnóstico (closed, read-only) — each with its one-line summary while closed (`ajustesSummaries.js`), the group ids `editor.<bloco>` (this computer's open/closed state like any group). The rule's list ("O que esta tela recebe") is one set of toggle chips under three small headings (Textos · Mídia · Ferramentas e avisos) and "Por cima de tudo", with the shortcut chips above (the one that matches is pressed, "Personalizado" a dashed chip when none does); chips take the same look as the old Mostrar's (`.cfg-kinds`, `.cfg-rule-prof`), and the Prévia's warning (`.kx-prev-warn`) and the Multiview label's rule chip (`.mx-rule`) use the console's amber and grey.
 - **List rows are inset cards**: every `kx-row` and `kx-layer` in the
   console (Biblioteca, Setlist, the tabs panel, Camadas, Configurações' menu,
@@ -424,6 +434,25 @@ open the Programa monitor draws one still frame (the air never pauses).
   new field takes `kx-input` / `kx-select`, never a class of its own. Big
   search fields keep their size (the palette 40 px, the lyrics search
   36 px, the quick jump 40 px) and the same states.
+- **Numbers** (Rodada HF2): a number with steps is `NumBox` (kx.jsx,
+  `kx-num` in `bundle.css`): `− [4,8] + %`, 24 px tall, the field's `bg-2`
+  and quiet focus, the steppers 24 × 24 (out of the Tab order: the field
+  takes ↑/↓, Shift ×10), the unit after the + in `fg-3`, a comma as the
+  decimal point. Typing commits on Enter or when the field loses focus,
+  clamped and rounded to the step. Presets that are only shortcuts sit
+  beside it as a `Seg` that writes the number and is pressed when it is
+  equal (the Editor de temas' Tamanho: `NumBox` 1–12 % + PP…GGG). A
+  slider stays for what is felt rather than read (opacity, the dim).
+  The Editor de temas' form is `CfgGroup`s since the Rodada HF3 (ids
+  `tema.<grupo>`; summaries `fontSummary`…`transitionSummary` in themes.js):
+  Nome e padrão (plain heading: Nome, Tema padrão, Comentário, Título do
+  item), Fonte and Fundo open, Cor e efeito, Caixa do texto, Posição and
+  Transição closed with a summary ("Bebas Neue · 4,8 % · negrito"). The
+  Fonte rows: Fonte (FontPicker and
+  its note), Tamanho, Estilo (N and I toggles, 24 px, `aria-pressed`, and
+  Maiúsculas), Entrelinhas (0,9–2, "1,22 = normal"), Espaçamento
+  (−0,10–0,50 em); Contorno (0–8 px and its colour) sits under Efeito e
+  cor, Comentário under the name.
 - **Live fill buttons** (audit C-22): *Enviar ao ar* (`kx-btn-prev`),
   *Destravar* (`kx-btn-rh`) and *Encerrar* / *Excluir* (`kx-btn-air`) step
   **darker** on hover and when pressed (`--prev-fill-hover`/`-pressed`,

@@ -17,6 +17,8 @@ import { placeBox } from "@/lib/console/contextMenu";
 //          onSelect?, sub?: [items] }
 //        | "sep" | { sep: true } | { head, meta? } | { node } (a row of its own:
 //          a setting, a header — never focused by the arrows).
+// A head may be `minor` (a sub-title) and an item `indent`ed under it: the
+// Menu button's popover lists a submenu inline (menuBar.js flattenMenus).
 
 // How the operator last acted: the keyboard or the pointer (for the focus
 // after a menu closes, menuNav.js focusAfterClose).
@@ -184,7 +186,7 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
                 if (!it) return null;
                 if (isSep(it)) return <div key={`s${i}`} className="kx-menu-sep" role="separator" />;
                 if (it.node) return <React.Fragment key={`n${i}`}>{it.node}</React.Fragment>;
-                if (it.head != null) return <div key={`h${i}`} className="kx-menu-h" role="presentation"><span className="kx-section">{it.head}</span>{it.meta != null && <><span style={{ flex: 1 }} /><span className="kx-meta">{it.meta}</span></>}</div>;
+                if (it.head != null) return <div key={`h${i}`} className={`kx-menu-h ${it.minor ? "is-minor" : ""}`} role="presentation"><span className="kx-section">{it.head}</span>{it.meta != null && <><span style={{ flex: 1 }} /><span className="kx-meta">{it.meta}</span></>}</div>;
                 const open = sub?.i === i;
                 const tail = it.sub ? <Icon name="chevron-right" /> : it.kbd;
                 // An item with a state (checked true or false) is a checkbox
@@ -194,7 +196,7 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
                     <MenuItem key={it.sub ? undefined : `${it.label}${i}`} data-mi={i} tabIndex={-1} icon={it.icon} checked={it.checked} kbd={tail} disabled={it.disabled} title={it.title}
                         role={role} aria-checked={role === "menuitemcheckbox" ? Boolean(it.checked) : undefined}
                         aria-disabled={it.ariaDisabled || undefined} aria-haspopup={it.sub ? "menu" : undefined} aria-expanded={it.sub ? open : undefined}
-                        className={`${it.air ? "is-air" : ""} ${open ? "is-on" : ""} ${it.meta ? "has-meta" : ""}`}
+                        className={`${it.air ? "is-air" : ""} ${open ? "is-on" : ""} ${it.meta ? "has-meta" : ""} ${it.indent ? "is-indent" : ""}`}
                         onPointerEnter={it.sub ? () => setSub({ i, byKey: false }) : sub ? () => setSub(null) : undefined}
                         onClick={() => (it.sub ? setSub(open ? null : { i, byKey: false }) : pick(it))}>
                         {it.meta

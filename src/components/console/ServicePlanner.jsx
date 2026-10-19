@@ -18,6 +18,7 @@ import { bibleVersionWanted } from "./BibleEnv";
 import { parseDuration, formatDuration } from "@/lib/songImport";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
 import BgChip from "./library/BgChip";
+import { CfgGroup } from "./settings/parts";
 import ThemeChip from "./library/ThemeChip";
 import { lookOf, lookFields, lookForService, templateLookFields } from "@/lib/console/serviceLook";
 import { plan, templateItems, itemsFor, statusOf, parseMember, clockAt, span, total, typeLabel, typeIcon, isSection, STATUS } from "@/lib/console/setlist";
@@ -251,6 +252,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
             <div className="win-body">
             <div className="col" style={colCulto.style}>
                 <Panel title="Culto" style={{ flex: "none" }}>
+                    <CfgGroup id="planner.culto" title="Dados" fold={false}>
                     <div className="frm pl-frm">
                         <span className="k">Nome</span><Field label="Nome" icon={null} {...f("title")} placeholder="Culto de domingo" />
                         <span className="k">Data</span><input type="date" className="pl-input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} onBlur={() => commit("date")} aria-label="Data" />
@@ -260,6 +262,10 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                         {form.service_type === "evento" && <><span className="k">Evento</span><Field label="Evento" icon={null} {...f("event_description")} placeholder="Descrição do evento" inputProps={{ spellCheck: true }} /></>}
                         <span className="k">Status</span><Seg small label="Status" value={statusOf(svc.status)} onChange={(v) => saveSvc({ status: v })} options={STATUS} />
                         <span className="k">Notas</span><Field label="Notas" icon={null} {...f("notes")} placeholder="Notas gerais do culto" inputProps={{ spellCheck: true }} />
+                    </div>
+                    </CfgGroup>
+                    <CfgGroup id="planner.visual" title="Papel de parede e tema" summary={[look.background ? "papel de parede próprio" : "papel de parede de qualquer outro culto", look.theme_id ? "tema próprio" : "sem tema próprio"].join(" · ")}>
+                    <div className="frm pl-frm">
                         <span className="k">Papel de parede</span>
                         <div className="pl-wall">
                             <BgChip value={look.background} title="Papel de parede do culto" empty="Qualquer outro culto" emptyHint="Sem papel de parede próprio: o culto usa o de qualquer outro culto (Configurações › Culto)" noneLabel={look.background ? "Sem papel de parede próprio (o de qualquer outro culto)" : undefined}
@@ -271,6 +277,7 @@ export default function ServicePlanner({ c, services, serviceId, setServiceId, d
                                 onPick={(id) => saveSvc({ theme_id: id }, id ? "Tema do culto salvo · fica em uso ao escolher o culto." : "O culto fica sem tema próprio.")} />
                         </div>
                     </div>
+                    </CfgGroup>
                     <div className="pl-danger"><Btn small onClick={deleteService}>Excluir culto…</Btn></div>
                 </Panel>
                 <Panel title={<>Equipe <span className="kx-count">· {(svc.worship_team || []).length}</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>

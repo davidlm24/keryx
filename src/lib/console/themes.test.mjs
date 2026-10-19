@@ -17,6 +17,27 @@ test("themeStyle: classics defaulted, extras empty unless saved", () => {
     assert.ok(sameLook({ ...s, text_color: "" }, t), "a classic falls back, not compares empty");
 });
 
+test("a free size (Rodada HF2): \"4.8\" is the factory large, and a theme's look compares by number", () => {
+    assert.ok(isFactoryLook({ font_size: "4.8" }), "the number of large is still the factory look");
+    assert.ok(followsTheme({ font_size: "4.8" }));
+    assert.ok(!isFactoryLook({ font_size: "5" }));
+    const t = { font_size: "4.8", font_weight: "bold", letter_spacing: 0.05, text_outline_px: 3, text_outline_color: "#112233" };
+    const s = themeStyle(t);
+    assert.ok(sameLook({ ...s, font_size: "large" }, t), "large and 4.8 draw the same");
+    assert.ok(!sameLook({ ...s, font_size: "5.2" }, t));
+    assert.ok(!sameLook({ ...s, font_weight: "" }, t), "the typography is part of the look");
+    // The typography rides as extras: it fills what an item leaves empty.
+    const out = withThemeDefaults("content.show", { title: "X", slides: [], style: {}, inherit: { look: true } }, { id: "t", ...t, font_style: "italic", line_height: 1.5 });
+    assert.equal(out.style.font_size, "4.8");
+    assert.equal(out.style.font_weight, "bold");
+    assert.equal(out.style.font_style, "italic");
+    assert.equal(out.style.line_height, 1.5);
+    assert.equal(out.style.letter_spacing, 0.05);
+    assert.equal(out.style.text_outline_px, 3);
+    assert.equal(out.style.text_outline_color, "#112233");
+    assert.equal(out.style.note, undefined, "the theme's comment never goes on air");
+});
+
 test("background args and the default theme", () => {
     assert.equal(themeBackgroundArgs({ name: "X" }), null);
     assert.deepEqual(themeBackgroundArgs({ name: "X", background_image: "u.png", background_dim: 0.3, background_fit: "" }),
@@ -254,4 +275,29 @@ test("a theme is saved with a background (owner 2026-10-14)", () => {
     assert.deepEqual(newThemeBackground(null, inUse), { kind: "video", value: "keryx-media://v.mp4" });
     assert.equal(newThemeBackground(null, { name: "Antigo" }), null, "nothing at hand: ask the library");
     assert.equal(newThemeBackground(null, null), null);
+});
+
+test("a theme's comment: trimmed, at most 500 characters, empty when absent", async () => {
+    const { themeNote } = await import("./themes.js");
+    assert.equal(themeNote({ note: "  Para o culto jovem  " }), "Para o culto jovem");
+    assert.equal(themeNote({}), "");
+    assert.equal(themeNote({ note: 3 }), "");
+    assert.equal(themeNote({ note: "x".repeat(600) }).length, 500);
+});
+
+test("the Editor de temas' group summaries are one pt-BR line each", async () => {
+    const m = await import("./themes.js");
+    assert.equal(m.fontSummary({ font_family: "Bebas Neue", font_size: "4.8", font_weight: "bold" }), "Bebas Neue · 4,8 % · negrito");
+    assert.equal(m.fontSummary({ font_family: "sans", font_size: "4.5", font_style: "italic", text_case: "upper" }), "Sem serifa · 4,5 % · itálico · maiúsculas");
+    assert.equal(m.colorSummary({ text_color: "#ffffff", text_effect: "shadow", text_outline_px: 2 }), "Branco · Sombra · contorno 2 px");
+    assert.equal(m.colorSummary({ text_color: "#c9a25b", text_color_2: "#fff", text_effect: "none", text_opacity: 0.8 }), "#C9A25B em degradê · Sem efeito · opacidade 80 %");
+    assert.equal(m.boxSummary({ text_box: "band", text_box_opacity: 0.55 }), "Faixa · 55 %");
+    assert.equal(m.boxSummary({}), "Sem caixa");
+    assert.equal(m.placeSummary({}), "Centro · Meio · 100 %");
+    assert.equal(m.placeSummary({ text_align: "left", text_position: "bottom", text_max_width: 80 }), "Esquerda · Baixo · 80 %");
+    assert.equal(m.placeSummary({ text_box: "band", text_max_width: 60 }), "Centro · Meio · 100 %");
+    assert.equal(m.fundoSummary({}), "Falta escolher");
+    assert.equal(m.transitionSummary({}), "Padrão · Esmaecer 400 ms");
+    assert.equal(m.transitionSummary({ transition: "slide", transition_ms: 500 }), "Deslizar · 500 ms");
+    assert.equal(m.transitionSummary({ transition: "cut" }), "Corte");
 });

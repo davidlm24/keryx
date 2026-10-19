@@ -20,7 +20,7 @@ import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService
 import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion } from "@/components/console/kx";
 import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
-import { MenuBarPop } from "@/components/console/MenuBar";
+import { MenuBarPop, MenusPop } from "@/components/console/MenuBar";
 import { buildMenus, songInHand } from "@/lib/console/menuBar";
 import { importSongFiles, SONG_FILE } from "@/components/console/importSongs";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
@@ -55,7 +55,7 @@ import { useFocusReturn } from "@/components/console/Menu";
 import BackgroundLibrary from "@/components/console/library/BackgroundLibrary";
 import { LibraryContext } from "@/components/console/library/libraryContext";
 import ConfirmDialog, { ConfirmContext } from "@/components/console/ConfirmDialog";
-import { Menu, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew, TabsMenu } from "@/components/console/Popovers";
+import { Menu, FirstSteps, Shortcuts, Outputs, History, EndDialog, Palette, UpdateDialog, Notifications, WhatsNew, TabsMenu } from "@/components/console/Popovers";
 import TabsPanel, { TabsPlus } from "@/components/console/TabsPanel";
 import { DEFAULT_TABS, shownTabs, activeTab, toggleTab, showTab } from "@/lib/console/panelTabs";
 import { useUpdates } from "@/components/console/useUpdates";
@@ -1218,7 +1218,11 @@ export default function Console() {
     const church = useChurch();
     const folderRef = useRef(null);
     const barLayer = playerLayer(c.cur);
+    // Ajuda's support items need the desktop app (the browser preview has no data folder or updater).
+    const desktopApp = useRef(!keryx.isPreview && Boolean(window.keryxDesktop?.system)).current;
+    const helpCall = (op, done) => upd.call(op).then((r) => { const m = done?.(r); if (m) c.say(m); }).catch((err) => c.say(err?.message || "Não foi possível."));
     const menus = buildMenus({
+        desktop: desktopApp, helpKey: keyHint("help", letters), update: upd.update,
         services, serviceId, itemsCount: items.length, locked: c.locked,
         songId: songInHand(c.prev, c.cur), follow: c.cur?.content?.follow || null,
         playerOn: Boolean(barLayer), playing: Boolean(barLayer && !c.cur[barLayer]?.playback?.paused),
@@ -1244,6 +1248,14 @@ export default function Console() {
             timer: (minutes) => { c.setPrev(stageFromTool("timer", { minutes })); c.say(`Timer de ${minutesLabel(minutes)} na Prévia · Enter envia.`); },
             school: () => openSchool(),
             reports: () => openReports(),
+            firstSteps: () => setOpen("passos"),
+            shortcuts: () => setOpen("atalhos"),
+            whatsNew: () => openWhatsNew(),
+            verify: () => setOpen("verificar"),
+            diagnostics: () => helpCall("diagnostics", (r) => (r?.file ? "Diagnóstico salvo: envie o arquivo a quem dá suporte." : "")),
+            dataDir: () => helpCall("openDataDir"),
+            updateCheck: () => helpCall("updateCheck", (r) => r?.update?.message || ""),
+            updateNow: () => updateNow(),
         },
     });
 
@@ -1396,7 +1408,7 @@ export default function Console() {
             )}
             {libReq && <BackgroundLibrary c={c} request={libReq} onDone={closeLibrary} />}
             {confirmReq && <ConfirmDialog request={confirmReq} onAnswer={answerConfirm} />}
-            {open && <div className={`scrim ${winOpen ? "over-win" : ""} ${open === "palette" || open === "atalhos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
+            {open && <div className={`scrim ${winOpen ? "over-win" : ""} ${open === "palette" || open === "atalhos" || open === "passos" || open === "encerrar" || open === "verificar" || open === "lyrics" || open === "update" || open === "novidades" ? "is-dim" : ""}`} onClick={() => setOpen(null)} />}
             {open === "lyrics" && <LyricsSearch c={c} onClose={() => setOpen(null)} onImported={(song) => { c.setPrev(stageFromSong(song, {}, data.themes)); openSong(song.id); }} />}
             {open === "verificar" && (
                 <div className="verif-overlay">
@@ -1406,9 +1418,11 @@ export default function Console() {
                 </div>
             )}
             <MenuBarPop menus={menus} open={open} setOpen={setOpen} />
+            <MenusPop menus={menus} open={open} setOpen={setOpen} onAllServices={() => openPlanner(serviceId)} />
             <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept=".txt,.chordpro,.cho,.crd,.pro,.json,text/plain"
                 onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) importSongFiles(files, c.say); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} onWhatsNew={openWhatsNew} />
+            <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} />
+            <FirstSteps open={open} setOpen={setOpen} onGo={(id) => { if (id === "planner") openPlanner(serviceId); else if (id === "search") setOpen("palette"); else if (id === "verify") setOpen("verificar"); else if (id === "outs") setOpen("outs"); }} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
