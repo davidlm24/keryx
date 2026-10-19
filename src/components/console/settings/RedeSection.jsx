@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import Icon from "../Icon";
 import { Btn, Field, Empty } from "../kx";
-import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading } from "./parts";
+import { useBridge, usePoll, Switch, desktopOnly, CfgKey, CfgGroup, Reading } from "./parts";
 import { byGroup } from "@/lib/console/outputs";
 import { useOutputLooks, useOutputPrefRows } from "@/hooks/useOutputPref";
 import { OutputPreview } from "./OutputPrefCard";
@@ -12,6 +12,7 @@ import { useLayoutRows } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
 import { useThemes } from "../useConsoleData";
 import RemoteBlock from "./RemoteBlock";
+import { enderecosSummary, connectedSummary } from "@/lib/console/cfgSummaries";
 
 // How long Mostrar PIN keeps it on screen.
 const SHOW_PIN_MS = 30000;
@@ -25,7 +26,9 @@ const newPin = () => {
 
 // Telas na rede: tablets, TVs and the stage monitor on the church Wi-Fi open
 // the screen pages in a browser (electron/lan.cjs). On/off, the address and
-// its QR code, the PIN and who is connected now.
+// its QR code, the PIN and who is connected now. Rodada H1 (owner
+// 2026-10-19): groups — Conexão (the switch and the PIN, static), Endereços,
+// Controle remoto (RemoteBlock) and Telas conectadas pela rede.
 export default function RedeSection({ c }) {
     const look = useOutputLooks();
     const prefRows = useOutputPrefRows();
@@ -93,6 +96,7 @@ export default function RedeSection({ c }) {
 
     return (
         <>
+            <CfgGroup id="rede.conexao" k="Conexão" fold={false}>
             <div className="frm">
                 <CfgKey as="span" k="Ligar telas na rede" className="k">Ligado</CfgKey>
                 <div className="frm-v">
@@ -115,6 +119,10 @@ export default function RedeSection({ c }) {
                     <Btn kind="brand" disabled={busy || pin.length < 4} onClick={() => savePin(pin)}>Salvar PIN</Btn>
                 </div>
             </div>
+            <div className="listhead"><span className="kx-meta">Na primeira vez o Windows pergunta se o KERYX pode usar a rede: permita em redes privadas.</span></div>
+            </CfgGroup>
+            <CfgGroup id="rede.enderecos" k="Endereços" summary={enderecosSummary(info)}>
+            {!info.running && <div className="listhead"><span className="kx-meta">Ligue as telas na rede para ver os endereços de cada tela.</span></div>}
             {info.running && (
                 <div className="cfg-qr">
                     {main && <div className="cfg-qr-box"><QRCode value={main.url} size={132} /></div>}
@@ -149,8 +157,9 @@ export default function RedeSection({ c }) {
                     ))}
                 </React.Fragment>
             ))}
+            </CfgGroup>
             <RemoteBlock c={c} network={network} info={info} setInfo={setInfo} url={main?.url || ""} />
-            <CfgKey k="Telas conectadas pela rede" className="listhead"><span className="kx-section">Telas conectadas pela rede</span></CfgKey>
+            <CfgGroup id="rede.conectadas" k="Telas conectadas pela rede" summary={connectedSummary(clients, info.running)}>
             {!clients.length && <div className="listhead"><span className="kx-meta">{info.running ? "Nenhuma agora." : "Ligue as telas na rede para os aparelhos se conectarem."}</span></div>}
             {clients.map((cl) => {
                 const path = cl.screen && cl.screen !== "/Remote" ? cl.screen : "";
@@ -166,7 +175,7 @@ export default function RedeSection({ c }) {
                     </div>
                 );
             })}
-            <div className="listhead"><span className="kx-meta">Na primeira vez o Windows pergunta se o KERYX pode usar a rede: permita em redes privadas.</span></div>
+            </CfgGroup>
         </>
     );
 }

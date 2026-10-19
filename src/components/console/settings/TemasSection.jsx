@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import Icon from "../Icon";
 import { Btn, Empty } from "../kx";
-import { CfgKey } from "./parts";
+import { CfgKey, CfgGroup } from "./parts";
 import { ThemeThumb, FactoryThumb, NoBgMark } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
@@ -15,6 +15,11 @@ import { openEditor } from "@/lib/editorWindow";
 import { categoryList } from "@/lib/console/backgroundPrefs";
 import { fontStack, themesUsingFont } from "@/lib/fonts";
 import { useChurchFonts } from "../useConsoleData";
+import { useChurch } from "@/hooks/useChurch";
+import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import { IDLE_SCREEN } from "@/components/editor/ScreensMenu";
+import { emptyState } from "@shared/live-state.mjs";
+import { themesSummary, fundosSummary, idleSummary, fontsSummary } from "@/lib/console/cfgSummaries";
 
 const SIZE = Object.fromEntries(TEXT_SIZES);
 const FONT = Object.fromEntries(THEME_FONTS);
@@ -40,8 +45,7 @@ function KindThemes({ c, themes, setDefault }) {
             .catch(() => c.say("Não foi possível salvar o tema."));
     };
     return (
-        <>
-            <CfgKey k="Temas padrão" className="listhead"><span className="kx-section">Temas padrão <span className="kx-count">· um por tipo de conteúdo</span></span></CfgKey>
+        <CfgGroup id="temas.padrao" k="Temas padrão" fold={false}>
             <div className="tmg tmg-kinds">
                 {THEME_KINDS.map(([kind, name]) => {
                     const field = KIND_FIELD[kind];
@@ -58,7 +62,7 @@ function KindThemes({ c, themes, setDefault }) {
                     );
                 })}
             </div>
-        </>
+        </CfgGroup>
     );
 }
 
@@ -69,7 +73,7 @@ function KindThemes({ c, themes, setDefault }) {
 // Editar and "Novo tema…" open it. Camadas adjusts what is on air and
 // captures a theme with "Salvar como novo"; the console's Temas card
 // applies them.
-export default function TemasSection({ c }) {
+export default function TemasSection({ c, onOpenScreen }) {
     const client = useQueryClient();
     const themes = useQuery({ queryKey: ["settings", "themes"], queryFn: () => keryx.entities.ProjectionTheme.list("name") }).data || [];
     useEffect(() => keryx.entities.ProjectionTheme.subscribe(() => client.invalidateQueries({ queryKey: ["settings", "themes"] })), [client]);
@@ -111,36 +115,66 @@ export default function TemasSection({ c }) {
         { label: "Excluir…", icon: "trash", onSelect: () => remove(t) },
     ] });
 
+    const catList = categoryList(storedCats);
     return (
         <>
             <KindThemes c={c} themes={themes} setDefault={setDefault} />
-            <CfgKey k="Todos os temas" className="listhead"><span className="kx-section">Todos os temas</span><span style={{ flex: 1 }} /><Btn small kind="brand" onClick={() => edit("new")}>Novo tema…</Btn></CfgKey>
-            {/* The themes as small screens, as in the library (owner's request
-                2026-10-13); a click edits in the Editor de temas e layouts. */}
-            <div className="tmg" role="list" aria-label="Temas">
-                {themes.map((t) => (
-                    <button type="button" key={t.id} role="listitem" className="kx-t fg-tile tmg-tile" aria-label={themeName(t)}
-                        title={`${themeName(t)} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
-                        <span className="fg-img"><ThemeThumb theme={t} /><NoBgMark theme={t} label /></span>
-                        {(t.is_default || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
-                        <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G"].filter(Boolean).join(" · ")}</span>
-                    </button>
-                ))}
-            </div>
-            {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Use "Novo tema…": o tema se monta no Editor de temas.</Empty>}
+            <CfgGroup id="temas.todos" k="Todos os temas" summary={themesSummary(themes)} actions={<Btn small kind="brand" onClick={() => edit("new")}>Novo tema…</Btn>}>
+                {/* The themes as small screens, as in the library (owner's request
+                    2026-10-13); a click edits in the Editor de temas e layouts. */}
+                <div className="tmg" role="list" aria-label="Temas">
+                    {themes.map((t) => (
+                        <button type="button" key={t.id} role="listitem" className="kx-t fg-tile tmg-tile" aria-label={themeName(t)}
+                            title={`${themeName(t)} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
+                            <span className="fg-img"><ThemeThumb theme={t} /><NoBgMark theme={t} label /></span>
+                            {(t.is_default || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
+                            <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G"].filter(Boolean).join(" · ")}</span>
+                        </button>
+                    ))}
+                </div>
+                {!themes.length && <Empty icon="palette" title="Nenhum tema ainda">Use "Novo tema…": o tema se monta no Editor de temas.</Empty>}
+            </CfgGroup>
             {/* The backgrounds live in the library (BackgroundLibrary, manage
                 mode); this is its door in Configurações — it was Aparência's
                 until the section dissolved (Rodada B 2026-10-14). The
                 categories are edited in the library too (owner 2026-10-16):
                 the row opens it on them. */}
-            <CfgKey k="Fundos" className="listhead"><span className="kx-section">Fundos <span className="kx-count">· imagens, vídeos, gerados e cores para temas e papéis de parede</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca de fundos</Btn></CfgKey>
-            <CfgKey k="Categorias de fundos" className="kx-row">
-                <span className="kx-glyph"><Icon name="image" /></span>
-                <span className="kx-row-main"><span className="kx-row-title">Categorias de fundos</span><span className="kx-row-meta">{categoryList(storedCats).join(" · ")}</span></span>
-                <Btn small onClick={() => pick({ title: "Fundos", manage: true, view: "categories" })}>Editar…</Btn>
-            </CfgKey>
+            <CfgGroup id="temas.fundos" k="Fundos" summary={fundosSummary(catList)} actions={<Btn small onClick={() => pick({ title: "Fundos", manage: true })}>Abrir a biblioteca de fundos</Btn>}>
+                <CfgKey k="Categorias de fundos" className="kx-row">
+                    <span className="kx-glyph"><Icon name="image" /></span>
+                    <span className="kx-row-main"><span className="kx-row-title">Categorias de fundos</span><span className="kx-row-meta">{catList.join(" · ")}</span></span>
+                    <Btn small onClick={() => pick({ title: "Fundos", manage: true, view: "categories" })}>Editar…</Btn>
+                </CfgKey>
+            </CfgGroup>
+            <IdleScreen c={c} onOpenScreen={onOpenScreen} />
             <ChurchFonts c={c} themes={themes} />
         </>
+    );
+}
+
+// Tela ociosa (owner 2026-10-19; moved here from Telas e saídas in Rodada H1,
+// "Tela ociosa mova para Temas e fundos"): what every screen shows with
+// nothing on air and no papel de parede — the whole app's, a card like the
+// outputs' whose click opens it in the Editor de telas. The still shows what
+// the screens show then. Culto › Fora do ar points to it.
+function IdleScreen({ c, onOpenScreen }) {
+    const church = useChurch();
+    const summary = idleSummary(c.live?.idle, Boolean(c.live?.idleLook));
+    return (
+        <CfgGroup id="temas.ociosa" k="Tela ociosa" summary={summary}>
+            <div className="cfg-grid" role="list" aria-label="Tela ociosa">
+                <div role="listitem" className="cfg-card">
+                    <button type="button" className="kx-t cfg-card-thumb" onClick={() => onOpenScreen?.(IDLE_SCREEN)} title="Editar a tela ociosa no Editor">
+                        <div className="cfg-prev"><div className="cfg-prev-fill"><ScreenRenderer fill state={{ ...emptyState(0), idle: c.live?.idle === "black" ? "black" : "logo", idleLook: c.live?.idleLook ?? null }} logoUrl={church.logo} preview audio={false} /></div></div>
+                    </button>
+                    <div className="cfg-card-h">
+                        <Icon name="monitor" />
+                        <span className="cfg-card-t">Tela ociosa</span>
+                    </div>
+                    <span className="kx-meta cfg-card-m">{summary}</span>
+                </div>
+            </div>
+        </CfgGroup>
     );
 }
 
@@ -163,8 +197,7 @@ function ChurchFonts({ c, themes }) {
         } catch (err) { c.say(err?.message || "Não foi possível excluir a fonte."); }
     };
     return (
-        <>
-            <CfgKey k="Fontes da igreja" className="listhead"><span className="kx-section">Fontes da igreja <span className="kx-count">· copiadas do computador ou de um arquivo, em todas as telas</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => openEditor({ theme: "new", from: "Temas" })}>Trazer no Editor de temas…</Btn></CfgKey>
+        <CfgGroup id="temas.fontes" k="Fontes da igreja" summary={fontsSummary(families.length)} actions={<Btn small onClick={() => openEditor({ theme: "new", from: "Temas" })}>Trazer no Editor de temas…</Btn>}>
             {families.map((f) => (
                 <div key={f.family} className="kx-row" role="listitem">
                     <span className="kx-glyph"><Icon name="text" /></span>
@@ -175,7 +208,7 @@ function ChurchFonts({ c, themes }) {
                     <Btn small onClick={() => remove(f)}>Excluir…</Btn>
                 </div>
             ))}
-            {!families.length && <div className="kx-row"><span className="kx-row-main"><span className="kx-row-meta">Nenhuma ainda. No Editor de temas, em Fonte › Trazer, escolha uma fonte do computador ou um arquivo .ttf/.otf: ela é copiada para a igreja.</span></span></div>}
-        </>
+            {!families.length && <div className="kx-row"><span className="kx-row-main"><span className="kx-row-meta">Nenhuma ainda. No Editor de temas, em Fonte › Trazer, escolha uma fonte do computador ou um arquivo .ttf/.otf: ela é copiada para a igreja, em todas as telas.</span></span></div>}
+        </CfgGroup>
     );
 }

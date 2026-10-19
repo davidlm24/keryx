@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Btn, Empty, Seg } from "../kx";
-import { useBridge, usePoll, FormRow, Switch, formatBytes, formatWhen, desktopOnly, Reading } from "./parts";
+import { useBridge, usePoll, FormRow, Switch, formatBytes, formatWhen, desktopOnly, Reading, CfgGroup } from "./parts";
 import { onAir } from "@/lib/console/updates";
+import { dataSummary, updatesSummary } from "@/lib/console/cfgSummaries";
 
 const KEEPS = [["7", "7"], ["14", "14"], ["30", "30"], ["60", "60"]];
 
@@ -62,8 +63,9 @@ export default function DadosSection({ c }) {
 
     return (
         <>
+            <CfgGroup id="backup.backup" k="Backup" fold={false}>
             <div className="frm">
-                <FormRow k="Backup">
+                <FormRow k="Fazer backup">
                     <Btn kind="outline" disabled={any} onClick={() => run("backupNow", "Backup", (r) => (r?.backup?.media?.enabled ? "Backup feito · copiando as mídias novas." : "Backup feito."))}>{busy === "backupNow" ? "Fazendo…" : "Fazer backup agora"}</Btn>
                     <span className="kx-meta">{backup.last ? `último: ${formatWhen(backup.last.modified)} · ${formatBytes(backup.last.size)} · ${backup.count} ${backup.count === 1 ? "salvo" : "salvos"}` : "ainda não há backups nesta pasta"}</span>
                 </FormRow>
@@ -119,6 +121,10 @@ export default function DadosSection({ c }) {
                         </div>
                     </FormRow>
                 )}
+            </div>
+            </CfgGroup>
+            <CfgGroup id="backup.dados" k="Dados" defaultOpen={false} summary={dataSummary(formatBytes(info.dataBytes))}>
+            <div className="frm">
                 <FormRow k="Outro computador">
                     <Btn disabled={any} onClick={() => run("exportAll", "Exportar", (r) => (r ? `Exportado: ${r.media} ${r.media === 1 ? "arquivo" : "arquivos"} de mídia, ${formatBytes(r.bytes)}.` : ""))}>{busy === "exportAll" ? "Exportando…" : "Exportar tudo…"}</Btn>
                     <Btn kind={confirm === "importAll" ? "air" : ""} disabled={any} onClick={() => run("importAll", "Importar")}>{busy === "importAll" ? "Importando…" : confirm === "importAll" ? "Importar mesmo" : "Importar…"}</Btn>
@@ -133,6 +139,10 @@ export default function DadosSection({ c }) {
                     <Btn disabled={any} onClick={() => run("diagnostics", "Diagnóstico", (r) => (r ? "Diagnóstico salvo." : ""))}>Salvar diagnóstico…</Btn>
                     <span className="kx-meta">registros recentes e dados do sistema, sem músicas, mídias nem senhas</span>
                 </FormRow>
+            </div>
+            </CfgGroup>
+            <CfgGroup id="backup.atualizacoes" k="Atualizações" summary={updatesSummary(info)}>
+            <div className="frm">
                 <FormRow k="Versão">
                     <span className="kx-content">KERYX {info.version}</span>
                     {update.status !== "disabled" && <Btn disabled={any || update.status === "checking" || update.status === "downloading"} onClick={() => run("updateCheck", "Atualizações")}>Verificar atualização</Btn>}
@@ -150,6 +160,7 @@ export default function DadosSection({ c }) {
                             : "desligado: o sino avisa e você atualiza pelo menu do KERYX › Atualizar agora"}</span>
                 </FormRow>
             </div>
+            </CfgGroup>
         </>
     );
 }

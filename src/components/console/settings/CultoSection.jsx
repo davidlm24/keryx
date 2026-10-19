@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { Btn, Field } from "../kx";
 import Icon from "../Icon";
-import { FormRow, Switch, CfgKey } from "./parts";
+import { FormRow, Switch, CfgGroup } from "./parts";
 import { useUser, usePrefs, updateUser } from "@/hooks/useUser";
 import { WEEKDAYS, TEAM_ROLES, teamRole } from "@/lib/console/serviceDefaults";
 import { parseDuration, formatDuration } from "@/lib/songImport";
@@ -14,6 +14,7 @@ import { churchFundo, defaultFundoFrom } from "@/lib/console/defaultFundo";
 import { IDLE_SCREEN } from "@/components/editor/ScreensMenu";
 import { openEditor } from "@/lib/editorWindow";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
+import { wallpaperSummary, templatesSummary, teamSummary } from "@/lib/console/cfgSummaries";
 
 // The two lists this section edits, with the planner's query keys: a change
 // here reaches the planner (and back) through each table's realtime.
@@ -64,6 +65,7 @@ export default function CultoSection({ c }) {
 
     return (
         <>
+            <CfgGroup id="culto.planejamento" k="Planejamento" fold={false}>
             <div className="frm">
                 <FormRow k="Dia do culto">
                     <select className="cfg-select" value={prefs.service_weekday ?? ""} aria-label="Dia do culto"
@@ -90,6 +92,7 @@ export default function CultoSection({ c }) {
                     <span className="kx-meta">"termina ~" e o atraso na barra do topo</span>
                 </FormRow>
             </div>
+            </CfgGroup>
 
             {/* Fora do ar (Rodada B 2026-10-14, "Papel de parede × Tema"): the
                 papel de parede is the day's culto's (each template below has
@@ -97,7 +100,8 @@ export default function CultoSection({ c }) {
                 any culto with none — and the Tela ociosa is what remains with
                 no papel de parede at all. The row says so while the culto on
                 screen covers it (the live state's background.default). */}
-            <CfgKey k="Fora do ar" className="listhead"><span className="kx-section">Fora do ar <span className="kx-count">· o papel de parede: as telas sem nada no ar, depois do Esc</span></span></CfgKey>
+            <CfgGroup id="culto.foradoar" k="Fora do ar" summary={wallpaperSummary(Boolean(churchFundo(user)))}>
+            <div className="listhead"><span className="kx-meta">O papel de parede: o que as telas mostram sem nada no ar e depois do Esc.</span></div>
             <div className="frm">
                 <FormRow k="Qualquer outro culto">
                     <BgChip title="Papel de parede · qualquer outro culto" empty="nenhum · as telas mostram a tela ociosa" value={churchFundo(user)}
@@ -114,8 +118,9 @@ export default function CultoSection({ c }) {
                     <Btn small onClick={() => { const r = openEditor({ screen: IDLE_SCREEN, from: "Culto" }); if (r?.error) c.say(r.error); }}>Editar a tela ociosa…</Btn>
                 </FormRow>
             </div>
+            </CfgGroup>
 
-            <CfgKey k="Modelos de culto" className="listhead"><span className="kx-section">Modelos de culto <span className="kx-count">· {templates.length}</span></span></CfgKey>
+            <CfgGroup id="culto.modelos" k="Modelos de culto" summary={templatesSummary(templates.length)}>
             {!templates.length && <div className="listhead"><span className="kx-meta">Nenhum ainda · salve uma setlist como modelo em Planejar o culto.</span></div>}
             {templates.map((t) => (
                 <div key={t.id} className="kx-row cfg-edit-row">
@@ -135,7 +140,9 @@ export default function CultoSection({ c }) {
                 </div>
             ))}
 
-            <CfgKey k="Equipe de louvor" className="listhead"><span className="kx-section">Equipe de louvor <span className="kx-count">· {team.length} · para escalar em Planejar o culto</span></span></CfgKey>
+            </CfgGroup>
+
+            <CfgGroup id="culto.equipe" k="Equipe de louvor" defaultOpen={false} summary={teamSummary(team)}>
             {team.map((m) => (
                 <div key={m.id} className={`kx-row cfg-edit-row ${m.active === false ? "is-dim" : ""}`}>
                     <span className="kx-glyph"><Icon name="user" /></span>
@@ -157,6 +164,7 @@ export default function CultoSection({ c }) {
                 </select>
                 <Btn small kind="brand" disabled={!newMember.name.trim()} onClick={addMember}>Adicionar</Btn>
             </div>
+            </CfgGroup>
         </>
     );
 }
