@@ -58,16 +58,46 @@ Este item não muda nada no KERYX; serve para decidir se a escolha da placa de s
 
 ## 8. Sincronização entre computadores (Google Drive)
 
-Precisa de dois computadores com o **Google Drive para computador** instalado e a mesma conta, e a mesma pasta do Drive nos dois (por exemplo `G:\Meu Drive\KERYX`).
+Precisa de dois computadores com o **Google Drive para computador** instalado e a mesma pasta do Drive nos dois (por exemplo `G:\Meu Drive\KERYX`). Chamamos aqui de **PC da igreja** o que projeta e **notebook** o outro.
 
-1. No computador da igreja, em Configurações › Sincronização, **Escolher a pasta…** e **Criar o código da igreja**. Anote o código (8 letras e números).
+**Antes de começar**
+
+- Nos dois, no Google Drive para computador, deixe os arquivos **espelhados** (Preferências › Pastas do Google Drive), ou clique com o botão direito na pasta do KERYX e deixe-a **disponível off-line**. Assim os vídeos ficam no computador, não só na nuvem.
+- Se a pasta é de outra conta e foi **compartilhada** com você, ela não aparece no computador sozinha: no site do Drive, em **Compartilhados comigo**, clique com o botão direito na pasta e escolha **Adicionar atalho ao Drive** (coloque o atalho em Meu Drive). Espere o Drive para computador baixar e só então escolha a pasta no KERYX.
+
+**Ligar**
+
+1. No PC da igreja, em Configurações › Sincronização, **Escolher a pasta…** e **Criar o código da igreja**. Anote o código (8 letras e números).
 2. A primeira vez copia todas as mídias para a pasta: confira se o KERYX continua projetando normalmente enquanto isso, e se a nuvem no topo fica verde quando termina.
-3. No outro computador, escolha a mesma pasta e digite o código. As músicas dos dois devem aparecer nos dois (nada some). Se houver músicas iguais, o sino avisa e a Biblioteca mostra "parece repetida".
-4. Edite uma música num computador. Em cerca de 30 segundos (mais o tempo do Drive) ela deve mudar no outro.
-5. Feche o Google Drive num deles: a nuvem fica âmbar ("Aguardando a pasta") e o KERYX continua normal. Abra o Drive de novo: as mudanças vão sozinhas.
-6. Em Computadores, use **Tirar…** no outro computador: ele deve parar e pedir o código. Digite o código nele: volta a sincronizar.
-7. Em um deles, **Sair da sincronização…**: nada é apagado, e os outros continuam com o que ele mandou.
-8. Anote quanto tempo uma mudança leva para chegar e qualquer arquivo estranho que o Drive criar na pasta `sync` (cópias com "(1)" no nome são normais).
+3. No notebook, escolha a mesma pasta e digite o código. As músicas dos dois devem aparecer nos dois (nada some). Se houver músicas iguais, o sino avisa e a Biblioteca mostra "parece repetida".
+4. Confira o quadro **O que vai e o que fica** na mesma tela: ele diz o que deve chegar e o que não chega.
+
+**A igreja inteira chega ao outro computador** (faça no notebook e confira no PC da igreja)
+
+5. Crie ou mude um item de cada tipo, um com arquivo onde houver:
+   - uma **música** com fundo próprio (um vídeo), um playback e marcas de Sincronizar;
+   - um **tema** com fundo de vídeo, e marque-o para aparecer em Temas (Fixar no console);
+   - um **culto** na Setlist, com papel de parede, e um **modelo de culto**;
+   - na **Mídia**: um vídeo, uma imagem, um áudio e um **PDF** (espere as páginas ficarem prontas);
+   - um **fundo** novo na biblioteca de fundos, numa categoria;
+   - um **aviso** com imagem ou vídeo, um aviso rápido pronto e um timer pronto;
+   - na **Escola bíblica**, uma turma e um material com imagem;
+   - em Configurações › Igreja, troque o **logo**, e em Culto, o papel de parede de **Qualquer outro culto**.
+6. Em cerca de 30 segundos (mais o tempo do Drive), tudo isso deve aparecer no PC da igreja. Enquanto um arquivo grande ainda vem, a linha dele diz **"Baixando…"** e o console não deixa mandá-lo ao ar; quando chega, o aviso some sozinho. Em Sincronização, a linha **Mídias** deve terminar em "todas aqui".
+7. No PC da igreja, mande ao ar a música, o vídeo, uma página do PDF e o aviso. Devem aparecer iguais ao notebook (o tema, o fundo, o logo no canto).
+8. Exclua no PC da igreja dois itens criados no notebook (por exemplo a imagem e o aviso). Devem sumir do notebook também.
+
+**O que fica em cada computador**
+
+9. Em Configurações › Bíblia e músicas, instale no notebook uma Bíblia que o PC da igreja não tem (por exemplo a ACF). Em até alguns minutos, o PC da igreja deve mostrar **"Instaladas no outro computador: … Falta a ACF aqui."** com **Instalar aqui**. Clique: a ACF baixa da internet (o texto nunca vem pela pasta) e o aviso some.
+10. Mude no notebook o desenho de uma tela (Editor de telas) ou a posição de uma saída: o PC da igreja **não** muda. É o esperado por enquanto.
+
+**Quando algo falha**
+
+11. Feche o Google Drive num deles: a nuvem fica âmbar ("Aguardando a pasta") e o KERYX continua normal. Abra o Drive de novo: as mudanças vão sozinhas.
+12. Em Computadores, use **Tirar…** no outro computador: ele deve parar e pedir o código. Digite o código nele: volta a sincronizar.
+13. Em um deles, **Sair da sincronização…**: nada é apagado, e os outros continuam com o que ele mandou.
+14. Anote quanto tempo uma mudança leva para chegar, quanto tempo um vídeo grande leva, e qualquer arquivo estranho que o Drive criar na pasta `sync` (cópias com "(1)" no nome são normais).
 
 ## Ao terminar
 

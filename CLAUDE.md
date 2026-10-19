@@ -129,6 +129,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   parked (`_parked`) and a remote row never erases a column its sender
   does not know. Tests use temp stores and a temp folder; only real Drive
   folders confirm the rest (docs/checklist-pc-igreja.md, item 8).
+  **What travels** (Rodada G7): every `SYNC_ENTITIES` row and every
+  `keryx-media://` file any of its fields names. The whole-church test in
+  `electron/sync.test.cjs` (`churchInABox`: a row of every synced entity,
+  every file field filled, three stores) and its drift check hold the jsonc
+  to it: a new field that may hold a file is filled there or listed in
+  `NOT_A_FILE`, and a file field of a computer's own entity in `STAYS_HERE`.
+  **`OutputPref` stays on each computer** (`ON_EACH_COMPUTER` in
+  syncScope.cjs) until the end of Rodada G10, which replaces its content
+  fields first; whatever it keeps per computer (placement) stays local.
+  **Bible text never travels**: each computer's `computer.json` lists its
+  installed editions (`bibles`, names only), and Bíblia e músicas says
+  "Falta a NVI aqui" with Instalar aqui (`biblesMissingHere`). The section's
+  "O que vai e o que fica" (with the Drive hints) is `SYNC_GOES`/`SYNC_STAYS`
+  in syncView.js: change it with the scope.
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by

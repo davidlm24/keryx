@@ -53,10 +53,11 @@ const FILE_LIMIT = 256 * 1024;
 const BATCH = 500;
 // Media named by rows that has not arrived yet, retried every pass.
 const MISSING_LIMIT = 2000;
-// <folder>/sync/<pc>/computer.json: { pc, name, version, at, sig } — who
-// the computer is (its Windows name, its KERYX version), signed like a line,
-// rewritten when either changes and twice a day (so "visto" stays true
-// without a write every pass).
+// <folder>/sync/<pc>/computer.json: { pc, name, version, bibles, at, sig } —
+// who the computer is (its Windows name, its KERYX version, the Bible
+// editions installed on it: their names only, never the text), signed like a
+// line, rewritten when any of them changes and twice a day (so "visto" stays
+// true without a write every pass).
 const COMPUTER_FILE = "computer.json";
 const COMPUTER_REFRESH_MS = 12 * 60 * 60 * 1000;
 // The cleanup of sync/media: how often it looks, how long a file must have
@@ -188,8 +189,15 @@ const isEntry = (e, pc) => e && typeof e === "object" && !Array.isArray(e)
 
 const syncDirOf = (folder) => path.join(path.resolve(String(folder)), SYNC_DIR);
 
-// A computer's computer.json: { name, version, at, verified } (verified only
-// with `keys`; without, the name is shown as the folder says it), or null.
+// The Bible editions a computer.json lists: short names ("NVI"), a few.
+const BIBLES_LIMIT = 20;
+const editionList = (v) => (Array.isArray(v)
+    ? [...new Set(v.filter((x) => typeof x === "string" && /^[A-Za-z0-9]{1,12}$/.test(x)).map((x) => x.toUpperCase()))].sort().slice(0, BIBLES_LIMIT)
+    : []);
+
+// A computer's computer.json: { name, version, bibles, at, verified }
+// (verified only with `keys`; without, the name is shown as the folder says
+// it), or null.
 async function readComputer(dir, keys = null) {
     let text;
     try {
@@ -205,9 +213,9 @@ async function readComputer(dir, keys = null) {
     }
     if (!info || typeof info !== "object") return null;
     const verified = keys ? keys.verify(text) : null;
-    if (keys && !verified) return { name: null, version: null, at: null, verified: false };
+    if (keys && !verified) return { name: null, version: null, bibles: [], at: null, verified: false };
     const str = (v, n) => (typeof v === "string" ? v.slice(0, n) : null);
-    return { name: str(info.name, 80), version: str(info.version, 40), at: str(info.at, 40), verified };
+    return { name: str(info.name, 80), version: str(info.version, 40), bibles: editionList(info.bibles), at: str(info.at, 40), verified };
 }
 
 // What a folder holds, for choosing it and typing the code (before any pass
@@ -245,8 +253,8 @@ async function inspectFolder(folder) {
 
 // getFolder() -> the folder chosen, or null (off). getPairing() -> { id, key }
 // (the code file's id and the key the code makes, syncPairing.cjs), or null
-// (no code typed on this computer yet). describe() -> { name, version }:
-// this computer as the others list it.
+// (no code typed on this computer yet). describe() -> { name, version,
+// bibles }: this computer as the others list it.
 function createSyncEngine({
     store, mediaDir, getFolder, getPairing = () => null, describe = null, log = console.warn, fileLimit = FILE_LIMIT, batch = BATCH, now = () => new Date(), onStatus = null,
     gcEveryMs = GC_EVERY_MS, gcGraceMs = GC_GRACE_MS,
@@ -393,14 +401,16 @@ function createSyncEngine({
         }
         const name = String(me.name || "").slice(0, 80);
         const version = String(me.version || "").slice(0, 40);
+        const bibles = editionList(me.bibles);
         const dir = path.join(syncDir, pc);
         const file = path.join(dir, COMPUTER_FILE);
         const last = state.me;
         const at = now();
-        const fresh = last && last.name === name && last.version === version && at - Date.parse(last.at || 0) < COMPUTER_REFRESH_MS;
+        const fresh = last && last.name === name && last.version === version && String(last.bibles || []) === String(bibles)
+            && at - Date.parse(last.at || 0) < COMPUTER_REFRESH_MS;
         if (fresh && (await sizeOf(file)) > 0) return;
         await fsp.mkdir(dir, { recursive: true });
-        const body = { pc, name, version, at: at.toISOString() };
+        const body = { pc, name, version, bibles, at: at.toISOString() };
         const tmp = path.join(dir, `.${COMPUTER_FILE}.${process.pid}.partial`);
         try {
             await fsp.writeFile(tmp, keys.sign(JSON.stringify(body)) + "\n");
@@ -408,7 +418,7 @@ function createSyncEngine({
         } finally {
             await fsp.rm(tmp, { force: true }).catch(() => {});
         }
-        state.me = { pc, name, version, at: body.at };
+        state.me = { pc, name, version, bibles, at: body.at };
     }
 
     // -- In: everyone else's folders ------------------------------------------
@@ -555,11 +565,11 @@ function createSyncEngine({
             } catch {
                 continue; // deleted while we looked
             }
-            const seen = computers.get(from) || { pc: from, name: null, version: null, seen: null, signed: null, files: 0, lastChange: 0 };
+            const seen = computers.get(from) || { pc: from, name: null, version: null, bibles: [], seen: null, signed: null, files: 0, lastChange: 0 };
             const who = await readComputer(dir, keys);
             if (who && (seen.signed === null || who.verified)) {
                 seen.signed = who.verified;
-                if (who.verified) Object.assign(seen, { name: who.name, version: who.version, seen: who.at });
+                if (who.verified) Object.assign(seen, { name: who.name, version: who.version, bibles: who.bibles, seen: who.at });
             }
             // Taken out: listed, never read, until it types the code again.
             if (out.has(from)) {
@@ -578,7 +588,7 @@ function createSyncEngine({
         // verified: the last line read from it carried this church's
         // signature (false: it writes without the code, or with an old one);
         // with no line read yet, its computer.json says; null: nothing at all.
-        // name, version, seen: from its computer.json, only when signed.
+        // name, version, bibles, seen: from its computer.json, only when signed.
         return {
             totals,
             computers: [...computers.values()].map(({ signed, ...c }) => {
