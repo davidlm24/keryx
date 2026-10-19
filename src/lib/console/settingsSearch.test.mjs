@@ -13,6 +13,7 @@ const FILES = {
     "IgrejaSection.jsx": "igreja",
     "TelasSection.jsx": "telas",
     "OutputPrefCard.jsx": "telas",
+    "TransicoesBlock.jsx": "telas",
     "RedeSection.jsx": "rede",
     "RemoteBlock.jsx": "rede",
     "IdleBlock.jsx": "culto",
