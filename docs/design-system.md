@@ -103,7 +103,7 @@ focus goes back to what opened it only if the keyboard opened and closed it
 — after a mouse open, to nothing, so the live keys work (`useFocusReturn`,
 `focusAfterClose` in `menuNav.js`). The menu bar answers **F10** or **Alt**
 alone (the focus on the bar: ←/→ walk it, ↓ or Enter opens, Esc leaves it)
-and **Alt + C/M/D/F** (Culto, Música, Mídia, Ferramentas; the letter
+and **Alt + C/M/D/F/A** (Culto, Música, Mídia, Ferramentas, Ajuda; the letter
 underlined only while Alt is held or the bar has the keyboard). Setlist and
 planner rows move with **Alt+↑/↓** on a focused row and Subir/Descer in
 their menu, as Camadas' do (`useRowStep`). A focused select is a control,
@@ -162,14 +162,13 @@ happens without internet.
 ## Layout
 
 **The top bar** (40 px, on `bg-0`, no panel), one line at every width. Left:
-the logo (its menu is the app's: Configurações, Saídas, Verificar tudo,
-Ajuda — Atalhos, Novidades, Sobre o KERYX —, Atualizar agora when due), then
-**KERYX | BÍBLIA** (bold caps, no icons, a gold underline on the one on
-screen — places, not commands), a divider, then the menu bar: Culto, Música,
-Mídia, Ferramentas (`MenuBar.jsx`, model in `src/lib/console/menuBar.js`).
-Under 1240 px the bar is replaced by a **☰ Menu** button (same container
-query) whose popover stacks the four menus, all open, submenus inline
-(`flattenMenus`). Right, compact: the
+the logo (its menu is the app's: Configurações, Saídas, Sobre o KERYX,
+Atualizar agora when due), then **KERYX | BÍBLIA** (bold caps, no icons, a
+gold underline on the one on screen — places, not commands), a divider, then
+the menu bar: Culto, Música, Mídia, Ferramentas and Ajuda (`MenuBar.jsx`,
+model in `src/lib/console/menuBar.js`). Where the bar does not fit it is
+replaced by a **☰ Menu** button (same container query) whose popover stacks
+the menus, all open, submenus inline (`flattenMenus`). Right, compact: the
 search (at most 320 px), the service clock, the clock, the Saídas status
 ("2 telas", the full label in its tooltip), **Ver** (the panels glyph, `panels`) and the bell.
 There is no Telas menu and no screen-action chip in the top bar: the screen

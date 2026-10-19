@@ -3379,11 +3379,13 @@ async function checkUpdates(webContents, { system, live, settings }) {
         push({ status: "none" });
         try { system.notifications.clear(); } catch { /* not there */ }
     }
-    // Novidades: from the menu (every version's notes), and once by itself
-    // after an update (whatsNew in settings.json), cleared when closed.
+    // Novidades: from the Ajuda menu (every version's notes; the bar's menu,
+    // or the Menu button's popover where the bar folds away, Rodada M0), and
+    // once by itself after an update (whatsNew in settings.json), cleared
+    // when closed.
     try {
         await js("document.querySelector('.scrim') && document.querySelector('.scrim').click(); true");
-        await js("document.querySelector('.markbtn').click(); true");
+        await js("(() => { const bar = document.querySelector('.topbar .tb-menus [data-menu=\"ajuda\"]'); (bar && bar.offsetParent ? bar : document.querySelector('.topbar .tb-menubtn')).click(); return true; })()");
         await waitFor(() => clickText(".kx-pop *", "Novidades"), 3000);
         result.whatsNewMenu = await waitFor(() => has(".dialog.wn .wn-h", "O que mudou"), 4000);
         await clickText(".dialog.wn button", "Entendi");

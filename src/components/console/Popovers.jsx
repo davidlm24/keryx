@@ -3,6 +3,7 @@ import { versionsBetween, parseNotes } from "@/lib/console/releaseNotes";
 import { RELEASE_NOTES } from "@/lib/console/releaseNotesData";
 import ShortcutList from "./ShortcutList";
 import { keyHint } from "@/lib/console/keys";
+import { firstSteps } from "@/lib/console/firstSteps";
 import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
@@ -23,13 +24,13 @@ import { mediaIcon } from "@/lib/console/libraryRows";
 
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
-// The KERYX menu (the logo) is the app's own (Rodada M0, owner 2026-10-19):
-// KERYX — Configurações, Saídas, Verificar tudo —, Ajuda — Atalhos,
-// Novidades, Sobre o KERYX — and Atualizar agora when an update is due. The
-// content's menus (Culto, Música, Mídia, Ferramentas) are the menu bar's and,
-// where it folds away, the Menu button's (MenuBar.jsx). Ver is the panels
+// The KERYX menu (the logo) is the app's own (Rodada M0, owner 2026-10-19/20):
+// Configurações, Saídas, Sobre o KERYX and Atualizar agora when an update is
+// due. The menus (Culto, Música, Mídia, Ferramentas, Ajuda) are the menu
+// bar's and, where it folds away, the Menu button's (MenuBar.jsx); Ajuda keeps
+// Sobre and Atualizar too, so either habit finds them. Ver is the panels
 // glyph beside the bell.
-export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, update, onUpdateNow, onWhatsNew }) {
+export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, update, onUpdateNow }) {
     const helpKey = keyHint("help", usePrefs().letter_keys);
     if (open !== "menu" && open !== "ver") return null;
     // Every list here is the console's one menu (Menu.jsx MenuList): it takes
@@ -65,15 +66,38 @@ export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets 
         { head: "KERYX" },
         { label: "Configurações", icon: "sliders", onSelect: go(() => onSettings?.("telas")) },
         { label: "Saídas", icon: "monitor", onSelect: () => setOpen("outs") },
-        { label: "Verificar tudo", icon: "check", onSelect: () => setOpen("verificar") },
-        "sep",
-        { head: "Ajuda" },
-        { label: "Atalhos", icon: "keyboard", kbd: helpKey, onSelect: () => setOpen("atalhos") },
-        { label: "Novidades", icon: "star", onSelect: () => onWhatsNew?.() },
         { label: "Sobre o KERYX", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
         ...(hasUpdate(update) ? ["sep", { label: update.status === "downloading" ? "Atualizando…" : "Atualizar agora", icon: "download", kbd: update.status === "downloading" ? `${update.percent}%` : update.version, onSelect: () => onUpdateNow?.() }] : []),
     ];
     return <MenuList key="menu" className="pop kx-pop" label="Menu do KERYX" items={items} closeOnPick={false} onClose={close} style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }} />;
+}
+
+// Ajuda › Primeiros passos (Rodada M0): the console in seven steps
+// (src/lib/console/firstSteps.js), each with the button that opens what it
+// names (`onGo(id)`). Its keys follow the church's Teclas de uma letra.
+export function FirstSteps({ open, setOpen, onGo }) {
+    const letters = usePrefs().letter_keys;
+    const box = useFocusFirst(open === "passos");
+    if (open !== "passos") return null;
+    const steps = firstSteps((action) => keyHint(action, letters));
+    return (
+        <div ref={box} className="dialog fs" role="dialog" aria-label="Primeiros passos">
+            <div className="kx-section" style={{ color: "var(--fg-1)" }}>Primeiros passos</div>
+            <ol className="fs-list">
+                {steps.map((st, i) => (
+                    <li key={st.title} className="fs-step">
+                        <span className="fs-n" aria-hidden="true">{i + 1}</span>
+                        <div className="fs-body">
+                            <div className="fs-t">{st.title}</div>
+                            <p className="fs-p">{st.text}</p>
+                        </div>
+                        {st.go && <Btn small onClick={() => { setOpen(null); onGo?.(st.go.id); }}>{st.go.label}</Btn>}
+                    </li>
+                ))}
+            </ol>
+            <div className="acts"><Btn kind="brand" onClick={() => setOpen(null)}>Entendi</Btn></div>
+        </div>
+    );
 }
 
 export function Shortcuts({ open, setOpen }) {

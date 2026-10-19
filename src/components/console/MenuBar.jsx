@@ -14,7 +14,7 @@ import { ACCESS_KEYS, accessParts, menuBarKey, altTap } from "@/lib/console/menu
 // The keyboard (audit C-14, 2026-10-16), as in Windows: F10 or Alt alone
 // puts the focus on the bar (← / → walk it, ↓ / Enter open, Esc leaves it);
 // Alt + the underlined letter opens that menu — C Culto, M Música, D Mídia,
-// F Ferramentas (src/lib/console/menuNav.js; the letter is underlined only
+// F Ferramentas, A Ajuda (src/lib/console/menuNav.js; the letter is underlined only
 // while Alt is held or the bar has the keyboard, so it reads as before).
 // An open menu has the focus (its first item), → enters a submenu, ← leaves
 // it, and ← / → elsewhere go to the next menu.
