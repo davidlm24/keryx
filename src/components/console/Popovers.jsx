@@ -12,8 +12,8 @@ import { PANEL_TABS, TABS_MENU_TITLE, tabsMenu } from "@/lib/console/panelTabs";
 import { restoreArgs } from "@/lib/projection";
 import { stageFromHistory, stageFromSong, stageFromMedia, stageFromPiece, stageFromMaterial } from "@/lib/console/stage";
 import { materialIcon, materialMeta } from "@/lib/console/school";
-import { parseReference, formatReference } from "@/lib/bibleBooks";
-import { readQuickRef } from "@/lib/console/quickRef";
+import { formatReference } from "@/lib/bibleBooks";
+import { referenceFrom } from "@/lib/console/quickRef";
 import { hasUpdate, canInstallNow, onAir, phaseOf } from "@/lib/console/updates";
 import { byGroup, rowStatus } from "@/lib/console/outputs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
@@ -289,11 +289,6 @@ export function EndDialog({ open, setOpen, onEnd }) {
     );
 }
 
-const quickReference = (text) => {
-    const r = readQuickRef(text);
-    return r.valid && r.book && r.chapter ? { book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart } : null;
-};
-
 // The command palette: everything by name. Opened from the KERYX
 // environment, a reference with verses goes to the Prévia right here (one
 // verse: its chapter from there) and Shift+Enter adds it to the Setlist;
@@ -310,7 +305,7 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
     const has = (...f) => f.some((x) => String(x || "").toLowerCase().includes(ql));
     const groups = [];
     // "Jo 3:16", or the quick jump's "jo 3 16".
-    const ref = ql ? parseReference(q.trim()) || quickReference(q) : null;
+    const ref = ql ? referenceFrom(q) : null;
     const here = Boolean(ref?.verseStart && env !== "biblia" && onPrepareReference);
     const bible = !ref ? []
         : here ? [

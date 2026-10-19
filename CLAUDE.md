@@ -1043,7 +1043,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   unread; reads are never logged. Under `npm run dev` the `/Remote` tab
   works too: `scripts/preview/server.cjs` checks its commands the same
   way and hands them to the console tab that listened last
-  (`remote.onCommand` in preview.js). Each screen says which
+  (`remote.onCommand` in preview.js). **The console's side** (Rodada G6
+  PR2b) is `createRemoteRunner` in `src/lib/console/remoteRunner.js`
+  (pure, tested; one handler per action, `remoteProtocol.test` checks the
+  list), mounted by `useRemote` (`src/components/console/useRemote.js`,
+  one line in Console.jsx): it reads the console's lists through a ref and
+  what is on air from `keryx.live.current()`, refuses in the order 423 →
+  404 → 409 with the contract's codes, runs writes one at a time (Tela
+  preta, Logo, Limpar, Tirar, Encerrar, Tirar o aviso and Travar never
+  wait: `EMERGENCY`) and says on the console what the phone did ("Celular:
+  …"; not the reads, a volume step, a seek or a slide picked). Its pure
+  parts are `src/lib/console/remote.js` (`remoteState` v2, `libraryPage`,
+  `refFromArgs`, the kinds) and a reference typed by hand reads through
+  `referenceFrom` (quickRef.js: "jo 3 16" and "Jo 3:16" alike, a chapter
+  alone too — the palette uses it as well). A remote send is
+  `send(stage, { keepPrev: true, why })` (useConsole): the operator's
+  Prévia stays unless it is that item, and the refusal comes back with
+  its code (`sendBlock`, src/lib/console/sendBlock.js). Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists
   the screens connected right now from that (`useOutputs`). Links and QR
   codes meant for other devices come from the network info's `urls`
