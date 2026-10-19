@@ -923,7 +923,25 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   optional, separate from the screens' PIN), it posts commands from a
   closed list (`REMOTE_ACTIONS`, `remoteCommand`) that main relays to the
   console (`keryx:remote`), which runs them as its own keys would — never
-  a direct write to the store or the live state from the network. Each screen says which
+  a direct write to the store or the live state from the network. **Its
+  protocol is `shared/remoteProtocol.json`** (version 2, Rodada G6; the
+  server, the console's runner and the phone all code against it, and
+  `shared/remoteProtocol.test.mjs` checks it against `REMOTE_ACTIONS` and
+  `WHILE_LOCKED`): `POST /api/remote { v: 2, action, args }` (no `v` = a
+  version 1 page, which keeps working), at most 4 kB; each action's `args`
+  schema (enum, int[min,max], bool, id, str[max] trimmed; unknown keys
+  dropped), its `kind` — R reads (no log, no lock check), S puts on air
+  (423 while locked; = `!WHILE_LOCKED.has(op)` for its `ops`), T takes
+  off (works locked) —, its pt-BR `label`, its `cap` (state's `caps`
+  gate the phone's sections) and its `result`; the refusal `codes`
+  (locked, nothing, not_found, missing, syncing, blocked, busy, rate) and
+  the pt-BR `messages`; timeouts 3 s (8 s for bible*; 504 = outcome
+  unknown, never retried). The live state reaches the phone over SSE,
+  what only the console knows through `state` (built per request; the v1
+  names stay, the smoke reads `items` and `serviceId`) and `library`.
+  Additive only: never rename or retype a field; a changed `app` reloads
+  the page; an unknown action is 400 and the phone says "Atualize o
+  KERYX no computador". A new action is an entry in the JSON first. Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists
   the screens connected right now from that (`useOutputs`). Links and QR
   codes meant for other devices come from the network info's `urls`
