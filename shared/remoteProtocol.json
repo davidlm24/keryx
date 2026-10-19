@@ -47,6 +47,8 @@
     "noFollow": "Esta música não tem letra automática.",
     "nothingToUndo": "Nada para desfazer.",
     "consoleClosed": "O console não está aberto no computador.",
+    "rate": "Muitos toques seguidos: espere um instante.",
+    "busy": "O computador está ocupado: tente de novo.",
     "unknownOutcome": "Não sei se foi — confira a tela",
     "updateApp": "Atualize o KERYX no computador"
   },
