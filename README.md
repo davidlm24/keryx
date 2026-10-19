@@ -200,6 +200,21 @@ Bíblia environment (or Configurações › Bíblia e músicas) installs one
 local database with no internet. Other versions (ARA, ARC, NAA, NTLH, BKJ
 1611) work online only. All Bible text goes through `src/lib/bibleText.js`.
 
+### Fonts (Temas)
+
+Geist ships with the app and is every theme's "Padrão (Geist)"; the seven
+other KERYX choices (Serifa, Arial, Georgia…) are the device's own fonts.
+A theme can also use **a font of the church**: in the Editor de temas, Fonte
+› Trazer › "Do computador…" lists the fonts installed on the PC (the
+church's computer, like Holyrics) and "Arquivo de fonte…" takes a .ttf/.otf/
+.woff2/.woff file. The chosen font is copied into the media library (one
+Media row per face, category `font`), so it syncs to the other church
+computers and is served to every output window and network screen — the
+same letters everywhere, nothing installed on the TVs. KERYX never downloads
+fonts from the internet; fonts that come with Windows or were bought keep
+their own licence. Configurações › Temas e fundos › Fontes da igreja lists
+and deletes them; Verificar says whether each one reached this computer.
+
 ### Where the app keeps its data
 
 Everything is in `%APPDATA%\KERYX` (override with `KERYX_DATA_DIR`):

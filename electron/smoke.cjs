@@ -915,6 +915,23 @@ async function checkConsole(webContents, { live, outputs }) {
             const remote = performance.getEntriesByType("resource").some((e) => /googleapis|gstatic/.test(e.name));
             return faces.length > 0 && Boolean(text) && /^"?Geist/.test(getComputedStyle(text).fontFamily) && !remote;
         })()`).catch(() => false);
+        // A church font (Rodada HF1): a Media row of category font, made from
+        // the bundled Geist woff2 under the family "Geist Smoke", is declared
+        // by every window (src/hooks/useFonts.js) and loads in the console
+        // and on the projector; the PC's font list (queryLocalFonts) is
+        // offered to the console (electron/main.cjs grants it there).
+        result.localFontsApi = await js('typeof window.queryLocalFonts === "function"').catch(() => false);
+        const fontRow = (await js(`(async () => {
+            const url = (performance.getEntriesByType("resource").find((e) => /Geist-Variable[^/]*\\.woff2$/.test(new URL(e.name).pathname)) || {}).name;
+            if (!url) return null;
+            const buf = await (await fetch(url)).arrayBuffer();
+            const res = await window.keryxDesktop.media.importFile(new File([buf], "geist-smoke.woff2", { type: "font/woff2" }));
+            if (!res.data) return null;
+            return window.keryxDesktop.db.call("Media", "create", [{ title: "Geist Smoke", type: "font", category: "font", file_url: "keryx-media://" + res.data.fileName, duration: 0, font: { family: "Geist Smoke", weight: "100 900", style: "normal", face: "Regular", origin: "file" } }]);
+        })()`).catch(() => null))?.data;
+        const loadsChurchFont = (wc) => waitFor(() => wc.executeJavaScript(`document.fonts.load('12px "Geist Smoke"').then((f) => f.length > 0).catch(() => false)`).catch(() => false), 8000);
+        result.churchFont = Boolean(fontRow) && await loadsChurchFont(webContents);
+        result.churchFontOutput = Boolean(fontRow) && Boolean(main) && await loadsChurchFont(main.webContents);
         // Click a tab again, then the arrow: the slide moves on the projector.
         await click(".envtabs button", "KERYX");
         await press("ArrowRight");
@@ -2873,7 +2890,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.prevTitle12 && result.progTitle13 && result.progOneTitle && result.progPill && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
+        && result.sent && result.projected && result.projectorFont && result.localFontsApi && result.churchFont && result.churchFontOutput && result.prevTitle12 && result.progTitle13 && result.progOneTitle && result.progPill && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose

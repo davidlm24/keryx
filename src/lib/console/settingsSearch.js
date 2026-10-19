@@ -56,6 +56,8 @@ export const SETTINGS_INDEX = [
             "título do item", "nome da música no slide", "mostrar o título"]),
     e("temas", "Fundos", "a biblioteca de fundos: imagens, vídeos, gerados e cores; nome, categoria, escurecer, desfoque, excluir",
         ["imagens", "vídeos", "gerados", "enviar do computador", "Categoria", "Escurecer", "Desfoque", "favorito", "oculto", "ocultar", "excluir fundo", "excluídos", "restaurar", "fundos do keryx", "biblioteca", "aparência"]),
+    e("temas", "Fontes da igreja", "as fontes copiadas do computador ou de um arquivo para os temas: faces, tamanho, excluir; novas entram pelo Editor de temas",
+        ["fonte", "fontes", "fonte do computador", "arquivo de fonte", "ttf", "otf", "woff", "família", "tipografia", "letra", "excluir fonte", "editor de temas", "trazer"]),
     e("temas", "Categorias de fundos", "criar, renomear, ordenar e excluir as categorias; abre a biblioteca de fundos",
         ["categoria", "categorias", "nova categoria", "renomear", "ordem", "excluir categoria", "outros", "fundos", "galerias"]),
 

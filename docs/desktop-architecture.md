@@ -107,7 +107,12 @@ The swap happens behind that surface; **pages don't change**.
   profile from settings (name, church branding). `isAuthenticated()` is
   always true. `AuthContext` keeps its shape so pages don't change.
 - **`integrations.Core.UploadFile`:** copies the file into the media library
-  and returns a local URL (section 4).
+  and returns a local URL (section 4). The church's fonts go the same way
+  (Rodada HF1): the Editor de temas copies a PC font's faces (Local Font
+  Access, `blob()`) or a font file as bytes through `UploadFile`, one Media
+  row of category `font` per face; every window declares them as
+  `@font-face` (`src/hooks/useFonts.js`) and the local server serves the
+  files (`.ttf`, `.otf`, `.woff2`, `.woff`) to outputs and network screens.
 - **`integrations.Core.InvokeLLM`:** optional, see section 6.
 
 **Importing today's data:** a one-off script reads from Supabase (or Base44,

@@ -5,7 +5,8 @@ import { Btn } from "./kx";
 import { installedVersions, forgetInstalledVersions } from "@/lib/bibleText";
 import { BIBLE_VERSIONS, editionPlan } from "@/lib/bibleBooks";
 import { getPrefs } from "@/hooks/useUser";
-import { FONT_MAP } from "@/lib/deviceStyles";
+import { isFontKey } from "@/lib/fonts";
+import { useChurchFonts } from "./useConsoleData";
 import { presentationBlock } from "@/lib/presentation";
 
 // Verificar: the readiness check before the service. Every line is a real
@@ -34,6 +35,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
     const [groups, setGroups] = useState(null);
     const [running, setRunning] = useState(false);
     const [installing, setInstalling] = useState(null);
+    const churchFonts = useChurchFonts().families;
 
     const run = useCallback(async () => {
         setRunning(true);
@@ -84,13 +86,18 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
         await document.fonts.ready.catch(() => {});
         const geist = (await document.fonts.load("12px Geist").catch(() => [])).length > 0;
         fonts.push(line("Geist", geist ? "Instalada com o KERYX · a mesma no console e em todas as telas" : "Não carregou: o console e as telas usam a do sistema, e as linhas podem quebrar diferente. Reinicie o KERYX; se continuar, reinstale.", geist ? "ok" : "warn", null, "text"));
+        // The church's fonts (Rodada HF1): a theme's family is a KERYX key
+        // (the device's font) or a family copied into the library (Media
+        // rows of category font); one the church no longer has, or whose
+        // file the sync has not brought, is said so.
         const families = Array.from(new Set(data.themes.map((t) => t.font_family).filter(Boolean)));
         for (const f of families) {
             if (f === "sans") continue; // Geist, above
-            const css = FONT_MAP[f];
-            fonts.push(css
-                ? line(f, "Usada por um tema · fonte do aparelho: uma tela na rede sem ela usa outra e pode quebrar as linhas diferente", "info", null, "text")
-                : line(f, "Fonte desconhecida · as telas usam a Geist", "warn", null, "text"));
+            if (isFontKey(f)) { fonts.push(line(f, "Usada por um tema · fonte do aparelho: uma tela na rede sem ela usa outra e pode quebrar as linhas diferente", "info", null, "text")); continue; }
+            const church = churchFonts.find((x) => x.family === f);
+            if (!church) fonts.push(line(f, "Fonte da igreja não encontrada: as telas usam a Geist · copie-a de novo no Editor de temas", "warn", null, "text"));
+            else if (church.syncing || church.missing) fonts.push(line(f, church.syncing ? "Arquivo da fonte ainda não chegou (Baixando…) · até lá as telas usam a Geist" : "Arquivo da fonte não encontrado na pasta de mídia · as telas usam a Geist; copie-a de novo no Editor de temas", church.syncing ? "warn" : "miss", null, "text"));
+            else fonts.push(line(f, `Fonte da igreja · copiada para todas as telas · ${church.faces.join(", ")}`, "ok", null, "text"));
         }
         out.push({ name: "Fontes", lines: fonts });
 
@@ -135,7 +142,7 @@ export default function VerifyView({ c, items, data, outputs, network, onIdentif
 
         setGroups(out);
         setRunning(false);
-    }, [items, data, outputs, network, onIdentify, onOpenOutput, onOpenMedia, installing]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [items, data, outputs, network, onIdentify, onOpenOutput, onOpenMedia, installing, churchFonts]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const installBible = async (v) => {
         setInstalling(v);

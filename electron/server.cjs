@@ -22,6 +22,9 @@ const MIME = {
     ".woff": "font/woff",
     ".woff2": "font/woff2",
     ".ttf": "font/ttf",
+    // The church's fonts (Media rows of category font, src/lib/fonts.js).
+    ".otf": "font/otf",
+    ".ttc": "font/collection",
     ".mp4": "video/mp4",
     ".m4v": "video/mp4",
     ".mov": "video/quicktime",

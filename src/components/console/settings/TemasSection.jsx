@@ -13,6 +13,8 @@ import { useLibraryPicker, ALL_KINDS } from "../library/libraryContext";
 import { usePrefs, updateUser } from "@/hooks/useUser";
 import { openEditor } from "@/lib/editorWindow";
 import { categoryList } from "@/lib/console/backgroundPrefs";
+import { fontStack, themesUsingFont } from "@/lib/fonts";
+import { useChurchFonts } from "../useConsoleData";
 
 const SIZE = Object.fromEntries(TEXT_SIZES);
 const FONT = Object.fromEntries(THEME_FONTS);
@@ -137,6 +139,43 @@ export default function TemasSection({ c }) {
                 <span className="kx-row-main"><span className="kx-row-title">Categorias de fundos</span><span className="kx-row-meta">{categoryList(storedCats).join(" · ")}</span></span>
                 <Btn small onClick={() => pick({ title: "Fundos", manage: true, view: "categories" })}>Editar…</Btn>
             </CfgKey>
+            <ChurchFonts c={c} themes={themes} />
+        </>
+    );
+}
+
+// Fontes da igreja (Rodada HF1): the families copied into the library from
+// the PC or a font file (Media rows of category font, one per face; the
+// Editor de temas' Fonte picker brings them in), each with its faces and
+// size. Excluir asks first and is refused while a theme names the family
+// (the themes are listed), so no theme is left pointing at nothing.
+const bytesOf = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB` : n > 0 ? `${Math.max(1, Math.round(n / 1e3))} KB` : "");
+function ChurchFonts({ c, themes }) {
+    const { families } = useChurchFonts();
+    const confirm = useConfirm();
+    const remove = async (f) => {
+        const used = themesUsingFont(themes, f.family);
+        if (used.length) { c.say(`A fonte ${f.family} está em uso: ${used.map((t) => themeName(t)).join(", ")}. Troque a fonte desses temas antes de excluí-la.`); return; }
+        if (!(await confirm(deleteQuestion("a fonte", f.family, "Os arquivos dela saem da pasta de mídia desta igreja, em todos os computadores.")))) return;
+        try {
+            for (const m of f.rows) await keryx.entities.Media.delete(m.id);
+            c.say(`Fonte ${f.family} excluída.`);
+        } catch (err) { c.say(err?.message || "Não foi possível excluir a fonte."); }
+    };
+    return (
+        <>
+            <CfgKey k="Fontes da igreja" className="listhead"><span className="kx-section">Fontes da igreja <span className="kx-count">· copiadas do computador ou de um arquivo, em todas as telas</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => openEditor({ theme: "new", from: "Temas" })}>Trazer no Editor de temas…</Btn></CfgKey>
+            {families.map((f) => (
+                <div key={f.family} className="kx-row" role="listitem">
+                    <span className="kx-glyph"><Icon name="text" /></span>
+                    <span className="kx-row-main">
+                        <span className="kx-row-title" style={{ fontFamily: fontStack(f.family) }}>{f.family}</span>
+                        <span className={`kx-row-meta ${f.missing || f.syncing ? "kx-warn" : ""}`}>{[f.faces.join(", "), bytesOf(f.bytes), f.syncing ? "Baixando…" : f.missing ? "arquivo não encontrado" : ""].filter(Boolean).join(" · ")}</span>
+                    </span>
+                    <Btn small onClick={() => remove(f)}>Excluir…</Btn>
+                </div>
+            ))}
+            {!families.length && <div className="kx-row"><span className="kx-row-main"><span className="kx-row-meta">Nenhuma ainda. No Editor de temas, em Fonte › Trazer, escolha uma fonte do computador ou um arquivo .ttf/.otf: ela é copiada para a igreja.</span></span></div>}
         </>
     );
 }
