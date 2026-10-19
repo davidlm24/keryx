@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Seg } from "../kx";
 import Icon from "../Icon";
-import { Switch, CfgKey, CfgFlash, FormRow } from "./parts";
+import { Switch, CfgKey, CfgFlash, FormRow, CfgGroup } from "./parts";
 import { usePrefs, updateUser } from "@/hooks/useUser";
-import { MEDIA_MODES, MEDIA_MS, CLEAR_MODES, CLEAR_MS, PAUSE_MS, ENTER_MODES, ENTER_MS, KIND_MODES } from "@/lib/console/transitions";
+import { MEDIA_MODES, MEDIA_MS, CLEAR_MODES, CLEAR_MS, PAUSE_MS, ENTER_MODES, ENTER_MS, KIND_MODES, transitionsSummary } from "@/lib/console/transitions";
 import { TRANSITION_TYPES } from "@/lib/contentKinds";
 
 // Transições (owner 2026-10-16, Rodada F2): how one sound gives way to the
@@ -13,7 +13,9 @@ import { TRANSITION_TYPES } from "@/lib/contentKinds";
 // do ar (the player's music leaves with the picture). Rodada G5 (owner
 // 2026-10-17): Ao entrar ou trocar, with its exceptions per kind of content
 // folded under it (src/lib/contentKinds.js). The slide-to-slide transition
-// of the text stays the theme's.
+// of the text stays the theme's. Rodada H0 (owner 2026-10-19): the whole
+// block is a group that starts closed, its summary saying what is chosen
+// (the pilot of CfgGroup, parts.jsx).
 const msOptions = (list) => list.map(([v, label]) => [String(v), label]);
 const KINDS_KEY = "Por tipo de conteúdo";
 export default function TransicoesBlock({ c }) {
@@ -28,13 +30,14 @@ export default function TransicoesBlock({ c }) {
         if (v) next[id] = v; else delete next[id];
         save({ enter_transition_kinds: next });
     };
-    // Folded until the operator opens it, or the search lands on it.
-    const flash = useContext(CfgFlash);
+    // Folded until the operator opens it, or the search lands on it (the
+    // jump's `pending` arrives first, while the group above may still be
+    // closed; `flash` once the row is found).
+    const { flash, pending } = useContext(CfgFlash) || {};
     const [open, setOpen] = useState(false);
-    useEffect(() => { if (flash === KINDS_KEY) setOpen(true); }, [flash]);
+    useEffect(() => { if (flash === KINDS_KEY || pending === KINDS_KEY) setOpen(true); }, [flash, pending]);
     return (
-        <>
-            <CfgKey k="Transições" className="listhead"><span className="kx-section">Transições</span></CfgKey>
+        <CfgGroup id="telas.transicoes" k="Transições" defaultOpen={false} summary={transitionsSummary(prefs)}>
             <div className="frm">
                 <FormRow k="Ao pausar o som">
                     <Seg small label="Ao pausar o som" value={String(prefs.pause_fade_ms)} options={msOptions(PAUSE_MS)}
@@ -77,6 +80,6 @@ export default function TransicoesBlock({ c }) {
                     <span className="kx-meta">{clearFades ? "entram e saem com a transição de Ao tirar do ar" : "com Corte em Ao tirar do ar, entram e saem na hora"}</span>
                 </FormRow>
             </div>
-        </>
+        </CfgGroup>
     );
 }
