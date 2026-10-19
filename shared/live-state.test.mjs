@@ -1101,3 +1101,39 @@ test("Limpar (text.clear): timer, aviso and text go in one change with one fade;
     const locked = applyOp(s, "screens.lock", { locked: true }, T0);
     assert.equal(applyOp(locked, "text.clear", {}, T0 + 13).content, null);
 });
+
+// Rodada G5 (owner 2026-10-17): Ao entrar ou trocar. Every op that puts
+// something new on the screens, or replaces it, keeps its `fade` as
+// live.fade, checked like the exit's; moving the slide never fades.
+test("enter fade (Rodada G5): each show op stores and clamps its fade; locked is refused", () => {
+    const base = run([["content.show", song]]);
+    const shows = [
+        ["content.show", { ...song, title: "Outra" }],
+        ["media.show", { kind: "image", url: "keryx-media://i.jpg" }],
+        ["media.playlist", { items: [{ kind: "image", url: "keryx-media://a.jpg" }, { kind: "image", url: "keryx-media://b.jpg" }] }],
+        ["video.show", CLIP],
+        ["tool.show", { mode: "clock" }],
+        ["communication.show", { item: { title: "Aviso" } }],
+    ];
+    for (const [op, args] of shows) {
+        const s = applyOp(base, op, { ...args, fade: 500 }, T0 + 100);
+        assert.deepEqual(s.fade, { ms: 500, at: T0 + 100 }, op);
+        assert.equal(applyOp(base, op, args, T0 + 100).fade, null, `${op}: Corte`);
+        assert.equal(applyOp(base, op, { ...args, fade: 9999 }, T0 + 100).fade.ms, 3000, `${op}: clamped`);
+        assert.equal(applyOp(base, op, { ...args, fade: 10 }, T0 + 100).fade.ms, 50, `${op}: clamped`);
+        assert.throws(() => applyOp(base, op, { ...args, fade: "suave" }, T0 + 100), LiveError, op);
+        const locked = applyOp(base, "screens.lock", { locked: true }, T0 + 50);
+        assert.throws(() => applyOp(locked, op, { ...args, fade: 500 }, T0 + 100), (e) => e.status === 423, `${op}: locked`);
+    }
+    // The outputs move a list on with the fade, locked too (they always could).
+    const list = applyOp(run([["media.playlist", { items: [{ kind: "image", url: "keryx-media://a.jpg" }, { kind: "image", url: "keryx-media://b.jpg" }] }]]), "screens.lock", { locked: true }, T0 + 1);
+    assert.deepEqual(applyOp(list, "media.advance", { fromIndex: 0, fade: 400 }, T0 + 10).fade, { ms: 400, at: T0 + 10 });
+    assert.equal(applyOp(list, "media.advance", { fromIndex: 0 }, T0 + 10).fade, null);
+    const notices = applyOp(run([["communication.show", { playlist: [{ title: "A" }, { title: "B" }] }]]), "screens.lock", { locked: true }, T0 + 1);
+    assert.deepEqual(applyOp(notices, "communication.advance", { fromIndex: 0, fade: 500 }, T0 + 10).fade, { ms: 500, at: T0 + 10 });
+    // Moving the slide keeps the fade of the change that sent it: an output
+    // knows it is not its own (at ≠ updatedAt).
+    const sent = applyOp(base, "content.show", { ...song, fade: 500 }, T0 + 100);
+    const moved = applyOp(sent, "content.goTo", { index: 2, fade: 500 }, T0 + 200);
+    assert.deepEqual(moved.fade, { ms: 500, at: T0 + 100 }, "goTo takes no fade");
+});

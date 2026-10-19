@@ -188,6 +188,19 @@
       "type": "integer",
       "description": "Transicoes, ao pausar o som: Pausar e Tocar no player suavizam o volume nesta duracao em ms (0 = corte, 200 ou 400). Nulo = 200"
     },
+    "enter_transition": {
+      "type": "string",
+      "enum": ["cut", "fade"],
+      "description": "Transicoes, ao entrar ou trocar: o que entra na tela ou troca outra coisa (uma musica por outra, uma imagem, um aviso) entra de corte (cut) ou suave (fade); passar de slide continua sendo do tema. Nulo = fade"
+    },
+    "enter_transition_ms": {
+      "type": "integer",
+      "description": "Transicoes, ao entrar ou trocar: a duracao do suave em ms (300, 500 ou 1000). Nulo = 500"
+    },
+    "enter_transition_kinds": {
+      "type": "object",
+      "description": "Transicoes, ao entrar ou trocar, por tipo de conteudo: { lyrics, bible, text, presentation, image, video, notice, tool: cut | fade }; um tipo ausente segue a linha geral, menos o timer, que fica em corte. Nulo = todos no padrao"
+    },
     "standby_background": {
       "type": "string",
       "description": "Fundo de espera padrao: a imagem das telas quando nada esta no ar, se o culto nao tiver o seu (URL de midia ou fundo incluido). Antigo: lido quando default_background esta vazio"

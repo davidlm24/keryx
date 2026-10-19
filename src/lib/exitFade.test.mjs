@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { changeFade, leavingMs, screenExitMs, videoExitMs, leavingAudio } from "./exitFade.js";
+import { changeFade, leavingMs, screenExitMs, videoExitMs, leavingAudio, ghostStart, ghostTrack, GHOST_BURST_MS } from "./exitFade.js";
 import { applyOp, emptyState } from "../../shared/live-state.mjs";
 
 const T0 = 1_000_000;
@@ -91,4 +91,103 @@ test("exit fade: Esc and Parar take the music out on the screens' fade", () => {
     assert.equal(screenExitMs(media, applyOp(media, "media.clear", {}, T0 + 1)), 0);
     const clip = run([["video.show", CLIP]]);
     assert.equal(videoExitMs(clip, applyOp(clip, "video.clear", { fade: 600 }, T0 + 1)), 600);
+});
+
+// Rodada G5 (owner 2026-10-17): what enters or replaces something else fades
+// too, over the screen before it; moving the slide stays the theme's.
+test("enter fade: a new item replaces the one on its layer, each layer", () => {
+    const one = run([["content.show", song]]);
+    const two = applyOp(one, "content.show", { ...song, title: "Outra", fade: 500 }, T0 + 10);
+    assert.equal(changeFade(two), 500);
+    assert.equal(screenExitMs(one, two), 500, "song → song: the old one fades over the new one");
+    assert.equal(screenExitMs(one, applyOp(one, "content.show", { ...song, title: "Outra" }, T0 + 10)), 0, "Corte");
+    const pic = applyOp(one, "media.show", { kind: "image", url: "i.jpg", fade: 500 }, T0 + 10);
+    assert.equal(screenExitMs(one, pic), 500, "song → picture");
+    assert.equal(screenExitMs(pic, applyOp(pic, "media.show", { kind: "image", url: "j.jpg", fade: 300 }, T0 + 20)), 300, "picture → picture");
+    const timer = run([["tool.show", { mode: "timer", durationMs: 60000 }]]);
+    assert.equal(screenExitMs(timer, applyOp(timer, "tool.show", { mode: "clock", fade: 300 }, T0 + 10)), 300, "a tool replaced");
+    assert.equal(screenExitMs(timer, applyOp(timer, "tool.adjust", { deltaMs: 60000 }, T0 + 10)), 0, "the same timer, more time");
+    const notice = run([["communication.show", { playlist: [{ title: "A" }, { title: "B" }] }]]);
+    const next = applyOp(notice, "communication.advance", { fromIndex: 0, fade: 500 }, T0 + 10);
+    assert.equal(screenExitMs(notice, next), 500, "Tocar todos moves on fading");
+    const list = run([["media.playlist", { items: [{ kind: "image", url: "a.jpg" }, { kind: "image", url: "b.jpg" }] }]]);
+    assert.equal(screenExitMs(list, applyOp(list, "media.advance", { fromIndex: 0, fade: 400 }, T0 + 10)), 400, "a list of pictures moves on fading");
+    // Nothing on air: what enters fades in over the papel de parede.
+    const empty = run([["background.set", { kind: "color", value: "#123456" }]]);
+    assert.equal(screenExitMs(empty, applyOp(empty, "media.show", { kind: "image", url: "i.jpg", fade: 500 }, T0 + 10)), 500);
+});
+
+test("enter fade: moving the slide fades nothing — the theme's transition", () => {
+    const on = run([["content.show", { ...song, fade: 500 }]]);
+    for (const [op, args] of [["content.goTo", { index: 1 }], ["content.next", {}], ["content.update", { title: "Novo" }]]) {
+        const moved = applyOp(on, op, args, T0 + 10);
+        assert.equal(changeFade(moved), 0, op);
+        assert.equal(screenExitMs(on, moved), 0, op);
+    }
+    // The same song sent again is a new item: it fades.
+    assert.equal(screenExitMs(on, applyOp(on, "content.show", { ...song, fade: 500 }, T0 + 10)), 500);
+});
+
+test("enter fade: a sound hushed and a fade at once take the longer", () => {
+    const media = run([["media.show", CLIP]]);
+    const swap = applyOp(media, "media.show", { kind: "video", url: "keryx-media://b.mp4", transition: { mode: "fade", ms: 1000 }, fade: 500 }, T0 + 5);
+    assert.equal(screenExitMs(media, swap), 1000, "the sound leaves longer than the picture would");
+    const quick = applyOp(media, "media.show", { kind: "video", url: "keryx-media://b.mp4", transition: { mode: "fade", ms: 200 }, fade: 500 }, T0 + 5);
+    assert.equal(screenExitMs(media, quick), 500);
+    // The video channel: a clip replaced fades as the change says.
+    const clip = run([["video.show", CLIP]]);
+    assert.equal(videoExitMs(clip, applyOp(clip, "video.show", { kind: "video", url: "keryx-media://b.mp4", fade: 500 }, T0 + 5)), 500);
+    assert.equal(videoExitMs(clip, applyOp(clip, "video.show", { kind: "video", url: "keryx-media://b.mp4" }, T0 + 5)), 0);
+});
+
+test("enter fade: a YouTube player leaving cuts (a cold iframe in the ghost)", () => {
+    const yt = run([["media.show", { kind: "youtube", url: "https://youtu.be/x" }]]);
+    assert.equal(screenExitMs(yt, applyOp(yt, "content.show", { ...song, fade: 500 }, T0 + 5)), 0);
+    assert.equal(screenExitMs(yt, applyOp(yt, "clear", { fade: 300 }, T0 + 5)), 0, "Esc too");
+    const clip = run([["video.show", { kind: "youtube", url: "https://youtu.be/x" }]]);
+    assert.equal(videoExitMs(clip, applyOp(clip, "clear", { fade: 300 }, T0 + 5)), 0);
+    // Coming in, YouTube fades in over what was there.
+    const on = run([["content.show", song]]);
+    assert.equal(screenExitMs(on, applyOp(on, "media.show", { kind: "youtube", url: "https://youtu.be/x", fade: 500 }, T0 + 5)), 500);
+});
+
+test("ghostTrack: one ghost per change, kept through changes that fade nothing", () => {
+    const a = run([["content.show", song]]);
+    const b = applyOp(a, "content.show", { ...song, title: "B", fade: 500 }, T0 + 1000);
+    let t = ghostStart(a, a.rev);
+    t = ghostTrack(t, b, b.rev, screenExitMs, 5000);
+    assert.equal(t.ghost.from, a);
+    assert.deepEqual([t.ghost.ms, t.ghost.at, t.ghost.until], [500, 5000, 5500]);
+    assert.equal(ghostTrack(t, b, b.rev, screenExitMs, 5100), t, "the same rev: nothing new");
+    // A slide moved while it fades (later than a burst): the ghost goes on.
+    const c = applyOp(b, "content.goTo", { index: 1 }, T0 + 1300);
+    const t2 = ghostTrack(t, c, c.rev, screenExitMs, 5300);
+    assert.equal(t2.ghost, t.ghost);
+    assert.equal(t2.prev, c);
+    assert.equal(ghostTrack(ghostStart(a, a.rev), b, b.rev, screenExitMs, 5000, false).ghost, null, "disabled: a cut");
+});
+
+test("ghostTrack: a burst of changes fades once, from the screen before it", () => {
+    // The console sends a song with its own background: the Fundo, then the text.
+    const a = run([["background.set", { kind: "color", value: "#111111" }], ["content.show", song]]);
+    const bg = applyOp(a, "background.set", { kind: "color", value: "#222222" }, T0 + 1000);
+    const text = applyOp(bg, "content.show", { ...song, title: "B", fade: 500 }, T0 + 1020);
+    let t = ghostStart(a, a.rev);
+    t = ghostTrack(t, bg, bg.rev, screenExitMs, 5000);
+    assert.equal(t.ghost, null, "the Fundo alone carries no fade");
+    t = ghostTrack(t, text, text.rev, screenExitMs, 5040);
+    assert.equal(t.ghost.from, a, "the old Fundo fades out with the old text, never cut first");
+    assert.equal(t.ghost.ms, 500);
+    // The Setlist's place right after: the same ghost, untouched.
+    const place = applyOp(text, "session.item", { itemId: "x" }, T0 + 1060);
+    const t2 = ghostTrack(t, place, place.rev, screenExitMs, 5080);
+    assert.equal(t2.ghost, t.ghost);
+    // Past the burst, the next change starts from the screen drawn then.
+    const later = applyOp(place, "content.show", { ...song, title: "C", fade: 300 }, T0 + 3000);
+    const t3 = ghostTrack(t2, later, later.rev, screenExitMs, 5040 + GHOST_BURST_MS + 500);
+    assert.equal(t3.ghost.from, place);
+    assert.equal(t3.ghost.ms, 300);
+    // Out of a burst, the Fundo alone does not borrow an old base.
+    const slow = ghostTrack(ghostTrack(ghostStart(a, a.rev), bg, bg.rev, screenExitMs, 5000), text, text.rev, screenExitMs, 5000 + GHOST_BURST_MS);
+    assert.equal(slow.ghost.from, bg);
 });

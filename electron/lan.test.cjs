@@ -454,11 +454,11 @@ test("remote: too many taps from one phone answer 429; codes and v reach the con
     assert.equal(locked.status, 423);
     assert.equal((await locked.json()).error.code, "locked");
     assert.deepEqual(seen, [["next", 2]]);
-    let limited = null;
-    for (let i = 0; i < 12 && !limited; i++) {
-        const res = await send(f, { action: "state" }, { cookie });
-        if (res.status === 429) limited = res;
-    }
+    // All at once: the bucket refills 8 a second, so a sequential loop that is
+    // slow under a busy machine could stay below the limit; 30 taps in flight
+    // together cannot (10 in the burst, 4 waiting at most).
+    const burst = await Promise.all(Array.from({ length: 30 }, () => send(f, { action: "state" }, { cookie })));
+    const limited = burst.find((res) => res.status === 429);
     assert.ok(limited, "the burst ran out");
     assert.equal(limited.headers.get("retry-after"), "1");
     assert.equal((await limited.json()).error.code, "rate");
