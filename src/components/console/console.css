@@ -1757,6 +1757,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .font-dialog .fd-preview { min-height: 56px; display: flex; align-items: center; justify-content: center; padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: #0a0a0a; color: #fff; font-size: 30px; line-height: 1.15; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .console .font-dialog .fd-licence { margin: 0; font-size: 11px; line-height: 15px; }
 .console .le-font-note { font-size: 11px; margin-top: -2px; }
+/* The Estilo row's N and I (Rodada HF2): 24 × 24 toggles, the letter drawn as it does. */
+.console .le-tb { min-width: 24px; justify-content: center; font-size: 13px; }
+.console .le-tb > i { font-style: italic; }
 /* Configurações › Temas: the themes as small screens (as in the library). */
 .console .cfg .tmg { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); }
 .console .cfg .tmg-meta { font-size: 11px; }

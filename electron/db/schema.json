@@ -1227,6 +1227,24 @@
         "line_height": {
           "type": "text"
         },
+        "font_weight": {
+          "type": "text"
+        },
+        "font_style": {
+          "type": "text"
+        },
+        "letter_spacing": {
+          "type": "real"
+        },
+        "text_outline_px": {
+          "type": "real"
+        },
+        "text_outline_color": {
+          "type": "text"
+        },
+        "note": {
+          "type": "text"
+        },
         "text_case": {
           "type": "text"
         },
