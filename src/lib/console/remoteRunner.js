@@ -97,14 +97,14 @@ export const REMOTE_HANDLERS = {
         run: async ({ d, live, v }) => {
             const { items, airItemId, airNow } = d;
             return ok("", remoteState({
-                v, app: d.app?.() || "", service: d.service, items, rows: d.rows, media: d.media,
+                v, app: d.app?.() || "", service: d.service, items, rows: d.rows, media: d.media, progressOf: d.progressOf,
                 airItemId: airNow ? airItemId : null, nextItemId: d.nextItem?.id || null, backItemId: backItemOf(live, items, airNow ? airItemId : null),
                 live, bible: await d.bible?.().catch(() => null), timers: timerChoices(d.timerPresets), alerts: orderPresets(d.alertPresets),
             }));
         },
     },
     library: {
-        run: ({ d, args }) => ok("", libraryPage({ ...args, songs: d.songs, media: d.media, pieces: d.pieces, materials: d.materials, loaded: d.loaded })),
+        run: ({ d, args }) => ok("", libraryPage({ ...args, songs: d.songs, media: d.media, pieces: d.pieces, materials: d.materials, loaded: d.loaded, progressOf: d.progressOf })),
     },
     next: { run: step },
     prev: { run: step },

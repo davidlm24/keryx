@@ -37,6 +37,13 @@ export const JANELA_MESSAGES = {
     "console.hello": { from: "janela", ok: () => true },
     // The console's Prévia now (null = empty), to every detached page.
     "console.prev": { from: "console", ok: (m) => m.stage === null || isStage(m.stage) },
+    // How far each PDF's pages are (Rodada H, HB): only the console makes
+    // them (usePagesBackfill), so a detached Mídia reads "Preparando páginas
+    // 7/12", or why they failed, from here. By Media id: { done, total } or
+    // { error: { cause, retryable, terminal? } }; the whole map each time.
+    "pages.progress": { from: "console", ok: (m) => isPagesMap(m.pages) },
+    // Tentar de novo on a detached page: the console tries that PDF again.
+    "pages.retry": { from: "janela", ok: (m) => isId(m.id) },
 };
 
 // The most a message may weigh (a song's slides ride in a stage); main
@@ -46,6 +53,11 @@ export const MAX_BYTES = 1024 * 1024;
 const isObj = (v) => Boolean(v) && typeof v === "object" && !Array.isArray(v);
 const isId = (v) => typeof v === "string" && v.length > 0 && v.length <= 200;
 const isRow = (v) => isObj(v) && isId(v.id);
+const isCount = (v) => Number.isInteger(v) && v >= 0 && v <= 100000;
+const isFailure = (v) => isObj(v) && typeof v.cause === "string" && typeof v.retryable === "boolean" && (v.terminal === undefined || typeof v.terminal === "string");
+const isProgress = (v) => isObj(v) && (v.error !== undefined ? isFailure(v.error) : isCount(v.done) && isCount(v.total) && v.done <= v.total);
+// The pages map: at most 200 PDFs at a time, each id → its progress.
+const isPagesMap = (v) => isObj(v) && Object.keys(v).length <= 200 && Object.entries(v).every(([id, p]) => isId(id) && isProgress(p));
 // A stage (src/lib/console/stage.js): an id, a kind, a title and, when it
 // has them, its slides.
 const isStage = (v) => isObj(v) && isId(v.id) && typeof v.kind === "string" && (v.title === undefined || typeof v.title === "string") && (v.slides === undefined || Array.isArray(v.slides));

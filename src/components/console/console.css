@@ -283,8 +283,9 @@
 /* A row with hover buttons keeps its title on ONE line, ending in "…"
    (owner, Rodada G1: the buttons took 76–150 px and the title wrapped,
    growing the card). The whole title is its tooltip. Every list alike:
-   the Biblioteca, the Setlist, the search palette, the Mídia, the planner. */
-.console.is-comfortable .kx-row:has(> .kx-row-acts) .kx-row-title { display: block; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: unset; }
+   the Biblioteca, the Setlist, the search palette, the Mídia, the planner
+   (its item rows too, whose buttons are in the details they open). */
+.console.is-comfortable :is(.kx-row:has(> .kx-row-acts), .kx-row.pl-item) .kx-row-title { display: block; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: unset; }
 .console.is-comfortable .kx-slide { font-size: 14px; line-height: 20px; padding-top: 6px; padding-bottom: 6px; }
 /* Compacta (chosen, or Automática on a short grid): panel headers of 28 px
    (Console.jsx panelHead keeps the locked heights in step) and slide rows a
@@ -1264,14 +1265,22 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .mv-n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: 10px; line-height: 12px; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 4px 0 0; font-variant-numeric: tabular-nums; }
 .console .mv-title { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .mv-sub { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.console .kx-pages-meta { position: relative; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 16px; padding-bottom: 3px; }
-.console .kx-pages-meta.is-working { padding-bottom: 5px; }
+.console .kx-pages-meta { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 16px; }
 /* A failure says its cause and offers Tentar de novo: it wraps instead of
    being cut by the one-line meta of a grid cell or a list row (G8). */
 .console :is(.mv-sub, .kx-row-meta, .kx-meta):has(> .kx-pages-meta .kx-pages-retry, .kx-pages-meta .kx-warn) { white-space: normal; overflow: visible; }
 .console .kx-pages-meta:has(.kx-warn) { flex-wrap: wrap; white-space: normal; }
-.console .kx-pages-progress { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; overflow: hidden; background: var(--bg-3); }
-.console .kx-pages-progress > b { display: block; width: 100%; height: 100%; transform-origin: left center; background: var(--brand); transition: transform var(--duration-fast) var(--ease-out); }
+/* The bar of a row whose file is being copied or whose PDF pages are being
+   made runs along the row's whole bottom edge (Rodada H, HB), inside its
+   rounded corners; on a thumbnail of the Mídia's grid, along its foot. */
+.console .kx-row-progress { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; }
+.console .kx-row-progress::before, .console .kx-row-progress > b { content: ""; position: absolute; right: 0; bottom: 0; left: 0; height: 2px; }
+.console .kx-row-progress::before { background: var(--bg-3); }
+.console .kx-row-progress > b { display: block; transform-origin: left center; background: var(--brand); transition: transform var(--duration-fast) var(--ease-out); }
+.console .kx-row-progress.is-busy > b { animation: mv-busy 1.2s ease-in-out infinite alternate; }
+.console .kx-row.is-copying { cursor: default; }
+.console .mv-cell.is-copying .mv-th { display: block; cursor: default; }
+.console .kx-row.is-copying .kx-row-title, .console .mv-cell.is-copying .mv-title { color: var(--fg-2); }
 .console .kx-pages-retry, .console .kx-pdf-wait button { appearance: none; border: 0; border-bottom: 1px solid currentColor; padding: 0; color: var(--warn-fg, var(--warn)); background: transparent; font: inherit; font-weight: 600; cursor: pointer; }
 .console .kx-pdf-wait button { display: block; margin: var(--space-1) auto 0; font-size: 12px; }
 .console .mv-cell > .kx-btn { align-self: flex-start; }
@@ -1437,6 +1446,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .upd-bar > b { transition: none; }
   .console .upd-bar.is-busy > b { right: 0; width: auto; transform: none; animation: kx-busy-breathe 1.4s ease-in-out infinite alternate !important; }
   .console .prog2 > i.is-busy { animation: kx-busy-breathe 1.4s ease-in-out infinite alternate !important; }
+  .console .kx-row-progress > b { transition: none; }
+  .console .kx-row-progress.is-busy > b { animation: kx-busy-breathe 1.4s ease-in-out infinite alternate !important; }
 }
 .console .upd-line { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--fg-2); font-variant-numeric: tabular-nums; }
 .console .notifs .note { display: grid; grid-template-columns: 16px 1fr 22px; gap: var(--space-2); align-items: start; padding: var(--space-2); border-radius: var(--radius-control); color: var(--fg-2); }
@@ -1844,4 +1855,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .player .pl-vol input::-webkit-slider-runnable-track { background: CanvasText; }
   .console .player .pl-vol input::-webkit-slider-thumb { background: Highlight; }
   .console .topbar .tb-bell-dot { background: Highlight; }
+  /* A row's copy or pages bar (Rodada H, HB). */
+  .console .kx-row-progress::before { background: CanvasText; }
+  .console .kx-row-progress > b { background: Highlight; }
 }
