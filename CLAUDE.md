@@ -128,7 +128,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   tested; `useCfgGroup`, one store per window, a detached /Janela follows
   through `storage`) — never `layout` (the editors have none, Restaurar
   disposição must not reset it). H1, H2 and HF3 build on it: its API is the
-  contract.
+  contract. **The other pages of THE window** (Rodada H4) use `CfgGroup`
+  too (Editor de música, Planejar o culto, Aviso, Escola bíblica; ids
+  `song.*`, `planner.*`, `notice.*`, `school.turma`; summaries in
+  `src/lib/console/pageGroups.js`): its CSS is scoped `.console .cfg-group*`,
+  not `.console .cfg`, so any column can hold one.
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).

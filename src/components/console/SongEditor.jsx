@@ -19,6 +19,8 @@ import LinesPicker from "./LinesPicker";
 import { TEXT_SIZES, defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
 import { useWinCol } from "./winLayout";
 import { FontSelect } from "../editor/FontPicker";
+import { CfgGroup } from "./settings/parts";
+import { songThemeSummary, partThemesSummary, notesSummary } from "@/lib/console/pageGroups";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
 const SIZES = TEXT_SIZES;
@@ -393,7 +395,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
             <div className="win-body" ref={bodyRef}>
             {(!narrow || fold === "dados") && (
             <div className="col song-ed-l" style={narrow ? { flex: 1, minWidth: 0 } : colDados.style}>
-                <Panel title="Dados da música" bodyStyle={{ overflow: "auto" }}>
+                <Panel title="Música" bodyStyle={{ overflow: "auto" }}>
+                    <CfgGroup id="song.dados" title="Dados" fold={false}>
                     <div className="frm">
                         <span className="k">Título</span><Field label="Título" icon={null} value={song.title} onChange={(v) => set({ title: v })} placeholder="Título da música" />
                         <span className="k">Artista</span><Field label="Artista" icon={null} value={song.artist || ""} onChange={(v) => set({ artist: v })} placeholder="Artista ou ministério" />
@@ -409,16 +412,18 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         </div>
                         <span className="k">CCLI</span><Field label="CCLI" icon={null} value={song.ccli_number || ""} onChange={(v) => set({ ccli_number: v.slice(0, 20) })} placeholder="número da licença" />
                     </div>
-                    <div className="listhead"><span className="kx-section">Notas para os músicos</span></div>
+                    </CfgGroup>
+                    <CfgGroup id="song.notas" title="Notas para os músicos" summary={notesSummary(song.musician_notes)} defaultOpen={Boolean((song.musician_notes || "").trim())}>
                     <div className="ed-pad"><textarea className="ed-text" style={{ height: 56 }} value={song.musician_notes || ""} onChange={(e) => set({ musician_notes: e.target.value })} aria-label="Notas para os músicos" placeholder="Intro, dinâmica, finais…" /></div>
+                    </CfgGroup>
                     {/* The chords live in the Letra ([G]); this old separate block only
                         shows while a song still has one, to be put in the letra (C-19). */}
-                    {showCifra && <>
-                        <div className="listhead"><span className="kx-section">Cifra separada <span className="kx-count">· os acordes vão na letra</span></span><span style={{ flex: 1 }} />
-                            <Btn small onClick={chordsToInline} title="Põe os acordes desta cifra dentro da letra ([G]Deus é fiel), sobre as sílabas; a cifra separada some">Colocar na letra</Btn></div>
-                        <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => { setCifraKept(true); set({ chords: e.target.value }); }} aria-label="Cifra separada" /></div>
-                    </>}
-                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Tema desta música</span></div>
+                    {showCifra && (
+                        <CfgGroup id="song.cifra" title="Cifra separada" summary="os acordes vão na letra" actions={<Btn small onClick={chordsToInline} title="Põe os acordes desta cifra dentro da letra ([G]Deus é fiel), sobre as sílabas; a cifra separada some">Colocar na letra</Btn>}>
+                            <div className="ed-pad"><textarea className="ed-text ed-mono" style={{ height: 96 }} value={song.chords || ""} onChange={(e) => { setCifraKept(true); set({ chords: e.target.value }); }} aria-label="Cifra separada" /></div>
+                        </CfgGroup>
+                    )}
+                    <CfgGroup id="song.tema" title="Tema desta música" summary={songThemeSummary({ theme: look.theme, themeName: look.theme ? themeName(look.theme) : "", missing: look.missing, following })}>
                     <div className="frm">
                         <span className="k">Tema</span>
                         <select className="cfg-select" aria-label="Tema desta música"
@@ -460,7 +465,8 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                         <BgChip value={bgSpec(song)} title="Fundo da música" empty="o do tema" noneLabel="Sem fundo próprio (usa o do tema)" onPick={(spec) => set(songBg(spec))} />
                     </div>
                     </>}
-                    <div className="listhead" style={{ borderTop: "1px solid var(--line)" }}><span className="kx-section">Tema por parte <span className="kx-count">· o refrão com outro fundo, por exemplo</span></span></div>
+                    </CfgGroup>
+                    <CfgGroup id="song.partes" title="Tema por parte" summary={partThemesSummary(partThemes, parts)} defaultOpen={parts.some((p) => partThemes[p.key])}>
                     {!parts.length && <div className="ed-pad"><span className="kx-meta">Marque as partes na letra com [Refrão], [Ponte]… (os botões acima da letra) para dar um tema a cada uma.</span></div>}
                     {parts.length > 0 && (
                         <div className="frm">
@@ -481,6 +487,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                             })}
                         </div>
                     )}
+                    </CfgGroup>
                 </Panel>
             </div>
             )}
