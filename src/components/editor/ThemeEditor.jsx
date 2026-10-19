@@ -11,14 +11,14 @@ import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keryx } from "@/api/keryxClient";
 import { Panel, Btn, Seg, Empty, WinBar, NumBox } from "../console/kx";
-import { Switch } from "../console/settings/parts";
+import { Switch, CfgGroup } from "../console/settings/parts";
 import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import BgChip from "../console/library/BgChip";
 import { useLibraryPicker, ALL_KINDS } from "../console/library/libraryContext";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import Icon from "../console/Icon";
 import { IconBtn } from "../console/kx";
-import { TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName } from "@/lib/console/themes";
+import { TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName, fontSummary, colorSummary, boxSummary, placeSummary, fundoSummary, transitionSummary } from "@/lib/console/themes";
 import { SIZE_RANGE, sizeCqw, sizePreset, sizeValue, lineHeightOf, LINE_HEIGHTS, LINE_HEIGHT_RANGE, LETTER_SPACING_RANGE, OUTLINE_RANGE } from "@/lib/textSize";
 import FontPicker, { fontNote } from "./FontPicker";
 import { useChurchFonts } from "../console/useConsoleData";
@@ -272,7 +272,8 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
             <div className="col nv-l" style={colAjustes.style}>
                 <Panel noHead={hosted} title={<>Tema <span className="kx-count">· {themeTitle}{dirty ? " · não salvo" : ""}</span></>} actions={!hosted && <>{pickTheme}{deleteBtn}</>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-scroll">
-                        <div className="frm nv-frm">
+                        <CfgGroup id="tema.nome" k="tema.nome" title="Nome e padrão" summary={""} fold={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Nome</span><input className="pl-input" value={draft.name} placeholder="Nome do tema" maxLength={60} onChange={(e) => set({ name: e.target.value })} aria-label="Nome do tema" />
                             {/* Tornar padrão lives in the form (Rodada C, fase d;
                                 it was the footer's): one transaction, never two
@@ -288,6 +289,19 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                 is the theme's tooltip in Temas. */}
                             <span className="k">Comentário</span>
                             <input className="pl-input" value={draft.note || ""} placeholder="Para que serve este tema (não vai ao ar)" maxLength={500} onChange={(e) => set({ note: e.target.value })} aria-label="Comentário do tema" />
+                            {/* The item's title over the slide is the theme's
+                                choice (Rodada B 2026-10-14); Camadas › Texto
+                                principal › Título still decides per item on
+                                air. */}
+                            <span className="k">Título do item</span>
+                            <span className="nv-inline">
+                                <Switch on={draft.show_item_title !== false} onChange={(on) => set({ show_item_title: on })} label="Mostrar o título do item sobre o slide" />
+                                <span className="kx-meta">o nome da música ou do texto, no alto do slide</span>
+                            </span>
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.fonte" k="tema.fonte" title="Fonte" summary={fontSummary(draft)}>
+                            <div className="frm nv-frm">
                             {/* The font (Rodada HF1): KERYX's, the church's
                                 (copied into the library) or one brought
                                 from this PC or a file (FontPicker.jsx);
@@ -325,6 +339,10 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                 <NumBox label="Espaçamento entre as letras" value={draft.letter_spacing} empty={0} min={LETTER_SPACING_RANGE[0]} max={LETTER_SPACING_RANGE[1]} step={0.01} unit="em" onChange={(n) => set({ letter_spacing: n === 0 ? "" : n })} />
                                 <span className="kx-meta">entre as letras</span>
                             </span>
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.cor" k="tema.cor" title="Cor e efeito" summary={colorSummary(draft)} defaultOpen={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Efeito e cor</span>
                             <span className="nv-inline">
                                 <select className="pl-input" style={{ width: "auto" }} value={draft.text_effect} onChange={(e) => set({ text_effect: e.target.value })} aria-label="Efeito do texto">
@@ -350,6 +368,10 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                 <input type="range" className="le-range" min={20} max={100} step={1} value={Math.round((draft.text_opacity === "" ? 1 : Number(draft.text_opacity)) * 100)} onChange={(e) => { const v = Number(e.target.value); set({ text_opacity: v >= 100 ? "" : v / 100 }); }} aria-label="Opacidade do texto" />
                                 <span className="kx-meta">{Math.round((draft.text_opacity === "" ? 1 : Number(draft.text_opacity)) * 100)}%</span>
                             </span>
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.caixa" k="tema.caixa" title="Caixa do texto" summary={boxSummary(draft)} defaultOpen={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Caixa do texto</span>
                             <span className="nv-inline">
                                 <Seg small label="Caixa do texto" value={draft.text_box || ""} options={BOXES} onChange={(v) => set({ text_box: v, ...(v ? { text_box_color: draft.text_box_color || "#000000", text_box_opacity: draft.text_box_opacity || 0.55 } : { text_box_color: "", text_box_opacity: "" }) })} />
@@ -365,10 +387,10 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                     <span className="kx-meta">{Math.round((Number(draft.text_box_opacity) || 0.55) * 100)}%</span>
                                 </span>
                             </>}
-                        </div>
-                        {/* Where the text sits: the same fields the canvas box writes. */}
-                        <div className="listhead"><span className="kx-section">Texto na tela</span></div>
-                        <div className="frm nv-frm">
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.posicao" k="tema.posicao" title="Posição" summary={placeSummary(draft)} defaultOpen={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Alinhamento</span>
                             <Seg small label="Alinhamento" value={draft.text_align || ""} options={H_ALIGNS} onChange={(v) => set({ text_align: v })} />
                             <span className="k">Posição</span>
@@ -383,18 +405,10 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                 <input type="range" className="le-range" min={-20} max={20} step={1} value={Number(draft.text_nudge) || 0} onChange={(e) => set({ text_nudge: Number(e.target.value) === 0 ? "" : Number(e.target.value) })} aria-label="Ajuste fino vertical" />
                                 <span className="kx-meta">{Number(draft.text_nudge) || 0}%</span>
                             </span>
-                            {/* The item's title over the slide is the theme's
-                                choice (Rodada B 2026-10-14); Camadas › Texto
-                                principal › Título still decides per item on
-                                air. */}
-                            <span className="k">Título do item</span>
-                            <span className="nv-inline">
-                                <Switch on={draft.show_item_title !== false} onChange={(on) => set({ show_item_title: on })} label="Mostrar o título do item sobre o slide" />
-                                <span className="kx-meta">o nome da música ou do texto, no alto do slide</span>
-                            </span>
-                        </div>
-                        <div className="listhead"><span className="kx-section">Fundo e transição</span></div>
-                        <div className="frm nv-frm">
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.fundo" k="tema.fundo" title="Fundo" summary={fundoSummary(draft)}>
+                            <div className="frm nv-frm">
                             <span className="k">Fundo</span>
                             <span className="nv-inline">
                                 <BgChip value={bg} title="Fundo do tema" empty="falta escolher" className={bg ? "" : "is-missing"} onPick={(spec) => spec && set(bgFields(spec))} />
@@ -423,12 +437,17 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                     </span>
                                 </>}
                             </>}
+                            </div>
+                        </CfgGroup>
+                        <CfgGroup id="tema.transicao" k="tema.transicao" title="Transição" summary={transitionSummary(draft)} defaultOpen={false}>
+                            <div className="frm nv-frm">
                             <span className="k">Transição</span>
                             <span className="nv-inline">
                                 <Seg small label="Transição" value={draft.transition || ""} options={[["", `Padrão (Esmaecer · ${NATURAL_MS.fade} ms)`], ...TRANSITIONS]} onChange={(v) => set({ transition: v, ...(v ? {} : { transition_ms: "" }) })} />
                                 {draft.transition && draft.transition !== "cut" && <><input type="range" className="le-range" min={TRANSITION_MS[0]} max={TRANSITION_MS[1]} step={20} value={Number(draft.transition_ms) || 400} onChange={(e) => set({ transition_ms: Number(e.target.value) })} aria-label="Duração da transição do tema" /><span className="kx-meta">{Number(draft.transition_ms) || 400} ms</span></>}
                             </span>
-                        </div>
+                            </div>
+                        </CfgGroup>
                     </div>
                     {!hosted && (
                         <div className="nv-foot">
