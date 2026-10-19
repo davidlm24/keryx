@@ -306,7 +306,9 @@ open the Programa monitor draws one still frame (the air never pauses).
 - **Density** (Ver › Densidade, saved with the layout per computer):
   **Automática** is the default (`shownDensity`): Compacta when the console's
   grid is under 820 px tall (a notebook), else Confortável. **Confortável**:
-  32 px list rows (`row-comfortable`), 14 px titles up to two lines, 32 px
+  32 px list rows (`row-comfortable`), 14 px titles up to two lines — one
+  line, ending in "…", on a row with hover buttons (Rodada G1: the buttons
+  took the room and the title wrapped, growing the row) — and 32 px
   panel headers. **Compacta**: 28 px single lines and 28 px panel headers
   (`panelHead`, which the locked heights follow). A chosen density wins;
   controls do not change.

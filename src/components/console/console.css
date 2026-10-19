@@ -280,6 +280,11 @@
 .console.is-comfortable .kx-row .kx-row-title { font-size: 14px; line-height: 20px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .console.is-comfortable .kx-row:not(.kx-row-1) .kx-row-main { padding: 6px 0; }
 .console.is-comfortable .kx-row.kx-row-1 .kx-row-title { font-size: 13px; line-height: 18px; -webkit-line-clamp: 1; }
+/* A row with hover buttons keeps its title on ONE line, ending in "…"
+   (owner, Rodada G1: the buttons took 76–150 px and the title wrapped,
+   growing the card). The whole title is its tooltip. Every list alike:
+   the Biblioteca, the Setlist, the search palette, the Mídia, the planner. */
+.console.is-comfortable .kx-row:has(> .kx-row-acts) .kx-row-title { display: block; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: unset; }
 .console.is-comfortable .kx-slide { font-size: 14px; line-height: 20px; padding-top: 6px; padding-bottom: 6px; }
 /* Compacta (chosen, or Automática on a short grid): panel headers of 28 px
    (Console.jsx panelHead keeps the locked heights in step) and slide rows a
@@ -624,16 +629,15 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Nomes: the books with their whole names, left-aligned. */
 .console .bpick-books.names-full .bgrid .kx-book { align-items: flex-start; padding: 0 6px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 26px; text-align: left; }
 /* Recentes, Favoritos and Anotações: three buttons on the left, 4 px in
-   (boxes). Their lists open from the band's left edge, never wider than
-   the panel, whose body clips (owner 2026-10-16). */
+   (boxes). Their lists open from the button's left edge, inside the
+   window (usePlaced, Rodada G1). */
 .console .bband-lists { position: relative; flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); border-bottom: 1px solid var(--line); }
 .console .bband-lists .addmenu { position: static; }
-.console .bband-lists .blist-pop { left: var(--space-1); right: auto; width: min(300px, calc(100% - 2 * var(--space-1))); }
 /* 28 px, like the Biblioteca's search row: a band under a header is 36 px,
    its controls 28, 4 px in and 4 px apart (owner 2026-10-16). */
 .console .bchip { height: 28px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; white-space: nowrap; }
 .console .bchip:hover, .console .bchip.is-on { background: var(--bg-3); color: var(--fg-1); }
-.console .blist-pop { width: 300px; max-height: 360px; overflow: auto; }
+.console .blist-pop, .console .addmenu-pop.blist-pop { width: 300px; max-height: 360px; overflow: auto; }
 /* The list's count lives at its top, never on the button (owner 2026-10-16). */
 .console .blist-h { height: 28px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 0 var(--space-2); }
 .console .blist-h .kx-section { font-size: 10px; }
@@ -877,8 +881,19 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .searchrow { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1); }
 .console .searchrow > .kx-field { flex: 1; }
 .console .addmenu { position: relative; flex: none; }
-.console .addmenu-pop { position: absolute; right: 0; top: calc(100% + 4px); z-index: 45; width: 230px; }
-.console .addmenu-pop.is-flip { left: 0; right: auto; }
+/* A row holding a control (AddMenu's node) wraps rather than run wide. */
+.console .addmenu-row { flex-wrap: wrap; height: auto; min-height: 24px; }
+/* Fixed and placed by usePlaced (Menu.jsx, placeBox in contextMenu.js):
+   under its button, inside the window, never clipped by its panel. */
+.console .addmenu-pop { position: fixed; left: 0; top: 0; z-index: 45; width: 230px; max-width: calc(100vw - 16px); box-sizing: border-box; }
+
+/* A song's flags (sincronizada, parece repetida, baixando…) at the end of
+   its row: small icons with their words as tooltip and label; the hover
+   buttons take their place (Rodada G1, libraryRows.js). */
+.console .lib-badges { display: inline-flex; gap: 2px; flex: none; }
+.console .lib-badge { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: var(--bg-2); color: var(--fg-3); }
+.console .lib-badge.is-warn { color: var(--warn-fg); }
+.console .kx-row:is(:hover, :focus-within) .lib-badges { display: none; }
 
 /* Lyrics from the web (LyricsSearch): the Holyrics-style search dialog. */
 .console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); color: var(--fg-1); }

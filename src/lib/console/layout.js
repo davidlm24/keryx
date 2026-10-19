@@ -81,6 +81,10 @@ export const DEFAULT_LAYOUT = {
     // (the panel's + › Visualização; owner 2026-10-14).
     temasThumb: "small",
     temasNames: true,
+    // The Biblioteca's songs show their artist on the second line (the
+    // header's (+) › Mostrar o artista; Rodada G1). Off: only the key and
+    // the length, the artist in the tooltip.
+    libShowArtist: false,
     // A console never edited starts with the modules the church's old
     // preference hid (console_hidden_modules) in the tray; after a restore,
     // with every module (false).
@@ -170,7 +174,7 @@ export function loadLayout(profile) {
         const raw = localStorage.getItem(KEY(profile));
         if (!raw) return { ...DEFAULT_LAYOUT };
         const { onairMin, ...saved } = JSON.parse(raw);
-        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), folded: normalizeFolded(saved.folded, onairMin), onairSpan: onairSpanOf(saved.onairSpan), bibleGrid: ["small", "large"].includes(saved.bibleGrid) ? saved.bibleGrid : "medium", temasThumb: saved.temasThumb === "large" ? "large" : "small", temasNames: saved.temasNames !== false, dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
+        return { ...DEFAULT_LAYOUT, ...saved, hidden: { ...(saved.hidden || {}) }, ...normalizeArrangement(saved), tabs: normalizeTabs(saved.tabs), dock: saved.dock ? normalizeDock(saved.dock) : null, bibleDock: saved.bibleDock ? normalizeDock({ ...saved.bibleDock, env: "biblia" }) : null, dockPresets: normalizePresets(saved.dockPresets), dockPreset: typeof saved.dockPreset === "string" ? saved.dockPreset : null, trayFromChurch: saved.trayFromChurch !== false, bibleDockPreset: typeof saved.bibleDockPreset === "string" ? saved.bibleDockPreset : null, multiview: saved.multiview === true, mvTiles: normalizeTiles(saved.mvTiles), folded: normalizeFolded(saved.folded, onairMin), onairSpan: onairSpanOf(saved.onairSpan), bibleGrid: ["small", "large"].includes(saved.bibleGrid) ? saved.bibleGrid : "medium", temasThumb: saved.temasThumb === "large" ? "large" : "small", temasNames: saved.temasNames !== false, libShowArtist: saved.libShowArtist === true, dockTier: TIERS.includes(saved.dockTier) ? saved.dockTier : null, tierDocks: normalizeTierDocks(saved.tierDocks) };
     } catch {
         return { ...DEFAULT_LAYOUT };
     }

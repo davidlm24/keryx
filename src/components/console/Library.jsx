@@ -3,12 +3,12 @@ import { libMediaKinds } from "@/lib/console/panelTabs";
 import { keryx } from "@/api/keryxClient";
 import Icon from "./Icon";
 import { Row, Btn, IconBtn, Field, Empty } from "./kx";
-import LinesPicker from "./LinesPicker";
 import { useContextMenu } from "./ContextMenu";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import AddMenu from "./AddMenu";
 import { importSongFiles as importSongs } from "./importSongs";
-import { usePrefs, updateUser } from "@/hooks/useUser";
+import { usePendingMedia } from "@/hooks/usePendingMedia";
+import { songRow, mmss } from "@/lib/console/libraryRows";
 import { mediaFromYouTube } from "@/lib/mediaImport";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles, importSummary } from "@/lib/mediaImport";
@@ -19,7 +19,6 @@ import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStag
 import { QuickAlert, ToolsPicker } from "./QuickTools";
 import { TabRow } from "./TabsPanel";
 import { setDragGhost, stageGhost } from "./dragGhost";
-import { isVideoUrl } from "@/lib/console/content";
 
 // A library row can be dragged onto the Prévia (prepares), the Programa
 // (sends) or the Setlist (adds the item there).
@@ -102,7 +101,6 @@ function MediaPeek({ peek }) {
 
 const MEDIA_ICON ={ video: "film", image: "image", gif: "image", pdf: "film", powerpoint: "film", audio: "music" };
 const MEDIA_LABEL = { video: "Vídeo", image: "Imagem", gif: "GIF", pdf: "Apresentação", powerpoint: "Apresentação", audio: "Áudio" };
-const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLowerCase().includes(q));
 
 // The library: Letras, Imagens, Vídeos and Avisos — the tabs the operator
@@ -114,7 +112,11 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // dupIds: the songs that look repeated (shared/syncDuplicates.mjs), on a
 // computer that syncs: "parece repetida" in the row, "Ver as repetidas…"
 // in its menu (onDuplicates, Configurações › Sincronização).
-export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates }) {
+// A song's row (Rodada G1, libraryRows.js): no glyph, the title on one
+// line, the key and length under it — the artist first with showArtist
+// (the header's (+) › Mostrar o artista) — and its flags as badges that
+// the hover buttons replace.
+export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, showArtist = false }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
@@ -124,10 +126,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     const prevId = c.prev?.id;
     const state = (id) => (id === airId ? "is-air" : id === prevId ? "is-prev" : "");
 
-    // How an imported lyric is cut into slides (a preference in the
-    // database, the same one as Na internet's).
-    const importCut = usePrefs().import_lines;
-    const pickImportCut = (v) => { updateUser({ import_lines: v }).catch(() => c.say("Não foi possível salvar.")); };
+    // The playbacks the sync has not brought yet (a song row says "baixando").
+    const pending = usePendingMedia();
 
     // "+ › Do computador": song files (cifra, ChordPro, texto, JSON exportado).
     const importSongFiles = (files) => importSongs(files, c.say);
@@ -160,42 +160,40 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     // (+) shows them): which Media types each lists (panelTabs.js).
     const shownIds = (tabs || []).map((t) => t.id);
     const mediaKinds = libMediaKinds(tab, shownIds);
+    // Every (+) here also opens the media library (its own page of THE window).
+    const openMediaItem = onOpenMedia && { label: "Abrir a Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia() };
     const addItems = tab === "letras"
         ? [
             { label: "Nova música…", icon: "plus", onClick: () => onEditSong?.("new") },
             { label: "Do computador…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", onFiles: importSongFiles },
             { label: "Uma pasta inteira…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", directory: true, onFiles: (files) => importSongFiles(files.filter((f) => /\.(txt|chordpro|cho|crd|pro|json)$/i.test(f.name))) },
             { label: "Na internet…", icon: "external", onClick: () => onLyricsWeb?.() },
-            {
-                label: "ao-importar",
-                node: <><span className="kx-meta">Ao importar</span><span style={{ flex: 1 }} />
-                    <LinesPicker value={importCut} onChange={pickImportCut} /></>,
-            },
             { label: "Exportar todas…", icon: "save", onClick: exportSongs },
+            openMediaItem,
         ]
         : tab === "imagens"
             ? [
                 { label: "Do computador…", icon: "folder", accept: shownIds.includes("apresentacoes") ? "image/*,.gif" : "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
-                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
+                openMediaItem,
             ]
         : tab === "audios"
             ? [
                 { label: "Do computador…", icon: "folder", accept: "audio/*", onFiles: importMedia },
                 { label: "Uma pasta inteira…", icon: "folder", accept: "audio/*", directory: true, onFiles: (files) => importMedia(files.filter((f) => f.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(f.name))) },
-                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
+                openMediaItem,
             ]
         : tab === "apresentacoes"
             ? [
                 { label: "Do computador…", icon: "folder", accept: ".pdf,.ppt,.pptx", onFiles: importMedia },
-                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
+                openMediaItem,
             ]
         : tab === "videos"
             ? [
                 { label: "Do computador…", icon: "folder", accept: shownIds.includes("audios") ? "video/*" : "video/*,audio/*", onFiles: importMedia },
                 { label: "Link do YouTube", icon: "film", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
-                { label: "Abrir a Mídia", icon: "expand", onClick: () => onOpenMedia?.() },
+                openMediaItem,
             ]
-            : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => onEditNotice?.("new") }];
+            : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => onEditNotice?.("new") }, openMediaItem];
 
     return (
         <>
@@ -212,12 +210,12 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 return (
                     <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
                         {!songs.length && data.loaded?.songs !== false && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
-                        {songs.map((s) => (
+                        {songs.map((s) => { const r = songRow(s, { duplicate: Boolean(dupIds?.has(s.id)), syncing: Boolean(s.audio_url && pending.has(s.audio_url)), showArtist }); return (
                             <Row
                                 key={s.id}
-                                icon="music"
                                 title={s.title}
-                                meta={[s.artist, s.song_key, s.duration && mmss(s.duration), s.audio_url && (isVideoUrl(s.audio_url) ? "vídeo" : "playback"), (s.slides || []).some((x) => Number.isFinite(x?.start)) && "sincronizada", dupIds?.has(s.id) && "parece repetida"].filter(Boolean).join(" · ")}
+                                tip={r.tip}
+                                meta={r.meta}
                                 state={state(`song:${s.id}`)}
                                 onClick={() => onPrepare(stageFromSong(s, {}, data.themes))}
                                 onDoubleClick={onGo && (() => onGo(stageFromSong(s, {}, data.themes)))}
@@ -236,8 +234,10 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                                     {onEditSong && <Btn onClick={(e) => { e.stopPropagation(); onEditSong(s.id); }} title="Abrir no editor de música" aria-label={`Editar ${s.title}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Editar</span></Btn>}
                                     {onAddSong && <Btn onClick={(e) => { e.stopPropagation(); onAddSong(s); }} title="Adicionar à setlist" aria-label={`Adicionar ${s.title} à setlist`}><span className="kx-act-i"><Icon name="plus" /></span><span className="kx-act-l">Adicionar</span></Btn>}
                                 </>}
-                            />
-                        ))}
+                            >
+                                {r.badges.length > 0 && <span className="lib-badges">{r.badges.map((b) => <span key={b.id} className={`lib-badge ${b.warn ? "is-warn" : ""}`} title={b.label} aria-label={b.label} role="img"><Icon name={b.icon} size={12} /></span>)}</span>}
+                            </Row>
+                        ); })}
                     </div>
                 );
             })()}

@@ -6,7 +6,7 @@ import { keyHint } from "@/lib/console/keys";
 import { usePrefs } from "@/hooks/useUser";
 import Icon from "./Icon";
 import { Btn, MenuItem, Row, Field, Empty, Seg } from "./kx";
-import { MenuList, useFocusFirst } from "./Menu";
+import { MenuList, useFocusFirst, usePlaced } from "./Menu";
 import { MODULES, DENSITIES, densityOf } from "@/lib/console/layout";
 import { PANEL_TABS, TABS_MENU_TITLE, tabsMenu } from "@/lib/console/panelTabs";
 import { restoreArgs } from "@/lib/projection";
@@ -211,25 +211,30 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
 // The (+) at the end of a trimmable tab row (open: "tabs:panel" or
 // "tabs:lib"): every tab with its check mark, as Ver lists the modules.
 // A click checks or unchecks and the list stays open; the last tab checked
-// cannot go. Under the (+), its right edge on the button's — above it when
-// the window has no room below (the panel beside the Prévia is low).
-export function TabsMenu({ open, list, onToggle, onRestore, onClose }) {
+// cannot go. Under the (+), its right edge on the button's — its left edge
+// near the window's left (the Biblioteca), above it when the window has no
+// room below (the panel beside the Prévia is low): usePlaced, Menu.jsx.
+// The Biblioteca's also has "Mostrar o artista" (`showArtist`, the songs'
+// second line; layout.libShowArtist, Rodada G1).
+export function TabsMenu({ open, list, onToggle, onRestore, onClose, showArtist = false, onShowArtist }) {
     const row = open?.startsWith("tabs:") ? open.slice(5) : null;
-    if (!row || !PANEL_TABS[row]) return null;
-    const plus = document.querySelector(`.console [data-tabs-plus="${row}"]`)?.getBoundingClientRect();
-    const tall = (PANEL_TABS[row].length + 2) * 32 + 24;
-    const below = !plus || plus.bottom + 4 + tall <= window.innerHeight - 8;
-    const style = !plus ? { right: 8, top: "var(--pop-top)", width: 240 }
-        : below ? { right: Math.max(8, Math.round(window.innerWidth - plus.right)), top: Math.round(plus.bottom + 4), width: 240 }
-            : { right: Math.max(8, Math.round(window.innerWidth - plus.right)), bottom: Math.round(window.innerHeight - plus.top + 4), width: 240 };
+    const known = Boolean(row && PANEL_TABS[row]);
+    const pop = useRef(null);
+    const plus = useRef(null);
+    plus.current = known ? document.querySelector(`.console [data-tabs-plus="${row}"]`) : null;
+    usePlaced(pop, plus, { open: known && Boolean(plus.current) });
+    if (!known) return null;
+    const style = plus.current ? { width: 240 } : { right: 8, top: "var(--pop-top)", width: 240 };
     return (
-        <MenuList key={row} className="pop kx-pop tabs-menu" style={style} label={TABS_MENU_TITLE[row]} closeOnPick={false} onClose={onClose} items={[
+        <MenuList key={row} listRef={pop} className="pop kx-pop tabs-menu" style={style} label={TABS_MENU_TITLE[row]} closeOnPick={false} onClose={onClose} items={[
             { head: TABS_MENU_TITLE[row] },
             ...tabsMenu(row, list).map((t) => ({
                 label: <span className="tabs-menu-t">{t.name}{t.hint && <span className="kx-meta"> {t.hint}</span>}</span>, role: "menuitemcheckbox", checked: t.checked,
                 title: t.last ? "Pelo menos uma aba fica à vista" : undefined, ariaDisabled: t.last, onSelect: () => onToggle(row, t.id),
             })),
             "sep",
+            row === "lib" && onShowArtist && { label: "Mostrar o artista", role: "menuitemcheckbox", checked: showArtist, title: "O artista na segunda linha das letras", onSelect: () => onShowArtist(!showArtist) },
+            row === "lib" && onShowArtist && "sep",
             { label: "Restaurar abas padrão", onSelect: () => onRestore(row) },
         ]} />
     );

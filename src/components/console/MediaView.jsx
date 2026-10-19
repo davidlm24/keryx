@@ -320,7 +320,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                         <div key={m.id} className={`kx-row kx-t mv-row ${state(m)}`} role="button" tabIndex={0} data-media-id={m.id} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} onContextMenu={fileMenu(m)} {...drag(m)}>
                             <span className="kx-glyph"><Icon name={ICON[m.type] || "film"} /></span>
                             <div className="kx-row-main">
-                                {renaming === m.id ? renameField(m) : <div className="kx-row-title">{m.title}</div>}
+                                {renaming === m.id ? renameField(m) : <div className="kx-row-title" title={m.title}>{m.title}</div>}
                                 <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : [isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}</div>
                             </div>
                             <span className="kx-row-time kx-hide-on-hover">{m.duration ? mmss(m.duration) : ""}</span>

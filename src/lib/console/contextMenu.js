@@ -12,6 +12,39 @@ export function placeMenu({ x, y, w, h, vw, vh, margin = 8 }) {
     return { left: Math.round(left), top: Math.round(top) };
 }
 
+// Where a menu of size w × h opens from the button `anchor` (a rect: left,
+// top, right, bottom), inside `bounds` (the window, or the frame a fixed
+// menu is drawn in; { left: 0, top: 0, right: vw, bottom: vh } by default)
+// — the (+) menus and the Bíblia's lists (Rodada G1). Across: its edge on
+// the anchor's `align` edge ("end": right edges together, the menu hanging
+// to the left; "start": left edges), flipped to the other edge when that
+// runs out of the bounds, and always `margin` inside them. Down: under the
+// anchor, `gap` apart; with no room below, above it; with room on neither
+// side, on the roomier one with a `maxHeight` (null when the whole menu
+// fits). `top` in bounds is where nothing may cover it (the top bar).
+export function placeBox({ anchor, w, h, vw, vh, bounds, margin = 8, gap = 4, align = "end" }) {
+    const b = bounds || { left: 0, top: 0, right: vw, bottom: vh };
+    const minL = b.left + margin;
+    const maxL = b.right - w - margin;
+    const atEnd = anchor.right - w;
+    const atStart = anchor.left;
+    let left = align === "start"
+        ? (atStart > maxL ? atEnd : atStart)
+        : (atEnd < minL ? atStart : atEnd);
+    left = Math.max(minL, Math.min(left, maxL));
+    const below = anchor.bottom + gap;
+    const roomBelow = b.bottom - margin - below;
+    const roomAbove = anchor.top - gap - (b.top + margin);
+    let top;
+    let maxHeight = null;
+    let above = false;
+    if (h <= roomBelow) top = below;
+    else if (h <= roomAbove) { top = anchor.top - gap - h; above = true; }
+    else if (roomBelow >= roomAbove) { top = below; maxHeight = Math.max(0, roomBelow); }
+    else { top = b.top + margin; maxHeight = Math.max(0, roomAbove); above = true; }
+    return { left: Math.round(left), top: Math.round(top), maxHeight: maxHeight == null ? null : Math.floor(maxHeight), above };
+}
+
 // The items in the order shown. Live safety: anything that changes what is
 // on air (`air: true`: Enviar ao ar, Encerrar…) goes last, after a
 // separator, never first and never mixed with the safe ones; separators the
