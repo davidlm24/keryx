@@ -1003,6 +1003,16 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .frm .k { font-size: 11px; color: var(--fg-3); }
 .console .cfg .frm-v { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
 .console .cfg .frm .kx-field { flex: 1; min-width: 180px; }
+/* A folded group of rows under the row it refines (Transições › Por tipo de
+   conteúdo, Rodada G5): the chevron and its name across the form, the rows
+   on a band of their own when open. */
+.console .cfg .frm .cfg-disc { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: var(--space-1); height: 24px; margin: 0 0 0 calc(140px + var(--space-3) - var(--space-2)); padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: var(--fg-2); font: inherit; font-size: 11px; cursor: pointer; }
+.console .cfg .frm .cfg-disc:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .cfg .frm .cfg-disc .kx-i { transition: transform 150ms var(--ease, ease); }
+.console .cfg .frm .cfg-disc[aria-expanded="true"] .kx-i { transform: rotate(180deg); }
+.console .cfg .frm .cfg-subrows { grid-column: 1 / -1; display: grid; align-items: center; gap: var(--space-1) var(--space-3); margin: 0 0 0 calc(140px + var(--space-3)); padding: var(--space-1) var(--space-3); background: var(--bg-2); border-radius: var(--radius-control); grid-template-columns: 180px 1fr; }
+.console .nv-scroll.cfg .frm .cfg-disc, .console .nv-scroll.cfg .frm .cfg-subrows { margin-left: 0; }
+@media (prefers-reduced-motion: reduce) { .console .cfg .frm .cfg-disc .kx-i { transition: none; } }
 /* Configurações › Sincronização (SyncSection.jsx). */
 .console .cfg .cfg-sync-intro { max-width: 62ch; margin: var(--space-2) var(--space-3) var(--space-1); color: var(--fg-2); font-size: 12px; line-height: 1.55; }
 .console .cfg .cfg-sync-intro b { color: var(--fg-1); font-weight: 600; }

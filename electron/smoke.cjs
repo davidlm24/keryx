@@ -464,8 +464,35 @@ async function checkVideo(webContents, { live }) {
     live.call("clear");
     if (projector) projector.close();
 
+    // Ao entrar ou trocar (Rodada G5): a song replaced by another fades. The
+    // projector draws both for a moment — the old one as a ghost going
+    // transparent over the new one — then settles on the new one alone. The
+    // fade rides in the op (1 s, so a round trip cannot miss it); whether it
+    // looks smooth needs a real window.
+    {
+        live.call("content.show", { kind: "lyrics", title: "Primeira", slides: ["Primeira música"] });
+        await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
+        const proj = windowFor("/Projection");
+        const look = () => (proj ? proj.webContents.executeJavaScript(`(() => ({ ghosts: document.querySelectorAll(".ks-ghost").length, text: document.body.innerText }))()`).catch(() => null) : null);
+        let ready = false;
+        for (let end = Date.now() + 6000; Date.now() < end && !ready;) { ready = Boolean((await look())?.text.includes("Primeira música")); if (!ready) await sleep(100); }
+        live.call("content.show", { kind: "lyrics", title: "Segunda", slides: ["Segunda música"], fade: 1000 });
+        let both = null;
+        for (let end = Date.now() + 900; Date.now() < end && !both;) {
+            const v = await look();
+            if (v && v.ghosts > 0 && v.text.includes("Primeira música") && v.text.includes("Segunda música")) both = v;
+            else await sleep(30);
+        }
+        await sleep(1400);
+        const settled = await look();
+        result.songFade = { ready, both: Boolean(both), fade: live.get().fade ? live.get().fade.ms : 0, settled: Boolean(settled && settled.ghosts === 0 && settled.text.includes("Segunda música") && !settled.text.includes("Primeira música")) };
+        result.songFadeOk = ready && result.songFade.both && result.songFade.fade === 1000 && result.songFade.settled;
+        live.call("clear");
+        if (proj) proj.close();
+    }
+
     result.ok = result.recorded && result.lateJoin && result.playing && result.title && result.paused && result.resumed && result.continuity && result.cleared
-        && result.eyeOk && result.playlistAdvanced && result.projectorImage;
+        && result.eyeOk && result.playlistAdvanced && result.projectorImage && result.songFadeOk;
     return result;
 }
 

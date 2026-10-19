@@ -52,7 +52,10 @@ test("search: accents and case do not matter, every word must match", () => {
     const labels = (q) => searchSettings(q).map((h) => h.label);
     assert.ok(labels("transicao").includes("Todos os temas"), "the transition is the theme's alone (audit 2026-10-14)");
     assert.ok(!labels("transicao").some((l) => l === "Transição entre slides"), "the old Aparência row is gone");
-    for (const row of ["Ao pausar o som", "Ao tirar do ar", "Entre áudios e vídeos", "Tela preta e Logo"]) assert.ok(labels("transição").includes(row), `the Transições rows (Rodadas F2, G3): ${row}`);
+    for (const row of ["Ao pausar o som", "Ao tirar do ar", "Ao entrar ou trocar", "Por tipo de conteúdo", "Entre áudios e vídeos", "Tela preta e Logo"]) assert.ok(labels("transição").includes(row), `the Transições rows (Rodadas F2, G3, G5): ${row}`);
+    assert.ok(labels("trocar").includes("Ao entrar ou trocar"));
+    assert.ok(labels("cronometro").includes("Por tipo de conteúdo"), "a kind finds the folded rows");
+    assert.ok(labels("imagens e gifs").includes("Por tipo de conteúdo"));
     assert.ok(labels("pausar").includes("Ao pausar o som"));
     assert.ok(labels("tirar da tela").includes("Ao tirar do ar"), "the old name still finds the row");
     assert.ok(labels("tocar junto").includes("Entre áudios e vídeos"));
