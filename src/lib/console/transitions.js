@@ -9,14 +9,17 @@
 //     volume (`fade`, ms; nothing = a cut), and so does the music a Desfazer
 //     brings back (`fadeIn: true` becomes those ms).
 //   - Ao tirar do ar: Esc, Limpar and Parar say how long what leaves fades
-//     out (`fade`, ms; nothing = a cut); the player's music leaves with it.
+//     out (`fade`, ms; nothing = a cut); the player's music leaves with it. So does
+//     the player's eye: the picture of a video leaving the screen or coming
+//     back while its sound plays on (Rodada G4).
 //   - Tela preta e Logo: screen.set takes the same fade while the switch is on.
 // Pure: the console's liveOp and every output window's screen keys (src/lib/screenKeys.js) use it.
 
 export const SOUND_OPS = ["video.show", "audio.show", "audio.playlist", "media.show", "media.playlist"];
 // Esc (clear), Limpar (text.clear: the text layers in one change) and the
-// single-layer clears, Parar in the player (media, video, audio) included.
-export const EXIT_OPS = ["clear", "text.clear", "content.clear", "tool.clear", "communication.clear", "media.clear", "video.clear", "audio.clear"];
+// single-layer clears, Parar in the player (media, video, audio) included,
+// and the eye (Tirar / Mostrar o vídeo, Rodada G4).
+export const EXIT_OPS = ["clear", "text.clear", "content.clear", "tool.clear", "communication.clear", "media.clear", "video.clear", "audio.clear", "media.toAudio", "audio.toMedia"];
 
 // The rows' choices, [value, label] as Seg takes them.
 export const MEDIA_MODES = [["cut", "Corte"], ["fade", "Suave"], ["mix", "Tocar junto"]];

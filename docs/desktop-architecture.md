@@ -237,7 +237,7 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
    commit, still playing; detached and attached again inside one task, it
    never pauses or reloads. One let go and not taken back is paused at
    once (Tela preta, an aviso over it: silent, as before) and thrown away
-   after a few seconds.
+   after a few seconds. The picture fades (Rodada G4, see §3).
    **Level meters:** the console reads the computer's own output (system
    loopback, `meterStore.js`); nothing taps an element. Where sound plays
    (`LiveVideo` with a `meter` layer: the projector's media and audio, the
@@ -587,6 +587,26 @@ those keys.
   `GeneratorBackground.jsx` draws one on a canvas inside the renderer. A
   theme keeps one in `ProjectionTheme.background_generator`.
 
+- **The eye's picture fades (Rodada G4, owner 2026-10-17).** "Tirar o
+  vídeo" (`media.toAudio`) and "Mostrar o vídeo" (`audio.toMedia`) carry
+  the church's "Ao tirar do ar" fade (`EXIT_OPS`, `live.fade`), and so does
+  a single video that ends by itself (the projector's `media.clear`), so
+  every output ghosts the screen before over the one now
+  (`screenExitMs`). What each window shows during the fade:
+  - **the desktop `/Projection`:** the hidden audio player mounts before the
+    screen and takes the `<video>` from the pool in the same commit, so the
+    sound never stops; the ghost's `LiveVideo` finds the file held
+    (`mediaPool.held`) and fades out a canvas still of the frame it took
+    over (object-contain on black; the poster when the frame cannot be
+    drawn) — one element, no reload, no echo;
+  - **TVs on the network and the console's Programa monitor** (no audio
+    player): the ghost takes the element and the video fades out playing,
+    its volume coming down with it (the Programa's is muted anyway);
+  - **Mostrar o vídeo:** the screen it covers fades out over the video,
+    which the media player takes back from the audio player in one commit.
+  The smoke checks one element still advancing at full volume right after
+  the click; how the still looks needs a real window.
+
 ## 4. Media on disk
 
 - Files live in `%APPDATA%/KERYX/media/<uuid>.<ext>`, the database stores
@@ -848,7 +868,11 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
    computer's fields (`LOCAL_USER_FIELDS`: who operates it, `prefs_version`,
    the console density; `syncRow`). Deleting a synced row leaves a
    tombstone (`_tombstone`: entity, id, deleted_at; `store.tombstones(since)`,
-   `pruneTombstones(before)`), cleared when the row exists again.
+   `pruneTombstones(before)`), cleared when the row exists again. What a
+   row carries is checked whole by the "church in a box" test in
+   `electron/sync.test.cjs` (every synced entity, every field that may hold
+   a file, held to the jsonc; Rodada G7). OutputPref joins `SYNC_ENTITIES`
+   at the end of Rodada G10.
 2. **Outbox and inbox, store side (done):** each database has a stable
    computer id (`_meta.pc_id`, `store.pcId`). Every create, update and
    delete of a synced entity made through the store's operations is
@@ -1036,8 +1060,9 @@ syncs whenever Drive does. Conflict rule: last edit wins per row
      "Mostrar o código" was the owner's pick); a key that will not open
      here (settings brought from another account) asks for the code again
      (`keyLost`). Each computer writes a signed `sync/<pc>/computer.json`
-     (its Windows name and KERYX version, again when either changes and
-     twice a day), so the list says "NOTEBOOK-PASTOR · escreveu há 3 min ·
+     (its Windows name, KERYX version and the names of the Bible editions
+     installed on it, again when any changes and twice a day; Bíblia e
+     músicas says which ones are missing here, Rodada G7), so the list says "NOTEBOOK-PASTOR · escreveu há 3 min ·
      0.2.20". The bell: when the code changed, when the folder is gone for
      10 minutes, and once after a join when songs look repeated.
    - **The first join merges** (`store.snapshot()`, tested): creating or

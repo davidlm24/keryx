@@ -37,6 +37,32 @@ const videos = createPool({
     },
 });
 
+// A still of the frame `el` shows now, contained on black as the element is:
+// a canvas, or the item's poster when the frame cannot be drawn.
+function videoStill(el, poster) {
+    const cls = "w-full h-full object-contain bg-black";
+    if (el.videoWidth > 0 && el.videoHeight > 0 && el.readyState >= 2) {
+        try {
+            const canvas = document.createElement("canvas");
+            canvas.width = el.videoWidth;
+            canvas.height = el.videoHeight;
+            canvas.getContext("2d").drawImage(el, 0, 0, canvas.width, canvas.height);
+            canvas.className = cls;
+            return canvas;
+        } catch { /* the poster, below */ }
+    }
+    if (!poster) {
+        const black = document.createElement("div");
+        black.className = cls;
+        return black;
+    }
+    const img = document.createElement("img");
+    img.className = cls;
+    img.alt = "";
+    img.src = poster;
+    return img;
+}
+
 /**
  * Plays one live media item (a file or a YouTube link) in step with the live
  * state: position, pause and volume come from item.playback, so every screen
@@ -50,7 +76,8 @@ const videos = createPool({
  *   reads the system output itself, so playback cannot be disturbed.
  * fadeOut: { at, until } on the live clock — the item is on its way out
  *   (Transições: a new sound stopped it, Esc took it off): it plays on while
- *   its volume comes down to 0 by `until`.
+ *   its volume comes down to 0 by `until`. If another player of this window
+ *   holds its file (the eye), it shows a still of the frame instead.
  */
 export default function LiveVideo({ item, loop = false, muted = false, className = "", onEnded, onDuration, meter = null, fadeOut = null }) {
     const isYouTube = item?.kind === "youtube";
@@ -61,8 +88,8 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     const ytRef = useRef(null);
     const [blocked, setBlocked] = useState(false); // the browser refused to play with sound
     const [needTap, setNeedTap] = useState(false); // fullscreen asked for, the browser wants a tap
-    const callbacks = useRef({ onEnded, onDuration, loop, muted });
-    callbacks.current = { onEnded, onDuration, loop, muted };
+    const callbacks = useRef({ onEnded, onDuration, loop, muted, poster: item?.poster });
+    callbacks.current = { onEnded, onDuration, loop, muted, poster: item?.poster };
     const playback = item?.playback;
     const playbackRef = useRef(playback);
     playbackRef.current = playback;
@@ -133,6 +160,18 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     useLayoutEffect(() => {
         const host = hostRef.current;
         if (!fileUrl || !host) return undefined;
+        // On its way out while another player of this window holds the file
+        // (the eye, media.toAudio: the projector's hidden audio player took
+        // the element in this commit, mounted before the screen): the ghost
+        // fades out a still of its frame and never claims a second element,
+        // which would load the file again and echo the sound. Where nobody
+        // else holds it (a TV, the Programa monitor) it takes the element.
+        const holder = fadeRef.current ? videos.held(fileUrl) : null;
+        if (holder) {
+            const still = videoStill(holder, callbacks.current.poster);
+            host.appendChild(still);
+            return () => still.remove();
+        }
         const el = videos.claim(fileUrl);
         el.muted = callbacks.current.muted;
         el.loop = callbacks.current.loop;

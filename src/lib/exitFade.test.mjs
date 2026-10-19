@@ -54,6 +54,21 @@ test("exit fade: a video a new sound stopped fades out on the projector and on t
     assert.equal(videoExitMs(clip, applyOp(clip, "transport", { layer: "video", action: "pause" }, T0 + 5)), 0, "the same clip");
 });
 
+test("exit fade: the eye — Tirar o vídeo fades the picture out, Mostrar o vídeo fades it in, the end of a video too", () => {
+    const media = run([["content.show", song], ["media.show", CLIP]]);
+    const off = applyOp(media, "media.toAudio", { fade: 300 }, T0 + 5);
+    assert.equal(screenExitMs(media, off), 300, "the video fades out over the lyrics under it");
+    assert.equal(leavingMs(off, "media", media.media), 0, "nothing hushed: the sound goes on");
+    assert.equal(screenExitMs(media, applyOp(media, "media.toAudio", {}, T0 + 5)), 0, "Corte");
+    const on = applyOp(off, "audio.toMedia", { fade: 300 }, T0 + 10);
+    assert.equal(screenExitMs(off, on), 300, "the screen it covers fades out over the video");
+    // Nothing under it: the papel de parede (or the idle look) shows through.
+    const alone = run([["media.show", CLIP]]);
+    assert.equal(screenExitMs(alone, applyOp(alone, "media.toAudio", { fade: 600 }, T0 + 5)), 600);
+    assert.equal(screenExitMs(alone, applyOp(alone, "media.clear", { fade: 600 }, T0 + 5)), 600, "a video that ends by itself");
+    assert.equal(videoExitMs(alone, applyOp(alone, "media.toAudio", { fade: 600 }, T0 + 5)), 0, "the video channel is not the eye's");
+});
+
 test("exit fade: the audio channel's sound on its way out", () => {
     const s = run([["audio.show", { url: "a.mp3" }], ["video.show", { ...CLIP, transition: FADE }, T0 + 100]]);
     assert.deepEqual(leavingAudio(s, T0 + 200).map((e) => e.item.url), ["a.mp3"]);

@@ -413,6 +413,45 @@ async function checkVideo(webContents, { live }) {
     })();
     if (screenWin) screenWin.close();
 
+    // The eye (Rodada G4): the same clip on the projector, then the player's
+    // "Tirar o vídeo" clicked in the console. The picture fades out ("Ao
+    // tirar do ar", 0,3 s by default) while the sound goes on in the
+    // projector's hidden audio player — in the SAME <video> (mediaPool): the
+    // fading picture is a still (the ghost never claims a second element,
+    // which would load the file again and echo). Right after the click the
+    // projector has one video element, still advancing, at full volume.
+    // Whether the still looks right needs a real window (PR G4).
+    {
+        live.call("media.show", { kind: "video", url: `keryx-media://${fileName}`, title: "Vídeo do olho" });
+        await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
+        const proj = windowFor("/Projection");
+        result.eyeOnProjector = await waitState(proj, (v) => v.src.endsWith(`/media/${fileName}`) && !v.paused && v.ready >= 2, 8000);
+        const eye = "(() => { const b = document.querySelector('.player .pl-eye'); if (!b || b.disabled) return false; b.click(); return true; })()";
+        let clicked = false;
+        for (let i = 0; i < 24 && !clicked; i++) { clicked = await webContents.executeJavaScript(eye).catch(() => false); if (!clicked) await sleep(250); }
+        const videosIn = () => (proj ? proj.webContents.executeJavaScript(`(() => { const v = [...document.querySelectorAll("video")].filter((x) => x.src.includes(${JSON.stringify(fileName)})); return { n: v.length, time: v[0] ? v[0].currentTime : null, volume: v[0] ? v[0].volume : null, paused: v[0] ? v[0].paused : null, still: Boolean(document.querySelector(".ks-ghost canvas, .ks-ghost img")) }; })()`).catch(() => null) : null);
+        const end = Date.now() + 3000;
+        while (clicked && Date.now() < end && !(live.get().audio && !live.get().media)) await sleep(20);
+        const first = await videosIn();
+        await sleep(1200);
+        const later = await videosIn();
+        const s = live.get();
+        result.eye = {
+            clicked,
+            moved: Boolean(s.audio && s.audio.url.endsWith(fileName) && !s.media),
+            fade: s.fade ? s.fade.ms : 0,
+            first,
+            later,
+            // Informative only: the ghost lasts 0,3 s, a round trip may miss it.
+            stillSeen: Boolean(first && first.still),
+        };
+        result.eyeOk = Boolean(result.eyeOnProjector && clicked && result.eye.moved && result.eye.fade > 0
+            && first && later && first.n === 1 && later.n === 1 && later.time - first.time >= 0.8 && !later.paused && later.volume === 1);
+        live.call("audio.clear");
+        if (proj) proj.close();
+        await sleep(500);
+    }
+
     // A playlist of two images on the projector: it reports the end of each.
     const img = (name) => ({ kind: "image", url: `keryx-media://bundled/backgrounds/${name}`, duration: 1 });
     live.call("media.playlist", { items: [img("1418065460487-3e41a6c84dc5.webp"), img("1419242902214-272b3f66ee7a.webp")] });
@@ -426,7 +465,7 @@ async function checkVideo(webContents, { live }) {
     if (projector) projector.close();
 
     result.ok = result.recorded && result.lateJoin && result.playing && result.title && result.paused && result.resumed && result.continuity && result.cleared
-        && result.playlistAdvanced && result.projectorImage;
+        && result.eyeOk && result.playlistAdvanced && result.projectorImage;
     return result;
 }
 
@@ -2434,11 +2473,15 @@ async function checkConsole(webContents, { live, outputs }) {
         result.mvClosed = await waitFor(() => js("!document.querySelector('.console .mv') && Boolean(document.querySelector('.console .main .dock'))"));
 
         // Apresentações (Rodada F3, "Só PDF"): a 2-page PDF made here (jspdf)
-        // reaches the Mídia as an import does (the file copied, a Media row);
+        // goes through the real Mídia file input and importMediaFiles path;
+        // that registers it as made here so the five-minute cross-device
+        // backfill grace period does not delay this local import;
         // the console makes its pages with pdf.js (usePagesBackfill: 2
         // pictures in the media folder, the first one the thumbnail); a double
         // click in Biblioteca › Imagens sends it as a presentation, page 1 on
         // air, drawn full screen; PageDown (what a clicker sends) turns to page 2.
+        await click(".console .lib-panel [aria-label], .console [aria-label]", "Abrir a Biblioteca de mídia");
+        const pdfLibraryOpened = await waitFor(() => js("Boolean(document.querySelector('.console .mv .mv-grid'))"));
         const { jsPDF } = require("jspdf");
         const pdfDoc = new jsPDF({ orientation: "landscape", unit: "pt", format: [960, 540] });
         pdfDoc.setFontSize(64);
@@ -2446,13 +2489,25 @@ async function checkConsole(webContents, { live, outputs }) {
         pdfDoc.addPage([960, 540], "landscape");
         pdfDoc.text("Página dois", 80, 280);
         const pdfB64 = Buffer.from(pdfDoc.output("arraybuffer")).toString("base64");
-        const pdfFile = await js(`(async () => {
+        const pdfImported = pdfLibraryOpened && await js(`(() => {
             const bytes = Uint8Array.from(atob(${JSON.stringify(pdfB64)}), (ch) => ch.charCodeAt(0));
-            const res = await window.keryxDesktop.media.importFile(new File([bytes], "apresentacao-smoke.pdf", { type: "application/pdf" }));
-            return res.data && res.data.fileName;
+            const input = document.querySelector('.mv input[type="file"][accept*=".pdf"]');
+            if (!input) return false;
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([bytes], "PDF do smoke.pdf", { type: "application/pdf" }));
+            input.files = transfer.files;
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+            return true;
         })()`);
-        const pdfRow = pdfFile ? (await js(`window.keryxDesktop.db.call("Media", "create", [${JSON.stringify({ title: "PDF do smoke", type: "pdf", file_url: `keryx-media://${pdfFile}`, category: "other", duration: 0 })}])`)).data : null;
+        const pdfRowReady = pdfImported ? await waitFor(async () => {
+            const rows = (await js(`window.keryxDesktop.db.call("Media", "filter", [{ title: "PDF do smoke" }])`)).data || [];
+            return Boolean(rows[0]);
+        }, 6000) : false;
+        const pdfRow = pdfRowReady ? (await js(`window.keryxDesktop.db.call("Media", "filter", [{ title: "PDF do smoke" }])`)).data?.[0] || null : null;
         mvRows.push(pdfRow);
+        await press("Escape");
+        await press("Escape");
+        result.pdfLibraryClosed = await waitFor(() => js("!document.querySelector('.console .mv') && Boolean(document.querySelector('.console .main .dock'))"));
         result.pdfPages = Boolean(pdfRow) && await waitFor(async () => {
             const row = (await js(`window.keryxDesktop.db.call("Media", "get", [${JSON.stringify(pdfRow.id)}])`)).data;
             return row?.pages?.length === 2 && row.pages.every((p) => /^keryx-media:\/\/.+\.jpg$/.test(p.url) && p.w >= 1900) && row.thumbnail_url === row.pages[0].url;
@@ -2766,7 +2821,8 @@ async function checkConsole(webContents, { live, outputs }) {
         for (const v of [14, 15, 16, 17, 18]) await js(`window.keryxDesktop.db.call("BibleVerse", "delete", ["smoke-jo3-${v}"])`).catch(() => {});
         for (const r of svRows) if (r) await js(`window.keryxDesktop.db.call("BibleMaterial", "delete", ["${r.id}"])`).catch(() => {});
         if (svClass) await js(`window.keryxDesktop.db.call("BibleSchoolClass", "delete", ["${svClass.id}"])`).catch(() => {});
-        for (const r of mvRows) if (r) await js(`window.keryxDesktop.db.call("Media", "delete", ["${r.id}"])`).catch(() => {});
+        // Keep the UI-imported PDF through the later network remote assertion.
+        for (const r of mvRows) if (r && r.title !== "PDF do smoke") await js(`window.keryxDesktop.db.call("Media", "delete", ["${r.id}"])`).catch(() => {});
         for (const r of nvRows) if (r) await js(`window.keryxDesktop.db.call("CommunicationVideo", "delete", ["${r.id}"])`).catch(() => {});
         if (plTpl) await js(`window.keryxDesktop.db.call("ServiceTemplate", "delete", ["${plTpl.id}"])`).catch(() => {});
         if (svc) {
@@ -2975,6 +3031,33 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
                 result.remote.sendItem = sent.status === 200 && ((live.get().content || {}).title || "") === "Item do celular";
                 await webContents.executeJavaScript(`window.keryxDesktop.db.call("ServiceItem", "delete", [${JSON.stringify(row.id)}])`).catch(() => {});
             } else result.remote.sendItem = false;
+            // The same PDF imported through the Mídia file picker earlier is
+            // a presentation to the remote too: its `next` command changes
+            // page 1 to page 2, not merely a text slide.
+            const importedPdf = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("Media", "filter", [{ title: "PDF do smoke" }])`)).data?.[0];
+            if (importedPdf?.pages?.length === 2) {
+                const slides = importedPdf.pages.map((page, index) => ({ text: "", image_url: page.url, label: `Página ${index + 1}` }));
+                live.call("content.show", { kind: "presentation", ref: { mediaId: importedPdf.id }, title: importedPdf.title, slides, index: 0 });
+                // The Electron live store notifies the renderer asynchronously;
+                // wait until Console's remote handler sees this presentation.
+                let remoteSeesPdf = false;
+                const visibleUntil = Date.now() + 4000;
+                while (Date.now() < visibleUntil && !remoteSeesPdf) {
+                    const state = await cmd("state");
+                    const body = await state.json().catch(() => ({}));
+                    remoteSeesPdf = body?.data?.result?.onAir?.title === importedPdf.title;
+                    if (!remoteSeesPdf) await sleep(100);
+                }
+                const moved = remoteSeesPdf ? await cmd("next") : { status: 0 };
+                let pdfAdvanced = false;
+                const advancedUntil = Date.now() + 4000;
+                while (moved.status === 200 && Date.now() < advancedUntil && !pdfAdvanced) {
+                    pdfAdvanced = live.get().content?.kind === "presentation" && live.get().content?.index === 1;
+                    if (!pdfAdvanced) await sleep(100);
+                }
+                result.remote.pdfNext = Boolean(pdfAdvanced);
+            } else result.remote.pdfNext = false;
+            if (importedPdf?.id) await webContents.executeJavaScript(`window.keryxDesktop.db.call("Media", "delete", [${JSON.stringify(importedPdf.id)}])`).catch(() => {});
             if (reopened) { const u = new URL(reopened); u.search = ""; await webContents.loadURL(u.toString()); await sleep(2000); }
             live.call("clear", {});
             live.call("screens.lock", { locked: true });
@@ -3019,7 +3102,7 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
         && (!webContents || (result.dropBanner && result.dropStatus))
-        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem === true && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
+        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem === true && result.remote.pdfNext === true && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
     return result;
 }
 

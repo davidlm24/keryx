@@ -93,6 +93,7 @@ export const SETTINGS_INDEX = [
     e("sincronizacao", "Desde que abriu", "quantas mudanças foram enviadas e recebidas", ["enviadas", "recebidas", "mudanças"]),
     e("sincronizacao", "Mídias", "os arquivos de mídia que ainda estão chegando pela pasta", ["arquivos", "vídeos", "imagens", "chegando"]),
     e("sincronizacao", "Computadores", "os computadores da igreja que sincronizam, quando cada um escreveu; Tirar e Deixar voltar", ["computador", "notebook", "lista", "tirar", "Tirar", "Deixar voltar", "sem o código", "verificado"]),
+    e("sincronizacao", "O que vai e o que fica", "o que a pasta leva para os outros computadores e o que fica em cada um; espelhar os arquivos do Drive", ["o que vai", "o que fica", "vídeos", "imagens", "letras", "setlist", "telas", "Bíblias", "espelhar", "espelhamento", "off-line", "offline", "compartilhada", "atalho", "Compartilhados comigo"]),
     e("sincronizacao", "Músicas repetidas", "músicas com o mesmo título e a mesma letra depois de juntar os computadores; Juntar em uma, Manter as duas", ["repetidas", "duplicadas", "iguais", "Juntar em uma", "Manter as duas", "juntar"]),
     e("sincronizacao", "Sair", "este computador para de sincronizar; nada é apagado", ["sair da sincronização", "parar", "desligar", "desconectar"]),
 
