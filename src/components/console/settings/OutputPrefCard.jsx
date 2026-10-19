@@ -13,6 +13,7 @@ import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { sampleLive, sampleNotice, SAMPLE_ITEMS } from "./sample";
 import { useChurch } from "@/hooks/useChurch";
+import { useLiveNow } from "@/hooks/useLiveState";
 import { openEditor } from "@/lib/editorWindow";
 import { themeName } from "@/lib/console/themes";
 
@@ -35,12 +36,16 @@ const sameJson = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
 // exactly as the page draws it: its view, Mostrar, theme, design, scale and
 // margins. A still — previews never play (ScreenRenderer preview). Used by
 // the card below and by Telas e saídas' thumbnails (owner 2026-10-13).
-export function OutputPreview({ path, pref, design, themes = [], live, now, church }) {
+export function OutputPreview({ path, pref, design, themes = [], live, church }) {
     const renderer = PREF_OUTPUTS.includes(path);
     const isStream = path === "/StreamView";
     const isStage = path === "/StageView";
     const isPastor = path === "/PastorView";
     const liveOn = live && mainLayer(live) !== "none" ? live : null;
+    // The Palco, the Pastor and a design count on this preview's own clock
+    // (their clocks, the sample service's 42 min); a renderer view on the
+    // renderer's, which ticks only while it shows a timer or an aviso.
+    const now = useLiveNow(1000, !isStream && (Boolean(design) || ((isStage || isPastor) && !pref.content)));
     const madeAt = useRef(now);
     const sample = useMemo(() => sampleLive(madeAt.current), []);
     const notice = useMemo(() => sampleNotice(madeAt.current), []);
@@ -53,7 +58,7 @@ export function OutputPreview({ path, pref, design, themes = [], live, now, chur
     if (design) return <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><LayoutRenderer layout={design} live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} screenState={renderer ? rendererState : undefined} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} embed /></div></div>;
     if (isStage && !pref.content) return <div className="cfg-prev"><StageScreen content={prevLive.content} nowMs={now} embed opts={pref.options} scale={pref.scale} /></div>;
     if (isPastor && !pref.content) return <div className="cfg-prev"><PastorScreen live={{ ...prevLive, session: prevLive.session || { startedAt: now - 42 * 60000 } }} nowMs={now} logo={null} upcoming={SAMPLE_ITEMS.slice(0, pastor.next_count)} hasService embed opts={pref.options} scale={pref.scale} church={church} /></div>;
-    return <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={rendererState} now={now} preview audio={false} /></div></div>;
+    return <div className="cfg-prev"><div className="kp-out cfg-prev-fill" style={prefVars(pref) || undefined}><ScreenRenderer fill state={rendererState} preview audio={false} /></div></div>;
 }
 
 // One output's own settings (OutputPref, src/lib/outputPrefs.js), under its
@@ -134,13 +139,12 @@ export default function OutputPrefCard({ output, row, themes, c, onOpenScreen, i
         onAlertSample?.(true);
     };
     const meta = outputMeta(output.key);
-    const now = c?.now || Date.now();
     // The preview: this screen right now (OutputPreview above).
     const liveOn = c?.live && mainLayer(c.live) !== "none" ? c.live : null;
     const stage = stageOptions(pref);
     const pastor = pastorOptions(pref);
     const lyricsOpts = lyricsOptions(output.key, pref);
-    const preview = <OutputPreview path={output.key} pref={pref} design={design} themes={themeGone ? [] : themes} live={c?.live} now={now} church={church} />;
+    const preview = <OutputPreview path={output.key} pref={pref} design={design} themes={themeGone ? [] : themes} live={c?.live} church={church} />;
 
     return (
         <div className="cfg-outprefs" role="group" aria-label={`Ajustes de ${output.label}`}>

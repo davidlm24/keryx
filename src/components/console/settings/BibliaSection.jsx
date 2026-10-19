@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { keryx } from "@/api/keryxClient";
 import { Seg } from "../kx";
 import LinesPicker from "../LinesPicker";
 import { FormRow, CfgKey, Switch } from "./parts";
@@ -30,9 +31,10 @@ export default function BibliaSection({ c }) {
         try {
             const slides = groupVerses(SAMPLE_VERSES, prefs.bible_verses_per_slide);
             const args = withLookDefaults("content.show", { kind: "bible", title: "João 3:16-17 · NVI", slides, style: {} }, lookDefaults(user));
-            return applyOp(emptyState(c.now), "content.show", args, c.now);
+            const t = keryx.live.now();
+            return applyOp(emptyState(t), "content.show", args, t);
         } catch { return null; }
-    }, [prefs.bible_verses_per_slide, user]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [prefs.bible_verses_per_slide, user]);
     return (
         <>
             <div className="cfg-outprefs cfg-bible">
@@ -56,7 +58,7 @@ export default function BibliaSection({ c }) {
                     </FormRow>
                 </div>
                 <div className="cfg-prevcol">
-                    <div className="cfg-prev"><div className="cfg-prev-fill">{doc && <ScreenRenderer fill state={doc} now={c.now} preview audio={false} />}</div></div>
+                    <div className="cfg-prev"><div className="cfg-prev-fill">{doc && <ScreenRenderer fill state={doc} preview audio={false} />}</div></div>
                     <span className="kx-meta">Exemplo</span>
                 </div>
             </div>

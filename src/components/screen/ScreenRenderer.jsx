@@ -15,13 +15,17 @@ import { fitScale } from "@/lib/console/lyricFit";
 import ChordedLines, { chordedOf } from "@/components/network/ChordedLines";
 import ActivityView from "./ActivityView";
 import { useExitGhost } from "@/hooks/useExitGhost";
+import { useLiveNow } from "@/hooks/useLiveState";
 import { screenExitMs } from "@/lib/exitFade";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
 // (fill) and the console's monitors render it in a box, so a preview is the
 // output scaled down. `now` is the live clock (useLiveNow) for timers and
-// countdowns; `preview` keeps media from playing (a poster instead) and
+// countdowns; without one (the console's monitors and previews) the screen
+// keeps its own, ticking only while it draws something that counts, so the
+// console around it never re-renders by the second; a fixed `now` is a still
+// frame. `preview` keeps media from playing (a poster instead) and
 // audio silent. `motion` is the console's Programa monitor: still a muted
 // preview, but videos (the media layer and the video channel) really play,
 // in step with the screens, so the monitor mirrors the projector.
@@ -38,17 +42,29 @@ export default function ScreenRenderer(props) {
     const { state, logoUrl = "", preview = false, motion = false, fill = false, className = "" } = props;
     const cls = `ks ${fill ? "ks-fill" : "ks-box"} ${className}`;
     const ghost = useExitGhost(state, state?.rev, screenExitMs, !preview || (motion && !calmComputer()));
+    const ownNow = useLiveNow(1000, props.now === undefined && countsTime(state));
+    const now = props.now ?? ownNow;
     if (!state) return <div className={cls}><Idle logoUrl={logoUrl} /></div>;
     return (
         <div className={cls}>
-            <Screen {...props} />
+            <Screen {...props} now={now} />
             {ghost && (
                 <div key={ghost.key} className="ks-ghost" style={{ animationDuration: `${ghost.ms}ms` }} aria-hidden="true">
-                    <Screen {...props} state={ghost.from} ghost={ghost} under={state} />
+                    <Screen {...props} now={now} state={ghost.from} ghost={ghost} under={state} />
                 </div>
             )}
         </div>
     );
+}
+
+// Whether a screen draws something that counts by the second: a clock, a
+// timer or stopwatch, an aviso (its countdown, its files in turn), an
+// activity (Discussão's timer).
+function countsTime(state) {
+    const layer = state ? mainLayer(state) : "none";
+    if (layer === "tool") return state.tool.mode !== "freetext";
+    if (layer === "communication") return true;
+    return layer === "content" && Boolean(currentSlide(state.content)?.activity);
 }
 
 const calmComputer = () => typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);

@@ -7,6 +7,7 @@ import { clockOf } from "@/lib/console/notice";
 import { cleanPreset, canKeep, presetOf, orderPresets } from "@/lib/console/alertPresets";
 import { timerChoices, canKeepTimer, cleanMinutes, minutesLabel, ADJUST_STEPS } from "@/lib/console/timerPresets";
 import { toolTime } from "@shared/live-state.mjs";
+import { useLiveNow } from "@/hooks/useLiveState";
 
 // The quick controls that go to the screens without a library row: the
 // Aviso rápido, the ready timers and the Ferramentas. They live in the
@@ -14,6 +15,13 @@ import { toolTime } from "@shared/live-state.mjs";
 // not on screen or does not show them, in the Biblioteca's Avisos tab.
 
 const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+
+// How long the aviso has been on the screens, on its own clock: the tick
+// re-renders this line, not the panel.
+function AlertSince({ since }) {
+    const now = useLiveNow(1000);
+    return <span className="kx-meta">{mmss((now - since) / 1000)}</span>;
+}
 
 // Aviso rápido: the field, Mostrar and the mensagens prontas (AlertPreset,
 // src/lib/console/alertPresets.js): a click puts one in the field to
@@ -56,7 +64,7 @@ Clique coloca no campo · dois cliques mostram nas telas`} onClick={() => setAle
             {alert && (
                 <div className="kx-alert">
                     <span className="kx-alert-t">{alert.message}</span>
-                    <span className="kx-meta">{mmss((c.now - alert.since) / 1000)}</span>
+                    <AlertSince since={alert.since} />
                     <Btn onClick={() => c.callOp("alert.clear").catch(() => {})}>Tirar</Btn>
                 </div>
             )}
@@ -65,14 +73,15 @@ Clique coloca no campo · dois cliques mostram nas telas`} onClick={() => setAle
 }
 
 // A timer on air: its time left, and −1/+1/+5 min (tool.adjust; refused
-// while the screens are locked).
+// while the screens are locked). Its time left counts on its own clock.
 export function OnAirTimer({ c }) {
     const t = c.cur?.tool?.mode === "timer" ? c.cur.tool : null;
+    const now = useLiveNow(1000, Boolean(t));
     if (!t) return null;
     return (
         <div className="kx-tool-pick kx-timer-air" role="group" aria-label="Timer no ar">
             <span className="kx-meta">No ar</span>
-            <span className="kx-timer-left">{clockOf(toolTime(t, c.now))}</span>
+            <span className="kx-timer-left">{clockOf(toolTime(t, now))}</span>
             {ADJUST_STEPS.map(([ms, label]) => <Btn key={ms} small onClick={() => c.callOp("tool.adjust", { deltaMs: ms }).catch((err) => c.say(err?.message || "Não foi possível mudar o tempo."))} title={ms < 0 ? "Tira um minuto do timer no ar" : `Dá ${label.slice(1)} ao timer no ar`}>{label}</Btn>)}
             <Btn small onClick={() => c.callOp("tool.clear").catch(() => {})}>Tirar</Btn>
         </div>
