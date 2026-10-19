@@ -101,7 +101,7 @@
 }
 /* The Menu button's popover: the four menus stacked, a submenu inline under
    its parent (menuBar.js flattenMenus); it scrolls where the window is short. */
-.console .menus-pop { width: 300px; }
+.console .addmenu-pop.menus-pop { width: 300px; }
 .console .menus-pop .kx-menu-h.is-minor { padding-top: 2px; }
 .console .menus-pop .kx-menu-h.is-minor .kx-section { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg-2); }
 .console .menus-pop .kx-menu-item.is-indent { padding-left: calc(var(--space-2) + 16px); }
