@@ -15,6 +15,7 @@ const { createCheckSchedule } = require("./updateSchedule.cjs");
 const { createNotifications } = require("./notifications.cjs");
 const { createSystem } = require("./system.cjs");
 const { createNetwork } = require("./network.cjs");
+const { remoteReads } = require("./lan.cjs");
 const { createLive, loadLiveRules } = require("./live.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
@@ -577,8 +578,9 @@ app.whenReady().then(async () => {
         return;
     }
 
-    // Controle remoto: a phone's command (electron/lan.cjs, checked there)
-    // goes to the console, which runs it as its own keys would and answers.
+    // Controle remoto: a phone's command (electron/lan.cjs, checked there
+    // against shared/remoteProtocol.json) goes to the console, which runs it
+    // as its own keys would and answers; its refusal code goes back too.
     const remotePending = new Map();
     let remoteSeq = 0;
     ipcMain.on("keryx:remote:result", (event, answer = {}) => {
@@ -586,15 +588,18 @@ app.whenReady().then(async () => {
         const done = remotePending.get(answer.id);
         if (!done) return;
         remotePending.delete(answer.id);
-        done({ ok: Boolean(answer.ok), message: typeof answer.message === "string" ? answer.message.slice(0, 200) : "", status: Number(answer.status) || undefined, data: answer.data });
+        done({ ok: Boolean(answer.ok), message: typeof answer.message === "string" ? answer.message.slice(0, 200) : "", status: Number(answer.status) || undefined, code: typeof answer.code === "string" ? answer.code : undefined, data: answer.data });
     });
     const onRemote = (action, args, meta = {}) => new Promise((resolve) => {
-        if (!mainWindow || mainWindow.isDestroyed()) return resolve({ ok: false, message: "O console não está aberto.", status: 503 });
+        if (!mainWindow || mainWindow.isDestroyed()) return resolve({ ok: false, message: "O console não está aberto no computador.", status: 503, code: "busy" });
         const id = ++remoteSeq;
         remotePending.set(id, resolve);
-        setTimeout(() => remotePending.delete(id), 5000).unref();
-        logger.info(`[keryx-remote] ${action} de ${String(meta.ip || "").replace(/^::ffff:/, "")}`);
-        mainWindow.webContents.send("keryx:remote", { id, action, args });
+        // Past the longest wait lan.cjs gives (8 s for the Bíblia).
+        setTimeout(() => remotePending.delete(id), 10000).unref();
+        // Reads (state every few seconds, the library) are not logged.
+        if (!remoteReads(action)) logger.info(`[keryx-remote] ${action} de ${String(meta.ip || "").replace(/^::ffff:/, "")}`);
+        // v: the phone's protocol version (1 = an old page; state answers it in its shape).
+        mainWindow.webContents.send("keryx:remote", { id, action, args, v: meta.v || 1 });
     });
 
     // Destacar em janela (Rodada F5): a page in a window of its own (/Janela;

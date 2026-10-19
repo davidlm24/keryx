@@ -5,10 +5,11 @@ const os = require("node:os");
 const path = require("node:path");
 const { createStore } = require("./db/store.cjs");
 const schema = require("./db/schema.json");
-const { createLanServer, lanAddresses, safeNext, remoteCommand } = require("./lan.cjs");
+const { createLanServer, lanAddresses, safeNext, remoteCommand, remoteReply, remoteTimeout, remoteReads, createRemoteGate, writeFrame, REMOTE_ACTIONS } = require("./lan.cjs");
+const PROTOCOL = require("../shared/remoteProtocol.json");
 const { createLive, loadLiveRules } = require("./live.cjs");
 
-async function fixture(config = { pin: "", secret: "s3cret" }, { onRemote = null } = {}) {
+async function fixture(config = { pin: "", secret: "s3cret" }, { onRemote = null, heartbeatMs } = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "keryx-lan-"));
     const dist = path.join(root, "dist");
     fs.mkdirSync(path.join(dist, "assets"), { recursive: true });
@@ -21,7 +22,7 @@ async function fixture(config = { pin: "", secret: "s3cret" }, { onRemote = null
     const store = createStore({ file: ":memory:", schema, log: () => {} });
     const cfg = { ...config };
     const live = createLive({ file: path.join(root, "live.json"), rules: await loadLiveRules(), log: () => {} });
-    const lan = createLanServer({ distDir: dist, mediaDir: media, bundledDir: null, store, live, getConfig: () => cfg, onRemote });
+    const lan = createLanServer({ distDir: dist, mediaDir: media, bundledDir: null, store, live, getConfig: () => cfg, onRemote, heartbeatMs });
     return { lan, store, live, cfg };
 }
 
@@ -338,7 +339,7 @@ test("remote: only the listed commands, with checked arguments", async (t) => {
     assert.deepEqual((await state.json()).data.result, { items: [] });
     assert.deepEqual(calls, [["sendItem", { itemId: "abc-123" }], ["state", {}]], "extra arguments never reach the console");
     assert.throws(() => remoteCommand(null));
-    assert.deepEqual(remoteCommand({ action: "bibleFind", args: { ref: "  jo 3 16 " } }), { action: "bibleFind", args: { ref: "jo 3 16" } });
+    assert.deepEqual(remoteCommand({ action: "bibleFind", args: { ref: "  jo 3 16 " } }), { action: "bibleFind", args: { ref: "jo 3 16" }, v: 1 });
 });
 
 test("remote: the console's refusal and its silence reach the phone", async (t) => {
@@ -364,4 +365,169 @@ test("remote: a signed-in phone reads the live state even with a screens PIN; fi
     const post = (code) => fetch(`${f.base}/lan/remote-code`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded" }, body: `code=${code}` });
     for (let i = 0; i < 5; i++) assert.equal((await post("000000")).status, 401);
     assert.equal((await post("246813")).status, 429);
+});
+
+// -- Protocol v2 (shared/remoteProtocol.json; Rodada G6 PR1) -----------------
+
+test("remote: every action of the contract, and only those", () => {
+    assert.deepEqual([...REMOTE_ACTIONS].sort(), Object.keys(PROTOCOL.actions).sort());
+    assert.equal(remoteTimeout("next"), 3000);
+    assert.equal(remoteTimeout("bibleSend"), 8000);
+    assert.equal(remoteReads("state"), true);
+    assert.equal(remoteReads("library"), true);
+    assert.equal(remoteReads("black"), false);
+});
+
+test("remote: args checked by type, unknown keys dropped, v passed on", () => {
+    const ok = (body) => remoteCommand(body);
+    const bad = (body) => assert.throws(() => remoteCommand(body), (err) => err.status === 400, JSON.stringify(body));
+    // enum, int, bool, id, str (trimmed; empty = absent)
+    assert.deepEqual(ok({ v: 2, action: "library", args: { tab: "songs", q: "  graça ", skip: 0, limit: 50, fav: true, junk: 1 } }),
+        { action: "library", args: { tab: "songs", q: "graça", skip: 0, limit: 50, fav: true }, v: 2 });
+    assert.deepEqual(ok({ v: 2, action: "library", args: { tab: "media", q: "   " } }).args, { tab: "media" });
+    bad({ v: 2, action: "library", args: {} });
+    bad({ v: 2, action: "library", args: { tab: "everything" } });
+    bad({ v: 2, action: "library", args: { tab: "songs", limit: 51 } });
+    bad({ v: 2, action: "library", args: { tab: "songs", skip: 1.5 } });
+    bad({ v: 2, action: "library", args: { tab: "songs", fav: "yes" } });
+    bad({ v: 2, action: "library", args: { tab: "songs", q: "x".repeat(41) } });
+    bad({ v: 2, action: "goto", args: { index: 2000 } });
+    bad({ v: 2, action: "goto", args: { index: "3" } });
+    assert.deepEqual(ok({ v: 2, action: "goto", args: { index: 3 } }).args, { index: 3 });
+    bad({ v: 2, action: "sendMedia", args: { kind: "song", id: "a b" } });
+    assert.deepEqual(ok({ v: 2, action: "timerAdjust", args: { deltaMs: -60000 } }).args, { deltaMs: -60000 });
+    bad({ v: 2, action: "timerAdjust", args: { deltaMs: -300000 } });
+    bad({ v: 2, action: "lock", args: {} });
+    // black/logo: on omitted toggles (version 1 pages)
+    assert.deepEqual(ok({ action: "black" }), { action: "black", args: {}, v: 1 });
+    assert.deepEqual(ok({ v: 2, action: "black", args: { on: false } }).args, { on: false });
+    // oneOf: a reference XOR a book and chapter; a message XOR a preset
+    assert.deepEqual(ok({ v: 2, action: "bibleSend", args: { book: "João", chapter: 3, verseStart: 16, version: "NVI" } }).args, { book: "João", chapter: 3, verseStart: 16, version: "NVI" });
+    bad({ v: 2, action: "bibleSend", args: { book: "João" } });
+    bad({ v: 2, action: "bibleSend", args: { ref: "jo 3 16", book: "João", chapter: 3 } });
+    bad({ v: 2, action: "bibleSend", args: { version: "NVI" } });
+    bad({ v: 2, action: "bibleSend", args: { book: "João", chapter: 151 } });
+    assert.deepEqual(ok({ v: 2, action: "alert", args: { presetId: "p1" } }).args, { presetId: "p1" });
+    bad({ v: 2, action: "alert", args: { message: "Oi", presetId: "p1" } });
+    bad({ v: 2, action: "alert", args: {} });
+    // the envelope
+    bad({ v: 2, action: "next", args: [] });
+    bad({ v: "2", action: "next" });
+    bad({ v: 2, action: "reveal" });
+});
+
+test("remote: refusals carry their code; an unknown code never reaches the phone", () => {
+    assert.deepEqual(remoteReply({ ok: false, status: 423, code: "locked", message: "Telas travadas." }),
+        { status: 423, body: { error: { message: "Telas travadas.", status: 423, code: "locked" } } });
+    assert.deepEqual(remoteReply({ ok: false, message: "Não.", code: "whatever" }), { status: 409, body: { error: { message: "Não.", status: 409 } } });
+    assert.deepEqual(remoteReply({ ok: true, message: "x".repeat(300), data: { a: 1 } }).body.data, { message: "x".repeat(200), result: { a: 1 } });
+});
+
+test("remote: a burst of 10, then 8 a second; 4 waiting per phone, 8 in all", () => {
+    let now = 1000;
+    const gate = createRemoteGate(() => now);
+    const turns = [];
+    for (let i = 0; i < 4; i++) turns.push(gate.take("a"));
+    assert.ok(turns.every((x) => x.ok));
+    const fifth = gate.take("a");
+    assert.deepEqual([fifth.ok, fifth.status, fifth.code], [false, 429, "rate"], "4 waiting on the console");
+    for (const x of turns) x.done();
+    for (let i = 0; i < 5; i++) gate.take("a").done();
+    assert.equal(gate.take("a").ok, true, "the 10th");
+    assert.equal(gate.take("a").status, 429, "past the burst");
+    now += 125;
+    assert.equal(gate.take("a").ok, true, "one more after 1/8 s");
+    // 8 waiting in all, from any phones (a's last two still wait)
+    const many = ["b", "b", "b", "b", "c", "c"].map((ip) => gate.take(ip));
+    assert.ok(many.every((x) => x.ok));
+    assert.equal(gate.waiting(), 8);
+    const busy = gate.take("d");
+    assert.deepEqual([busy.status, busy.code], [503, "busy"]);
+});
+
+test("remote: too many taps from one phone answer 429; codes and v reach the console", async (t) => {
+    const seen = [];
+    const f = await started(REMOTE, { onRemote: async (a, args, meta) => { seen.push([a, meta.v]); return a === "next" ? { ok: false, status: 423, code: "locked", message: "Telas travadas." } : { ok: true }; } });
+    t.after(() => f.lan.stop());
+    const cookie = await remoteSignedIn(f);
+    const locked = await send(f, { v: 2, action: "next" }, { cookie });
+    assert.equal(locked.status, 423);
+    assert.equal((await locked.json()).error.code, "locked");
+    assert.deepEqual(seen, [["next", 2]]);
+    let limited = null;
+    for (let i = 0; i < 12 && !limited; i++) {
+        const res = await send(f, { action: "state" }, { cookie });
+        if (res.status === 429) limited = res;
+    }
+    assert.ok(limited, "the burst ran out");
+    assert.equal(limited.headers.get("retry-after"), "1");
+    assert.equal((await limited.json()).error.code, "rate");
+});
+
+// Reads an event stream until match(text) (or ms pass).
+async function framesUntil(res, match, ms = 2000) {
+    const reader = res.body.getReader();
+    let text = "";
+    const until = Date.now() + ms;
+    while (!match(text) && Date.now() < until) {
+        const next = await Promise.race([reader.read(), new Promise((r) => setTimeout(() => r({ value: null }), Math.max(0, until - Date.now())))]);
+        if (next.value) text += new TextDecoder().decode(next.value);
+        if (next.done) break;
+    }
+    return text;
+}
+
+test("remote: a phone with only the remote's code reads only what its page uses", async (t) => {
+    const f = await started({ ...REMOTE, pin: "4321" }, { onRemote: async () => ({ ok: true }), heartbeatMs: 100 });
+    t.after(() => f.lan.stop());
+    const cookie = await remoteSignedIn(f);
+    f.store.call("Song", "create", [{ title: "Hino", lyrics: "x" }]);
+    const db = (body, c = cookie) => f.db(body, { "x-keryx": "1", cookie: c });
+    assert.equal((await db({ entity: "User", op: "get", args: ["me"] })).status, 200, "the church's profile");
+    assert.equal((await db({ entity: "Song", op: "list", args: [] })).status, 403, "not the songs");
+    assert.equal((await db({ entity: "User", op: "list", args: [] })).status, 403, "not a list");
+    assert.equal((await fetch(`${f.base}/api/screens`, { headers: { cookie } })).status, 401);
+    assert.equal((await fetch(`${f.base}/api/live`, { headers: { cookie } })).status, 200);
+    assert.equal((await fetch(`${f.base}/media/a.png`, { headers: { cookie } })).status, 200);
+    // Its event stream: the live state, the heartbeat and the profile only.
+    const controller = new AbortController();
+    t.after(() => controller.abort());
+    const events = await fetch(`${f.base}/api/events?screen=%2FRemote`, { headers: { cookie }, signal: controller.signal });
+    await new Promise((r) => setTimeout(r, 50));
+    f.store.call("Song", "create", [{ title: "Segredo", lyrics: "x" }]);
+    f.store.call("User", "create", [{ church_name: "Igreja do Teste" }]);
+    f.live.call("screen.set", { mode: "black" });
+    const text = await framesUntil(events, (x) => x.includes("Igreja do Teste") && x.includes("event: live") && x.includes("event: hb"));
+    assert.match(text, /Igreja do Teste/);
+    assert.match(text, /event: live/);
+    assert.match(text, /event: hb\ndata: \{"t":\d+\}/);
+    assert.doesNotMatch(text, /Segredo/);
+    // With the PIN too, everything as before.
+    const pin = await fetch(`${f.base}/lan/pin`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "pin=4321" });
+    const both = `${cookie}; ${pin.headers.get("set-cookie").split(";")[0]}`;
+    assert.equal((await db({ entity: "Song", op: "list", args: [] }, both)).status, 200);
+    assert.equal((await fetch(`${f.base}/api/screens`, { headers: { cookie: both } })).status, 200);
+});
+
+test("event streams: a client that stopped reading is dropped", () => {
+    let destroyed = false;
+    const written = [];
+    const slow = { res: { writableLength: 300 * 1024, destroy: () => { destroyed = true; }, write: (x) => written.push(x) } };
+    assert.equal(writeFrame(slow, "data: x\n\n"), false);
+    assert.equal(destroyed, true);
+    assert.deepEqual(written, []);
+    const fine = { res: { writableLength: 10, destroy: () => assert.fail("kept"), write: (x) => written.push(x) } };
+    assert.equal(writeFrame(fine, "data: y\n\n"), true);
+    assert.deepEqual(written, ["data: y\n\n"]);
+});
+
+test("remote: the phone's page is a home-screen app; the screens' pages are not", async (t) => {
+    const f = await started(REMOTE, { onRemote: async () => ({ ok: true }) });
+    t.after(() => f.lan.stop());
+    const cookie = await remoteSignedIn(f);
+    const remote = await (await page(f.base, "/Remote", { cookie })).text();
+    assert.match(remote, /<meta name="theme-color" content="#0d0d0c">/);
+    assert.match(remote, /apple-mobile-web-app-capable/);
+    assert.match(remote, /window\.keryxLan=true/);
+    assert.doesNotMatch(await (await page(f.base, "/Projection")).text(), /theme-color/);
 });

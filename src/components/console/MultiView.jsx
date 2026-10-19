@@ -8,6 +8,7 @@ import { prefState, prefVars, pastorOptions } from "@/lib/outputPrefs";
 import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
 import { useDesign } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
+import { useLiveNow } from "@/hooks/useLiveState";
 import { SCREEN_PAGES, nextItems } from "@/lib/network/views";
 import { tileStatus, motionTile } from "@/lib/console/multiview";
 import "@/components/screen/output-prefs.css";
@@ -49,7 +50,11 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
 // The Programa as four outputs at once (src/lib/console/multiview.js;
 // Programa › Multiview): in the Programa's place and size, a drop target and
 // a right-click menu like it. `rows` are the output health rows (Saídas).
-export default function MultiView({ live, now, logoUrl, tiles, rows = [], items = [], state, className = "", onPick, dropProps, children, still = false }) {
+// Its clocks tick on its own clock (useLiveNow), never the console's; a
+// given `now` is a still frame.
+export default function MultiView({ live, now: givenNow, logoUrl, tiles, rows = [], items = [], state, className = "", onPick, dropProps, children, still = false }) {
+    const ownNow = useLiveNow(1000, givenNow === undefined);
+    const now = givenNow ?? ownNow;
     const looks = useRailViews();
     const church = useChurch();
     const moving = motionTile(tiles);

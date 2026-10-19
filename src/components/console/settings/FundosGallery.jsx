@@ -42,7 +42,7 @@ export function useSaveBackgroundPref(say) {
 // One background's settings and a sample. (The library window.) Its
 // category is one of the church's (`categories`; a free name made a
 // category the editor did not list), the editor one click away.
-export function FundoDetail({ b, save, now, sample = true, categories = [], onCategories, onRestore }) {
+export function FundoDetail({ b, save, sample = true, categories = [], onCategories, onRestore }) {
     const cats = categories.includes(b.category) ? categories : [...categories, b.category];
     const [name, setName] = useState(b.pref?.name || "");
     const [dim, setDim] = useState(b.dim === null ? null : Math.round(b.dim * 100));
@@ -51,6 +51,7 @@ export function FundoDetail({ b, save, now, sample = true, categories = [], onCa
     // The sample: the real renderer, as this background shows on air — a
     // picture as an item's own background, a clip as the Fundo layer.
     const doc = useMemo(() => {
+        const now = keryx.live.now();
         try {
             if (b.kind === "video") {
                 const st = applyOp(emptyState(now), "background.set", { kind: "video", value: b.url, title: b.name, ...(dim !== null ? { dim: dim / 100 } : {}), ...(blur ? { blur } : {}) }, now);
@@ -59,7 +60,7 @@ export function FundoDetail({ b, save, now, sample = true, categories = [], onCa
             const style = { background_image: b.url, ...(dim !== null ? { background_dim: dim / 100 } : {}), ...(blur ? { background_blur: blur } : {}) };
             return applyOp(emptyState(now), "content.show", { kind: "lyrics", title: b.name, slides: SAMPLE, style }, now);
         } catch { return null; }
-    }, [b.url, b.kind, b.name, dim, blur]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [b.url, b.kind, b.name, dim, blur]);
 
     const keep = (patch) => save(b, patch);
     const commitName = () => { if (name.trim() !== (b.pref?.name || "").trim()) keep({ name: name.trim() }); };
@@ -72,7 +73,7 @@ export function FundoDetail({ b, save, now, sample = true, categories = [], onCa
     return (
         <div className="fg-detail frm">
             {sample && <FormRow k="">
-                <div className="ap-sample fg-sample">{doc && <ScreenRenderer state={doc} now={now} preview />}</div>
+                <div className="ap-sample fg-sample">{doc && <ScreenRenderer state={doc} preview />}</div>
             </FormRow>}
             <FormRow k="Nome">
                 <input className="fg-input" value={name} placeholder={b.name} maxLength={80} onChange={(e) => setName(e.target.value)} onBlur={commitName} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} aria-label="Nome do fundo" />

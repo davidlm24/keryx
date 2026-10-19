@@ -483,7 +483,7 @@ export default function BibleEnv({ c, logoUrl, request, stageRef, apiRef, servic
                     {/* No header (owner 2026-10-16): the screen sits on top, and
                         its pill is the Programa's with icons only — the state's
                         dot and the screen actions (they left the top bar, Rodada E1). */}
-                    <div className={`kx-mon ${c.locked ? "is-rh" : airIdle ? "" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} now={c.now} logoUrl={logoUrl} preview />
+                    <div className={`kx-mon ${c.locked ? "is-rh" : airIdle ? "" : "is-air"}`}><div className="kx-mon-screen"><ScreenRenderer state={c.cur} logoUrl={logoUrl} preview />
                         <div className={`prog-pill scr-pill is-${airTone}`} role="group" aria-label={`No ar · ${airSaid}`} title={airSaid}><i className="pp-dot" aria-hidden="true" /><ScreenActions c={c} onEnd={onEnd} /></div>
                     </div></div>
                 </div>
