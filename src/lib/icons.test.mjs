@@ -26,12 +26,13 @@ function sources(dir = SRC, out = []) {
 // fallback's branches — never the operands of a comparison (grid === "small").
 const results = (s) => [...s.matchAll(/(?:^|\?|:|\|\||&&)\s*["']([a-z][a-z0-9-]*)["']/g)].map((m) => m[1]);
 
-// The icon names the code writes: <Icon name="…" / name={a ? "…" : "…"}>,
+// The icon names the code writes: <Icon name="…" / name={a ? "…" : "…"}>
+// (and <IconBtn name="…">, which hands it to Icon),
 // icon: "…" / icon="…" / icon={…} (the models and props that end in an
 // Icon), iconSvg("…"), and the *_ICON / *_GLYPH tables.
 function namesIn(text) {
     const found = [];
-    for (const [tag] of text.matchAll(/<Icon\b[^>]*>/g)) {
+    for (const [tag] of text.matchAll(/<Icon(?:Btn)?\b[^>]*>/g)) {
         for (const m of tag.matchAll(/\bname=(?:"([^"]+)"|\{([^}]*)\})/g)) found.push(...(m[1] ? [m[1]] : results(m[2].trim())));
     }
     // icon="…" and icon={…} (props), icon: … (models, to the end of the value).
