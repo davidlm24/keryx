@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { IconBtn, Seg } from "./kx";
 import { livePosition } from "@shared/live-state.mjs";
+import { useLiveNow } from "@/hooks/useLiveState";
 import { playerLayers, playerLayer, playerOp, videoSwap, LAYER_LABEL, clock, followsItem, followLabel, followAction, followTicks, clockLength, seekAt, SEEK_KEY_SECONDS } from "@/lib/console/player";
 import { levelsNow, useReportedDuration, useMeterFeed } from "./meterStore";
 
@@ -168,7 +169,7 @@ function Seek({ value, duration, can, scrubbing, ticks, onScrub, onSeek }) {
 // (only its icon, the controls dimmed). Acts on the document the console
 // drives (the live state; while the screens are locked its controls are refused).
 export default function PlayerBar({ c, picked, setPicked, videoScreens, projectorOpen }) {
-    const { cur, now } = c;
+    const { cur } = c;
     const layers = playerLayers(cur);
     const layer = playerLayer(cur, picked);
     const media = layer ? cur[layer] : null;
@@ -181,6 +182,9 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
     // A song's playback or video the file has not told its length yet: the song's.
     const duration = clockOnly ? clockLength(cur.content.slides, follow) : media?.duration || reported || (followsItem(follow, media) ? follow.length || null : null);
     const pb = item?.playback;
+    // The position counts on the player's own clock, only while it plays:
+    // its tick re-renders the player, not the console.
+    const now = useLiveNow(1000, Boolean(pb && !pb.paused));
     const pos = pb ? livePosition(pb, now) : 0;
     const followOp = (action) => c.callOp("content.follow", { action }).catch(() => {});
     const ticks = followsItem(follow, media) || clockOnly ? followTicks(cur.content.slides, follow, duration) : [];

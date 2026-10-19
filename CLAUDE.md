@@ -1231,6 +1231,12 @@ so a release follows these rules. The steps and commands are in README ›
 
 ## Watch out for
 
+- **The console has no ticking clock** (`c` has no `now`: it re-rendered the
+  whole console every second of the service). What shows the time calls
+  `useLiveNow` itself (one shared timer per interval, `useLiveState.js`; the
+  top bar's `Clocks`, the timers, the player); `ScreenRenderer` and
+  `LayoutRenderer` without `now` keep their own, ticking only while they
+  draw something that counts; a one-off read is `keryx.live.now()`.
 - **Column names are the entity field names verbatim**, including camelCase
   (`"serviceId"`, `"startedAt"`). Quote them in SQL.
 - **Ids are text, not uuid.** Imported Base44 rows keep 24-hex ids; new rows

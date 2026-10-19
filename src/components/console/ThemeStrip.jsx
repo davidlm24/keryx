@@ -137,7 +137,7 @@ export default function ThemeStrip({ c, themes, songs, service, ensureService, m
                     <button type="button" className={`kx-t fg-tile tm-tile ${current?.id === t.id ? "is-on" : ""}`} aria-pressed={current?.id === t.id} aria-label={themeName(t)}
                         title={`${themeName(t)}${t.id === def?.id ? " · tema padrão" : ""}${themeHasBackground(t) ? "" : ` · ${NO_BG_HINT}`}${themePending(t, pending) ? ` · fundo ${SYNC_WAIT_HINT}` : ""} · clique: fica em uso (veste o ar e o que for enviado) · duplo clique: editar`}
                         onClick={() => inUse(t)} onDoubleClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
-                        <span className="fg-img"><ThemeThumb theme={t} now={c.now} /><NoBgMark theme={t} /></span>
+                        <span className="fg-img"><ThemeThumb theme={t} /><NoBgMark theme={t} /></span>
                         {names && (t.id === def?.id || themeName(t, "")) && <span className="fg-name">{t.id === def?.id && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
                     </button>
                 ) : (

@@ -4,21 +4,45 @@ import { IconBtn, onTabsKey } from "./kx";
 import { MenuBarButtons } from "./MenuBar";
 import { keyHint } from "@/lib/console/keys";
 import { usePrefs } from "@/hooks/useUser";
+import { useLiveNow } from "@/hooks/useLiveState";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { syncState } from "@/lib/console/syncView";
 
 // The sync's cloud, only on a computer that syncs. It reads the status
 // itself, so a change of the status re-renders this button and nothing else
-// of the console; its tooltip's "há 12 s" counts with the bar's clock.
+// of the console; its tooltip's "há 12 s" counts with the bar's clock (the
+// same tick as Clocks, re-rendering only this button).
 function SyncCloud({ onSync }) {
     const st = useSyncStatus();
+    const now = useLiveNow(1000, Boolean(st?.folder));
     if (!st?.folder) return null;
-    const sync = syncState(st);
+    const sync = syncState(st, now);
     return (
         <span className="tb-sync">
             <IconBtn name="cloud" title={`Sincronização · ${sync.label}${sync.detail ? ` · ${sync.detail}` : ""}`} onClick={onSync} />
             <i className={`tb-sync-dot is-${sync.tone}`} aria-hidden="true" />
         </span>
+    );
+}
+
+// The service clock and the clock: the part of the bar that counts, with its
+// own tick, so each second re-renders these two and nothing else of the
+// console. `svcAt(now)` is the service clock at that time (Console.jsx,
+// serviceClock), null with nothing to say.
+function Clocks({ svcAt, onPlanner }) {
+    const now = useLiveNow(1000);
+    const svc = svcAt ? svcAt(now) : null;
+    const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return (
+        <>
+            {svc && (
+                <button type="button" className={`kx-btn kx-t tb-svc ${svc.muted ? "is-muted" : ""}`} onClick={onPlanner} title={svc.title} aria-label={`${svc.label || `${svc.text}${svc.more ? ` · ${svc.more}` : ""}`} · Planejar o culto`}>
+                    <Icon name="clock" /><span className="tb-svc-t">{svc.text}</span>
+                    {svc.more && <span className={`tb-svc-more ${svc.warn ? "kx-warn" : ""}`}> · {svc.more}</span>}
+                </button>
+            )}
+            <span className="tb-clock" title="Hora">{clock}</span>
+        </>
     );
 }
 
@@ -36,10 +60,8 @@ function SyncCloud({ onSync }) {
 // Encerrar) live in the Programa's pill since Rodada E1 (owner's pick B).
 // Nothing wraps: as the window narrows the bar drops the service's end,
 // then the clock, then shortens the search (container queries in console.css).
-export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svc, onPlanner, onSync, menuKeysOff = false, inert = false }) {
+export default function TopBar({ menus = [], env, setEnv, open, setOpen, outsLabel, outsCompact, outsState, logoUrl, unread = 0, svcAt, onPlanner, onSync, menuKeysOff = false, inert = false }) {
     const searchKey = keyHint("search", usePrefs().letter_keys);
-    const { now } = c;
-    const clock = new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const toggle = (name) => setOpen(open === name ? null : name);
     const envTab = (value, label, title) => (
         <button type="button" role="tab" aria-selected={env === value} tabIndex={env === value ? 0 : -1} className={`kx-t ${env === value ? "is-on" : ""}`} title={title} onClick={() => setEnv(value)}>{label}</button>
@@ -63,13 +85,7 @@ export default function TopBar({ c, menus = [], env, setEnv, open, setOpen, outs
                 </button>
             </div>
             <div className="tb-r">
-                {svc && (
-                    <button type="button" className={`kx-btn kx-t tb-svc ${svc.muted ? "is-muted" : ""}`} onClick={onPlanner} title={svc.title} aria-label={`${svc.label || `${svc.text}${svc.more ? ` · ${svc.more}` : ""}`} · Planejar o culto`}>
-                        <Icon name="clock" /><span className="tb-svc-t">{svc.text}</span>
-                        {svc.more && <span className={`tb-svc-more ${svc.warn ? "kx-warn" : ""}`}> · {svc.more}</span>}
-                    </button>
-                )}
-                <span className="tb-clock" title="Hora">{clock}</span>
+                <Clocks svcAt={svcAt} onPlanner={onPlanner} />
                 <button type="button" className={`kx-status kx-t ${outsState ? `is-${outsState}` : ""}`} onClick={() => toggle("outs")} title={`Telas e saídas · ${outsLabel}`} aria-label={`Telas e saídas · ${outsLabel}`} aria-expanded={open === "outs"}>
                     <i className="kx-dot" /><span className="tb-outs-l">{outsCompact}</span>
                 </button>

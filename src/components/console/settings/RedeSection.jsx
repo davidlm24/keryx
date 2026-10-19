@@ -160,7 +160,7 @@ export default function RedeSection({ c }) {
                         {/* A still of what this screen draws right now: the same
                             page, the same settings, the same live state. */}
                         {pref
-                            ? <span className="cfg-net-thumb"><OutputPreview path={path} pref={pref} design={designOf(pref, layoutRows)} themes={themes} live={c.live} now={c.now} church={church} /></span>
+                            ? <span className="cfg-net-thumb"><OutputPreview path={path} pref={pref} design={designOf(pref, layoutRows)} themes={themes} live={c.live} church={church} /></span>
                             : <span className="kx-glyph"><Icon name={cl.screen === "/Remote" ? "tablet" : "tv"} /></span>}
                         <div className="kx-row-main"><div className="kx-row-title">{cl.label || "Página inicial"}</div><div className="kx-row-meta">{cl.ip} · conectada desde {new Date(cl.since).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div></div>
                     </div>
