@@ -11,6 +11,8 @@ import { stageFromPiece } from "@/lib/console/stage";
 import { FontSelect } from "../editor/FontPicker";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { useWinCol } from "./winLayout";
+import { CfgGroup } from "./settings/parts";
+import { noticeTextSummary, noticeBackgroundSummary } from "@/lib/console/pageGroups";
 
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "XG"]];
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
@@ -166,7 +168,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                 <Panel noHead bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <input ref={fileRef} type="file" hidden onChange={(e) => { fileChosen(e.target.files?.[0]); e.target.value = ""; }} />
                     <div className="nv-scroll">
-                        <div className="listhead"><span className="kx-section">Tipo</span></div>
+                        <CfgGroup id="notice.tipo" title="Tipo" fold={false}>
                         {NOTICE_TYPES.map(([t, icon, label]) => <Row key={t} single icon={icon} title={label} className={draft.type === t ? "is-selected" : ""} onClick={() => chooseType(t)} />)}
                         <div className="frm nv-frm">
                             <span className="k">Título</span><Field label="Título" icon={null} value={draft.text || ""} onChange={(v) => set({ text: v })} placeholder={timed ? "Ex.: O culto começa em" : "Ex.: Bem-vindos"} inputProps={{ spellCheck: true }} />
@@ -184,8 +186,9 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                                 <span className={draft.sound_alert && !chimeOn ? "kx-warn" : "kx-meta"}>{draft.sound_alert ? (chimeOn ? "Toca um sino curto quando o aviso entra" : "O sino está desligado em Configurações › Telas e saídas") : "Sem som"}</span>
                             </span>
                         </div>
+                        </CfgGroup>
 
-                        <div className="listhead"><span className="kx-section">Texto na tela</span></div>
+                        <CfgGroup id="notice.texto" title="Texto na tela" summary={noticeTextSummary(draft, SIZES, EFFECTS)}>
                         <div className="frm nv-frm">
                             <span className="k">Tamanho</span><Seg small label="Tamanho" value={draft.font_size || "large"} onChange={(v) => set({ font_size: v })} options={SIZES} />
                             <span className="k">Fonte</span>
@@ -206,8 +209,9 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                             <span className="k">Alinhar</span><Seg small label="Alinhar" value={draft.text_position_h || "center"} onChange={(v) => set({ text_position_h: v })} options={[["left", "Esq."], ["center", "Centro"], ["right", "Dir."]]} />
                             <span className="k">Posição</span><Seg small label="Posição" value={draft.text_position_v || "middle"} onChange={(v) => set({ text_position_v: v })} options={[["top", "Topo"], ["middle", "Meio"], ["bottom", "Base"]]} />
                         </div>
+                        </CfgGroup>
 
-                        <div className="listhead"><span className="kx-section">Fundo</span></div>
+                        <CfgGroup id="notice.fundo" title="Fundo" summary={noticeBackgroundSummary(draft)}>
                         <div className="nv-pad">
                             {/* A picture or a colour from the library (its Comunicação
                                 category among the others); the clip, the audio and
@@ -240,6 +244,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                                 </div>
                             )}
                         </div>
+                        </CfgGroup>
                     </div>
                 </Panel>
             </div>

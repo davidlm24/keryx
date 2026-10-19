@@ -1252,7 +1252,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Biblioteca de mídia (canvas artboard "Biblioteca de mídia") */
 .console .mv-acts { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 .console .mv-cats { border-bottom: 0; padding: 0; margin-right: var(--space-2); }
-.console .mv-bar { flex: none; display: flex; gap: var(--space-1); align-items: center; flex-wrap: wrap; padding: var(--space-1) var(--space-2); }
+.console .mv-bar { flex: none; display: flex; gap: var(--space-1); align-items: center; flex-wrap: wrap; min-height: 36px; padding: 0 var(--space-1); }
 .console .mv-up { flex: none; border-top: 1px solid var(--line); padding-bottom: var(--space-1); }
 .console .mv-up-row { display: flex; align-items: center; gap: var(--space-2); height: 24px; padding: 0 var(--space-2); }
 .console .mv-up-n { width: 280px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-1); font-size: 12px; }
@@ -1261,7 +1261,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .prog2 > i { position: absolute; inset: 0; background: var(--prev); transform-origin: left center; transition: transform var(--duration-fast) var(--ease-out); }
 .console .prog2 > i.is-busy { animation: mv-busy 1.2s ease-in-out infinite alternate; }
 @keyframes mv-busy { from { opacity: .45; } to { opacity: 1; } }
-.console .mv-selbar { flex: none; display: flex; align-items: center; gap: var(--space-1); height: var(--row); padding: 0 var(--space-2); background: var(--bg-2); box-shadow: inset 2px 0 0 var(--prev); }
+.console .mv-selbar { flex: none; display: flex; align-items: center; gap: var(--space-1); height: 36px; padding: 0 var(--space-1); background: var(--bg-2); box-shadow: inset 2px 0 0 var(--prev); }
 .console .mv-body { flex: 1; min-height: 0; overflow: auto; }
 .console .mv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-3) var(--space-2); padding: var(--space-2); }
 .console .mv-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -1420,7 +1420,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 
 /* Relatórios */
 .console .rp .kx-panel-b { padding: var(--space-2); }
-.console .rp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.console .rp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); padding: var(--space-2) var(--space-3); }
 .console .rp-card { background: var(--bg-2); border-radius: var(--radius-control); padding-bottom: var(--space-2); min-width: 0; }
 .console .rp-card .listhead { gap: var(--space-1); flex-wrap: wrap; height: auto; min-height: var(--row); }
 .console .rp-wide { grid-column: 1 / -1; }

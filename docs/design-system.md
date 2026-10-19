@@ -371,7 +371,15 @@ open the Programa monitor draws one still frame (the air never pauses).
   title is the console's grey caption at weight 600 (never gold: gold is the
   brand and what is live). State is the closed summary, never a header hint;
   a page's groups run identity first, then what changes most, then the rare
-  (Rodada H1, every Configurações section).
+  (Rodada H1, every Configurações section). **The window's other pages**
+  (Rodada H4) use it too, its CSS scoped under `.console` (not `.cfg`):
+  the Editor de música (Dados · Notas · Cifra separada · Tema desta música ·
+  Tema por parte), Planejar o culto (Dados · Papel de parede e tema), the
+  Aviso (Tipo · Texto na tela · Fundo) and the Escola bíblica's "Dados da
+  turma"; ids `<página>.<grupo>`, summaries in
+  `src/lib/console/pageGroups.js`. Mídia, Relatórios and Sincronizar keep
+  no groups: only the panel rhythm (a 36 px band, 4 px in and apart; cards
+  12 px apart).
 - **List rows are inset cards**: every `kx-row` and `kx-layer` in the
   console (Biblioteca, Setlist, the tabs panel, Camadas, Configurações' menu,
   the views) sits 4 px in from its column with `radius-control` and 2 px
