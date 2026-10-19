@@ -56,9 +56,9 @@ export function winPage(entry, { active, escRef, onClose }, h) {
         case "reports":
             return <ReportsView c={c} onClose={onClose} escRef={escRef} />;
         case "theme":
-            return <ThemeEditor hosted themeId={p.id} say={c.say} now={c.now} onClose={onClose} onSaved={(row) => { if (row?.id && p.id !== row.id) h.replaceTop({ id: row.id }, { keep: true }); }} onSwitch={(id) => h.replaceTop({ id: id || "new" })} escRef={escRef} active={active} />;
+            return <ThemeEditor hosted themeId={p.id} say={c.say} onClose={onClose} onSaved={(row) => { if (row?.id && p.id !== row.id) h.replaceTop({ id: row.id }, { keep: true }); }} onSwitch={(id) => h.replaceTop({ id: id || "new" })} escRef={escRef} active={active} />;
         case "screen":
-            return <ScreenEditor hosted screenPath={p.path} media={data.media} themes={data.themes} say={c.say} live={c.cur} now={c.now} onClose={onClose} onSwitch={(path) => h.replaceTop({ path: path || "/Projection" })} escRef={escRef} active={active} />;
+            return <ScreenEditor hosted screenPath={p.path} media={data.media} themes={data.themes} say={c.say} live={c.cur} onClose={onClose} onSwitch={(path) => h.replaceTop({ path: path || "/Projection" })} escRef={escRef} active={active} />;
         default:
             return null;
     }
