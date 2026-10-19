@@ -89,3 +89,18 @@ export function sinceLine(st) {
     const n = (v, one, many) => `${v} ${v === 1 ? one : many}`;
     return `${n(s.sent || 0, "mudança enviada", "mudanças enviadas")} · ${n(s.applied || 0, "recebida", "recebidas")}`;
 }
+
+// Whether two answers of the status say the same (useSyncStatus): the poll
+// asks every 4 s and the status changes only when a pass runs or an action
+// answers, so an answer like the last one keeps the old object and wakes
+// nobody. The status is plain data (it comes over IPC); a key order that
+// differs counts as a change, which only costs one render.
+export function sameSyncStatus(a, b) {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    try {
+        return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+        return false;
+    }
+}

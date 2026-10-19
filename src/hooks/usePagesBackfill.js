@@ -3,7 +3,7 @@ import { keryx } from "@/api/keryxClient";
 import { needsPages, pagesWait } from "@/lib/presentation";
 import { madeHere } from "@/lib/mediaImport";
 import { savePages } from "@/lib/pdfPagesCapture";
-import { useSyncStatus } from "@/hooks/useSyncStatus";
+import { useSyncStatusSelect } from "@/hooks/useSyncStatus";
 
 const PAUSE_MS = 300;
 
@@ -34,8 +34,7 @@ const tried = new Set();
 export function usePagesBackfill(rows) {
     const [tick, setTick] = useState(0);
     const [busy, setBusy] = useState(false);
-    const st = useSyncStatus();
-    const syncs = st ? Boolean(st.folder && st.paired) : null;
+    const syncs = useSyncStatusSelect((st) => (st ? Boolean(st.folder && st.paired) : null));
     useEffect(() => {
         if (busy || !keryx.isDesktop || keryx.isNetworkScreen) return undefined;
         const due = rows.filter((m) => needsPages(m) && !tried.has(`${m.id}|${m.file_url}`));
