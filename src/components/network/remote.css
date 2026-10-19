@@ -137,6 +137,27 @@
 .rm-refrow .rm-field { flex: 1 1 auto; }
 .rm-refrow .rm-b { flex: none; min-height: 50px; }
 
+/* Mídia: a video's still in the row, the next page's sentinel. */
+.rm-thumb { flex: none; width: 40px; height: 24px; border-radius: 4px; object-fit: cover; background: var(--bg-3); }
+.rm-sentinel { height: 1px; }
+.rm-chip.is-sm { min-height: 40px; padding: 0 12px; }
+.rm-hint.is-left { text-align: left; padding: 0 4px; }
+.rm-hint b { color: var(--prev-fg); font-weight: 600; }
+.rm-empty p { margin: 0 0 10px; }
+.rm-v.is-bad { color: var(--warn-fg); }
+
+/* Bíblia: where the picker is, then its grid (books, chapters, verses). */
+.rm-crumbrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.rm-crumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-width: 0; font-size: 13px; color: var(--fg-3); }
+.rm-crumb button { min-height: 40px; padding: 0 6px; border: 0; background: none; color: var(--brand); font-family: inherit; font-size: 13px; }
+.rm-crumb button[aria-current] { color: var(--fg-1); font-weight: 600; }
+.rm-crumb span { padding: 0 6px; color: var(--fg-1); font-weight: 600; }
+.rm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.rm-grid button { min-height: 48px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg-1); color: var(--fg-1); font-family: inherit; font-size: 14px; font-weight: 500; touch-action: manipulation; content-visibility: auto; contain-intrinsic-size: auto 48px; }
+.rm-grid button:active { background: var(--bg-3); }
+.rm-grid button.is-sel { background: color-mix(in srgb, var(--brand) 30%, var(--bg-1)); border-color: var(--brand); }
+.rm-grid button.is-range { background: color-mix(in srgb, var(--brand) 14%, var(--bg-1)); border-color: color-mix(in srgb, var(--brand) 40%, transparent); }
+
 /* The Aviso rápido as the projector draws it (the amber band, ALERT_DEFAULTS). */
 .rm-alert-prev { position: relative; aspect-ratio: 16 / 9; border-radius: 8px; background: #000; overflow: hidden; container-type: inline-size; }
 .rm-alert-band { position: absolute; left: 0; right: 0; top: 0; padding: 1cqw 3cqw; min-height: 9cqw; display: flex; align-items: center; justify-content: center; text-align: center; background: #f5a524; color: #1a1300; font-weight: 600; font-size: 4.2cqw; line-height: 1.25; overflow-wrap: anywhere; }
@@ -199,6 +220,9 @@
     .rm-chiprow { flex: 0 1 auto; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
     .rm-lchip { flex: none; min-height: 34px; }
     .rm-b.is-big { min-height: 80px; }
+    .rm-sticky { padding-top: 10px; padding-bottom: 8px; }
+    .rm-sticky .rm-b.is-go { min-height: 44px; line-height: 44px; }
+    .rm-sticky .rm-b + .rm-hint { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -208,6 +232,6 @@
 }
 @media (forced-colors: active) {
     .rm-tab[aria-selected="true"]::after, .rm-tg[aria-checked="true"]::before { background: Highlight; }
-    .rm-item.is-sel, .rm-b.is-on, .rm-b[aria-pressed="true"] { outline: 2px solid Highlight; }
+    .rm-item.is-sel, .rm-b.is-on, .rm-b[aria-pressed="true"], .rm-grid button.is-sel, .rm-grid button.is-range, .rm-chip[aria-pressed="true"] { outline: 2px solid Highlight; }
     .rm-dot { background: CanvasText; }
 }
