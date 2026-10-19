@@ -26,12 +26,21 @@ const SYNC_ENTITIES = new Set([
     "WorshipTeam",
 ]);
 
+// Kept on each computer on purpose: what one computer has, edited there.
+const ON_EACH_COMPUTER = new Set([
+    // Installed per computer (copyrighted editions, 31k rows a version); the
+    // others learn which editions this one has from its computer.json
+    // (electron/sync.cjs), never the text.
+    "BibleVerse",
+    // Each computer's outputs and their designs. The designs and looks move
+    // to SYNC_ENTITIES at the end of Rodada G10, which first replaces its
+    // content fields; what stays this computer's (placement) stays here.
+    "OutputPref",
+]);
+
 // Kept on each computer.
 const LOCAL_ENTITIES = new Set([
-    // Installed per computer (copyrighted editions, 31k rows a version).
-    "BibleVerse",
-    // Each computer's outputs and their designs.
-    "OutputPref",
+    ...ON_EACH_COMPUTER,
     // The moment on air, and the retired sync tables.
     "LiveSession",
     "ProjectionState",
@@ -79,4 +88,4 @@ function syncRow(entity, row) {
     return out;
 }
 
-module.exports = { SYNC_ENTITIES, LOCAL_ENTITIES, LOCAL_USER_FIELDS, isSynced, syncRow };
+module.exports = { SYNC_ENTITIES, LOCAL_ENTITIES, ON_EACH_COMPUTER, LOCAL_USER_FIELDS, isSynced, syncRow };

@@ -11,6 +11,7 @@ const { createStore, PROFILE_ID } = require("./db/store.cjs");
 const { createSyncEngine, inspectFolder, syncDirOf, mediaRefs, coalesce, fileName, STATE_KEY } = require("./sync.cjs");
 const { keysFor, createPairing, joinPairing, readPairing, updateRemoved, PAIRING_FILE } = require("./syncPairing.cjs");
 const schema = require("./db/schema.json");
+const { SYNC_ENTITIES, ON_EACH_COMPUTER, LOCAL_USER_FIELDS, syncRow } = require("./db/syncScope.cjs");
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "keryx-sync-"));
 
@@ -742,4 +743,243 @@ test("coalesce: one line per row and moment, the later write winning", () => {
 test("mediaRefs: uploaded files only", () => {
     assert.deepEqual(mediaRefs({ a: "keryx-media://a1.jpg", b: { value: "keryx-media://b-2.mp4" }, c: "keryx-media://bundled/backgrounds/x.webp", d: "http://x/keryx-media://y" }).sort(), ["a1.jpg", "b-2.mp4", "y"]);
     assert.deepEqual(mediaRefs(null), []);
+});
+
+// -- The whole church (Rodada G7) -------------------------------------------
+//
+// "Uma igreja inteira": one row of every synced entity, with every field that
+// can hold a file filled with one (`file(field, ext)` writes it into the
+// first computer's media folder and notes the field). The drift test below
+// holds the jsonc to this list: a new field that may hold a file is filled
+// here, or said not to be one.
+
+function churchInABox(mediaDir) {
+    const used = new Set();
+    const files = new Map(); // name -> bytes
+    const file = (field, ext, tag = "") => {
+        used.add(field);
+        const name = `${field.replace(/[^A-Za-z0-9]+/g, "-").replace(/-+$/, "").toLowerCase()}${tag ? `-${tag}` : ""}${ext}`;
+        const bytes = Buffer.from(`${field} ${tag}`.repeat(40));
+        if (mediaDir) fs.writeFileSync(path.join(mediaDir, name), bytes);
+        files.set(name, bytes);
+        return `keryx-media://${name}`;
+    };
+    const ids = { service: crypto.randomUUID(), song: crypto.randomUUID(), cls: crypto.randomUUID() };
+    const rows = {
+        AlertPreset: [{ message: "Carro ABC-1234 com o farol aceso" }],
+        BackgroundPref: [{ source: file("BackgroundPref.source", ".jpg"), category: "Páscoa", dim_pct: 30 }],
+        BibleMaterial: [
+            {
+                title: "A criação", type: "slides", class_id: ids.cls, class_name: "Juniores",
+                background_image: file("BibleMaterial.background_image", ".jpg"),
+                slides: [{ text: "No princípio", image_url: file("BibleMaterial.slides[].image_url", ".png") }],
+            },
+            { title: "Vídeo da arca", type: "video", video_url: file("BibleMaterial.video_url", ".mp4") },
+            { title: "O arco-íris", type: "image", image_url: file("BibleMaterial.image_url", ".jpg") },
+            { title: "Quiz", type: "quiz", quiz_questions: [{ question: "Quantos dias?", options: ["6", "7"], correct: 1 }] },
+        ],
+        BibleNote: [{ reference: "João 3:16", book: "João", chapter: 3, verse: 16, note_type: "favorite", note_text: "Para o culto" }],
+        BiblePassage: [{
+            reference: "Salmos 23", book: "Salmos", chapter: 23, text: "O Senhor é o meu pastor",
+            background_image: file("BiblePassage.background_image", ".jpg"),
+            slides: [{ text: "O Senhor é o meu pastor", image_url: file("BiblePassage.slides[].image_url", ".png") }],
+        }],
+        BibleSchoolClass: [{ id: ids.cls, name: "Juniores", teacher_name: "Ana", students: ["Lia", "Davi"] }],
+        CommunicationVideo: [{
+            title: "Retiro", type: "announcement", text: "Retiro de jovens",
+            background_image: file("CommunicationVideo.background_image", ".jpg"),
+            background_video: file("CommunicationVideo.background_video", ".mp4"),
+            background_audio: file("CommunicationVideo.background_audio", ".mp3"),
+            files: [{ url: file("CommunicationVideo.files[].url", ".jpg"), duration: 5 }],
+        }],
+        Media: [
+            { title: "Abertura", type: "video", file_url: file("Media.file_url", ".mp4"), thumbnail_url: file("Media.thumbnail_url", ".jpg"), duration: 30 },
+            { title: "Avisos", type: "pdf", file_url: file("Media.file_url", ".pdf", "pdf"), pages: [{ url: file("Media.pages[].url", ".png"), w: 1920, h: 1080 }] },
+            { title: "Hino", type: "audio", file_url: file("Media.file_url", ".mp3", "audio"), category: "other" },
+            { title: "Fundo", type: "image", file_url: file("Media.file_url", ".jpg", "fundo"), category: "background" },
+        ],
+        ProjectionTheme: [{
+            name: "Natal",
+            background: { kind: "video", value: file("ProjectionTheme.background", ".mp4"), dim: 0.4 },
+            background_image: file("ProjectionTheme.background_image", ".jpg"),
+            elements: [{ id: "e1", type: "image", props: { url: file("ProjectionTheme.elements[].props.url", ".png") } }],
+            pinned: true,
+        }],
+        Service: [{
+            id: ids.service, title: "Culto de domingo", date: "2026-10-25", time: "19:00",
+            background: { kind: "image", value: file("Service.background", ".jpg") },
+            standby_background: file("Service.standby_background", ".jpg"),
+        }],
+        ServiceItem: [{ serviceId: ids.service, order: 1, type: "SONG", title: "Grande é o Senhor", contentId: ids.song }],
+        ServiceTemplate: [{ name: "Domingo à noite", background: { kind: "video", value: file("ServiceTemplate.background", ".mp4") }, items: [{ type: "SECTION", title: "Louvor" }] }],
+        Song: [
+            {
+                id: ids.song, title: "Grande é o Senhor", lyrics: "Grande é o Senhor\n\nE mui digno de louvor",
+                audio_url: file("Song.audio_url", ".mp3", "playback"),
+                background: { kind: "video", value: file("Song.background", ".mp4") },
+                background_image: file("Song.background_image", ".jpg"),
+                slides: [{ text: "Grande é o Senhor", start: 3, image_url: file("Song.slides[].image_url", ".png") }],
+            },
+            { title: "Com clipe", lyrics: "Aleluia", audio_url: file("Song.audio_url", ".mp4", "clipe") },
+        ],
+        SongHistory: [{ song_id: ids.song, song_title: "Grande é o Senhor", service_id: ids.service, played_at: "2026-10-18T22:00:00.000Z" }],
+        TimerPreset: [{ minutes: 7 }],
+        WorshipTeam: [{ name: "Marcos", role: "Bateria", active: true }],
+    };
+    const profile = {
+        church_name: "Igreja Gerar",
+        idle_mode: "background",
+        logo_url: file("User.logo_url", ".png"),
+        background_url: file("User.background_url", ".jpg"),
+        standby_background: file("User.standby_background", ".jpg"),
+        default_background: { kind: "image", value: file("User.default_background", ".jpg") },
+        weekday_backgrounds: { 0: { kind: "image", value: file("User.weekday_backgrounds", ".jpg") } },
+    };
+    return { rows, profile, files, used };
+}
+
+// The fields a written row came back with, for comparing two computers.
+const sameFields = (row, fields) => Object.fromEntries(Object.keys(fields).map((k) => [k, row?.[k]]));
+
+test("the whole church goes to the other computers: every row, every file, then the deletes", async () => {
+    const folder = tmp();
+    const a = computer(folder);
+    const b = computer(folder);
+    const c = computer(folder);
+    const box = churchInABox(a.mediaDir);
+    assert.deepEqual(Object.keys(box.rows).concat("User").sort(), [...SYNC_ENTITIES].sort(), "one row of every synced entity");
+
+    const made = {};
+    for (const [entity, list] of Object.entries(box.rows)) made[entity] = list.map((row) => a.store.call(entity, "create", [row]));
+    a.store.call("User", "update", [PROFILE_ID, box.profile]);
+    await a.engine.pass();
+    for (const name of box.files.keys()) assert.ok(fs.existsSync(shared(folder, name)), `${name} is in the folder`);
+
+    // Drive has not brought the theme's video down yet: "Baixando…" on the others.
+    const late = "projectiontheme-background.mp4";
+    const held = path.join(tmp(), late);
+    fs.renameSync(shared(folder, late), held);
+    for (const pc of [b, c]) {
+        const status = await pc.engine.pass();
+        assert.equal(status.missingMedia, 1);
+        assert.deepEqual(pc.engine.missing(), [late]);
+        assert.equal(pc.store.call("ProjectionTheme", "list", []).length, 1, "the row does not wait for its file");
+    }
+    fs.renameSync(held, shared(folder, late));
+    await rounds([a, b, c]);
+
+    for (const pc of [b, c]) {
+        assert.deepEqual(pc.engine.missing(), [], "Baixando… clears");
+        for (const [entity, list] of Object.entries(made)) {
+            for (const [i, row] of list.entries()) {
+                const there = pc.store.call(entity, "get", [row.id]);
+                assert.deepEqual(sameFields(there, box.rows[entity][i]), sameFields(row, box.rows[entity][i]), `${entity} ${i}`);
+            }
+        }
+        assert.deepEqual(sameFields(pc.store.call("User", "get", [PROFILE_ID]), box.profile), box.profile, "the church's profile");
+        for (const [name, bytes] of box.files) {
+            assert.deepEqual(fs.readFileSync(path.join(pc.mediaDir, name)), bytes, `${name} came down whole`);
+        }
+    }
+
+    // Deleted on another computer than the one that made them: gone everywhere.
+    await tick();
+    for (const [entity, list] of Object.entries(made)) for (const row of list) c.store.call(entity, "delete", [row.id]);
+    c.store.call("User", "update", [PROFILE_ID, { logo_url: null, default_background: null }]);
+    await rounds([c, a, b]);
+    for (const pc of [a, b]) {
+        for (const entity of Object.keys(made)) assert.deepEqual(pc.store.call(entity, "list", []), [], `${entity} deleted`);
+        const profile = pc.store.call("User", "get", [PROFILE_ID]);
+        assert.equal(profile.logo_url, null);
+        assert.equal(profile.default_background, null);
+        assert.equal(profile.church_name, "Igreja Gerar");
+    }
+    for (const pc of [a, b, c]) pc.close();
+});
+
+// Drift: a field the jsonc may fill with a file cannot be forgotten.
+// FILE_NAME picks the candidates by name (nested ones too); each is either
+// filled in churchInABox above, or listed here as not a file.
+const FILE_NAME = /url|image|video|audio|background|logo|file|thumbnail|poster|pages|source|slides|elements|design|picture|photo|icon|media/i;
+const NOT_A_FILE = {
+    "BibleMaterial.background_color": "a colour",
+    "CommunicationVideo.background_color": "a colour",
+    "CommunicationVideo.logo_position": "a corner",
+    "ProjectionTheme.background_fit": "cover or contain",
+    "ProjectionTheme.background_generator": "a generated background's numbers (shared/generators.mjs)",
+    "User.background_categories": "the categories' names",
+    "User.logo_corner": "a corner",
+    "User.logo_size": "a size",
+    "User.media_transition": "a transition's name",
+    "OutputPref.icon": "a design-system icon's name",
+};
+// Fields of the entities kept on each computer that hold files: they stay
+// there on purpose (syncScope.cjs ON_EACH_COMPUTER).
+const STAYS_HERE = {
+    "OutputPref.design": "the screens' designs; they move with Rodada G10, which replaces OutputPref's content fields first",
+};
+
+function fileCandidates(entitiesDir, entities) {
+    const out = [];
+    for (const f of fs.readdirSync(entitiesDir).filter((n) => n.endsWith(".jsonc"))) {
+        const doc = JSON.parse(fs.readFileSync(path.join(entitiesDir, f), "utf8"));
+        if (!entities.has(doc.name)) continue;
+        const walk = (props, prefix) => {
+            for (const [key, def] of Object.entries(props || {})) {
+                if (["number", "integer", "boolean"].includes(def.type)) continue;
+                const at = prefix + key;
+                if (FILE_NAME.test(key)) out.push(`${doc.name}.${at}`);
+                if (def.type === "array" && def.items?.properties) walk(def.items.properties, `${at}[].`);
+                if (def.type === "object" && def.properties) walk(def.properties, `${at}.`);
+            }
+        };
+        walk(doc.properties, "");
+    }
+    return out;
+}
+
+test("drift: every field that may hold a file travels in the whole-church test, or is said not to", () => {
+    const dir = path.join(__dirname, "..", "base44", "entities");
+    const { used } = churchInABox(null);
+    const covered = (field) => [...used].some((u) => u === field || u.startsWith(`${field}.`) || u.startsWith(`${field}[]`));
+
+    for (const field of fileCandidates(dir, SYNC_ENTITIES)) {
+        assert.ok(covered(field) || NOT_A_FILE[field], `${field} may hold a file: fill it in churchInABox (sync.test.cjs) or list it in NOT_A_FILE`);
+    }
+    for (const field of fileCandidates(dir, ON_EACH_COMPUTER)) {
+        assert.ok(STAYS_HERE[field] || NOT_A_FILE[field], `${field} holds a file that stays on each computer: list it in STAYS_HERE, or move the entity to SYNC_ENTITIES`);
+    }
+    // The lists name real fields (a renamed one is not left behind here).
+    const known = new Set([...fileCandidates(dir, SYNC_ENTITIES), ...fileCandidates(dir, ON_EACH_COMPUTER)]);
+    for (const field of [...Object.keys(NOT_A_FILE), ...Object.keys(STAYS_HERE)]) assert.ok(known.has(field), `${field} is no longer in the jsonc`);
+
+    // syncRow keeps every column of a synced row but this computer's own
+    // profile fields, and none of those may hold a file.
+    for (const entity of SYNC_ENTITIES) {
+        const cols = Object.keys(schema.entities[entity].columns);
+        const row = Object.fromEntries(cols.map((k) => [k, "x"]));
+        const kept = Object.keys(syncRow(entity, row));
+        const dropped = cols.filter((k) => !kept.includes(k));
+        assert.deepEqual(dropped, entity === "User" ? cols.filter((k) => LOCAL_USER_FIELDS.has(k)) : [], `${entity}: what syncRow drops`);
+    }
+    for (const field of LOCAL_USER_FIELDS) assert.ok(!FILE_NAME.test(field), `User.${field} stays on each computer and may hold a file`);
+});
+
+test("each computer says which Bible editions it has (names only, never the text); a change is told at the next pass", async () => {
+    const folder = tmp();
+    let editions = ["NVI", "acf", "../x", 7];
+    const a = computer(folder, { engine: { describe: () => ({ name: "PC-SOM", version: "0.2.20", bibles: editions }) } });
+    const b = computer(folder, { engine: { describe: () => ({ name: "PC-PROJETOR", version: "0.2.20", bibles: [] }) } });
+    await rounds([a, b], 1);
+    const said = JSON.parse(fs.readFileSync(path.join(folder, "sync", a.store.pcId, "computer.json"), "utf8"));
+    assert.deepEqual(said.bibles, ["ACF", "NVI"], "short names only");
+    let status = await b.engine.pass();
+    assert.deepEqual(status.computers.find((x) => x.pc === a.store.pcId).bibles, ["ACF", "NVI"]);
+
+    editions = ["NVI", "ACF", "AA"];
+    await a.engine.pass();
+    status = await b.engine.pass();
+    assert.deepEqual(status.computers.find((x) => x.pc === a.store.pcId).bibles, ["AA", "ACF", "NVI"]);
+    assert.equal(b.store.call("BibleVerse", "list", []).length, 0, "no verse ever travels");
+    for (const pc of [a, b]) pc.close();
 });

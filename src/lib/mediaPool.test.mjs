@@ -97,3 +97,21 @@ test("releasing an element twice or one the pool never gave is ignored", () => {
     endGrace();
     assert.deepEqual(disposed, [a]);
 });
+
+test("held: the element a player has for a file now, never one let go", () => {
+    const { pool, endTask, made } = setup();
+    assert.equal(pool.held("v.mp4"), null);
+    const a = pool.claim("v.mp4");
+    assert.equal(pool.held("v.mp4"), a);
+    assert.equal(pool.held("w.mp4"), null, "another file");
+    // The eye on the projector, in one commit: the screen's player lets the
+    // video go, the hidden audio player takes it, and the exit fade's ghost
+    // finds it held — it draws a still and claims nothing.
+    pool.release(a);
+    assert.equal(pool.held("v.mp4"), null, "let go: a ghost elsewhere (a TV) takes it");
+    const audio = pool.claim("v.mp4");
+    assert.equal(pool.held("v.mp4"), audio);
+    endTask();
+    assert.equal(made(), 1, "one element: no reload, no echo");
+    assert.equal(a.paused, false);
+});

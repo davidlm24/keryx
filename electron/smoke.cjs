@@ -413,6 +413,45 @@ async function checkVideo(webContents, { live }) {
     })();
     if (screenWin) screenWin.close();
 
+    // The eye (Rodada G4): the same clip on the projector, then the player's
+    // "Tirar o vídeo" clicked in the console. The picture fades out ("Ao
+    // tirar do ar", 0,3 s by default) while the sound goes on in the
+    // projector's hidden audio player — in the SAME <video> (mediaPool): the
+    // fading picture is a still (the ghost never claims a second element,
+    // which would load the file again and echo). Right after the click the
+    // projector has one video element, still advancing, at full volume.
+    // Whether the still looks right needs a real window (PR G4).
+    {
+        live.call("media.show", { kind: "video", url: `keryx-media://${fileName}`, title: "Vídeo do olho" });
+        await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
+        const proj = windowFor("/Projection");
+        result.eyeOnProjector = await waitState(proj, (v) => v.src.endsWith(`/media/${fileName}`) && !v.paused && v.ready >= 2, 8000);
+        const eye = "(() => { const b = document.querySelector('.player .pl-eye'); if (!b || b.disabled) return false; b.click(); return true; })()";
+        let clicked = false;
+        for (let i = 0; i < 24 && !clicked; i++) { clicked = await webContents.executeJavaScript(eye).catch(() => false); if (!clicked) await sleep(250); }
+        const videosIn = () => (proj ? proj.webContents.executeJavaScript(`(() => { const v = [...document.querySelectorAll("video")].filter((x) => x.src.includes(${JSON.stringify(fileName)})); return { n: v.length, time: v[0] ? v[0].currentTime : null, volume: v[0] ? v[0].volume : null, paused: v[0] ? v[0].paused : null, still: Boolean(document.querySelector(".ks-ghost canvas, .ks-ghost img")) }; })()`).catch(() => null) : null);
+        const end = Date.now() + 3000;
+        while (clicked && Date.now() < end && !(live.get().audio && !live.get().media)) await sleep(20);
+        const first = await videosIn();
+        await sleep(1200);
+        const later = await videosIn();
+        const s = live.get();
+        result.eye = {
+            clicked,
+            moved: Boolean(s.audio && s.audio.url.endsWith(fileName) && !s.media),
+            fade: s.fade ? s.fade.ms : 0,
+            first,
+            later,
+            // Informative only: the ghost lasts 0,3 s, a round trip may miss it.
+            stillSeen: Boolean(first && first.still),
+        };
+        result.eyeOk = Boolean(result.eyeOnProjector && clicked && result.eye.moved && result.eye.fade > 0
+            && first && later && first.n === 1 && later.n === 1 && later.time - first.time >= 0.8 && !later.paused && later.volume === 1);
+        live.call("audio.clear");
+        if (proj) proj.close();
+        await sleep(500);
+    }
+
     // A playlist of two images on the projector: it reports the end of each.
     const img = (name) => ({ kind: "image", url: `keryx-media://bundled/backgrounds/${name}`, duration: 1 });
     live.call("media.playlist", { items: [img("1418065460487-3e41a6c84dc5.webp"), img("1419242902214-272b3f66ee7a.webp")] });
@@ -426,7 +465,7 @@ async function checkVideo(webContents, { live }) {
     if (projector) projector.close();
 
     result.ok = result.recorded && result.lateJoin && result.playing && result.title && result.paused && result.resumed && result.continuity && result.cleared
-        && result.playlistAdvanced && result.projectorImage;
+        && result.eyeOk && result.playlistAdvanced && result.projectorImage;
     return result;
 }
 

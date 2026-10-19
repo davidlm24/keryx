@@ -129,6 +129,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   parked (`_parked`) and a remote row never erases a column its sender
   does not know. Tests use temp stores and a temp folder; only real Drive
   folders confirm the rest (docs/checklist-pc-igreja.md, item 8).
+  **What travels** (Rodada G7): every `SYNC_ENTITIES` row and every
+  `keryx-media://` file any of its fields names. The whole-church test in
+  `electron/sync.test.cjs` (`churchInABox`: a row of every synced entity,
+  every file field filled, three stores) and its drift check hold the jsonc
+  to it: a new field that may hold a file is filled there or listed in
+  `NOT_A_FILE`, and a file field of a computer's own entity in `STAYS_HERE`.
+  **`OutputPref` stays on each computer** (`ON_EACH_COMPUTER` in
+  syncScope.cjs) until the end of Rodada G10, which replaces its content
+  fields first; whatever it keeps per computer (placement) stays local.
+  **Bible text never travels**: each computer's `computer.json` lists its
+  installed editions (`bibles`, names only), and Bíblia e músicas says
+  "Falta a NVI aqui" with Instalar aqui (`biblesMissingHere`). The section's
+  "O que vai e o que fica" (with the Drive hints) is `SYNC_GOES`/`SYNC_STAYS`
+  in syncView.js: change it with the scope.
 - **Data access goes through `keryx.entities.*` inside TanStack Query.**
   `src/api/client.js` is a facade with one surface over the desktop backend
   (`backends/desktop.js`: IPC to `electron/db/store.cjs`), also used by
@@ -865,7 +879,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   YouTube) in the same `<video>`, without a gap: `LiveVideo` takes its
   element from the window's pool by url (`src/lib/mediaPool.js`, tested),
   so the player that unmounts hands it to the one that mounts in the same
-  commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
+  commit — don't give `LiveVideo` a `<video>` of its own again. **The
+  picture fades** (owner 2026-10-17, Rodada G4, "o mesmo de Ao tirar do
+  ar": no setting of its own): `media.toAudio`/`audio.toMedia` are in
+  `EXIT_OPS` and carry `fade` as `live.fade`, so the video dissolves to
+  what is under it while the sound goes on, and "Mostrar o vídeo" dissolves
+  it back; a single video that ends by itself is cleared with the same fade
+  (`LiveMediaView`; YouTube cuts). On the desktop projector the hidden
+  audio player mounts first and takes the element, so the ghost's
+  `LiveVideo` (`fadeOut`) finds the file held (`mediaPool.held`) and fades
+  a canvas still of the frame (the poster if it cannot draw) — never a
+  second element (a reload and an echo); a window without an audio player
+  (a TV, the Programa monitor) takes the element and fades it as any
+  ghost. Keys go through `src/lib/console/keys.js` (with
   a test); **B, L, C, / and ? follow the church's "Teclas de uma letra"**
   (`User.letter_keys`: ligadas / com Shift / desligadas, Configurações ›
   Console; `liveAction(e, letters)`, `shortcutsFor`, `keyHint` for every
