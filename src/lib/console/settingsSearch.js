@@ -10,6 +10,7 @@
 // word: "transi" finds Transição, "nvi" finds NVI but not "enviar".
 import { fold, searchTerms } from "../bibleSearch.js";
 import { SECTIONS } from "./settings.js";
+import { TRANSITION_TYPES } from "../contentKinds.js";
 
 const e = (section, label, hint, keywords = [], extra = {}) => ({ section, label, hint, keywords, target: extra.target || label, tab: extra.tab || null });
 
@@ -28,9 +29,11 @@ export const SETTINGS_INDEX = [
     e("telas", "Arquivo de ajustes", "exportar e importar a tela e os ajustes de cada saída", ["arquivo", "exportar", "importar"]),
     e("telas", "Exportar ajustes das saídas", "salva num arquivo a tela e os ajustes de cada saída", ["exportar", "salvar", "arquivo", "backup das saídas", "outro computador", "reinstalar", "spo"] ),
     e("telas", "Importar ajustes das saídas", "abre um arquivo de saídas e mostra o que muda antes de aplicar", ["importar", "restaurar", "arquivo", "outro computador", "reinstalar", "carregar"] ),
-    e("telas", "Transições", "como um som dá lugar ao outro, como pausa e como as coisas saem do ar", ["transição", "transições", "suave", "corte", "esmaecer", "fade"]),
+    e("telas", "Transições", "como um som dá lugar ao outro, como pausa, como as coisas entram, trocam e saem do ar", ["transição", "transições", "suave", "corte", "esmaecer", "fade"]),
     e("telas", "Ao pausar o som", "Pausar e Tocar no player: corte, 0,2 s ou 0,4 s", ["transição", "pausar", "pausa", "tocar", "player", "música", "som", "suave", "corte", "fade", "estalo"]),
     e("telas", "Ao tirar do ar", "Esc, Limpar e Parar: a imagem e o som saem juntos, de uma vez ou suave", ["transição", "esc", "limpar", "parar", "encerrar", "tirar", "música", "som", "suave", "corte", "esmaecer", "fade", "duração", "tirar da tela"]),
+    e("telas", "Ao entrar ou trocar", "o que entra na tela ou troca outra coisa: corte ou suave, 0,3 s, 0,5 s ou 1 s; passar de slide é do tema", ["transição", "entrar", "trocar", "troca", "música", "imagem", "vídeo", "aviso", "suave", "corte", "esmaecer", "fade", "crossfade", "duração"]),
+    e("telas", "Por tipo de conteúdo", "a transição de cada tipo: padrão, corte ou suave (o timer vem em corte)", ["transição", "tipo", "conteúdo", "exceção", ...TRANSITION_TYPES.map((t) => t.label), "timer", "relógio", "cronômetro", "pdf", "gif", "youtube"]),
     e("telas", "Entre áudios e vídeos", "quando um começa, o que tocava para: corte, suave ou tocar junto", ["transição", "áudio", "vídeo", "música", "som", "um de cada vez", "tocar junto", "corte", "suave", "crossfade", "esmaecer", "duração"]),
     e("telas", "Tela preta e Logo", "entram e saem com a transição de Ao tirar do ar", ["transição", "tela preta", "preto", "logo", "suave", "esmaecer"]),
     e("telas", "Som do aviso", "o sino dos avisos: ligar, desligar, volume, testar", ["som", "sino", "alerta", "volume", "testar som", "áudio"] ),

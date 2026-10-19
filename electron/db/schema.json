@@ -1906,6 +1906,15 @@
         "pause_fade_ms": {
           "type": "integer"
         },
+        "enter_transition": {
+          "type": "text"
+        },
+        "enter_transition_ms": {
+          "type": "integer"
+        },
+        "enter_transition_kinds": {
+          "type": "json"
+        },
         "standby_background": {
           "type": "text"
         },

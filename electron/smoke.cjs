@@ -464,8 +464,35 @@ async function checkVideo(webContents, { live }) {
     live.call("clear");
     if (projector) projector.close();
 
+    // Ao entrar ou trocar (Rodada G5): a song replaced by another fades. The
+    // projector draws both for a moment — the old one as a ghost going
+    // transparent over the new one — then settles on the new one alone. The
+    // fade rides in the op (1 s, so a round trip cannot miss it); whether it
+    // looks smooth needs a real window.
+    {
+        live.call("content.show", { kind: "lyrics", title: "Primeira", slides: ["Primeira música"] });
+        await webContents.executeJavaScript(OPEN_OUTPUT("/Projection", "keryx_projection"), true);
+        const proj = windowFor("/Projection");
+        const look = () => (proj ? proj.webContents.executeJavaScript(`(() => ({ ghosts: document.querySelectorAll(".ks-ghost").length, text: document.body.innerText }))()`).catch(() => null) : null);
+        let ready = false;
+        for (let end = Date.now() + 6000; Date.now() < end && !ready;) { ready = Boolean((await look())?.text.includes("Primeira música")); if (!ready) await sleep(100); }
+        live.call("content.show", { kind: "lyrics", title: "Segunda", slides: ["Segunda música"], fade: 1000 });
+        let both = null;
+        for (let end = Date.now() + 900; Date.now() < end && !both;) {
+            const v = await look();
+            if (v && v.ghosts > 0 && v.text.includes("Primeira música") && v.text.includes("Segunda música")) both = v;
+            else await sleep(30);
+        }
+        await sleep(1400);
+        const settled = await look();
+        result.songFade = { ready, both: Boolean(both), fade: live.get().fade ? live.get().fade.ms : 0, settled: Boolean(settled && settled.ghosts === 0 && settled.text.includes("Segunda música") && !settled.text.includes("Primeira música")) };
+        result.songFadeOk = ready && result.songFade.both && result.songFade.fade === 1000 && result.songFade.settled;
+        live.call("clear");
+        if (proj) proj.close();
+    }
+
     result.ok = result.recorded && result.lateJoin && result.playing && result.title && result.paused && result.resumed && result.continuity && result.cleared
-        && result.eyeOk && result.playlistAdvanced && result.projectorImage;
+        && result.eyeOk && result.playlistAdvanced && result.projectorImage && result.songFadeOk;
     return result;
 }
 
@@ -3029,6 +3056,33 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
                 const until = Date.now() + 6000;
                 while (Date.now() < until) { sent = await cmd("sendItem", { itemId: row.id }); if (sent.status === 200) break; await sleep(400); }
                 result.remote.sendItem = sent.status === 200 && ((live.get().content || {}).title || "") === "Item do celular";
+                // Version 2 (Rodada G6 PR2b): state in its v2 shape, a library
+                // page, a song sent from it, the operator's Prévia kept while
+                // the phone sends something else, and Desfazer after Encerrar.
+                const cmd2 = (action, args) => fetch(`${base}/api/remote`, { method: "POST", headers: { "content-type": "application/json", "x-keryx": "1", cookie }, body: JSON.stringify({ v: 2, action, args }) });
+                const body = async (res) => (await res.json().catch(() => ({})))?.data?.result;
+                const st2 = await body(await cmd2("state"));
+                result.remote.v2 = st2?.v === 2 && Array.isArray(st2.caps) && st2.caps.includes("library") && st2.service?.id === sid;
+                const prevBadge = `(document.querySelector(".prev-panel .kx-mon-badge") || {}).textContent || ""`;
+                const clicked = await webContents.executeJavaScript(`(() => { const r = [...document.querySelectorAll("[data-sort-row]")].find((n) => n.textContent.includes("Item do celular")); if (!r) return false; r.click(); return true; })()`).catch(() => false);
+                let prepared = false;
+                const prepUntil = Date.now() + 4000;
+                while (clicked && Date.now() < prepUntil && !prepared) { prepared = (await webContents.executeJavaScript(prevBadge).catch(() => "")).includes("Item do celular"); if (!prepared) await sleep(100); }
+                const song = (await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "create", [{ title: "Música do celular", lyrics: "Linha do celular" }])`)).data;
+                let page = null;
+                const libUntil = Date.now() + 6000;
+                while (Date.now() < libUntil && !(page?.rows?.length === 1)) { page = await body(await cmd2("library", { tab: "songs", q: "musica do celular" })); if (!(page?.rows?.length === 1)) await sleep(300); }
+                result.remote.library = page?.rows?.length === 1 && page.rows[0].id === song.id && page.total === 1 && page.ready === true;
+                const viaMedia = await cmd2("sendMedia", { kind: "song", id: song.id });
+                result.remote.sendMedia = viaMedia.status === 200 && ((live.get().content || {}).title || "") === "Música do celular";
+                result.remote.prevKept = prepared && (await webContents.executeJavaScript(prevBadge).catch(() => "")).includes("Item do celular");
+                const ended = await body(await cmd2("end"));
+                const undone = ended?.undo === true ? await cmd2("undo") : { status: 0 };
+                let back = false;
+                const undoUntil = Date.now() + 4000;
+                while (undone.status === 200 && Date.now() < undoUntil && !back) { back = ((live.get().content || {}).title || "") === "Música do celular"; if (!back) await sleep(100); }
+                result.remote.undo = back;
+                await webContents.executeJavaScript(`window.keryxDesktop.db.call("Song", "delete", [${JSON.stringify(song.id)}])`).catch(() => {});
                 await webContents.executeJavaScript(`window.keryxDesktop.db.call("ServiceItem", "delete", [${JSON.stringify(row.id)}])`).catch(() => {});
             } else result.remote.sendItem = false;
             // The same PDF imported through the Mídia file picker earlier is
@@ -3102,7 +3156,7 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
         && (!webContents || (result.dropBanner && result.dropStatus))
-        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem === true && result.remote.pdfNext === true && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
+        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem === true && result.remote.v2 === true && result.remote.library === true && result.remote.sendMedia === true && result.remote.prevKept === true && result.remote.undo === true && result.remote.pdfNext === true && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
     return result;
 }
 

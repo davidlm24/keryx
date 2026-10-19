@@ -209,7 +209,7 @@
         "which": { "type": "enum", "values": ["text", "bg", "corner", "video"], "required": true },
         "on": { "type": "bool", "required": true }
       },
-      "$comment": "on false hides (T), true shows (S). video is reserved for Camadas' Vídeo layer (the Codex plan, G11); until the console has it, it answers 409 nothing."
+      "$comment": "on false hides (T), true shows (S). corner is the logo in the corner (logo.set visible), which the live state refuses while locked either way: the console answers 423 for it. video is reserved for Camadas' Vídeo layer (the Codex plan, G11); until the console has it, it answers 409 nothing."
     },
     "alert": {
       "kind": "S",

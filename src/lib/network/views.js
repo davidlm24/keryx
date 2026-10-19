@@ -40,9 +40,11 @@ const withAlert = (view, live) => (live?.alert ? { ...view, alert: live.alert } 
 export const videoView = (live) => (live && live.video ? withAlert({ screen: "show", video: live.video, idle: live.idle, idleUrl: live.idleUrl, idleDim: live.idleDim, idleBlur: live.idleBlur, idleLook: live.idleLook }, live) : standbyView(live));
 
 // Avisos: only the aviso on air (and the Aviso rápido); nothing (null) when
-// there is neither.
-export const noticeView = (live) => (live && live.communication ? withAlert({ screen: "show", communication: live.communication }, live)
-    : live?.alert ? { screen: "show", alert: live.alert } : null);
+// there is neither. With the change it comes from (rev, updatedAt, fade), so
+// the screen fades as the projector does (Rodada G5: the next aviso of a list).
+const changeOf = (live) => (live.rev === undefined ? {} : { rev: live.rev, updatedAt: live.updatedAt, fade: live.fade ?? null });
+export const noticeView = (live) => (live && live.communication ? withAlert({ screen: "show", communication: live.communication, ...changeOf(live) }, live)
+    : live?.alert ? { screen: "show", alert: live.alert, ...changeOf(live) } : null);
 
 // The outputs drawn by ScreenRenderer, and what each shows from a live state:
 // the console's Prévia rail previews a stage "as that output will show it".

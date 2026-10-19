@@ -18,6 +18,7 @@ import { useUser, usePrefs } from "@/hooks/useUser";
 import { liveIdleLook } from "@shared/idleLook.mjs";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { pendingUrls, PENDING_SAY } from "@/lib/pendingMedia";
+import { LOCKED_SAY, PENDING_SKIP, sendBlock } from "@/lib/console/sendBlock";
 
 // The console's own state around the live state. One console, always live:
 // every operation goes to the live state (shared/live-state.mjs).
@@ -33,9 +34,8 @@ import { pendingUrls, PENDING_SAY } from "@/lib/pendingMedia";
 // goes through callOp.
 // The theme in use, on this computer (localStorage, like the arrangement).
 export const THEME_IN_USE_KEY = "keryx.themeInUse";
-export const LOCKED_SAY = "Telas travadas: nada vai ao ar. Destrave em Saídas.";
-// A video's still is not what goes on air: a send never waits for it.
-const PENDING_SKIP = { skip: ["poster", "thumbnail_url"] };
+// The checks before a send (src/lib/console/sendBlock.js, pure).
+export { LOCKED_SAY };
 
 // The look every op is stamped with (withThemeDefaults, the Bíblia's
 // display preferences, each background's own settings): the console and a
@@ -260,13 +260,15 @@ export function useConsole() {
     }, [say, pending]);
 
     // Send: the Prévia (or the stage given) goes to the screens. Resolves
-    // true when it went.
-    const send = useCallback(async (stage = prev) => {
-        if (locked) { say(LOCKED_SAY); return false; }
-        if (!stage) { say("Nada na prévia. Escolha um item da Setlist, uma música ou um versículo."); return false; }
-        if (pendingUrls(stage, pending, PENDING_SKIP).length) { say(PENDING_SAY); return false; }
-        if (stage.missing) { say("Arquivo não encontrado · Localizar… antes de enviar."); return false; }
-        if (stage.blocked) { say(stageBlock(stage, pagesProgressOf(stage.args?.id))); return false; }
+    // true when it went. keepPrev: a stage sent from elsewhere (the controle
+    // remoto) leaves the operator's Prévia alone, unless it is that very
+    // item. why: told why it did not go ({ status, code, message }) instead
+    // of the toast.
+    const send = useCallback(async (stage = prev, { keepPrev = false, why = null } = {}) => {
+        const refused = (b) => { if (why) why(b); else say(b.message); return false; };
+        const block = sendBlock(stage, { locked, pending, progress: pagesProgressOf(stage?.args?.id) });
+        if (block) return refused(block);
+        const clearsPrev = !keepPrev || prev?.id === stage.id;
         // A theme's example (Camadas › Temas, nothing on air): sending it uses
         // the theme — its background on the Fundo (not past the padlock) —
         // never the example text.
@@ -274,14 +276,14 @@ export function useConsole() {
             const bg = themeBackgroundArgs(stage.theme);
             try { if (bg && !layerLocked(live, "background")) await callOp("background.set", bg); } catch { return false; }
             setThemeId(stage.theme.id);
-            setPrevState(null);
+            if (clearsPrev) setPrevState(null);
             say(themeName(stage.theme, "") ? `Tema ${themeName(stage.theme)} em uso.` : "Tema em uso.");
             return true;
         }
         const [op, stageArgs] = stageOp(stage);
         const args = stamp(op, stageArgs);
         // The theme that dresses it may bring a background still coming.
-        if (pendingUrls(args, pending, PENDING_SKIP).length) { say(PENDING_SAY); return false; }
+        if (pendingUrls(args, pending, PENDING_SKIP).length) return refused({ status: 409, code: "syncing", message: PENDING_SAY });
         const ref = stage.args?.ref || {};
         try {
             if (!live?.session) await projection.startSession(ref.serviceId || null);
@@ -293,10 +295,12 @@ export function useConsole() {
             // holds it (backgroundSpec.js fundoOps).
             for (const [o, a] of fundoOps(op, args, live)) await callOp(o, a);
             if (ref.serviceItemId) await callOp("session.item", { itemId: ref.serviceItemId, index: ref.serviceItemIndex ?? null }).catch(() => {});
-        } catch {
+        } catch (err) {
+            // callOp said why on the console; the sender hears it too.
+            why?.({ status: err?.status || 409, code: err?.status === 423 ? "locked" : undefined, message: err?.message || "Não foi para o ar." });
             return false;
         }
-        setPrevState(null);
+        if (clearsPrev) setPrevState(null);
         return true;
     }, [prev, locked, live, callOp, say, stamp, setThemeId, pending]);
 
@@ -317,7 +321,7 @@ export function useConsole() {
     // (owner 2026-10-17, Rodada G3); background, logo, overlays and the alert
     // have their own controls. The toast offers Desfazer (owner's decision
     // 2026-10-10). `by`: who asked, when not this console ("Celular"); then a
-    // refusal is thrown back to it.
+    // refusal is thrown back to it. Resolves whether Desfazer is offered.
     const end = useCallback(async ({ by } = {}) => {
         const before = live;
         let after;
@@ -325,8 +329,11 @@ export function useConsole() {
         const what = before?.audio ? "projeção encerrada e música parada." : "projeção encerrada.";
         const message = by ? `${by}: ${what}` : what[0].toUpperCase() + what.slice(1);
         const endedAt = after?.updatedAt;
-        if (undoEndOps(before, endedAt).length) say(message, { label: "Desfazer", undo: true, run: () => undoEnd(before, endedAt) });
+        const undo = undoEndOps(before, endedAt).length > 0;
+        if (undo) say(message, { label: "Desfazer", undo: true, run: () => undoEnd(before, endedAt) });
         else say(message);
+        // Whether Desfazer can put it back (the controle remoto says so).
+        return undo;
     }, [live, callOp, say, undoEnd]);
 
     // Travar telas / Destravar (Saídas, the banner).

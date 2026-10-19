@@ -66,11 +66,18 @@ Telas e saídas › Transições says, the player's music included (Rodada G3,
 back what the screens showed: the text on the same slide, media, avisos or a
 tool, the video channel, Tela preta or Logo, and the music at the second it
 stopped, paused if it was (refused while the screens are locked).
-**Transições** (Configurações › Telas e saídas): four rows, in this order —
+**Transições** (Configurações › Telas e saídas): five rows, in this order —
 *Ao pausar o som* (Corte · 0,2 s · 0,4 s; Pausar e Tocar no player), *Ao
 tirar do ar* (Corte | Suave, 0,3 · 0,6 · 1 s; Esc, Limpar e Parar: a imagem
-e o som saem juntos), *Entre áudios e vídeos* (Corte | Suave | Tocar junto,
-0,5 · 1 · 2 s) and *Tela preta e Logo* (a switch that follows Ao tirar do ar). The *Encerrar* button, unlike Esc, asks first.
+e o som saem juntos), *Ao entrar ou trocar* (Corte | Suave, 0,3 · 0,5 · 1 s,
+Suave 0,5 s by default; what enters the screens or replaces something else —
+moving the slide stays the theme's — with *Por tipo de conteúdo* folded
+under it, a chevron with `aria-expanded`: Músicas, Bíblia, Textos e Escola
+bíblica, Apresentações (PDF), Imagens e GIFs, Vídeos e YouTube, Avisos and
+Timer, relógio, cronômetro, each Padrão | Corte | Suave, the timer Corte by
+default; Rodada G5, the kinds are `src/lib/contentKinds.js`), *Entre áudios
+e vídeos* (Corte | Suave | Tocar junto, 0,5 · 1 · 2 s) and *Tela preta e
+Logo* (a switch that follows Ao tirar do ar). The *Encerrar* button, unlike Esc, asks first.
 In the Bíblia a letter or digit opens the quick jump. A splitter or the
 player's seek bar focused with Tab keeps the arrows for itself, so resizing
 or seeking never moves what is on air.

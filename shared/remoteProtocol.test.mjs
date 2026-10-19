@@ -90,3 +90,15 @@ test("every refusal code has a status, and the messages the phone shows are ther
     assert.equal(PROTOCOL.messages.updateApp, "Atualize o KERYX no computador");
     for (const action of PROTOCOL.limits.slowActions) assert.ok(actions[action], action);
 });
+
+// The console's runner (src/lib/console/remoteRunner.js) has a handler for
+// every action, and its test runs each one at least once.
+test("every action has a runner handler and a runner test case", async () => {
+    const { REMOTE_HANDLERS } = await import("../src/lib/console/remoteRunner.js");
+    assert.deepEqual(Object.keys(REMOTE_HANDLERS).sort(), Object.keys(actions).sort());
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync(new URL("../src/lib/console/remoteRunner.test.mjs", import.meta.url), "utf8");
+    for (const name of Object.keys(actions)) {
+        assert.ok(source.includes(`, "${name}"`) || source.includes(`action: "${name}"`), `remoteRunner.test.mjs runs ${name}`);
+    }
+});

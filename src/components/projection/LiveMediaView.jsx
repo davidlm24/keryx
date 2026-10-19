@@ -3,9 +3,8 @@ import { usePrefs } from "@/hooks/useUser";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import LiveVideo from "@/components/projection/LiveVideo";
-import { clearFade } from "@/lib/console/transitions";
-
-const IMAGE_SECONDS = 5;
+import { clearFade, enterFade, IMAGE_SECONDS } from "@/lib/console/transitions";
+import { mediaType } from "@/lib/contentKinds";
 
 /**
  * The main projector's media layer (live.media): a video, image or GIF from
@@ -24,10 +23,14 @@ export default function LiveMediaView({ media, fadeOut = null }) {
     // A playlist moves on; a single video that ends leaves the screen (the
     // frozen-last-frame bug), fading out as Esc does ("Ao tirar do ar";
     // a YouTube player would come back cold in the ghost: it cuts). Loops
-    // belong to the background layer.
+    // belong to the background layer. The next item of a list enters as its
+    // kind does (Ao entrar ou trocar, Rodada G5; a picture at most a quarter
+    // of its time).
     const advance = () => {
         if (!keryx.isDesktop || fadeOut) return;
-        const done = inPlaylist ? projection.advanceMedia(index) : projection.clearMedia({ fade: media.kind === "youtube" ? 0 : clearFade(prefs) });
+        const next = inPlaylist ? media.playlist[(index + 1) % media.playlist.length] : null;
+        const done = inPlaylist ? projection.advanceMedia(index, { fade: enterFade(prefs, mediaType(next?.kind), { ...next, playlist: media.playlist }) })
+            : projection.clearMedia({ fade: media.kind === "youtube" ? 0 : clearFade(prefs) });
         done.catch((err) => console.error("[keryx] mídia:", err));
     };
 
