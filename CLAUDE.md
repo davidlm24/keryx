@@ -941,7 +941,18 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   names stay, the smoke reads `items` and `serviceId`) and `library`.
   Additive only: never rename or retype a field; a changed `app` reloads
   the page; an unknown action is 400 and the phone says "Atualize o
-  KERYX no computador". A new action is an entry in the JSON first. Each screen says which
+  KERYX no computador". A new action is an entry in the JSON first.
+  `remoteCommand` (lan.cjs) checks every command against it; a phone
+  signed in only with the remote's code (the screens have a PIN it does
+  not have) reads only `/api/live`, `/media`, `User` `get` and its own
+  event stream (User, live and `hb` frames; `/api/screens` is 401); taps
+  past a burst of 10 / 8 a second, or 4 waiting per phone (8 in all), get
+  429/503 (`createRemoteGate`); every stream gets an `hb` every 10 s
+  (`connection.lastEventAt()` in network.js) and is dropped past 256 kB
+  unread; reads are never logged. Under `npm run dev` the `/Remote` tab
+  works too: `scripts/preview/server.cjs` checks its commands the same
+  way and hands them to the console tab that listened last
+  (`remote.onCommand` in preview.js). Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists
   the screens connected right now from that (`useOutputs`). Links and QR
   codes meant for other devices come from the network info's `urls`

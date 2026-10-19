@@ -14,7 +14,13 @@
 //     the operator turns it on, behind its own code (never optional), it
 //     posts commands from a closed list to /api/remote; the console runs
 //     them as its own keys would (onRemote), so Travar telas and every other
-//     rule hold. Nothing here writes the database or the live state.
+//     rule hold. Nothing here writes the database or the live state. The
+//     commands and their args are shared/remoteProtocol.json's; a phone
+//     signed in only with the remote's code reads only what its page uses
+//     (the live state, media, the User row, its event stream), and taps
+//     too fast get 429
+//   - every event stream gets a heartbeat ("hb", every 10 s) and is dropped
+//     when it stops reading (MAX_BACKLOG)
 //
 // Pure Node (no Electron), so it is unit tested.
 
@@ -53,37 +59,145 @@ function screenLabels(store) {
 // A screen may only read.
 const READ_OPS = new Set(["list", "filter", "get"]);
 
-// The controle remoto: its page, and what a phone may ask the console.
+// The controle remoto: its page, and what a phone may ask the console — the
+// contract every side codes against (shared/remoteProtocol.json).
+const PROTOCOL = require("../shared/remoteProtocol.json");
 const REMOTE_PATH = "/Remote";
 const REMOTE_COOKIE = "keryx_remote";
-const REMOTE_TIMEOUT_MS = 3000;
-const REMOTE_ACTIONS = new Set(["state", "next", "prev", "black", "logo", "clear", "play", "end", "sendNext", "sendItem", "bibleFind", "bibleSend"]);
+const REMOTE_ACTIONS = new Set(Object.keys(PROTOCOL.actions));
+const ID = new RegExp(PROTOCOL.idPattern);
 const remoteToken = ({ code, secret }) => crypto.createHmac("sha256", secret).update(`keryx-remote:${code}`).digest("hex");
+// How long the console has to answer (the Bíblia reads chapters: longer).
+const remoteTimeout = (action) => (PROTOCOL.limits.slowActions.includes(action) ? PROTOCOL.limits.slowTimeoutMs : PROTOCOL.limits.timeoutMs);
+// A read is the phone keeping up (state every few seconds): never logged.
+const remoteReads = (action) => PROTOCOL.actions[action]?.kind === "R";
 
-// A phone's command, checked: { action, args } with only what that action
-// takes, or an Error with a status. Pure (tested).
+// What a bad argument is called on the phone.
+const argProblem = (key) => (/^(itemId|id|presetId)$/.test(key) ? "Item inválido."
+    : /^(ref|book|chapter|verseStart|verseEnd|version)$/.test(key) ? "Referência inválida." : "Comando inválido.");
+
+// One argument against its schema: the value to keep, undefined when
+// absent, or an Error. str is trimmed (empty = absent).
+function argValue(schema, value) {
+    if (value === undefined || value === null) return undefined;
+    switch (schema.type) {
+        case "str": {
+            if (typeof value !== "string") return null;
+            const t = value.trim();
+            if (!t) return undefined;
+            return t.length > schema.max ? null : t;
+        }
+        case "int": return Number.isInteger(value) && value >= schema.min && value <= schema.max ? value : null;
+        case "bool": return typeof value === "boolean" ? value : null;
+        case "id": return typeof value === "string" && ID.test(value) ? value : null;
+        case "enum": return schema.values.includes(value) ? value : null;
+        default: return null;
+    }
+}
+
+// A phone's command, checked against the contract: { action, args, v } with
+// only the args that action takes (unknown keys dropped), or an Error with a
+// status. No v = a version 1 page. Pure (tested).
 function remoteCommand(body) {
     const fail = (message) => Object.assign(new Error(message), { status: 400 });
     if (!body || typeof body !== "object" || Array.isArray(body)) throw fail("Comando inválido.");
     const { action } = body;
     if (typeof action !== "string" || !REMOTE_ACTIONS.has(action)) throw fail("Comando desconhecido.");
-    if (action === "sendItem") {
-        const id = body.args?.itemId;
-        if (typeof id !== "string" || !/^[\w-]{1,64}$/.test(id)) throw fail("Item inválido.");
-        return { action, args: { itemId: id } };
+    const v = body.v === undefined ? 1 : body.v;
+    if (!Number.isInteger(v) || v < 1 || v > 99) throw fail("Comando inválido.");
+    const given = body.args === undefined || body.args === null ? {} : body.args;
+    if (typeof given !== "object" || Array.isArray(given)) throw fail("Comando inválido.");
+    const spec = PROTOCOL.actions[action];
+    const args = {};
+    for (const [key, schema] of Object.entries(spec.args)) {
+        const value = argValue(schema, given[key]);
+        if (value === null) throw fail(argProblem(key));
+        if (value !== undefined) args[key] = value;
     }
-    if (action === "bibleFind" || action === "bibleSend") {
-        const ref = body.args?.ref;
-        if (typeof ref !== "string" || !ref.trim() || ref.length > 40) throw fail("Referência inválida.");
-        return { action, args: { ref: ref.trim() } };
+    // oneOf: exactly one group given; its required keys there.
+    const grouped = new Set((spec.oneOf || []).flat());
+    if (spec.oneOf) {
+        const chosen = spec.oneOf.filter((group) => group.some((key) => key in args));
+        if (chosen.length !== 1) throw fail(argProblem(spec.oneOf[0][0]));
+        for (const key of chosen[0]) if (spec.args[key].required && !(key in args)) throw fail(argProblem(key));
     }
-    return { action, args: {} };
+    for (const [key, schema] of Object.entries(spec.args)) {
+        if (schema.required && !grouped.has(key) && !(key in args)) throw fail(argProblem(key));
+    }
+    return { action, args, v };
+}
+
+// The console's answer as the phone gets it: { data: { message, result? } }
+// or { error: { message, status, code? } } (also the preview's mock).
+function remoteReply(answer) {
+    const message = (m, fallback) => (typeof m === "string" && m ? m : fallback).slice(0, PROTOCOL.limits.message);
+    if (!answer || !answer.ok) {
+        const status = Number(answer?.status) || 409;
+        const code = PROTOCOL.codes[answer?.code] ? answer.code : undefined;
+        return { status, body: { error: { message: message(answer?.message, "Não foi possível."), status, ...(code ? { code } : {}) } } };
+    }
+    return { status: 200, body: { data: { message: message(answer.message, ""), ...(answer.data !== undefined ? { result: answer.data } : {}) } } };
+}
+
+// Phones that tap too fast (a pocket, a stuck finger, a loop): a token
+// bucket per address (burst 10, 8 a second) and at most 4 commands waiting
+// on the console per address, 8 in all. Pure but for the clock (tested).
+const RATE = { burst: 10, perSecond: 8, perIp: 4, total: 8 };
+function createRemoteGate(now = () => Date.now()) {
+    const buckets = new Map(); // ip -> { tokens, at }
+    const waiting = new Map(); // ip -> count
+    let total = 0;
+    return {
+        // { ok: true, done } to go ahead (done() once answered), else
+        // { ok: false, status, code, message }.
+        take(ip) {
+            const t = now();
+            const b = buckets.get(ip) || { tokens: RATE.burst, at: t };
+            b.tokens = Math.min(RATE.burst, b.tokens + ((t - b.at) / 1000) * RATE.perSecond);
+            b.at = t;
+            buckets.set(ip, b);
+            if (buckets.size > 256) for (const [k, x] of buckets) if (t - x.at > 60000) buckets.delete(k);
+            if (b.tokens < 1 || (waiting.get(ip) || 0) >= RATE.perIp) return { ok: false, status: 429, code: "rate", message: PROTOCOL.messages.rate };
+            if (total >= RATE.total) return { ok: false, status: 503, code: "busy", message: PROTOCOL.messages.busy };
+            b.tokens -= 1;
+            waiting.set(ip, (waiting.get(ip) || 0) + 1);
+            total += 1;
+            let done = false;
+            return {
+                ok: true,
+                done() {
+                    if (done) return;
+                    done = true;
+                    total -= 1;
+                    const n = (waiting.get(ip) || 1) - 1;
+                    if (n) waiting.set(ip, n); else waiting.delete(ip);
+                },
+            };
+        },
+        waiting: () => total,
+    };
+}
+
+// The /Remote page as a phone app: its colour, full screen from the home
+// screen (Adicionar à tela de início; plain HTTP, so no service worker).
+const REMOTE_META = '<meta name="theme-color" content="#0d0d0c"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="KERYX">';
+
+// An event stream that stopped reading (a phone asleep on a bad Wi-Fi):
+// past this much waiting to be sent it is dropped; EventSource comes back.
+const MAX_BACKLOG = 256 * 1024;
+function writeFrame(client, frame) {
+    if (client.res.writableLength > MAX_BACKLOG) {
+        client.res.destroy();
+        return false;
+    }
+    client.res.write(frame);
+    return true;
 }
 
 const COOKIE = "keryx_lan";
 const MAX_BODY = 1024 * 1024;
 const MAX_CLIENTS = 50;
-const KEEPALIVE_MS = 20000;
+const HEARTBEAT_MS = 10000;
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 60000;
 
@@ -157,7 +271,7 @@ function readBody(req, limit = MAX_BODY) {
     });
 }
 
-function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, onRemote = null, log = () => {} }) {
+function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, getConfig, onRemote = null, log = () => {}, heartbeatMs = HEARTBEAT_MS }) {
     // NETWORK_SCREENS with the operator's names on them (NetworkHome, Rede).
     const screensOf = () => { const names = screenLabels(store); return NETWORK_SCREENS.map((sc) => ({ ...sc, label: names[sc.path] || sc.label })); };
     const dist = path.resolve(distDir);
@@ -165,6 +279,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
     const bundled = bundledDir ? path.resolve(bundledDir) : null;
     const clients = new Set();
     const attempts = new Map(); // ip -> { count, until }
+    const gate = createRemoteGate();
     let server = null;
     let keepalive = null;
     let unsubscribe = null;
@@ -190,6 +305,10 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
     // that code made (a new code or Desconectar todos signs every phone out).
     const remoteOn = () => { const r = getConfig().remote; return Boolean(r && r.enabled && r.code && r.secret); };
     const isRemote = (req) => remoteOn() && safeEqual(parseCookies(req.headers.cookie)[REMOTE_COOKIE] || "", remoteToken(getConfig().remote));
+    // Signed in only as the controle remoto (no PIN cookie while the screens
+    // have a PIN): it reads only what its page uses — the live state, the
+    // media, the church's profile (User), and its own event stream.
+    const remoteOnly = (req) => !isAuthed(req) && isRemote(req);
 
     // Wrong codes (the PIN's and the remote's): five, then a minute out.
     const tooMany = (key) => (attempts.get(key)?.until || 0) > Date.now();
@@ -225,21 +344,32 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         if (!isRemote(req)) return json(res, 401, { error: { message: "Código do controle remoto necessário.", status: 401 } });
         const origin = req.headers.origin;
         if (req.headers["x-keryx"] !== "1" || (origin && origin !== `http://${req.headers.host}`)) return json(res, 403, { error: { message: "Pedido não autorizado.", status: 403 } });
-        let command;
-        try {
-            command = remoteCommand(JSON.parse(await readBody(req, 4096)));
-        } catch (err) {
-            return json(res, err.status || 400, { error: { message: err.status ? err.message : "Pedido inválido.", status: err.status || 400 } });
+        const ip = req.socket.remoteAddress;
+        const turn = gate.take(ip);
+        if (!turn.ok) {
+            const { status, body } = remoteReply(turn);
+            return json(res, status, body, status === 429 ? { "Retry-After": "1" } : {});
         }
-        if (!onRemote) return json(res, 503, { error: { message: "O console não está aberto.", status: 503 } });
-        let timer;
-        const answer = await Promise.race([
-            Promise.resolve().then(() => onRemote(command.action, command.args, { ip: req.socket.remoteAddress })),
-            new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, message: "O console não respondeu.", status: 504 }), REMOTE_TIMEOUT_MS); }),
-        ]).catch((err) => ({ ok: false, message: err?.message || "O console não conseguiu.", status: 500 }));
-        clearTimeout(timer);
-        if (!answer || !answer.ok) return json(res, answer?.status || 409, { error: { message: answer?.message || "Não foi possível.", status: answer?.status || 409 } });
-        return json(res, 200, { data: { message: answer.message || "", ...(answer.data !== undefined ? { result: answer.data } : {}) } });
+        try {
+            let command;
+            try {
+                command = remoteCommand(JSON.parse(await readBody(req, PROTOCOL.limits.bodyBytes)));
+            } catch (err) {
+                return json(res, err.status || 400, { error: { message: err.status ? err.message : "Pedido inválido.", status: err.status || 400 } });
+            }
+            if (!onRemote) return json(res, 503, { error: { message: PROTOCOL.messages.consoleClosed, status: 503, code: "busy" } });
+            let timer;
+            const answer = await Promise.race([
+                Promise.resolve().then(() => onRemote(command.action, command.args, { ip, v: command.v })),
+                // 504: the outcome is unknown (the phone says so, never retries).
+                new Promise((resolve) => { timer = setTimeout(() => resolve({ ok: false, message: "O console não respondeu.", status: 504 }), remoteTimeout(command.action)); }),
+            ]).catch((err) => ({ ok: false, message: err?.message || "O console não conseguiu.", status: 500 }));
+            clearTimeout(timer);
+            const { status, body } = remoteReply(answer);
+            return json(res, status, body);
+        } finally {
+            turn.done();
+        }
     }
 
     async function handlePin(req, res, url) {
@@ -275,7 +405,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         res.write("retry: 3000\n\n");
         const asked = url ? String(url.searchParams.get("screen") || "").replace(/\/+$/, "") : "";
         const screen = SCREEN_PATHS.has(asked) || (asked === REMOTE_PATH && isRemote(req)) ? asked : "";
-        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen };
+        const client = { res, ip: req.socket.remoteAddress, agent: String(req.headers["user-agent"] || "").slice(0, 120), since: new Date().toISOString(), screen, remoteOnly: remoteOnly(req) };
         clients.add(client);
         req.on("close", () => clients.delete(client));
     }
@@ -294,6 +424,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         const { entity, op, args } = payload || {};
         const allowed = READ_OPS.has(op);
         if (!allowed) return json(res, 403, { error: { message: "Esta tela só pode ler os dados.", status: 403 } });
+        if (remoteOnly(req) && !(entity === "User" && op === "get")) return json(res, 403, { error: { message: "O controle remoto não lê isso.", status: 403 } });
         try {
             return json(res, 200, { data: store.call(entity, op, args) });
         } catch (err) {
@@ -303,7 +434,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         }
     }
 
-    function serveIndex(req, res) {
+    function serveIndex(req, res, { remote = false } = {}) {
         let body;
         try {
             body = fs.readFileSync(path.join(dist, "index.html"), "utf8");
@@ -311,7 +442,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
             return html(res, 500, page("KERYX", "<h1>Aplicativo não encontrado</h1>"));
         }
         // Tells the app to talk to this server instead of picking the cloud backend.
-        body = body.replace("<head>", "<head><script>window.keryxLan=true;</script>");
+        body = body.replace("<head>", `<head><script>window.keryxLan=true;</script>${remote ? REMOTE_META : ""}`);
         return html(res, 200, body, { "Cache-Control": "no-cache" });
     }
 
@@ -344,7 +475,7 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
         if (routeNow === REMOTE_PATH && req.method === "GET") {
             if (!remoteOn()) return html(res, 404, notFoundPage);
             if (!isRemote(req)) return res.writeHead(303, { Location: "/lan/remote-code" }).end();
-            return serveIndex(req, res);
+            return serveIndex(req, res, { remote: true });
         }
 
         // A signed-in phone also reads what the screens read (the live
@@ -357,7 +488,10 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
 
         if (pathname === "/api/events" && req.method === "GET") return handleEvents(req, res, url);
         if (pathname === "/api/db") return handleDb(req, res);
-        if (pathname === "/api/screens" && req.method === "GET") return json(res, 200, screensOf());
+        if (pathname === "/api/screens" && req.method === "GET") {
+            if (remoteOnly(req)) return json(res, 401, { error: { message: "PIN necessário.", status: 401 } });
+            return json(res, 200, screensOf());
+        }
         if (pathname === "/api/live") {
             // Screens only watch; the operator changes the live state on the KERYX computer.
             if (req.method !== "GET") return json(res, 405, { error: { message: "Esta tela só pode ler os dados.", status: 405 } }, { Allow: "GET" });
@@ -399,19 +533,21 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
                     else res.destroy();
                 });
             });
+            // Every frame through writeFrame: a stream that stopped reading is dropped.
+            const broadcast = (frame, to = () => true) => {
+                for (const client of [...clients]) if (to(client) && !writeFrame(client, frame)) clients.delete(client);
+            };
             unsubscribe = store.onChange((change) => {
-                const frame = `data: ${JSON.stringify(change)}\n\n`;
-                for (const client of clients) client.res.write(frame);
+                // A phone signed in only as the remote hears only the profile.
+                broadcast(`data: ${JSON.stringify(change)}\n\n`, (client) => !client.remoteOnly || change.entity === "User");
             });
             if (live) {
-                unsubscribeLive = live.onChange((snapshot) => {
-                    const frame = `event: live\ndata: ${JSON.stringify(snapshot)}\n\n`;
-                    for (const client of clients) client.res.write(frame);
-                });
+                unsubscribeLive = live.onChange((snapshot) => broadcast(`event: live\ndata: ${JSON.stringify(snapshot)}\n\n`));
             }
-            keepalive = setInterval(() => {
-                for (const client of clients) client.res.write(": ping\n\n");
-            }, KEEPALIVE_MS);
+            // The heartbeat (a named event): pages tell a quiet service from a
+            // dead link by it (network.js lastEventAt; the remote is stale
+            // after 25 s without any frame).
+            keepalive = setInterval(() => broadcast(`event: hb\ndata: {"t":${Date.now()}}\n\n`), heartbeatMs);
             keepalive.unref();
             return new Promise((resolve, reject) => {
                 server.once("error", (err) => {
@@ -445,4 +581,4 @@ function createLanServer({ distDir, mediaDir, bundledDir, store, live = null, ge
     };
 }
 
-module.exports = { createLanServer, lanAddresses, NETWORK_SCREENS, authToken, safeNext, remoteCommand, remoteToken, REMOTE_PATH, REMOTE_ACTIONS };
+module.exports = { createLanServer, lanAddresses, NETWORK_SCREENS, authToken, safeNext, remoteCommand, remoteReply, remoteTimeout, remoteReads, createRemoteGate, writeFrame, remoteToken, REMOTE_PATH, REMOTE_ACTIONS };
