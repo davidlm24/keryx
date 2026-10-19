@@ -1,7 +1,7 @@
 // node --test src/lib/console/syncView.test.mjs   (npm test)
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ago, syncStep, syncState, computerRows, sinceLine, sameSyncStatus } from "./syncView.js";
+import { ago, syncStep, syncState, computerRows, sinceLine, sameSyncStatus, biblesMissingHere, editionsList } from "./syncView.js";
 
 const NOW = Date.parse("2026-10-16T20:00:00.000Z");
 const minus = (ms) => new Date(NOW - ms).toISOString();
@@ -75,4 +75,18 @@ test("sameSyncStatus: a poll that says nothing new changes nothing", () => {
     // The first answer is never the same as nothing.
     assert.equal(sameSyncStatus(null, base), false);
     assert.equal(sameSyncStatus(base, null), false);
+});
+
+test("the Bible editions the other computers have and this one lacks", () => {
+    const pc = (id, bibles, extra = {}) => ({ pc: id, name: id, verified: true, bibles, ...extra });
+    const st = (computers) => ({ ...base, engine: { ...base.engine, computers } });
+    assert.equal(biblesMissingHere(st([]), ["NVI"]), null, "alone in the folder");
+    assert.equal(biblesMissingHere(st([pc("b", ["NVI"])]), ["nvi"]), null, "nothing missing");
+    assert.deepEqual(biblesMissingHere(st([pc("b", ["ACF", "NVI"])]), ["ACF"]), {
+        elsewhere: ["ACF", "NVI"], missing: ["NVI"], line: "Instaladas no outro computador: ACF e NVI. Falta a NVI aqui.",
+    });
+    const many = biblesMissingHere(st([pc("b", ["NVI"]), pc("c", ["AA", "NVI"]), pc("d", ["ACF"], { verified: false }), pc("e", ["ACF"], { removed: { at: "x" } })]), []);
+    assert.deepEqual(many.missing, ["AA", "NVI"], "computers without the code or taken out do not count");
+    assert.equal(many.line, "Instaladas nos outros computadores: AA e NVI. Faltam a AA e a NVI aqui.");
+    assert.equal(editionsList(["NVI", "ACF", "AA"]), "NVI, ACF e AA");
 });

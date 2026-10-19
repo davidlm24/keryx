@@ -104,3 +104,39 @@ export function sameSyncStatus(a, b) {
         return false;
     }
 }
+
+// "O que vai e o que fica" (Rodada G7, owner 2026-10-17/19): the two short
+// lists the section shows before and while syncing, and the hints about the
+// folder. What travels is every synced entity and the files its rows use
+// (electron/db/syncScope.cjs, checked by the whole-church test in
+// electron/sync.test.cjs); the screens' designs stay until Rodada G10.
+export const SYNC_GOES = "Músicas, setlist e cultos, mídia e fundos, avisos, temas, Escola bíblica, o perfil da igreja e os arquivos de tudo isso.";
+export const SYNC_STAYS = "As edições da Bíblia instaladas, os desenhos e ajustes das telas, a posição das saídas nos monitores e a disposição do console.";
+// Worded so it does not hang on Drive's exact labels (they change between
+// versions): mirrored files, or the folder kept offline, both mean the
+// videos are on this computer before the service.
+export const SYNC_MIRROR_HINT = "No Google Drive para computador, deixe os arquivos espelhados (Preferências › Pastas do Google Drive) ou a pasta do KERYX disponível off-line. Assim os vídeos já estão neste computador antes do culto.";
+export const SYNC_SHARED_HINT = "Pasta que outra pessoa compartilhou com você: no site do Drive, em Compartilhados comigo, adicione um atalho dela ao seu Drive; só então ela aparece neste computador.";
+
+// "NVI", "NVI e ACF", "NVI, ACF e AA" — with `article`, "a NVI e a ACF".
+export function editionsList(names, article = false) {
+    const words = names.map((n) => (article ? `a ${n}` : n));
+    return words.length < 2 ? words.join("") : `${words.slice(0, -1).join(", ")} e ${words[words.length - 1]}`;
+}
+
+// The Bible editions the church's other computers have and this one lacks
+// (their computer.json, electron/sync.cjs; the text never travels). `here`:
+// the editions installed on this computer. -> null when nothing is missing,
+// else { elsewhere, missing, line } with the sentence Bíblia e músicas shows
+// above its list ("Instalar aqui" downloads the missing ones).
+export function biblesMissingHere(st, here) {
+    const others = (st?.engine?.computers || []).filter((c) => !c.removed && c.verified !== false && Array.isArray(c.bibles) && c.bibles.length);
+    if (!others.length) return null;
+    const have = new Set((here || []).map((v) => String(v).toUpperCase()));
+    const elsewhere = [...new Set(others.flatMap((c) => c.bibles))].sort();
+    const missing = elsewhere.filter((v) => !have.has(v));
+    if (!missing.length) return null;
+    const where = others.length === 1 ? "no outro computador" : "nos outros computadores";
+    const lack = `${missing.length === 1 ? "Falta" : "Faltam"} ${editionsList(missing, true)} aqui.`;
+    return { elsewhere, missing, line: `Instaladas ${where}: ${editionsList(elsewhere)}. ${lack}` };
+}

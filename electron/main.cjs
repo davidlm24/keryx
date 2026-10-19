@@ -20,6 +20,7 @@ const { createLive, loadLiveRules } = require("./live.cjs");
 const closeGuard = require("./closeGuard.cjs");
 const { createLyrics } = require("./lyrics.cjs");
 const { createSyncControl, sealWith } = require("./syncControl.cjs");
+const { installedVersions } = require("./bible.cjs");
 const { createConsoleZoom, zoomCommand } = require("./consoleZoom.cjs");
 const windowState = require("./windowState.cjs");
 const schema = require("./db/schema.json");
@@ -653,6 +654,20 @@ app.whenReady().then(async () => {
     // (electron/syncControl.cjs): off until a folder is chosen and the
     // church's code typed. A pass every 30 s and 3 s after a local change.
     let missingSent = "";
+    // The Bible editions installed here, for the others' "Falta a NVI aqui"
+    // (computer.json; never the text). Counted at most once a minute: the
+    // status is asked every few seconds and an edition is 31k rows.
+    let bibles = { at: 0, list: [] };
+    const installedBibles = () => {
+        if (Date.now() - bibles.at > 60000) {
+            let list = bibles.list;
+            try {
+                list = Object.entries(installedVersions(store)).filter(([, n]) => n > 0).map(([v]) => v);
+            } catch { /* the last list */ }
+            bibles = { at: Date.now(), list };
+        }
+        return bibles.list;
+    };
     sync = createSyncControl({
         store,
         mediaDir,
@@ -667,7 +682,7 @@ app.whenReady().then(async () => {
             return canceled || !filePaths[0] ? null : filePaths[0];
         },
         openPath: (folder) => shell.openPath(folder),
-        describe: () => ({ name: os.hostname(), version: app.getVersion() }),
+        describe: () => ({ name: os.hostname(), version: app.getVersion(), bibles: installedBibles() }),
         notify: (n) => notifications.add(n),
         dismiss: (key) => notifications.remove((n) => n.key === key),
         log: (m) => logger.warn(m),

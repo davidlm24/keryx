@@ -1006,9 +1006,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Configurações › Sincronização (SyncSection.jsx). */
 .console .cfg .cfg-sync-intro { max-width: 62ch; margin: var(--space-2) var(--space-3) var(--space-1); color: var(--fg-2); font-size: 12px; line-height: 1.55; }
 .console .cfg .cfg-sync-intro b { color: var(--fg-1); font-weight: 600; }
-.console .cfg .cfg-sync-travel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: var(--space-2); margin: var(--space-2) var(--space-3); }
-.console .cfg .cfg-sync-travel > div { background: var(--bg-2); border-radius: var(--radius-control); padding: var(--space-2) var(--space-3); font-size: 11.5px; color: var(--fg-2); line-height: 1.5; }
-.console .cfg .cfg-sync-travel b { display: block; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); margin-bottom: 2px; }
+/* O que vai e o que fica (Rodada G7): a listhead, two rows, the tip. */
+.console .cfg .cfg-sync-travel { padding-bottom: var(--space-2); }
+/* A tip or a warning with an action (the sync's Dica, the Bíblia's "Falta a NVI aqui"). */
+.console .cfg .cfg-note { display: flex; align-items: center; gap: var(--space-2) var(--space-3); flex-wrap: wrap; margin: var(--space-1) var(--space-1) 0; padding: 7px var(--space-3); border-radius: var(--radius-control); background: var(--warn-tint); border: 1px solid color-mix(in srgb, var(--warn) 25%, transparent); color: var(--fg-1); font-size: 11.5px; line-height: 1.5; }
+.console .cfg .cfg-note > span { flex: 1 1 260px; min-width: 0; }
+.console .cfg .cfg-note b { font-weight: 600; }
 .console .cfg .cfg-sync-made { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin: var(--space-2) var(--space-3); padding: var(--space-3); border-radius: var(--radius-control); background: var(--bg-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 55%, transparent); }
 .console .cfg .cfg-sync-bigcode { font: 600 26px/1.2 ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: .1em; color: var(--fg-1); font-variant-numeric: tabular-nums; user-select: all; }
 .console .cfg .cfg-sync-acts { display: flex; gap: var(--space-1); flex-wrap: wrap; }

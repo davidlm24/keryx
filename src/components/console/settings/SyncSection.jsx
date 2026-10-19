@@ -3,11 +3,11 @@ import { keryx } from "@/api/keryxClient";
 import { Btn, Empty } from "../kx";
 import { useConfirm } from "../ConfirmDialog";
 import { useLibrary } from "../useConsoleData";
-import { FormRow, Switch, useBridge, formatWhen, desktopOnly } from "./parts";
+import { FormRow, CfgKey, Switch, useBridge, formatWhen, desktopOnly } from "./parts";
 import { useSyncStatus, setSyncStatus } from "@/hooks/useSyncStatus";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { usePrefs, updateUser } from "@/hooks/useUser";
-import { syncStep, syncState, computerRows, sinceLine, ago } from "@/lib/console/syncView";
+import { syncStep, syncState, computerRows, sinceLine, ago, SYNC_GOES, SYNC_STAYS, SYNC_MIRROR_HINT, SYNC_SHARED_HINT } from "@/lib/console/syncView";
 import { parseCode, codeMessage } from "@shared/syncCode.mjs";
 import { duplicateSongs, keepPairs, mergePlan } from "@shared/syncDuplicates.mjs";
 
@@ -90,11 +90,27 @@ function MadeCode({ made, c, onDone }) {
     );
 }
 
+// O que vai e o que fica (Rodada G7): the two short lists and the hints
+// about the folder, before choosing it and while syncing.
 function Travel() {
     return (
         <div className="cfg-sync-travel">
-            <div><b>Vai para os outros</b>músicas, setlists, avisos, temas, fundos e suas categorias, mídias, Escola bíblica, anotações da Bíblia, timers e as preferências da igreja</div>
-            <div><b>Fica em cada computador</b>as telas e saídas, as Bíblias instaladas, a disposição do console, o que está no ar</div>
+            <CfgKey k="O que vai e o que fica" className="listhead"><span className="kx-section">O que vai e o que fica</span></CfgKey>
+            <div className="kx-row">
+                <div className="kx-row-main">
+                    <div className="kx-row-title">Vai para o outro computador</div>
+                    <div className="kx-row-meta">{SYNC_GOES}</div>
+                </div>
+            </div>
+            <div className="kx-row">
+                <div className="kx-row-main">
+                    <div className="kx-row-title">Fica em cada computador</div>
+                    <div className="kx-row-meta">{SYNC_STAYS}</div>
+                </div>
+            </div>
+            <div className="cfg-note">
+                <span><b>Dica:</b> {SYNC_MIRROR_HINT}<br />{SYNC_SHARED_HINT}</span>
+            </div>
         </div>
     );
 }
@@ -219,54 +235,59 @@ function OnStep({ c, st, busy, run, setMade }) {
     };
 
     return (
-        <div className="frm">
-            <FormRow k="Sincronizar">
-                <Switch on={!st.paused} disabled={any} label="Sincronizar" onChange={(on) => run("setPaused", { paused: !on }, "Sincronizar")} />
-                <span className={st.paused ? "kx-warn" : "kx-meta"}>{st.paused ? "pausada · as mudanças deste computador esperam e vão quando ligar de novo" : "ligado · desligado, as mudanças deste computador esperam e vão depois"}</span>
-            </FormRow>
-            <FormRow k="Pasta">
-                <span className="kx-content cfg-path" title={st.folder}>{st.folder}</span>
-                <Btn disabled={any} onClick={() => run("open", undefined, "Abrir pasta")}>Abrir</Btn>
-                <Btn disabled={any} onClick={changeFolder}>Trocar…</Btn>
-            </FormRow>
-            <FormRow k="Estado">
-                <i className={`cfg-sync-dot ${TONE[state.tone]}`} aria-hidden="true" />
-                <span className={state.tone === "wait" ? "kx-warn" : "kx-content"}>{state.label}</span>
-                {state.detail && <span className="kx-meta">· {state.detail}</span>}
-                <Btn disabled={any || st.paused} onClick={() => run("now", undefined, "Sincronizar agora")}>{busy === "now" ? "Sincronizando…" : e.state === "offline" ? "Tentar agora" : "Sincronizar agora"}</Btn>
-            </FormRow>
-            <FormRow k="Desde que abriu">
-                <span className="kx-meta">{sinceLine(st)}{e.rejected ? ` · ${e.rejected} ignoradas de computadores sem o código` : ""}</span>
-            </FormRow>
-            <FormRow k="Mídias">
-                <span className="kx-meta">{e.state === "ok" ? (e.missingMedia ? `${e.missingMedia} ainda chegando pela pasta · as outras aqui` : "todas aqui") : "—"}{st.since?.collected ? ` · ${st.since.collected} sem uso há 7 dias ${st.since.collected === 1 ? "saiu" : "saíram"} da pasta (continuam em cada computador)` : ""}</span>
-            </FormRow>
-            <FormRow k="Computadores">
-                <div className="cfg-sync-pcs">
-                    {rows.map((row) => (
-                        <div key={row.pc} className={`cfg-sync-pc ${row.tone === "wait" ? "is-bad" : ""}`}>
-                            <i className={`cfg-sync-dot ${TONE[row.tone]}`} aria-hidden="true" />
-                            <span className="cfg-sync-pc-t"><b>{row.name}</b> <span className="kx-meta">{row.detail}</span></span>
-                            {row.tag && <span className={`cfg-sync-tag ${row.tag === "verificado" || row.tag === "este" ? "is-ok" : row.tag === "sem o código" ? "is-warn" : ""}`}>{row.tag}</span>}
-                            {!row.self && !row.removed && <Btn small disabled={any} onClick={() => takeOut(row)}>Tirar…</Btn>}
-                            {row.removed && <Btn small disabled={any} onClick={() => letBack(row)}>Deixar voltar</Btn>}
-                        </div>
-                    ))}
-                    {rows.length === 1 && <span className="kx-meta">nenhum outro computador nesta pasta ainda: escolha a mesma pasta em outro computador e digite o código da igreja</span>}
-                </div>
-            </FormRow>
-            <FormRow k="Código da igreja">
-                <span className="kx-content cfg-path cfg-sync-codeshown">{shown || "••••-••••"}</span>
-                {st.canShowCode && <Btn disabled={any} onClick={showCode}>{shown ? "Esconder" : "Mostrar"}</Btn>}
-                {shown && <Btn disabled={any} onClick={() => copy(shown)}>Copiar</Btn>}
-                <Btn kind="outline" disabled={any} onClick={rotate}>{busy === "rotate" ? "Trocando…" : "Trocar o código…"}</Btn>
-            </FormRow>
-            <Duplicates c={c} confirm={confirm} />
-            <FormRow k="Sair">
-                <Btn kind="outline" disabled={any} onClick={leave}>Sair da sincronização…</Btn>
-                <span className="kx-meta">este computador para; os outros continuam e nada é apagado</span>
-            </FormRow>
-        </div>
+        <>
+            <div className="frm">
+                <FormRow k="Sincronizar">
+                    <Switch on={!st.paused} disabled={any} label="Sincronizar" onChange={(on) => run("setPaused", { paused: !on }, "Sincronizar")} />
+                    <span className={st.paused ? "kx-warn" : "kx-meta"}>{st.paused ? "pausada · as mudanças deste computador esperam e vão quando ligar de novo" : "ligado · desligado, as mudanças deste computador esperam e vão depois"}</span>
+                </FormRow>
+                <FormRow k="Pasta">
+                    <span className="kx-content cfg-path" title={st.folder}>{st.folder}</span>
+                    <Btn disabled={any} onClick={() => run("open", undefined, "Abrir pasta")}>Abrir</Btn>
+                    <Btn disabled={any} onClick={changeFolder}>Trocar…</Btn>
+                </FormRow>
+                <FormRow k="Estado">
+                    <i className={`cfg-sync-dot ${TONE[state.tone]}`} aria-hidden="true" />
+                    <span className={state.tone === "wait" ? "kx-warn" : "kx-content"}>{state.label}</span>
+                    {state.detail && <span className="kx-meta">· {state.detail}</span>}
+                    <Btn disabled={any || st.paused} onClick={() => run("now", undefined, "Sincronizar agora")}>{busy === "now" ? "Sincronizando…" : e.state === "offline" ? "Tentar agora" : "Sincronizar agora"}</Btn>
+                </FormRow>
+                <FormRow k="Desde que abriu">
+                    <span className="kx-meta">{sinceLine(st)}{e.rejected ? ` · ${e.rejected} ignoradas de computadores sem o código` : ""}</span>
+                </FormRow>
+                <FormRow k="Mídias">
+                    <span className="kx-meta">{e.state === "ok" ? (e.missingMedia ? `${e.missingMedia} ainda chegando pela pasta · as outras aqui` : "todas aqui") : "—"}{st.since?.collected ? ` · ${st.since.collected} sem uso há 7 dias ${st.since.collected === 1 ? "saiu" : "saíram"} da pasta (continuam em cada computador)` : ""}</span>
+                </FormRow>
+                <FormRow k="Computadores">
+                    <div className="cfg-sync-pcs">
+                        {rows.map((row) => (
+                            <div key={row.pc} className={`cfg-sync-pc ${row.tone === "wait" ? "is-bad" : ""}`}>
+                                <i className={`cfg-sync-dot ${TONE[row.tone]}`} aria-hidden="true" />
+                                <span className="cfg-sync-pc-t"><b>{row.name}</b> <span className="kx-meta">{row.detail}</span></span>
+                                {row.tag && <span className={`cfg-sync-tag ${row.tag === "verificado" || row.tag === "este" ? "is-ok" : row.tag === "sem o código" ? "is-warn" : ""}`}>{row.tag}</span>}
+                                {!row.self && !row.removed && <Btn small disabled={any} onClick={() => takeOut(row)}>Tirar…</Btn>}
+                                {row.removed && <Btn small disabled={any} onClick={() => letBack(row)}>Deixar voltar</Btn>}
+                            </div>
+                        ))}
+                        {rows.length === 1 && <span className="kx-meta">nenhum outro computador nesta pasta ainda: escolha a mesma pasta em outro computador e digite o código da igreja</span>}
+                    </div>
+                </FormRow>
+            </div>
+            <Travel />
+            <div className="frm">
+                <FormRow k="Código da igreja">
+                    <span className="kx-content cfg-path cfg-sync-codeshown">{shown || "••••-••••"}</span>
+                    {st.canShowCode && <Btn disabled={any} onClick={showCode}>{shown ? "Esconder" : "Mostrar"}</Btn>}
+                    {shown && <Btn disabled={any} onClick={() => copy(shown)}>Copiar</Btn>}
+                    <Btn kind="outline" disabled={any} onClick={rotate}>{busy === "rotate" ? "Trocando…" : "Trocar o código…"}</Btn>
+                </FormRow>
+                <Duplicates c={c} confirm={confirm} />
+                <FormRow k="Sair">
+                    <Btn kind="outline" disabled={any} onClick={leave}>Sair da sincronização…</Btn>
+                    <span className="kx-meta">este computador para; os outros continuam e nada é apagado</span>
+                </FormRow>
+            </div>
+        </>
     );
 }
 
