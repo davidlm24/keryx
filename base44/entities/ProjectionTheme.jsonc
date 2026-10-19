@@ -17,7 +17,13 @@
     },
     "text_opacity": { "type": "number", "description": "Opacidade do texto (0.2 a 1), Camadas" },
     "text_max_width": { "type": "number", "description": "Largura máxima do texto (40 a 100 %), Camadas" },
-    "line_height": { "type": "string", "enum": ["tight", "normal", "loose"], "description": "Entrelinhas, Camadas" },
+    "line_height": { "type": "string", "description": "Entrelinhas: um número de 0.9 a 2 (Rodada HF2) ou os nomes antigos tight, normal, loose; vazio = normal (1.22)" },
+    "font_weight": { "type": "string", "enum": ["", "normal", "bold"], "description": "Negrito do texto (Rodada HF2); vazio = o peso das telas (600, 500 na Bíblia)" },
+    "font_style": { "type": "string", "enum": ["", "normal", "italic"], "description": "Itálico do texto (Rodada HF2); vazio = normal" },
+    "letter_spacing": { "type": "number", "description": "Espaçamento entre letras em em (-0.1 a 0.5, Rodada HF2); vazio = 0" },
+    "text_outline_px": { "type": "number", "description": "Contorno das letras, px numa tela de 1920 (0 a 8, Rodada HF2), por trás do preenchimento; independente do Efeito" },
+    "text_outline_color": { "type": "string", "description": "Cor do contorno (#rrggbb); vazio = preto" },
+    "note": { "type": "string", "description": "Comentário do tema (até 500 caracteres, Rodada HF2): nunca vai ao ar, aparece na dica do tema em Temas" },
     "text_case": { "type": "string", "enum": ["none", "upper"], "description": "Caixa alta, Camadas" },
     "text_box": { "type": "string", "enum": ["none", "band", "block"], "description": "Caixa atrás do texto: faixa ou bloco, Camadas" },
     "text_box_color": { "type": "string", "description": "Cor da caixa atrás do texto (#rrggbb)" },
@@ -37,16 +43,8 @@
     },
     "font_size": {
       "type": "string",
-      "enum": [
-        "xsmall",
-        "small",
-        "medium",
-        "large",
-        "xlarge",
-        "xxlarge"
-      ],
       "default": "large",
-      "description": "Tamanho da fonte"
+      "description": "Tamanho da fonte: um número em % da largura da tela (1 a 12, guardado como texto, \"4.8\"; Rodada HF2, src/lib/textSize.js) ou um nome antigo (xsmall, small, medium, large, xlarge, xxlarge), que vale o seu número"
     },
     "text_effect": {
       "type": "string",

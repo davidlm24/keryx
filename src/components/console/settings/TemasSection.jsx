@@ -7,7 +7,8 @@ import { CfgKey, CfgGroup } from "./parts";
 import { ThemeThumb, FactoryThumb, NoBgMark } from "../library/BackgroundLibrary";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
-import { THEME_FONTS, TEXT_SIZES, defaultTheme, defaultChanges, themeForKind, THEME_KINDS, KIND_FIELD, themeName, themeHasBackground } from "@/lib/console/themes";
+import { sizeLabel } from "@/lib/textSize";
+import { THEME_FONTS, defaultTheme, defaultChanges, themeForKind, THEME_KINDS, KIND_FIELD, themeName, themeHasBackground } from "@/lib/console/themes";
 import { bgFields } from "@/lib/console/backgroundSpec";
 import { useLibraryPicker, ALL_KINDS } from "../library/libraryContext";
 import { usePrefs, updateUser } from "@/hooks/useUser";
@@ -21,7 +22,6 @@ import { IDLE_SCREEN } from "@/components/editor/ScreensMenu";
 import { emptyState } from "@shared/live-state.mjs";
 import { themesSummary, fundosSummary, idleSummary, fontsSummary } from "@/lib/console/cfgSummaries";
 
-const SIZE = Object.fromEntries(TEXT_SIZES);
 const FONT = Object.fromEntries(THEME_FONTS);
 
 // Temas padrão (owner's decision 2026-10-13, as in SPresenter): one theme per
@@ -128,7 +128,7 @@ export default function TemasSection({ c, onOpenScreen }) {
                             title={`${themeName(t)} · clique para editar · botão direito: mais opções`} onClick={() => edit(t.id)} onContextMenu={(e) => themeMenu(e, t)}>
                             <span className="fg-img"><ThemeThumb theme={t} /><NoBgMark theme={t} label /></span>
                             {(t.is_default || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{themeName(t, "")}</span>}
-                            <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", SIZE[t.font_size] || "G"].filter(Boolean).join(" · ")}</span>
+                            <span className="kx-meta tmg-meta">{[FONT[t.font_family] || t.font_family || "Sem serifa", sizeLabel(t.font_size)].filter(Boolean).join(" · ")}</span>
                         </button>
                     ))}
                 </div>

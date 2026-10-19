@@ -14,6 +14,8 @@ import { chordLinesToInline, hasInlineChords, isChordLine, keyChords, transposeI
 import { printSong } from "@/lib/printSong";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { slideFit, stanzaAt, slideSpan } from "@/lib/console/lyricFit";
+import { styleMetrics } from "@/lib/console/fontMetrics";
+import { sizePreset } from "@/lib/textSize";
 import { useContextMenu } from "./ContextMenu";
 import LinesPicker from "./LinesPicker";
 import { TEXT_SIZES, defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
@@ -449,7 +451,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     <div className="frm">
                         <span className="k">Fonte</span>
                         <FontSelect className="cfg-select" value={shown.font_family || "sans"} onChange={(v) => setLook({ font_family: v })} />
-                        <span className="k">Tamanho</span><Seg small label="Tamanho" value={shown.font_size || "large"} onChange={(v) => setLook({ font_size: v })} options={SIZES} />
+                        <span className="k">Tamanho</span><Seg small label="Tamanho" value={sizePreset(shown.font_size)} onChange={(v) => setLook({ font_size: v })} options={SIZES} />
                         <span className="k">Cor do texto</span>
                         <div className="swatches">
                             {SWATCHES.map(([hex, name]) => <button type="button" key={hex} className={`kx-t ${(shown.text_color || "#ffffff").toLowerCase() === hex ? "is-on" : ""}`} style={{ background: hex }} aria-label={name} title={name} onClick={() => setLook({ text_color: hex })} />)}
@@ -530,7 +532,10 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     {!slides.length && <Empty icon="list" title="Nenhum slide">Escreva a letra; cada estrofe vira um slide.</Empty>}
                     <div className={"ed-thumbs is-" + thumbs}>
                         {doc && slides.map((s, i) => {
-                            const fit = slideFit(s.text, song.font_size);
+                            // The look the song goes on air with (its theme's
+                            // size and font, stamped in doc), the font measured.
+                            const sent = { ...doc.content.style, ...(doc.content.slides?.[i]?.style || {}) };
+                            const fit = slideFit(s.text, sent.font_size, styleMetrics(sent));
                             const fitTitle = fit.wraps.length
                                 ? (fit.wraps.length === 1 ? "A linha " + fit.wraps[0] + " é longa" : "As linhas " + fit.wraps.join(", ") + " são longas") + " para este tamanho de letra (cabem uns " + fit.limit + " caracteres por linha; a mais longa tem " + fit.longest + "): a fonte deste slide diminui para cada linha caber numa linha da tela"
                                 : fit.lines + (fit.lines === 1 ? " linha, " : " linhas, ") + fit.chars + " caracteres · cabe na tela";

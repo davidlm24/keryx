@@ -3,9 +3,13 @@
 // selected. Shared by Camadas (apply/save) and Configurações › Temas e fundos (the
 // editor). Pure, so node --test checks it.
 import { bgSpec, bgArgs, cleanSpec } from "./backgroundSpec.js";
+import { SIZE_PRESETS, sameSize, sizeCqw } from "../textSize.js";
+import { TRANSITIONS, NATURAL_MS } from "./look.js";
 
-// The text sizes a theme or a song can choose, smallest first.
-export const TEXT_SIZES = [["xsmall", "PP"], ["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "GGG"]];
+// The six size presets, smallest first: what a song or an aviso chooses,
+// and the shortcuts beside a theme's free size (a number in cqw since the
+// Rodada HF2, src/lib/textSize.js).
+export const TEXT_SIZES = SIZE_PRESETS.map(([k, l]) => [k, l]);
 // Every family the renderer ships (src/fonts.css FONT_MAP); Camadas used to
 // list only five and wrongly warned "Fonte não instalada" for the others.
 export const THEME_FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["cursive", "Cursiva"], ["arial", "Arial"], ["georgia", "Georgia"], ["times", "Times"], ["verdana", "Verdana"]];
@@ -31,11 +35,20 @@ export const FAMILY_SET = new Set(THEME_FONTS.map(([v]) => v));
 // text_align and text_position ride as extras, so the Editor de temas moves
 // the box per theme and the item's own style still wins. Applying a theme on air
 // (Camadas › Temas) spreads the whole themeStyle: it resets them too — a theme is
-// a complete look.
-export const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position", "transition", "transition_ms"];
+// a complete look. The typography of the Rodada HF2 (weight, italic, letter
+// spacing, outline; line_height now takes a number too) rides the same way.
+// font_size is a number in cqw stored as a string ("4.8"), or an old
+// preset's name ("large"): compared with sameSize, never as a string.
+export const EXTRA_KEYS = ["text_opacity", "text_max_width", "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position", "transition", "transition_ms",
+    "font_weight", "font_style", "letter_spacing", "text_outline_px", "text_outline_color"];
 const extra = (t) => Object.fromEntries(EXTRA_KEYS.map((k) => [k, t?.[k] ?? ""]));
 export const themeStyle = (t) => ({ font_size: t?.font_size || "large", font_family: t?.font_family || "sans", text_effect: t?.text_effect || "shadow", text_color: t?.text_color || "#ffffff", text_color_2: t?.text_color_2 || "", ...extra(t) });
-export const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v]) => (EXTRA_KEYS.includes(k) || k === "text_color_2" ? String(style?.[k] ?? "") === String(v) : (style?.[k] || v) === v));
+const sameKey = (k, a, v) => {
+    if (k === "font_size") return sameSize(a || v, v);
+    if (EXTRA_KEYS.includes(k) || k === "text_color_2") return String(a ?? "") === String(v);
+    return (a || v) === v;
+};
+export const sameLook = (style, t) => Object.entries(themeStyle(t)).every(([k, v]) => sameKey(k, style?.[k], v));
 
 // The theme's background (ProjectionTheme.background, or the picture or
 // generated background saved before it; backgroundSpec.js), as
@@ -85,6 +98,9 @@ export function themeInUseSeed(cultoTheme, { reopening = false, inUse = null } =
 // A theme's name for menus, tooltips and toasts; an unnamed theme shows no
 // caption under its thumbnail (owner 2026-10-14), so callers pass "" there.
 export const themeName = (t, fallback = "Tema sem nome") => (typeof t?.name === "string" && t.name.trim()) || fallback;
+// A theme's comment (ProjectionTheme.note, Rodada HF2): what it is for, in
+// its tooltip in Temas; never on air. At most 500 characters.
+export const themeNote = (t) => (typeof t?.note === "string" ? t.note.trim().slice(0, 500) : "");
 
 // The themes Camadas › Temas offers as presets (owner's decision 2026-10-13,
 // as Holyrics' theme column): the pinned ones (ProjectionTheme.pinned), by
@@ -136,7 +152,8 @@ export const defaultChanges = (themes, id) => (themes || [])
 // defaults): with it, the item follows the default theme.
 export const FACTORY_LOOK = { font_size: "large", font_family: "sans", text_effect: "shadow", text_color: "#ffffff", text_color_2: "" };
 const LOOK_KEYS = Object.keys(FACTORY_LOOK);
-export const isFactoryLook = (row) => LOOK_KEYS.every((k) => (row?.[k] || FACTORY_LOOK[k]) === FACTORY_LOOK[k]);
+// A size of "4.8" is the factory "large" (textSize.js sameSize).
+export const isFactoryLook = (row) => LOOK_KEYS.every((k) => (k === "font_size" ? sameSize(row?.[k] || FACTORY_LOOK[k], FACTORY_LOOK[k]) : (row?.[k] || FACTORY_LOOK[k]) === FACTORY_LOOK[k]));
 // Whether a Song (style_mode) follows the default theme: "theme" yes,
 // "own" no; unset, when its look is still the factory one.
 export const followsTheme = (row) => row?.style_mode === "theme" || (row?.style_mode !== "own" && isFactoryLook(row));
@@ -183,4 +200,59 @@ export function withThemeDefaults(op, args, theme) {
     if (typeof theme.show_item_title === "boolean" && !style.title) style.title = theme.show_item_title ? "show" : "hide";
     const fundo = inherit.background && !style.background_image && !rest.fundo ? themeBackgroundArgs(theme) : null;
     return { ...rest, style, ...(fundo ? { fundo } : {}) };
+}
+
+// ---- The Editor de temas' group summaries (Rodada HF3, owner 2026-10-20) ----
+// One pt-BR line per CfgGroup of the form, from the draft, shown while the
+// group is closed. Pure (tested). A draft is the editor's: "" = the factory.
+const COLOR_NAMES = { "#ffffff": "Branco", "#000000": "Preto" };
+const hexOf = (c) => (/^#[0-9a-f]{6}$/i.test(c || "") ? c.toLowerCase() : "");
+export const colorName = (c) => COLOR_NAMES[hexOf(c)] || hexOf(c).toUpperCase() || "Branco";
+const pctOf = (n) => `${Math.round(n)} %`;
+const EFFECT_NAMES = { shadow: "Sombra", "double-shadow": "Sombra dupla", glow: "Brilho", "3d": "3D", neon: "Neon", outline: "Vazado", none: "Sem efeito" };
+const BOX_NAMES = { band: "Faixa", block: "Bloco" };
+const ALIGN_NAMES = { left: "Esquerda", right: "Direita" };
+const POS_NAMES = { top: "Alto", bottom: "Baixo" };
+
+export function fontSummary(t) {
+    const family = t?.font_family || "sans";
+    const name = THEME_FONTS.find(([v]) => v === family)?.[1] || family;
+    const parts = [name, `${String(sizeCqw(t?.font_size)).replace(".", ",")} %`];
+    if (t?.font_weight === "bold") parts.push("negrito");
+    if (t?.font_style === "italic") parts.push("itálico");
+    if (t?.text_case === "upper") parts.push("maiúsculas");
+    return parts.join(" · ");
+}
+
+export function colorSummary(t) {
+    const parts = [t?.text_color_2 ? `${colorName(t.text_color)} em degradê` : colorName(t?.text_color), EFFECT_NAMES[t?.text_effect || "shadow"] || "Sombra"];
+    if (Number(t?.text_outline_px) > 0) parts.push(`contorno ${t.text_outline_px} px`);
+    const op = t?.text_opacity === "" || t?.text_opacity == null ? 1 : Number(t.text_opacity);
+    if (op < 1) parts.push(`opacidade ${pctOf(op * 100)}`);
+    return parts.join(" · ");
+}
+
+export function boxSummary(t) {
+    const kind = BOX_NAMES[t?.text_box];
+    if (!kind) return "Sem caixa";
+    return `${kind} · ${pctOf((Number(t.text_box_opacity) || 0.55) * 100)}`;
+}
+
+export function placeSummary(t) {
+    const width = t?.text_box === "band" ? 100 : Number(t?.text_max_width) || 100;
+    return `${ALIGN_NAMES[t?.text_align] || "Centro"} · ${POS_NAMES[t?.text_position] || "Meio"} · ${pctOf(width)}`;
+}
+
+export function fundoSummary(t) {
+    const bg = bgSpec(t || {});
+    if (!bg) return "Falta escolher";
+    const kind = { image: "Imagem", video: "Vídeo", generator: "Gerado", color: "Cor" }[bg.kind] || "Fundo";
+    const dim = bg.kind === "color" ? null : Math.round((bg.dim ?? (bg.kind === "image" ? 0.45 : 0)) * 100);
+    return dim ? `${kind} · escurecer ${dim} %` : kind;
+}
+
+export function transitionSummary(t) {
+    const kind = TRANSITIONS.find(([v]) => v === t?.transition)?.[1];
+    if (!kind) return `Padrão · Esmaecer ${NATURAL_MS.fade} ms`;
+    return t.transition === "cut" ? kind : `${kind} · ${Number(t.transition_ms) || NATURAL_MS[t.transition]} ms`;
 }
