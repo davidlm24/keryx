@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
-import { playbackPlan } from "@shared/live-state.mjs";
+import { playbackPlan, playbackGain } from "@shared/live-state.mjs";
 import { createPool } from "@/lib/mediaPool";
 import { getYouTubeId, loadYouTubeApi } from "@/utils/youtube";
 import { usePrefs } from "@/hooks/useUser";
@@ -64,6 +64,8 @@ export default function LiveVideo({ item, loop = false, muted = false, className
     const callbacks = useRef({ onEnded, onDuration, loop, muted });
     callbacks.current = { onEnded, onDuration, loop, muted };
     const playback = item?.playback;
+    const playbackRef = useRef(playback);
+    playbackRef.current = playback;
     // How much of the volume is left on the way out (1: not leaving).
     const fadeRef = useRef(fadeOut);
     fadeRef.current = fadeOut;
@@ -165,24 +167,40 @@ export default function LiveVideo({ item, loop = false, muted = false, className
         syncRef.current();
         const id = setInterval(() => syncRef.current(), SYNC_MS);
         return () => clearInterval(id);
-    }, [item?.url, item?.shownAt, playback?.paused, playback?.position, playback?.at, playback?.volume, muted]);
+    }, [item?.url, item?.shownAt, playback?.paused, playback?.position, playback?.at, playback?.volume, playback?.ramp?.at, muted]);
 
-    // On the way out: the volume comes down in small steps, without a gap.
+    // On the way out (fadeOut) and while the volume ramps (pausing or playing
+    // again with a fade, a Desfazer fading in: playback.ramp), the volume
+    // moves in small steps, without a gap; at the end one sync, so a pause
+    // that waited for its fade (playbackPlan) happens.
     const fadeAt = fadeOut?.at;
     const fadeUntil = fadeOut?.until;
+    const rampAt = playback?.ramp?.at;
+    const rampMs = playback?.ramp?.ms;
     useEffect(() => {
-        if (fadeUntil === undefined || callbacks.current.muted) return undefined;
+        if (callbacks.current.muted) return undefined;
+        const now = keryx.live.now();
+        const ends = [fadeUntil, rampAt === undefined ? undefined : rampAt + rampMs].filter((t) => t !== undefined && t > now);
+        if (!ends.length) return undefined;
+        const end = Math.max(...ends);
+        const spans = [fadeUntil === undefined ? 0 : fadeUntil - fadeAt, rampMs || 0].filter((ms) => ms > 0);
+        const every = Math.max(10, Math.min(40, Math.min(...spans) / 10));
         const step = () => {
-            const v = (playback?.volume ?? 1) * left();
+            const at = keryx.live.now();
+            const v = (playbackRef.current?.volume ?? 1) * playbackGain(playbackRef.current, at) * left();
             const p = ytRef.current;
             if (isYouTube) { if (typeof p?.setVolume === "function") p.setVolume(Math.round(v * 100)); }
-            else if (videoRef.current) videoRef.current.volume = v;
-            return v > 0;
+            else if (videoRef.current) videoRef.current.volume = Math.max(0, Math.min(1, v));
+            return at < end;
         };
-        if (!step()) return undefined;
-        const id = setInterval(() => { if (!step()) clearInterval(id); }, 40);
+        if (!step()) { syncRef.current(); return undefined; }
+        const id = setInterval(() => {
+            if (step()) return;
+            clearInterval(id);
+            syncRef.current();
+        }, every);
         return () => clearInterval(id);
-    }, [fadeAt, fadeUntil, isYouTube]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [fadeAt, fadeUntil, rampAt, rampMs, isYouTube]);
 
     // YouTube: one player per link.
     useEffect(() => {

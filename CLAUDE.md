@@ -160,7 +160,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   postMessage type (both are gone). **One sound at a time, and the fades**
   (owner 2026-10-16, Rodada F2; Configurações › Telas e saídas ›
   Transições: User `media_transition`/`_ms`, `clear_transition`/`_ms`,
-  `screen_transition`): an op that starts an item with sound (`video.show`,
+  `screen_transition`, `pause_fade_ms`): an op that starts an item with sound (`video.show`,
   `audio.show`, `audio.playlist`, `media.show`, `media.playlist`; a video,
   audio or YouTube not at volume 0, `heard`) stops the other sound layers
   (`hush`), cut or fading out — the stopped item rides in `live.leaving`
@@ -169,9 +169,28 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   senders that say nothing). The console adds `transition` and the exit
   `fade` in `liveOp` (`withTransitions`, `src/lib/console/transitions.js`,
   tested; every output window's screen keys too, `useScreenKeys` → `screenKeyOp` in `src/lib/screenKeys.js`, tested: ← → PageUp/PageDown, B, L, C, Esc as on the console, no Space, no click-to-advance, desktop only); the live state never reads
-  prefs. Never hush in `media.toAudio`/`audio.toMedia`, `content.show` or
-  `clear` (the audio channel survives Esc); a list counts by the item it
-  starts with, advances never hush, the Fundo's video is muted. Esc
+  prefs. Never hush in `media.toAudio`/`audio.toMedia` or `content.show`;
+  a list counts by the item it starts with, advances never hush (Anterior /
+  Próximo, `playlist.goTo`, take `transition` and fade only the track they
+  stop), the Fundo's video is muted. **Esc stops the player's music**
+  (owner 2026-10-17, Rodada G3 — reverses 2026-10-07, when the audio
+  channel survived Esc; no switch keeps it): `clear` and Parar
+  (`audio.clear`, `media.clear`, `video.clear`, all in `EXIT_OPS`) take
+  the music off, paused or not, and what can be heard leaves on the same
+  `fade` as the screens (`leave`, `live.leaving`; Ao tirar do ar). The
+  safety net is Desfazer (8 s toast, Ctrl+Z): `undoEndOps(before, endedAt)`
+  puts the music back at the second Esc stopped it (`endedAt` = Esc's
+  updatedAt), paused if it was, `mix`, fading in (`audio.show`
+  `position`/`paused`/`fadeIn`; a same-url `leaving` entry is dropped so
+  the pool hands the element back). **Pausing fades** (Ao pausar o som:
+  Corte · 0,2 s · 0,4 s, default 0,2): `transport` pause/play take `fade`
+  and keep `playback.ramp = { at, ms, from, to }` (its own anchor: seek
+  rewrites `at`); `playbackGain` is the curve every window computes on
+  the live clock, `playbackPlan` multiplies it into the volume and holds a
+  pause until its ramp to 0 ends; a ramp starts from the level the sound
+  is at (a quick Pausar-Tocar never clicks); volume and a playing seek keep
+  it, a restart, a new item and the eye drop it. `LiveVideo` steps the
+  volume through `fadeOut` and the ramp and syncs at the end. Esc
   (`clear`), Limpar (`text.clear`: the timer, the aviso and the text in ONE
   change, so the ghost is what the audience saw — three clears in a row
   drew the song hidden under an aviso fading out) and the single-layer
@@ -884,9 +903,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   library, a popover, then THE window — one level of its stack, routed to
   the top page's close request — then the Camadas drawer) and with nothing
   open ends at once, fading out as Configurações › Telas e saídas ›
-  Transições says (Rodada F2) (music on the audio channel keeps playing; the Fundo
-  stays on screen, and the idle look shows only with no Fundo); its toast offers
-  Desfazer, which puts back what was on air (`undoEndOps` in
+  Transições says (Rodada F2) (the player's music too, since Rodada G3,
+  2026-10-17; the Fundo stays on screen, and the idle look shows only with
+  no Fundo); its toast offers Desfazer, which puts back what was on air and
+  the music at the second it stopped (`undoEndOps` in
   `src/lib/console/restore.js`); Ctrl+Z runs it too (keys.js "undo", out of
   text fields), and a plain toast waits behind it while its time stands
   still under the pointer or the focus (`toastQueue.js`, `Toast.jsx`; C-13). Camadas' eyes on Texto principal and Fundo
