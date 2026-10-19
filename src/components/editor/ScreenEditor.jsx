@@ -4,7 +4,7 @@ import Icon from "../console/Icon";
 import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "../console/kx";
 import { Switch } from "../console/settings/parts";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
-import OutputPrefCard from "../console/settings/OutputPrefCard";
+import OutputAjustes from "../console/settings/ajustes/OutputAjustes";
 import { mainLayer, emptyState } from "@shared/live-state.mjs";
 import {
     ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
@@ -12,7 +12,7 @@ import {
     layoutContext, elementState, whenLabel, ghostReason,
 } from "@/lib/layouts";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
-import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars, prefViewKey, alertOf } from "@/lib/outputPrefs";
+import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars, ruleOf, noticeOnly, alertOf } from "@/lib/outputPrefs";
 import { useChurch } from "@/hooks/useChurch";
 import { sampleLive, sampleNotice, sampleAlert, sampleTimer, SAMPLE_ITEMS } from "../console/settings/sample";
 import { ConfirmContext } from "../console/ConfirmDialog";
@@ -52,9 +52,9 @@ const seedFor = (path) => {
 // owner's decision 2026-10-13: each screen owns its design — the layout
 // catalog died). A vertical menu switches between the screens; the 16:9
 // canvas edits THIS screen's drawing (OutputPref.design) with the screen's
-// real settings dressing the preview, and the screen's visual settings
-// (content, Mostrar, theme, margins…) live in the same window
-// (OutputPrefCard, inEditor). A screen with no design follows its page and
+// real settings dressing the preview, and the screen's settings (its five
+// blocks: Destino, Conteúdo, Aparência, Comportamento, Diagnóstico) live in
+// the same window (OutputAjustes, Rodada H2). A screen with no design follows its page and
 // opens straight into editing, the canvas seeded with that page's ready
 // design (owner 2026-10-13): the seed is the baseline, so only real edits
 // are "não salvo", and nothing is written until "Salvar a tela".
@@ -311,7 +311,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
     // when none is on air, as Telas e saídas' still does: a song would
     // leave it on the idle look. "Sem nada no ar" and "Timer" mean just that.
     const noticeDoc = useMemo(() => sampleNotice(madeAt.current), []);
-    const avisos = renderer && prefViewKey(path, pref) === "/CommunicationProjection" && !shown.communication && (source === "sample" || source === "auto") ? { ...shown, communication: noticeDoc.communication } : shown;
+    const avisos = renderer && noticeOnly(ruleOf(pref, path)) && !shown.communication && (source === "sample" || source === "auto") ? { ...shown, communication: noticeDoc.communication } : shown;
     // Ajustes › Aviso rápido › Ver exemplo (Rodada E3): an example bar on
     // the canvas while the settings half is open, unless one is on air.
     const [alertSample, setAlertSample] = useState(null);
@@ -541,10 +541,7 @@ function OutputScreenEditor({ say, live: liveState, screenPath, media = [], them
                         {/* The output's visual settings (content, Mostrar,
                             theme, margins…): they save at once, outside the
                             drawing's draft — their own half since Rodada C. */}
-                        {(isStream || tab === "ajustes") && <>
-                            <div className="listhead"><span className="kx-section">Ajustes <span className="kx-count">· valem também para as telas na rede desta página</span></span></div>
-                            <OutputPrefCard inEditor output={{ key: path, label: name }} row={row} themes={themes} c={cLike} alertSample={Boolean(alertSample)} onAlertSample={showAlertSample} />
-                        </>}
+                        {(isStream || tab === "ajustes") && <OutputAjustes output={{ key: path, label: name }} row={row} themes={themes} c={cLike} alertSample={Boolean(alertSample)} onAlertSample={showAlertSample} />}
                     </div>
                     {draft && !isStream && !hosted && (
                         <div className="nv-foot">

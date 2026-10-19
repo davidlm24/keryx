@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import Icon from "../Icon";
 import { Btn, Empty, Seg } from "../kx";
-import { useBridge, usePoll, Switch, desktopOnly, CfgKey, Reading, FormRow, CfgGroup } from "./parts";
+import { Switch, desktopOnly, CfgKey, Reading, FormRow, CfgGroup } from "./parts";
+import { useDisplays } from "./useDisplays";
 import { useLibrary } from "../useConsoleData";
-import { OutputPreview } from "./OutputPrefCard";
+import OutputPreview from "./OutputPreview";
 import { normalizePref, isDefaultPref, designOf, outputLook } from "@/lib/outputPrefs";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
 import { usePrefs, updateUser } from "@/hooks/useUser";
@@ -12,7 +13,7 @@ import { keryx } from "@/api/keryxClient";
 import { buildOutputsFile, readOutputsFile, prefWrites, fileName } from "@/lib/outputsFile";
 import { useLayoutRows } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
-import { outputsSummary, outputStatusText } from "@/lib/console/outputs";
+import { outputsSummary } from "@/lib/console/outputs";
 import { CHIME_VOLUMES, somSummary, ARQUIVO_SUMMARY } from "@/lib/console/cfgSummaries";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm } from "../ConfirmDialog";
@@ -48,16 +49,16 @@ function SomBlock({ c }) {
 // diagram on top, then one card per output showing WHAT THAT SCREEN SHOWS
 // RIGHT NOW (OutputPreview: its view, Mostrar, theme, design — a still).
 // Clicking a thumbnail (or Editar… in its right-click menu) opens the
-// Editor on that screen; the card keeps only the placement (Automático /
-// Tela N, Abrir ao iniciar, Abrir/Fechar; Remover in the menu) until the
-// Editor's Destino block takes it over (Rodada H2). Rodada H1 (owner
+// Editor on that screen; the card is lean (Rodada H2, owner 2026-10-19:
+// thumbnail, name, state, Abrir/Fechar; Remover in the menu) — where the
+// screen opens (Automático / Tela N) and Abrir ao iniciar live in the
+// Editor's Ajustes › Destino. Rodada H1 (owner
 // 2026-10-19): groups — Telas (the monitors, static at the top), Saídas,
 // Transições, Som e YouTube and the settings file, the last three closed.
 // The Tela ociosa moved to Temas e fundos. The placement rules live in
 // electron/outputs.cjs.
 export default function TelasSection({ c, onOpenScreen }) {
-    const displays = useBridge("displays");
-    const [state, , setState, readError] = usePoll(() => displays?.list(), 3000);
+    const { displays, state, setState, readError, list, outputs, apply, statusOf: status } = useDisplays(c.say);
     const { themes } = useLibrary();
     const prefRows = useOutputPrefRows();
     const layoutRows = useLayoutRows();
@@ -72,30 +73,10 @@ export default function TelasSection({ c, onOpenScreen }) {
     if (!displays) return <Empty icon="monitor" title="Telas e saídas">{desktopOnly}</Empty>;
     if (!state) return <Reading what="as telas" error={readError} />;
 
-    // Every change answers with the new state, or says why it failed.
-    const apply = (p) => p.then((res) => { if (res?.error) c.say(res.error.message); else if (res?.data) setState(res.data); })
-        .catch((err) => c.say(err?.message || "Não foi possível mudar a saída."));
     const identify = () => Promise.resolve(displays.identify()).then((res) => { if (res?.error) c.say(res.error.message); })
         .catch(() => c.say("Não foi possível mostrar os números nas telas."));
-    const list = state.displays || [];
-    const outputs = state.outputs || [];
-    // A display's number as Windows counts it here (0: not among the ones on).
-    const number = (id) => list.findIndex((d) => d.id === id) + 1;
     const widest = Math.max(1, ...list.map((d) => d.bounds?.width || d.width || 1));
     const onDisplay = (d) => outputs.filter((o) => o.open && o.placement?.mode === "fullscreen" && o.placement.displayId === d.id).map((o) => o.label);
-    const valueOf = (a) => {
-        const t = a.target;
-        if (t === "auto" || t === "window") return t;
-        return list.some((d) => d.id === t.id) ? `d:${t.id}` : `gone:${t.id}`;
-    };
-    const choose = (o, value) => {
-        let target = value;
-        if (value.startsWith("d:")) {
-            const d = list.find((x) => `d:${x.id}` === value);
-            target = { id: d.id, label: d.label, width: d.bounds?.width || d.width, height: d.bounds?.height || d.height };
-        }
-        apply(displays.set(o.key, { target }));
-    };
     // Exportar / Importar ajustes das saídas (src/lib/outputsFile.js): every
     // output's screen and "Abrir ao iniciar", and every page's Ajustes.
     const exportPrefs = async () => {
@@ -135,7 +116,6 @@ export default function TelasSection({ c, onOpenScreen }) {
             c.say("Ajustes das saídas importados.");
         } catch (err) { c.say(err?.message || "Não foi possível importar todos os ajustes das saídas."); }
     };
-    const status = (o) => outputStatusText(o.placement, number(o.placement?.displayId));
     const removeOutput = async (o) => {
         const ok = await confirm({ title: `Remover a saída ${o.label}?`, text: "Ela sai das listas e não abre mais ao iniciar. Os ajustes continuam salvos: Adicionar saída traz de volta.", ok: "Remover" });
         if (!ok) return;
@@ -195,21 +175,12 @@ export default function TelasSection({ c, onOpenScreen }) {
                                 <Icon name={o.look.icon} />
                                 <span className="cfg-card-t">{o.label}</span>
                                 <span className={`cfg-outtab-dot ${o.open ? "is-open" : ""}`} aria-label={o.open ? "aberta" : "fechada"} />
-                            </div>
-                            <span className={`kx-meta cfg-card-m ${o.placement?.missing ? "kx-warn" : ""}`}>{status(o)}{!isDefaultPref(pref) ? " · com ajustes" : ""}</span>
-                            <div className="cfg-card-acts">
-                                <select className="cfg-select" value={valueOf(o.assignment)} onChange={(e) => choose(o, e.target.value)} aria-label={`Tela de ${o.label}`}>
-                                    <option value="auto">Automático</option>
-                                    <option value="window">Sempre numa janela</option>
-                                    {list.map((d, i) => <option key={d.id} value={`d:${d.id}`}>Tela {i + 1} · {d.bounds?.width || d.width}×{d.bounds?.height || d.height}</option>)}
-                                    {typeof o.assignment.target === "object" && !list.some((d) => d.id === o.assignment.target.id) && <option value={`gone:${o.assignment.target.id}`} disabled>{o.assignment.target.width}×{o.assignment.target.height} (desligada)</option>}
-                                </select>
-                                <span className="cfg-launch"><Switch on={o.assignment.openAtLaunch === true} onChange={(on) => apply(displays.set(o.key, { openAtLaunch: on }))} label={`Abrir ${o.label} ao iniciar`} /><span className="kx-meta">Abrir ao iniciar</span></span>
                                 <span style={{ flex: 1 }} />
                                 {o.open
                                     ? <Btn small onClick={() => apply(displays.close(o.key))}>Fechar</Btn>
                                     : <Btn small onClick={() => apply(displays.open(o.key))}>Abrir</Btn>}
                             </div>
+                            <span className={`kx-meta cfg-card-m ${o.placement?.missing ? "kx-warn" : ""}`}>{status(o)}{o.assignment.openAtLaunch === true ? " · abre ao iniciar" : ""}{!isDefaultPref(pref) ? " · com ajustes" : ""}</span>
                         </div>
                     );
                 })}
@@ -223,7 +194,7 @@ export default function TelasSection({ c, onOpenScreen }) {
                     </CfgKey>
                 ))}
             </div>
-            <div className="listhead"><span className="kx-meta">Clique numa tela para editá-la no Editor. As saídas não aparecem na barra de tarefas; fechar o KERYX fecha todas.</span></div>
+            <div className="listhead"><span className="kx-meta">Clique numa tela para editá-la no Editor: lá ficam a tela em que ela abre, Abrir ao iniciar, o que ela recebe e o resto dos ajustes. As saídas não aparecem na barra de tarefas; fechar o KERYX fecha todas.</span></div>
             </CfgGroup>
             <TransicoesBlock c={c} />
             <SomBlock c={c} />

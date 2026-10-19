@@ -956,6 +956,9 @@
           "type": "json",
           "default": []
         },
+        "content_rule": {
+          "type": "json"
+        },
         "text_scale": {
           "type": "real",
           "default": 100

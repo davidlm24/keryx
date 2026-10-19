@@ -246,6 +246,13 @@
 .console .mx-st { flex: none; color: var(--fg-2); white-space: nowrap; }
 .console .mx-lbl.is-idle .mx-st { color: var(--fg-3); }
 .console .mx-lbl.is-warn .mx-st { color: var(--warn-fg); }
+.console .mx-rule { flex: none; padding: 0 var(--space-1); border-radius: var(--radius-control); background: var(--bg-3); color: var(--fg-2); white-space: nowrap; }
+@container (max-width: 260px) { .console .mx-rule { display: none; } }
+/* The Prévia says which outputs will not show what is prepared (Rodada H2: O que esta tela recebe). */
+.console .kx-prev-warn { position: absolute; left: var(--space-1); right: var(--space-1); bottom: var(--space-1); z-index: 201; display: flex; flex-direction: column; gap: 2px; padding: var(--space-1) var(--space-2); border-radius: var(--radius-control); background: color-mix(in srgb, var(--bg-0) 86%, transparent); color: var(--fg-2); font: 500 11px/1.35 var(--font-sans); pointer-events: none; }
+.console .kx-prev-warn span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .kx-prev-warn b { color: var(--warn-fg); font-weight: 600; }
+.console .kx-prev-warn .kx-i { display: inline-block; vertical-align: -2px; margin-right: var(--space-1); color: var(--warn-fg); }
 @container (max-width: 200px) { .console .mx-st { display: none; } }
 /* Views that take the grid (planner, media, reports, Escola) stack their
    panels one gutter apart. The tabs panel (.bb-side) scrolls inside itself. */
@@ -1304,11 +1311,13 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 
 /* Editor de aviso (canvas artboard "Editor de aviso") */
 .console .nv-scroll { flex: 1; min-height: 0; overflow: auto; }
-/* The screen editor's left column is a .cfg (the OutputPrefCard's styles
-   live there): its forms take the design form's narrower label column, and
-   the card sits flush, not indented under a row as in Configurações. */
+/* The screen editor's left column is a .cfg (the Ajustes' styles live
+   there): its forms take the design form's narrower label column, and the
+   Ajustes' five blocks (OutputAjustes, Rodada H2) sit flush, one under the
+   other, not indented under a row as in Configurações. */
 .console .nv-scroll.cfg .frm { grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-1) var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); }
-.console .nv-scroll.cfg .cfg-outprefs { margin: 0; border-left: 0; background: none; border-radius: 0; }
+.console .nv-scroll.cfg .cfg-outprefs { display: block; margin: 0; border-left: 0; background: none; border-radius: 0; }
+.console .nv-scroll.cfg .cfg-outprefs .cfg-group + .cfg-group { margin-top: var(--space-1); }
 .console .nv-frm { display: grid; grid-template-columns: var(--win-label, 96px) minmax(0, 1fr); gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2) var(--space-2); }
 .console .nv-frm .k { font-size: 11px; color: var(--fg-3); }
 .console .nv-frm .kx-field { height: 26px; min-width: 0; }
@@ -1510,7 +1519,25 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-import-acts { display: flex; gap: var(--space-1); margin-top: var(--space-1); }
 /* Arquivo de ajustes: one row with the two buttons and what they do (Rodada H1). */
 .console .cfg .cfg-file { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1) var(--space-3) var(--space-2); }
-/* Mostrar: one toggle per kind of content; on = this output shows it. */
+/* O que esta tela recebe (Ajustes › Conteúdo, Rodada H2): the shortcuts, the
+   kinds in three groups and "Por cima de tudo"; on = this output receives it. */
+.console .cfg .cfg-rule { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .cfg .cfg-rule-q { font-size: 12px; font-weight: 600; color: var(--fg-1); }
+.console .cfg .cfg-rule-profs { display: flex; flex-wrap: wrap; gap: 4px; }
+.console .cfg .cfg-rule-prof { display: inline-flex; align-items: center; height: 24px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-2); font-size: 12px; }
+.console .cfg button.cfg-rule-prof:hover { background: var(--bg-3); color: var(--fg-1); }
+.console .cfg .cfg-rule-prof.is-on { background: var(--bg-3); color: var(--fg-1); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.console .cfg .cfg-rule-prof.is-custom { box-shadow: inset 0 0 0 1px var(--line-strong); border-style: dashed; }
+.console .cfg .cfg-rule-g { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.console .cfg .cfg-rule-g > .kx-section { font-size: 11px; font-weight: 600; color: var(--fg-3); }
+.console .cfg .cfg-rule-note { margin-top: var(--space-1); }
+/* Comportamento › "já faz sozinho": what the KERYX does by itself. */
+.console .cfg .cfg-auto { display: flex; flex-direction: column; gap: 2px; padding: var(--space-1) var(--space-2) var(--space-2); }
+.console .cfg .cfg-auto-l { display: flex; align-items: flex-start; gap: var(--space-1); }
+.console .cfg .cfg-auto-l .kx-i { flex: none; margin-top: 2px; color: var(--prev-fg, var(--prev)); }
+/* Diagnóstico: read-only values. */
+.console .cfg .cfg-diag-v { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; color: var(--fg-2); }
+/* Mostrar (the old one, now the rule's list): one toggle per kind; on = received. */
 .console .cfg .cfg-kinds { display: flex; flex-wrap: wrap; gap: 4px; }
 .console .cfg .cfg-kinds button { height: 24px; padding: 0 8px 0 6px; display: inline-flex; align-items: center; gap: 4px; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-3); font-size: 12px; }
 .console .cfg .cfg-kinds button .kx-i { visibility: hidden; }
@@ -1733,8 +1760,6 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg-card-h { display: flex; align-items: center; gap: var(--space-2); min-width: 0; color: var(--fg-1); }
 .console .cfg-card-t { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .console .cfg-card-m { min-height: 16px; }
-.console .cfg-card-acts { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
-.console .cfg-card-acts .cfg-select { max-width: 180px; }
 .console .cfg-card-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); min-height: 140px; border: 1px dashed var(--line-strong); border-radius: var(--radius-control); color: var(--fg-2); background: none; }
 .console .cfg-card-plus { font-size: 20px; display: grid; place-items: center; }
 .console .cfg-net-row { align-items: flex-start; }
@@ -1878,6 +1903,8 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   .console .envtabs > button.is-on::after { background: Highlight; }
   /* The Bíblia's cells are boxes. */
   .console :is(.bgrid .kx-book, .chapters button, .verse-cells button):not(:focus-visible, .is-on, .is-selected, .is-prev) { outline: 1px solid ButtonText; outline-offset: -1px; }
+  /* The rule's shortcuts and kinds (Ajustes › Conteúdo) are buttons too. */
+  .console .cfg :is(.cfg-rule-prof, .cfg-kinds button):not(.is-on, :focus-visible) { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* A group's header that opens and closes (CfgGroup) is a button. */
   .console button.cfg-group-t { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* Switches: track and knob in the system's colours, Highlight when on. */

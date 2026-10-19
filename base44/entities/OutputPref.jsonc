@@ -31,7 +31,7 @@
         "notices"
       ],
       "default": "",
-      "description": "O que a saída mostra: vazio é o padrão da página"
+      "description": "Antigo (até a Rodada H2): a vista que a saída desenhava; lido só pela migração para content_rule. Nada escreve mais aqui"
     },
     "hidden_kinds": {
       "type": "array",
@@ -48,7 +48,11 @@
         ]
       },
       "default": [],
-      "description": "Tipos que esta saída não mostra (letras, Bíblia, texto, imagens e vídeos, relógio e timer, avisos, aviso rápido); vazio mostra tudo o que a página mostra"
+      "description": "Antigo (até a Rodada H2): tipos que a saída não mostrava; lido só pela migração para content_rule. Nada escreve mais aqui"
+    },
+    "content_rule": {
+      "type": "object",
+      "description": "O que esta tela recebe (Rodada H2 / G10): { kinds: [letras, Bíblia, texto, imagens, vídeos, YouTube, apresentações, relógio e timer, avisos], top: { alert, logo } (por cima de tudo: Aviso rápido e Logo no canto), empty: wall | black | logo (o que mostra sem nada da lista no ar) }. Vazio = a regra da própria página com os antigos content, hidden_kinds e show_logo aplicados (applyRule/ruleOf em src/lib/outputPrefs.js)"
     },
     "text_scale": {
       "type": "number",
@@ -63,7 +67,7 @@
     "show_logo": {
       "type": "boolean",
       "default": true,
-      "description": "Mostrar o logo da camada Logo nesta saída"
+      "description": "Antigo (até a Rodada H2): mostrar o logo da camada Logo nesta saída; lido só pela migração (agora top.logo de content_rule)"
     },
     "theme_id": {
       "type": "string",

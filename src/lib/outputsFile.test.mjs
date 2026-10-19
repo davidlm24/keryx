@@ -166,3 +166,28 @@ test("the Aviso rápido bar of each screen travels in the file, checked both way
     const r2 = readOutputsFile(JSON.stringify(edited), { themes, displays });
     assert.deepEqual(r2.prefs.find((p) => p.path === "/CommunicationProjection").fields.options, { alert_style: "pill", alert_bg: "#1e40af", alert_fg: "#fff000", alert_size: "l" });
 });
+
+test("O que esta tela recebe (Rodada H2): the rule round-trips; an old file migrates from its Mostrar", async () => {
+    const { ruleOf, normalizePref } = await import("./outputPrefs.js");
+    const rule = { kinds: ["video", "youtube", "image"], top: { alert: false, logo: true }, empty: "black" };
+    const rows = [{ id: "r3", screen_path: "/VideoProjection", content_rule: rule }];
+    const f = buildOutputsFile({ outputs, prefRows: rows, themes, displays });
+    assert.deepEqual(f.prefs["/VideoProjection"].content_rule, { kinds: ["image", "video", "youtube"], top: { alert: false, logo: true }, empty: "black" }, "the rule is written, in the list's order");
+    assert.equal(f.prefs["/LyricProjection"].content_rule, null, "no rule saved: none written, the old fields say it");
+    const back = readOutputsFile(JSON.stringify(f), { themes, displays });
+    const video = back.prefs.find((p) => p.path === "/VideoProjection").fields;
+    assert.deepEqual(video.content_rule, f.prefs["/VideoProjection"].content_rule);
+    // Applied on a computer whose row has another rule, the file wins; with no rule in the file the row goes back to the old fields.
+    const w = prefWrites(back.prefs, [{ id: "r9", screen_path: "/LyricProjection", content_rule: rule }]).find((x) => x.id === "r9");
+    assert.equal(w.data.content_rule, null);
+    // A file from before the rule (Mostrar and Conteúdo only) migrates as the row does.
+    const old = readOutputsFile(JSON.stringify({ kind: FILE_KIND, version: 1, assignments: {}, prefs: { "/Projection": { hidden_kinds: ["tool", "alert"], show_logo: false }, "/LyricProjection": { content: "all" } } }), { themes, displays });
+    const proj = old.prefs.find((p) => p.path === "/Projection").fields;
+    assert.equal(proj.content_rule, null);
+    assert.deepEqual(ruleOf(normalizePref({ ...proj, screen_path: "/Projection" }), "/Projection"), { kinds: ["lyrics", "bible", "text", "image", "video", "youtube", "presentation", "notice"], top: { alert: false, logo: false }, empty: "wall" });
+    const letras = old.prefs.find((p) => p.path === "/LyricProjection").fields;
+    assert.equal(ruleOf(normalizePref({ ...letras, screen_path: "/LyricProjection" }), "/LyricProjection").kinds.length, 9, "Letras with Tudo is the whole list");
+    // A rule from a stranger is checked.
+    const odd = readOutputsFile(JSON.stringify({ kind: FILE_KIND, version: 1, assignments: {}, prefs: { "/Projection": { content_rule: { kinds: ["lyrics", "ovni"], top: "x", empty: "rosa" } } } }), { themes, displays });
+    assert.deepEqual(odd.prefs[0].fields.content_rule, { kinds: ["lyrics"], top: { alert: true, logo: false }, empty: "wall" });
+});

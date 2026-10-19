@@ -4,7 +4,7 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import StageScreen from "@/components/network/StageScreen";
 import PastorScreen from "@/components/network/PastorScreen";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
-import { prefState, prefVars, pastorOptions } from "@/lib/outputPrefs";
+import { prefState, prefVars, pastorOptions, ruleOf, ruleLabel, ruleSummary } from "@/lib/outputPrefs";
 import { useOutputPref, useRailViews } from "@/hooks/useOutputPref";
 import { useDesign } from "@/hooks/useLayout";
 import { useChurch } from "@/hooks/useChurch";
@@ -25,6 +25,9 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
     const own = !pref.content && SCREEN_PAGES.some((p) => p.key === page) ? page : null;
     const doc = useMemo(() => (own ? null : prefState(page, live, pref, theme)), [own, page, live, pref, theme]);
     const vars = own ? null : prefVars(pref);
+    // What this output receives (O que esta tela recebe): the quadrant says
+    // it; the Palco and the Pastor draw their own design.
+    const rule = own ? null : ruleOf(pref, page);
     const upcoming = useMemo(() => (layout ? nextItems(items, live?.session || null, 10) : []), [layout, items, live?.session]);
     let body;
     if (layout && (own || doc)) body = <LayoutRenderer layout={layout} live={live} screenState={own ? undefined : doc} nowMs={now} logoUrl={logoUrl} upcoming={upcoming} hasService={items.length > 0} church={church} scale={own ? pref.scale : 1} embed />;
@@ -41,6 +44,7 @@ function Tile({ page, index, live, now, logoUrl, items, motion, look, status, on
                 <button type="button" className="mx-pick kx-t" onClick={(e) => onPick(e, index)} title="Escolher a saída deste quadro" aria-label={`Quadro ${index + 1}: ${look.name} · escolher a saída`}>
                     <Icon name={look.icon} size={13} /><span className="mx-name">{look.name}</span>
                 </button>
+                {rule && <span className="mx-rule" title={`${look.name} recebe: ${ruleSummary(rule)}`}>{ruleLabel(rule)}</span>}
                 <span className="mx-st">{status.text}</span>
             </div>
         </div>
