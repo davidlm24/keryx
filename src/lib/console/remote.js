@@ -7,7 +7,7 @@ import { captionParts } from "./caption.js";
 import { noticeLabel } from "./notice.js";
 import { fold } from "../bibleSearch.js";
 import { stripChords } from "../chords.js";
-import { presentationBlock } from "../presentation.js";
+import { presentationBlock, pagesLabel } from "../presentation.js";
 import { findBook } from "../bibleBooks.js";
 import { referenceFrom } from "./quickRef.js";
 
@@ -61,6 +61,16 @@ export function itemStatus(item, media = []) {
     if (!MEDIA_TYPES.has(String(item?.type || "").toUpperCase())) return "ok";
     return mediaStatus(media.find((m) => m.id === item.contentId));
 }
+// What a PDF's pages are doing, in the console's words ("Preparando páginas
+// 3/12", or why they could not be made), for a row the phone lists (Rodada
+// H, HB: the phone said only "Preparando páginas"). progressOf: the console's
+// usePagesBackfill (id → { done, total } | { error }). -> { progress } or {}
+// (the field rides only when there is something to say: additive).
+const PROGRESS_MAX = 160;
+export function pagesField(id, progressOf = null) {
+    const say = id && progressOf ? pagesLabel(progressOf(id)) : "";
+    return say ? { progress: say.slice(0, PROGRESS_MAX) } : {};
+}
 
 // The item Voltar ao anterior goes back to: the newest one in the history
 // that came from the Setlist and is not the one on air.
@@ -91,7 +101,7 @@ function hash(text) {
 // one before; the Bíblia's edition, the timers and the avisos prontos.
 // v: the request's protocol version (1 = an old page: service is its title).
 export function remoteState({
-    v = 1, app = "", caps = REMOTE_CAPS, service = null, items = [], rows = null, media = [],
+    v = 1, app = "", caps = REMOTE_CAPS, service = null, items = [], rows = null, media = [], progressOf = null,
     airItemId = null, nextItemId = null, backItemId = null, live = null, bible = null, timers = [], alerts = [],
 }) {
     const { title, pos } = captionParts(live);
@@ -107,6 +117,7 @@ export function remoteState({
             at: at.get(it.id) ?? null,
             dur: section ? null : Math.max(0, Number(it.duration) || 0),
             st: itemStatus(it, media),
+            ...(MEDIA_TYPES.has(type) ? pagesField(it.contentId, progressOf) : {}),
         };
     });
     const body = {
@@ -170,9 +181,9 @@ export function refFromArgs(args = {}) {
 // The library, a page at a time (the phone's Mídia): songs by title, the
 // Mídia newest first (backgrounds are not in it), avisos and materials.
 // The search folds accents over the title, the artist and the lyrics (no
-// chords). -> { tab, total, skip, ready, rows: [{ id, title, sub, dur, fav, st, thumb }] }
+// chords). -> { tab, total, skip, ready, rows: [{ id, title, sub, dur, fav, st, thumb, progress? }] }
 const MEDIA_LABEL = { image: "Imagem", video: "Vídeo", audio: "Áudio", pdf: "PDF", powerpoint: "PowerPoint", youtube: "YouTube" };
-export function libraryPage({ tab, q = "", kind = null, fav = false, skip = 0, limit = limits.libraryPage, songs = [], media = [], pieces = [], materials = [], loaded = {} }) {
+export function libraryPage({ tab, q = "", kind = null, fav = false, skip = 0, limit = limits.libraryPage, songs = [], media = [], pieces = [], materials = [], loaded = {}, progressOf = null }) {
     const n = Math.max(1, Math.min(limits.libraryPage, limit || limits.libraryPage));
     const needle = fold(String(q || "").trim());
     const has = (...fields) => !needle || fields.some((f) => fold(String(f || "")).includes(needle));
@@ -188,7 +199,7 @@ export function libraryPage({ tab, q = "", kind = null, fav = false, skip = 0, l
         all = media.filter((m) => isKind(m) && !fav && has(m.title))
             .map((m) => {
                 const youtube = m.type === "video" && String(m.file_url || "").includes("youtu");
-                return { id: m.id, title: m.title || "", sub: MEDIA_LABEL[youtube ? "youtube" : m.type] || m.type || "", dur: m.duration || null, fav: false, st: mediaStatus(m), thumb: m.type === "video" && !youtube ? relativeMedia(m.thumbnail_url) : null };
+                return { id: m.id, title: m.title || "", sub: MEDIA_LABEL[youtube ? "youtube" : m.type] || m.type || "", dur: m.duration || null, fav: false, st: mediaStatus(m), thumb: m.type === "video" && !youtube ? relativeMedia(m.thumbnail_url) : null, ...pagesField(m.id, progressOf) };
             });
     } else if (tab === "pieces") {
         ready = loaded.pieces !== false;

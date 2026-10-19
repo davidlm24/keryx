@@ -70,6 +70,22 @@ if (typeof window !== "undefined") {
     });
 }
 
+// The files being copied right now (Rodada H, HB): the Biblioteca and the
+// Mídia list a row "Copiando o arquivo…" for each while UploadFile runs
+// (before, the row only appeared once the copy was done). Each entry is
+// { key, name, title, type, category, waiting, rowId }: waiting until its
+// turn comes, rowId once its Media row is made. The lists stop drawing an
+// entry as soon as that row is in them (copyingRows in libraryRows.js), so
+// the real row replaces it in place. This window only.
+const COPY_LINGER_MS = 4000;
+let copying = [];
+const copyingListeners = new Set();
+const setCopying = (next) => { copying = next; for (const fn of copyingListeners) fn(); };
+const dropCopying = (key) => setCopying(copying.filter((c) => c.key !== key));
+export const copyingNow = () => copying;
+export const subscribeCopying = (fn) => { copyingListeners.add(fn); return () => copyingListeners.delete(fn); };
+let batches = 0;
+
 // A PowerPoint file is not copied (Rodada F3, "Só PDF"): it comes back in
 // `refused`, and the caller says how to save it as PDF (PPTX_HINT). A PDF's
 // pages are made after, by the console (usePagesBackfill).
@@ -78,14 +94,20 @@ export async function importMediaFiles(files, { title = "", description = "", ca
     const created = [];
     const failed = [];
     const refused = [];
+    const batch = ++batches;
+    const keyOf = (i) => `${batch}:${i}`;
+    const titleOf = (file) => (title ? (list.length > 1 ? `${title} - ${file.name}` : title) : file.name.replace(/\.[^.]+$/, ""));
+    // Every file of the batch is listed at once; each one leaves the list
+    // when its row arrives (or when it fails).
+    setCopying([...copying, ...list.flatMap((file, i) => (mediaTypeOf(file) === "powerpoint" ? [] : [{ key: keyOf(i), name: file.name, title: titleOf(file), type: mediaTypeOf(file), category, waiting: i > 0, rowId: null }]))]);
     for (const [i, file] of list.entries()) {
         onProgress?.(i, list.length, file.name);
         if (mediaTypeOf(file) === "powerpoint") { refused.push({ name: file.name, message: PPTX_HINT }); continue; }
         try {
+            if (i > 0) setCopying(copying.map((c) => (c.key === keyOf(i) ? { ...c, waiting: false } : c)));
             const { file_url } = await keryx.integrations.Core.UploadFile({ file });
-            const baseName = file.name.replace(/\.[^.]+$/, "");
             const row = await keryx.entities.Media.create({
-                title: title ? (list.length > 1 ? `${title} - ${file.name}` : title) : baseName,
+                title: titleOf(file),
                 description,
                 type: mediaTypeOf(file),
                 file_url,
@@ -94,7 +116,13 @@ export async function importMediaFiles(files, { title = "", description = "", ca
             });
             if (row?.id) rememberMadeHere(row.id);
             created.push(row);
+            // The real row replaces the entry as soon as the lists have it;
+            // this only clears an entry a list never shows (a filter).
+            const key = keyOf(i);
+            setCopying(copying.map((c) => (c.key === key ? { ...c, rowId: row?.id || null } : c)));
+            setTimeout(() => dropCopying(key), COPY_LINGER_MS);
         } catch (err) {
+            dropCopying(keyOf(i));
             failed.push({ name: file.name, message: err?.message || "falhou" });
         }
     }

@@ -5,10 +5,11 @@ import { TeacherNotes } from "./CenterPanel";
 import { QuickAlert, ReadyTimers, OnAirTimer, ToolsPicker } from "./QuickTools";
 import { restoreArgs } from "@/lib/projection";
 import { stageFromHistory } from "@/lib/console/stage";
+import { TABS_MENU_TITLE } from "@/lib/console/panelTabs";
 
 // A row of tabs the operator trims (the Biblioteca's, the panel beside the
-// Prévia): only the tabs that show. Which ones is the (+) in the panel's
-// header (TabsPlus).
+// Prévia): only the tabs that show. Which ones is the chooser (the eye) in
+// the panel's header (TabsPlus).
 export function TabRow({ tabs, active, onPick }) {
     const anyOn = tabs.some((t) => t.id === active);
     return (
@@ -18,14 +19,17 @@ export function TabRow({ tabs, active, onPick }) {
     );
 }
 
-// The (+) of a trimmable tab row, in its panel's header at the level of the
-// title like every module's + (owner 2026-10-16, Rodada E1): it lists every
-// tab with check marks (TabsMenu in Popovers.jsx; src/lib/console/panelTabs.js)
-// and carries `data-tabs-plus` so that list opens under it.
+// The chooser of a trimmable tab row, in its panel's header at the level of
+// the title (Rodada E1): it lists every tab with check marks (TabsMenu in
+// Popovers.jsx; src/lib/console/panelTabs.js) and carries `data-tabs-plus`
+// so that list opens under it. Its glyph is the eye, the sign of Ver in the
+// top bar (owner's pick, Rodada H, H1): it says "what shows here", never
+// "add" — the + of a panel adds content.
 export function TabsPlus({ row, onMenu, menuOpen = false }) {
+    const label = `${TABS_MENU_TITLE[row] || "Mostrar aqui"}…`;
     return (
         <button type="button" className={`kx-btn kx-btn-icon kx-t tabs-plus ${menuOpen ? "is-on" : ""}`} data-tabs-plus={row} aria-expanded={menuOpen} aria-haspopup="menu"
-            title="Escolher as abas que aparecem aqui" aria-label="Escolher as abas" onClick={onMenu}><Icon name="plus" /></button>
+            title={label} aria-label={label} onClick={onMenu}><Icon name="eye" /></button>
     );
 }
 
@@ -107,9 +111,9 @@ function AirHistory({ c, onPrepare, onGo }) {
 }
 
 // The panel beside the Prévia (owner's design 2026-10-13, the console
-// audit): one tab at a time, the ones the operator checked in its (+). Its
-// thin header (title "Painel", the + at its right) is Rodada E1's; the
-// fold chevron (`fold`, the dock's: Panel) right of the +, Rodada F4.
+// audit): one tab at a time, the ones the operator checked in its chooser. Its
+// thin header (title "Painel", the chooser at its right) is Rodada E1's;
+// the fold chevron (`fold`, the dock's: Panel) right of it, Rodada F4.
 export default function TabsPanel({ c, data, tabs, active, setActive, onMenu, menuOpen, items, prevItemId, airItemId, service, onSaveNotes, onPrepare, onGo, fold }) {
     const strip = foldStrip(fold);
     return (

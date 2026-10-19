@@ -28,7 +28,7 @@ test("transitions: each choice of the rows reaches the op", () => {
     assert.deepEqual(withTransitions("media.playlist", {}, prefsOf({ media_transition_ms: 2000 })).transition, { mode: "fade", ms: 2000 });
     assert.deepEqual(withTransitions("clear", {}, prefsOf({ clear_transition: "cut" })), {}, "Corte: no fade");
     assert.equal(withTransitions("content.clear", {}, prefsOf({ clear_transition_ms: 1000 })).fade, 1000);
-    // Tela preta e Logo off, or Ao tirar da tela on Corte: they cut.
+    // Tela preta e Logo off, or Ao tirar do ar on Corte: they cut.
     assert.deepEqual(withTransitions("screen.set", { mode: "logo" }, prefsOf({ screen_transition: false })), { mode: "logo" });
     assert.deepEqual(withTransitions("screen.set", { mode: "logo" }, prefsOf({ clear_transition: "cut" })), { mode: "logo" });
     assert.equal(clearFade(prefsOf({ clear_transition: "cut", clear_transition_ms: 600 })), 0);
@@ -55,7 +55,7 @@ test("transitions: other ops, no prefs and the sender's own choice are left alon
     assert.equal(withTransitions("clear", { fade: 1000 }, defaults).fade, 1000);
 });
 
-test("transitions: the eye's picture follows Ao tirar da tela, and never hushes", () => {
+test("transitions: the eye's picture follows Ao tirar do ar, and never hushes", () => {
     assert.deepEqual(withTransitions("media.toAudio", {}, defaults), { fade: 300 });
     // Mostrar o vídeo puts a video on the screen: it enters (Rodada G5).
     assert.deepEqual(withTransitions("audio.toMedia", {}, defaults), { fade: 500 });

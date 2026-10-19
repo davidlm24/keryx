@@ -262,7 +262,7 @@
       "airItemId": "id | null (v1)",
       "nextItemId": "id | null (v1)",
       "backItemId": "id | null: the item Voltar ao anterior goes back to",
-      "items": "[<= limits.items] { id, title (<= limits.itemTitle), type, section (v1), at, dur, st: ok | missing | syncing | blocked }",
+      "items": "[<= limits.items] { id, title (<= limits.itemTitle), type, section (v1), at, dur, st: ok | missing | syncing | blocked, progress?: str (<= 160) a PDF's pages in the console's words, \"Preparando páginas 3/12\" or why they failed; only while there is something to say }",
       "truncated": "bool: items stopped at limits.items",
       "bible": "{ version, installed: str[] }",
       "timers": "[<= limits.timers] the timers prontos { id, minutes }: 5, 10, 15, 30 and 60 min, then the church's TimerPreset rows (timerPresets.js)",
@@ -273,7 +273,7 @@
       "total": "int",
       "skip": "int",
       "ready": "bool: false while the console's lists are still loading",
-      "rows": "[<= limits.libraryPage] { id, title, sub, dur, fav, st: ok | missing | syncing | blocked, thumb: a relative /media/... poster or null }"
+      "rows": "[<= limits.libraryPage] { id, title, sub, dur, fav, st: ok | missing | syncing | blocked, thumb: a relative /media/... poster or null, progress?: str as in state.items }"
     },
     "passage": { "reference": "str", "text": "str (<= limits.passageText)", "version": "str" },
     "end": { "undo": "bool: Desfazer can put it back" },

@@ -12,7 +12,6 @@ import { themeForKind, withThemeDefaults, themeBackgroundArgs, themeName } from 
 import { layerLocked, followIndex } from "@shared/live-state.mjs";
 import { fundoOps } from "@/lib/console/backgroundSpec";
 import { withTransitions } from "@/lib/console/transitions";
-import { stageBlock } from "@/lib/presentation";
 import { pagesProgressOf } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs } from "@/hooks/useUser";
 import { liveIdleLook } from "@shared/idleLook.mjs";
@@ -253,9 +252,9 @@ export function useConsole() {
     const setPrev = useCallback((stage) => {
         if (stage && pendingUrls(stage, pending, PENDING_SKIP).length) say(`${stage.title || "O arquivo"} ainda está baixando da sincronização · vai ao ar quando terminar.`);
         else if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);
-        // A PowerPoint, or a PDF whose pages are being made — or could not
-        // be (presentation.js).
-        else if (stage?.blocked) say(stageBlock(stage, pagesProgressOf(stage.args?.id)));
+        // A PowerPoint, or a PDF whose pages are being made (or could not
+        // be): no toast, the Prévia says it over its screen and keeps saying
+        // it until the pages are ready (presentationPreviewStatus; Rodada H).
         setPrevState(stage);
     }, [say, pending]);
 

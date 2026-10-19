@@ -398,8 +398,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   too: Buscar… (the palette), Seção…, Texto…, Timer… (a ServiceItem under
   the item in the Prévia, else at the end) and Planejar o culto…; the
   Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory);
-  the search row has a button beside the ☆, "Abrir a Biblioteca de
-  mídia" (the Mídia page, every tab), and no (+) holds the lines-per-slide
+  the search row is Buscar · ☆ · (+) Adicionar; **the Biblioteca's header
+  holds the doors** (owner's pick, Rodada H, H1): its title, "Abrir a
+  Biblioteca de mídia" (the Mídia page, every tab), the chooser of what
+  shows (the eye) and the fold chevron, 24 px, 8 px apart; no (+) holds the lines-per-slide
   chips any more ("Ao importar letras" lives in Configurações › Bíblia e
   músicas; Rodada G1). **Hover buttons are glyphs only** (owner, Rodada
   G1): the word stays inside the button as screen-reader text (`.kx-act-l`,
@@ -413,9 +415,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   New glyphs go in Icon.jsx's EXTRA, in the set's style. **A row with hover buttons is one line** (Rodada G1, owner
   2026-10-19): in Confortável too, its title ends in "…" (the whole title
   is its tooltip) — the Biblioteca, the Setlist, the palette, the Mídia and
-  the planner (one rule, `.kx-row:has(> .kx-row-acts)` in console.css).
+  the planner, its item rows too (one rule, `.kx-row:has(> .kx-row-acts)`
+  and `.pl-item` in console.css).
   A song's row has no glyph (media and avisos keep theirs); under its
-  title the artist, the key and the length as the Biblioteca header (+)'s
+  title the artist, the key and the length as the Biblioteca header chooser's
   "Nas letras" checks say (Mostrar o artista / o tom / a duração:
   `layout.libShowArtist` off, `libShowKey`/`libShowLength` on, per
   computer); the artist is always in the tooltip; sincronizada, parece repetida
@@ -804,8 +807,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Mídia keep theirs). Camadas in the tray is a drawer opened from the
   Programa's pill (or its "…"). The old `order`/`stacks`/widths are only read to build the first
   dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca have
-  their (+) in the panel's header**, at the level of the title like every
+  their chooser in the panel's header**, at the level of the title like every
   module's + (Rodada E1, `TabsPlus` in TabsPanel.jsx, `data-tabs-plus`;
+  its glyph is the eye, the sign of Ver — "Mostrar na Biblioteca…" /
+  "Mostrar neste painel…", owner's pick, Rodada H: a + adds content;
   the tabs panel got a thin header of its own, "Painel"; the tab rows
   carry only tabs) (the Biblioteca's also offers Áudios and
   Apresentações, off at first: shown, they take their files out of Vídeos
@@ -1115,7 +1120,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   ~1920 px wide, uploads each through `UploadFile` and saves
   `Media.pages` (`[{ url, w, h }]`, page 1 = `thumbnail_url`):
   `src/lib/pdfPagesCapture.js`, run by `usePagesBackfill` (old rows too; the
-  rows say "Preparando páginas 7/12", `PagesMeta`). On air a PDF is a
+  rows say "Preparando páginas 7/12", `PagesMeta`, with a thin bar along
+  the row's whole bottom edge, `PagesBar`). While a file is still being
+  copied its row is already listed, "Copiando o arquivo…" (`copyingNow` in
+  mediaImport.js, `copyingRows` in libraryRows.js, tested), and the real
+  row takes its place (Rodada H, HB). Only the console makes the pages: a
+  detached Mídia gets their progress from it (`pages.progress`, and
+  Tentar de novo goes back as `pages.retry`, janelaRelay.js) and the
+  phone in its rows' `progress` (remote.js `pagesField`). Putting a PDF
+  that cannot go yet in the Prévia makes no toast: the Prévia says it. On air a PDF is a
   content of kind **"presentation"** (`stageFromMedia` →
   `presentationStage`, `src/lib/presentation.js`, tested): one slide per
   page (`{ image_url, label: "Página n" }`, `ref.mediaId`), so ←/→,

@@ -6,6 +6,7 @@ import { LOCKED_SAY } from "@/components/console/useConsole";
 import { reportedDuration } from "@/components/console/meterStore";
 import { installedVersions } from "@/lib/bibleText";
 import { getPrefs } from "@/hooks/useUser";
+import { pagesProgressOf } from "@/hooks/usePagesBackfill";
 
 const STAGES = { song: stageFromSong, media: stageFromMedia, piece: stageFromPiece, material: stageFromMaterial, verses: stageFromVerses, tool: stageFromTool };
 
@@ -28,6 +29,8 @@ export function useRemote({ c, data, service, items, rows, airItemId, airNow, ne
         app: () => app.current,
         bible: async () => ({ version: getPrefs().bible_version || "", installed: Object.keys(await installedVersions()) }),
         reportedDuration,
+        // How far each PDF's pages are: the phone says "Preparando páginas 3/12".
+        progressOf: pagesProgressOf,
         callOp: c.callOp, liveOp: c.liveOp, clearText: c.clearText, say: c.say, end: c.end,
         // Desfazer as the console's Ctrl+Z: the toast's own, when it has one.
         undo: () => { const a = c.toastAction; if (!a?.undo) return false; a.run(); return true; },

@@ -56,3 +56,21 @@ test("what arrives is a plain copy, and never too big", () => {
     loop.self = loop;
     assert.equal(checkMessage({ type: "stage.send", stage: loop }, "janela"), null, "a cycle cannot travel");
 });
+
+test("the console tells detached pages how far each PDF's pages are; a page asks it to try again", () => {
+    const pages = { m1: { done: 3, total: 12 }, m2: { done: 0, total: 0 }, m3: { error: { cause: "o arquivo está corrompido ou incompleto", retryable: true } } };
+    assert.deepEqual(checkMessage({ type: "pages.progress", pages }, "console"), { type: "pages.progress", pages });
+    assert.ok(checkMessage({ type: "pages.progress", pages: {} }, "console"), "nothing being made");
+    assert.ok(checkMessage({ type: "pages.progress", pages: { m4: { error: { cause: "x", retryable: false, terminal: "PDF protegido por senha." } } } }, "console"));
+    assert.equal(checkMessage({ type: "pages.progress", pages }, "janela"), null, "only the console makes pages");
+    assert.equal(checkMessage({ type: "pages.progress" }, "console"), null, "a map");
+    assert.equal(checkMessage({ type: "pages.progress", pages: [] }, "console"), null);
+    assert.equal(checkMessage({ type: "pages.progress", pages: { m1: { done: 5, total: 2 } } }, "console"), null, "done never passes total");
+    assert.equal(checkMessage({ type: "pages.progress", pages: { m1: { done: "1", total: 2 } } }, "console"), null);
+    assert.equal(checkMessage({ type: "pages.progress", pages: { m1: { error: "falhou" } } }, "console"), null, "a failure is the console's own shape");
+    const many = Object.fromEntries(Array.from({ length: 201 }, (_, i) => [`m${i}`, { done: 0, total: 1 }]));
+    assert.equal(checkMessage({ type: "pages.progress", pages: many }, "console"), null, "200 at most");
+    assert.deepEqual(checkMessage({ type: "pages.retry", id: "m3" }, "janela"), { type: "pages.retry", id: "m3" });
+    assert.equal(checkMessage({ type: "pages.retry", id: "m3" }, "console"), null);
+    assert.equal(checkMessage({ type: "pages.retry" }, "janela"), null);
+});

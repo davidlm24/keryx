@@ -4,7 +4,8 @@ import Icon from "./Icon";
 import { Panel, Btn, IconBtn, Field, Row, Empty, WinBar, onTabsKey, tabStop } from "./kx";
 import { importMediaFiles, importSummary, mediaFromYouTube } from "@/lib/mediaImport";
 import { playsInSequence } from "@/lib/presentation";
-import PagesMeta from "./PagesMeta";
+import PagesMeta, { PagesBar, RowBar } from "./PagesMeta";
+import { useCopyingFiles } from "@/hooks/useCopyingFiles";
 import { stageFromMedia, stageFromMediaList, stageFromAudioList, liveStageId } from "@/lib/console/stage";
 import { SEND_LABEL, sendTip } from "@/lib/console/copy";
 import { setDragStage, clearDragStage, STAGE_MIME } from "@/lib/console/dragStage";
@@ -13,7 +14,7 @@ import { setDragGhost, stageGhost } from "./dragGhost";
 import { PENDING_SAY } from "@/lib/pendingMedia";
 import { useContextMenu } from "./ContextMenu";
 import { gridStep, columnsOf } from "@/lib/console/gridNav";
-import { mediaIcon } from "@/lib/console/libraryRows";
+import { mediaIcon, copyingRows } from "@/lib/console/libraryRows";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
 const inCat = (m, cat) => cat === "todas" || (cat === "image" ? m.type === "image" || m.type === "gif" : cat === "doc" ? m.type === "pdf" || m.type === "powerpoint" : m.type === cat);
@@ -59,6 +60,12 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
     useEffect(() => { try { localStorage.setItem("keryx.media.view", view); } catch { /* not remembered */ } }, [view]);
     const shown = useMemo(() => media.filter((m) => inCat(m, cat) && (!category || (m.category || "other") === category) && match(ql, m.title, m.description, KIND[m.type])), [media, cat, category, ql]);
     const picked = shown.filter((m) => sel.includes(m.id));
+    // The files being copied: a row (a card in the grid) each, "Copiando o
+    // arquivo…", until the real row takes its place (Rodada H, HB). The
+    // upload list above stays: it says the queue and what failed.
+    const copyingFiles = useCopyingFiles();
+    const CAT_KINDS = { video: ["video"], image: ["image", "gif"], audio: ["audio"], doc: ["pdf", "powerpoint"] };
+    const copies = copyingRows(copyingFiles, media, { kinds: CAT_KINDS[cat] || null, q: ql });
     const totalSize = media.reduce((a, m) => a + (m.size || 0), 0);
     const hasDocs = media.some((m) => inCat(m, "doc"));
     useEffect(() => { setSel((s) => s.filter((id) => media.some((m) => m.id === id))); }, [media]);
@@ -291,9 +298,19 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                     </div>
                 )}
                 <div className="mv-body" onClick={(e) => { if (e.target === e.currentTarget) setSel([]); }}>
-                    {!shown.length && <Empty icon="media" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Enviar arquivos… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
-                    {view === "grid" && shown.length > 0 && (
+                    {!shown.length && !copies.length && <Empty icon="media" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Enviar arquivos… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
+                    {view === "grid" && (shown.length > 0 || copies.length > 0) && (
                         <div className="mv-grid" ref={gridRef}>
+                            {copies.map((p) => (
+                                <div key={p.key} className="mv-cell is-copying">
+                                    <span className="mv-th kx-t">
+                                        <span className="mv-th-t"><Icon name={mediaIcon(p)} size={22} />{p.meta}</span>
+                                        <span className="mv-lab">{KIND[p.type] || p.type}</span>
+                                        <RowBar />
+                                    </span>
+                                    <span className="mv-title" title={p.title}>{p.title}</span>
+                                </div>
+                            ))}
                             {shown.map((m) => (
                                 <div key={m.id} className="mv-cell" data-media-id={m.id} onContextMenu={fileMenu(m)}>
                                     <button type="button" className={`mv-th kx-t ${state(m)}`} title={m.title} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} {...drag(m)}>
@@ -308,6 +325,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                         )}
                                         <span className="mv-lab">{isYouTube(m) ? "YouTube" : KIND[m.type] || m.type}</span>
                                         {(m.duration > 0 || isYouTube(m)) && <span className="mv-n">{isYouTube(m) ? "link" : mmss(m.duration)}</span>}
+                                        {m.type === "pdf" && <PagesBar id={m.id} />}
                                     </button>
                                     {renaming === m.id ? renameField(m) : <span className="mv-title" onDoubleClick={() => setRenaming(m.id)}>{m.title}</span>}
                                     {isDoc(m) && !m.missing && <span className="kx-meta mv-sub"><PagesMeta row={m} /></span>}
@@ -316,6 +334,16 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             ))}
                         </div>
                     )}
+                    {view === "list" && copies.map((p) => (
+                        <div key={p.key} className="kx-row kx-t mv-row is-copying">
+                            <span className="kx-glyph"><Icon name={mediaIcon(p)} /></span>
+                            <div className="kx-row-main">
+                                <div className="kx-row-title" title={p.title}>{p.title}</div>
+                                <div className="kx-row-meta">{[KIND[p.type], p.meta].filter(Boolean).join(" · ")}</div>
+                            </div>
+                            <RowBar />
+                        </div>
+                    ))}
                     {view === "list" && shown.map((m) => (
                         <div key={m.id} className={`kx-row kx-t mv-row ${state(m)}`} role="button" tabIndex={0} data-media-id={m.id} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} onContextMenu={fileMenu(m)} {...drag(m)}>
                             <span className="kx-glyph"><Icon name={mediaIcon(m)} /></span>
@@ -325,11 +353,12 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                             </div>
                             <span className="kx-row-time kx-hide-on-hover">{m.duration ? mmss(m.duration) : ""}</span>
                             <span className="kx-row-acts">
-                                {m.syncing ? null : m.missing ? <Btn onClick={(e) => { e.stopPropagation(); locate(m); }}>Localizar…</Btn> : <>
-                                    <Btn onClick={(e) => { e.stopPropagation(); setSel([m.id]); setRenaming(m.id); }}>Renomear</Btn>
-                                    <Btn onClick={(e) => { e.stopPropagation(); send(m); }} title="Enviar ao ar">Tocar</Btn>
+                                {m.syncing ? null : m.missing ? <Btn onClick={(e) => { e.stopPropagation(); locate(m); }} title="Localizar o arquivo…" aria-label={`Localizar o arquivo de ${m.title}`}><span className="kx-act-i"><Icon name="folder" /></span><span className="kx-act-l">Localizar…</span></Btn> : <>
+                                    <Btn onClick={(e) => { e.stopPropagation(); setSel([m.id]); setRenaming(m.id); }} title="Renomear · F2" aria-label={`Renomear ${m.title}`}><span className="kx-act-i"><Icon name="edit" /></span><span className="kx-act-l">Renomear</span></Btn>
+                                    <Btn onClick={(e) => { e.stopPropagation(); send(m); }} title={sendTip(false)} aria-label={`${SEND_LABEL}: ${m.title}`}><span className="kx-act-i"><Icon name="play" /></span><span className="kx-act-l">Tocar</span></Btn>
                                 </>}
                             </span>
+                            {m.type === "pdf" && <PagesBar id={m.id} />}
                         </div>
                     ))}
                 </div>
