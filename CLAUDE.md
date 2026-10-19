@@ -1046,6 +1046,39 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the console, output windows and network screens break lines alike. Don't
   add a web-font `@import`; a new font needs its file and license (OFL in
   `public/fonts/`). `src/lib/fonts.test.mjs` checks this.
+  **The church's fonts** (owner 2026-10-19, Rodada HF1, mockup H3
+  `pc_arquivo`): a theme's `font_family` is a KERYX key (`FONT_MAP`: sans =
+  Geist, the other seven the device's fonts, "· do aparelho") or the
+  **family name of a font the church brought in** — from the PC's installed
+  fonts (Local Font Access, `window.queryLocalFonts`, the "Fontes do
+  computador" dialog, `editor/LocalFontsDialog.jsx`; it needs a click, so
+  the list is read as the dialog opens) or from a font file (.ttf/.otf/
+  .woff2/.woff). Either way the file is **copied into the media library**
+  (`UploadFile`, as bytes) as **Media rows of category `font`, one per
+  face** (Regular, Bold, Italic, Bold Italic at most; `Media.font = {
+  family, weight, style, face, origin }`, `title` = the family), so it syncs
+  between the church's computers like any media and `electron/server.cjs`
+  serves it to every output window and network screen; every window
+  declares them with one `@font-face` each (`<FontFaces/>` in App.jsx,
+  `src/hooks/useFonts.js`, `fontFaceCss`), and `fontStack(family)`
+  (`src/lib/fonts.js`, tested — the helpers, the magic-byte `fontKind`, the
+  faces' weights) is what every renderer and still draws (a copy not here
+  yet draws Geist). KERYX never downloads a font; the dialog's licence line
+  says the Windows and bought fonts have their own licence. Font rows are
+  out of every media list (`useLibrary().media`, the Mídia, the editors'
+  pickers; `isFontMedia`) and listed by `useChurchFonts()` — the picker's
+  "Da igreja" group (`editor/FontPicker.jsx`: KERYX / Da igreja / Trazer,
+  also `FontSelect` in the aviso and song editors) and Configurações ›
+  Temas e fundos › **Fontes da igreja** (Excluir… via useConfirm, refused
+  while a theme names the family). A font dropped in the Mídia is refused
+  (`mediaTypeOf` "font", `FONTS_IN_EDITOR_HINT`); a `.ttc` collection is
+  refused by the copy (`COLLECTION_HINT`), 20 MB is the cap. The
+  `local-fonts` permission is granted only to `/Console` and `/Janela`
+  from the app's origin (`setPermissionCheckHandler` /
+  `setPermissionRequestHandler` in main.cjs), never to an output. Verificar
+  says per church font whether it is copied, still coming (Baixando…) or
+  gone. `useFitWidth` re-measures on `document.fonts` `loadingdone`, so a
+  font that arrives late re-fits the line.
 - **`window.keryxDesktop.*` returns a fresh object on every access**
   (contextBridge). In a component, read it once into a ref; using it as an
   effect or callback dependency directly re-runs the effect on every render.

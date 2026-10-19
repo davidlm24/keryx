@@ -7,13 +7,12 @@ import ScreenRenderer from "@/components/screen/ScreenRenderer";
 import { NOTICE_TYPES, newNotice, noticeLabel } from "@/lib/console/notice";
 import { parseDuration, formatDuration } from "@/lib/songImport";
 import BgChip from "./library/BgChip";
-import { FONT_MAP } from "@/lib/deviceStyles";
 import { stageFromPiece } from "@/lib/console/stage";
+import { FontSelect } from "../editor/FontPicker";
 import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import { useWinCol } from "./winLayout";
 
 const SIZES = [["small", "P"], ["medium", "M"], ["large", "G"], ["xlarge", "GG"], ["xxlarge", "XG"]];
-const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["georgia", "Georgia"], ["times", "Times"], ["arial", "Arial"], ["verdana", "Verdana"], ["mono", "Monoespaçada"], ["cursive", "Cursiva"]];
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const LOGO = [["none", "Sem"], ["top-left", "Alto esq."], ["top-right", "Alto dir."], ["bottom-left", "Baixo esq."], ["bottom-right", "Baixo dir."]];
 const FIELDS = ["type", "title", "text", "subtext", "duration", "text_color", "text_color_2", "font_size", "font_family", "text_effect", "text_position_h", "text_position_v", "show_logo", "logo_position", "sound_alert", "background_image", "background_color", "background_video", "background_audio", "files"];
@@ -190,9 +189,9 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
                         <div className="frm nv-frm">
                             <span className="k">Tamanho</span><Seg small label="Tamanho" value={draft.font_size || "large"} onChange={(v) => set({ font_size: v })} options={SIZES} />
                             <span className="k">Fonte</span>
-                            <select className="pl-input" value={draft.font_family || "sans"} onChange={(e) => set({ font_family: e.target.value })} aria-label="Fonte">
-                                {FONTS.map(([k, label]) => <option key={k} value={k} style={{ fontFamily: FONT_MAP[k] }}>{label}</option>)}
-                            </select>
+                            {/* KERYX's fonts and the church's (Rodada HF1;
+                                new ones are brought in the Editor de temas). */}
+                            <FontSelect value={draft.font_family || "sans"} onChange={(v) => set({ font_family: v })} />
                             <span className="k">Cor</span>
                             <span className="nv-inline">
                                 <input type="color" className="ed-color" value={draft.text_color || "#ffffff"} onChange={(e) => set({ text_color: e.target.value })} aria-label="Cor do texto" />

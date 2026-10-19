@@ -797,6 +797,8 @@ function churchInABox(mediaDir) {
             { title: "Avisos", type: "pdf", file_url: file("Media.file_url", ".pdf", "pdf"), pages: [{ url: file("Media.pages[].url", ".png"), w: 1920, h: 1080 }] },
             { title: "Hino", type: "audio", file_url: file("Media.file_url", ".mp3", "audio"), category: "other" },
             { title: "Fundo", type: "image", file_url: file("Media.file_url", ".jpg", "fundo"), category: "background" },
+            // A church font's face (Rodada HF1): the file travels like any media.
+            { title: "Montserrat", type: "font", category: "font", file_url: file("Media.file_url", ".ttf", "fonte"), font: { family: "Montserrat", weight: "700", style: "italic", face: "Bold Italic", origin: "pc" } },
         ],
         ProjectionTheme: [{
             name: "Natal",

@@ -32,18 +32,8 @@
     "background": { "type": "object", "description": "Fundo do tema, de qualquer tipo ({ kind: image|video|generator|color, value, gen, dim, blur, fit }; src/lib/console/backgroundSpec.js); os campos antigos (background_image, background_generator) continuam escritos ao lado" },
     "font_family": {
       "type": "string",
-      "enum": [
-        "sans",
-        "serif",
-        "mono",
-        "cursive",
-        "arial",
-        "georgia",
-        "times",
-        "verdana"
-      ],
       "default": "sans",
-      "description": "Tipo de fonte"
+      "description": "Tipo de fonte: uma chave do KERYX (sans = Geist; serif, mono, cursive, arial, georgia, times, verdana = fontes do aparelho) ou o nome de família de uma fonte da igreja (Media de categoria font, Rodada HF1)"
     },
     "font_size": {
       "type": "string",

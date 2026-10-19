@@ -1,5 +1,6 @@
 import { keryx } from "@/api/keryxClient";
 import { PPTX_HINT } from "@/lib/presentation";
+import { FONTS_IN_EDITOR_HINT, FONT_EXTENSIONS } from "@/lib/fonts";
 
 // The Media type of a picked file, by MIME type and extension.
 export function mediaTypeOf(file) {
@@ -11,6 +12,8 @@ export function mediaTypeOf(file) {
     if (type.startsWith("image/")) return "image";
     if (/\.pptx?$/i.test(name)) return "powerpoint";
     if (type === "application/pdf" || /\.pdf$/i.test(name)) return "pdf";
+    // A font file is not media: it enters through the Editor de temas (Rodada HF1).
+    if (type.startsWith("font/") || FONT_EXTENSIONS.some((ext) => name.toLowerCase().endsWith(ext))) return "font";
     return "other";
 }
 
@@ -102,14 +105,16 @@ export async function importMediaFiles(files, { title = "", description = "", ca
     setCopying([...copying, ...list.flatMap((file, i) => (mediaTypeOf(file) === "powerpoint" ? [] : [{ key: keyOf(i), name: file.name, title: titleOf(file), type: mediaTypeOf(file), category, waiting: i > 0, rowId: null }]))]);
     for (const [i, file] of list.entries()) {
         onProgress?.(i, list.length, file.name);
-        if (mediaTypeOf(file) === "powerpoint") { refused.push({ name: file.name, message: PPTX_HINT }); continue; }
+        const kind = mediaTypeOf(file);
+        if (kind === "powerpoint") { refused.push({ name: file.name, message: PPTX_HINT }); continue; }
+        if (kind === "font") { refused.push({ name: file.name, message: FONTS_IN_EDITOR_HINT }); continue; }
         try {
             if (i > 0) setCopying(copying.map((c) => (c.key === keyOf(i) ? { ...c, waiting: false } : c)));
             const { file_url } = await keryx.integrations.Core.UploadFile({ file });
             const row = await keryx.entities.Media.create({
                 title: titleOf(file),
                 description,
-                type: mediaTypeOf(file),
+                type: kind,
                 file_url,
                 category,
                 duration: 0,
@@ -138,13 +143,14 @@ export function failureReason(failed = []) {
 }
 
 // What the Mídia says after an import: how many came in, which failed (and
-// why, when it is one reason) and, for PowerPoint files, how to send them as PDF.
+// why, when it is one reason) and, for the files refused (PowerPoint, a
+// font file), what to do instead — each reason once.
 export function importSummary({ created = [], failed = [], refused = [] }, where = "") {
     const parts = [];
     if (created.length || !refused.length) parts.push(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}${where}`);
     if (failed.length) parts.push(`falhou: ${failed.map((x) => x.name).join(", ")}`);
     const why = failureReason(failed);
     if (why) parts.push(why);
-    if (refused.length) parts.push(PPTX_HINT);
+    for (const hint of new Set(refused.map((x) => x.message || PPTX_HINT))) parts.push(hint);
     return parts.join(" · ").replace(/([^.])$/, "$1.");
 }

@@ -4,6 +4,7 @@ import GeneratorBackground from "./GeneratorBackground";
 import AlertBar from "./AlertBar";
 import { mainLayer, currentSlide, nextSlide, toolTime, layerHidden, layerLocked, LAYER_ORDER } from "@shared/live-state.mjs";
 import { FONT_MAP, getTextEffect } from "@/lib/deviceStyles";
+import { fontStack } from "@/lib/fonts";
 import LiveMediaView from "@/components/projection/LiveMediaView";
 import LiveVideo from "@/components/projection/LiveVideo";
 import { noticeTime, fileAt, clockOf } from "@/lib/console/notice";
@@ -264,7 +265,7 @@ const ANIM = { fade: "ks-anim-fade", slide: "ks-anim-slide", zoom: "ks-anim-zoom
 
 function textStyle(style) {
     const color = style.text_color || "#ffffff";
-    const base = { fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans };
+    const base = { fontFamily: fontStack(style.font_family) };
     if (style.text_color_2) {
         return { ...base, backgroundImage: `linear-gradient(to right, ${color}, ${style.text_color_2})`, WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color };
     }
@@ -335,7 +336,12 @@ function useFitWidth(on, deps) {
         ro?.observe(box);
         let alive = true;
         document.fonts?.ready?.then(() => { if (alive) measure(); });
-        return () => { alive = false; ro?.disconnect(); };
+        // A church font that arrives later (its @font-face is declared when
+        // the Media rows load, src/hooks/useFonts.js; its file when the sync
+        // brings it) changes the line's width: measure again.
+        const onLoaded = () => { if (alive) measure(); };
+        document.fonts?.addEventListener?.("loadingdone", onLoaded);
+        return () => { alive = false; ro?.disconnect(); document.fonts?.removeEventListener?.("loadingdone", onLoaded); };
     }, [on, measure]);
     return { textRef, probeRef, fit: on ? fit : { scale: 1, wrap: false } };
 }
@@ -363,7 +369,7 @@ function Content({ content, showTitle = true, still = false }) {
     const body = bible ? verseNodes(slide.text, style.verse_numbers) : chorded ? <ChordedLines chorded={chorded} /> : slide.text;
     return (
         <>
-            {!bible && titled && content.title && <div className="ks-title" style={{ fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }}>{content.title}</div>}
+            {!bible && titled && content.title && <div className="ks-title" style={{ fontFamily: fontStack(style.font_family) }}>{content.title}</div>}
             <div className={`ks-content ks-al-${align} ks-pos-${pos} ${bible ? "ks-bible" : ""}`} style={{ "--ks-size": SIZE_CQW[size], ...(style.text_nudge ? { translate: `0 ${(style.text_nudge * 0.5625).toFixed(2)}cqw` } : {}) }}>
                 <div key={key} className={anim} style={{ display: "contents", ...(style.transition_ms ? { "--ks-tr": `${Math.round(style.transition_ms)}ms` } : {}) }}>
                     {show.labels && !bible && slide.label && <div className="ks-chorus">{slide.label}</div>}
@@ -408,7 +414,7 @@ function activityLook(content, showTitle, still) {
     const style = slideStyle(content);
     const size = SIZES.includes(style.font_size) ? style.font_size : "large";
     return {
-        text: textStyle(style), font: { fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans }, color: style.text_color || "#ffffff", size: SIZE_CQW[size],
+        text: textStyle(style), font: { fontFamily: fontStack(style.font_family) }, color: style.text_color || "#ffffff", size: SIZE_CQW[size],
         titled: style.title === "hide" ? false : style.title === "show" ? true : showTitle, upper: style.text_case === "upper",
         anim: still ? "" : ANIM[style.transition ?? "fade"] ?? "ks-anim-fade",
     };
@@ -416,7 +422,7 @@ function activityLook(content, showTitle, still) {
 
 function Tool({ tool, now }) {
     const style = tool.style || {};
-    const color = { color: style.text_color || "#ffffff", fontFamily: FONT_MAP[style.font_family] || FONT_MAP.sans };
+    const color = { color: style.text_color || "#ffffff", fontFamily: fontStack(style.font_family) };
     if (tool.mode === "freetext") return <div className="ks-tool"><div className="ks-free" style={color}>{tool.text}</div></div>;
     if (tool.mode === "clock") {
         const d = new Date(now);

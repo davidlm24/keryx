@@ -7,6 +7,8 @@ import { useOutputLooks } from "@/hooks/useOutputPref";
 import { backgroundList, sourceOf } from "@/lib/console/backgroundPrefs";
 import { useUser } from "@/hooks/useUser";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
+import { useFontRows } from "@/hooks/useFonts";
+import { isFontMedia, fontFamilies } from "@/lib/fonts";
 
 // What the console reads: the library (songs, media, communication pieces),
 // the services and the chosen service's items, the themes. Each list follows
@@ -68,8 +70,20 @@ export const useServiceTemplates = () => useList("ServiceTemplate", ["name"]).da
 // 2026-10-13): files sent as backgrounds are Media rows of category
 // "background", listed only in the background library (useBackgrounds);
 // `media` is everything else — the Biblioteca's Imagens and Vídeos, the
-// media library, the aviso and layout editors.
+// media library, the aviso and layout editors. The church's fonts (Rodada
+// HF1, category "font", src/lib/fonts.js) are out of every media list the
+// same way: the Editor de temas' Fonte picker and Configurações › Temas e
+// fundos › Fontes da igreja list them (useChurchFonts).
 export const isBackgroundMedia = (m) => m?.category === "background";
+
+// The church's fonts with their files' state (missing, syncing, size):
+// the families for the picker and the settings list, and the rows for the
+// copy (findFontRow). The rows themselves come from the same query every
+// window has (useFontRows, src/hooks/useFonts.js).
+export function useChurchFonts() {
+    const rows = useMediaFiles(useFontRows());
+    return useMemo(() => ({ rows, families: fontFamilies(rows) }), [rows]);
+}
 
 // A list has answered (or failed): before that, an empty list is not
 // "nothing yet" and the Biblioteca shows no empty state (POL-03).
@@ -81,7 +95,7 @@ export function useLibrary() {
     const piecesQ = useList("CommunicationVideo", ["title"]);
     const songs = songsQ.data;
     const allMedia = useMediaFiles(mediaQ.data);
-    const media = useMemo(() => allMedia.filter((m) => !isBackgroundMedia(m)), [allMedia]);
+    const media = useMemo(() => allMedia.filter((m) => !isBackgroundMedia(m) && !isFontMedia(m)), [allMedia]);
     const backgroundMedia = useMemo(() => allMedia.filter(isBackgroundMedia), [allMedia]);
     const pieces = piecesQ.data;
     const themes = useList("ProjectionTheme", ["name"]).data;
