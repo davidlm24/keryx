@@ -93,7 +93,7 @@ anything that changes what is on air (*Enviar ao ar*, *Ir para o item*,
 system's Recortar / Copiar / Colar.
 
 **Menus** (audit C-14/C-15): every menu is one component, `MenuList` in
-`src/components/console/Menu.jsx` (the menu bar, the logo's menu, Ver, the
+`src/components/console/Menu.jsx` (the menu bar, the Menu button's popover, the logo's menu, Ver, the
 (+) menus, right-click menus, the tabs lists, the Bíblia's lists;
 `MenuButton` for a button with its menu). It takes the focus when it opens
 (its first item), ↑/↓ walk it round the ends, Home/End jump, disabled items
@@ -162,13 +162,16 @@ happens without internet.
 ## Layout
 
 **The top bar** (40 px, on `bg-0`, no panel), one line at every width. Left:
-the logo (its menu holds Saídas, Verificar, Atalhos, Novidades, Sobre,
-Atualizar — and, under 1240 px, the whole menu bar), then **KERYX | BÍBLIA**
-(bold caps, no icons, a gold underline on the one on screen — places, not
-commands), a divider, then the menu bar: Culto, Música, Mídia, Ferramentas
-(`MenuBar.jsx`, model in `src/lib/console/menuBar.js`). Right, compact: the
+the logo (its menu is the app's: Configurações, Saídas, Verificar tudo,
+Ajuda — Atalhos, Novidades, Sobre o KERYX —, Atualizar agora when due), then
+**KERYX | BÍBLIA** (bold caps, no icons, a gold underline on the one on
+screen — places, not commands), a divider, then the menu bar: Culto, Música,
+Mídia, Ferramentas (`MenuBar.jsx`, model in `src/lib/console/menuBar.js`).
+Under 1240 px the bar is replaced by a **☰ Menu** button (same container
+query) whose popover stacks the four menus, all open, submenus inline
+(`flattenMenus`). Right, compact: the
 search (at most 320 px), the service clock, the clock, the Saídas status
-("2 telas", the full label in its tooltip), **Ver** (the eye) and the bell.
+("2 telas", the full label in its tooltip), **Ver** (the panels glyph, `panels`) and the bell.
 There is no Telas menu and no screen-action chip in the top bar: the screen
 actions live in the Programa's pill. A new top-level action goes in the menu
 bar's model, not as another icon.
