@@ -11,7 +11,7 @@
 import {
     ArrowLeft, ArrowRight, Bell, Book, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight,
     ChevronUp, ChevronsDownUp, ChevronsUpDown, Circle, Clock, Cloud, Copy, CornerDownLeft, Download,
-    Ellipsis, Eraser, ExternalLink, Eye, EyeOff, Film, Folder, GripVertical, History, Image, Info,
+    Ellipsis, Eraser, ExternalLink, Eye, EyeOff, Film, Folder, Footprints, GripVertical, History, Image, Info,
     Keyboard, Layers, LayoutGrid, LayoutPanelLeft, Library, List, Lock, LockOpen, Megaphone, Menu, Minus, Monitor, Music,
     Palette, Pause, Pencil, Pin, Play, Plus, Power, Presentation, Projector, Redo2, RefreshCw, Save,
     Search, SkipBack, SkipForward, SlidersHorizontal, Square, Star, Tablet, Trash2, TriangleAlert, Tv,
@@ -107,6 +107,7 @@ export const ICON_NODES = {
     grid: LayoutGrid,
     panels: LayoutPanelLeft,
     menu: Menu,
+    steps: Footprints,
     trash: Trash2,
     copy: Copy,
     info: Info,

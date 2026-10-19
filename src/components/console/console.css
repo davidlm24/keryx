@@ -1567,6 +1567,15 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .cfg .cfg-prev-stream { background: linear-gradient(160deg, #3a4a5c, #1b2430 60%, #2c2418); }
 /* Novidades: the release notes after an update. */
 .console .dialog.wn { width: min(560px, calc(100% - 32px)); }
+/* Ajuda › Primeiros passos (Popovers.jsx FirstSteps): numbered steps, each
+   with the button that opens what it names; scrolls on a short window. */
+.console .dialog.fs { width: min(600px, calc(100% - 32px)); top: 50%; max-height: calc(100% - 48px); }
+.console .dialog.fs .fs-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); overflow: auto; min-height: 0; }
+.console .dialog.fs .fs-step { display: grid; grid-template-columns: 24px 1fr auto; align-items: start; gap: var(--space-3); }
+.console .dialog.fs .fs-n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--bg-3); color: var(--fg-1); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.console .dialog.fs .fs-t { font-weight: 600; }
+.console .dialog.fs .fs-p { margin: 2px 0 0; color: var(--fg-2); }
+.console .dialog.fs .fs-step > .kx-btn { margin-top: 0; }
 .console .wn-body { max-height: min(60vh, 520px); overflow: auto; display: flex; flex-direction: column; gap: var(--space-3); padding-right: var(--space-1); }
 .console .wn-ver { display: flex; flex-direction: column; gap: 6px; }
 .console .wn-v { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }

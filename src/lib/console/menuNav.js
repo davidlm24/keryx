@@ -28,7 +28,7 @@ const bare = (s) => String(s || "").normalize("NFD").replace(/\p{M}/gu, "").toLo
 // The menu bar's access keys (Alt + the letter, as in a Windows program; the
 // letter is underlined only while Alt is held, so the bar reads as before).
 // Mídia takes its D: M is Música's.
-export const ACCESS_KEYS = { culto: "c", musica: "m", midia: "d", ferramentas: "f" };
+export const ACCESS_KEYS = { culto: "c", musica: "m", midia: "d", ferramentas: "f", ajuda: "a" };
 
 // The label split around its access letter, for the underline:
 // -> [before, letter, after] (the letter "" when the label lacks it).

@@ -4,10 +4,10 @@ import { buildMenus, flattenMenus, songInHand, nextMenu, MENU_IDS } from "./menu
 
 const find = (menus, id, label) => menus.find((m) => m.id === id).items.find((it) => it.label === label);
 
-test("the bar: the four menus of the owner's pick, in order (Rodada D4, A; O topo; E0)", () => {
+test("the bar: the menus of the owner's picks, in order (Rodada D4, A; E0; M0)", () => {
     const menus = buildMenus({});
-    // Ver is the eye beside the bell, Ajuda is in the logo's menu (owner 2026-10-15).
-    assert.deepEqual(menus.map((m) => m.label), ["Culto", "Música", "Mídia", "Ferramentas"]);
+    // Ajuda is the bar's last menu since Rodada M0 (owner 2026-10-20); Ver stays beside the bell.
+    assert.deepEqual(menus.map((m) => m.label), ["Culto", "Música", "Mídia", "Ferramentas", "Ajuda"]);
     assert.deepEqual(menus.map((m) => m.id), MENU_IDS);
     // Where each thing lives (the artifact's table).
     for (const [id, labels] of Object.entries({
@@ -15,11 +15,12 @@ test("the bar: the four menus of the owner's pick, in order (Rodada D4, A; O top
         musica: ["Nova música", "Buscar letras na internet…", "Importar uma pasta…", "Sincronizar a música…", "Letra automática", "Temas"],
         midia: ["Mídia", "Enviar arquivos…", "Link do YouTube…", "Fundos"],
         ferramentas: ["Avisos", "Novo aviso", "Aviso rápido…", "Timers", "Escola bíblica", "Relatórios"],
+        ajuda: ["Primeiros passos", "Atalhos", "Novidades", "Verificar tudo", "Salvar diagnóstico…", "Abrir a pasta de dados", "Verificar atualização", "Sobre o KERYX"],
     })) for (const l of labels) assert.ok(find(menus, id, l), `${id} › ${l}`);
-    // No Telas menu (owner 2026-10-16): the screens' actions are the top
-    // bar's chip, the logo's menu and the Saídas popover, never the bar.
+    // No Telas menu (owner 2026-10-16): the screens' actions are the
+    // Programa's pill, the logo's menu and the Saídas popover, never the bar.
     const all = menus.flatMap((m) => m.items.map((it) => it.label));
-    for (const l of ["Saídas", "Travar telas", "Tela preta", "Logo", "Limpar texto", "Telas e saídas", "Verificar tudo"]) assert.ok(!all.includes(l), l);
+    for (const l of ["Saídas", "Travar telas", "Tela preta", "Logo", "Limpar texto", "Telas e saídas"]) assert.ok(!all.includes(l), l);
 });
 
 test("items say their state and act through the console", () => {
@@ -59,12 +60,41 @@ test("what is off when there is nothing to act on", () => {
     assert.equal(find(paused, "musica", "Letra automática").sub[1].label, "Retomar");
 });
 
+test("Ajuda: the update item, the help key and what only the desktop does", () => {
+    const calls = [];
+    const act = new Proxy({}, { get: (_t, name) => (...args) => calls.push([name, ...args]) });
+    const ajuda = (ctx) => buildMenus({ act, ...ctx }).find((m) => m.id === "ajuda").items;
+    const at = (items, label) => items.find((it) => it.label === label);
+    // In a browser preview: no data folder, no diagnostics, no updater.
+    const web = ajuda({});
+    for (const l of ["Salvar diagnóstico…", "Abrir a pasta de dados", "Verificar atualização"]) {
+        assert.equal(at(web, l).disabled, true, l);
+        assert.equal(at(web, l).title, "Só no aplicativo do computador", l);
+    }
+    const desk = ajuda({ desktop: true, helpKey: "?", update: { status: "idle" } });
+    assert.equal(at(desk, "Atalhos").kbd, "?");
+    assert.equal(at(ajuda({ desktop: true }), "Atalhos").kbd, undefined, "letter keys off: no hint");
+    assert.equal(at(desk, "Salvar diagnóstico…").disabled, false);
+    assert.equal(at(desk, "Verificar atualização").disabled, false);
+    assert.equal(at(ajuda({ desktop: true, update: { status: "disabled" } }), "Verificar atualização").disabled, true);
+    // An update due replaces Verificar atualização (O topo's wording kept).
+    const due = ajuda({ desktop: true, update: { status: "available", version: "0.3.0" } });
+    assert.equal(at(due, "Verificar atualização"), undefined);
+    assert.equal(at(due, "Atualizar agora").kbd, "0.3.0");
+    const down = ajuda({ desktop: true, update: { status: "downloading", version: "0.3.0", percent: 40 } });
+    assert.equal(at(down, "Atualizando…").kbd, "40%");
+    for (const l of ["Primeiros passos", "Atalhos", "Novidades", "Verificar tudo", "Salvar diagnóstico…", "Abrir a pasta de dados", "Verificar atualização", "Sobre o KERYX"]) at(desk, l).onSelect();
+    at(due, "Atualizar agora").onSelect();
+    assert.deepEqual(calls, [["firstSteps"], ["shortcuts"], ["whatsNew"], ["verify"], ["diagnostics"], ["dataDir"], ["updateCheck"], ["settings", "sobre"], ["updateNow"]]);
+});
+
 test("the song in hand and moving between menus", () => {
     assert.equal(songInHand({ id: "song:a1" }, null), "a1");
     assert.equal(songInHand({ id: "passage:x" }, { content: { kind: "lyrics", ref: { songId: "b2" } } }), "b2");
     assert.equal(songInHand(null, { content: { kind: "bible", ref: {} } }), null);
-    assert.equal(nextMenu("culto", -1), "ferramentas");
-    assert.equal(nextMenu("ferramentas", 1), "culto");
+    assert.equal(nextMenu("culto", -1), "ajuda");
+    assert.equal(nextMenu("ferramentas", 1), "ajuda");
+    assert.equal(nextMenu("ajuda", 1), "culto");
     assert.equal(nextMenu("x", 1), "culto");
 });
 
@@ -88,8 +118,8 @@ test("flattenMenus: no item of the bar is lost (the logo's menu once lost 14 of 
     // The empty bar loses nothing either (the placeholder rows).
     for (const l of labelsOf(buildMenus({}).flatMap((m) => m.items))) assert.ok(flatLabels(flattenMenus(buildMenus({}))).includes(l), l);
     // Menus are stacked: head first, a separator between menus.
-    assert.deepEqual(flat.filter((it) => it.head != null && !it.minor).map((it) => it.head), ["Culto", "Música", "Mídia", "Ferramentas"]);
-    assert.equal(flat.filter((it) => it.sep).length >= 3, true);
+    assert.deepEqual(flat.filter((it) => it.head != null && !it.minor).map((it) => it.head), ["Culto", "Música", "Mídia", "Ferramentas", "Ajuda"]);
+    assert.equal(flat.filter((it) => it.sep).length >= 4, true);
 });
 
 test("flattenMenus: submenus inline, state carried over, same handlers", () => {

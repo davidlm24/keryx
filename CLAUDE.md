@@ -606,10 +606,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   **The top bar's left side** (owner 2026-10-15, Rodada D4 + "O topo", pick
   B): the logo, then **KERYX | BÍBLIA** (bold caps, no icons, gold
   underline — places, not commands), a divider, then **the menu bar**: Culto, Música,
-  Mídia, Ferramentas (`MenuBar.jsx`; the model is
+  Mídia, Ferramentas, Ajuda (`MenuBar.jsx`; the model is
   `src/lib/console/menuBar.js`, tested). **There is no Telas menu** (owner
   2026-10-16, Rodada E0): Tela preta, Logo and Limpar are the Programa's
-  pill, Saídas and Verificar the logo's menu, Travar telas and Telas e
+  pill, Saídas the logo's menu, Verificar tudo Ajuda's, Travar telas and Telas e
   saídas the Saídas popover — don't put it back. Its open menu is the console's
   `open` (`"mb:<id>"`): Esc and the scrim close it, pointing at another
   menu switches, ← / → walk them. Every item is something the console
@@ -618,13 +618,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Retomar; Mídia › Enviar arquivos… / Link do YouTube… open the Mídia on
   that step). **Ver stays beside the bell, with the panels glyph**
   (`panels`, Lucide layout-panel-left; the eye is only for the choosers of
-  what to show) and **the logo's menu is the app's** (owner 2026-10-19,
-  Rodada M0 "app"): KERYX — Configurações, Saídas, Verificar tudo —, Ajuda —
-  Atalhos, Novidades, Sobre o KERYX — and Atualizar agora when an update is
-  due; never a page of the content (those are the bar's). **Under 1240 px the
+  what to show). **Ajuda is the bar's last menu** (owner 2026-10-20,
+  Rodada M0; Alt+A): Primeiros passos (a dialog, `firstSteps.js`, tested:
+  seven steps, each with the button that opens what it names, keys per Teclas
+  de uma letra), Atalhos, Novidades · Verificar tudo, Salvar diagnóstico…,
+  Abrir a pasta de dados (the `system` bridge's `diagnostics`/`openDataDir`,
+  as in Backup e atualizações; off in the browser preview) · Atualizar agora
+  while an update is due, else Verificar atualização, and Sobre o KERYX.
+  **The logo's menu is the app's** (owner 2026-10-19, Rodada M0 "app"):
+  Configurações, Saídas, Sobre o KERYX and Atualizar agora when due; never a
+  page of the content (those are the bar's). **Under 1240 px the
   bar folds away and a ☰ Menu button takes its place** (`.tb-menubtn`, same
   container query in console.css: one source for the width): `open === "menus"`,
-  ONE popover (`MenusPop`) with the four menus stacked and all open, a
+  ONE popover (`MenusPop`) with the bar's menus stacked and all open, a
   submenu inline under its parent, the culto's services capped at 5 + "Todos
   os cultos…"; it is `flattenMenus(buildMenus(ctx))` (menuBar.js, tested: no
   item of the bar can be lost), so a new top-level action goes in the bar's
