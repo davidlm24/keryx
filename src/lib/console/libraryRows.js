@@ -1,7 +1,8 @@
 // What a song's row in the Biblioteca says (Rodada G1, owner's pick B):
-// the title on one line, a second line with only the key and the length —
-// the artist first when "Mostrar o artista" is on (layout.libShowArtist,
-// the header's (+)) — and the flags as small badges at the end of the row,
+// the title on one line, a second line with the artist, the key and the
+// length, each as the header's (+) says (Mostrar o artista / o tom / a
+// duração: layout.libShowArtist, off at first, libShowKey and
+// libShowLength, on) — and the flags as small badges at the end of the row,
 // which the hover buttons replace. The artist always rides in the tooltip.
 
 export const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
@@ -16,11 +17,12 @@ export const SONG_BADGES = {
 const isSynced = (song) => (song?.slides || []).some((x) => Number.isFinite(x?.start));
 
 // song: the Song row; duplicate: it looks repeated (shared/syncDuplicates.mjs);
-// syncing: its playback has not arrived from the sync yet; showArtist: the option.
-export function songRow(song, { duplicate = false, syncing = false, showArtist = false } = {}) {
+// syncing: its playback has not arrived from the sync yet; showArtist,
+// showKey, showLength: the options.
+export function songRow(song, { duplicate = false, syncing = false, showArtist = false, showKey = true, showLength = true } = {}) {
     const s = song || {};
     const artist = String(s.artist || "").trim();
-    const meta = [showArtist && artist, s.song_key, s.duration && mmss(s.duration)].filter(Boolean).join(" · ");
+    const meta = [showArtist && artist, showKey && s.song_key, showLength && s.duration && mmss(s.duration)].filter(Boolean).join(" · ");
     const badges = [
         syncing && SONG_BADGES.syncing,
         isSynced(s) && SONG_BADGES.synced,

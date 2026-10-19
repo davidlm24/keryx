@@ -214,9 +214,10 @@ export function Outputs({ open, setOpen, health, locked, onLock, onOpen, onClose
 // cannot go. Under the (+), its right edge on the button's — its left edge
 // near the window's left (the Biblioteca), above it when the window has no
 // room below (the panel beside the Prévia is low): usePlaced, Menu.jsx.
-// The Biblioteca's also has "Mostrar o artista" (`showArtist`, the songs'
-// second line; layout.libShowArtist, Rodada G1).
-export function TabsMenu({ open, list, onToggle, onRestore, onClose, showArtist = false, onShowArtist }) {
+// The Biblioteca's also says what the songs' second line shows (`songLine`:
+// { artist, key, length }, layout.libShowArtist/Key/Length; Rodada G1).
+const SONG_LINE = [["artist", "Mostrar o artista"], ["key", "Mostrar o tom"], ["length", "Mostrar a duração"]];
+export function TabsMenu({ open, list, onToggle, onRestore, onClose, songLine = null, onSongLine }) {
     const row = open?.startsWith("tabs:") ? open.slice(5) : null;
     const known = Boolean(row && PANEL_TABS[row]);
     const pop = useRef(null);
@@ -233,8 +234,11 @@ export function TabsMenu({ open, list, onToggle, onRestore, onClose, showArtist 
                 title: t.last ? "Pelo menos uma aba fica à vista" : undefined, ariaDisabled: t.last, onSelect: () => onToggle(row, t.id),
             })),
             "sep",
-            row === "lib" && onShowArtist && { label: "Mostrar o artista", role: "menuitemcheckbox", checked: showArtist, title: "O artista na segunda linha das letras", onSelect: () => onShowArtist(!showArtist) },
-            row === "lib" && onShowArtist && "sep",
+            ...(row === "lib" && songLine && onSongLine ? [
+                { head: "Nas letras" },
+                ...SONG_LINE.map(([k, label]) => ({ label, role: "menuitemcheckbox", checked: Boolean(songLine[k]), onSelect: () => onSongLine(k, !songLine[k]) })),
+                "sep",
+            ] : []),
             { label: "Restaurar abas padrão", onSelect: () => onRestore(row) },
         ]} />
     );

@@ -894,6 +894,12 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .lib-badge { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: var(--bg-2); color: var(--fg-3); }
 .console .lib-badge.is-warn { color: var(--warn-fg); }
 .console .kx-row:is(:hover, :focus-within) .lib-badges { display: none; }
+/* A row's hover buttons are glyphs only (owner, Rodada G1): the word
+   stays inside the button for screen readers (and the smoke), and the
+   button's tooltip says it. Before, lists ≥ 300 px showed the words. */
+.console .kx-row .kx-act-i { display: inline-flex; }
+.console .kx-row .kx-act-l { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.console .kx-row .kx-btn:has(.kx-act-i) { width: 24px; padding: 0; justify-content: center; }
 
 /* Lyrics from the web (LyricsSearch): the Holyrics-style search dialog. */
 .console .lyr { position: absolute; z-index: 40; left: 50%; top: 64px; transform: translateX(-50%); width: min(960px, calc(100vw - 32px)); height: min(640px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg-2); border-radius: var(--radius-panel); box-shadow: var(--dialog); color: var(--fg-1); }

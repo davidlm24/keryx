@@ -339,17 +339,20 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   too: Buscar… (the palette), Seção…, Texto…, Timer… (a ServiceItem under
   the item in the Prévia, else at the end) and Planejar o culto…; the
   Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory);
-  every Biblioteca search-row + ends in "Abrir a Biblioteca de mídia…"
-  (the Mídia page), and none holds the lines-per-slide chips any more
-  ("Ao importar letras" lives in Configurações › Bíblia e músicas; Rodada
-  G1). **A row with hover buttons is one line** (Rodada G1, owner
+  the search row has a film button beside the ☆, "Abrir a Biblioteca de
+  mídia" (the Mídia page, every tab), and no (+) holds the lines-per-slide
+  chips any more ("Ao importar letras" lives in Configurações › Bíblia e
+  músicas; Rodada G1). **Hover buttons are glyphs only** (owner, Rodada
+  G1): the word stays inside the button as screen-reader text (`.kx-act-l`,
+  which the smoke clicks by), the tooltip says it. **A row with hover buttons is one line** (Rodada G1, owner
   2026-10-19): in Confortável too, its title ends in "…" (the whole title
   is its tooltip) — the Biblioteca, the Setlist, the palette, the Mídia and
   the planner (one rule, `.kx-row:has(> .kx-row-acts)` in console.css).
   A song's row has no glyph (media and avisos keep theirs); under its
-  title only the key and the length, the artist first only with the
-  Biblioteca header (+)'s "Mostrar o artista" (`layout.libShowArtist`,
-  per computer) and always in the tooltip; sincronizada, parece repetida
+  title the artist, the key and the length as the Biblioteca header (+)'s
+  "Nas letras" checks say (Mostrar o artista / o tom / a duração:
+  `layout.libShowArtist` off, `libShowKey`/`libShowLength` on, per
+  computer); the artist is always in the tooltip; sincronizada, parece repetida
   and baixando are small badges at the row's end that the hover buttons
   replace (`songRow` in `src/lib/console/libraryRows.js`, tested). **Menus
   from a button stay inside the window** (the (+) menus, the tabs' (+), the
@@ -727,7 +730,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   and Imagens — `libMediaKinds` in panelTabs.js, tested) that lists every tab with a check mark
   (`TabsMenu` in Popovers.jsx, as Ver lists the modules): checked = shown,
   in the list's order, at least one always, "Restaurar abas padrão" at the
-  bottom (the Biblioteca's has "Mostrar o artista" above it); saved per computer as `layout.tabs` (`src/lib/console/panelTabs.js`,
+  bottom (the Biblioteca's has "Nas letras" — Mostrar o artista, o tom, a
+  duração — above it); saved per computer as `layout.tabs` (`src/lib/console/panelTabs.js`,
   tested; "Restaurar disposição" resets it). The panel's tabs reuse what
   exists, no projection logic of their own: **Notas** (the
   `ServiceItem.notes` of the item in the Prévia / on air, and the Escola

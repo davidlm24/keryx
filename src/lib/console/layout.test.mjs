@@ -172,7 +172,15 @@ test("folded panels (Rodada F4): per computer, cleaned, the No ar strip's old mi
     assert.deepEqual(restoreEnv(both, "biblia").folded, { lib: true, setlist: true });
 });
 
-test("Mostrar o artista (Rodada G1): off by default, on only when saved true", () => {
+test("the songs' second line (Rodada G1): the artist off, the key and length on, until saved otherwise", () => {
+    assert.equal(DEFAULT_LAYOUT.libShowKey, true);
+    assert.equal(DEFAULT_LAYOUT.libShowLength, true);
+    const old = withStore({ libW: 300 }, () => loadLayout("x"));
+    assert.equal(old.libShowKey, true);
+    assert.equal(old.libShowLength, true);
+    const off = withStore({ libShowKey: false, libShowLength: false }, () => loadLayout("x"));
+    assert.equal(off.libShowKey, false);
+    assert.equal(off.libShowLength, false);
     assert.equal(DEFAULT_LAYOUT.libShowArtist, false);
     assert.equal(withStore(null, () => loadLayout("x")).libShowArtist, false);
     assert.equal(withStore({ libW: 300 }, () => loadLayout("x")).libShowArtist, false, "a save from before the option");

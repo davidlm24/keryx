@@ -10,6 +10,10 @@ test("the second line is only the key and the length; the artist only when asked
     assert.equal(songRow({ title: "Sem nada" }).meta, "", "no key, no length: no second line");
     assert.equal(songRow({ title: "x", artist: "  " }, { showArtist: true }).meta, "", "a blank artist is no artist");
     assert.equal(songRow({ ...song, audio_url: "keryx-media://a.mp3" }).meta, "G · 4:05", "no more vídeo/playback words");
+    assert.equal(songRow(song, { showKey: false }).meta, "4:05");
+    assert.equal(songRow(song, { showLength: false }).meta, "G");
+    assert.equal(songRow(song, { showKey: false, showLength: false }).meta, "", "all off: no second line");
+    assert.equal(songRow(song, { showArtist: true, showKey: false, showLength: false }).meta, "Adhemar de Campos");
 });
 
 test("the artist is always in the tooltip", () => {

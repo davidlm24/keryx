@@ -113,10 +113,10 @@ const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLower
 // computer that syncs: "parece repetida" in the row, "Ver as repetidas…"
 // in its menu (onDuplicates, Configurações › Sincronização).
 // A song's row (Rodada G1, libraryRows.js): no glyph, the title on one
-// line, the key and length under it — the artist first with showArtist
-// (the header's (+) › Mostrar o artista) — and its flags as badges that
-// the hover buttons replace.
-export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, showArtist = false }) {
+// line, under it the artist, the key and the length as songLine says
+// (the header's (+) › Mostrar o artista / o tom / a duração) — and its
+// flags as badges that the hover buttons replace.
+export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, onPrepare, onGo, onAddSong, onLyricsWeb, onEditSong, onOpenMedia, onEditNotice, dupIds = null, onDuplicates, songLine = {} }) {
     const [q, setQ] = useState("");
     const [favOnly, setFavOnly] = useState(false);
     const [yt, setYt] = useState("");
@@ -160,8 +160,6 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
     // (+) shows them): which Media types each lists (panelTabs.js).
     const shownIds = (tabs || []).map((t) => t.id);
     const mediaKinds = libMediaKinds(tab, shownIds);
-    // Every (+) here also opens the media library (its own page of THE window).
-    const openMediaItem = onOpenMedia && { label: "Abrir a Biblioteca de mídia…", icon: "expand", onClick: () => onOpenMedia() };
     const addItems = tab === "letras"
         ? [
             { label: "Nova música…", icon: "plus", onClick: () => onEditSong?.("new") },
@@ -169,31 +167,26 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
             { label: "Uma pasta inteira…", icon: "folder", accept: ".txt,.chordpro,.cho,.crd,.pro,.json,text/plain", directory: true, onFiles: (files) => importSongFiles(files.filter((f) => /\.(txt|chordpro|cho|crd|pro|json)$/i.test(f.name))) },
             { label: "Na internet…", icon: "external", onClick: () => onLyricsWeb?.() },
             { label: "Exportar todas…", icon: "save", onClick: exportSongs },
-            openMediaItem,
         ]
         : tab === "imagens"
             ? [
                 { label: "Do computador…", icon: "folder", accept: shownIds.includes("apresentacoes") ? "image/*,.gif" : "image/*,.gif,.pdf,.ppt,.pptx", onFiles: importMedia },
-                openMediaItem,
             ]
         : tab === "audios"
             ? [
                 { label: "Do computador…", icon: "folder", accept: "audio/*", onFiles: importMedia },
                 { label: "Uma pasta inteira…", icon: "folder", accept: "audio/*", directory: true, onFiles: (files) => importMedia(files.filter((f) => f.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac|wma)$/i.test(f.name))) },
-                openMediaItem,
             ]
         : tab === "apresentacoes"
             ? [
                 { label: "Do computador…", icon: "folder", accept: ".pdf,.ppt,.pptx", onFiles: importMedia },
-                openMediaItem,
             ]
         : tab === "videos"
             ? [
                 { label: "Do computador…", icon: "folder", accept: shownIds.includes("audios") ? "video/*" : "video/*,audio/*", onFiles: importMedia },
                 { label: "Link do YouTube", icon: "film", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
-                openMediaItem,
             ]
-            : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => onEditNotice?.("new") }, openMediaItem];
+            : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => onEditNotice?.("new") }];
 
     return (
         <>
@@ -202,6 +195,8 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
             <div className="searchrow">
                 <Field value={q} onChange={setQ} placeholder="Buscar…" />
                 {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} aria-label="Só favoritas" onClick={() => setFavOnly((f) => !f)} />}
+                {/* The media library is one click away on every tab (owner, Rodada G1). */}
+                {onOpenMedia && <IconBtn name="film" title="Abrir a Biblioteca de mídia" aria-label="Abrir a Biblioteca de mídia" onClick={() => onOpenMedia()} />}
                 <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
             </div>
 
@@ -210,7 +205,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 return (
                     <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
                         {!songs.length && data.loaded?.songs !== false && <Empty icon="music" title={ql ? `Nenhuma letra com "${q}"` : "Nenhuma letra"}>{ql ? "Procure por título, artista ou um trecho, ou use + › Na internet." : "Use + para importar do computador ou procurar na internet."}</Empty>}
-                        {songs.map((s) => { const r = songRow(s, { duplicate: Boolean(dupIds?.has(s.id)), syncing: Boolean(s.audio_url && pending.has(s.audio_url)), showArtist }); return (
+                        {songs.map((s) => { const r = songRow(s, { duplicate: Boolean(dupIds?.has(s.id)), syncing: Boolean(s.audio_url && pending.has(s.audio_url)), showArtist: songLine.artist === true, showKey: songLine.key !== false, showLength: songLine.length !== false }); return (
                             <Row
                                 key={s.id}
                                 title={s.title}
@@ -287,7 +282,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             <Btn onClick={saveYt} title="Salvar o link na lista de Vídeos, para a setlist e os cultos">Salvar</Btn>
                         </div>
                         </>}
-                        <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span><span style={{ flex: 1 }} />{onOpenMedia && <Btn small onClick={onOpenMedia} title="Abrir a Mídia: grade, categorias, envio de vários arquivos"><Icon name="expand" />Abrir a Mídia</Btn>}</div>
+                        <div className="listhead"><span className="kx-section">Arquivos <span className="kx-count">· {media.length}</span></span></div>
                         {audios.length > 1 && (
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}
