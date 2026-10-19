@@ -465,6 +465,34 @@ test("Tirar o vídeo · o som continua: the video leaves the projector, its soun
     assert.throws(() => applyOp(off, "audio.toMedia", {}, T0), (e) => e.status === 423);
 });
 
+test("the eye (Rodada G4): toAudio carries the fade, carried playback has no ramp, works locked", () => {
+    const s = run([["content.show", song], ["media.show", { kind: "video", url: "keryx-media://v.mp4" }, T0]]);
+    const moved = applyOp(s, "media.toAudio", { fade: 300 }, T0 + 5000);
+    assert.deepEqual(moved.fade, { ms: 300, at: T0 + 5000 }, "the picture fades out as Esc's does");
+    assert.equal(moved.updatedAt, moved.fade.at);
+    assert.deepEqual(moved.leaving, [], "the sound never leaves: it goes on in the audio channel");
+    assert.deepEqual(Object.keys(moved.audio.playback).sort(), ["at", "paused", "position", "volume"], "no ramp: the sound goes on at its level");
+    assert.equal(applyOp(s, "media.toAudio", {}, T0).fade, null, "Corte: no fade");
+    assert.equal(applyOp(s, "media.toAudio", { fade: 9999 }, T0).fade.ms, 3000, "clamped");
+    assert.throws(() => applyOp(s, "media.toAudio", { fade: "suave" }, T0), LiveError);
+
+    // Mostrar o vídeo fades in with the same fade.
+    const back = applyOp(moved, "audio.toMedia", { fade: 600 }, T0 + 9000);
+    assert.deepEqual(back.fade, { ms: 600, at: T0 + 9000 });
+    assert.deepEqual(Object.keys(back.media.playback).sort(), ["at", "paused", "position", "volume"]);
+
+    // Locked: the video leaves the screen with its fade; it cannot come back.
+    const locked = applyOp(s, "screens.lock", { locked: true }, T0);
+    const off = applyOp(locked, "media.toAudio", { fade: 300 }, T0 + 1000);
+    assert.deepEqual([off.media, off.fade.ms], [null, 300]);
+    assert.throws(() => applyOp(off, "audio.toMedia", { fade: 300 }, T0 + 2000), (e) => e.status === 423);
+
+    // A single video that ends by itself: the projector clears it with the fade.
+    const ended = applyOp(s, "media.clear", { fade: 300 }, T0 + 90_000);
+    assert.deepEqual([ended.media, ended.fade], [null, { ms: 300, at: T0 + 90_000 }]);
+    assert.equal(applyOp(s, "media.clear", {}, T0).fade, null);
+});
+
 test("a video's still (poster) rides with it: shown, in a list, to the audio channel and back", () => {
     const video = { kind: "video", url: "keryx-media://v.mp4", title: "Abertura", poster: "keryx-media://v-poster.jpg" };
     const shown = run([["media.show", video, T0]]);

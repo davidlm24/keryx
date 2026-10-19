@@ -233,7 +233,7 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
    commit, still playing; detached and attached again inside one task, it
    never pauses or reloads. One let go and not taken back is paused at
    once (Tela preta, an aviso over it: silent, as before) and thrown away
-   after a few seconds.
+   after a few seconds. The picture fades (Rodada G4, see §3).
    **Level meters:** the console reads the computer's own output (system
    loopback, `meterStore.js`); nothing taps an element. Where sound plays
    (`LiveVideo` with a `meter` layer: the projector's media and audio, the
@@ -581,6 +581,26 @@ those keys.
   `src/lib/generators.js` holds the WebGL 1 shaders and the presets, and
   `GeneratorBackground.jsx` draws one on a canvas inside the renderer. A
   theme keeps one in `ProjectionTheme.background_generator`.
+
+- **The eye's picture fades (Rodada G4, owner 2026-10-17).** "Tirar o
+  vídeo" (`media.toAudio`) and "Mostrar o vídeo" (`audio.toMedia`) carry
+  the church's "Ao tirar do ar" fade (`EXIT_OPS`, `live.fade`), and so does
+  a single video that ends by itself (the projector's `media.clear`), so
+  every output ghosts the screen before over the one now
+  (`screenExitMs`). What each window shows during the fade:
+  - **the desktop `/Projection`:** the hidden audio player mounts before the
+    screen and takes the `<video>` from the pool in the same commit, so the
+    sound never stops; the ghost's `LiveVideo` finds the file held
+    (`mediaPool.held`) and fades out a canvas still of the frame it took
+    over (object-contain on black; the poster when the frame cannot be
+    drawn) — one element, no reload, no echo;
+  - **TVs on the network and the console's Programa monitor** (no audio
+    player): the ghost takes the element and the video fades out playing,
+    its volume coming down with it (the Programa's is muted anyway);
+  - **Mostrar o vídeo:** the screen it covers fades out over the video,
+    which the media player takes back from the audio player in one commit.
+  The smoke checks one element still advancing at full volume right after
+  the click; how the still looks needs a real window.
 
 ## 4. Media on disk
 

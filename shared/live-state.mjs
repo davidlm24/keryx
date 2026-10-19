@@ -703,7 +703,9 @@ const OPS = {
         const i = (media.playlistIndex + 1) % media.playlist.length;
         return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) } };
     },
-    "media.clear": (s, _a, now) => (s.media ? { ...remember(s, now, "media"), media: null } : null),
+    // A single video that ends by itself is cleared by the projector with
+    // the church's exit fade (LiveMediaView).
+    "media.clear": (s, a, now) => (s.media ? { ...remember(s, now, "media"), media: null, fade: exitFade(a.fade, now) } : null),
 
     // The video channel: video screens and tablets (VideoProjection). It does
     // not cover the main projector.
@@ -741,8 +743,9 @@ const OPS = {
     // the audio channel, from the same second at the same volume, so it
     // survives Esc and whatever is sent next. A list goes along (only what
     // can be heard) and, as music, stops at its end. Taking something off
-    // the screen, so it works locked.
-    "media.toAudio": (s, _a, now) => {
+    // the screen, so it works locked. The picture fades out as Esc's does
+    // (`fade`, "Ao tirar do ar"); the sound never stops (Rodada G4).
+    "media.toAudio": (s, a, now) => {
         const media = need(s.media, "em reprodução");
         if (media.kind === "youtube") throw new LiveError("Um vídeo do YouTube não toca só o som.");
         if (!SOUND_KINDS.includes(media.kind)) throw new LiveError("Esta mídia não tem som.");
@@ -754,11 +757,13 @@ const OPS = {
             ...remember(s, now, "media"),
             media: null,
             audio: { ...carried(media, now), playlist, playlistIndex: playlist ? index : 0 },
+            fade: exitFade(a.fade, now),
         };
     },
     // "Mostrar o vídeo": the way back, a video file the audio channel plays
-    // goes on the projector again, from the same second.
-    "audio.toMedia": (s, _a, now) => {
+    // goes on the projector again, from the same second, fading in over the
+    // screen it covers with the same `fade`.
+    "audio.toMedia": (s, a, now) => {
         const audio = need(s.audio, "tocando");
         if (audio.kind !== "video") throw new LiveError("Só um vídeo volta para a tela.");
         return {
@@ -766,6 +771,7 @@ const OPS = {
             ...reveal(["tool", "communication"]),
             audio: null,
             media: { ...carried(audio, now), playlist: audio.playlist || null, playlistIndex: audio.playlist ? audio.playlistIndex : 0 },
+            fade: exitFade(a.fade, now),
         };
     },
 

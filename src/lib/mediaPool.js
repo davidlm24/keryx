@@ -11,6 +11,7 @@
 //   dispose(el)  -> stop it and let the file go
 //   afterTask(fn) runs fn once the current task is over (a microtask)
 //   later(fn, ms) runs fn after ms (setTimeout)
+// held(url) says whether a player has the file now (see below).
 // An element let go and not taken back in the same task is paused at once
 // (silent, as an unmounted player was); one not taken back within graceMs is
 // disposed. Taken back sooner (Tela preta for a moment) it resumes without
@@ -48,5 +49,14 @@ export function createPool({ create, dispose, afterTask = queueMicrotask, later 
         }, graceMs);
     }
 
-    return { claim, release, size: () => entries.size };
+    // The element a player holds for url right now, or null. A player on its
+    // way out (an exit fade's ghost) that finds its file held by another one
+    // — the eye moved the video into the audio channel's player — draws a
+    // still of it instead of claiming a second element (a reload and an echo).
+    function held(url) {
+        for (const e of entries) if (e.url === url && e.busy) return e.el;
+        return null;
+    }
+
+    return { claim, release, held, size: () => entries.size };
 }

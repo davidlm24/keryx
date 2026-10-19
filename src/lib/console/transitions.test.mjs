@@ -40,6 +40,17 @@ test("transitions: other ops, no prefs and the sender's own choice are left alon
     assert.equal(withTransitions("clear", { fade: 1000 }, defaults).fade, 1000);
 });
 
+test("transitions: the eye's picture follows Ao tirar da tela, and never hushes", () => {
+    assert.deepEqual(withTransitions("media.toAudio", {}, defaults), { fade: 300 });
+    assert.deepEqual(withTransitions("audio.toMedia", {}, defaults), { fade: 300 });
+    assert.equal(withTransitions("media.toAudio", {}, prefsOf({ clear_transition_ms: 1000 })).fade, 1000);
+    assert.deepEqual(withTransitions("media.toAudio", {}, prefsOf({ clear_transition: "cut" })), {}, "Corte");
+    const s = applyOp(emptyState(T0), "media.show", { kind: "video", url: "v.mp4" }, T0);
+    const moved = applyOp(s, "media.toAudio", withTransitions("media.toAudio", {}, defaults), T0 + 1);
+    assert.deepEqual([moved.fade, moved.leaving], [{ ms: 300, at: T0 + 1 }, []]);
+    assert.deepEqual(applyOp(moved, "audio.toMedia", withTransitions("audio.toMedia", {}, defaults), T0 + 2).fade, { ms: 300, at: T0 + 2 });
+});
+
 test("transitions: what the console adds is what the live state takes", () => {
     let s = applyOp(emptyState(T0), "audio.show", withTransitions("audio.show", { url: "a.mp3" }, defaults), T0);
     s = applyOp(s, "video.show", withTransitions("video.show", { kind: "video", url: "v.mp4" }, defaults), T0 + 1);

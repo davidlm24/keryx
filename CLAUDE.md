@@ -846,7 +846,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   YouTube) in the same `<video>`, without a gap: `LiveVideo` takes its
   element from the window's pool by url (`src/lib/mediaPool.js`, tested),
   so the player that unmounts hands it to the one that mounts in the same
-  commit — don't give `LiveVideo` a `<video>` of its own again. Keys go through `src/lib/console/keys.js` (with
+  commit — don't give `LiveVideo` a `<video>` of its own again. **The
+  picture fades** (owner 2026-10-17, Rodada G4, "o mesmo de Ao tirar do
+  ar": no setting of its own): `media.toAudio`/`audio.toMedia` are in
+  `EXIT_OPS` and carry `fade` as `live.fade`, so the video dissolves to
+  what is under it while the sound goes on, and "Mostrar o vídeo" dissolves
+  it back; a single video that ends by itself is cleared with the same fade
+  (`LiveMediaView`; YouTube cuts). On the desktop projector the hidden
+  audio player mounts first and takes the element, so the ghost's
+  `LiveVideo` (`fadeOut`) finds the file held (`mediaPool.held`) and fades
+  a canvas still of the frame (the poster if it cannot draw) — never a
+  second element (a reload and an echo); a window without an audio player
+  (a TV, the Programa monitor) takes the element and fades it as any
+  ghost. Keys go through `src/lib/console/keys.js` (with
   a test); **B, L, C, / and ? follow the church's "Teclas de uma letra"**
   (`User.letter_keys`: ligadas / com Shift / desligadas, Configurações ›
   Console; `liveAction(e, letters)`, `shortcutsFor`, `keyHint` for every
