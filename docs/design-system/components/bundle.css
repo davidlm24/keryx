@@ -120,6 +120,17 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
 .kx .kx-field input:focus-visible { outline: 0; }
 .kx-field input::placeholder { color: var(--fg-3); }
 .kx-field kbd { font: inherit; font-size: 11px; color: var(--fg-3); }
+/* kx-num (NumBox, Rodada HF2): − [number] + unit, 24px, the field's look; the steppers are 24×24 and dim at the ends. */
+.kx-num { height: 24px; display: inline-flex; align-items: center; border-radius: var(--radius-control); background: var(--bg-2); color: var(--fg-1); flex: none; }
+.kx-num:hover:not(.is-disabled, :focus-within) { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.kx-num:focus-within { outline: 1px solid var(--fg-3); outline-offset: -1px; }
+.kx-num.is-disabled { opacity: var(--dim); }
+.kx-num > button { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; color: var(--fg-2); border-radius: var(--radius-control); flex: none; }
+.kx-num > button:hover:not(:disabled) { color: var(--fg-1); background: var(--bg-3); }
+.kx-num > button:disabled { opacity: var(--dim); }
+.kx-num input { width: auto; min-width: 0; height: 24px; padding: 0 2px; border: 0; background: none; color: inherit; font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; outline: 0; }
+.kx .kx-num input:focus-visible { outline: 0; }
+.kx-num-u { font-size: 11px; color: var(--fg-3); padding-right: 6px; }
 
 /* ---- Row (list item): title + one grey line. State = 2px bar on the left edge + 10% tint. Never a badge. ---- */
 .kx-row { position: relative; display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); padding: 0 var(--space-2) 0 var(--space-3); width: 100%; text-align: left; border-radius: 0; color: var(--fg-1); }
@@ -337,7 +348,7 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
   .kx-btn.is-on, .kx-tool.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
   .kx-seg { outline: 1px solid ButtonText; outline-offset: -1px; }
   .kx-seg > button.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
-  .kx-field { border: 1px solid FieldText; }
+  .kx-field, .kx-num { border: 1px solid FieldText; }
   .kx-tabs > button.is-on::after { height: 2px; background: Highlight; }
   :is(.kx-row, .kx-slide, .kx-verse):is(.is-air, .is-prev, .is-rh, .is-next)::before { background: none; }
   .kx-row.is-warn::before, .kx-alert::before { background: CanvasText; }

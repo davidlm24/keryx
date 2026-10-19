@@ -23,8 +23,8 @@
 .ks-text { font-weight: 600; line-height: 1.22; white-space: pre-wrap; max-width: 100%; }
 .ks-slide-img { max-width: 84%; max-height: 52cqh; object-fit: contain; border-radius: .6cqw; }
 .ks-slide-img.is-alone { max-height: 80cqh; }
-.ks-text.ks-xsmall { font-size: 2.4cqw; } .ks-text.ks-small { font-size: 3cqw; } .ks-text.ks-medium { font-size: 3.8cqw; }
-.ks-text.ks-large { font-size: 4.8cqw; } .ks-text.ks-xlarge { font-size: 5.8cqw; } .ks-text.ks-xxlarge { font-size: 7cqw; }
+/* The size is a number in cqw (Rodada HF2), set as --ks-size on .ks-content. */
+.ks-text { font-size: var(--ks-size, 4.8cqw); }
 .ks-bible .ks-text { font-weight: 500; line-height: 1.3; font-size: calc(var(--ks-size, 4.8cqw) * .8); }
 .ks-text sup { font-size: .5em; opacity: .65; margin-right: .35em; vertical-align: .6em; font-weight: 500; }
 .ks-chorus { font-size: 1.6cqw; letter-spacing: .2em; text-transform: uppercase; opacity: .6; font-weight: 500; }
