@@ -80,7 +80,8 @@
 .console .markbtn:hover .kx-mark, .console .markbtn.is-on .kx-mark { box-shadow: 0 0 0 2px var(--brand-tint); }
 /* The menu bar (Rodada D4, MenuBar.jsx): plain words beside the logo, as a
    desktop program's; above the popover scrim, so pointing at another menu
-   switches to it. It folds into the logo's menu on a narrow window. */
+   switches to it. On a narrow window it folds away and the Menu button
+   (.tb-menubtn, Rodada M0) takes its place: ONE container query decides both. */
 .console .topbar .tb-menus { display: flex; align-items: center; gap: 0; position: relative; z-index: 26; margin: 0 var(--space-1) 0 2px; }
 .console .topbar .tb-menu { height: 28px; padding: 0 8px; border-radius: var(--radius-control); font-size: 12.5px; color: var(--fg-3); }
 .console .topbar .tb-menu:hover { background: var(--bg-1); color: var(--fg-1); }
@@ -92,7 +93,18 @@
 .console .mb-pop .mb-row { position: relative; }
 .console .mb-pop .kx-menu-item.is-on { background: var(--bg-3); }
 .console .mb-pop .mb-sub { position: absolute; left: 100%; top: -6px; margin-left: 2px; min-width: 200px; z-index: 1; }
-@container topbar (max-width: 1240px) { .console .topbar .tb-menus, .console .topbar .tb-div { display: none; } }
+.console .topbar .tb-menubtn { display: none; height: 28px; padding: 0 10px 0 8px; gap: 6px; border-radius: var(--radius-control); font-size: 12.5px; color: var(--fg-2); flex: none; }
+.console .topbar .tb-menubtn:hover, .console .topbar .tb-menubtn.is-on { background: var(--bg-2); color: var(--fg-1); }
+@container topbar (max-width: 1240px) {
+    .console .topbar .tb-menus, .console .topbar .tb-div { display: none; }
+    .console .topbar .tb-menubtn { display: inline-flex; align-items: center; }
+}
+/* The Menu button's popover: the four menus stacked, a submenu inline under
+   its parent (menuBar.js flattenMenus); it scrolls where the window is short. */
+.console .addmenu-pop.menus-pop { width: 300px; }
+.console .menus-pop .kx-menu-h.is-minor { padding-top: 2px; }
+.console .menus-pop .kx-menu-h.is-minor .kx-section { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--fg-2); }
+.console .menus-pop .kx-menu-item.is-indent { padding-left: calc(var(--space-2) + 16px); }
 @container topbar (max-width: 1400px) { .console .topbar .tb-svc-more { display: none; } }
 @container topbar (max-width: 1300px) { .console .topbar .tb-clock { display: none; } }
 @container topbar (max-width: 1080px) {

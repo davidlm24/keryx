@@ -608,19 +608,29 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   underline — places, not commands), a divider, then **the menu bar**: Culto, Música,
   Mídia, Ferramentas (`MenuBar.jsx`; the model is
   `src/lib/console/menuBar.js`, tested). **There is no Telas menu** (owner
-  2026-10-16, Rodada E0): Tela preta, Logo and Limpar are the top bar's
-  chip, Saídas and Verificar the logo's menu, Travar telas and Telas e
+  2026-10-16, Rodada E0): Tela preta, Logo and Limpar are the Programa's
+  pill, Saídas and Verificar the logo's menu, Travar telas and Telas e
   saídas the Saídas popover — don't put it back. Its open menu is the console's
   `open` (`"mb:<id>"`): Esc and the scrim close it, pointing at another
   menu switches, ← / → walk them. Every item is something the console
   already does (Música › Sincronizar a música… opens the song in the Prévia
   or on air with Sincronizar on top; Letra automática › Iniciar/Pausar/
   Retomar; Mídia › Enviar arquivos… / Link do YouTube… open the Mídia on
-  that step). **Ver stays the eye beside the bell** and **Ajuda's items
-  (Atalhos, Novidades, Sobre, Atualizar) live in the logo's menu** — neither
-  goes back in the bar. Under 1240 px the bar folds away and the logo's
-  menu (every page) has it all. A new top-level action goes in the bar's
-  model, not as another icon in the top bar. **The right side is compact**
+  that step). **Ver stays beside the bell, with the panels glyph**
+  (`panels`, Lucide layout-panel-left; the eye is only for the choosers of
+  what to show) and **the logo's menu is the app's** (owner 2026-10-19,
+  Rodada M0 "app"): KERYX — Configurações, Saídas, Verificar tudo —, Ajuda —
+  Atalhos, Novidades, Sobre o KERYX — and Atualizar agora when an update is
+  due; never a page of the content (those are the bar's). **Under 1240 px the
+  bar folds away and a ☰ Menu button takes its place** (`.tb-menubtn`, same
+  container query in console.css: one source for the width): `open === "menus"`,
+  ONE popover (`MenusPop`) with the four menus stacked and all open, a
+  submenu inline under its parent, the culto's services capped at 5 + "Todos
+  os cultos…"; it is `flattenMenus(buildMenus(ctx))` (menuBar.js, tested: no
+  item of the bar can be lost), so a new top-level action goes in the bar's
+  model and reaches both the bar and the Menu button by construction, not as
+  another icon in the top bar; with the bar folded Alt/F10/Alt+letter open
+  that popover. **The right side is compact**
   (owner 2026-10-16, Rodada E1): the service clock "◷ 19:00 · 9h46"
   (`serviceClock` with `compact`, timeline.js, tested; the whole sentence
   is its tooltip and `label`; a running service keeps "Culto 0:42:10"),

@@ -20,7 +20,7 @@ import { useLibrary, useRundown, useOutputs, useShowForecast, pickDefaultService
 import { Panel, IconBtn, Measure, Seg, WinCtx, useLiveRegion } from "@/components/console/kx";
 import { airAnnouncement } from "@/lib/console/caption";
 import TopBar from "@/components/console/TopBar";
-import { MenuBarPop } from "@/components/console/MenuBar";
+import { MenuBarPop, MenusPop } from "@/components/console/MenuBar";
 import { buildMenus, songInHand } from "@/lib/console/menuBar";
 import { importSongFiles, SONG_FILE } from "@/components/console/importSongs";
 import { exportServiceToPdf } from "@/utils/servicePdfExport";
@@ -1406,9 +1406,10 @@ export default function Console() {
                 </div>
             )}
             <MenuBarPop menus={menus} open={open} setOpen={setOpen} />
+            <MenusPop menus={menus} open={open} setOpen={setOpen} onAllServices={() => openPlanner(serviceId)} />
             <input ref={folderRef} type="file" multiple hidden webkitdirectory="" accept=".txt,.chordpro,.cho,.crd,.pro,.json,text/plain"
                 onChange={(e) => { const files = [...(e.target.files || [])].filter((f) => SONG_FILE.test(f.name)); e.target.value = ""; if (files.length) importSongFiles(files, c.say); else c.say("Nenhum arquivo de letra nessa pasta."); }} />
-            <Menu open={open} setOpen={setOpen} services={services} serviceId={serviceId} setServiceId={setServiceId} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} onPlanner={openPlanner} onMedia={openMedia} onNotices={openNotices} onNewNotice={() => openNotice("new")} onSchool={openSchool} onReports={openReports} update={upd.update} onUpdateNow={updateNow} onWhatsNew={openWhatsNew} />
+            <Menu open={open} setOpen={setOpen} layout={uiLayout} setLayout={setUiLayout} restoreLayout={restoreLayout} presets={presets} presetId={preset?.id || null} presetDirty={presetDirty} onPickPreset={(id) => { pickPreset(id); setOpen(null); }} editing={editing} onEditLayout={() => { setEditing((v) => !v); setOpen(null); }} onSettings={openSettings} update={upd.update} onUpdateNow={updateNow} onWhatsNew={openWhatsNew} />
             <WhatsNew open={open} setOpen={setOpen} range={whatsNew} onSeen={whatsNewSeen} />
             <UpdateDialog open={open} setOpen={setOpen} update={upd.update} live={c.live} call={upd.call} />
             <Notifications open={open} setOpen={setOpen} notes={upd.notes} update={upd.update} onAction={noteAction} onDismiss={(id) => upd.call("notificationDismiss", { id }).catch(() => {})} onClear={() => upd.call("notificationsClear").catch(() => {})} />
