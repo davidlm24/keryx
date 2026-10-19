@@ -4,17 +4,20 @@
 // items live in the logo's menu ("O topo", owner 2026-10-15). There is no
 // Telas menu (owner 2026-10-16, Rodada E0): Tela preta, Logo and Limpar are
 // the top bar's chip, Saídas and Verificar the logo's menu, Travar telas and
-// Telas e saídas the Saídas popover. On a narrow window the bar folds into
-// the logo's menu, as before. Everything here already has a place in the
-// console; the bar puts it one click away. Pure: the console passes
-// what it knows (`ctx`) and its actions (`ctx.act`), the bar draws the result.
+// Telas e saídas the Saídas popover. On a narrow window the bar folds away and
+// the top bar's Menu button (Rodada M0) opens the same four menus in one
+// popover (`flattenMenus` below: one source, so no item can be lost); the
+// logo's menu is the app's (Configurações, Saídas, Verificar tudo, Ajuda).
+// Everything here already has a place in the console; the bar puts it one
+// click away. Pure: the console passes what it knows (`ctx`) and its actions
+// (`ctx.act`), the bar draws the result.
 //
 // "…" ends a label only when the command asks for more before it acts (a
 // file, a link, a text, the marks); one that opens a page has none (design
 // audit C-52).
 //
 // A menu: { id, label, items }. An item: { label, icon?, kbd?, checked?,
-// disabled?, title?, onSelect?, sub?: [items] } or { sep: true } or
+// disabled?, title?, onSelect?, sub?: [items], service? } or { sep: true } or
 // { head: "text" }.
 
 const sep = { sep: true };
@@ -34,7 +37,7 @@ export function buildMenus(ctx) {
 
     const culto = [
         head("Culto de hoje"),
-        ...(services.length ? services.map((s) => ({ label: s.title || "Culto", kbd: date(s.date), checked: s.id === ctx.serviceId, onSelect: call("pickService", s.id) })) : [{ label: "Nenhum culto ainda", disabled: true }]),
+        ...(services.length ? services.map((s) => ({ label: s.title || "Culto", kbd: date(s.date), checked: s.id === ctx.serviceId, service: true, onSelect: call("pickService", s.id) })) : [{ label: "Nenhum culto ainda", disabled: true }]),
         sep,
         { label: "Planejar o culto", icon: "list", onSelect: call("planner", ctx.serviceId) },
         { label: "Novo culto", icon: "plus", onSelect: call("planner", "new") },
@@ -89,6 +92,39 @@ export function buildMenus(ctx) {
         { id: "midia", label: "Mídia", items: midia },
         { id: "ferramentas", label: "Ferramentas", items: ferramentas },
     ];
+}
+
+// The four menus as ONE list for the Menu button's popover (Rodada M0, owner
+// 2026-10-19 "empilhado"): each menu a head and its items, a sep between them,
+// a `sub` list inline under its parent (the parent becomes a minor head, the
+// sub items indented: no side flyout in a narrow popover). The items keep
+// their onSelect, disabled, checked and kbd, so the popover acts exactly as
+// the bar. The culto's services are capped at `maxServices`; "Todos os
+// cultos…" (`onAllServices`) follows when some were left out.
+export function flattenMenus(menus, { maxServices = 5, onAllServices } = {}) {
+    const out = [];
+    menus.forEach((m, i) => {
+        if (i) out.push(sep);
+        out.push(head(m.label));
+        let shown = 0;
+        let cut = 0;
+        let lastService = -1;
+        for (const [n, it] of m.items.entries()) {
+            // The Culto menu's own first head ("Culto de hoje") repeats the menu's.
+            if (it.head != null && n === 0) continue;
+            if (it.service) {
+                if (shown >= maxServices) { cut += 1; continue; }
+                shown += 1;
+                out.push(it);
+                lastService = out.length - 1;
+            } else if (it.sub) {
+                out.push({ head: it.label, minor: true });
+                for (const s of it.sub) out.push({ ...s, indent: true });
+            } else out.push(it);
+        }
+        if (cut) out.splice(lastService + 1, 0, { label: "Todos os cultos…", icon: "list", title: "Planejar o culto", onSelect: onAllServices });
+    });
+    return out;
 }
 
 // The song the Música menu's Sincronizar acts on: the one in the Prévia,

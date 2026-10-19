@@ -23,13 +23,15 @@ import { mediaIcon } from "@/lib/console/libraryRows";
 
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
-// The KERYX menu (the logo): every page and the service picker in one list
-// (what the menu bar has, for a narrow window where the bar folds away), and
-// Ajuda — Atalhos, Novidades, Sobre, Atualizar (O topo, 2026-10-15). Ver is
-// the eye beside the bell.
-export function Menu({ open, setOpen, services, serviceId, setServiceId, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, onPlanner, onMedia, onNotices, onNewNotice, onSchool, onReports, update, onUpdateNow, onWhatsNew }) {
+// The KERYX menu (the logo) is the app's own (Rodada M0, owner 2026-10-19):
+// KERYX — Configurações, Saídas, Verificar tudo —, Ajuda — Atalhos,
+// Novidades, Sobre o KERYX — and Atualizar agora when an update is due. The
+// content's menus (Culto, Música, Mídia, Ferramentas) are the menu bar's and,
+// where it folds away, the Menu button's (MenuBar.jsx). Ver is the panels
+// glyph beside the bell.
+export function Menu({ open, setOpen, layout, setLayout, restoreLayout, presets = [], presetId = null, presetDirty = false, onPickPreset, editing, onEditLayout, onSettings, update, onUpdateNow, onWhatsNew }) {
     const helpKey = keyHint("help", usePrefs().letter_keys);
-    if (open !== "menu" && open !== "ver" && open !== "cultos") return null;
+    if (open !== "menu" && open !== "ver") return null;
     // Every list here is the console's one menu (Menu.jsx MenuList): it takes
     // the focus, the arrows walk it, Esc and Tab close it (C-14, C-15).
     const close = () => setOpen(null);
@@ -59,35 +61,19 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
                 style={{ right: Math.max(8, Math.round(window.innerWidth - (document.querySelector(".topbar .tb-ver")?.getBoundingClientRect().right ?? window.innerWidth - 8))), top: "var(--pop-top)", width: 220 }} />
         );
     }
-    if (open === "cultos") {
-        const items = [
-            { head: "Culto" },
-            ...(!services.length ? [{ node: <div key="none" className="kx-menu-h"><span className="kx-meta">Nenhum culto ainda.</span></div> }] : []),
-            ...services.slice(0, 20).map((s) => ({ label: s.title, checked: s.id === serviceId, kbd: s.date ? s.date.split("-").reverse().slice(0, 2).join("/") : "", onSelect: () => { setServiceId(s.id); setOpen(null); } })),
-            "sep",
-            { label: "Planejar o culto", icon: "list", onSelect: go(() => onPlanner?.(serviceId)) },
-            { label: "Novo culto", icon: "plus", onSelect: go(() => onPlanner?.("new")) },
-        ];
-        return <MenuList key="cultos" className="pop kx-pop" label="Culto" items={items} closeOnPick={false} onClose={close} style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 300, maxHeight: 420, overflow: "auto" }} />;
-    }
     const items = [
-        { label: "Culto", icon: "list", kbd: <Icon name="chevron-right" />, onSelect: () => setOpen("cultos") },
-        { label: "Planejar o culto", icon: "list", onSelect: go(() => onPlanner?.(serviceId)) },
-        { label: "Mídia", icon: "media", onSelect: go(onMedia) },
-        { label: "Avisos", icon: "megaphone", onSelect: go(onNotices) },
-        { label: "Novo aviso", icon: "plus", onSelect: go(onNewNotice) },
-        { label: "Escola bíblica", icon: "book", onSelect: go(onSchool) },
-        { label: "Relatórios", icon: "history", onSelect: go(onReports) },
-        "sep",
+        { head: "KERYX" },
+        { label: "Configurações", icon: "sliders", onSelect: go(() => onSettings?.("telas")) },
         { label: "Saídas", icon: "monitor", onSelect: () => setOpen("outs") },
         { label: "Verificar tudo", icon: "check", onSelect: () => setOpen("verificar") },
+        "sep",
+        { head: "Ajuda" },
         { label: "Atalhos", icon: "keyboard", kbd: helpKey, onSelect: () => setOpen("atalhos") },
         { label: "Novidades", icon: "star", onSelect: () => onWhatsNew?.() },
-        { label: "Configurações", icon: "sliders", onSelect: go(() => onSettings?.("telas")) },
         { label: "Sobre o KERYX", icon: "info", onSelect: go(() => onSettings?.("sobre")) },
-        hasUpdate(update) && { label: update.status === "downloading" ? "Atualizando…" : "Atualizar agora", icon: "download", kbd: update.status === "downloading" ? `${update.percent}%` : update.version, onSelect: () => onUpdateNow?.() },
+        ...(hasUpdate(update) ? ["sep", { label: update.status === "downloading" ? "Atualizando…" : "Atualizar agora", icon: "download", kbd: update.status === "downloading" ? `${update.percent}%` : update.version, onSelect: () => onUpdateNow?.() }] : []),
     ];
-    return <MenuList key="menu" className="pop kx-pop" label="Menu" items={items} closeOnPick={false} onClose={close} style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }} />;
+    return <MenuList key="menu" className="pop kx-pop" label="Menu do KERYX" items={items} closeOnPick={false} onClose={close} style={{ left: "var(--gutter)", top: "var(--pop-top)", width: 230 }} />;
 }
 
 export function Shortcuts({ open, setOpen }) {
