@@ -1,6 +1,9 @@
 /* @ds-bundle: {"format":4,"namespace":"KERYX","components":[]} */
 /* KERYX — icon set and tiny helpers. One classic script, no dependencies.
-   Icons are bare glyphs: 24-unit viewBox drawn for 16px, 1.5 stroke, round caps, no fill. */
+   Icons are bare glyphs: 24-unit viewBox drawn for 16px, 1.5 stroke, round caps, no fill.
+   This is the design system's own, first set, kept for its pages. The app
+   no longer reads it: it draws Lucide, mapped by name in src/lib/icons.js
+   (Rodada HI, 2026-10-19). */
 (function () {
   var ICONS = {
     search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.3-4.3"/>',

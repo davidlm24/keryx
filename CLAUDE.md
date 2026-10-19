@@ -430,7 +430,11 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `synced` = a song synced to its media, `clock` = a timer or the live
   clock, `palette` = Temas, `grid` = the Multiview only; a Media row's
   glyph is `mediaIcon` (libraryRows.js, tested) wherever it is listed.
-  New glyphs go in Icon.jsx's EXTRA, in the set's style. **A row with hover buttons is one line** (Rodada G1, owner
+  **Icons are Lucide** (Rodada HI, owner 2026-10-19): nodes of the
+  `lucide` package mapped to our names in `src/lib/icons.js` (stroke
+  `STROKE` 1.5 there; black, logo and synced are our own nodes); a new
+  icon is one import and one map entry, never an inline SVG, and
+  `icons.test.mjs` fails on a name the code uses that is not mapped. **A row with hover buttons is one line** (Rodada G1, owner
   2026-10-19): in Confortável too, its title ends in "…" (the whole title
   is its tooltip) — the Biblioteca, the Setlist, the palette, the Mídia and
   the planner, its item rows too (one rule, `.kx-row:has(> .kx-row-acts)`
