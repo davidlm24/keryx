@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { keryx } from "@/api/keryxClient";
-import { needsPages, pagesWait } from "@/lib/presentation";
-import { madeHere } from "@/lib/mediaImport";
+import { needsPages, pagesWait, pdfFailure } from "@/lib/presentation";
+import { madeHere, restoreMadeHere, subscribeMadeHere } from "@/lib/mediaImport";
 import { savePages } from "@/lib/pdfPagesCapture";
 import { useSyncStatusSelect } from "@/hooks/useSyncStatus";
 
@@ -24,6 +24,18 @@ export const usePagesProgress = (id) => useSyncExternalStore(subscribe, () => pa
 // new file and a new chance), so a file that cannot be read is not retried
 // over and over.
 const tried = new Set();
+const workListeners = new Set();
+const wakeWork = () => { for (const fn of workListeners) fn(); };
+const subscribeWork = (fn) => { workListeners.add(fn); return () => workListeners.delete(fn); };
+
+// A failed PDF is deliberately not retried in a loop. The explicit retry
+// returns only that row to the queue, preserving a useful failure state.
+export function retryPages(id) {
+    if (!id) return;
+    for (const key of tried) if (key.startsWith(`${id}|`)) tried.delete(key);
+    setProgress(id, null);
+    wakeWork();
+}
 
 // Gives every PDF of the Mídia its pages as pictures (Media.pages), one PDF
 // at a time: those sent now (their row arrives through subscribe) and the
@@ -35,6 +47,13 @@ export function usePagesBackfill(rows) {
     const [tick, setTick] = useState(0);
     const [busy, setBusy] = useState(false);
     const syncs = useSyncStatusSelect((st) => (st ? Boolean(st.folder && st.paired) : null));
+    useEffect(() => {
+        restoreMadeHere();
+        const bump = () => setTick((n) => n + 1);
+        const stopMadeHere = subscribeMadeHere(bump);
+        const stopWork = subscribeWork(bump);
+        return () => { stopMadeHere(); stopWork(); };
+    }, []);
     useEffect(() => {
         if (busy || !keryx.isDesktop || keryx.isNetworkScreen) return undefined;
         const due = rows.filter((m) => needsPages(m) && !tried.has(`${m.id}|${m.file_url}`));
@@ -56,7 +75,7 @@ export function usePagesBackfill(rows) {
                 .then(() => setProgress(row.id, null))
                 .catch((err) => {
                     console.warn("[keryx] páginas do PDF:", row.title, err?.message || err);
-                    setProgress(row.id, { error: err?.message || "falhou" });
+                    setProgress(row.id, { error: pdfFailure(err) });
                 })
                 .finally(() => { setBusy(false); setTick((n) => n + 1); });
         }, PAUSE_MS);

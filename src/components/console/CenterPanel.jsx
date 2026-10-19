@@ -18,6 +18,8 @@ import { pendingUrls } from "@/lib/pendingMedia";
 import { keyHint } from "@/lib/console/keys";
 import { usePrefs } from "@/hooks/useUser";
 import ClipTitle from "./ClipTitle";
+import { retryPages, usePagesProgress } from "@/hooks/usePagesBackfill";
+import { presentationPreviewStatus } from "@/lib/presentation";
 
 // What the Prévia would look like on air: the stage applied with the live
 // state's own rules to a copy of the current look (background, logo,
@@ -217,6 +219,8 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
     // A file the sync has not brought yet: said over the Prévia, not drawn broken.
     const pending = usePendingMedia();
     const { cur, prev, locked, stamp } = c;
+    const pagesProgress = usePagesProgress(prev?.args?.id);
+    const blockedMessage = presentationPreviewStatus(prev, pagesProgress);
     // Built with a time fixed per prepared stage, never the ticking clock:
     // a new startedAt each second replayed the slide's transition (the
     // Prévia "pulsed"). A timer still counts (the renderer's own clock).
@@ -255,7 +259,9 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
                 {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
                 {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Telas e saídas › Mostrar)</div>}
                 {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="volume" /> Áudio · {prev.title || "sem título"}</div>}
-                {prev && pendingUrls(prev, pending, { skip: ["poster", "thumbnail_url"] }).length > 0
+                {prev?.blocked
+                    ? <div className="kx-screen-hatch kx-pdf-wait"><div>{blockedMessage}<small>{prev.title}</small>{pagesProgress?.error?.retryable && <button type="button" onClick={() => retryPages(prev.args?.id)}>Tentar de novo</button>}</div></div>
+                    : prev && pendingUrls(prev, pending, { skip: ["poster", "thumbnail_url"] }).length > 0
                     ? <div className="kx-screen-hatch"><div>Baixando…<small>{prev.title} · da sincronização</small></div></div>
                     : prev?.missing && <div className="kx-screen-hatch"><div>Arquivo não encontrado<small>{prev.title}</small></div></div>}
             </Monitor>
