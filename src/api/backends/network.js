@@ -16,6 +16,11 @@ export function createNetworkBridge() {
     // The stream's phase (connecting, open, reconnecting) for the page to show.
     let conn = initialConnection;
     const connListeners = new Set();
+    // When the stream last said anything (a change, the live state, the
+    // server's heartbeat every 10 s): a page tells a quiet service from a
+    // dead link by it (connection.lastEventAt()).
+    let lastEventAt = 0;
+    const heard = () => { lastEventAt = Date.now(); };
     const onConn = (event) => {
         const next = nextConnection(conn, event);
         if (next === conn) return;
@@ -58,6 +63,7 @@ export function createNetworkBridge() {
         // Which page this screen shows, for the console's list of screens.
         source = new EventSource(`/api/events?screen=${encodeURIComponent(window.location.pathname)}`);
         source.onmessage = (event) => {
+            heard();
             let change;
             try {
                 change = JSON.parse(event.data);
@@ -72,7 +78,9 @@ export function createNetworkBridge() {
                 }
             }
         };
+        source.addEventListener("hb", heard);
         source.addEventListener("live", (event) => {
+            heard();
             try {
                 emitLive(JSON.parse(event.data));
             } catch { /* a torn frame; the next one carries the whole state again */ }
@@ -86,14 +94,17 @@ export function createNetworkBridge() {
                 getJson("/api/live").then((res) => { if (res.data) emitLive(res.data); });
             }
             wasOpen = true;
+            heard();
             onConn("open");
         };
         source.onerror = () => {
             onConn("error");
             // EventSource retries by itself; CLOSED means it gave up (e.g. 401).
+            // The check reads the live state: a screen (PIN) and the
+            // controle remoto (its own code) both may; 401 = signed out.
             if (source && source.readyState === EventSource.CLOSED) {
                 source = null;
-                fetch("/api/screens").then((r) => (r.status === 401 ? authLost() : setTimeout(connect, 3000))).catch(() => setTimeout(connect, 3000));
+                fetch("/api/live").then((r) => (r.status === 401 ? authLost() : setTimeout(connect, 3000))).catch(() => setTimeout(connect, 3000));
             }
         };
     }
@@ -140,6 +151,7 @@ export function createNetworkBridge() {
         // Only network screens have a link that can drop (desktop and preview are always connected).
         connection: {
             current: () => conn,
+            lastEventAt: () => lastEventAt,
             subscribe(listener) {
                 connListeners.add(listener);
                 connect();

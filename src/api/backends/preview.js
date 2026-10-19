@@ -35,7 +35,9 @@ async function request(route, { method = "GET", body, raw } = {}) {
 export function createPreviewBridge() {
     const changeListeners = new Set();
     const liveListeners = new Set();
+    const remoteListeners = new Set();
     let source = null;
+    let remoteSource = null;
     const emit = (set, value) => {
         for (const listener of set) {
             try { listener(value); } catch (err) { console.error("[keryx-preview] listener:", err); }
@@ -144,6 +146,23 @@ export function createPreviewBridge() {
                 if (op === "status") return { data: { available: false, preview: true, folder: null, paused: false, paired: false, keyLost: false, canShowCode: false, pc: null, name: "Navegador (prévia)", version: null, since: { sent: 0, applied: 0, skipped: 0, failed: 0, rejected: 0, collected: 0 }, engine: { state: "off", folder: null } } };
                 return unavailable();
             },
+        },
+        // The controle remoto (the /Remote tab posts to /api/remote): the
+        // console tab hears its commands as the desktop console hears
+        // keryx:remote, and answers (scripts/preview/server.cjs).
+        remote: {
+            onCommand(listener) {
+                remoteListeners.add(listener);
+                if (!remoteSource) {
+                    remoteSource = new EventSource(`${API}remote-events`);
+                    remoteSource.addEventListener("remote", (event) => { try { emit(remoteListeners, JSON.parse(event.data)); } catch { /* a torn frame */ } });
+                }
+                return () => {
+                    remoteListeners.delete(listener);
+                    if (!remoteListeners.size && remoteSource) { remoteSource.close(); remoteSource = null; }
+                };
+            },
+            reply: (id, answer) => request("remote-result", { method: "POST", body: { ...answer, id } }),
         },
         lyrics: { call: unavailable },
         meters: { report() {}, onLevel: () => () => {}, sendLevel() {}, onSystemLevel: () => () => {} },

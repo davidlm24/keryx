@@ -77,3 +77,34 @@ test("this machine only; writes need the header; media in and out", async (t) =>
     assert.notEqual((await fetch(`${f.base}/media/..%2f..%2fpackage.json`)).status, 200);
     assert.deepEqual((await (await fetch(`${f.base}/__keryx/bible`)).json()).data, { NVI: 5 });
 });
+
+// The controle remoto's mock: the /Remote tab's command, checked as on the
+// network, run by the console tab that listens last; nobody listening = 503.
+test("the remote's commands reach the last console tab and its answer comes back", async (t) => {
+    const f = await started();
+    t.after(f.stop);
+    const remote = (body, headers = { "X-Keryx": "1" }) => fetch(`${f.base}/api/remote`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
+    const closed = await remote({ v: 2, action: "next" });
+    assert.equal(closed.status, 503);
+    assert.equal((await closed.json()).error.code, "busy");
+    assert.equal((await remote({ action: "next" }, {})).status, 403, "no X-Keryx header");
+    assert.equal((await remote({ v: 2, action: "goto", args: { index: -1 } })).status, 400, "checked as lan.cjs checks");
+
+    const older = new AbortController();
+    const newer = new AbortController();
+    t.after(() => { older.abort(); newer.abort(); });
+    const first = await fetch(`${f.base}/__keryx/remote-events`, { signal: older.signal });
+    const last = await fetch(`${f.base}/__keryx/remote-events`, { signal: newer.signal });
+    const reader = last.body.getReader();
+    await new Promise((r) => setTimeout(r, 50));
+    const pending = remote({ v: 2, action: "goto", args: { index: 2, junk: 1 } });
+    let text = "";
+    while (!text.includes("event: remote")) text += new TextDecoder().decode((await reader.read()).value);
+    const command = JSON.parse(text.split("\n").find((l) => l.startsWith("data: ")).slice(6));
+    assert.deepEqual({ ...command, id: 0 }, { id: 0, action: "goto", args: { index: 2 }, v: 2 });
+    assert.deepEqual((await f.post("remote-result", { id: command.id, ok: false, status: 423, code: "locked", message: "Telas travadas." })).data, true);
+    const answer = await pending;
+    assert.equal(answer.status, 423);
+    assert.deepEqual((await answer.json()).error, { message: "Telas travadas.", status: 423, code: "locked" });
+    assert.ok(first.ok, "the older tab stays connected, unused");
+});
