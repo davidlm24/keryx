@@ -564,6 +564,23 @@ test("Camadas text style: typed keys clamp or choose; bad values are errors; old
     assert.equal(u.content.style.text_box, "block");
 });
 
+test("the theme's typography (Rodada HF2): a free size, bold, italic, spacing and outline", () => {
+    const s = run([["content.show", { ...song, style: { font_size: "5.3", font_weight: "bold", font_style: "italic", line_height: 1.6, letter_spacing: 0.9, text_outline_px: 12, text_outline_color: "#FF0000" } }]]);
+    assert.deepEqual(s.content.style, { font_size: "5.3", font_weight: "bold", font_style: "italic", line_height: 1.6, letter_spacing: 0.5, text_outline_px: 8, text_outline_color: "#ff0000" });
+    // The line spacing takes its old names, a number (or a numeric string), clamped.
+    assert.equal(run([["content.show", { ...song, style: { line_height: "tight" } }]]).content.style.line_height, "tight");
+    assert.equal(run([["content.show", { ...song, style: { line_height: "1.3" } }]]).content.style.line_height, 1.3);
+    assert.equal(run([["content.show", { ...song, style: { line_height: 0.2 } }]]).content.style.line_height, 0.9);
+    assert.equal(run([["content.show", { ...song, style: { letter_spacing: -1 } }]]).content.style.letter_spacing, -0.1);
+    assert.equal(run([["content.show", { ...song, style: { text_outline_px: 0 } }]]).content.style.text_outline_px, 0);
+    // A theme's comment never reaches the screens.
+    assert.equal("note" in run([["content.show", { ...song, style: { note: "só para o culto jovem" } }]]).content.style, false);
+    assert.throws(() => run([["content.show", { ...song, style: { font_weight: "black" } }]]), LiveError);
+    assert.throws(() => run([["content.show", { ...song, style: { font_style: "oblique" } }]]), LiveError);
+    assert.throws(() => run([["content.show", { ...song, style: { text_outline_color: "preto" } }]]), LiveError);
+    assert.throws(() => run([["content.show", { ...song, style: { letter_spacing: "largo" } }]]), LiveError);
+});
+
 test("Camadas logo: opacity, margin and free width, clamped; null resets; no change, no broadcast", () => {
     let s = applyOp(emptyState(T0), "logo.set", { visible: true, opacity: 0.05, margin: 4, width: 50 }, T0);
     assert.deepEqual(s.logo, { visible: true, corner: "bottom-right", size: "medium", opacity: 0.2, margin: 4, width: 30 });

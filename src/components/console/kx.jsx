@@ -138,6 +138,43 @@ export function IconBtn({ name, title, small, on, className = "", ...rest }) {
     );
 }
 
+// A number with − and + (Rodada HF2: the theme's size, line and letter
+// spacing, outline): `− [4,8] + %`, 24 px tall (the mockup's order). The field takes a typed
+// number (a comma counts as the decimal point) and commits it on Enter or
+// when it loses the focus, clamped to [min, max] and rounded to `step`;
+// ↑/↓ and the buttons step (Shift ×10). `value` "" or null shows `empty`
+// (the value that draws when nothing is set) and onChange gets numbers only.
+const decimals = (step) => (String(step).split(".")[1] || "").length;
+export function NumBox({ value, onChange, min, max, step = 1, unit = "", label, empty = min, className = "", disabled = false }) {
+    const shown = value === "" || value == null || !Number.isFinite(Number(value)) ? Number(empty) : Number(value);
+    const fmt = (n) => n.toFixed(decimals(step)).replace(".", ",");
+    const [text, setText] = useState(null); // what is typed, while typing
+    const fit = (n) => Math.min(max, Math.max(min, Math.round(n / step) * step));
+    const commit = (n) => { const v = Number(fit(n).toFixed(decimals(step))); if (v !== shown || value === "" || value == null) onChange(v); };
+    const bump = (dir, e) => commit(shown + dir * step * (e?.shiftKey ? 10 : 1));
+    const typed = () => {
+        if (text === null) return;
+        const n = Number(text.trim().replace(",", "."));
+        setText(null);
+        if (text.trim() !== "" && Number.isFinite(n)) commit(n);
+    };
+    const onKeyDown = (e) => {
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); setText(null); bump(e.key === "ArrowUp" ? 1 : -1, e); }
+        else if (e.key === "Enter") { e.preventDefault(); typed(); }
+        else if (e.key === "Escape" && text !== null) { e.preventDefault(); e.stopPropagation(); setText(null); }
+    };
+    return (
+        <span className={`kx-num ${disabled ? "is-disabled" : ""} ${className}`}>
+            <button type="button" className="kx-t" tabIndex={-1} aria-label={`Diminuir ${label}`} title="Diminuir · Shift: ×10" disabled={disabled || shown <= min} onClick={(e) => bump(-1, e)}><Icon name="minus" size={12} /></button>
+            <input type="text" inputMode="decimal" role="spinbutton" aria-label={label} aria-valuemin={min} aria-valuemax={max} aria-valuenow={shown} aria-valuetext={`${fmt(shown)}${unit ? ` ${unit}` : ""}`}
+                value={text ?? fmt(shown)} disabled={disabled} size={Math.max(3, fmt(max).length)}
+                onChange={(e) => setText(e.target.value)} onBlur={typed} onKeyDown={onKeyDown} onFocus={(e) => e.target.select()} />
+            <button type="button" className="kx-t" tabIndex={-1} aria-label={`Aumentar ${label}`} title="Aumentar · Shift: ×10" disabled={disabled || shown >= max} onClick={(e) => bump(1, e)}><Icon name="plus" size={12} /></button>
+            {unit && <span className="kx-num-u" aria-hidden="true">{unit}</span>}
+        </span>
+    );
+}
+
 // The id of the visible label of the form row a control sits in
 // (settings/parts.jsx FormRow): a Field or Seg with no name of its own is
 // named by it (C-29).

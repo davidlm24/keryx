@@ -79,6 +79,7 @@ test("the controls that are fills or shadows get system-colour boundaries", () =
     const [console] = forcedBlocks(read(CONSOLE));
     assert.match(ruleFor(bundle, /\.kx-btn-outline/), /border:\s*1px solid ButtonText/);
     assert.match(ruleFor(bundle, /^\.kx-field$/), /border:\s*1px solid FieldText/);
+    assert.match(ruleFor(bundle, /^\.kx-num$/), /border:\s*1px solid FieldText/, "NumBox (Rodada HF2)");
     assert.match(ruleFor(bundle, /\.kx-seg > button\.is-on/), /outline:\s*2px solid Highlight/);
     assert.match(ruleFor(console, /^\.console \.sw2$/), /border:\s*1px solid ButtonText/);
     assert.match(ruleFor(console, /^\.console \.sw2::after$/), /background:\s*ButtonText/);
