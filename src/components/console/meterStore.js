@@ -98,6 +98,12 @@ function ensureDurations() {
     });
 }
 
+// The same, read once (the controle remoto's player: ±10 s within the file).
+export function reportedDuration(layer, url) {
+    ensureDurations();
+    return layer && url ? durations.get(`${layer}|${url}`) || null : null;
+}
+
 // The duration an output reported for this item, re-rendering only when it
 // changes.
 export function useReportedDuration(layer, url) {
