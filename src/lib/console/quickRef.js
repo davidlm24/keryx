@@ -10,7 +10,7 @@
 // "jo 3 " / "jo 3:" -> step versiculo
 // "jo 3 16-18" -> verses 16 to 18
 // "1co 13 4-7" -> 1 Coríntios 13:4-7
-import { bibleBooks, findBook, fold } from "../bibleBooks.js";
+import { bibleBooks, findBook, fold, parseReference } from "../bibleBooks.js";
 
 const MAX_CANDIDATES = 14;
 
@@ -122,3 +122,14 @@ export function quickRefLabel(r) {
     if (!r.verseStart) return `${r.book.name} ${r.chapter}`;
     return `${r.book.name} ${r.chapter}:${r.verseStart}${r.verseEnd && r.verseEnd !== r.verseStart ? `-${r.verseEnd}` : ""}`;
 }
+
+// The quick jump's reading as a reference ({ book, chapter, verseStart,
+// verseEnd }, verses null for a whole chapter), or null.
+export function quickReference(text) {
+    const r = readQuickRef(text);
+    return r.valid && r.book && r.chapter ? { book: r.book.name, chapter: r.chapter, verseStart: r.verseStart, verseEnd: r.verseEnd ?? r.verseStart } : null;
+}
+
+// Any reference typed by hand: "Jo 3:16" (parseReference) or the quick
+// jump's "jo 3 16" — the palette and the controle remoto read it alike.
+export const referenceFrom = (text) => parseReference(String(text || "").trim()) || quickReference(text);

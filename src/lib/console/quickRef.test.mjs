@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readQuickRef, quickRefLabel, typeQuickRef } from "./quickRef.js";
+import { readQuickRef, quickRefLabel, typeQuickRef, quickReference, referenceFrom } from "./quickRef.js";
 
 const names = (r) => r.candidates.map((c) => c.name);
 
@@ -135,4 +135,18 @@ test("the smoke's path: j, then o 3 16", () => {
     assert.deepEqual(f, { text: "jo", typed: null });
     const after = typeKeys(" 3 16", { text: "João ", typed: null });
     assert.equal(after.text.replace(/\s+/g, " "), "João 3 16");
+});
+
+// One reading for every field that takes a reference by hand (the palette,
+// the controle remoto): "Jo 3:16" and the quick jump's "jo 3 16" alike.
+test("referenceFrom reads a reference typed either way, a chapter alone included", () => {
+    assert.deepEqual(referenceFrom("jo 3 16"), { book: "João", chapter: 3, verseStart: 16, verseEnd: 16 });
+    assert.deepEqual(referenceFrom("Jo 3:16"), { book: "João", chapter: 3, verseStart: 16, verseEnd: 16 });
+    assert.deepEqual(referenceFrom("  1co 13 4-7 "), { book: "1 Coríntios", chapter: 13, verseStart: 4, verseEnd: 7 });
+    assert.deepEqual(referenceFrom("jo 3"), { book: "João", chapter: 3, verseStart: null, verseEnd: null });
+    assert.deepEqual(quickReference("salmos 23 1"), { book: "Salmos", chapter: 23, verseStart: 1, verseEnd: 1 });
+    assert.equal(referenceFrom("jo 99"), null);
+    assert.equal(referenceFrom("jo 3 99"), null);
+    assert.equal(referenceFrom(""), null);
+    assert.equal(referenceFrom("xyz 3"), null);
 });

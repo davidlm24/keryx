@@ -13,7 +13,9 @@ export default function MoreTab({ live, state, caps, c, touchLock, awake, onRefr
     // A layer's switch: on = shown now; a tap asks for the other.
     const layer = (which, shown, key = `layer-${which}`) => {
         const args = { which, on: !shown };
-        return { on: shown, disabled: !allowed("layer", args, c.flags), busy: c.busy.has(key), onChange: () => c.run(key, "layer", args) };
+        // The corner logo is refused both ways while locked (logo.set, the contract).
+        const off = !allowed("layer", args, c.flags) || (which === "corner" && c.flags.locked);
+        return { on: shown, disabled: off, busy: c.busy.has(key), onChange: () => c.run(key, "layer", args) };
     };
     return (
         <div className="rm-main">

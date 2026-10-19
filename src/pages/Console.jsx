@@ -481,7 +481,9 @@ export default function Console() {
 
     // Sending records when the item went on air (for the timeline), in live mode only.
     // With no stage given: the Bible selection in the Bible environment, else the Prévia.
-    const sendStage = useCallback(async (given) => {
+    // opts ({ keepPrev, why }, useConsole's send): a stage from the controle
+    // remoto leaves the Prévia, and the Prévia's item, alone.
+    const sendStage = useCallback(async (given, opts) => {
         const stage = given || (env === "biblia" && bibleStageRef.current) || undefined;
         if (!stage && env === "biblia") { c.say("Selecione versículos ou digite a referência."); return; }
         // The projector is the main output: sending live (re)opens it if the
@@ -498,7 +500,7 @@ export default function Console() {
                 return null;
             }).catch(() => {});
         }
-        const went = await c.send(stage);
+        const went = await c.send(stage, opts);
         if (!went) return false;
         // A song on air counts for Histórico, Estatísticas and the CCLI report.
         const sent = stage || c.prev;
@@ -508,7 +510,7 @@ export default function Console() {
             keryx.entities.SongHistory.create({ song_id: songId, song_title: sent.title, song_artist: song?.artist || "", played_at: new Date().toISOString(), operator_name: "Operador", ...(service ? { service_id: service.id, service_title: service.title } : {}) }).catch(() => {});
             if (song) keryx.entities.Song.update(songId, { play_count: (song.play_count || 0) + 1, last_played_at: new Date().toISOString() }).catch(() => {});
         }
-        const itemId = stage?.args?.ref?.serviceItemId ?? c.prev?.args?.ref?.serviceItemId;
+        const itemId = stage?.args?.ref?.serviceItemId ?? (opts?.keepPrev ? null : c.prev?.args?.ref?.serviceItemId);
         if (!itemId || !serviceId) return true;
         const now = Date.now();
         setLog((prev) => {
@@ -716,9 +718,10 @@ export default function Console() {
     const openReference = (ref) => { setBibleRequest({ ...ref, at: Date.now() }); setOpen(null); setEnv("biblia"); };
     // A reference from the palette, without leaving the console, in the
     // version chosen in the Bíblia (readChapter: online when not installed,
-    // an installed one when that fails; said so).
-    const referenceVerses = async (ref) => {
-        const wanted = bibleVersionWanted();
+    // an installed one when that fails; said so). The controle remoto may ask
+    // for another edition.
+    const referenceVerses = async (ref, edition = null) => {
+        const wanted = edition || bibleVersionWanted();
         const { verses, version, fellBack } = await readChapter(wanted, ref.book, ref.chapter);
         if (fellBack) c.say(`${fellBack} sem internet · usando a ${version}.`);
         else if (version !== wanted) c.say(`${wanted} não está instalada · usando a ${version}.`);
@@ -749,7 +752,7 @@ export default function Console() {
     };
     // Controle remoto (a phone, electron/lan.cjs): useRemote.js runs each
     // command as the console's own key or palette would.
-    useRemote({ c, service, items, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses });
+    useRemote({ c, data, service, items, rows: setPlan.rows, airItemId, airNow, nextItem, prefs, playerPick, sendStage, buildStage, referenceVerses });
 
     // Ctrl+= / Ctrl+− / Ctrl+0 zoom the console (main process,
     // electron/consoleZoom.cjs): say where it stands. Ctrl+wheel (and a
