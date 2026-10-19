@@ -72,10 +72,15 @@ export const SOUND_LAYERS = ["media", "video", "audio"];
 export const SOUND_MODES = ["cut", "fade", "mix"];
 const HEARD_KINDS = ["video", "audio", "youtube"];
 export const SOUND_FADE_MS = [100, 5000];
-// What leaves the air with a fade (Esc, Limpar, Parar, Tela preta, Logo):
-// the op's `fade` in ms, kept as live.fade so every output draws the same
-// one; the player's music goes on the same fade (live.leaving). Pausing and
-// playing again take the same range (transport's `fade`, playback.ramp).
+// What leaves the air with a fade (Esc, Limpar, Parar, Tela preta, Logo),
+// and what enters or replaces something else (Rodada G5: content.show,
+// media.show and .playlist, video.show, tool.show, communication.show, the
+// outputs' media.advance and communication.advance): the op's `fade` in ms,
+// kept as live.fade so every output draws the same one; the player's music
+// goes on the same fade (live.leaving). Pausing and playing again take the
+// same range (transport's `fade`, playback.ramp). Moving the slide
+// (content.goTo, .next, .prev, .reveal, .update) never fades: that is the
+// theme's transition.
 export const EXIT_FADE_MS = [50, 3000];
 export const MAX_OPTIONS = 8;
 export const MEMORIZE_ROUNDS = [1, 12];
@@ -183,9 +188,10 @@ export function emptyState(now = Date.now()) {
         // volume (and a video's opacity) down to 0 by `until`, then drop it;
         // the next change of the document leaves out the ones that are over.
         leaving: [],
-        // How the last change that took something off the screens faded
-        // (EXIT_FADE_MS): { ms, at }, `at` being that change's updatedAt, so
-        // an output knows the fade is this change's. null: a cut.
+        // How the last change that took something off the screens, or put
+        // something new on them, faded (EXIT_FADE_MS): { ms, at }, `at` being
+        // that change's updatedAt, so an output knows the fade is this
+        // change's. null: a cut.
         fade: null,
     };
 }
@@ -627,6 +633,8 @@ const OPS = {
     },
     "background.clear": (s) => (s.background ? { background: null } : null),
 
+    // `fade` (ms, Ao entrar ou trocar, Rodada G5): what the screens showed
+    // fades out over this; the same for every show op below.
     "content.show": (s, a, now) => {
         const items = slides(a.slides);
         return {
@@ -650,6 +658,7 @@ const OPS = {
                 revealed: {},
                 startedAt: now,
             },
+            fade: exitFade(a.fade, now),
         };
     },
     // Live edit of what is on screen; the slide position is kept where possible.
@@ -743,22 +752,22 @@ const OPS = {
     // playing gives way to this one; `volume` / `muted`: how it starts.
     "media.show": (s, a, now) => {
         const media = { ...mediaItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: playbackFor(a, now) };
-        return { ...remember(s, now), ...reveal(["tool", "communication"]), ...hush(s, "media", media, a.transition, now), media };
+        return { ...remember(s, now), ...reveal(["tool", "communication"]), ...hush(s, "media", media, a.transition, now), media, fade: exitFade(a.fade, now) };
     },
     "media.playlist": (s, a, now) => {
         const items = list(a.items, "Lista de mídias").map(mediaItem);
         if (items.length === 0) throw new LiveError("A lista de mídias está vazia.");
         const i = clampIndex(a.index, items.length);
         const media = { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: playbackFor(a, now) };
-        return { ...remember(s, now), ...reveal(["tool", "communication"]), ...hush(s, "media", media, a.transition, now), media };
+        return { ...remember(s, now), ...reveal(["tool", "communication"]), ...hush(s, "media", media, a.transition, now), media, fade: exitFade(a.fade, now) };
     },
     // Reported by the output when an item ends. Several outputs may report
     // the same end: only the first one (fromIndex still current) advances.
-    "media.advance": (s, { fromIndex }, now) => {
+    "media.advance": (s, { fromIndex, fade }, now) => {
         const media = need(s.media, "em reprodução");
         if (!media.playlist || Number(fromIndex) !== media.playlistIndex) return null;
         const i = (media.playlistIndex + 1) % media.playlist.length;
-        return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) } };
+        return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) }, fade: exitFade(fade, now) };
     },
     // Parar in the player: `fade` as Esc's (Ao tirar do ar, Rodada G3); a
     // single video that ends by itself is cleared by the projector with the
@@ -769,7 +778,7 @@ const OPS = {
     // not cover the main projector.
     "video.show": (s, a, now) => {
         const video = { ...mediaItem(a), shownAt: now, playback: playbackFor(a, now) };
-        return { ...hush(s, "video", video, a.transition, now), video };
+        return { ...hush(s, "video", video, a.transition, now), video, fade: exitFade(a.fade, now) };
     },
     "video.clear": (s, a, now) => (s.video ? { video: null, fade: exitFade(a.fade, now) } : null),
 
@@ -896,6 +905,7 @@ const OPS = {
                 startedAt: a.startedAt != null ? count(a.startedAt, "Início") : now,
                 endsAt,
             },
+            fade: exitFade(a.fade, now),
         };
     },
     // Time given or taken on a timer already on air (−1 min, +1 min, +5 min).
@@ -918,13 +928,13 @@ const OPS = {
         const i = playlist ? clampIndex(a.index, playlist.length) : 0;
         const item = playlist ? playlist[i] : loose(a.item, "Item");
         if (!isPlainObject(item)) throw new LiveError("Item de comunicação inválido.");
-        return { ...remember(s, now), ...reveal(["tool"]), communication: { item, playlist, playlistIndex: i, startedAt: now } };
+        return { ...remember(s, now), ...reveal(["tool"]), communication: { item, playlist, playlistIndex: i, startedAt: now }, fade: exitFade(a.fade, now) };
     },
-    "communication.advance": (s, { fromIndex }, now) => {
+    "communication.advance": (s, { fromIndex, fade }, now) => {
         const c = need(s.communication, "em exibição");
         if (!c.playlist || Number(fromIndex) !== c.playlistIndex) return null;
         const i = (c.playlistIndex + 1) % c.playlist.length;
-        return { communication: { ...c, item: c.playlist[i], playlistIndex: i, startedAt: now } };
+        return { communication: { ...c, item: c.playlist[i], playlistIndex: i, startedAt: now }, fade: exitFade(fade, now) };
     },
     "communication.clear": (s, a, now) => (s.communication ? { ...remember(s, now, "communication"), communication: null, fade: exitFade(a.fade, now) } : null),
     // Limpar texto (C): the timer, the aviso and the text go in ONE change, so

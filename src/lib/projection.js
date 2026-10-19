@@ -28,7 +28,7 @@ export const projection = {
     // The main projector's media layer: { kind, url, title }, or a list.
     showMedia: op("media.show"),
     showPlaylist: (items, index = 0) => keryx.live.call("media.playlist", { items, index }),
-    advanceMedia: (fromIndex) => keryx.live.call("media.advance", { fromIndex }),
+    advanceMedia: (fromIndex, { fade } = {}) => keryx.live.call("media.advance", { fromIndex, ...(fade ? { fade } : {}) }),
     clearMedia: op("media.clear"),
 
     // The audio channel: music or a playback track on the KERYX computer,
@@ -59,7 +59,7 @@ export const projection = {
 
     showCommunication: (item) => keryx.live.call("communication.show", { item }),
     showCommunicationPlaylist: (playlist, index = 0) => keryx.live.call("communication.show", { playlist, index }),
-    advanceCommunication: (fromIndex) => keryx.live.call("communication.advance", { fromIndex }),
+    advanceCommunication: (fromIndex, { fade } = {}) => keryx.live.call("communication.advance", { fromIndex, ...(fade ? { fade } : {}) }),
     clearCommunication: op("communication.clear"),
 
 
