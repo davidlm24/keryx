@@ -27,7 +27,6 @@ import { keryx } from '@/api/keryxClient';
 import { useWindowTitle } from '@/hooks/useChurch';
 import { outputMeta } from '@/lib/outputPrefs';
 import { OUTPUT_NAMES } from '@/lib/network/views';
-import FontFaces from '@/hooks/useFonts';
 
 // Every page is a chunk of its own: an output window or a screen on the
 // church network loads the entry, its page and the renderer, never the
@@ -47,6 +46,14 @@ const PastorView = lazy(() => import('./pages/PastorView'));
 const StreamView = lazy(() => import('./pages/StreamView'));
 const RemoteView = lazy(() => import('./pages/RemoteView'));
 const NetworkHome = lazy(() => import('@/components/network/NetworkHome'));
+// The church's fonts load as a chunk of their own too: their query (react-query's
+// useQuery) and src/lib/fonts.js would otherwise ride the entry into every
+// page, and the phone (/Remote) went over its budget (scripts/bundle-budget.cjs).
+// The rows arrive by a query anyway, so a window draws Geist for the same
+// moment it always did before its church fonts are declared.
+// It sits outside the ErrorBoundary, so a chunk that fails to load draws
+// nothing (Geist) rather than taking the window down.
+const FontFaces = lazy(() => import('@/hooks/useFonts').catch(() => ({ default: () => null })));
 
 const BLACK = <div className="fixed inset-0 bg-black" />;
 const GROUND = <div className="fixed inset-0" style={{ background: 'var(--bg-0)' }} />;
@@ -130,7 +137,7 @@ function App() {
         {/* The church's fonts (Media rows of category font), one @font-face
             each, in every window: the console, a detached page, an output
             window and a screen on the network (src/hooks/useFonts.js). */}
-        <FontFaces />
+        <Suspense fallback={null}><FontFaces /></Suspense>
         <ErrorBoundary>
           {keryx.isNetworkScreen ? (
             <>
