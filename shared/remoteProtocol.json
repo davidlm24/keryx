@@ -1,0 +1,280 @@
+{
+  "$comment": "The controle remoto's protocol (Rodada G6, PR0): what a phone on the church network may ask the console, checked by electron/lan.cjs, run by the console as its own keys would. Read by main with require() and by pages with import ... with { type: \"json\" } (like outputNames.json). shared/remoteProtocol.test.mjs keeps it honest against lan.cjs and the live state. Additive only: never rename, retype or remove what an older page reads.",
+  "version": 2,
+  "notes": {
+    "envelope": "POST /api/remote with { v: 2, action, args } (no v = a version 1 page; it still works). The body is at most limits.bodyBytes; header x-keryx: 1 and the remote cookie, as in v1. Success: { data: { message (<= limits.message chars), result? } }, result only for the actions that list one in `results`. Refusal: { error: { message, status, code? } }, code one of `codes` (the phone shows message; status 504 = the outcome is unknown, never retried).",
+    "args": "Each action's args are checked by the server against its `args` schema: enum (values), int (min, max, integers only), bool, id (pattern `idPattern`), str (max chars, trimmed, empty = absent). Unknown keys are dropped; a missing required arg or a wrong type is 400. `oneOf` lists groups of keys of which exactly one is given: the keys of that group marked required must be there and no key of another group may be. The console then checks what the args mean (an id that exists in ITS lists) and refuses in the order 423 (locked) -> 404 (not_found) -> 409 (nothing, missing, syncing, blocked).",
+    "kinds": "R reads (no log, no toast, no lock check); S puts something on air and is refused with 423 while the screens are locked; T takes something off and works while locked. putsOnAir = kind S = !WHILE_LOCKED.has(op) for every live-state op the action runs (`ops`, or `opsBy` per value of one arg; `kindBy` gives the kind per value of that arg). An action may run ops through others (a send also sets the Fundo, background.set), always of its own kind. player do=swap is T: it takes the video off the projector (media.toAudio); bringing it back (audio.toMedia) puts it on air, so the live state refuses it while locked (423) whatever the kind says.",
+    "split": "The live state goes to the phone over SSE (/api/events?screen=/Remote): live, hb (every 10 s; stale = nothing for 25 s) and User rows -> header, slides, player position, timer, alert, lock. What only the console knows comes from actions: state on mount, on visible/pageshow/online, when session.itemId, screen or locked change, and every 20 s while visible; library on demand. state is built per request, never pushed (3-6 kB typical, 32 kB at most).",
+    "versioning": "Additive only: new actions, args, fields and codes; never a rename or a type change. `caps` in state gate the phone's sections (an action whose `cap` is missing is hidden). A changed `app` (the KERYX version) in state reloads the page. An unknown action is 400 and the page shows messages.updateApp. A v1 request (no v) gets the v1 answers: state's `service` is the title string; with v: 2 it is the object { id, title, date }.",
+    "privacy": "No URL ever comes from the phone; answers carry only relative /media/<file> paths (a video's poster as a library row's thumb), never a keryx-media:// or an absolute URL."
+  },
+  "limits": {
+    "bodyBytes": 4096,
+    "message": 200,
+    "timeoutMs": 3000,
+    "slowTimeoutMs": 8000,
+    "slowActions": ["bibleFind", "bibleSend"],
+    "stateBytes": 32768,
+    "items": 200,
+    "itemTitle": 80,
+    "timers": 12,
+    "alerts": 12,
+    "alertMessage": 80,
+    "passageText": 280,
+    "libraryPage": 50
+  },
+  "idPattern": "^[\\w-]{1,64}$",
+  "codes": {
+    "locked": 423,
+    "not_found": 404,
+    "nothing": 409,
+    "missing": 409,
+    "syncing": 409,
+    "blocked": 409,
+    "busy": 503,
+    "rate": 429
+  },
+  "messages": {
+    "locked": "Telas travadas: nada vai ao ar. Destrave em Saídas.",
+    "noSlides": "Nada com slides no ar.",
+    "notInSetlist": "Esse item não está mais na setlist.",
+    "notFound": "Não achei esse item.",
+    "fileMissing": "Arquivo não encontrado no computador.",
+    "syncing": "Ainda baixando da sincronização.",
+    "notInBible": "{reference} não existe na {version}.",
+    "nothingPlaying": "Nada tocando.",
+    "noFollow": "Esta música não tem letra automática.",
+    "nothingToUndo": "Nada para desfazer.",
+    "consoleClosed": "O console não está aberto no computador.",
+    "unknownOutcome": "Não sei se foi — confira a tela",
+    "updateApp": "Atualize o KERYX no computador"
+  },
+  "caps": ["live", "setlist", "library", "bible", "player", "follow", "layers", "alert", "timer", "lock", "undo"],
+  "actions": {
+    "state": { "kind": "R", "result": "state", "args": {} },
+    "library": {
+      "kind": "R",
+      "cap": "library",
+      "result": "library",
+      "args": {
+        "tab": { "type": "enum", "values": ["songs", "media", "pieces", "materials"], "required": true },
+        "q": { "type": "str", "max": 40 },
+        "kind": { "type": "enum", "values": ["image", "video", "audio", "pdf"] },
+        "fav": { "type": "bool" },
+        "skip": { "type": "int", "min": 0, "max": 5000 },
+        "limit": { "type": "int", "min": 1, "max": 50 }
+      }
+    },
+    "next": { "kind": "S", "cap": "live", "label": "próximo slide", "ops": ["content.next"], "args": {} },
+    "prev": { "kind": "S", "cap": "live", "label": "slide anterior", "ops": ["content.prev"], "args": {} },
+    "goto": {
+      "kind": "S",
+      "cap": "live",
+      "label": "escolheu um slide",
+      "ops": ["content.goTo"],
+      "args": { "index": { "type": "int", "min": 0, "max": 1999, "required": true } }
+    },
+    "black": {
+      "kind": "T",
+      "cap": "live",
+      "label": "Tela preta",
+      "ops": ["screen.set"],
+      "args": { "on": { "type": "bool" } },
+      "$comment": "on omitted = toggle (version 1 pages); on given = idempotent."
+    },
+    "logo": {
+      "kind": "T",
+      "cap": "live",
+      "label": "Logo",
+      "ops": ["screen.set"],
+      "args": { "on": { "type": "bool" } },
+      "$comment": "on omitted = toggle (version 1 pages); on given = idempotent."
+    },
+    "clear": { "kind": "T", "cap": "live", "label": "limpou o texto", "ops": ["text.clear"], "args": {} },
+    "off": {
+      "kind": "T",
+      "cap": "live",
+      "label": "tirou do ar",
+      "opsBy": {
+        "arg": "layer",
+        "cases": {
+          "tool": ["tool.clear"],
+          "communication": ["communication.clear"],
+          "media": ["media.clear"],
+          "video": ["video.clear"],
+          "audio": ["audio.clear"],
+          "content": ["content.clear"]
+        }
+      },
+      "args": { "layer": { "type": "enum", "values": ["tool", "communication", "media", "video", "audio", "content"], "required": true } }
+    },
+    "end": { "kind": "T", "cap": "live", "label": "encerrou a projeção", "result": "end", "ops": ["clear"], "args": {} },
+    "undo": { "kind": "S", "cap": "undo", "label": "desfez", "args": {}, "$comment": "Puts back what was on air (the console's Desfazer): many ops, all refused while locked." },
+    "sendNext": { "kind": "S", "cap": "setlist", "label": "enviou o próximo", "result": "send", "ops": ["content.show", "background.set"], "args": {} },
+    "sendItem": {
+      "kind": "S",
+      "cap": "setlist",
+      "label": "enviou um item da setlist",
+      "result": "send",
+      "ops": ["content.show", "background.set", "media.show", "video.show", "audio.show", "tool.show", "communication.show"],
+      "args": { "itemId": { "type": "id", "required": true } }
+    },
+    "sendMedia": {
+      "kind": "S",
+      "cap": "library",
+      "label": "enviou da biblioteca",
+      "result": "send",
+      "ops": ["content.show", "background.set", "media.show", "video.show", "audio.show"],
+      "args": {
+        "kind": { "type": "enum", "values": ["song", "media", "piece", "material"], "required": true },
+        "id": { "type": "id", "required": true },
+        "toVideo": { "type": "bool" }
+      }
+    },
+    "bibleFind": {
+      "kind": "R",
+      "cap": "bible",
+      "result": "passage",
+      "args": {
+        "ref": { "type": "str", "max": 40, "required": true },
+        "book": { "type": "str", "max": 24, "required": true },
+        "chapter": { "type": "int", "min": 1, "max": 150, "required": true },
+        "verseStart": { "type": "int", "min": 1, "max": 176 },
+        "verseEnd": { "type": "int", "min": 1, "max": 176 },
+        "version": { "type": "str", "max": 12 }
+      },
+      "oneOf": [["ref"], ["book", "chapter", "verseStart", "verseEnd"]]
+    },
+    "bibleSend": {
+      "kind": "S",
+      "cap": "bible",
+      "label": "enviou um versículo",
+      "result": "send",
+      "ops": ["content.show", "background.set"],
+      "args": {
+        "ref": { "type": "str", "max": 40, "required": true },
+        "book": { "type": "str", "max": 24, "required": true },
+        "chapter": { "type": "int", "min": 1, "max": 150, "required": true },
+        "verseStart": { "type": "int", "min": 1, "max": 176 },
+        "verseEnd": { "type": "int", "min": 1, "max": 176 },
+        "version": { "type": "str", "max": 12 }
+      },
+      "oneOf": [["ref"], ["book", "chapter", "verseStart", "verseEnd"]],
+      "$comment": "A chapter alone sends the whole chapter, from verse 1."
+    },
+    "player": {
+      "kind": "S",
+      "cap": "player",
+      "label": "player",
+      "kindBy": { "arg": "do", "cases": { "swap": "T" } },
+      "opsBy": {
+        "arg": "do",
+        "cases": {
+          "toggle": ["transport"],
+          "back": ["transport"],
+          "forward": ["transport"],
+          "prev": ["transport", "playlist.goTo"],
+          "next": ["playlist.goTo"],
+          "volume": ["transport"],
+          "seek": ["transport"],
+          "swap": ["media.toAudio"]
+        }
+      },
+      "args": {
+        "do": { "type": "enum", "values": ["toggle", "back", "forward", "prev", "next", "volume", "seek", "swap"], "required": true },
+        "layer": { "type": "enum", "values": ["video", "media", "audio"] },
+        "volume": { "type": "int", "min": 0, "max": 100 },
+        "to": { "type": "int", "min": 0, "max": 86400 }
+      },
+      "$comment": "layer omitted = the layer the console's player shows; volume in %, to in seconds (seek)."
+    },
+    "play": { "kind": "S", "cap": "player", "label": "tocar / pausar", "ops": ["transport"], "args": {}, "$comment": "Version 1: the same as player { do: toggle }." },
+    "follow": {
+      "kind": "S",
+      "cap": "follow",
+      "label": "letra automática",
+      "ops": ["content.follow"],
+      "args": { "do": { "type": "enum", "values": ["start", "pause", "resume"], "required": true } }
+    },
+    "layer": {
+      "kind": "S",
+      "cap": "layers",
+      "label": "camadas",
+      "kindBy": { "arg": "on", "cases": { "false": "T" } },
+      "opsBy": { "arg": "on", "cases": { "true": ["layers.show"], "false": ["layers.hide"] } },
+      "args": {
+        "which": { "type": "enum", "values": ["text", "bg", "corner", "video"], "required": true },
+        "on": { "type": "bool", "required": true }
+      },
+      "$comment": "on false hides (T), true shows (S). video is reserved for Camadas' Vídeo layer (the Codex plan, G11); until the console has it, it answers 409 nothing."
+    },
+    "alert": {
+      "kind": "S",
+      "cap": "alert",
+      "label": "aviso rápido",
+      "ops": ["alert.show"],
+      "args": {
+        "message": { "type": "str", "max": 200, "required": true },
+        "presetId": { "type": "id", "required": true }
+      },
+      "oneOf": [["message"], ["presetId"]]
+    },
+    "alertClear": { "kind": "T", "cap": "alert", "label": "tirou o aviso", "ops": ["alert.clear"], "args": {} },
+    "tool": {
+      "kind": "S",
+      "cap": "timer",
+      "label": "relógio / timer",
+      "ops": ["tool.show", "background.set"],
+      "args": {
+        "mode": { "type": "enum", "values": ["clock", "stopwatch", "timer"], "required": true },
+        "minutes": { "type": "int", "min": 1, "max": 180 }
+      }
+    },
+    "timerAdjust": {
+      "kind": "S",
+      "cap": "timer",
+      "label": "ajustou o timer",
+      "ops": ["tool.adjust"],
+      "args": { "deltaMs": { "type": "enum", "values": [-60000, 60000, 300000], "required": true } }
+    },
+    "lock": {
+      "kind": "T",
+      "cap": "lock",
+      "label": "travar telas",
+      "ops": ["screens.lock"],
+      "args": { "locked": { "type": "bool", "required": true } }
+    }
+  },
+  "results": {
+    "state": {
+      "v": "int: the protocol version (2)",
+      "app": "str: the KERYX version; a change reloads the page",
+      "caps": "str[]: the sections this console can run (see caps)",
+      "rev": "int: changes whenever anything below changes",
+      "service": "{ id, title, date } | null (v1 requests: the title string)",
+      "serviceId": "id | null (v1)",
+      "locked": "bool (v1)",
+      "screen": "show | black | logo (v1)",
+      "onAir": "{ title, pos } | null (v1)",
+      "airItemId": "id | null (v1)",
+      "nextItemId": "id | null (v1)",
+      "backItemId": "id | null: the item Voltar ao anterior goes back to",
+      "items": "[<= limits.items] { id, title (<= limits.itemTitle), type, section (v1), at, dur, st: ok | missing | syncing | blocked }",
+      "truncated": "bool: items stopped at limits.items",
+      "bible": "{ version, installed: str[] }",
+      "timers": "[<= limits.timers] the timers prontos { id, minutes }: 5, 10, 15, 30 and 60 min, then the church's TimerPreset rows (timerPresets.js)",
+      "alerts": "[<= limits.alerts] { id, message (<= limits.alertMessage) }: the AlertPreset rows"
+    },
+    "library": {
+      "tab": "songs | media | pieces | materials",
+      "total": "int",
+      "skip": "int",
+      "ready": "bool: false while the console's lists are still loading",
+      "rows": "[<= limits.libraryPage] { id, title, sub, dur, fav, st: ok | missing | syncing | blocked, thumb: a relative /media/... poster or null }"
+    },
+    "passage": { "reference": "str", "text": "str (<= limits.passageText)", "version": "str" },
+    "end": { "undo": "bool: Desfazer can put it back" },
+    "send": { "title": "str: what went on air, echoed" }
+  }
+}
