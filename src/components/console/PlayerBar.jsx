@@ -241,7 +241,7 @@ export default function PlayerBar({ c, picked, setPicked, videoScreens, projecto
         <div className={`player ${off ? "is-idle" : ""}`} role="group" aria-label="Player de mídia">
             <div className="pl-row pl-row1">
                 <span className="pl-what" title={item ? `${name} · ${kindWord}${listPos ? ` · ${listPos}` : ""}` : undefined}>
-                    <Icon name={item?.kind === "clock" ? "clock" : item?.kind === "audio" ? "music" : "film"} />
+                    <Icon name={item?.kind === "clock" ? "clock" : item?.kind === "audio" ? "volume" : item?.kind === "youtube" ? "youtube" : "film"} />
                     {item && <span className="t">{name}</span>}
                     {listPos && <span className="pl-n">{listPos}</span>}
                 </span>

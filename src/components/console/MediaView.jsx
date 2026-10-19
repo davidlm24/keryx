@@ -13,11 +13,11 @@ import { setDragGhost, stageGhost } from "./dragGhost";
 import { PENDING_SAY } from "@/lib/pendingMedia";
 import { useContextMenu } from "./ContextMenu";
 import { gridStep, columnsOf } from "@/lib/console/gridNav";
+import { mediaIcon } from "@/lib/console/libraryRows";
 
 const CATS = [["todas", "Todas"], ["video", "Vídeos"], ["image", "Imagens"], ["audio", "Áudios"], ["doc", "Apresentações"]];
 const inCat = (m, cat) => cat === "todas" || (cat === "image" ? m.type === "image" || m.type === "gif" : cat === "doc" ? m.type === "pdf" || m.type === "powerpoint" : m.type === cat);
 const KIND = { video: "Vídeo", image: "Imagem", gif: "GIF", pdf: "PDF", powerpoint: "PowerPoint", audio: "Áudio" };
-const ICON = { video: "film", image: "image", gif: "image", pdf: "film", powerpoint: "film", audio: "volume" };
 export const CATEGORY = [["sermon", "Pregação"], ["worship", "Louvor"], ["announcement", "Avisos"], ["testimony", "Testemunho"], ["other", "Outros"]];
 const catLabel = (c) => CATEGORY.find(([k]) => k === c)?.[1] || "Outros";
 const isYouTube = (m) => m.type === "video" && /youtu/.test(m.file_url || "");
@@ -241,7 +241,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                 <Btn small kind="outline" on={adding} onClick={() => setAdding(!adding)}><Icon name="plus" />Adicionar</Btn>
                 {adding && <div className="kx-pop pl-pop">
                     <Row single icon="folder" title="Enviar arquivos…" onClick={() => { setAdding(false); fileRef.current?.click(); }} />
-                    <Row single icon="film" title="Link do YouTube…" onClick={() => { setAdding(false); addLink(); }} />
+                    <Row single icon="youtube" title="Link do YouTube…" onClick={() => { setAdding(false); addLink(); }} />
                 </div>}
             </span>} />
         <div className="win-body">
@@ -291,7 +291,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                     </div>
                 )}
                 <div className="mv-body" onClick={(e) => { if (e.target === e.currentTarget) setSel([]); }}>
-                    {!shown.length && <Empty icon="film" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Enviar arquivos… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
+                    {!shown.length && <Empty icon="media" title={media.length ? "Nada com esse filtro" : "Nenhuma mídia ainda"}>{media.length ? "Mude a busca, o tipo ou a categoria." : "Use Adicionar › Enviar arquivos… (vídeos, áudios, imagens, PDF, PowerPoint) ou Link do YouTube…."}</Empty>}
                     {view === "grid" && shown.length > 0 && (
                         <div className="mv-grid" ref={gridRef}>
                             {shown.map((m) => (
@@ -304,7 +304,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                         {m.type === "audio" && !m.missing && <audio src={m.file_url} preload="metadata" onLoadedMetadata={(e) => learn(m, e.currentTarget.duration)} />}
                                         {m.type === "pdf" && !m.missing && m.thumbnail_url && !m.posterSyncing && <img src={m.thumbnail_url} alt="" loading="lazy" />}
                                         {!hasPoster(m) && (
-                                            <span className={`mv-th-t ${m.missing && !m.syncing ? "is-warn" : ""}`}>{m.syncing ? <><Icon name="download" size={22} />Baixando…</> : m.missing ? "Arquivo não encontrado" : <><Icon name={ICON[m.type] || "film"} size={22} />{isYouTube(m) ? "YouTube" : KIND[m.type]}</>}</span>
+                                            <span className={`mv-th-t ${m.missing && !m.syncing ? "is-warn" : ""}`}>{m.syncing ? <><Icon name="download" size={22} />Baixando…</> : m.missing ? "Arquivo não encontrado" : <><Icon name={mediaIcon(m)} size={22} />{isYouTube(m) ? "YouTube" : KIND[m.type]}</>}</span>
                                         )}
                                         <span className="mv-lab">{isYouTube(m) ? "YouTube" : KIND[m.type] || m.type}</span>
                                         {(m.duration > 0 || isYouTube(m)) && <span className="mv-n">{isYouTube(m) ? "link" : mmss(m.duration)}</span>}
@@ -318,7 +318,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                     )}
                     {view === "list" && shown.map((m) => (
                         <div key={m.id} className={`kx-row kx-t mv-row ${state(m)}`} role="button" tabIndex={0} data-media-id={m.id} onClick={(e) => pick(m, e)} onDoubleClick={() => send(m)} onContextMenu={fileMenu(m)} {...drag(m)}>
-                            <span className="kx-glyph"><Icon name={ICON[m.type] || "film"} /></span>
+                            <span className="kx-glyph"><Icon name={mediaIcon(m)} /></span>
                             <div className="kx-row-main">
                                 {renaming === m.id ? renameField(m) : <div className="kx-row-title" title={m.title}>{m.title}</div>}
                                 <div className={`kx-row-meta ${m.missing && !m.syncing ? "kx-warn" : ""}`}>{m.syncing ? `${KIND[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar…" : isDoc(m) ? <PagesMeta row={m} kind={[KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")} /> : [isYouTube(m) ? "YouTube" : KIND[m.type], catLabel(m.category), bytes(m.size)].filter(Boolean).join(" · ")}</div>

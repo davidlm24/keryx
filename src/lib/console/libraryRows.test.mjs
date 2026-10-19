@@ -1,6 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { songRow, mmss, SONG_BADGES } from "./libraryRows.js";
+import { songRow, mmss, SONG_BADGES, mediaIcon } from "./libraryRows.js";
+
+test("one glyph per kind of media, everywhere it is listed", () => {
+    assert.equal(mediaIcon({ type: "video", file_url: "keryx-media://a.mp4" }), "film");
+    assert.equal(mediaIcon({ type: "video", file_url: "https://www.youtube.com/watch?v=x" }), "youtube");
+    assert.equal(mediaIcon({ type: "video", file_url: "https://youtu.be/x" }), "youtube");
+    assert.equal(mediaIcon({ type: "audio" }), "volume", "the speaker, as in the Setlist; the note is a song");
+    assert.equal(mediaIcon({ type: "pdf" }), "presentation");
+    assert.equal(mediaIcon({ type: "powerpoint" }), "presentation");
+    assert.equal(mediaIcon({ type: "gif" }), "image");
+    assert.equal(mediaIcon({ type: "zz" }), "film");
+});
 
 const song = { title: "Grande é o Senhor", artist: "Adhemar de Campos", song_key: "G", duration: 245 };
 

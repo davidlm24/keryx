@@ -7,10 +7,17 @@
 
 export const mmss = (s) => { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 
+// The glyph of a Media row, the same in the Biblioteca, the Mídia and the
+// search palette (Rodada G1): a YouTube link is not a film, an audio file
+// is the speaker (as in the Setlist), a PDF is a presentation.
+const MEDIA_GLYPH = { video: "film", image: "image", gif: "image", pdf: "presentation", powerpoint: "presentation", audio: "volume" };
+export const isYouTubeMedia = (m) => m?.type === "video" && /youtu.?be/.test(m.file_url || "");
+export const mediaIcon = (m) => (isYouTubeMedia(m) ? "youtube" : MEDIA_GLYPH[m?.type] || "film");
+
 // A badge is an icon with its words (tooltip and aria-label), in this order.
 export const SONG_BADGES = {
     syncing: { id: "syncing", icon: "download", label: "Baixando o playback…" },
-    synced: { id: "synced", icon: "clock", label: "Sincronizada" },
+    synced: { id: "synced", icon: "synced", label: "Sincronizada" },
     duplicate: { id: "duplicate", icon: "copy", label: "Parece repetida", warn: true },
 };
 

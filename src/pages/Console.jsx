@@ -1142,7 +1142,7 @@ export default function Console() {
     // The header: the library (where the 9 slots are pinned) and the + menu
     // (owner 2026-10-14: the body is only the thumbnails); as tall as its
     // slots (Measure → locked.temas), like Camadas.
-    const temasBtns = <><IconBtn name="grid" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
+    const temasBtns = <><IconBtn name="palette" title="Biblioteca de temas… · o clique direito fixa um tema no console" small onClick={() => themeMenuRef.current?.library()} /><IconBtn name="plus" title="Temas: novo, configurações, para a música, visualização" small onClick={(e) => themeMenuRef.current?.menu(e)} /></>;
     const temasPanel = <Panel title="Temas" count={themeInUseName ? `em uso: ${themeInUseName}` : ""} className="temas-panel" actions={temasBtns}><Measure onHeight={setTemasFitH}>{themeStrip}</Measure></Panel>;
     const temasOn = onScreen("temas");
     const layers = (

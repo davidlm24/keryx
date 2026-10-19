@@ -8,7 +8,7 @@ import { useConfirm, deleteQuestion } from "./ConfirmDialog";
 import AddMenu from "./AddMenu";
 import { importSongFiles as importSongs } from "./importSongs";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
-import { songRow, mmss } from "@/lib/console/libraryRows";
+import { songRow, mmss, mediaIcon } from "@/lib/console/libraryRows";
 import { mediaFromYouTube } from "@/lib/mediaImport";
 import { stripChords } from "@/lib/chords";
 import { importMediaFiles, importSummary } from "@/lib/mediaImport";
@@ -99,7 +99,6 @@ function MediaPeek({ peek }) {
     );
 }
 
-const MEDIA_ICON ={ video: "film", image: "image", gif: "image", pdf: "film", powerpoint: "film", audio: "music" };
 const MEDIA_LABEL = { video: "Vídeo", image: "Imagem", gif: "GIF", pdf: "Apresentação", powerpoint: "Apresentação", audio: "Áudio" };
 const match = (q, ...fields) => !q || fields.some((f) => String(f || "").toLowerCase().includes(q));
 
@@ -184,7 +183,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
         : tab === "videos"
             ? [
                 { label: "Do computador…", icon: "folder", accept: shownIds.includes("audios") ? "video/*" : "video/*,audio/*", onFiles: importMedia },
-                { label: "Link do YouTube", icon: "film", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
+                { label: "Link do YouTube", icon: "youtube", onClick: () => document.querySelector(".console .yt-field input")?.focus() },
             ]
             : [{ label: "Novo aviso…", icon: "megaphone", onClick: () => onEditNotice?.("new") }];
 
@@ -196,7 +195,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 <Field value={q} onChange={setQ} placeholder="Buscar…" />
                 {tab === "letras" && <IconBtn name="star" on={favOnly} title={favOnly ? "Mostrar todas" : "Só favoritas"} aria-label="Só favoritas" onClick={() => setFavOnly((f) => !f)} />}
                 {/* The media library is one click away on every tab (owner, Rodada G1). */}
-                {onOpenMedia && <IconBtn name="film" title="Abrir a Biblioteca de mídia" aria-label="Abrir a Biblioteca de mídia" onClick={() => onOpenMedia()} />}
+                {onOpenMedia && <IconBtn name="media" title="Abrir a Biblioteca de mídia" aria-label="Abrir a Biblioteca de mídia" onClick={() => onOpenMedia()} />}
                 <AddMenu title={tab === "letras" ? "Adicionar letra" : tab === "avisos" ? "Adicionar aviso" : "Adicionar mídia"} items={addItems} />
             </div>
 
@@ -252,7 +251,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                 const mediaRow = (m) => (
                     <Row
                         key={m.id}
-                        icon={MEDIA_ICON[m.type] || "film"}
+                        icon={mediaIcon(m)}
                         title={m.title}
                         meta={m.syncing ? `${MEDIA_LABEL[m.type] || m.type} · Baixando…` : m.missing ? "Arquivo não encontrado · Localizar… na biblioteca" : m.type === "pdf" || m.type === "powerpoint" ? <PagesMeta row={m} kind={m.type === "pdf" ? "PDF" : "PowerPoint"} /> : [MEDIA_LABEL[m.type] || m.type, m.duration && mmss(m.duration)].filter(Boolean).join(" · ")}
                         metaClass={m.missing && !m.syncing ? "kx-warn" : ""}
@@ -262,7 +261,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                         onContextMenu={(e) => menu(e, { title: m.title, items: [
                             { label: "Pôr na prévia", icon: "eye", onSelect: () => onPrepare(stageFromMedia(m)) },
                             m.type === "video" && { label: "Pôr na prévia para as telas de vídeo", icon: "tv", onSelect: () => onPrepare(stageFromMedia(m, { toVideo: true })) },
-                            onOpenMedia && { label: "Abrir a Mídia", icon: "film", onSelect: () => onOpenMedia() },
+                            onOpenMedia && { label: "Abrir a Mídia", icon: "media", onSelect: () => onOpenMedia() },
                             { label: "Excluir…", icon: "trash", onSelect: () => removeRow("Media", m, MEDIA_WORD[m.type] || "o arquivo", m.title || "sem título", "Excluído da Mídia.") },
                             onGo && { label: "Enviar ao ar", icon: "play", air: true, onSelect: () => onGo(stageFromMedia(m)) },
                         ] })}
@@ -287,7 +286,7 @@ export default function Library({ c, data, tab, setTab, tabs, elsewhere = {}, on
                             <div className="listhead"><span className="kx-section">Áudios <span className="kx-count">· {audios.length}</span></span><span style={{ flex: 1 }} /><Btn small onClick={() => onPrepare(stageFromAudioList(audios))} title="Pôr na prévia os áudios desta lista, um depois do outro">Tocar todos</Btn></div>
                         )}
                         <div className="kx-acts-list" role="list" style={{ overflow: "auto", flex: 1 }}>
-                            {!media.length && data.loaded?.media !== false && <Empty icon={{ imagens: "image", audios: "music" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
+                            {!media.length && data.loaded?.media !== false && <Empty icon={{ imagens: "image", audios: "volume", apresentacoes: "presentation" }[tab] || "film"} title={ql ? `Nada com "${q}"` : { imagens: "Nenhuma imagem", audios: "Nenhum áudio", apresentacoes: "Nenhuma apresentação" }[tab] || "Nenhum vídeo"}>{tab === "videos" ? "Use + para adicionar arquivos, ou cole um link do YouTube." : "Use + para adicionar arquivos do computador."}</Empty>}
                             {media.map(mediaRow)}
                         </div>
                     </>

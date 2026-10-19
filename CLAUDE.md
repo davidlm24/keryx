@@ -293,7 +293,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   "Mostrar nomes" is on (`layout.temasThumb`/`temasNames`, per computer);
   an empty slot is a dashed + that makes a new theme; the panel is as tall
   as its slots (`Measure` → `locked.temas`), like Camadas. Its header has
-  the library (`grid` icon; the library's right click pins a theme here)
+  the library (`palette` icon, as Temas everywhere; the library's right click pins a theme here)
   and the **+ menu** (`menuRef`): Novo tema, Configurações › Temas…, Salvar/Tirar tema para a
   música, Usar neste culto, Seguir o culto, Tornar padrão, Visualização.
   Nothing else in the body: no "tema do culto" line, no buttons.
@@ -339,12 +339,19 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   too: Buscar… (the palette), Seção…, Texto…, Timer… (a ServiceItem under
   the item in the Prévia, else at the end) and Planejar o culto…; the
   Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory);
-  the search row has a film button beside the ☆, "Abrir a Biblioteca de
+  the search row has a button beside the ☆, "Abrir a Biblioteca de
   mídia" (the Mídia page, every tab), and no (+) holds the lines-per-slide
   chips any more ("Ao importar letras" lives in Configurações › Bíblia e
   músicas; Rodada G1). **Hover buttons are glyphs only** (owner, Rodada
   G1): the word stays inside the button as screen-reader text (`.kx-act-l`,
-  which the smoke clicks by), the tooltip says it. **A row with hover buttons is one line** (Rodada G1, owner
+  which the smoke clicks by), the tooltip says it. **One glyph per kind of
+  thing** (owner 2026-10-19): `media` = the Mídia (the library page),
+  `film` = a video, `youtube` = a YouTube link, `presentation` = a
+  PDF/presentation, `volume` = an audio file (`music` = a song only),
+  `synced` = a song synced to its media, `clock` = a timer or the live
+  clock, `palette` = Temas, `grid` = the Multiview only; a Media row's
+  glyph is `mediaIcon` (libraryRows.js, tested) wherever it is listed.
+  New glyphs go in Icon.jsx's EXTRA, in the set's style. **A row with hover buttons is one line** (Rodada G1, owner
   2026-10-19): in Confortável too, its title ends in "…" (the whole title
   is its tooltip) — the Biblioteca, the Setlist, the palette, the Mídia and
   the planner (one rule, `.kx-row:has(> .kx-row-acts)` in console.css).

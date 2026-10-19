@@ -19,6 +19,7 @@ import { byGroup, rowStatus } from "@/lib/console/outputs";
 import { useOutputLooks } from "@/hooks/useOutputPref";
 import { Switch } from "./settings/parts";
 import { useDialogFocus } from "./useDialogFocus";
+import { mediaIcon } from "@/lib/console/libraryRows";
 
 const DEVICE_ICON = { projector: "projector", tv: "tv", tablet: "tablet", pc: "monitor" };
 
@@ -72,7 +73,7 @@ export function Menu({ open, setOpen, services, serviceId, setServiceId, layout,
     const items = [
         { label: "Culto", icon: "list", kbd: <Icon name="chevron-right" />, onSelect: () => setOpen("cultos") },
         { label: "Planejar o culto", icon: "list", onSelect: go(() => onPlanner?.(serviceId)) },
-        { label: "Mídia", icon: "film", onSelect: go(onMedia) },
+        { label: "Mídia", icon: "media", onSelect: go(onMedia) },
         { label: "Avisos", icon: "megaphone", onSelect: go(onNotices) },
         { label: "Novo aviso", icon: "plus", onSelect: go(onNewNotice) },
         { label: "Escola bíblica", icon: "book", onSelect: go(onSchool) },
@@ -321,7 +322,7 @@ export function Palette({ open, setOpen, data, items, onPrepare, onAddSong, open
     if (!ref && onBibleSearch && ql.length >= 3) bible.push({ icon: "search", title: `Buscar “${q.trim()}” na Bíblia`, meta: "Busca por palavra na Bíblia instalada", act: "Buscar", pick: () => onBibleSearch(q.trim()) });
     const rund = (ql ? items.filter((it) => has(it.title)) : []).slice(0, 4).map((it) => ({ icon: "list", title: it.title, meta: "Setlist", pick: () => onPrepare(it, items.indexOf(it)) }));
     const songs = (ql ? data.songs.filter((s) => has(s.title, s.artist)) : data.songs.slice(0, 4)).slice(0, 5).map((s) => ({ icon: "music", title: s.title, meta: [s.artist, s.song_key].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromSong(s, {}, data.themes)), add: onAddSong ? () => onAddSong(s) : null }));
-    const media = (ql ? data.media.filter((m) => has(m.title)) : []).slice(0, 4).map((m) => ({ icon: m.type === "image" ? "image" : "film", title: m.title, meta: m.type, pick: () => onPrepare(stageFromMedia(m)) }));
+    const media = (ql ? data.media.filter((m) => has(m.title)) : []).slice(0, 4).map((m) => ({ icon: mediaIcon(m), title: m.title, meta: m.type, pick: () => onPrepare(stageFromMedia(m)) }));
     const pieces = (ql ? data.pieces.filter((p) => has(p.title, p.text)) : []).slice(0, 4).map((p) => ({ icon: "megaphone", title: p.title || p.text, meta: "Aviso", pick: () => onPrepare(stageFromPiece(p)) }));
     const mats = (ql ? (data.materials || []).filter((m) => has(m.title, m.subject, m.class_name)) : []).slice(0, 4).map((m) => ({ icon: materialIcon(m.type), title: m.title, meta: ["Escola bíblica", m.subject, materialMeta(m)].filter(Boolean).join(" · "), pick: () => onPrepare(stageFromMaterial(m)) }));
     // A reference typed in the KERYX environment is what the operator wants: first.
