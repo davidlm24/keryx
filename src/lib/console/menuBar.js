@@ -119,7 +119,7 @@ export function flattenMenus(menus, { maxServices = 5, onAllServices } = {}) {
                 lastService = out.length - 1;
             } else if (it.sub) {
                 out.push({ head: it.label, minor: true });
-                for (const s of it.sub) out.push({ ...s, indent: true });
+                for (const s of it.sub) out.push({ title: s.label, ...s, indent: true });
             } else out.push(it);
         }
         if (cut) out.splice(lastService + 1, 0, { label: "Todos os cultos…", icon: "list", title: "Planejar o culto", onSelect: onAllServices });
