@@ -1036,27 +1036,27 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
    chevron's slot empty so every title lines up. Groups are 12 px apart
    with a hairline between them (the panel rule's spacing), and a listhead
    inside one keeps the same 12 px. */
-.console .cfg .cfg-group { display: flex; flex-direction: column; min-width: 0; }
-.console .cfg .cfg-group + .cfg-group, .console .cfg .listhead + .cfg-group, .console .cfg .cfg-group + .listhead { margin-top: var(--space-3); }
-.console .cfg .cfg-group + .cfg-group { border-top: 1px solid var(--line); padding-top: var(--space-1); }
-.console .cfg .cfg-group-h { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); margin: 0; padding: 0 var(--space-3) 0 var(--space-1); min-width: 0; font: inherit; }
-.console .cfg .cfg-group-t { display: inline-flex; align-items: center; gap: var(--space-1); height: 24px; max-width: 100%; min-width: 0; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: inherit; font: inherit; text-align: left; cursor: default; }
-.console .cfg button.cfg-group-t { cursor: pointer; }
-.console .cfg button.cfg-group-t:hover { background: var(--bg-3); }
-.console .cfg button.cfg-group-t:hover .kx-section { color: var(--fg-1); }
-.console .cfg button.cfg-group-t:focus-visible { outline: 2px solid var(--rh, var(--brand)); outline-offset: -2px; }
+.console .cfg-group { display: flex; flex-direction: column; min-width: 0; }
+.console .cfg-group + .cfg-group, .console .listhead + .cfg-group, .console .cfg-group + .listhead { margin-top: var(--space-3); }
+.console .cfg-group + .cfg-group { border-top: 1px solid var(--line); padding-top: var(--space-1); }
+.console .cfg-group-h { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row); margin: 0; padding: 0 var(--space-3) 0 var(--space-1); min-width: 0; font: inherit; }
+.console .cfg-group-t { display: inline-flex; align-items: center; gap: var(--space-1); height: 24px; max-width: 100%; min-width: 0; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: none; color: inherit; font: inherit; text-align: left; cursor: default; }
+.console button.cfg-group-t { cursor: pointer; }
+.console button.cfg-group-t:hover { background: var(--bg-3); }
+.console button.cfg-group-t:hover .kx-section { color: var(--fg-1); }
+.console button.cfg-group-t:focus-visible { outline: 2px solid var(--rh, var(--brand)); outline-offset: -2px; }
 /* The group's title is bolder than a plain sub-title (owner 2026-10-19: 600,
    the console's grey caption, not gold; gold stays for the brand and what is live). */
-.console .cfg .cfg-group-t .kx-section { font-size: 11px; font-weight: 600; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.console .cfg .cfg-group-chev { flex: none; width: 12px; height: 12px; color: var(--fg-3); transition: transform var(--fold-ms) var(--ease-fold); }
-.console .cfg .cfg-group:not(.is-open) .cfg-group-chev { transform: rotate(-90deg); }
-.console .cfg .cfg-group-s { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.console .cfg .cfg-group-acts { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-2); flex: none; }
-.console .cfg .cfg-group-b { display: grid; grid-template-rows: 1fr; min-width: 0; transition: grid-template-rows var(--fold-ms) var(--ease-fold), visibility 0s; }
-.console .cfg .cfg-group:not(.is-open) > .cfg-group-b { grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows var(--fold-ms) var(--ease-fold), visibility 0s var(--fold-ms); }
-.console .cfg .cfg-group.is-instant > .cfg-group-b, .console .cfg .cfg-group.is-instant .cfg-group-chev { transition: none; }
-.console .cfg .cfg-group-in { min-height: 0; min-width: 0; overflow: hidden; }
-.console .cfg .cfg-group-in > .listhead:not(:first-child) { margin-top: var(--space-3); }
+.console .cfg-group-t .kx-section { font-size: 11px; font-weight: 600; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .cfg-group-chev { flex: none; width: 12px; height: 12px; color: var(--fg-3); transition: transform var(--fold-ms) var(--ease-fold); }
+.console .cfg-group:not(.is-open) .cfg-group-chev { transform: rotate(-90deg); }
+.console .cfg-group-s { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .cfg-group-acts { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-2); flex: none; }
+.console .cfg-group-b { display: grid; grid-template-rows: 1fr; min-width: 0; transition: grid-template-rows var(--fold-ms) var(--ease-fold), visibility 0s; }
+.console .cfg-group:not(.is-open) > .cfg-group-b { grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows var(--fold-ms) var(--ease-fold), visibility 0s var(--fold-ms); }
+.console .cfg-group.is-instant > .cfg-group-b, .console .cfg-group.is-instant .cfg-group-chev { transition: none; }
+.console .cfg-group-in { min-height: 0; min-width: 0; overflow: hidden; }
+.console .cfg-group-in > .listhead:not(:first-child) { margin-top: var(--space-3); }
 /* A search jump lands with room above the row (C-87 neighbour: scroll-margin). */
 .console .cfg [data-cfg-k] { scroll-margin-block: var(--space-3); }
 /* The settings body and the editors' column keep their scrollbar's room
@@ -1065,7 +1065,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 /* Configurações' sub-titles read at 11 px (C-31, partial): the listhead's
    10 px stays for the console's lists. */
 .console .cfg .listhead .kx-section { font-size: 11px; }
-@media (prefers-reduced-motion: reduce) { .console .cfg .cfg-group-b, .console .cfg .cfg-group:not(.is-open) > .cfg-group-b, .console .cfg .cfg-group-chev { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .console .cfg-group-b, .console .cfg-group:not(.is-open) > .cfg-group-b, .console .cfg-group-chev { transition: none; } }
 /* Configurações › Sincronização (SyncSection.jsx). */
 .console .cfg .cfg-sync-intro { max-width: 62ch; margin: var(--space-2) var(--space-3) var(--space-1); color: var(--fg-2); font-size: 12px; line-height: 1.55; }
 .console .cfg .cfg-sync-intro b { color: var(--fg-1); font-weight: 600; }
@@ -1879,7 +1879,7 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
   /* The Bíblia's cells are boxes. */
   .console :is(.bgrid .kx-book, .chapters button, .verse-cells button):not(:focus-visible, .is-on, .is-selected, .is-prev) { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* A group's header that opens and closes (CfgGroup) is a button. */
-  .console .cfg button.cfg-group-t { outline: 1px solid ButtonText; outline-offset: -1px; }
+  .console button.cfg-group-t { outline: 1px solid ButtonText; outline-offset: -1px; }
   /* Switches: track and knob in the system's colours, Highlight when on. */
   .console .sw2 { border: 1px solid ButtonText; background: Canvas; }
   .console .sw2::after { top: 1px; left: 1px; background: ButtonText; }

@@ -434,7 +434,12 @@ open the Programa monitor draws one still frame (the air never pauses).
   beside it as a `Seg` that writes the number and is pressed when it is
   equal (the Editor de temas' Tamanho: `NumBox` 1–12 % + PP…GGG). A
   slider stays for what is felt rather than read (opacity, the dim).
-  The Editor de temas' Fonte rows, flat until HF3: Fonte (FontPicker and
+  The Editor de temas' form is `CfgGroup`s since the Rodada HF3 (ids
+  `tema.<grupo>`; summaries `fontSummary`…`transitionSummary` in themes.js):
+  Nome e padrão (plain heading: Nome, Tema padrão, Comentário, Título do
+  item), Fonte and Fundo open, Cor e efeito, Caixa do texto, Posição and
+  Transição closed with a summary ("Bebas Neue · 4,8 % · negrito"). The
+  Fonte rows: Fonte (FontPicker and
   its note), Tamanho, Estilo (N and I toggles, 24 px, `aria-pressed`, and
   Maiúsculas), Entrelinhas (0,9–2, "1,22 = normal"), Espaçamento
   (−0,10–0,50 em); Contorno (0–8 px and its colour) sits under Efeito e
