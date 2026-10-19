@@ -1490,6 +1490,10 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => (live.get().audio?.playback?.position ?? 99) < 5, 3000);
         await click(".player button", "Pausar");
         result.audioPaused = await waitFor(() => live.get().audio?.playback?.paused === true);
+        // Ao pausar o som (Rodada G3, 0,2 s by default): the volume comes
+        // down first, then the projector's element pauses.
+        result.pauseFades = live.get().audio?.playback?.ramp?.ms === 200 ? true : live.get().audio?.playback?.ramp || "sem rampa";
+        result.projectorPausedAfterFade = await waitFor(() => main && main.webContents.executeJavaScript("(() => { const v = document.querySelector('video'); return v ? v.paused : null; })()").catch(() => null), 600);
         await click(".player button", "Tocar");
         await click(".player .pl-vol button", "");
         result.audioMuted = await waitFor(() => live.get().audio?.playback?.volume === 0);
@@ -1542,15 +1546,24 @@ async function checkConsole(webContents, { live, outputs }) {
         }
 
         // The Encerrar button asks first; only "Encerrar" in the dialog ends.
-        // The music is not a screen: it keeps playing until Parar.
+        // It stops the player's music too (Rodada G3, owner 2026-10-17),
+        // fading it out with the screens: playing, it rides in live.leaving.
+        // (Muted above: back to full, or there is nothing to hear leaving.)
+        live.call("transport", { layer: "audio", action: "volume", volume: 1 });
+        live.call("transport", { layer: "audio", action: "play" });
+        const toneItem = live.get().audio;
+        let toneLeaving = false;
+        const offLeaving = live.onChange((st) => { if ((st.leaving || []).some((e) => e.layer === "audio" && e.item && e.item.url === toneItem?.url)) toneLeaving = true; });
         await pillClick("Encerrar a projeção", "Encerrar");
         result.endAsked = await waitText(webContents, "ENCERRAR A PROJEÇÃO?");
         result.endWaited = Boolean(live.get().content);
         await click(".dialog button", "Encerrar");
         result.ended = await waitFor(() => !live.get().content);
-        result.audioSurvivesEnd = Boolean(live.get().audio);
-        // Only the sound left on air: the player names it, so the pill has no
-        // title (owner's pick A, Rodada F1), its dot still red.
+        offLeaving();
+        result.audioTakenByEnd = !live.get().audio && toneLeaving ? true : { audio: Boolean(live.get().audio), leaving: toneLeaving };
+        // The tone again, with nothing else on air: the player names it, so
+        // the pill has no title (owner's pick A, Rodada F1), its dot still red.
+        if (toneItem) live.call("audio.show", { kind: toneItem.kind, url: toneItem.url, title: toneItem.title, duration: toneItem.duration, id: toneItem.id });
         result.pillTitleInPlayer = await waitFor(() => js("(() => { const p = document.querySelector('.prog-pill'); return Boolean(p) && !p.querySelector('.pp-title') && p.classList.contains('is-air'); })()"), 4000);
         await click(".player button", "Parar e tirar do ar");
         result.audioStopped = await waitFor(() => !live.get().audio);
@@ -2819,7 +2832,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.unlocked && result.unlockedSends && /^Culto \d|^Sem culto|^Sem horário|^\d\d:\d\d · |^\d\d\/\d\d · \d\d:\d\d$/.test(result.serviceClock) && result.quickOpened && result.selectLeavesJump && result.quickRead === "João|3|16" && result.quickSpace && result.quickPicked && result.quickEsc
         && result.endAsked && result.endWaited && result.ended
         && result.audioListed && result.ytSaved && result.ytListed && result.audioPrepared && result.audioOn && result.audioUnderSong && result.playerShows && result.duration && result.programaMotion
-        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.seekDragFollows && result.seekDragOnce === true && result.audioSurvivesEnd && result.pillTitleInPlayer && result.audioStopped && result.pillNada && result.playerAlwaysThere && result.playerIdleQuiet
+        && result.audioPaused && result.audioMuted && Boolean(result.metersFollowVolume) && Boolean(result.meters) && result.projectorMuted && result.seekDragFollows && result.seekDragOnce === true && result.pauseFades === true && result.projectorPausedAfterFade && result.audioTakenByEnd === true && result.pillTitleInPlayer && result.audioStopped && result.pillNada && result.playerAlwaysThere && result.playerIdleQuiet
         && result.tlGone && result.forecastOff && result.forecastOn
         && result.dragPrev === true && result.dragPrepared && result.dragDidNotSend && result.dragSetlist === true && result.dragAdded && result.setlistRight === true && result.notesPanel && result.tabsMenu && result.quickTools && result.quickAlertOnce
         && result.colsFit && result.editBanner && result.editMove === true && result.editEsc && result.editRestore

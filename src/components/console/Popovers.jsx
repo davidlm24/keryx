@@ -279,7 +279,7 @@ export function EndDialog({ open, setOpen, onEnd }) {
     return (
         <div ref={boxRef} className="dialog" role="alertdialog" aria-modal="true" aria-label="Encerrar a projeção" aria-describedby="end-dialog-text">
             <div className="kx-section" style={{ color: "var(--fg-1)" }}>Encerrar a projeção?</div>
-            <div id="end-dialog-text">Texto, mídia e avisos saem das telas agora. A música do player, fundo, logo e sobreposições ficam.</div>
+            <div id="end-dialog-text">Texto, mídia, avisos e a música do player saem agora. Fundo, logo e sobreposições ficam.</div>
             <div style={{ color: "var(--fg-2)" }}>Para esconder tudo na hora sem encerrar, use Tela preta{blackKey ? ` (${blackKey})` : ""}.</div>
             <div className="acts">
                 <button ref={goRef} type="button" className="kx-btn kx-btn-air kx-t" onClick={() => { onEnd(); setOpen(null); }}>Encerrar</button>
