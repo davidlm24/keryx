@@ -9,6 +9,7 @@ import { Cmd, HoldButton, Toast } from "@/components/network/remote/parts";
 import LiveTab from "@/components/network/remote/LiveTab";
 import SetlistTab from "@/components/network/remote/SetlistTab";
 import MoreTab from "@/components/network/remote/MoreTab";
+import MediaTab from "@/components/network/remote/MediaTab";
 import BibleTab from "@/components/network/remote/BibleTab";
 
 // Controle remoto (/Remote): a phone on the church Wi-Fi conducts the
@@ -22,6 +23,7 @@ import BibleTab from "@/components/network/remote/BibleTab";
 const TABS = [
     ["live", "Ao vivo", "monitor", "live"],
     ["setlist", "Setlist", "list", "setlist"],
+    ["media", "Mídia", "media", "library"],
     ["bible", "Bíblia", "book", "bible"],
     ["more", "Mais", "more", null],
 ];
@@ -68,7 +70,8 @@ export default function RemoteView() {
             <div className="rm-body">
                 {shown === "live" && <LiveTab live={live} state={state} caps={caps} c={c} />}
                 {shown === "setlist" && <SetlistTab live={live} state={state} c={c} />}
-                {shown === "bible" && <BibleTab c={c} />}
+                {shown === "media" && <MediaTab c={c} setGate={setGate} />}
+                {shown === "bible" && <BibleTab state={state} c={c} />}
                 {shown === "more" && <MoreTab live={live} state={state} caps={caps} c={c} awake={awake} touchLock={{ on: touchLocked, lock: () => setTouchLocked(true) }} onRefresh={again} />}
                 <nav className="rm-tabs" role="tablist" aria-label="Seções do controle remoto">
                     {tabs.map(([k, label, icon]) => (

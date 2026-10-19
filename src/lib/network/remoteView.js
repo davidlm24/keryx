@@ -7,6 +7,8 @@ import { activitySteps, revealStep, livePosition, toolTime } from "../../../shar
 import { captionParts, airFor } from "../console/caption.js";
 import { playerLayer, videoSwap, followLabel, followAction, clock } from "../console/player.js";
 import { typeLabel, typeIcon } from "../console/setlist.js";
+import { readQuickRef } from "../console/quickRef.js";
+import { bibleBooks, BIBLE_VERSIONS, formatReference } from "../bibleBooks.js";
 
 const { messages } = PROTOCOL;
 
@@ -198,4 +200,106 @@ export function sayOf(r) {
     if (!r.ok) return r.message || "Não foi possível.";
     const text = String(r.message || "").replace(/^Celular: /, "").replace(/\.$/, "");
     return text ? `${text[0].toUpperCase()}${text.slice(1)}.` : "Feito.";
+}
+
+// ---- Mídia (PR3b) ----------------------------------------------------------
+
+// Mídia's chips: which `library` page each lists, and how its rows are sent
+// (sendMedia's kind).
+export const MEDIA_CHIPS = [
+    { key: "songs", label: "Músicas", tab: "songs", send: "song", icon: "music" },
+    { key: "video", label: "Vídeos", tab: "media", kind: "video", send: "media", icon: "film" },
+    { key: "image", label: "Imagens", tab: "media", kind: "image", send: "media", icon: "image" },
+    { key: "audio", label: "Áudios", tab: "media", kind: "audio", send: "media", icon: "volume" },
+    { key: "pdf", label: "Slides", tab: "media", kind: "pdf", send: "media", icon: "presentation" },
+    { key: "pieces", label: "Avisos", tab: "pieces", send: "piece", icon: "megaphone" },
+    { key: "materials", label: "Escola", tab: "materials", send: "material", icon: "book" },
+];
+export const chipOf = (key) => MEDIA_CHIPS.find((c) => c.key === key) || MEDIA_CHIPS[0];
+// Pages of 30 (the contract allows 50): a phone's screen and a half.
+export const PAGE_SIZE = 30;
+// The search waits for the typing to stop.
+export const SEARCH_DEBOUNCE_MS = 250;
+
+// The `library` args for a chip, a search and where the list is.
+export function libraryArgs(key, q = "", skip = 0) {
+    const c = chipOf(key);
+    const args = { tab: c.tab, skip, limit: PAGE_SIZE };
+    if (c.kind) args.kind = c.kind;
+    const text = String(q || "").trim().slice(0, PROTOCOL.actions.library.args.q.max);
+    if (text) args.q = text;
+    return args;
+}
+// The list as it grows: `key` is what it lists (chip and search). A page for
+// another key (an answer late after the search changed) or not continuing it
+// (skip ≠ what is listed) is dropped.
+export const emptyList = (key) => ({ key, rows: [], total: 0, ready: true, done: false });
+export function joinPage(list, key, page) {
+    if (!page || list.key !== key) return list;
+    const skip = Number(page.skip) || 0;
+    if (skip !== list.rows.length) return list;
+    const rows = [...list.rows, ...(page.rows || [])];
+    const total = Number(page.total) || 0;
+    return { key, rows, total, ready: page.ready !== false, done: rows.length >= total || !(page.rows || []).length };
+}
+// A row as the phone lists it; a file missing, still downloading or a
+// presentation still being prepared cannot be picked.
+export function mediaRow(row) {
+    const st = row.st && row.st !== "ok" ? row.st : null;
+    return {
+        id: row.id,
+        title: row.title || "Sem título",
+        sub: [row.sub, row.dur ? clock(row.dur) : ""].filter(Boolean).join(" · "),
+        thumb: typeof row.thumb === "string" && row.thumb.startsWith("/media/") ? row.thumb : null,
+        st,
+        stText: st ? STATUS_TEXT[st] || "" : "",
+    };
+}
+// What sendMedia gets for a row of a chip (a video: on the projector or the
+// video screens).
+export function sendMediaArgs(key, id, toVideo = false) {
+    const c = chipOf(key);
+    return { kind: c.send, id, ...(c.key === "video" && toVideo ? { toVideo: true } : {}) };
+}
+
+// ---- Bíblia (PR3b) ---------------------------------------------------------
+
+// The field: "jo 3 16", "Jo 3:16-18", "jo 3" (the console's quick jump
+// rules, quickRef.js). -> { book, chapter, verseStart, verseEnd } | null
+export function fieldRef(text) {
+    const r = readQuickRef(text);
+    if (!r.book || !r.valid || !r.chapter) return null;
+    const start = r.verseStart ?? null;
+    return { book: r.book.name, chapter: r.chapter, verseStart: start, verseEnd: start == null ? null : r.verseEnd ?? start };
+}
+// The book typed so far, before its chapter ("joã" → João), else null.
+export const fieldBook = (text) => readQuickRef(text).book?.name || null;
+// The picker's verses: a tap picks one, a tap on another makes the range,
+// the next tap starts again; the same verse again lets it go (the chapter).
+export function tapVerse(ref, verse) {
+    const { verseStart: s, verseEnd: e } = ref;
+    if (s == null) return { ...ref, verseStart: verse, verseEnd: verse };
+    if (s === e && verse === s) return { ...ref, verseStart: null, verseEnd: null };
+    if (s === e) return { ...ref, verseStart: Math.min(s, verse), verseEnd: Math.max(s, verse) };
+    return { ...ref, verseStart: verse, verseEnd: verse };
+}
+// What the field says for a picked reference ("João 3:16-18", "João 3").
+export const refLabel = (ref) => (!ref ? "" : ref.chapter ? formatReference(ref) : ref.book);
+// bibleFind / bibleSend args (the structured group of the contract's oneOf).
+export function bibleArgs(ref, version = "") {
+    const args = { book: ref.book, chapter: ref.chapter };
+    if (ref.verseStart != null) { args.verseStart = ref.verseStart; args.verseEnd = ref.verseEnd ?? ref.verseStart; }
+    if (version) args.version = version;
+    return args;
+}
+// The book grid: the Old and the New Testament, by their short names.
+export const BIBLE_SECTIONS = [["Antigo Testamento", bibleBooks.slice(0, 39)], ["Novo Testamento", bibleBooks.slice(39)]];
+export const bookOf = (name) => bibleBooks.find((b) => b.name === name) || null;
+// The editions on offer: the one chosen on the computer first, then those
+// installed there, then the ones read online.
+export function bibleVersions(bible) {
+    const installed = new Set(bible?.installed || []);
+    const ids = BIBLE_VERSIONS.filter((v) => installed.has(v.id) || v.api).map((v) => v.id);
+    const first = bible?.version && ids.includes(bible.version) ? [bible.version] : [];
+    return [...first, ...ids.filter((id) => id !== bible?.version)].map((id) => ({ id, installed: installed.has(id) }));
 }

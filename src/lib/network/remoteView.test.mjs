@@ -4,6 +4,8 @@ import { emptyState, applyOp } from "../../../shared/live-state.mjs";
 import {
     capsOf, isV1, canRun, kindOf, allowed, airHeader, bannerOf, slideInfo, slideRows, playerInfo, volumeStep,
     followInfo, timerInfo, setlistRows, sayOf,
+    MEDIA_CHIPS, libraryArgs, emptyList, joinPage, mediaRow, sendMediaArgs,
+    fieldRef, fieldBook, tapVerse, refLabel, bibleArgs, BIBLE_SECTIONS, bibleVersions,
 } from "./remoteView.js";
 
 const T = 1_000_000;
@@ -138,4 +140,83 @@ test("what the phone says after a command", () => {
     assert.equal(sayOf({ ok: true, message: "Celular: Tela preta ligado." }), "Tela preta ligado.");
     assert.equal(sayOf({ ok: true, message: "" }), "Feito.");
     assert.equal(sayOf({ ok: false, message: "Telas travadas: nada vai ao ar. Destrave em Saídas." }), "Telas travadas: nada vai ao ar. Destrave em Saídas.");
+});
+
+test("Mídia: each chip's library page, a search, pages of 30", () => {
+    assert.deepEqual(libraryArgs("songs"), { tab: "songs", skip: 0, limit: 30 });
+    assert.deepEqual(libraryArgs("video", "  Páscoa ", 30), { tab: "media", skip: 30, limit: 30, kind: "video", q: "Páscoa" });
+    assert.deepEqual(libraryArgs("pdf").kind, "pdf");
+    assert.equal(libraryArgs("pieces").tab, "pieces");
+    assert.equal(libraryArgs("materials").tab, "materials");
+    assert.equal(libraryArgs("songs", "x".repeat(80)).q.length, 40);
+    assert.deepEqual(MEDIA_CHIPS.map((c) => c.label), ["Músicas", "Vídeos", "Imagens", "Áudios", "Slides", "Avisos", "Escola"]);
+});
+
+test("Mídia: pages join in order; an answer for an older search or out of order is dropped", () => {
+    const page = (skip, n, total) => ({ skip, total, ready: true, rows: Array.from({ length: n }, (_, i) => ({ id: `r${skip + i}`, title: `R${skip + i}` })) });
+    let l = emptyList("songs|");
+    l = joinPage(l, "songs|", page(0, 30, 45));
+    assert.equal(l.rows.length, 30);
+    assert.equal(l.done, false);
+    assert.equal(joinPage(l, "songs|", page(0, 30, 45)), l, "the same page twice");
+    assert.equal(joinPage(l, "songs|graça", page(30, 15, 45)), l, "another search");
+    l = joinPage(l, "songs|", page(30, 15, 45));
+    assert.equal(l.rows.length, 45);
+    assert.equal(l.done, true);
+    assert.equal(joinPage(emptyList("k"), "k", { skip: 0, total: 0, ready: false, rows: [] }).ready, false);
+});
+
+test("Mídia: a row's state blocks the pick; a video asks where it plays", () => {
+    assert.deepEqual(mediaRow({ id: "v", title: "Abertura", sub: "Vídeo", dur: 200, st: "ok", thumb: "/media/p.jpg" }), { id: "v", title: "Abertura", sub: "Vídeo · 3:20", thumb: "/media/p.jpg", st: null, stText: "" });
+    const missing = mediaRow({ id: "m", title: "", st: "missing", thumb: "http://evil/x.jpg" });
+    assert.equal(missing.st, "missing");
+    assert.equal(missing.stText, "Arquivo não encontrado");
+    assert.equal(missing.thumb, null);
+    assert.equal(missing.title, "Sem título");
+    assert.deepEqual(sendMediaArgs("songs", "s1"), { kind: "song", id: "s1" });
+    assert.deepEqual(sendMediaArgs("video", "v1", true), { kind: "media", id: "v1", toVideo: true });
+    assert.deepEqual(sendMediaArgs("video", "v1", false), { kind: "media", id: "v1" });
+    assert.deepEqual(sendMediaArgs("image", "i1", true), { kind: "media", id: "i1" });
+    assert.deepEqual(sendMediaArgs("pieces", "p"), { kind: "piece", id: "p" });
+    assert.deepEqual(sendMediaArgs("materials", "e"), { kind: "material", id: "e" });
+});
+
+test("Bíblia: the field reads 'jo 3 16' as the console's quick jump does", () => {
+    assert.deepEqual(fieldRef("jo 3 16"), { book: "João", chapter: 3, verseStart: 16, verseEnd: 16 });
+    assert.deepEqual(fieldRef("Jo 3:16-18"), { book: "João", chapter: 3, verseStart: 16, verseEnd: 18 });
+    assert.deepEqual(fieldRef("jo 3"), { book: "João", chapter: 3, verseStart: null, verseEnd: null });
+    assert.deepEqual(fieldRef("1co 13 4-7"), { book: "1 Coríntios", chapter: 13, verseStart: 4, verseEnd: 7 });
+    assert.equal(fieldRef("jo"), null);
+    assert.equal(fieldRef("xyz 3"), null);
+    assert.equal(fieldRef("jo 99"), null);
+    assert.equal(fieldBook("joã"), "João");
+    assert.equal(fieldBook("zz"), null);
+});
+
+test("Bíblia: tap, tap makes a range; the args are the contract's structured group", () => {
+    const ch = { book: "João", chapter: 3, verseStart: null, verseEnd: null };
+    const one = tapVerse(ch, 16);
+    assert.deepEqual([one.verseStart, one.verseEnd], [16, 16]);
+    const range = tapVerse(one, 18);
+    assert.deepEqual([range.verseStart, range.verseEnd], [16, 18]);
+    const back = tapVerse(tapVerse(ch, 18), 16);
+    assert.deepEqual([back.verseStart, back.verseEnd], [16, 18]);
+    const again = tapVerse(range, 5);
+    assert.deepEqual([again.verseStart, again.verseEnd], [5, 5]);
+    const off = tapVerse(one, 16);
+    assert.equal(off.verseStart, null);
+    assert.equal(refLabel(range), "João 3:16-18");
+    assert.equal(refLabel(ch), "João 3");
+    assert.equal(refLabel({ book: "João", chapter: null }), "João");
+    assert.deepEqual(bibleArgs(range, "NVI"), { book: "João", chapter: 3, verseStart: 16, verseEnd: 18, version: "NVI" });
+    assert.deepEqual(bibleArgs(ch), { book: "João", chapter: 3 });
+    assert.equal(BIBLE_SECTIONS[0][1].length + BIBLE_SECTIONS[1][1].length, 66);
+});
+
+test("Bíblia: the console's edition first, then the installed ones, then those online", () => {
+    const v = bibleVersions({ version: "ARA", installed: ["NVI"] });
+    assert.equal(v[0].id, "ARA");
+    assert.ok(v.find((x) => x.id === "NVI").installed);
+    assert.ok(!v.some((x) => x.id === "AA"), "AA is neither installed nor online");
+    assert.equal(bibleVersions(null)[0].id, "NVI");
 });
