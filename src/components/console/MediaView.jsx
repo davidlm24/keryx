@@ -270,7 +270,7 @@ export default function MediaView({ c, media, onSend, onClose, escRef, active = 
                                 <span className="kx-glyph"><Icon name={i < uploads.at ? "check" : "dot"} /></span>
                                 <span className="mv-up-n">{n}</span>
                                 <div className="prog2"><i className={i === uploads.at ? "is-busy" : ""} style={{ transform: `scaleX(${i < uploads.at ? 1 : i === uploads.at ? 1 : 0})` }} /></div>
-                                <span className="kx-meta">{i < uploads.at ? "pronto" : i === uploads.at ? "copiando…" : "na fila"}</span>
+                                <span className="kx-meta">{i < uploads.at ? "pronto" : i === uploads.at ? "copiando o arquivo…" : "na fila"}</span>
                             </div>
                         ))}
                     </div>

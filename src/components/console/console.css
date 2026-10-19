@@ -1213,6 +1213,16 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .mv-n { position: absolute; left: 0; bottom: 0; padding: 1px 5px; font-size: 10px; line-height: 12px; color: var(--fg-2); background: #0d0d0ccc; border-radius: 0 4px 0 0; font-variant-numeric: tabular-nums; }
 .console .mv-title { font-size: 12px; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console .mv-sub { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console .kx-pages-meta { position: relative; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 16px; padding-bottom: 3px; }
+.console .kx-pages-meta.is-working { padding-bottom: 5px; }
+/* A failure says its cause and offers Tentar de novo: it wraps instead of
+   being cut by the one-line meta of a grid cell or a list row (G8). */
+.console :is(.mv-sub, .kx-row-meta, .kx-meta):has(> .kx-pages-meta .kx-pages-retry, .kx-pages-meta .kx-warn) { white-space: normal; overflow: visible; }
+.console .kx-pages-meta:has(.kx-warn) { flex-wrap: wrap; white-space: normal; }
+.console .kx-pages-progress { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; overflow: hidden; background: var(--bg-3); }
+.console .kx-pages-progress > b { display: block; width: 100%; height: 100%; transform-origin: left center; background: var(--brand); transition: transform var(--duration-fast) var(--ease-out); }
+.console .kx-pages-retry, .console .kx-pdf-wait button { appearance: none; border: 0; border-bottom: 1px solid currentColor; padding: 0; color: var(--warn-fg, var(--warn)); background: transparent; font: inherit; font-weight: 600; cursor: pointer; }
+.console .kx-pdf-wait button { display: block; margin: var(--space-1) auto 0; font-size: 12px; }
 .console .mv-cell > .kx-btn { align-self: flex-start; }
 .console .mv-rename { width: 100%; user-select: text; }
 .console .mv-row.is-sel { background: var(--prev-fill, var(--bg-2)); }

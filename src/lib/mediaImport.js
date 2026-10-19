@@ -32,6 +32,44 @@ export async function mediaFromYouTube(url, { title = "Vídeo do YouTube", categ
 // (pagesWait in presentation.js).
 export const madeHere = new Set();
 
+// Mídia can be detached into its own BrowserWindow. A module Set belongs to
+// one renderer only, so remember locally-created rows in this computer's
+// storage too: the Console renderer then knows this is not a PDF arriving
+// from another KERYX and must not wait for the sync grace period.
+const MADE_HERE_KEY = "keryx.media.made-here.v1";
+const MADE_HERE_LIMIT = 200;
+const madeHereListeners = new Set();
+const tellMadeHere = () => { for (const fn of madeHereListeners) fn(); };
+const savedMadeHere = () => {
+    try {
+        const list = JSON.parse(window.localStorage.getItem(MADE_HERE_KEY) || "[]");
+        return Array.isArray(list) ? list.filter((id) => typeof id === "string") : [];
+    } catch { return []; }
+};
+export function restoreMadeHere() {
+    if (typeof window === "undefined") return;
+    for (const id of savedMadeHere()) madeHere.add(id);
+}
+export function rememberMadeHere(id) {
+    if (!id) return;
+    madeHere.add(id);
+    try {
+        const next = [...new Set([...savedMadeHere(), id])].slice(-MADE_HERE_LIMIT);
+        window.localStorage.setItem(MADE_HERE_KEY, JSON.stringify(next));
+    } catch { /* this renderer still knows its own import */ }
+    tellMadeHere();
+}
+export const subscribeMadeHere = (fn) => { madeHereListeners.add(fn); return () => madeHereListeners.delete(fn); };
+
+if (typeof window !== "undefined") {
+    restoreMadeHere();
+    window.addEventListener("storage", (event) => {
+        if (event.key !== MADE_HERE_KEY) return;
+        restoreMadeHere();
+        tellMadeHere();
+    });
+}
+
 // A PowerPoint file is not copied (Rodada F3, "Só PDF"): it comes back in
 // `refused`, and the caller says how to save it as PDF (PPTX_HINT). A PDF's
 // pages are made after, by the console (usePagesBackfill).
@@ -54,7 +92,7 @@ export async function importMediaFiles(files, { title = "", description = "", ca
                 category,
                 duration: 0,
             });
-            if (row?.id) madeHere.add(row.id);
+            if (row?.id) rememberMadeHere(row.id);
             created.push(row);
         } catch (err) {
             failed.push({ name: file.name, message: err?.message || "falhou" });

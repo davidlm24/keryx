@@ -12,6 +12,24 @@ export const PPTX_HINT = "Apresentações do PowerPoint: no PowerPoint, use Arqu
 export const PAGES_PENDING = "As páginas deste PDF ainda estão sendo preparadas.";
 export const PAGES_FAILED = "Não foi possível ler as páginas deste PDF.";
 
+// Errors from fetch, pdf.js and the page renderer are intentionally reduced
+// to four short, actionable messages. Their raw text differs by browser and
+// PDF producer and should never become operator-facing copy.
+export function pdfFailure(error) {
+    if (error && typeof error === "object" && error.cause) return error;
+    const name = String(error?.name || "").toLowerCase();
+    const text = String(error?.message || error || "").toLowerCase();
+    if (name.includes("password") || /password|senha|encrypted/.test(text)) return { cause: "o arquivo está protegido por senha", retryable: false, terminal: "PDF protegido por senha. Tire a senha e envie de novo." };
+    if (name.includes("invalidpdf") || /invalid pdf|corrupt|corromp|incomplet|unexpected end|end of file/.test(text)) return { cause: "o arquivo está corrompido ou incompleto", retryable: true };
+    if (name.includes("rangeerror") || /out of memory|memory|mem[oó]ria|allocation|canvas.*size/.test(text)) return { cause: "faltou memória para este PDF; tente um arquivo menor", retryable: true };
+    return { cause: "o leitor de PDF não abriu; reinicie o KERYX", retryable: true };
+}
+
+export function pdfFailureMessage(error) {
+    const failure = pdfFailure(error);
+    return failure.terminal || `Não deu para preparar as páginas: ${failure.cause}.`;
+}
+
 export const isPowerPoint = (row) => row?.type === "powerpoint";
 export const isPdf = (row) => row?.type === "pdf";
 
@@ -84,13 +102,13 @@ export function presentationBlock(row) {
 // pages failed says so, never "being prepared" for ever.
 export function stageBlock(stage, progress = null) {
     if (!stage?.blocked) return null;
-    return stage.blocked === PAGES_PENDING && progress?.error ? PAGES_FAILED : stage.blocked;
+    return stage.blocked === PAGES_PENDING && progress?.error ? pdfFailureMessage(progress.error) : stage.blocked;
 }
 
 // The Mídia row's progress while its pages are made: { done, total } or { error }.
 export function pagesLabel(progress) {
     if (!progress) return "";
-    if (progress.error) return "Não foi possível ler o PDF";
+    if (progress.error) return pdfFailureMessage(progress.error);
     if (!progress.total) return "Preparando páginas…";
     return `Preparando páginas ${Math.min(progress.done + 1, progress.total)}/${progress.total}`;
 }
@@ -104,6 +122,15 @@ export function presentationMeta(row, progress = null) {
     const n = pagesOf(row).length;
     if (n) return `${n} ${n === 1 ? "página" : "páginas"}`;
     return row.missing ? "" : "Preparando páginas…";
+}
+
+// The Prévia keeps the PDF in hand but makes it unambiguous that it cannot
+// yet be sent. Unlike a toast, this remains visible until the last page is
+// ready or the operator retries a recoverable failure.
+export function presentationPreviewStatus(stage, progress = null) {
+    if (stage?.blocked !== PAGES_PENDING) return stage?.blocked || "";
+    if (progress?.error) return pdfFailureMessage(progress.error);
+    return `${pagesLabel(progress) || "Preparando páginas…"} · Pode ir ao ar quando terminar.`;
 }
 
 // "Tocar todos" (the media sequence): pictures and videos only. A PDF goes

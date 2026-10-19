@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState, mainLayer } from "../../shared/live-state.mjs";
 import { streamCaption } from "./streamCaption.js";
 import {
-    PPTX_HINT, PAGES_PENDING, PAGES_FAILED, pageScale, pagesOf, needsPages, presentationSlides, presentationStage, presentationBlock, stageBlock, pagesLabel, presentationMeta, playsInSequence, pagesWait, PAGES_WAIT_MS,
+    PPTX_HINT, PAGES_PENDING, PAGES_FAILED, pageScale, pagesOf, needsPages, presentationSlides, presentationStage, presentationBlock, stageBlock, pagesLabel, presentationMeta, presentationPreviewStatus, pdfFailure, pdfFailureMessage, playsInSequence, pagesWait, PAGES_WAIT_MS,
 } from "./presentation.js";
 
 const pages = [{ url: "http://127.0.0.1:7700/media/a-1.jpg", w: 1920, h: 1080 }, { url: "http://127.0.0.1:7700/media/a-2.jpg", w: 1920, h: 1080 }];
@@ -57,7 +57,7 @@ test("a PDF whose pages failed says so, never 'being prepared' for ever", () => 
     const waiting = { blocked: PAGES_PENDING };
     assert.equal(stageBlock(waiting), PAGES_PENDING);
     assert.equal(stageBlock(waiting, { done: 2, total: 9 }), PAGES_PENDING, "still being made");
-    assert.equal(stageBlock(waiting, { error: "falhou" }), PAGES_FAILED);
+    assert.match(stageBlock(waiting, { error: "falhou" }), /Não deu para preparar as páginas/);
     assert.equal(stageBlock({ blocked: PPTX_HINT }, { error: "x" }), PPTX_HINT, "a PowerPoint keeps its own reason");
     assert.equal(stageBlock({ kind: "presentation" }), null);
     assert.equal(stageBlock(null), null);
@@ -67,13 +67,24 @@ test("the Mídia row's line: progress, pages, what it needs", () => {
     assert.equal(pagesLabel({ done: 6, total: 12 }), "Preparando páginas 7/12");
     assert.equal(pagesLabel({ done: 12, total: 12 }), "Preparando páginas 12/12");
     assert.equal(pagesLabel({ done: 0, total: 0 }), "Preparando páginas…");
-    assert.equal(pagesLabel({ error: "x" }), "Não foi possível ler o PDF");
+    assert.match(pagesLabel({ error: "x" }), /Não deu para preparar as páginas/);
     assert.equal(presentationMeta(pdf), "2 páginas");
     assert.equal(presentationMeta({ ...pdf, pages: [pages[0]] }), "1 página");
     assert.equal(presentationMeta({ ...pdf, pages: [] }), "Preparando páginas…");
     assert.equal(presentationMeta(pdf, { done: 1, total: 2 }), "Preparando páginas 2/2");
     assert.equal(presentationMeta({ type: "powerpoint" }), "Salve como PDF");
     assert.equal(presentationMeta({ type: "video" }), "");
+});
+
+test("PDF errors are concise, actionable and a password PDF is not retried", () => {
+    const locked = pdfFailure({ name: "PasswordException" });
+    assert.equal(locked.retryable, false);
+    assert.equal(pdfFailureMessage(locked), "PDF protegido por senha. Tire a senha e envie de novo.");
+    assert.equal(pdfFailure({ name: "InvalidPDFException" }).cause, "o arquivo está corrompido ou incompleto");
+    assert.equal(pdfFailure(new RangeError("out of memory")).cause, "faltou memória para este PDF; tente um arquivo menor");
+    assert.equal(pdfFailure(new Error("worker failed")).cause, "o leitor de PDF não abriu; reinicie o KERYX");
+    assert.equal(presentationPreviewStatus({ blocked: PAGES_PENDING }, { done: 2, total: 12 }), "Preparando páginas 3/12 · Pode ir ao ar quando terminar.");
+    assert.equal(presentationPreviewStatus({ blocked: PAGES_PENDING }, { error: locked }), "PDF protegido por senha. Tire a senha e envie de novo.");
 });
 
 test("Tocar todos: pictures and videos only, never a PDF or a PowerPoint", () => {
