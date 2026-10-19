@@ -71,8 +71,10 @@ export const SOUND_LAYERS = ["media", "video", "audio"];
 export const SOUND_MODES = ["cut", "fade", "mix"];
 const HEARD_KINDS = ["video", "audio", "youtube"];
 export const SOUND_FADE_MS = [100, 5000];
-// What leaves the screens with a fade (Esc, Limpar, Tela preta, Logo): the
-// op's `fade` in ms, kept as live.fade so every output draws the same one.
+// What leaves the air with a fade (Esc, Limpar, Parar, Tela preta, Logo):
+// the op's `fade` in ms, kept as live.fade so every output draws the same
+// one; the player's music goes on the same fade (live.leaving). Pausing and
+// playing again take the same range (transport's `fade`, playback.ramp).
 export const EXIT_FADE_MS = [50, 3000];
 export const MAX_OPTIONS = 8;
 export const MEMORIZE_ROUNDS = [1, 12];
@@ -130,7 +132,9 @@ export function emptyState(now = Date.now()) {
         video: null,
         // Music or a playback track on the KERYX computer (played by the main
         // projector window), under whatever the screens show. Not a main
-        // layer: Encerrar leaves it playing; the player has its own stop.
+        // layer (no history), but Esc / Encerrar stops it too, fading out on
+        // the same fade as the screens (owner 2026-10-17, Rodada G3; until
+        // then it played on); its Desfazer brings it back at that second.
         audio: null,
         tool: null,
         communication: null,
@@ -168,8 +172,9 @@ export function emptyState(now = Date.now()) {
         // (WHILE_LOCKED). Rehearsal is the console with the screens locked.
         // Not kept across a restart (restoreState).
         locked: false,
-        // Sound on its way out (SOUND_MODES "fade"): { layer, item, at, until }
-        // per item a new sound stopped. Outputs keep playing it, bringing its
+        // Sound on its way out (SOUND_MODES "fade", or Esc / Parar with a
+        // fade): { layer, item, at, until } per item a new sound, Esc or
+        // Parar stopped. Outputs keep playing it, bringing its
         // volume (and a video's opacity) down to 0 by `until`, then drop it;
         // the next change of the document leaves out the ones that are over.
         leaving: [],
@@ -391,7 +396,20 @@ function audioItem(value) {
     return mediaItem({ ...value, kind });
 }
 
-const freshPlayback = (now, volume = 1) => ({ paused: false, position: 0, at: now, volume });
+// A playback that starts now: from the top and playing, or (Desfazer of
+// Esc, Rodada G3) from `position`, paused or not, its volume rising from 0
+// over `fadeIn` ms (playback.ramp; never while paused).
+function freshPlayback(now, volume = 1, { position = 0, paused = false, fadeIn = 0 } = {}) {
+    const pb = { paused: Boolean(paused), position, at: now, volume };
+    return fadeIn && !paused ? { ...pb, ramp: { at: now, ms: fadeIn, from: 0, to: 1 } } : pb;
+}
+// The start a show op asks for: `position` (seconds), `paused`, `fadeIn` (ms).
+const startOf = (a, now) => ({
+    position: a.position === undefined || a.position === null ? 0 : count(a.position, "Posição"),
+    paused: a.paused === true,
+    fadeIn: typeof a.fadeIn === "number" ? exitFade(a.fadeIn, now)?.ms || 0 : 0,
+});
+const playbackFor = (a, now) => freshPlayback(now, startVolume(a), startOf(a, now));
 
 // What can move between the projector and the audio channel (media.toAudio).
 const SOUND_KINDS = ["video", "audio"];
@@ -432,30 +450,64 @@ function soundTransition(value) {
 // An exit op's `fade` (ms) as live.fade; none, 0 or false: a cut (null).
 const exitFade = (value, now) => (value === undefined || value === null || value === false || value === 0 ? null : { ms: Math.round(ranged(value, EXIT_FADE_MS, "Transição")), at: now });
 
+// How loud a playback is at `now` against its volume (0-1): 1, or where its
+// ramp (pausing or playing again with a fade, a Desfazer fading in) is, in a
+// straight line from `from` to `to` over `ms` from `at`. Every window that
+// plays the layer computes the same curve on the live clock.
+export function playbackGain(playback, now) {
+    const r = playback?.ramp;
+    if (!r) return 1;
+    const t = r.ms > 0 ? Math.min(1, Math.max(0, (now - r.at) / r.ms)) : 1;
+    return r.from + (r.to - r.from) * t;
+}
+// A pause still fading out: the element plays on until its ramp is over.
+const fadingOut = (playback, now) => Boolean(playback?.paused && playback.ramp?.to === 0 && now < playback.ramp.at + playback.ramp.ms);
+// `pb` with `ramp`, or without one (null).
+function ramped(pb, ramp) {
+    const out = { ...pb };
+    if (ramp) out.ramp = ramp;
+    else delete out.ramp;
+    return out;
+}
+
+// The items of `layers` that can be heard right now (not paused) ride in
+// live.leaving (without their list) for `ms`, fading out; no ms: a cut, none.
+function leave(s, layers, ms, now) {
+    if (!ms) return {};
+    const leaving = [];
+    for (const k of layers) {
+        const cur = s[k];
+        if (!heard(cur) || cur.playback?.paused) continue;
+        const gone = { ...cur };
+        delete gone.playlist;
+        delete gone.playlistIndex;
+        leaving.push({ layer: k, item: gone, at: now, until: now + ms });
+    }
+    return leaving.length ? { leaving: [...(s.leaving || []), ...leaving] } : {};
+}
+
 // One sound at a time (SOUND_MODES): `item` starts on `layer`, so every
 // layer that can be heard gives way — another layer goes (the media layer
 // into the history, like any change of the projector), the same layer is
-// being replaced anyway — and with "fade" each one rides in live.leaving
-// (without its list) until it is silent. Nothing when `item` is silent.
+// being replaced anyway — and with "fade" each one leaves (live.leaving)
+// until it is silent. Nothing when `item` is silent.
 function hush(s, layer, item, value, now) {
     const t = soundTransition(value);
     if (!t || !heard(item)) return {};
-    const out = {};
-    const leaving = [];
-    for (const k of SOUND_LAYERS) {
-        const cur = s[k];
-        if (!heard(cur)) continue;
-        if (k !== layer) out[k] = null;
-        if (t.mode === "fade") {
-            const gone = { ...cur };
-            delete gone.playlist;
-            delete gone.playlistIndex;
-            leaving.push({ layer: k, item: gone, at: now, until: now + t.ms });
-        }
-    }
+    const layers = SOUND_LAYERS.filter((k) => heard(s[k]));
+    const out = Object.fromEntries(layers.filter((k) => k !== layer).map((k) => [k, null]));
     if (out.media === null) Object.assign(out, remember(s, now, "media"));
-    if (leaving.length) out.leaving = [...(s.leaving || []), ...leaving];
-    return out;
+    return { ...out, ...leave(s, layers, t.mode === "fade" ? t.ms : 0, now) };
+}
+
+// The audio channel starts `audio`: the sound it hushes goes (`hush`), and
+// the same file still leaving (a Desfazer inside Esc's fade) stops leaving,
+// so the projector's player takes its element back instead of playing it twice.
+function startAudio(s, audio, a, now) {
+    const patch = hush(s, "audio", audio, a.transition, now);
+    const leaving = patch.leaving || s.leaving || [];
+    const kept = leaving.filter((e) => !(e.layer === "audio" && e.item?.url === audio.url));
+    return { ...patch, ...(kept.length !== leaving.length ? { leaving: kept } : {}), audio };
 }
 
 // -- Operations ---------------------------------------------------------------
@@ -685,14 +737,14 @@ const OPS = {
     // `transition` ({ mode, ms }, SOUND_MODES): how the sound already
     // playing gives way to this one; `volume` / `muted`: how it starts.
     "media.show": (s, a, now) => {
-        const media = { ...mediaItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: freshPlayback(now, startVolume(a)) };
+        const media = { ...mediaItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: playbackFor(a, now) };
         return { ...remember(s, now), ...reveal(["tool", "communication"]), ...hush(s, "media", media, a.transition, now), media };
     },
     "media.playlist": (s, a, now) => {
         const items = list(a.items, "Lista de mídias").map(mediaItem);
         if (items.length === 0) throw new LiveError("A lista de mídias está vazia.");
         const i = clampIndex(a.index, items.length);
-        const media = { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: freshPlayback(now, startVolume(a)) };
+        const media = { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: playbackFor(a, now) };
         return { ...remember(s, now), ...reveal(["tool", "communication"]), ...hush(s, "media", media, a.transition, now), media };
     },
     // Reported by the output when an item ends. Several outputs may report
@@ -703,43 +755,47 @@ const OPS = {
         const i = (media.playlistIndex + 1) % media.playlist.length;
         return { media: { ...media, ...media.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, media.playback.volume) } };
     },
-    "media.clear": (s, _a, now) => (s.media ? { ...remember(s, now, "media"), media: null } : null),
+    // Parar in the player: `fade` as Esc's (Ao tirar do ar, Rodada G3).
+    "media.clear": (s, a, now) => (s.media ? { ...remember(s, now, "media"), media: null, fade: exitFade(a.fade, now) } : null),
 
     // The video channel: video screens and tablets (VideoProjection). It does
     // not cover the main projector.
     "video.show": (s, a, now) => {
-        const video = { ...mediaItem(a), shownAt: now, playback: freshPlayback(now, startVolume(a)) };
+        const video = { ...mediaItem(a), shownAt: now, playback: playbackFor(a, now) };
         return { ...hush(s, "video", video, a.transition, now), video };
     },
-    "video.clear": (s) => (s.video ? { video: null } : null),
+    "video.clear": (s, a, now) => (s.video ? { video: null, fade: exitFade(a.fade, now) } : null),
 
     // The audio channel (see emptyState): one file or a list, a video file
-    // used for its sound included.
+    // used for its sound included. `position`, `paused`, `fadeIn`: where and
+    // how it starts (freshPlayback: the Desfazer of Esc puts the music back).
     "audio.show": (s, a, now) => {
-        const audio = { ...audioItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: freshPlayback(now, startVolume(a)) };
-        return { ...hush(s, "audio", audio, a.transition, now), audio };
+        const audio = { ...audioItem(a), playlist: null, playlistIndex: 0, shownAt: now, playback: playbackFor(a, now) };
+        return startAudio(s, audio, a, now);
     },
     "audio.playlist": (s, a, now) => {
         const items = list(a.items, "Lista de áudios").map(audioItem);
         if (items.length === 0) throw new LiveError("A lista de áudios está vazia.");
         const i = clampIndex(a.index, items.length);
-        const audio = { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: freshPlayback(now, startVolume(a)) };
-        return { ...hush(s, "audio", audio, a.transition, now), audio };
+        const audio = { ...items[i], playlist: items, playlistIndex: i, shownAt: now, playback: playbackFor(a, now) };
+        return startAudio(s, audio, a, now);
     },
     "audio.advance": (s, { fromIndex }, now) => {
         const audio = need(s.audio, "tocando");
         if (!audio.playlist || Number(fromIndex) !== audio.playlistIndex) return null;
         const i = audio.playlistIndex + 1;
         // The end of the list: it stops there (music does not wrap by itself).
-        if (i >= audio.playlist.length) return { audio: { ...audio, playback: { ...audio.playback, paused: true, position: livePosition(audio.playback, now), at: now } } };
+        if (i >= audio.playlist.length) return { audio: { ...audio, playback: ramped({ ...audio.playback, paused: true, position: livePosition(audio.playback, now), at: now }, null) } };
         return { audio: { ...audio, ...audio.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, audio.playback.volume) } };
     },
-    "audio.clear": (s) => (s.audio ? { audio: null } : null),
+    // Parar: the music stops, fading out over `fade` ms (live.leaving).
+    "audio.clear": (s, a, now) => (s.audio ? { audio: null, ...leave(s, ["audio"], exitFade(a.fade, now)?.ms, now) } : null),
 
     // "Tirar o vídeo · o som continua" (the player, as in Holyrics): the
     // video on the projector leaves the screen and its sound carries on in
     // the audio channel, from the same second at the same volume, so it
-    // survives Esc and whatever is sent next. A list goes along (only what
+    // survives whatever is sent next (Esc stops it since Rodada G3, as all
+    // the player's music). A list goes along (only what
     // can be heard) and, as music, stops at its end. Taking something off
     // the screen, so it works locked.
     "media.toAudio": (s, _a, now) => {
@@ -771,25 +827,44 @@ const OPS = {
 
     // The operator jumps to an item of a media or audio list (Anterior /
     // Próximo in the player): it starts from the top, at the same volume.
-    "playlist.goTo": (s, { layer = "media", index }, now) => {
+    // `transition` (Entre áudios e vídeos): with "fade" the track it stops
+    // fades out (live.leaving, Rodada G3); it never hushes another layer.
+    "playlist.goTo": (s, { layer = "media", index, transition }, now) => {
         oneOf(layer, ["media", "audio"], "Camada");
         const current = need(s[layer], "em reprodução");
         if (!current.playlist) throw new LiveError("Não é uma lista.");
         const i = clampIndex(index, current.playlist.length);
         if (i === current.playlistIndex) return null;
-        return { [layer]: { ...current, ...current.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, current.playback.volume) } };
+        const t = soundTransition(transition);
+        const next = { ...current, ...current.playlist[i], playlistIndex: i, shownAt: now, playback: freshPlayback(now, current.playback.volume) };
+        const fades = t?.mode === "fade" && next.url !== current.url;
+        return { ...(fades ? leave(s, [layer], t.ms, now) : {}), [layer]: next };
     },
 
-    "transport": (s, { layer = "video", action, time, volume }, now) => {
+    // `fade` (ms, Ao pausar o som, Rodada G3): pause brings the volume down
+    // to 0 and only then pauses (playback.ramp; playbackPlan waits for it),
+    // play brings it up from 0. A ramp starts where the sound is, so a quick
+    // Pausar-Tocar never clicks; a volume change keeps it.
+    "transport": (s, { layer = "video", action, time, volume, fade }, now) => {
         oneOf(layer, ["media", "video", "audio"], "Camada");
         const current = need(s[layer], "em reprodução");
         const pb = current.playback;
         const position = livePosition(pb, now);
+        const ms = action === "play" || action === "pause" ? exitFade(fade, now)?.ms || 0 : 0;
         let playback;
-        if (action === "play") playback = pb.paused ? { ...pb, paused: false, position, at: now } : null;
-        else if (action === "pause") playback = pb.paused ? null : { ...pb, paused: true, position, at: now };
-        else if (action === "seek") playback = { ...pb, position: count(time, "Posição"), at: now };
-        else if (action === "volume") playback = { ...pb, volume: Math.min(1, count(volume, "Volume")) };
+        if (action === "play") {
+            // A pause still fading out played on meanwhile: go on from there.
+            const tail = pb.ramp?.to === 0 ? Math.min(Math.max(0, now - pb.ramp.at), pb.ramp.ms) / 1000 : 0;
+            const from = pb.ramp ? playbackGain(pb, now) : 0;
+            playback = pb.paused ? ramped({ ...pb, paused: false, position: position + tail, at: now }, ms ? { at: now, ms, from, to: 1 } : null) : null;
+        } else if (action === "pause") {
+            playback = pb.paused ? null : ramped({ ...pb, paused: true, position, at: now }, ms ? { at: now, ms, from: playbackGain(pb, now), to: 0 } : null);
+        } else if (action === "seek") {
+            // Playing, a ramp goes on from the new second; paused, the sound
+            // is (all but) gone and its tail would only skew where it resumes.
+            const moved = { ...pb, position: count(time, "Posição"), at: now };
+            playback = pb.paused ? ramped(moved, null) : moved;
+        } else if (action === "volume") playback = { ...pb, volume: Math.min(1, count(volume, "Volume")) };
         // Screens try to go fullscreen (tablets need a tap; they show a button).
         else if (action === "fullscreen") return { [layer]: { ...current, fullscreenAt: now } };
         else throw new LiveError(`Comando de vídeo inválido: ${action}.`);
@@ -913,10 +988,12 @@ const OPS = {
     // Fundo padrão (owner's decision 2026-10-12: with nothing on air the
     // screen shows the service's, else the day's background) — unless the
     // padlock holds it; with no Fundo padrão it stays as it is. The audio
-    // channel plays on, hushed by nothing. `fade`: what goes fades out.
+    // channel stops too, paused or not (owner 2026-10-17, Rodada G3: it
+    // played on before). `fade`: what goes fades out, the music with it.
     "clear": (s, a, now) => {
         const fundo = s.defaultBackground && !layerLocked(s, "background") ? { background: { ...s.defaultBackground }, ...without(s, "background") } : {};
-        return { ...remember(s, now), ...without(s, "content"), ...fundo, screen: "show", content: null, media: null, video: null, tool: null, communication: null, fade: exitFade(a.fade, now) };
+        const fade = exitFade(a.fade, now);
+        return { ...remember(s, now), ...without(s, "content"), ...fundo, ...leave(s, ["audio"], fade?.ms, now), screen: "show", content: null, media: null, video: null, audio: null, tool: null, communication: null, fade };
     },
 };
 
@@ -948,7 +1025,7 @@ export function restoreState(saved, now = Date.now()) {
     const base = emptyState(now);
     if (!isPlainObject(saved) || saved.version !== LIVE_VERSION || !Number.isInteger(saved.rev)) return base;
     const layer = (v) => (isPlainObject(v) ? v : null);
-    const paused = (l) => (l && isPlainObject(l.playback) ? { ...l, playback: { ...l.playback, paused: true, at: now } } : l);
+    const paused = (l) => (l && isPlainObject(l.playback) ? { ...l, playback: ramped({ ...l.playback, paused: true, at: now }, null) } : l);
     return {
         ...base,
         rev: saved.rev,
@@ -1052,8 +1129,10 @@ export function followIndex(state, now) {
 // playback: el = { currentTime, paused, ended, duration } of the element.
 // Returns { seek?: seconds, play?: true, pause?: true, volume }.
 // Small drift is left alone (seeking stutters); a looping item wraps.
+// The volume is the playback's times its ramp (playbackGain); a pause still
+// fading out waits for the end of its ramp.
 export function playbackPlan(el, playback, now, { loop = false, tolerance = 1.5 } = {}) {
-    const plan = { volume: playback.volume ?? 1 };
+    const plan = { volume: (playback.volume ?? 1) * playbackGain(playback, now) };
     const duration = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : null;
     let target = livePosition(playback, now);
     if (duration) target = loop ? target % duration : Math.min(target, duration);
@@ -1061,7 +1140,7 @@ export function playbackPlan(el, playback, now, { loop = false, tolerance = 1.5 
     // Finished (no loop): rest on the last frame rather than replay.
     if (Math.abs((el.currentTime || 0) - target) > tolerance) plan.seek = target;
     if (playback.paused) {
-        if (!el.paused) plan.pause = true;
+        if (!el.paused && !fadingOut(playback, now)) plan.pause = true;
     } else if (el.paused && !finished && !(el.ended && !loop)) {
         plan.play = true;
     }

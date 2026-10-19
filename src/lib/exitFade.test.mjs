@@ -60,3 +60,20 @@ test("exit fade: the audio channel's sound on its way out", () => {
     assert.deepEqual(leavingAudio(s, T0 + 600), [], "silent by then");
     assert.deepEqual(leavingAudio(null, T0), []);
 });
+
+// Rodada G3 (owner 2026-10-17): Esc and Parar take the player's music with
+// the picture, on the same fade.
+test("exit fade: Esc and Parar take the music out on the screens' fade", () => {
+    const music = run([["content.show", song], ["audio.show", { url: "a.mp3" }]]);
+    const esc = applyOp(music, "clear", { fade: 300 }, T0 + 1000);
+    assert.equal(screenExitMs(music, esc), 300, "the picture fades");
+    assert.deepEqual(leavingAudio(esc, T0 + 1200).map((e) => [e.item.url, e.until]), [["a.mp3", T0 + 1300]], "the music with it");
+    assert.deepEqual(leavingAudio(applyOp(music, "clear", {}, T0 + 1000), T0 + 1000), [], "Corte: it stops at once");
+    assert.deepEqual(leavingAudio(applyOp(music, "audio.clear", { fade: 600 }, T0 + 1000), T0 + 1500).length, 1, "Parar on the audio channel");
+    // Parar on the projector's video and on the video channel fades the picture.
+    const media = run([["content.show", song], ["media.show", CLIP]]);
+    assert.equal(screenExitMs(media, applyOp(media, "media.clear", { fade: 300 }, T0 + 1)), 300);
+    assert.equal(screenExitMs(media, applyOp(media, "media.clear", {}, T0 + 1)), 0);
+    const clip = run([["video.show", CLIP]]);
+    assert.equal(videoExitMs(clip, applyOp(clip, "video.clear", { fade: 600 }, T0 + 1)), 600);
+});

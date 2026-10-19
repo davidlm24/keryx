@@ -160,7 +160,7 @@ const SHORTCUTS_HEAD = [
     { keys: "Espaço", label: "Tocar / pausar", action: "play", probe: { key: " " } },
 ];
 const SHORTCUTS_MID = [
-    { keys: "Esc", label: "Tirar tudo do ar na hora (o aviso traz Desfazer) ou fechar o que está aberto", action: "end", probe: { key: "Escape" } },
+    { keys: "Esc", label: "Tirar tudo do ar na hora, música incluída (o aviso traz Desfazer) ou fechar o que está aberto", action: "end", probe: { key: "Escape" } },
     { keys: "Ctrl+Z", label: "Desfazer o Esc ou o Encerrar (enquanto o aviso mostra Desfazer)", action: "undo", probe: { key: "z", ctrlKey: true } },
     { keys: "Letra", label: "Na Bíblia: digitar a referência (ex.: jo 3 16)", action: null, probe: null },
 ];

@@ -29,22 +29,38 @@ test("a picture over the song comes back over it; the video channel and Tela pre
     assert.equal(after.screen, "black");
 });
 
-test("Desfazer never stops the music Esc kept, and a sound comes back at its volume", () => {
+test("Desfazer brings the music back at the second it stopped (paused stays paused, mix, fade-in, follow)", () => {
     // The music on the audio channel and a muted video on the projector (Tocar
     // junto, or a video the operator turned down to 0).
-    let before = applyOp(emptyState(T), "audio.show", { kind: "audio", url: "keryx-media://hino.mp3", title: "Hino" }, T);
+    let before = applyOp(emptyState(T), "audio.show", { kind: "audio", url: "keryx-media://hino.mp3", title: "Hino", volume: 0.7 }, T);
     before = applyOp(before, "media.show", { kind: "video", url: "keryx-media://v.mp4", title: "Clipe", volume: 0 }, T + 1);
     before = applyOp(before, "video.show", { kind: "video", url: "keryx-media://w.mp4", title: "Telão", volume: 0.4, transition: { mode: "mix" } }, T + 2);
-    const ended = applyOp(before, "clear", {}, T + 3);
-    assert.equal(ended.audio.title, "Hino", "Esc keeps the audio channel");
-    // As the console sends them: with the church's Transições (Suave).
-    const prefs = { media_transition: "fade", media_transition_ms: 500 };
-    const ops = undoEndOps(before).map(([op, args]) => [op, withTransitions(op, args, prefs)]);
-    const back = run(ended, ops);
-    assert.equal(back.audio?.title, "Hino", "the music goes on");
-    assert.deepEqual(back.leaving, []);
-    assert.equal(back.media.playback.volume, 0);
+    const ended = applyOp(before, "clear", { fade: 300 }, T + 42_000);
+    assert.equal(ended.audio, null, "Esc stops the music (Rodada G3)");
+    assert.equal(ended.leaving.length, 1, "fading out with the screens");
+    // As the console sends them: with the church's Transições (Suave, 0,2 s).
+    const prefs = { media_transition: "fade", media_transition_ms: 500, pause_fade_ms: 200 };
+    const ops = undoEndOps(before, ended.updatedAt).map(([op, args]) => [op, withTransitions(op, args, prefs)]);
+    const back = run(ended, ops, T + 42_100);
+    assert.equal(back.audio?.title, "Hino", "the music is back");
+    assert.deepEqual(back.audio.playback, { paused: false, position: 42, at: T + 42_100, volume: 0.7, ramp: { at: T + 42_100, ms: 200, from: 0, to: 1 } }, "at the second Esc stopped it, rising over the pause fade");
+    assert.deepEqual(back.leaving, [], "the copy still fading stops leaving: one player, one sound");
+    assert.equal(back.media.playback.volume, 0, "nothing hushes anything (mix)");
     assert.equal(back.video.playback.volume, 0.4);
+    // Paused music comes back paused, where it was; a list at its item.
+    let list = applyOp(emptyState(T), "audio.playlist", { items: [{ url: "keryx-media://a.mp3" }, { url: "keryx-media://b.mp3" }], index: 1 }, T);
+    list = applyOp(list, "transport", { layer: "audio", action: "pause" }, T + 30_000);
+    const listOps = undoEndOps(list, T + 60_000);
+    assert.deepEqual(listOps.map(([op]) => op), ["audio.playlist"], "music alone can be undone");
+    const again = run(applyOp(list, "clear", {}, T + 60_000), listOps.map(([op, a]) => [op, withTransitions(op, a, prefs)]), T + 61_000);
+    assert.deepEqual([again.audio.url, again.audio.playlistIndex, again.audio.playback.paused, again.audio.playback.position, again.audio.playback.ramp], ["keryx-media://b.mp3", 1, true, 30, undefined]);
+    // A song following its playback: the automatic lyrics come back with it.
+    const slides = [{ text: "um", start: 0 }, { text: "dois", start: 20 }];
+    let synced = applyOp(emptyState(T), "content.show", { kind: "lyrics", title: "Canto", slides, follow: { source: "audio", url: "keryx-media://pb.mp3" } }, T);
+    synced = applyOp(synced, "audio.show", { url: "keryx-media://pb.mp3" }, T);
+    const [show] = undoEndOps(synced, T + 25_000);
+    assert.deepEqual([show[0], show[1].follow.source, show[1].follow.url], ["content.show", "audio", "keryx-media://pb.mp3"]);
+    assert.equal(run(applyOp(synced, "clear", {}, T + 25_000), undoEndOps(synced, T + 25_000), T + 25_100).content.follow.source, "audio");
 });
 
 test("an aviso or a tool over the song comes back over it", () => {

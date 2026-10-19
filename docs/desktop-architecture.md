@@ -218,8 +218,12 @@ runs the same rules in the browser (`backends/localLive.js`, localStorage +
    track (`audio.show`, `audio.playlist`, `audio.advance`, `audio.clear`;
    `playlist.goTo` jumps within a media or audio list; `transport` takes
    `layer: "audio"`). It is not a main layer: it plays under whatever the
-   screens show, and Encerrar/Esc leave it playing (the player's Parar stops
-   it). Only the desktop's own `/Projection` window plays it, so a TV on
+   screens show. Encerrar/Esc left it playing until 2026-10-17; since
+   Rodada G3 (the owner's call) Esc stops it too, paused or not, fading out
+   on the screens' fade (`live.leaving`), and Desfazer brings it back at
+   the second it stopped. The player's Parar (`audio.clear` with the same
+   `fade`) stops it on its own; Pausar and Tocar fade over Ao pausar o som
+   (`transport` `fade` → `playback.ramp`, `playbackGain`). Only the desktop's own `/Projection` window plays it, so a TV on
    the network showing that page stays silent. Media rows may be `audio`.
    **Tirar o vídeo · o som continua (2026-10-13, as in Holyrics):** the
    player's eye button moves a video file on the projector into the audio
@@ -487,7 +491,8 @@ the times; the top bar's service clock stays.)
   a row dropped on the Prévia prepares, on the Programa sends, on the Setlist
   becomes a ServiceItem (`src/lib/console/dragStage.js`). **Esc takes the
   projection down at once** (closing an open popover first; in a text field
-  it only leaves the field); the audio channel keeps playing. AltGr
+  it only leaves the field), the player's music with it (Rodada G3,
+  2026-10-17; it kept playing before). AltGr
   (Ctrl+Alt) is typing. In the Bible environment a letter or digit opens the
   quick jump (`BibleQuickJump`, `src/lib/console/quickRef.js`): "jo 3 16-18"
   fills Livro, Capítulo, Versículo — Space or Tab completes the book; Enter
