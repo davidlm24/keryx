@@ -9,8 +9,13 @@
 import { DENSITIES, MODULES } from "../console/layoutChoices.js";
 import { normalizeCategories } from "../console/backgroundPrefs.js";
 import { idleLookOf, isDefaultIdleLook } from "../../../shared/idleLook.mjs";
+import { TRANSITION_TYPE_IDS } from "../contentKinds.js";
 
 const oneOf = (list, fallback) => (v) => (list.includes(v) ? v : fallback);
+// { [kind]: "cut" | "fade" } for the kinds of TRANSITION_TYPE_IDS; anything else dropped.
+const normalizeKindModes = (v) => (v && typeof v === "object" && !Array.isArray(v)
+    ? Object.fromEntries(TRANSITION_TYPE_IDS.filter((k) => v[k] === "cut" || v[k] === "fade").map((k) => [k, v[k]]))
+    : {});
 const DENSITY_KEYS = DENSITIES.map(([k]) => k);
 const MODULE_KEYS = MODULES.map(([k]) => k);
 
@@ -49,6 +54,13 @@ export const PREF_FIELDS = {
     clear_transition_ms: { default: 300, normalize: (v) => ([300, 600, 1000].includes(Number(v)) ? Number(v) : 300) },
     screen_transition: { default: true, normalize: (v) => v !== false },
     pause_fade_ms: { default: 200, normalize: (v) => (v !== null && v !== "" && [0, 200, 400].includes(Number(v)) ? Number(v) : 200) },
+    // Ao entrar ou trocar (Rodada G5): what enters the screens or replaces
+    // something else fades over this many ms, or cuts; Por tipo de conteúdo
+    // keeps the kinds that do otherwise (src/lib/contentKinds.js), only
+    // cut | fade, an absent kind following the row (the timer: Corte).
+    enter_transition: { default: "fade", normalize: oneOf(["cut", "fade"], "fade") },
+    enter_transition_ms: { default: 500, normalize: (v) => ([300, 500, 1000].includes(Number(v)) ? Number(v) : 500) },
+    enter_transition_kinds: { default: {}, normalize: normalizeKindModes },
     // The Bíblia's own theme: "" = the default theme (the songs'), "none"
     // = the factory look, else a ProjectionTheme id (themes.js themeForKind).
     bible_theme_id: { default: "", normalize: (v) => (typeof v === "string" && v.length <= 200 ? v.trim() : "") },

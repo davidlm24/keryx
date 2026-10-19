@@ -6,6 +6,7 @@
 import { outputView, RAIL_VIEWS, OUTPUT_NAMES } from "./network/views.js";
 import { themeBackgroundArgs } from "./console/themes.js";
 import { normalizeLayout, findLayout } from "./layouts.js";
+import { contentType } from "./contentKinds.js";
 
 // Conteúdo: which view of the live state the output draws (views.js).
 export const PREF_CONTENTS = [
@@ -23,17 +24,24 @@ export const PREF_OUTPUTS = ["/Projection", "/LyricProjection", "/VideoProjectio
 // leave out, on top of its page's view. Each is a live-state layer, or a
 // kind of the content layer. A hidden kind on air leaves the output on what
 // is under it (another layer, else the idle look); a song's playback track
-// keeps playing when its words are hidden.
+// keeps playing when its words are hidden. Built from the one list of
+// content kinds (src/lib/contentKinds.js, Rodada G5); the ids are the saved
+// ones (OutputPref.hidden_kinds), so pictures and videos stay one entry
+// ("media") and the avisos keep their layer's name.
+const showKind = (typeId, id = typeId) => {
+    const t = contentType(typeId);
+    return t.layer === "content" ? { id, name: t.short, layer: t.layer, kind: t.kinds[0] } : { id, name: t.short, layer: t.layer };
+};
 export const SHOW_KINDS = [
-    { id: "lyrics", name: "Letras", layer: "content", kind: "lyrics" },
-    { id: "bible", name: "Bíblia", layer: "content", kind: "bible" },
-    { id: "text", name: "Texto", layer: "content", kind: "text" },
+    showKind("lyrics"),
+    showKind("bible"),
+    showKind("text"),
     { id: "media", name: "Imagens e vídeos", layer: "media" },
     // A PDF's pages (Rodada F3): shown where Imagens e vídeos are.
-    { id: "presentation", name: "Apresentações", layer: "content", kind: "presentation" },
-    { id: "tool", name: "Relógio e timer", layer: "tool" },
-    { id: "communication", name: "Avisos", layer: "communication" },
-    { id: "alert", name: "Aviso rápido", layer: "alert" },
+    showKind("presentation"),
+    showKind("tool"),
+    showKind("notice", "communication"),
+    showKind("alert"),
 ];
 // The kinds each view can show at all (views.js): only those are offered.
 // The Aviso rápido rides on every view (Rodada E3: one bar, every screen).

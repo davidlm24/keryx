@@ -160,7 +160,7 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   postMessage type (both are gone). **One sound at a time, and the fades**
   (owner 2026-10-16, Rodada F2; Configurações › Telas e saídas ›
   Transições: User `media_transition`/`_ms`, `clear_transition`/`_ms`,
-  `screen_transition`, `pause_fade_ms`): an op that starts an item with sound (`video.show`,
+  `screen_transition`, `pause_fade_ms`, `enter_transition*`): an op that starts an item with sound (`video.show`,
   `audio.show`, `audio.playlist`, `media.show`, `media.playlist`; a video,
   audio or YouTube not at volume 0, `heard`) stops the other sound layers
   (`hush`), cut or fading out — the stopped item rides in `live.leaving`
@@ -203,8 +203,34 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   its volume comes down (`LiveVideo fadeOut`, the element handed over by
   the pool); the projector plays `leaving` audio out the same way. Outputs
   ignore reduced motion (the audience sees them), the Programa monitor
-  honours it, still previews cut. The slide-to-slide transition stays the
-  theme's. Every output renders the live state; outputs can be
+  honours it, still previews cut. **What enters or replaces fades too**
+  (owner 2026-10-17, Rodada G5; Ao entrar ou trocar: User
+  `enter_transition` cut|fade, `enter_transition_ms` 300/500/1000 —
+  Suave 0,5 s by default — and `enter_transition_kinds` { kind: cut|fade },
+  Por tipo de conteúdo, folded): `content.show`, `media.show`/`.playlist`,
+  `video.show`, `tool.show`, `communication.show` and the outputs'
+  `media.advance` (LiveMediaView) and `communication.advance`
+  (useNoticeAdvance) keep their `fade` as `live.fade`; `screenExitMs`
+  ghosts when the main layer OR its item changes (`content.startedAt`,
+  `media.shownAt`, `tool`/`communication.startedAt`), the longer of the
+  change's fade and a hushed sound's `leaving`, and `videoExitMs` the
+  same for the video channel. `withTransitions` maps the op to a kind of
+  `src/lib/contentKinds.js` (THE list of content kinds, tested; Mostrar's
+  `SHOW_KINDS` is built from it and G10's per-output rule will be):
+  `content.show` by `kind`, `media.*` image/gif → image and video/youtube →
+  video, a list by its first item, `video.show`/`audio.toMedia` (Mostrar o
+  vídeo) → video, `tool.show` → tool (Corte unless chosen: the count does
+  not wait), `communication.*` → notice; the sender's `fade` wins, the
+  Prévia never gets one. Soft is wrong, so never: moving the slide
+  (`content.goTo/next/prev/reveal/update`: the theme's transition, PDF
+  pages included), a YouTube player leaving (cold in the ghost: it cuts),
+  a picture of a list longer than a quarter of its time (`enterFade`),
+  Tela preta/Logo (their own switch). Changes that reach a window within
+  150 ms are one for its ghost (`ghostTrack`, `GHOST_BURST_MS`): the Fundo
+  then the text of one send fade together from the screen before. The
+  Avisos screen's `noticeView` carries `rev`/`updatedAt`/`fade`. The
+  slide-to-slide transition stays the theme's. Every output renders the
+  live state; outputs can be
   opened by the main process (`keryx:displays:open`, "Abrir ao iniciar").
   Avisos (CommunicationVideo) are the `communication` layer, drawn in full
   by `ScreenRenderer` (look, background, logo, chime; arithmetic in

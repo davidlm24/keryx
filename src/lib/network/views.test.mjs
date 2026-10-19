@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mainLayer } from "../../../shared/live-state.mjs";
-import { lyricView, standbyView, nextItems, previewSession, RAIL_VIEWS } from "./views.js";
+import { mainLayer, applyOp, emptyState } from "../../../shared/live-state.mjs";
+import { lyricView, standbyView, noticeView, nextItems, previewSession, RAIL_VIEWS } from "./views.js";
+import { screenExitMs } from "../exitFade.js";
 
 const song = { title: "Hino", slides: [{ text: "a" }], index: 0 };
 const media = { kind: "image", url: "x.png", title: "Foto" };
@@ -74,4 +75,17 @@ test("previewSession: the pastor's Próximo follows the prepared Setlist item", 
     assert.deepEqual(previewSession(null, { serviceItemId: "b" }), { itemId: "b", itemIndex: null }, "nothing started yet");
     assert.equal(previewSession(null, {}), null);
     assert.deepEqual(RAIL_VIEWS.map((v) => v.name), ["Projeção", "Letras", "Vídeo", "Avisos", "Palco", "Pastor"]);
+});
+
+// Rodada G5: the Avisos screen fades from one aviso of a list to the next,
+// as the projector does: its view carries the change (rev, updatedAt, fade).
+test("noticeView carries the change, so the Avisos screen fades", () => {
+    const T0 = 1_000_000;
+    const on = applyOp(emptyState(T0), "communication.show", { playlist: [{ title: "A" }, { title: "B" }] }, T0);
+    const next = applyOp(on, "communication.advance", { fromIndex: 0, fade: 500 }, T0 + 10);
+    const [a, b] = [noticeView(on), noticeView(next)];
+    assert.deepEqual([b.rev, b.updatedAt, b.fade], [next.rev, next.updatedAt, { ms: 500, at: T0 + 10 }]);
+    assert.equal(screenExitMs(a, b), 500);
+    assert.equal(noticeView(applyOp(on, "communication.clear", {}, T0 + 10)), null, "nothing on air: nothing");
+    assert.equal(noticeView({ ...emptyState(T0), alert: { message: "x" } }).rev, 0);
 });
