@@ -1056,7 +1056,20 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     e ajustes como as outras; o canvas de uma tela que só mostra avisos
     ganha um aviso de exemplo quando não há aviso no ar (como o still de
     Telas e saídas), e Cifra/Nome da parte só aparecem onde a vista mostra
-    letras (não em Vídeo nem Avisos).
+    letras (não em Vídeo nem Avisos). **Mostrar com** (Rodada G2, owner
+    2026-10-19) desenha a tela em quatro estados: Exemplo (letra), Sem nada
+    no ar (estado vazio), Timer (um `tool.show` de exemplo, `sampleTimer`,
+    recomeça a cada escolha) e No ar (o estado real, senão o exemplo) —
+    assim a Hora grande e o "Aguardando projeção" do Palco (`when: "idle"`)
+    se veem sólidos; os `when` de fábrica não mudam (saves antigos citam
+    `factory:*`). Um elemento fora do desenho tem a causa em
+    `elementState` (layouts.js, testado: "off" o olho, "rule" a regra
+    Aparece, "empty" nada a mostrar, "shown"), que o `LayoutRenderer`
+    põe como classe (`is-off` pontilhado e mais fraco, `is-rule`/`is-empty`
+    tracejado); a lista mostra a regra como chip (`whenLabel`, as palavras
+    do select Aparece; nenhum para Sempre), esmaece a linha e traceja o
+    olho, e o tooltip do canvas e a linha sob ele dizem o porquê e a saída
+    (`ghostReason`).
   - um TEMA (`ThemeEditor.jsx`): o ÚNICO lugar em que um tema se edita —
     Configurações › Temas é só a lista; Camadas ajusta o ar e captura com
     "Salvar como novo". `text_align`/`text_position` em `EXTRA_KEYS`

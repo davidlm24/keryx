@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyOp, emptyState } from "../../shared/live-state.mjs";
 import {
     ELEMENT_TYPES, TEXT_TYPES, LOOK_TYPES, ELEMENT_GROUPS, FACTORY_LAYOUTS, normalizeElement, normalizeLayout, newElement, newLayout, duplicateLayout,
-    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, slidePage, layoutHasTimer, seedLayoutId, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
+    findLayout, layoutChoices, layoutContext, elementVisible, elementText, elementItems, elementHasContent, elementState, whenLabel, ghostReason, slidePage, layoutHasTimer, seedLayoutId, snapRect, resizeRect, moveRect, reorderElement, moveElement, formatSpan, FONTS,
 } from "./layouts.js";
 
 const T0 = Date.UTC(2026, 9, 12, 19, 30, 0);
@@ -176,6 +176,44 @@ test("reorderElement", () => {
 
 test("formatSpan", () => {
     assert.equal(formatSpan(5), "0:05"); assert.equal(formatSpan(3600), "1:00:00");
+});
+
+test("elementState tells the editor's three ghosts apart (Rodada G2)", () => {
+    const on = layoutContext({ live: song(), now: T0 });
+    const off = layoutContext({ live: emptyState(T0), now: T0 });
+    const tool = layoutContext({ live: applyOp(emptyState(T0), "tool.show", { mode: "timer", durationMs: 180_000 }, T0), now: T0 });
+    const st = (props, ctx) => elementState(normalizeElement(props), ctx);
+    // The Palco's big Hora and "Aguardando projeção": ghosts by their rule
+    // with a song on air, drawn with nothing on air.
+    const palco = FACTORY_LAYOUTS.find((l) => l.id === "factory:palco");
+    const idle = palco.elements.filter((e) => e.when === "idle");
+    assert.equal(idle.length, 2);
+    for (const e of idle) { assert.equal(elementState(e, on), "rule"); assert.equal(elementState(e, off), "shown"); assert.equal(elementState(e, tool), "rule"); }
+    // The eye wins over everything.
+    assert.equal(st({ type: "clock", hidden: true }, off), "off");
+    assert.equal(st({ type: "clock", when: "idle", hidden: true }, on), "off");
+    // No data: a Cifra with nothing on air, a timer element with no tool.
+    assert.equal(st({ type: "chords" }, off), "rule", "the Cifra appears only with something on air");
+    assert.equal(st({ type: "chords", when: "always" }, off), "empty");
+    assert.equal(st({ type: "chords" }, on), "shown");
+    assert.equal(st({ type: "timer", when: "always" }, on), "empty");
+    assert.equal(st({ type: "timer" }, tool), "shown");
+    assert.equal(st({ type: "timer" }, on), "rule");
+    assert.equal(st({ type: "logo" }, off), "empty");
+    assert.equal(elementState(normalizeElement({ type: "logo" }), off, { logoUrl: "x" }), "shown");
+    // The list's chip: the Aparece select's words, none for Sempre.
+    assert.equal(whenLabel("always"), "");
+    assert.equal(whenLabel("idle"), "Sem nada no ar");
+    assert.equal(whenLabel("tool"), "Com relógio ou timer no ar");
+    assert.equal(whenLabel("content"), "Com algo no ar");
+    // The tooltip says the cause and the way out.
+    const hora = idle.find((e) => e.type === "clock");
+    assert.equal(ghostReason(hora, "rule"), "Esmaecido: aparece só sem nada no ar. Veja em “Sem nada no ar” ou troque Aparece para Sempre.");
+    assert.match(ghostReason({ when: "tool" }, "rule"), /com relógio ou timer no ar\. Veja em “Timer”/);
+    assert.match(ghostReason({ when: "content" }, "rule"), /Veja em “Exemplo \(letra\)”/);
+    assert.match(ghostReason(hora, "off"), /olho/);
+    assert.match(ghostReason(hora, "empty"), /nada para mostrar/);
+    assert.equal(ghostReason(hora, "shown"), "");
 });
 
 test("elementHasContent: empty elements draw nothing", () => {

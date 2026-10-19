@@ -50,7 +50,10 @@
 .kl-img.is-contain { object-fit: contain; }
 .kl-al-left .kl-img.is-contain { object-position: left; } .kl-al-right .kl-img.is-contain { object-position: right; }
 
-/* The editor's canvas: elements hidden now (by their rule, or with nothing
-   to say) still show, faint, so they can be picked and moved. */
+/* The editor's canvas: elements not drawn now still show, faint, so they
+   can be picked and moved — dashed when their Aparece rule or the lack of
+   anything to say leaves them out in this state (is-rule, is-empty),
+   dotted and fainter when their eye hides them (is-off; Rodada G2). */
 .kl.is-ghost .kl-el.is-hidden { opacity: .35; outline: 1px dashed var(--fg-3); outline-offset: -1px; }
+.kl.is-ghost .kl-el.is-hidden.is-off { opacity: .2; outline-style: dotted; }
 .kl-ghost { color: var(--fg-3); font-size: .7em; }

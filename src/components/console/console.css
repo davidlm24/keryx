@@ -1498,6 +1498,14 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .le-hit { position: absolute; cursor: move; touch-action: none; user-select: none; }
 .console .le-hit:hover { outline: 1px solid color-mix(in srgb, var(--brand) 60%, transparent); outline-offset: -1px; }
 .console .le-hit.is-sel { outline: 2px solid var(--brand); outline-offset: -1px; }
+/* The element list (Rodada G2): its Aparece rule as a chip (none for
+   Sempre), amber while the rule leaves it out of the state on the canvas;
+   a dashed eye on a row the state (not the eye) leaves out. */
+.console .le-rule { flex: none; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; line-height: 16px; padding: 0 var(--space-2); border-radius: 999px; background: var(--bg-3); color: var(--fg-3); }
+.console .le-rule.is-out { color: var(--warn-fg); }
+.console .le-eye-ghost { outline: 1px dashed var(--fg-3); outline-offset: -3px; }
+.console .le-why { flex-basis: 100%; }
+.console .le-why b { color: var(--fg-1); font-weight: 600; }
 .console .le-h { position: absolute; width: 10px; height: 10px; background: var(--brand); border: 1px solid var(--bg-0); border-radius: 2px; transform: translate(-50%, -50%); }
 .console .le-h.n { left: 50%; top: 0; cursor: ns-resize; } .console .le-h.s { left: 50%; top: 100%; cursor: ns-resize; }
 .console .le-h.e { left: 100%; top: 50%; cursor: ew-resize; } .console .le-h.w { left: 0; top: 50%; cursor: ew-resize; }
