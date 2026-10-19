@@ -15,6 +15,7 @@ import { withTransitions } from "@/lib/console/transitions";
 import { stageBlock } from "@/lib/presentation";
 import { pagesProgressOf } from "@/hooks/usePagesBackfill";
 import { useUser, usePrefs } from "@/hooks/useUser";
+import { liveIdleLook } from "@shared/idleLook.mjs";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { pendingUrls, PENDING_SAY } from "@/lib/pendingMedia";
 
@@ -183,6 +184,19 @@ export function useConsole() {
         if (dim === (live.idleDim ?? null) && blur === (live.idleBlur ?? null)) return;
         keryx.live.call("idle.set", { mode: "background", url: live.idleUrl, dim, blur }).catch(() => {});
     }, [live?.idle, live?.idleUrl, live?.idleDim, live?.idleBlur, bgPrefs]);
+
+    // The Tela ociosa's look follows the church's (Editor de telas › Tela
+    // ociosa saves User.idle_look, which also syncs between computers): this
+    // console puts it on the screens, with the church's name written in for
+    // "Nome da igreja", so a rename, an edit from a detached window or from
+    // another computer reaches the screens. Not before the profile is read.
+    const idleUser = useUser();
+    const idleWanted = idleUser ? JSON.stringify(liveIdleLook(idleUser.idle_look, idleUser.church_name || "")) : null;
+    const idleOnAir = JSON.stringify(live?.idleLook ?? null);
+    useEffect(() => {
+        if (idleWanted === null || !live || idleWanted === idleOnAir) return;
+        keryx.live.call("idle.look", { look: JSON.parse(idleWanted) }).catch(() => {});
+    }, [idleWanted, idleOnAir, Boolean(live)]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // The Fundo on air follows its picture's settings (the library is the one
     // place to set dim, blur, fit and position, 2026-10-13): when they change,

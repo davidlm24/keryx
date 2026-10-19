@@ -15,6 +15,7 @@
 // different clock can correct for it.
 
 import { GENERATOR_IDS, normalizeGenerator } from "./generators.mjs";
+import { checkIdleLook, idleLookOf, isDefaultIdleLook } from "./idleLook.mjs";
 export const LIVE_VERSION = 1;
 // The look layers the operator can stack (live.layerOrder), top first.
 export const LAYER_ORDER = ["logo", "overlays", "content", "background"];
@@ -152,6 +153,10 @@ export function emptyState(now = Date.now()) {
         // null: as it is, untouched (Aparência › Fundos).
         idleDim: null,
         idleBlur: null,
+        // The Tela ociosa's look with the logo (shared/idleLook.mjs: fundo,
+        // logo size, the words under it); null: the KERYX gradient and the
+        // logo as they always were (owner 2026-10-19).
+        idleLook: null,
         // The stacking of the look layers, top first (Camadas, drag to
         // reorder). The alert, a video-channel clip and the black/logo
         // screens always stay above all of them.
@@ -190,7 +195,7 @@ export function emptyState(now = Date.now()) {
 // outputs carrying on with what was already playing (the next video of a
 // list, the next aviso of a "Tocar todos").
 export const WHILE_LOCKED = new Set([
-    "screens.lock", "screen.set", "idle.set", "session.end", "layers.hide", "layers.lock", "background.default",
+    "screens.lock", "screen.set", "idle.set", "idle.look", "session.end", "layers.hide", "layers.lock", "background.default",
     "clear", "content.clear", "media.clear", "video.clear", "audio.clear", "tool.clear", "communication.clear", "text.clear", "alert.clear", "background.clear",
     "media.advance", "audio.advance", "communication.advance", "media.toAudio",
 ]);
@@ -969,6 +974,13 @@ const OPS = {
     // Fundo again brings it back. A url alone (no mode) never changes the mode.
     // A new wallpaper comes with its own dim and blur (or none); the same one
     // keeps them unless new ones are given (null clears).
+    // The Tela ociosa's look (Editor de telas › Tela ociosa): the whole look
+    // at once, null for the default; the console writes the church's name in.
+    "idle.look": (s, { look }) => {
+        const r = checkIdleLook(look);
+        if (r.error) throw new LiveError(r.error);
+        return JSON.stringify(r.look) === JSON.stringify(s.idleLook ?? null) ? null : { idleLook: r.look };
+    },
     "idle.set": (s, { mode, url, dim, blur }) => {
         const m = oneOf(mode, IDLE_MODES, "Tela ociosa");
         const u = url === undefined ? (s.idleUrl ?? null) : url === null || url === "" ? null : text(url, "Fundo de espera", { max: MAX_URL, required: true });
@@ -1077,7 +1089,8 @@ function restoreIdle(saved) {
     const url = typeof saved.idleUrl === "string" && saved.idleUrl ? saved.idleUrl : null;
     const mode = IDLE_MODES.includes(saved.idle) ? saved.idle : "logo";
     const num = (v, [lo, hi]) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
-    return { idle: mode === "background" && !url ? "logo" : mode, idleUrl: url, idleDim: num(saved.idleDim, [0, 0.9]), idleBlur: num(saved.idleBlur, [0, 20]) };
+    const look = idleLookOf(saved.idleLook);
+    return { idle: mode === "background" && !url ? "logo" : mode, idleUrl: url, idleDim: num(saved.idleDim, [0, 0.9]), idleBlur: num(saved.idleBlur, [0, 20]), idleLook: look && !isDefaultIdleLook(look) ? look : null };
 }
 
 // -- Reading the document (outputs and operator previews) ---------------------

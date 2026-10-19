@@ -15,6 +15,9 @@ import { useChurch } from "@/hooks/useChurch";
 import { useContextMenu } from "../ContextMenu";
 import { useConfirm } from "../ConfirmDialog";
 import TransicoesBlock from "./TransicoesBlock";
+import ScreenRenderer from "@/components/screen/ScreenRenderer";
+import { IDLE_SCREEN } from "@/components/editor/ScreensMenu";
+import { emptyState } from "@shared/live-state.mjs";
 
 const VOLUMES = [["20", "Baixo"], ["35", "Médio"], ["60", "Alto"], ["100", "Máximo"]];
 
@@ -170,6 +173,22 @@ export default function TelasSection({ c, onOpenScreen }) {
                 <span style={{ flex: 1 }} />
                 <Btn onClick={identify} title="Mostra o número de cada tela nela mesma">Identificar telas</Btn>
             </CfgKey>
+            {/* The Tela ociosa (owner 2026-10-19): the whole app's, not a
+                culto's; a card like the outputs', the click opens it in the
+                Editor de telas. The still shows what the screens show then. */}
+            <CfgKey k="Tela ociosa" className="listhead"><span className="kx-section">Tela ociosa <span className="kx-count">· todas as telas, quando nada está no ar e não há papel de parede</span></span></CfgKey>
+            <div className="cfg-grid" role="list" aria-label="Tela ociosa">
+                <div role="listitem" className="cfg-card">
+                    <button type="button" className="kx-t cfg-card-thumb" onClick={() => onOpenScreen?.(IDLE_SCREEN)} title="Editar a tela ociosa no Editor">
+                        <div className="cfg-prev"><div className="cfg-prev-fill"><ScreenRenderer fill state={{ ...emptyState(0), idle: c.live?.idle === "black" ? "black" : "logo", idleLook: c.live?.idleLook ?? null }} logoUrl={church.logo} preview audio={false} /></div></div>
+                    </button>
+                    <div className="cfg-card-h">
+                        <Icon name="monitor" />
+                        <span className="cfg-card-t">Tela ociosa</span>
+                    </div>
+                    <span className="kx-meta cfg-card-m">{c.live?.idle === "black" ? "Preto" : "Logo da igreja"}{c.live?.idleLook ? " · com ajustes" : ""}</span>
+                </div>
+            </div>
             <CfgKey k="Saídas" className="listhead"><span className="kx-section">Saídas <span className="kx-count">· clique numa tela para editá-la no Editor</span></span></CfgKey>
             <div className="cfg-grid" role="list" aria-label="Saídas">
                 {active.map((o) => {

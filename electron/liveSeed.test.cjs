@@ -19,3 +19,13 @@ test("the seed is valid for the live-state rules", async () => {
     assert.deepEqual([s.logo.corner, s.logo.size, s.logo.opacity, s.idle], ["top-right", "small", 0.4, "black"]);
     assert.equal(s.logo.visible, false, "the logo is not put on air");
 });
+
+test("the Tela ociosa's look rides the seed, the church's name written in", async () => {
+    const rules = await loadLiveRules();
+    const ops = seedOps({ idle_mode: "black", church_name: "Igreja de exemplo", idle_look: { bg: "color", color: "#112233", logo: "l", phrase: "church", text: "Seja bem-vindo" } });
+    assert.equal(ops.at(-1)[0], "idle.look", "last, after the mode");
+    let s = rules.emptyState(1);
+    for (const [op, args] of ops) s = rules.applyOp(s, op, args, 1);
+    assert.deepEqual([s.idle, s.idleLook.color, s.idleLook.logo, s.idleLook.text], ["black", "#112233", "l", "Igreja de exemplo"]);
+    assert.deepEqual(seedOps({ idle_look: null }), []);
+});

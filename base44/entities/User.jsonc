@@ -130,6 +130,10 @@
       "enum": ["logo", "black", "background"],
       "description": "Tela ociosa da igreja (o que as telas mostram sem nada no ar), para um estado ao vivo novo. Nulo = logo"
     },
+    "idle_look": {
+      "type": "object",
+      "description": "Visual da tela ociosa (Editor de telas › Tela ociosa): { bg, c1, c2, dir, color, logo, phrase, text }, shared/idleLook.mjs. Nulo = o degrade do KERYX e o logo M, como sempre"
+    },
     "chime_on": {
       "type": "boolean",
       "description": "Som do aviso: tocar o sino dos avisos com Som de alerta (Configuracoes › Telas e saidas). Nulo = sim"

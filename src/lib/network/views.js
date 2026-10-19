@@ -37,7 +37,7 @@ const withAlert = (view, live) => (live?.alert ? { ...view, alert: live.alert } 
 
 // Vídeo: the clip on the video channel while there is one (the page plays it
 // full screen, whatever Tela preta says), else the idle look.
-export const videoView = (live) => (live && live.video ? withAlert({ screen: "show", video: live.video, idle: live.idle, idleUrl: live.idleUrl, idleDim: live.idleDim, idleBlur: live.idleBlur }, live) : standbyView(live));
+export const videoView = (live) => (live && live.video ? withAlert({ screen: "show", video: live.video, idle: live.idle, idleUrl: live.idleUrl, idleDim: live.idleDim, idleBlur: live.idleBlur, idleLook: live.idleLook }, live) : standbyView(live));
 
 // Avisos: only the aviso on air (and the Aviso rápido); nothing (null) when
 // there is neither.

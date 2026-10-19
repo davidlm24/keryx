@@ -456,7 +456,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   configured in Configurações › Culto: the "Fora do ar" block holds the
   fallback row **"Qualquer outro culto"** (`User.default_background`, which
   warns while the culto on screen has a papel de parede of its own —
-  `defaultFundoFrom`) and the Tela ociosa; each template's row in Modelos de
+  `defaultFundoFrom`) and a "Sem papel de parede" row that only points to
+  the Tela ociosa; each template's row in Modelos de
   culto keeps its own (`ServiceTemplate.background`), so choosing the day's
   culto switches it. Live, the ONE door is Camadas › Fundo's pencil
   (`pickServiceFundo`); Camadas' Fundo menu names what is on screen
@@ -496,8 +497,23 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Desfazer puts back the Fundo there was. It also goes on the Fundo when it
   changes with nothing on air (KERYX opens, a service is chosen), under
   Tela preta too — KERYX reopens with the screens black — but never past
-  Travar telas or the padlock (`fundoGoesOnNow` in defaultFundo.js). The idle
-  screen is only Logo or Preto. In the library, Gerados shows the
+  Travar telas or the padlock (`fundoGoesOnNow` in defaultFundo.js).
+  **The Tela ociosa is the whole app's** (owner 2026-10-19, mockup approved):
+  what every screen shows with nothing on air and no papel de parede. It is
+  edited as a screen of the Editor de telas, first in its list above the
+  Saídas (`IDLE_SCREEN` "tela-ociosa" in `editor/ScreensMenu.jsx`,
+  `IdleEditor.jsx`), and has a card in Telas e saídas. The settings: Logo da
+  igreja or Preto (`idle_mode`, also in the Saídas popover); with the logo,
+  Fundo Cor or Degradê (two colours, Do centro / De cima para baixo /
+  Diagonal; it starts as the old blue, so nothing changes until edited, and
+  no image, which is the papel de parede's job), Logo Sem/P/M/G and Frase
+  Nenhuma / Nome da igreja / Outra. They save at once on
+  `User.idle_look` (synced); the console puts them on the screens as the
+  live state's `idleLook` (op `idle.look`, works locked; null = the old
+  look exactly), writing the church's name in (`liveIdleLook`), so a
+  detached editor, a rename or another computer reach every output. The
+  rules and the CSS are `shared/idleLook.mjs` (tested); `Idle` in
+  ScreenRenderer draws it. In the library, Gerados shows the
   background big. A right click on a Temas card offers Aplicar, Editar,
   Salvar para a música, Tornar padrão, Usar na Bíblia, Usar neste culto.
 

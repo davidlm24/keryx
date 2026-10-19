@@ -11,7 +11,8 @@ import BgChip from "../library/BgChip";
 import ThemeChip from "../library/ThemeChip";
 import { lookOf, templateLookFields } from "@/lib/console/serviceLook";
 import { churchFundo, defaultFundoFrom } from "@/lib/console/defaultFundo";
-import IdleBlock from "./IdleBlock";
+import { IDLE_SCREEN } from "@/components/editor/ScreensMenu";
+import { openEditor } from "@/lib/editorWindow";
 import { useConfirm, deleteQuestion } from "../ConfirmDialog";
 
 // The two lists this section edits, with the planner's query keys: a change
@@ -105,7 +106,13 @@ export default function CultoSection({ c }) {
                     <span className="kx-meta">o papel de parede dos cultos sem um próprio</span>
                     {defaultFundoFrom(c.cur) === "culto" && <span className="kx-meta" style={{ color: "var(--warn-fg)" }}>Hoje o culto tem o seu papel de parede (Camadas › Fundo); este fica guardado.</span>}
                 </FormRow>
-                <IdleBlock c={c} />
+                {/* With no papel de parede the screens show the Tela ociosa:
+                    the whole app's, edited in the Editor de telas (owner
+                    2026-10-19), so this row only points there. */}
+                <FormRow k="Sem papel de parede">
+                    <span className="kx-meta">as telas mostram a tela ociosa</span>
+                    <Btn small onClick={() => { const r = openEditor({ screen: IDLE_SCREEN, from: "Culto" }); if (r?.error) c.say(r.error); }}>Editar a tela ociosa…</Btn>
+                </FormRow>
             </div>
 
             <CfgKey k="Modelos de culto" className="listhead"><span className="kx-section">Modelos de culto <span className="kx-count">· {templates.length}</span></span></CfgKey>
