@@ -3,6 +3,7 @@ import { usePrefs } from "@/hooks/useUser";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
 import LiveVideo from "@/components/projection/LiveVideo";
+import { clearFade } from "@/lib/console/transitions";
 
 const IMAGE_SECONDS = 5;
 
@@ -16,14 +17,17 @@ const IMAGE_SECONDS = 5;
  */
 export default function LiveMediaView({ media, fadeOut = null }) {
     // An image's name over it only when the church wants titles (the legacy pref; the item title is the theme's since the Rodada B 2026-10-14).
-    const showTitle = usePrefs().show_item_title;
+    const prefs = usePrefs();
+    const showTitle = prefs.show_item_title;
     const inPlaylist = Boolean(media.playlist);
     const index = media.playlistIndex;
     // A playlist moves on; a single video that ends leaves the screen (the
-    // frozen-last-frame bug). Loops belong to the background layer.
+    // frozen-last-frame bug), fading out as Esc does ("Ao tirar do ar";
+    // a YouTube player would come back cold in the ghost: it cuts). Loops
+    // belong to the background layer.
     const advance = () => {
         if (!keryx.isDesktop || fadeOut) return;
-        const done = inPlaylist ? projection.advanceMedia(index) : projection.clearMedia();
+        const done = inPlaylist ? projection.advanceMedia(index) : projection.clearMedia({ fade: media.kind === "youtube" ? 0 : clearFade(prefs) });
         done.catch((err) => console.error("[keryx] mídia:", err));
     };
 
