@@ -585,7 +585,12 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
                     )}
                     {draft && !isStream && (
                         <div className="listhead nv-note">
-                            {selected && selState !== "shown" && <span className="kx-meta le-why" aria-live="polite"><b>{typeOf(selected.type)?.name}</b> · {ghostReason(selected, selState)}</span>}
+                            {/* The selected element's state in words (the G2 mockup's line). */}
+                            <span className="kx-meta le-why" aria-live="polite">
+                                {!selected ? "Clique num elemento da lista ou da tela." : selState !== "shown"
+                                    ? <><b>{typeOf(selected.type)?.name}</b> está {ghostReason(selected, selState).replace(/^E/, "e")}</>
+                                    : <><b>{typeOf(selected.type)?.name}</b> aparece agora ({(whenLabel(selected.when) || "Sempre").toLowerCase()}).</>}
+                            </span>
                             <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã, Delete tira o elemento, Ctrl+Z desfaz. Esmaecido = não aparece neste estado: tracejado pela regra Aparece ou por falta do que mostrar, pontilhado pelo olho; Mostrar com troca o estado.{path === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o desenho." : ""}</span>
                         </div>
                     )}

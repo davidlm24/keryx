@@ -1504,6 +1504,9 @@ html[data-keying] .console .kx-slide:hover:not(.is-prev, .is-air, .is-next) { ba
 .console .le-rule { flex: none; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; line-height: 16px; padding: 0 var(--space-2); border-radius: 999px; background: var(--bg-3); color: var(--fg-3); }
 .console .le-rule.is-out { color: var(--warn-fg); }
 .console .le-eye-ghost { outline: 1px dashed var(--fg-3); outline-offset: -3px; }
+/* A faded row keeps its eye in sight (the mockup's row); × still waits for the hover. */
+.console .le-els .kx-row.is-dim .kx-row-acts { display: inline-flex; }
+.console .le-els .kx-row.is-dim:not(:hover):not(:focus-within) .kx-row-acts > :not(:first-child) { display: none; }
 .console .le-why { flex-basis: 100%; }
 .console .le-why b { color: var(--fg-1); font-weight: 600; }
 .console .le-h { position: absolute; width: 10px; height: 10px; background: var(--brand); border: 1px solid var(--bg-0); border-radius: 2px; transform: translate(-50%, -50%); }
