@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SHOW_KINDS, normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, hideKinds, showKindsFor, stageHidden, hiddenOnAir , designOf, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS, alertDefaults } from "./outputPrefs.js";
+import { normalizeRule, ruleOf, defaultRule, applyRule, ruleShortcut, ruleLabel, ruleSummary, outputsNotShowing, RULE_SHORTCUTS, normalizePref, isDefaultPref, isDefaultSettings, prefViewKey, prefState, prefVars, themeLook, outputMeta, outputLook, ICON_CHOICES, stageOptions, pastorOptions, lyricsOptions, STAGE_DEFAULTS, PASTOR_DEFAULTS, streamOptions, bandBackground, STREAM_DEFAULTS, designOf, ownsTheme, alertOptions, isDefaultAlert, cleanAlertOptions, showsAlert, alertOf, ALERT_DEFAULTS, alertDefaults } from "./outputPrefs.js";
 
 const live = {
     screen: "show",
-    content: { kind: "song", title: "Grande é o Senhor", index: 0, slides: [{ text: "Grande é o Senhor" }], style: { font_size: "large", text_color: "#ffffff" } },
+    content: { kind: "lyrics", title: "Grande é o Senhor", index: 0, slides: [{ text: "Grande é o Senhor" }], style: { font_size: "large", text_color: "#ffffff" } },
     media: null,
     communication: { item: { title: "Aviso" } },
     logo: { visible: true, size: "medium", corner: "br" },
@@ -14,7 +14,7 @@ const live = {
 test("no row, or an empty one, is the default: the output as before", () => {
     for (const row of [null, undefined, {}, { screen_path: "/Projection" }, { text_scale: "", margin_pct: null, show_logo: true, theme_id: "" }]) {
         const p = normalizePref(row);
-        assert.deepEqual(p, { content: "", hidden: [], scale: 1, margin: 0, showLogo: true, themeId: "", design: null, layoutId: "", name: "", icon: "", options: {} });
+        assert.deepEqual(p, { content: "", hidden: [], scale: 1, margin: 0, showLogo: true, themeId: "", design: null, layoutId: "", name: "", icon: "", options: {}, rule: null });
         assert.ok(isDefaultPref(p));
         assert.equal(prefVars(p), null);
         assert.deepEqual(prefState("/LyricProjection", live, p), prefState("/LyricProjection", live, null));
@@ -23,8 +23,8 @@ test("no row, or an empty one, is the default: the output as before", () => {
 });
 
 test("normalizePref clamps scale and margins and drops unknown content", () => {
-    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", hidden: [], scale: 1.4, margin: 0, showLogo: true, themeId: "", design: null, layoutId: "", name: "", icon: "", options: {} });
-    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", hidden: [], scale: 0.8, margin: 10, showLogo: false, themeId: "t1", design: null, layoutId: "", name: "", icon: "", options: {} });
+    assert.deepEqual(normalizePref({ text_scale: 300, margin_pct: -4, content: "cifra" }), { content: "", hidden: [], scale: 1.4, margin: 0, showLogo: true, themeId: "", design: null, layoutId: "", name: "", icon: "", options: {}, rule: null });
+    assert.deepEqual(normalizePref({ text_scale: 50, margin_pct: 25, content: "lyrics", show_logo: false, theme_id: "t1" }), { content: "lyrics", hidden: [], scale: 0.8, margin: 10, showLogo: false, themeId: "t1", design: null, layoutId: "", name: "", icon: "", options: {}, rule: null });
     assert.equal(normalizePref({ text_scale: 112.4 }).scale, 1.12);
 });
 
@@ -33,7 +33,7 @@ test("Conteúdo picks another output's view; empty keeps the page's own", () => 
     assert.equal(prefViewKey("/LyricProjection", normalizePref({})), "/LyricProjection");
     // A projector set to "Só letras" drops the aviso, as the Letras screen does.
     assert.equal(prefState("/Projection", live, normalizePref({ content: "lyrics" })).communication, null);
-    assert.equal(prefState("/LyricProjection", live, normalizePref({ content: "notices" })).content, undefined);
+    assert.equal(prefState("/LyricProjection", live, normalizePref({ content: "notices" })).content, null);
 });
 
 test("Mostrar logo off hides the logo layer only on this output", () => {
@@ -126,55 +126,164 @@ test("Mostrar: unknown kinds are dropped, the order is fixed, nothing hidden is 
     assert.ok(!isDefaultPref(normalizePref({ hidden_kinds: ["bible"] })));
 });
 
-test("Mostrar: a hidden kind on air goes, the rest stays; the same state when nothing hidden is on air", () => {
+const ruleFor = (page, row) => ruleOf(normalizePref({ screen_path: page, ...row }), page);
+const ALL = ["lyrics", "bible", "text", "image", "video", "youtube", "presentation", "tool", "notice"];
+
+// The migration table of the G10 mockup ("Suas telas de hoje"): no row, or an
+// old row, is the rule that draws the exact same screen as before.
+test("O que esta tela recebe: no row is each page's own rule (the mockup's table)", () => {
+    assert.deepEqual(ruleFor("/Projection", {}), { kinds: ALL, top: { alert: true, logo: true }, empty: "wall" }, "Projeção: Tudo, Aviso rápido and Logo on top");
+    assert.deepEqual(ruleFor("/LyricProjection", {}), { kinds: ["lyrics", "bible", "text"], top: { alert: true, logo: true }, empty: "wall" }, "Letras: Letra e Bíblia (it drew the Logo layer, so the Logo stays)");
+    assert.deepEqual(ruleFor("/VideoProjection", {}), { kinds: ["video", "youtube"], top: { alert: true, logo: false }, empty: "wall" }, "Vídeo: Vídeos");
+    assert.deepEqual(ruleFor("/CommunicationProjection", {}), { kinds: ["notice"], top: { alert: true, logo: false }, empty: "wall" }, "Avisos: Avisos");
+    for (const page of ["/StageView", "/PastorView", "/StreamView"]) assert.equal(ruleFor(page, {}).top.alert, true, page);
+    assert.deepEqual(ruleOf(null, "/Projection"), defaultRule("/Projection"), "no pref at all is the page's");
+    assert.equal(ruleShortcut(ruleFor("/Projection", {})), "all");
+    assert.equal(ruleShortcut(ruleFor("/LyricProjection", {})), "letters");
+    assert.equal(ruleShortcut(ruleFor("/VideoProjection", {})), "videos");
+    assert.equal(ruleShortcut(ruleFor("/CommunicationProjection", {})), "notices");
+});
+
+test("O que esta tela recebe: an old Mostrar button off is that item unchecked; Conteúdo is the list of its view", () => {
+    // Any output, a Mostrar button off: the same item unchecked (Personalizado).
+    const noSongs = ruleFor("/Projection", { hidden_kinds: ["lyrics"] });
+    assert.deepEqual(noSongs.kinds, ALL.filter((k) => k !== "lyrics"));
+    assert.equal(ruleShortcut(noSongs), "custom");
+    assert.deepEqual(ruleFor("/Projection", { hidden_kinds: ["media"] }).kinds, ALL.filter((k) => !["image", "video", "youtube"].includes(k)), "Imagens e vídeos was one switch");
+    assert.deepEqual(ruleFor("/Projection", { hidden_kinds: ["presentation", "tool", "communication"] }).kinds, ["lyrics", "bible", "text", "image", "video", "youtube"]);
+    assert.equal(ruleFor("/Projection", { hidden_kinds: ["alert"] }).top.alert, false, "the Aviso rápido on top follows its old button");
+    assert.equal(ruleFor("/LyricProjection", { hidden_kinds: ["alert"] }).top.alert, false);
+    assert.equal(ruleFor("/Projection", { show_logo: false }).top.logo, false, "Mostrar logo off is Logo no canto off");
+    assert.equal(ruleFor("/LyricProjection", { show_logo: false }).top.logo, false);
+    assert.equal(ruleFor("/VideoProjection", { show_logo: true }).top.logo, false, "Vídeo never drew the Logo layer: still not");
+    // Conteúdo swapped (Letras with "Tudo"): the list of the chosen view, minus what was off.
+    assert.deepEqual(ruleFor("/LyricProjection", { content: "all" }).kinds, ALL);
+    assert.deepEqual(ruleFor("/LyricProjection", { content: "all", hidden_kinds: ["tool"] }).kinds, ALL.filter((k) => k !== "tool"));
+    assert.deepEqual(ruleFor("/Projection", { content: "video" }), { kinds: ["video", "youtube"], top: { alert: true, logo: false }, empty: "wall" });
+    assert.deepEqual(ruleFor("/StageView", { content: "lyrics" }).kinds, ["lyrics", "bible", "text"], "a Palco turned into a renderer view keeps its view");
+});
+
+test("O que esta tela recebe: a saved rule wins over every old field and is checked", () => {
+    const saved = { kinds: ["notice", "youtube", "nope", "lyrics"], top: { alert: false, logo: true }, empty: "black" };
+    const p = normalizePref({ screen_path: "/Projection", content: "video", hidden_kinds: ["alert"], show_logo: false, content_rule: saved });
+    assert.deepEqual(p.rule, { kinds: ["lyrics", "youtube", "notice"], top: { alert: false, logo: true }, empty: "black" }, "unknown kinds dropped, the list's order");
+    assert.deepEqual(ruleOf(p, "/Projection"), p.rule);
+    assert.ok(!isDefaultPref(p));
+    assert.equal(normalizeRule(null), null);
+    assert.equal(normalizeRule("tudo"), null);
+    assert.equal(normalizeRule({ kinds: "lyrics" }), null);
+    assert.deepEqual(normalizeRule({ kinds: [] }), { kinds: [], top: { alert: true, logo: false }, empty: "wall" }, "an empty list is a choice");
+    assert.equal(normalizeRule({ kinds: ["lyrics"], empty: "rosa" }).empty, "wall");
+    assert.deepEqual(RULE_SHORTCUTS.map((s) => s.id), ["all", "letters", "videos", "notices"]);
+});
+
+test("O que esta tela recebe: the summary and the quadrant label", () => {
+    assert.equal(ruleSummary(defaultRule("/Projection")), "Tudo · por cima: Aviso rápido, Logo");
+    assert.equal(ruleSummary(defaultRule("/LyricProjection")), "Letra e Bíblia · por cima: Aviso rápido, Logo");
+    assert.equal(ruleSummary(defaultRule("/VideoProjection")), "Vídeos · por cima: Aviso rápido");
+    assert.equal(ruleSummary({ kinds: ["lyrics", "image"], top: { alert: true, logo: false }, empty: "wall" }), "Personalizado: Letras, Imagens · por cima: Aviso rápido");
+    assert.equal(ruleSummary({ kinds: ["lyrics", "bible", "text", "image"], top: { alert: false, logo: false }, empty: "wall" }), "Personalizado: 4 tipos");
+    assert.equal(ruleSummary({ kinds: [], top: { alert: false, logo: false }, empty: "wall" }), "Nada");
+    assert.equal(ruleLabel(defaultRule("/CommunicationProjection")), "Avisos");
+    assert.equal(ruleLabel({ kinds: ["image"] }), "Personalizado");
+});
+
+test("the rule: a kind not in the list goes, the rest stays; the same state when nothing on air is left out", () => {
     const noLyrics = prefState("/Projection", songLive, normalizePref({ hidden_kinds: ["lyrics"] }));
     assert.equal(noLyrics.content, null);
     assert.ok(noLyrics.tool && noLyrics.communication && noLyrics.alert);
     // The song's playback track keeps playing on that output.
     assert.deepEqual(noLyrics.track, { src: "keryx-media://faixa.mp3", startedAt: 5 });
-    // Hiding Bíblia leaves a song alone: the very same state.
-    assert.equal(hideKinds(songLive, ["bible"]), songLive);
+    // Leaving Bíblia out changes nothing for a song: the very same state.
+    assert.equal(applyRule(songLive, ruleOf(normalizePref({ hidden_kinds: ["bible"] }), "/Projection")), songLive);
     const quiet = prefState("/Projection", songLive, normalizePref({ hidden_kinds: ["tool", "communication", "alert"] }));
     assert.equal(quiet.tool, null);
     assert.equal(quiet.communication, null);
     assert.equal(quiet.alert, null);
     assert.equal(quiet.content.title, "Grande é o Senhor");
-    // Logo, background and theme settings still apply on top.
+    // Papel de parede and theme settings still apply on top.
     assert.equal(prefState("/Projection", songLive, normalizePref({ hidden_kinds: ["lyrics"], show_logo: false })).background.value, "#000000");
+    assert.equal(applyRule(null, defaultRule("/Projection")), null);
 });
 
-test("Mostrar offers only what the output's view can show", () => {
-    assert.deepEqual(showKindsFor("/Projection", normalizePref({})).map((k) => k.id), ["lyrics", "bible", "text", "media", "presentation", "tool", "communication", "alert"]);
-    assert.deepEqual(showKindsFor("/LyricProjection", normalizePref({})).map((k) => k.id), ["lyrics", "bible", "text", "alert"]);
-    // Vídeo and Comunicação show the Aviso rápido too (Rodada E3), so it can be left out there.
-    assert.deepEqual(showKindsFor("/VideoProjection", normalizePref({})).map((k) => k.id), ["alert"]);
-    assert.deepEqual(showKindsFor("/CommunicationProjection", normalizePref({})).map((k) => k.id), ["alert"]);
-    // A projector set to "Só letras" offers the Letras kinds.
-    assert.deepEqual(showKindsFor("/Projection", normalizePref({ content: "lyrics" })).map((k) => k.id), ["lyrics", "bible", "text", "alert"]);
+test("the rule filters every layer by its kind: a video of the computer, YouTube, a picture, a PDF", () => {
+    const withMedia = (kind) => ({ screen: "show", media: { kind, url: "x", title: "m" }, alert: null });
+    const only = (...kinds) => ({ kinds, top: { alert: true, logo: false }, empty: "wall" });
+    assert.ok(applyRule(withMedia("video"), only("video")).media);
+    assert.equal(applyRule(withMedia("video"), only("youtube")).media, null, "a video file is not YouTube");
+    assert.ok(applyRule(withMedia("youtube"), only("youtube")).media);
+    assert.equal(applyRule(withMedia("youtube"), only("video")).media, null);
+    assert.ok(applyRule(withMedia("image"), only("image")).media);
+    assert.ok(applyRule(withMedia("gif"), only("image")).media, "a GIF is a picture");
+    assert.equal(applyRule(withMedia("image"), only("video", "youtube")).media, null);
+    // The video channel (the Vídeo screen's clip) follows the same list.
+    const clip = { screen: "show", video: { kind: "youtube", url: "y" } };
+    assert.ok(applyRule(clip, only("youtube")).video);
+    assert.equal(applyRule(clip, only("video")).video, null);
+    const pdf = { screen: "show", content: { kind: "presentation", slides: [] } };
+    assert.ok(applyRule(pdf, only("presentation")).content);
+    assert.equal(applyRule(pdf, only("lyrics", "bible", "text")).content, null);
 });
 
-test("Mostrar › Apresentações (Rodada F3): offered where Imagens e vídeos are; unchecked, a presentation leaves that output", () => {
-    const pres = { ...songLive, tool: null, communication: null, content: { kind: "presentation", title: "Missões", ref: { mediaId: "m1" }, slides: [{ text: "", image_url: "keryx-media://p1.jpg", label: "Página 1" }], index: 0, startedAt: 9 } };
-    assert.equal(SHOW_KINDS.find((k) => k.id === "presentation").name, "Apresentações");
-    assert.ok(!showKindsFor("/LyricProjection", normalizePref({})).some((k) => k.id === "presentation"), "Letras does not show pictures, nor pages");
-    assert.equal(prefState("/Projection", pres, normalizePref({})).content.kind, "presentation", "shown by default");
-    assert.equal(prefState("/Projection", pres, normalizePref({ hidden_kinds: ["presentation"] })).content, null);
-    assert.equal(prefState("/Projection", pres, normalizePref({ hidden_kinds: ["media"] })).content.kind, "presentation", "Imagens e vídeos is its own switch");
-    assert.equal(hideKinds(songLive, ["presentation"]), songLive, "a song stays");
-    assert.equal(prefState("/LyricProjection", pres, normalizePref({})).content, null, "Letras leaves it out");
-    assert.equal(stageHidden("presentation", normalizePref({ hidden_kinds: ["presentation"] })), "Apresentações");
-    assert.equal(hiddenOnAir(pres, normalizePref({ hidden_kinds: ["presentation"] })), "Apresentações");
+test("the rule: overlays follow the text kinds, the Logo no canto its switch", () => {
+    const st = { screen: "show", overlays: [{ text: "Bem-vindos" }], logo: { visible: true, size: "m", corner: "br" } };
+    assert.equal(prefState("/Projection", st, normalizePref({})).overlays.length, 1);
+    assert.equal(prefState("/LyricProjection", st, normalizePref({})).overlays.length, 1);
+    assert.deepEqual(prefState("/VideoProjection", st, normalizePref({})).overlays, [], "Vídeo and Avisos never drew them");
+    assert.deepEqual(prefState("/CommunicationProjection", st, normalizePref({})).overlays, []);
+    assert.equal(prefState("/Projection", st, normalizePref({})).logo.visible, true);
+    assert.equal(prefState("/VideoProjection", st, normalizePref({})).logo.visible, false);
+    assert.equal(prefState("/Projection", st, normalizePref({ content_rule: { kinds: ALL, top: { alert: true, logo: false } } })).logo.visible, false);
+    assert.equal(prefState("/VideoProjection", st, normalizePref({ content_rule: { kinds: ["video"], top: { alert: true, logo: true } } })).logo.visible, true, "any output can have the Logo on top now");
 });
 
-test("the Prévia says when the output it previews hides the prepared kind", () => {
-    const pref = normalizePref({ hidden_kinds: ["bible", "communication"] });
-    assert.equal(stageHidden("bible", pref), "Bíblia");
-    assert.equal(stageHidden("piece", pref), "Avisos");
-    assert.equal(stageHidden("lyrics", pref), null);
-    assert.equal(stageHidden("audio", pref), null);
-    assert.equal(stageHidden("bible", normalizePref({})), null);
-    assert.equal(hiddenOnAir(songLive, normalizePref({ hidden_kinds: ["alert"] })), "Aviso rápido");
-    assert.equal(hiddenOnAir(songLive, normalizePref({ hidden_kinds: ["bible"] })), null);
+test("the rule: the console's Tela preta and Logo reach the screens that ever showed them", () => {
+    const black = { screen: "black" };
+    const logo = { screen: "logo" };
+    assert.equal(prefState("/Projection", black, normalizePref({})).screen, "black");
+    assert.equal(prefState("/LyricProjection", black, normalizePref({})).screen, "black");
+    assert.equal(prefState("/VideoProjection", black, normalizePref({})).screen, "black", "Vídeo respected the black");
+    assert.equal(prefState("/VideoProjection", logo, normalizePref({})).screen, "show", "but not the Logo");
+    assert.equal(prefState("/CommunicationProjection", black, normalizePref({})).screen, "show", "Avisos neither");
+    assert.equal(prefState("/CommunicationProjection", logo, normalizePref({})).screen, "show");
+    assert.equal(prefState("/LyricProjection", logo, normalizePref({})).screen, "logo");
+});
+
+test("the rule: with nothing from the list on air the screen shows the papel de parede, the Tela preta or the Logo", () => {
+    const rule = (empty) => ({ kinds: ["lyrics", "bible", "text"], top: { alert: true, logo: false }, empty });
+    const video = { screen: "show", media: { kind: "video", url: "x" }, background: { kind: "color", value: "#123456" } };
+    assert.equal(applyRule(video, rule("wall")).screen, "show", "the papel de parede stays (the Fundo layer)");
+    assert.equal(applyRule(video, rule("wall")).background.value, "#123456");
+    assert.equal(applyRule(video, rule("black")).screen, "black");
+    assert.equal(applyRule(video, rule("logo")).screen, "logo");
+    // A song of the list is shown: the choice does not touch it.
+    assert.equal(applyRule(songLive, rule("black")).screen, "show");
+    assert.ok(applyRule(songLive, rule("black")).content);
+    // Nothing on air at all: the same.
+    assert.equal(applyRule({ screen: "show" }, rule("black")).screen, "black");
+    // The video channel counts as something on air.
+    assert.equal(applyRule({ screen: "show", video: { kind: "video", url: "v" } }, { kinds: ["video"], top: { alert: true, logo: false }, empty: "black" }).screen, "show");
+});
+
+test("the Prévia lists the outputs that normally show the prepared kind and will not", () => {
+    const row = (page, rule) => ({ screen_path: page, content_rule: rule });
+    const bible = { kind: "bible" };
+    assert.deepEqual(outputsNotShowing(bible, []), [], "no row: every output as always");
+    assert.deepEqual(outputsNotShowing({ kind: "audio" }, []), []);
+    const rows = [
+        row("/Projection", { kinds: ["lyrics"], top: { alert: true, logo: true }, empty: "wall" }),
+        row("/LyricProjection", { kinds: ["lyrics", "text"], top: { alert: true, logo: true }, empty: "black" }),
+    ];
+    const got = outputsNotShowing(bible, rows);
+    assert.deepEqual(got.map((g) => [g.page, g.name, g.kind, g.instead]), [["/Projection", "Projeção", "Bíblia", "o papel de parede"], ["/LyricProjection", "Letras", "Bíblia", "a tela preta"]]);
+    // Vídeo and Avisos never showed a Bíblia, so they are not in the warning.
+    assert.ok(!got.some((g) => g.page === "/VideoProjection" || g.page === "/CommunicationProjection"));
+    // A named output is named.
+    assert.equal(outputsNotShowing(bible, [{ ...rows[0], name: "Telão" }])[0].name, "Telão");
+    // A media stage is its own kind.
+    assert.deepEqual(outputsNotShowing({ kind: "media", args: { kind: "youtube", url: "u" } }, [row("/VideoProjection", { kinds: ["video"], top: { alert: true, logo: false }, empty: "wall" })]).map((g) => g.kind), ["YouTube"]);
+    assert.deepEqual(outputsNotShowing({ kind: "video", args: { kind: "video", url: "u" } }, []), []);
+    assert.deepEqual(outputsNotShowing({ kind: "piece" }, [row("/CommunicationProjection", { kinds: [], top: { alert: true, logo: false }, empty: "wall" })]).map((g) => g.kind), ["Avisos"]);
 });
 
 test("an output with a theme of its own ignores the song parts' themes", () => {
@@ -251,7 +360,7 @@ test("Aviso rápido: prefState carries this output's look with the alert; none s
     }
     // Comunicação with no aviso on air: the bar alone, never the song.
     const onlyAlert = prefState("/CommunicationProjection", { screen: "show", content: live.content, alert }, normalizePref({}));
-    assert.deepEqual(onlyAlert, { screen: "show", alert });
+    assert.deepEqual(onlyAlert, { screen: "show", content: null, alert });
 });
 
 test("Aviso rápido: which screens draw it, and the bar for the pages that draw it themselves", () => {
@@ -288,4 +397,11 @@ test("Aviso rápido: the Palco's bar starts at the bottom, where its old pill sa
     // A Palco set to show another output's content is still the Palco.
     assert.equal(prefState("/StageView", { screen: "show", alert }, normalizePref({ content: "all" })).alert.look.position, "bottom");
     assert.equal(prefState("/Projection", { screen: "show", alert }, normalizePref({})).alert, alert);
+});
+
+test("the rule: a song's playback track follows the screens that receive text, never a screen of videos or avisos", () => {
+    assert.ok(prefState("/Projection", songLive, normalizePref({ hidden_kinds: ["lyrics"] })).track, "Projeção without Letras: the music goes on");
+    assert.equal(prefState("/VideoProjection", songLive, normalizePref({})).track, undefined, "Vídeo never played a song's track");
+    assert.equal(prefState("/CommunicationProjection", songLive, normalizePref({})).track, undefined);
+    assert.ok(prefState("/VideoProjection", songLive, normalizePref({ content_rule: { kinds: ["video", "bible"] } })).track, "with a text kind in its list it does");
 });

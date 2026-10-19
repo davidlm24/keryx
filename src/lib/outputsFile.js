@@ -1,8 +1,8 @@
 // Exportar / Importar ajustes das saídas (Configurações › Telas e saídas,
 // 2026-10-12, as SPresenter's .spo): one JSON file with where each output
 // opens (electron/outputs.cjs assignments: which screen, "Abrir ao iniciar")
-// and each output's own settings (OutputPref rows: name, icon, Conteúdo,
-// Mostrar, theme, scale, margins, logo, options — the Aviso rápido bar
+// and each output's own settings (OutputPref rows: name, icon, "O que esta tela recebe" (Conteúdo +
+// Mostrar), theme, scale, margins, logo, options — the Aviso rápido bar
 // among them). For after a reinstall, or
 // to take a church's setup to another computer. Pure: the main process only
 // saves and reads the file; the console validates it here and applies it
@@ -45,6 +45,10 @@ function prefFields(row, themes, layouts) {
     return {
         name: p.name,
         icon: p.icon,
+        // O que esta tela recebe (Rodada H2): the rule; the old fields ride
+        // along so an older KERYX still reads the file (a file without the
+        // rule is migrated from them, ruleOf).
+        content_rule: p.rule,
         content: p.content,
         hidden_kinds: p.hidden,
         text_scale: Math.round(p.scale * 100),
@@ -145,7 +149,7 @@ export function readOutputsFile(text, { themes = [], layouts = [], displays = []
         }
         prefs.push({
             path,
-            fields: { name: p.name, icon: p.icon, content: p.content, hidden_kinds: p.hidden, text_scale: Math.round(p.scale * 100), margin_pct: p.margin, show_logo: p.showLogo, theme_id: themeId, design, layout_id: layoutId, options: cleanAlertOptions(p.options) },
+            fields: { name: p.name, icon: p.icon, content_rule: p.rule, content: p.content, hidden_kinds: p.hidden, text_scale: Math.round(p.scale * 100), margin_pct: p.margin, show_logo: p.showLogo, theme_id: themeId, design, layout_id: layoutId, options: cleanAlertOptions(p.options) },
         });
     }
     if (!assignments.length && !prefs.length) return { error: "O arquivo não tem nenhuma saída." };

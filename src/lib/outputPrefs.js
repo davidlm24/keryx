@@ -3,10 +3,11 @@
 // One row per output page ("/Projection", "/LyricProjection", ...): the
 // desktop window and a network screen showing the same page share it. No row,
 // or a row with nothing set, is the output exactly as before.
-import { outputView, RAIL_VIEWS, OUTPUT_NAMES } from "./network/views.js";
+import { RAIL_VIEWS, OUTPUT_NAMES } from "./network/views.js";
 import { themeBackgroundArgs } from "./console/themes.js";
 import { normalizeLayout, findLayout } from "./layouts.js";
-import { contentType } from "./contentKinds.js";
+import { RULE_KIND_IDS, TEXT_KINDS, ruleKind, ruleKindOf, stageRuleKind } from "./contentKinds.js";
+import { mainLayer } from "../../shared/live-state.mjs";
 
 // Conteúdo: which view of the live state the output draws (views.js).
 export const PREF_CONTENTS = [
@@ -20,75 +21,144 @@ export const PREF_CONTENTS = [
 // The outputs drawn by ScreenRenderer, the ones these settings apply to.
 export const PREF_OUTPUTS = ["/Projection", "/LyricProjection", "/VideoProjection", "/CommunicationProjection"];
 
-// Mostrar (2026-10-12, as in Holyrics): the kinds of content an output can
-// leave out, on top of its page's view. Each is a live-state layer, or a
-// kind of the content layer. A hidden kind on air leaves the output on what
-// is under it (another layer, else the idle look); a song's playback track
-// keeps playing when its words are hidden. Built from the one list of
-// content kinds (src/lib/contentKinds.js, Rodada G5); the ids are the saved
-// ones (OutputPref.hidden_kinds), so pictures and videos stay one entry
+// The old Mostrar (2026-10-12, OutputPref.hidden_kinds) and Conteúdo
+// (OutputPref.content): read only by the lazy migration into the rule below
+// (ruleOf). The ids are the saved ones, so pictures and videos stay one entry
 // ("media") and the avisos keep their layer's name.
-const showKind = (typeId, id = typeId) => {
-    const t = contentType(typeId);
-    return t.layer === "content" ? { id, name: t.short, layer: t.layer, kind: t.kinds[0] } : { id, name: t.short, layer: t.layer };
+const HIDDEN_KINDS = {
+    lyrics: ["lyrics"], bible: ["bible"], text: ["text"], media: ["image", "video", "youtube"],
+    presentation: ["presentation"], tool: ["tool"], communication: ["notice"], alert: [],
 };
-export const SHOW_KINDS = [
-    showKind("lyrics"),
-    showKind("bible"),
-    showKind("text"),
-    { id: "media", name: "Imagens e vídeos", layer: "media" },
-    // A PDF's pages (Rodada F3): shown where Imagens e vídeos are.
-    showKind("presentation"),
-    showKind("tool"),
-    showKind("notice", "communication"),
-    showKind("alert"),
+const HIDDEN_IDS = Object.keys(HIDDEN_KINDS);
+
+// "O que esta tela recebe" (Rodada H2 / G10, owner 2026-10-19): ONE content
+// rule per output, the same list of kinds on every output
+// (src/lib/contentKinds.js RULE_KINDS), saved as OutputPref.content_rule:
+//   { kinds: [ids], top: { alert, logo }, empty: "wall" | "black" | "logo" }
+//   - kinds: what the screen shows; anything else on air leaves it on what
+//     is under it;
+//   - top: the Aviso rápido and the Logo no canto go OVER whatever is shown
+//     (the Logo is the Camadas layer; it replaces show_logo);
+//   - empty: with nothing from the list on air, the screen shows the papel
+//     de parede (as always), the Tela preta, or the Logo.
+// No saved rule is the page's own (PAGE_RULES, what lyricView, videoView and
+// noticeView drew) with the old Mostrar / Conteúdo / show_logo applied: no row
+// or an old row draws the exact same screen as before.
+export const RULE_SHORTCUTS = [
+    { id: "all", name: "Tudo", kinds: RULE_KIND_IDS },
+    { id: "letters", name: "Letra e Bíblia", kinds: TEXT_KINDS },
+    { id: "videos", name: "Vídeos", kinds: ["video", "youtube"] },
+    { id: "notices", name: "Avisos", kinds: ["notice"] },
 ];
-// The kinds each view can show at all (views.js): only those are offered.
-// The Aviso rápido rides on every view (Rodada E3: one bar, every screen).
-const VIEW_KINDS = {
-    "/Projection": ["lyrics", "bible", "text", "media", "presentation", "tool", "communication", "alert"],
-    "/LyricProjection": ["lyrics", "bible", "text", "alert"],
-    "/VideoProjection": ["alert"],
-    "/CommunicationProjection": ["alert"],
+export const RULE_EMPTY = [["wall", "Papel de parede"], ["black", "Tela preta"], ["logo", "Logo"]];
+const PAGE_RULES = {
+    "/Projection": { kinds: RULE_KIND_IDS, logo: true },
+    "/LyricProjection": { kinds: TEXT_KINDS, logo: true },
+    "/VideoProjection": { kinds: ["video", "youtube"], logo: false },
+    "/CommunicationProjection": { kinds: ["notice"], logo: false },
 };
-export const showKindsFor = (page, pref) => {
-    const ids = VIEW_KINDS[prefViewKey(page, pref)] || [];
-    return SHOW_KINDS.filter((k) => ids.includes(k.id));
-};
+// The rule a page starts with (the Palco, the Pastor and the Transmissão
+// draw their own thing: their rule only carries the Aviso rápido).
+export function defaultRule(page) {
+    const base = PAGE_RULES[page];
+    return { kinds: [...(base ? base.kinds : RULE_KIND_IDS)], top: { alert: true, logo: Boolean(base?.logo) }, empty: "wall" };
+}
+// A saved rule checked (kinds in the list's order, unknown ones dropped), else
+// null = no rule saved.
+export function normalizeRule(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.kinds)) return null;
+    const top = raw.top && typeof raw.top === "object" && !Array.isArray(raw.top) ? raw.top : {};
+    return {
+        kinds: RULE_KIND_IDS.filter((id) => raw.kinds.includes(id)),
+        top: { alert: top.alert !== false, logo: top.logo === true },
+        empty: RULE_EMPTY.some(([id]) => id === raw.empty) ? raw.empty : "wall",
+    };
+}
+// The rule of an output: the saved one, else the page's with the old fields
+// (the lazy migration; nothing is written).
+export function ruleOf(pref, page) {
+    if (pref?.rule) return pref.rule;
+    const base = defaultRule(prefViewKey(page, pref));
+    const hidden = pref?.hidden || [];
+    const gone = new Set(hidden.flatMap((id) => HIDDEN_KINDS[id] || []));
+    return { kinds: base.kinds.filter((id) => !gone.has(id)), top: { alert: !hidden.includes("alert"), logo: base.top.logo && pref?.showLogo !== false }, empty: "wall" };
+}
+// The shortcut a rule's kinds are exactly, else "custom" (Personalizado).
+export function ruleShortcut(rule) {
+    const set = new Set(rule?.kinds || []);
+    const hit = RULE_SHORTCUTS.find((s) => s.kinds.length === set.size && s.kinds.every((k) => set.has(k)));
+    return hit ? hit.id : "custom";
+}
+// The short label of a rule: its shortcut's name, else "Personalizado" (the
+// Multiview's quadrant label).
+export function ruleLabel(rule) {
+    const hit = RULE_SHORTCUTS.find((s) => s.id === ruleShortcut(rule));
+    return hit ? hit.name : rule?.kinds?.length ? "Personalizado" : "Nada";
+}
+// One line: what the screen receives and what goes over it ("Letra e Bíblia ·
+// por cima: Aviso rápido"); a custom list names its kinds.
+export function ruleSummary(rule) {
+    const hit = RULE_SHORTCUTS.find((s) => s.id === ruleShortcut(rule));
+    const names = (rule?.kinds || []).map((id) => ruleKind(id).label);
+    const what = hit ? hit.name : names.length ? `Personalizado: ${names.length > 3 ? `${names.length} tipos` : names.join(", ")}` : "Nada";
+    const top = [rule?.top?.alert && "Aviso rápido", rule?.top?.logo && "Logo"].filter(Boolean);
+    return what + (top.length ? ` · por cima: ${top.join(", ")}` : "");
+}
 
-// The live state without the kinds an output hides. The same object back when
-// nothing is hidden or nothing hidden is on air.
-export function hideKinds(state, hidden) {
-    if (!state || !hidden?.length) return state;
-    let out = state;
-    const drop = (layer) => { if (out[layer]) out = { ...out, [layer]: null }; };
-    for (const k of SHOW_KINDS) {
-        if (!hidden.includes(k.id)) continue;
-        if (k.layer !== "content") drop(k.layer);
-        else if (out.content?.kind === k.kind) {
-            // The words go; a song's playback track stays (ScreenRenderer plays `track`).
-            const { audio, startedAt } = out.content;
-            out = { ...out, content: null, ...(audio ? { track: { src: audio, startedAt } } : {}) };
-        }
+// The live state as an output with this rule draws it: the layers whose kind
+// is not in the list go (a song's playback track keeps playing when its words
+// do not), the Aviso rápido and the Logo follow "Por cima de tudo", and with
+// nothing from the list on air the screen is the Tela preta or the Logo if the
+// rule says so. The console's own Tela preta and Logo reach the screens that
+// ever showed them (a screen of avisos only ignored both, a screen of videos
+// only the Logo: lyricView, videoView and noticeView before this rule). The
+// same object back when nothing changes.
+export function applyRule(state, rule) {
+    if (!state || !rule) return state;
+    const has = (id) => rule.kinds.includes(id);
+    const out = (layer, item) => { const k = ruleKindOf(layer, item); return k && !has(k); };
+    const patch = {};
+    if (state.content && out("content", state.content)) {
+        patch.content = null;
+        // The words go; a song's playback track stays where text kinds are
+        // received (ScreenRenderer plays `track`), never on a screen of videos
+        // or avisos alone.
+        if (state.content.audio && TEXT_KINDS.some(has)) patch.track = { src: state.content.audio, startedAt: state.content.startedAt };
     }
-    return out;
+    if (state.media && out("media", state.media)) patch.media = null;
+    if (state.video && out("video", state.video)) patch.video = null;
+    if (state.communication && !has("notice")) patch.communication = null;
+    if (state.tool && !has("tool")) patch.tool = null;
+    if (state.alert && !rule.top.alert) patch.alert = null;
+    if (state.logo?.visible && !rule.top.logo) patch.logo = { ...state.logo, visible: false };
+    if (state.overlays?.length && !TEXT_KINDS.some(has)) patch.overlays = [];
+    const only = (ids) => rule.kinds.length > 0 && rule.kinds.every((k) => ids.includes(k));
+    if (state.screen === "black" && only(["notice"])) patch.screen = "show";
+    if (state.screen === "logo" && only(["video", "youtube", "notice"])) patch.screen = "show";
+    const next = Object.keys(patch).length ? { ...state, ...patch } : state;
+    if (rule.empty !== "wall" && !next.video && mainLayer(next) === "none") return { ...next, screen: rule.empty };
+    return next;
 }
 
-// A prepared stage (src/lib/console/stage.js) on an output that hides its
-// kind: the kind's name, else null. A stage kind with no Mostrar entry
-// (audio, the video channel) is never hidden.
-const STAGE_KIND = { lyrics: "lyrics", bible: "bible", text: "text", presentation: "presentation", media: "media", tool: "tool", piece: "communication" };
-export function stageHidden(stageKind, pref) {
-    const id = STAGE_KIND[stageKind];
-    return id && pref?.hidden?.includes(id) ? SHOW_KINDS.find((k) => k.id === id).name : null;
-}
+// Whether a rule receives avisos and nothing else (the Avisos screen's example in
+// a still with no aviso on air).
+export const noticeOnly = (rule) => Boolean(rule?.kinds?.length) && rule.kinds.every((k) => k === "notice");
 
-// What an output would leave out of a state: the name of the hidden kind on
-// air there (the console's Prévia says "A saída X não mostra …"), else null.
-export function hiddenOnAir(state, pref) {
-    if (!state || !pref?.hidden?.length) return null;
-    const k = SHOW_KINDS.find((x) => pref.hidden.includes(x.id) && (x.layer === "content" ? state.content?.kind === x.kind : Boolean(state[x.layer])));
-    return k ? k.name : null;
+// The outputs that normally show what is prepared and, by their rule, will
+// not (the Prévia says so before it goes on air). `rows` are the OutputPref
+// rows. -> [{ page, name, kind, instead }]: the output's name, the kind's name
+// and what the screen shows instead.
+export function outputsNotShowing(stage, rows = []) {
+    const kind = stageRuleKind(stage);
+    if (!kind) return [];
+    const INSTEAD = { wall: "o papel de parede", black: "a tela preta", logo: "o logo" };
+    return PREF_OUTPUTS.flatMap((page) => {
+        if (!defaultRule(page).kinds.includes(kind)) return [];
+        const row = rows.find((r) => r?.screen_path === page) || null;
+        const rule = ruleOf(normalizePref(row), page);
+        if (rule.kinds.includes(kind)) return [];
+        return [{ page, name: outputLook(page, row).name, kind: ruleKind(kind).label, instead: INSTEAD[rule.empty] }];
+    });
 }
 
 // Every output's factory name and icon: the rail's list (views.js) plus
@@ -127,8 +197,7 @@ const num = (v, fallback) => (v === "" || v == null || !Number.isFinite(Number(v
 // A row as settings: anything missing or out of range falls back to the default.
 export function normalizePref(row) {
     const content = PREF_CONTENTS.some((c) => c.id && c.id === row?.content) ? row.content : "";
-    const known = SHOW_KINDS.map((k) => k.id);
-    const hidden = Array.isArray(row?.hidden_kinds) ? known.filter((id) => row.hidden_kinds.includes(id)) : [];
+    const hidden = Array.isArray(row?.hidden_kinds) ? HIDDEN_IDS.filter((id) => row.hidden_kinds.includes(id)) : [];
     return {
         content,
         hidden,
@@ -146,10 +215,13 @@ export function normalizePref(row) {
         name: typeof row?.name === "string" ? row.name.trim().slice(0, 40) : "",
         icon: typeof row?.icon === "string" && ICON_RE.test(row.icon) ? row.icon : "",
         options: row?.options && typeof row.options === "object" && !Array.isArray(row.options) ? row.options : {},
+        // O que esta tela recebe: the saved rule, else null (ruleOf migrates
+        // the old content / hidden / showLogo above, per page).
+        rule: normalizeRule(row?.content_rule),
     };
 }
 
-export const isDefaultPref = (p) => !p.content && !p.hidden?.length && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.design && !p.layoutId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
+export const isDefaultPref = (p) => !p.rule && !p.content && !p.hidden?.length && p.scale === 1 && p.margin === 0 && p.showLogo && !p.themeId && !p.design && !p.layoutId && !p.name && !p.icon && !Object.keys(p.options || {}).length;
 // The settings alone, the drawing aside: what "Restaurar padrão" puts back
 // (the drawing stays; the Editor's "Voltar à página padrão" is for it).
 export const isDefaultSettings = (p) => isDefaultPref({ ...p, design: null, layoutId: "" });
@@ -258,22 +330,23 @@ export function cleanAlertOptions(options) {
     return out;
 }
 // Whether this screen draws the Aviso rápido at all: every renderer view
-// (its Mostrar can still leave it out) and the Palco's own page; never the
-// Pastor's or the Transmissão.
+// (its rule can still leave it out, "Por cima de tudo") and the Palco's own
+// page; never the Pastor's or the Transmissão.
 export function showsAlert(page, pref) {
-    const kinds = VIEW_KINDS[prefViewKey(page, pref)];
-    return kinds ? kinds.includes("alert") : page === "/StageView";
+    return PREF_OUTPUTS.includes(prefViewKey(page, pref)) || page === "/StageView";
 }
 // The alert as this screen draws it (with its look), else null: for the
 // pages that draw the bar over something of their own (the Palco, the
 // Vídeo's clip). Renderer views get it from prefState.
 export function alertOf(live, pref, page) {
-    if (!live?.alert || pref?.hidden?.includes("alert")) return null;
+    if (!live?.alert || !ruleOf(pref, page).top.alert) return null;
     const look = alertOptions(pref, page);
     return isDefaultAlert(look) ? live.alert : { ...live.alert, look };
 }
 
-// The page view an output draws: its own, unless Conteúdo picks another.
+// The page view an output draws: its own, unless an old Conteúdo choice (a
+// Palco or Pastor turned into a renderer view; no UI picks one any more) says
+// another.
 export function prefViewKey(page, pref) {
     return PREF_CONTENTS.find((c) => c.id && c.id === pref?.content)?.view || page;
 }
@@ -284,12 +357,12 @@ const LOOK_KEYS = ["font_size", "font_family", "text_effect", "text_color", "tex
     "line_height", "text_case", "text_box", "text_box_color", "text_box_opacity", "text_nudge", "text_align", "text_position"];
 export const themeLook = (theme) => Object.fromEntries(LOOK_KEYS.filter((k) => theme?.[k] != null && theme[k] !== "").map((k) => [k, theme[k]]));
 
-// What the output draws: the live state through the page's view, then the
-// output's own logo and theme. `theme` is the ProjectionTheme row of themeId.
+// What the output draws: the live state through the output's rule (what it
+// receives), then its own look. `theme` is the ProjectionTheme row of themeId.
 export function prefState(page, live, pref, theme = null) {
-    let state = outputView(prefViewKey(page, pref), live);
-    if (!state || !pref) return state;
-    state = hideKinds(state, pref.hidden);
+    pref = pref || normalizePref(null);
+    let state = applyRule(live, ruleOf(pref, page));
+    if (!state) return state;
     // The Aviso rápido in this output's look (none set: the bar as always).
     if (state.alert) {
         const look = alertOptions(pref, page);
@@ -300,7 +373,6 @@ export function prefState(page, live, pref, theme = null) {
         const show = lyricsOptions(page, pref);
         if (show.chords || show.labels) state = { ...state, content: { ...state.content, show } };
     }
-    if (!pref.showLogo && state.logo?.visible) state = { ...state, logo: { ...state.logo, visible: false } };
     if (ownsTheme(page) && pref.themeId && theme) {
         // The output's theme wins over the song's parts too: their own looks go.
         if (state.content) state = { ...state, content: { ...state.content, style: { ...state.content.style, ...themeLook(theme) }, slides: (state.content.slides || []).map(({ style: _own, ...s }) => s) } };

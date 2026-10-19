@@ -55,6 +55,9 @@ export function createPreviewBridge() {
     // Remover saída, the preview's way: in memory, so the flows can be tried
     // in the browser; it resets on reload (the app keeps it in its settings).
     const removedKeys = new Set();
+    // Where each output opens and Abrir ao iniciar (Ajustes › Destino), the
+    // same way: in memory, so the editor's select can be tried here.
+    const assigned = new Map();
     const display = { id: 1, label: "Navegador (prévia)", primary: true, width: 1920, height: 1080, bounds: { x: 0, y: 0, width: 1920, height: 1080 }, scaleFactor: 1 };
     const displays = {
         async list() {
@@ -62,7 +65,7 @@ export function createPreviewBridge() {
             if (res.error) return res;
             const outputs = res.data.map((o) => ({
                 ...o,
-                assignment: { target: "auto", openAtLaunch: false, removed: removedKeys.has(o.key) },
+                assignment: { target: "auto", openAtLaunch: false, ...assigned.get(o.key), removed: removedKeys.has(o.key) },
                 removed: removedKeys.has(o.key),
                 placement: { mode: "window", displayId: display.id, missing: false },
                 open: Boolean(windows.get(o.key) && !windows.get(o.key).closed),
@@ -76,6 +79,7 @@ export function createPreviewBridge() {
                 windows.get(key)?.close();
                 windows.delete(key);
             } else if (a && a.removed === false) removedKeys.delete(key);
+            else if (a && (a.target !== undefined || a.openAtLaunch !== undefined)) assigned.set(key, { ...assigned.get(key), ...(a.target !== undefined ? { target: a.target } : {}), ...(a.openAtLaunch !== undefined ? { openAtLaunch: a.openAtLaunch } : {}) });
             return displays.list();
         },
         async open(key) {

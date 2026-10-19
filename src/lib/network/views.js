@@ -1,6 +1,11 @@
 // What each kind of screen draws from the live state (shared/live-state.mjs),
 // as a view of it for ScreenRenderer: one renderer for every screen, each
 // page only choosing which layers it shows.
+//
+// Since Rodada H2 (owner 2026-10-19) the outputs are filtered by their content
+// rule ("O que esta tela recebe", applyRule in src/lib/outputPrefs.js), whose
+// starting point per page (PAGE_RULES) is what these views drew: they stay as
+// the record of it and for the Prévia rail's names and icons, not as the filter.
 
 // Every output's one factory name, the same the main process gives its
 // windows (Saídas, Telas e saídas, Verificar) and the network's start page.

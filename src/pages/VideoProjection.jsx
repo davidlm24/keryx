@@ -8,7 +8,8 @@ import OutputScreen from "@/components/screen/OutputScreen";
 import { useOutputPref } from "@/hooks/useOutputPref";
 import LiveVideo from "@/components/projection/LiveVideo";
 import { AlertLayer } from "@/components/screen/AlertBar";
-import { alertOf } from "@/lib/outputPrefs";
+import { alertOf, ruleOf } from "@/lib/outputPrefs";
+import { ruleKindOf } from "@/lib/contentKinds";
 import { useExitGhost } from "@/hooks/useExitGhost";
 import { videoExitMs } from "@/lib/exitFade";
 import "@/components/screen/screen.css";
@@ -18,7 +19,7 @@ import "@/components/network/net.css";
 // video channel, in step with every other screen. A screen that opens late
 // or reloads joins the video where it is. Waiting, it shows the live idle
 // look like every other screen (never a page of its own). Set to show other
-// content (Configurações › Telas e saídas), it draws that instead. The Aviso
+// content (Ajustes › O que esta tela recebe), it draws that instead. The Aviso
 // rápido goes over the clip in this screen's look (Rodada E3). A clip that a
 // new sound stopped, or that Esc took off, fades out (Transições, exitFade.js).
 export default function VideoProjection() {
@@ -28,7 +29,13 @@ export default function VideoProjection() {
     useScreenKeys(live);
     const video = live?.video || null;
     const prefs = useOutputPref("/VideoProjection");
-    const other = prefs.pref.content && prefs.pref.content !== "video";
+    // The clip plays full screen while its kind (a video of the computer or
+    // YouTube) is in what this screen receives; otherwise the renderer draws
+    // what the rule lets through (a video on the main projector's media layer
+    // included).
+    const rule = ruleOf(prefs.pref, "/VideoProjection");
+    const clipKept = Boolean(video) && rule.kinds.includes(ruleKindOf("video", video));
+    const other = !clipKept;
     const ghost = useExitGhost(live, live?.rev, videoExitMs, !other);
     const leaving = ghost?.from?.video || null;
     const box = { position: "fixed", inset: 0, background: "#000", display: "flex", alignItems: "center", justifyContent: "center" };
@@ -39,7 +46,7 @@ export default function VideoProjection() {
         </div>
     );
 
-    if (!video || other) return <><OutputScreen page="/VideoProjection" live={live} prefs={prefs} now={now} logoUrl={logo} audio={false} />{fading}</>;
+    if (other) return <><OutputScreen page="/VideoProjection" live={live} prefs={prefs} now={now} logoUrl={logo} audio={false} />{fading}</>;
 
     return (
         <>

@@ -10,8 +10,8 @@ import { applyWithFundo } from "@/lib/console/backgroundSpec";
 import { getDragStage, clearDragStage } from "@/lib/console/dragStage";
 import { captionParts, airInPlayer } from "@/lib/console/caption";
 import { OUTPUT_VIEWS } from "@/lib/network/views";
-import { prefState, prefVars, stageHidden, alertOf } from "@/lib/outputPrefs";
-import { useOutputPref } from "@/hooks/useOutputPref";
+import { prefState, prefVars, outputsNotShowing, alertOf } from "@/lib/outputPrefs";
+import { useOutputPref, useOutputPrefRows } from "@/hooks/useOutputPref";
 import "@/components/screen/output-prefs.css";
 import { usePendingMedia } from "@/hooks/usePendingMedia";
 import { pendingUrls } from "@/lib/pendingMedia";
@@ -175,7 +175,7 @@ export default function CenterPanel({ c, logoUrl, projectorDown, onDropStage, on
     const progState = projectorDown ? "warn" : locked ? "rh" : "";
     // The Programa draws the live state raw, but the Aviso rápido in the look
     // the Projeção chose (Editor › Ajustes › Aviso rápido; Rodada E3): only
-    // the look, never its Mostrar — the Programa still shows the aviso.
+    // the look, never its rule — the Programa still shows the aviso.
     const { pref: projPref } = useOutputPref(OUTPUT_VIEWS[0].key);
     const progDoc = useMemo(() => {
         const alert = alertOf(cur, projPref && { options: projPref.options });
@@ -234,6 +234,10 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
     const { pref: railPref, theme: railTheme } = useOutputPref(railOut);
     const railDoc = useMemo(() => prefState(railOut, pdoc, railPref, railTheme), [railOut, pdoc, railPref, railTheme]);
     const railVars = prefVars(railPref);
+    // Every output that normally shows the prepared kind and, by what it
+    // receives (Ajustes › O que esta tela recebe), will not.
+    const outputRows = useOutputPrefRows();
+    const notShowing = useMemo(() => outputsNotShowing(prev, outputRows), [prev, outputRows]);
     // The caption is a badge in the screen's top-left corner.
     const capTitle = prev ? prev.title : "";
     const capPos = prev && prev.slides.length > 1 ? `${prev.index + 1}/${prev.slides.length}` : "";
@@ -256,8 +260,11 @@ export function PreviaPanel({ c, logoUrl, onSend, onDropStage, onPrevMenu, notes
                 {prevCap}
                 {dropOn && <div className="kx-drop-hint"><span>Solte para preparar</span></div>}
                 {!prev && <div className="kx-screen-empty">Nada na prévia</div>}
-                {prev && !railDoc && <div className="kx-screen-empty">A Projeção não mostra este item</div>}
-                {prev && railDoc && stageHidden(prev.kind, railPref) && <div className="kx-screen-empty">A Projeção não mostra {stageHidden(prev.kind, railPref).toLowerCase()} (Telas e saídas › Mostrar)</div>}
+                {prev && notShowing.length > 0 && (
+                    <div className="kx-prev-warn" role="status">
+                        {notShowing.map((o) => <span key={o.page}><Icon name="warn" size={12} />A saída <b>{o.name}</b> não vai mostrar {o.kind}</span>)}
+                    </div>
+                )}
                 {prev?.kind === "audio" && <div className="kx-screen-empty"><Icon name="volume" /> Áudio · {prev.title || "sem título"}</div>}
                 {prev?.blocked
                     ? <div className="kx-screen-hatch kx-pdf-wait"><div>{blockedMessage}<small>{prev.title}</small>{pagesProgress?.error?.retryable && <button type="button" onClick={() => retryPages(prev.args?.id)}>Tentar de novo</button>}</div></div>

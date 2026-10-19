@@ -612,7 +612,8 @@ async function checkLayers(webContents, { live, outputs }) {
         result.outputPref = { created: Boolean(created && created.data), on: prefOn, off: prefOff };
         result.outputPrefOk = Boolean(created && created.data) && prefOn && prefOn.wrapped && prefOn.scale === 1.2 && prefOn.margin === 5 && prefOn.logo === false
             && prefOff && !prefOff.wrapped && prefOff.scale === 1 && prefOff.margin === 0 && prefOff.logo === true;
-        // Mostrar (hidden_kinds): the projector leaves the song's words out
+        // Mostrar (hidden_kinds, the old field: ruleOf migrates it into "O
+        // que esta tela recebe"): the projector leaves the song's words out
         // while they stay on air, and still shows the aviso rápido; deleting
         // the row brings the words back.
         // The words are read from the text node (textContent): the checks above
@@ -636,6 +637,16 @@ async function checkLayers(webContents, { live, outputs }) {
         const hideBack = await words(true);
         result.outputHide = { created: Boolean(hide && hide.data), before: hideBefore, gone: hideGone, onAir: hideOnAir, back: hideBack };
         result.outputHideOk = Boolean(hide && hide.data) && hideBefore && hideGone && hideOnAir && hideBack;
+        // O que esta tela recebe (Rodada H2, content_rule): a Projeção that
+        // receives only the Bíblia leaves the song's words out, the same;
+        // deleting the row brings them back.
+        const rule = await prefCall("create", [{ screen_path: "/Projection", content_rule: { kinds: ["bible"], top: { alert: true, logo: true }, empty: "wall" } }]).catch((err) => ({ error: String(err.message || err) }));
+        const ruleGone = await words(false);
+        const ruleOnAir = live.get().content?.slides?.[0]?.text === "Letra sob a camada";
+        if (rule && rule.data) await prefCall("delete", [rule.data.id]).catch(() => {});
+        const ruleBack = await words(true);
+        result.outputRule = { created: Boolean(rule && rule.data), gone: ruleGone, onAir: ruleOnAir, back: ruleBack };
+        result.outputRuleOk = Boolean(rule && rule.data) && ruleGone && ruleOnAir && ruleBack;
         // Tema por parte (songTheme.js): a slide carrying its part's look is
         // drawn with it on the projector; the slide before keeps the song's.
         live.call("content.show", { title: "Partes", style: { text_color: "#ffffff", font_family: "sans" }, slides: [
@@ -676,7 +687,7 @@ async function checkLayers(webContents, { live, outputs }) {
         }
     }
     result.ok = result.mainOpened && result.freetext && result.timer && result.communication && result.hiddenFundoAviso && result.sequence && result.sequenceIndex === 1
-        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.partThemeOk && result.openAtLaunch && result.keptTarget && result.offTaskbar && result.keepsAwake;
+        && result.alert && result.overlay && result.logoCovers && result.layersPlusOk && result.outputPrefOk && result.outputHideOk && result.outputRuleOk && result.partThemeOk && result.openAtLaunch && result.keptTarget && result.offTaskbar && result.keepsAwake;
     return result;
 }
 
@@ -2115,6 +2126,9 @@ async function checkConsole(webContents, { live, outputs }) {
         // Rodada H1: the Saídas group (open by default) lays its cards out
         // 3–4 across at the default window, never one per row.
         result.cfgSaidasGrid = await waitFor(() => js(`(() => { const cs = [...document.querySelectorAll('.console .cfg [aria-label="Saídas"] .cfg-card')]; if (cs.length < 2) return false; const top = cs[0].getBoundingClientRect().top; return cs.filter((n) => Math.abs(n.getBoundingClientRect().top - top) < 4).length >= 2; })()`), 5000);
+        // Rodada H2: the card is lean (thumbnail, name, state, Abrir/Fechar);
+        // the monitor select and Abrir ao iniciar live in the Editor's Destino.
+        result.cardTrimmed = await js(`(() => { const c = ${cardOf("Projeção")}; return Boolean(c) && !c.querySelector("select") && !c.querySelector('[role="switch"]') && [...c.querySelectorAll("button")].some((b) => ["Abrir", "Fechar"].includes(b.textContent.trim())); })()`);
         // A group closed by default opens by its header (openGroup) before
         // anything inside it is clicked; Arquivo de ajustes is one of them.
         const openGroup = (title) => js(`(() => { const b = [...document.querySelectorAll('.console .cfg button.cfg-group-t')].find((x) => x.getAttribute('data-cfg-k') === ${JSON.stringify(title)}); if (b && b.getAttribute('aria-expanded') === 'false') b.click(); return Boolean(b); })()`);
@@ -2206,6 +2220,9 @@ async function checkConsole(webContents, { live, outputs }) {
         // The Ajustes card is styled in the Editor too (.cfg): labels in a
         // column beside the controls, not stacked over them.
         result.screenCardStyled = await waitFor(() => sjs("(() => { const f = document.querySelector('.win-dialog.is-editor .nv-scroll.cfg .cfg-outprefs .frm'); return Boolean(f) && getComputedStyle(f).display === 'grid'; })()").catch(() => false), 4000);
+        // Rodada H2: the Ajustes are five blocks (Destino first, with the
+        // monitor select and Nome as the first input), each a .cfg-group.
+        result.screenBlocks = await sjs("(() => { const g = [...document.querySelectorAll('.win-dialog.is-editor .cfg-outprefs .cfg-group')]; const t = g[0] && g[0].querySelector('.cfg-group-t'); return g.length >= 4 && Boolean(t) && t.textContent.trim() === 'Destino' && Boolean(g[0].querySelector('select[aria-label^=\"Tela de\"]')); })()").catch(() => false);
         result.screenMenu = await sjs("[...document.querySelectorAll('.win-dialog.is-editor .kx-row-title')].filter((n) => ['Projeção', 'Palco', 'Pastor', 'Transmissão'].includes(n.textContent)).length >= 4").catch(() => false);
         await sjs("(() => { const b = [...document.querySelectorAll('.win-dialog.is-editor button')].find((x) => x.textContent.trim() === 'Salvar a tela'); if (b) b.click(); return Boolean(b); })()");
         result.screenSaved = await waitFor(async () => {
@@ -2946,7 +2963,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.cfgSaidasGrid && result.cfgFileGroup && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.cfgSaidasGrid && result.cfgFileGroup && result.cardTrimmed && result.screenBlocks && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edMenuOnScreen === true && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edSplitLive && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

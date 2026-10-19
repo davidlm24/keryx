@@ -370,6 +370,7 @@ open the Programa monitor draws one still frame (the air never pauses).
   brand and what is live). State is the closed summary, never a header hint;
   a page's groups run identity first, then what changes most, then the rare
   (Rodada H1, every Configurações section).
+- **Os cinco blocos dos Ajustes** (Rodada H2, owner 2026-10-19; Editor da tela › Ajustes, `settings/ajustes/`): the output's settings are five `CfgGroup`s in this order — Destino (first, `fold={false}`: where the screen is and its name), Conteúdo (what it receives), Aparência, Comportamento (closed) and Diagnóstico (closed, read-only) — each with its one-line summary while closed (`ajustesSummaries.js`), the group ids `editor.<bloco>` (this computer's open/closed state like any group). The rule's list ("O que esta tela recebe") is one set of toggle chips under three small headings (Textos · Mídia · Ferramentas e avisos) and "Por cima de tudo", with the shortcut chips above (the one that matches is pressed, "Personalizado" a dashed chip when none does); chips take the same look as the old Mostrar's (`.cfg-kinds`, `.cfg-rule-prof`), and the Prévia's warning (`.kx-prev-warn`) and the Multiview label's rule chip (`.mx-rule`) use the console's amber and grey.
 - **List rows are inset cards**: every `kx-row` and `kx-layer` in the
   console (Biblioteca, Setlist, the tabs panel, Camadas, Configurações' menu,
   the views) sits 4 px in from its column with `radius-control` and 2 px
