@@ -1358,6 +1358,11 @@ com o alternador Temas | Telas e o guarda de dois toques) morreu: a rota
     "Salvar como novo". `text_align`/`text_position` em `EXTRA_KEYS`
     (o estilo explícito do item vence; aplicar um tema no ar os reseta), e
     a caixa do canvas mapeia por `src/lib/console/themeBox.js` (testado).
+    **O formulário é em grupos** (Rodada HF3, owner 2026-10-20: `CfgGroup`, ids
+    `tema.*`, fold per computer; Nome e padrão fixo, Fonte e Fundo abertos, os
+    outros fechados com resumo de `fontSummary`…`transitionSummary` em themes.js);
+    o smoke lê o 1º `.nv-frm input.pl-input` (Nome) e o 1º `.nv-frm select`
+    (Fonte): ambos em grupos abertos, nessa ordem.
 A ScreenRenderer `fill` is `position: fixed`: inside a canvas or preview
 its wrapper needs `contain: layout paint` (`.le-screen`, `.cfg-prev`).
 Every screen is landscape: every still of an output (Telas e saídas'
