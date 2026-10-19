@@ -14,7 +14,9 @@ The operator console's design system was made in Claude Design and lives in
   segmented switch, field, row, tabs, monitor, status, banner, popover,
   splitter (and `kx-gap`), slide, layer, timeline, transport, verse, book,
   empty state, mark.
-- `components/bundle.js` — the icon set (`window.KERYX.icon(name)`,
+- `components/bundle.js` — the design system's first, hand-drawn icon set
+  (the app draws Lucide since Rodada HI: `src/lib/icons.js`, see the README's
+  Iconography) (`window.KERYX.icon(name)`,
   `KERYX.mount(root)`): bare 16 px glyphs, 1.5 stroke.
 
 `tokens.json`, `tokens.css` and `bundle.css` are edited by hand and kept in
