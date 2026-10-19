@@ -57,16 +57,16 @@ export function buildMenus(ctx) {
         { label: "Buscar letras na internet…", icon: "search", onSelect: call("lyricsSearch") },
         { label: "Importar uma pasta…", icon: "folder", onSelect: call("importFolder") },
         sep,
-        { label: "Sincronizar a música…", icon: "clock", disabled: !ctx.songId, title: ctx.songId ? "A música da Prévia, ou a que está no ar" : "Ponha uma música na Prévia ou no ar", onSelect: call("syncSong", ctx.songId) },
+        { label: "Sincronizar a música…", icon: "synced", disabled: !ctx.songId, title: ctx.songId ? "A música da Prévia, ou a que está no ar" : "Ponha uma música na Prévia ou no ar", onSelect: call("syncSong", ctx.songId) },
         { label: "Letra automática", icon: "music", sub: letra },
         sep,
         { label: "Temas", icon: "palette", title: "Configurações › Temas e fundos", onSelect: call("settings", "temas") },
     ];
 
     const midia = [
-        { label: "Mídia", icon: "film", onSelect: call("media") },
+        { label: "Mídia", icon: "media", onSelect: call("media") },
         { label: "Enviar arquivos…", icon: "folder", onSelect: call("media", "upload") },
-        { label: "Link do YouTube…", icon: "external", onSelect: call("media", "youtube") },
+        { label: "Link do YouTube…", icon: "youtube", onSelect: call("media", "youtube") },
         { label: "Fundos", icon: "image", title: "Configurações › Temas e fundos", onSelect: call("settings", "fundos") },
         sep,
         { label: ctx.playing ? "Pausar o player" : "Tocar o player", icon: ctx.playing ? "pause" : "play", disabled: !ctx.playerOn, onSelect: call("playerToggle") },

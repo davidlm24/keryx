@@ -205,7 +205,8 @@ export function Field({ icon = "search", value, onChange, placeholder, label, id
 // double click sends to air (onDoubleClick), as in Holyrics. `onKey` sees
 // the row's other keys first (Alt+↑/↓ moves a Setlist row, C-16); `lead`
 // goes before the glyph (the planner's grip); `expanded`: the row opens
-// details under it (aria-expanded).
+// details under it (aria-expanded); `tip`: the title's tooltip when it
+// should say more than the title (a song's artist).
 // A row with actions of its own (`actions`, or `item` in a list where only
 // some rows have them) is a list item, never a button that holds buttons
 // (C-27): named by its title, its meta, time and state as its description,
@@ -217,7 +218,7 @@ export const rowKeyDown = (onClick, onKey) => (e) => {
     if (e.defaultPrevented) return;
     if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && onClick) { e.preventDefault(); onClick(e); }
 };
-export function Row({ icon, lead, title, meta, metaClass = "", time, state = "", actions, item, onClick, onDoubleClick, onContextMenu, onMouseEnter, onMouseLeave, onKey, expanded, dragProps, single, className = "", current, children }) {
+export function Row({ icon, lead, title, tip, meta, metaClass = "", time, state = "", actions, item, onClick, onDoubleClick, onContextMenu, onMouseEnter, onMouseLeave, onKey, expanded, dragProps, single, className = "", current, children }) {
     const id = useId();
     const listItem = Boolean(item || actions);
     const cls = `${state} ${className}`;
@@ -232,7 +233,7 @@ export function Row({ icon, lead, title, meta, metaClass = "", time, state = "",
             {lead}
             {icon && <span className="kx-glyph"><Icon name={icon} /></span>}
             <div className="kx-row-main">
-                <div className="kx-row-title" id={`${id}n`} title={typeof title === "string" ? title : undefined}>{title}</div>
+                <div className="kx-row-title" id={`${id}n`} title={tip || (typeof title === "string" ? title : undefined)}>{title}</div>
                 {hasMeta && <div className={`kx-row-meta ${metaClass}`} id={`${id}m`}>{meta}</div>}
             </div>
             {children}

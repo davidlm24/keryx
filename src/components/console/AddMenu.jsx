@@ -7,9 +7,11 @@ import { MenuButton } from "./Menu";
 // the keyboard walks it, disabled items stay disabled, and after it closes
 // the + keeps no focus unless the keyboard opened it (audit C-15, C-56).
 // items: [{ label, icon, onClick, disabled? } | { label, icon, accept, onFiles } |
-//         { label, node }] — node rows just hold a control (a setting).
-export default function AddMenu({ title = "Adicionar", items }) {
+//         { label, node }] — node rows just hold a control (a setting);
+// a falsy entry is left out.
+export default function AddMenu({ title = "Adicionar", items: all }) {
     const inputs = useRef([]);
+    const items = all.filter(Boolean);
     const list = items.map((it, i) => (it.node
         ? { node: <div key={it.label} className="kx-menu-h addmenu-row">{it.node}</div> }
         : { label: it.label, icon: it.icon, disabled: it.disabled, title: it.title, onSelect: () => (it.onFiles ? inputs.current[i]?.click() : it.onClick?.()) }));

@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { IconBtn, MenuItem } from "./kx";
 import { menuStep, focusAfterClose } from "@/lib/console/menuNav";
+import { placeBox } from "@/lib/console/contextMenu";
 
 // The one menu of the console (audit C-15, 2026-10-16): the menu bar, the
 // logo's menu, Ver, the (+) menus, the right-click menus, the tabs lists and
@@ -55,6 +56,64 @@ export function useFocusReturn(active) {
     }, [active]);
 }
 
+// The box a position:fixed element is laid out in: the nearest ancestor
+// that makes one (a transform — THE window, a dialog, the palette —, a
+// filter, contain: paint/layout), else the window.
+function fixedHost(el) {
+    for (let p = el?.parentElement; p && p !== document.body; p = p.parentElement) {
+        const cs = getComputedStyle(p);
+        if (cs.transform !== "none" || cs.filter !== "none" || cs.perspective !== "none" || /paint|layout|strict|content/.test(cs.contain)) return p;
+    }
+    return null;
+}
+
+// Keeps an open menu inside the window (Rodada G1, placeBox in
+// contextMenu.js): `ref` is the menu (position: fixed), `anchorRef` the
+// button it opens from. Writes left, top and max-height inline, again when
+// the window changes size (the console's zoom too) or the menu does. Inside
+// a transformed frame the menu stays inside that frame, which clips it.
+export function usePlaced(ref, anchorRef, { open = true, align = "end" } = {}) {
+    useLayoutEffect(() => {
+        const el = ref.current;
+        if (!open || !el) return undefined;
+        const place = () => {
+            const a = anchorRef.current;
+            if (!a || !el.isConnected) return;
+            el.style.left = "0px"; el.style.top = "0px"; el.style.right = "auto"; el.style.bottom = "auto"; el.style.maxHeight = "";
+            const origin = el.getBoundingClientRect();
+            const host = fixedHost(el)?.getBoundingClientRect();
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            // Never over the top bar (an above-flip near the console's top).
+            const bar = document.querySelector(".console .topbar")?.getBoundingClientRect();
+            const bounds = {
+                left: Math.max(0, host?.left ?? 0), right: Math.min(vw, host?.right ?? vw),
+                top: Math.max(0, host?.top ?? 0, bar && !host ? bar.bottom : 0), bottom: Math.min(vh, host?.bottom ?? vh),
+            };
+            const p = placeBox({ anchor: a.getBoundingClientRect(), w: el.offsetWidth, h: el.scrollHeight, bounds, align });
+            el.style.left = `${p.left - origin.left}px`;
+            el.style.top = `${p.top - origin.top}px`;
+            if (p.maxHeight != null) { el.style.maxHeight = `${p.maxHeight}px`; el.style.overflowY = "auto"; }
+        };
+        place();
+        window.addEventListener("resize", place);
+        const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => place());
+        ro?.observe(el);
+        return () => { window.removeEventListener("resize", place); ro?.disconnect(); };
+    }, [ref, anchorRef, open, align]);
+}
+
+// A focused item in a menu that scrolls (a max-height from usePlaced, the
+// Bíblia's lists) is brought into view; the focus itself never scrolls
+// anything (preventScroll), so the console under the menu stays still.
+function revealIn(box, el) {
+    if (!box || !el || box.scrollHeight <= box.clientHeight) return;
+    const b = box.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    if (r.top < b.top) box.scrollTop -= b.top - r.top;
+    else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
+}
+
 const isSep = (it) => it === "sep" || Boolean(it?.sep);
 const itemsOf = (box) => [...(box?.querySelectorAll("[data-mi]") || [])].filter((el) => el.closest("[role='menu']") === box);
 
@@ -80,7 +139,11 @@ export function MenuList({ items = [], label, className = "", style, autoFocus =
         if (closeOnPick && !it.keep) onClose?.("pick");
         it.onSelect?.();
     };
-    const focusAt = (i) => itemsOf(box.current)[i]?.focus({ preventScroll: true });
+    const focusAt = (i) => {
+        const el = itemsOf(box.current)[i];
+        el?.focus({ preventScroll: true });
+        revealIn(box.current, el);
+    };
 
     const onKeyDown = (e) => {
         if (e.defaultPrevented) return;
@@ -164,12 +227,11 @@ export function MenuButton({ title, items, label, trigger, popClass = "", flip =
     const box = useRef(null);
     const pop = useRef(null);
     useFocusReturn(open);
-    // The pop hangs from the button's right edge; near the window's left
-    // (the Biblioteca's and Livros' place) it hangs from the left edge instead.
-    useLayoutEffect(() => {
-        if (!open || !pop.current || !flip) return;
-        pop.current.classList.toggle("is-flip", pop.current.getBoundingClientRect().left < 4);
-    }, [open, flip]);
+    // The pop hangs from the button's right edge (`flip` false: from its
+    // left edge, the Bíblia's lists), turns to the other edge where the
+    // window ends, opens above when there is no room below, and never
+    // leaves the window (usePlaced; a panel no longer clips it).
+    usePlaced(pop, box, { open, align: flip ? "end" : "start" });
     useEffect(() => {
         if (!open) return undefined;
         const away = (e) => { if (!box.current?.contains(e.target)) setOpen(false); };
