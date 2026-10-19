@@ -26,7 +26,7 @@ function fakeConsole(over = {}) {
         liveOp: async (op, args) => { calls.push(["liveOp", op, args]); },
         clearText: async () => { calls.push(["clearText"]); },
         say: (message, action) => say.push([message, action]),
-        undoEnd: (before) => calls.push(["undoEnd", before]),
+        end: async (opts) => { calls.push(["end", opts]); },
         sendStage: async (stage) => { calls.push(["sendStage", stage]); return true; },
         buildStage: async (item, index) => ({ id: item.id, index }),
         referenceVerses: async () => ({ version: "ARA", verses }),
@@ -119,21 +119,13 @@ test("play: nothing playing is a 409", async () => {
     assert.deepEqual(await createRemoteRunner(d).run({ action: "play" }), { ok: false, message: "Nada tocando.", status: 409 });
 });
 
-test("end clears and offers Desfazer with what was on air", async () => {
+test("end runs the console's Esc, saying it came from the phone", async () => {
     const d = fakeConsole();
-    const before = d.cur;
-    const runner = createRemoteRunner(d);
-    const r = await runner.answer({ action: "end" });
+    const r = await createRemoteRunner(d).answer({ action: "end" });
     assert.deepEqual(r, { ok: true, message: "Projeção encerrada." });
-    assert.deepEqual(d.calls, [["callOp", "clear", undefined]]);
-    // One toast (the answer's own is not said again), with Desfazer.
-    assert.equal(d.said.length, 1);
-    const [message, action] = d.said[0];
-    assert.equal(message, "Celular: projeção encerrada.");
-    assert.equal(action.label, "Desfazer");
-    assert.equal(action.undo, true);
-    action.run();
-    assert.deepEqual(d.calls.at(-1), ["undoEnd", before]);
+    // The console's end() clears, stops the music and offers Desfazer itself.
+    assert.deepEqual(d.calls, [["end", { by: "Celular" }]]);
+    assert.equal(d.said.length, 0, "the answer's own toast is not said again");
 });
 
 test("answer: the console says what the phone did; a throw is a 500", async () => {

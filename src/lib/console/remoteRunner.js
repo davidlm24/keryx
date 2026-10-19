@@ -41,9 +41,7 @@ export const REMOTE_HANDLERS = {
     end: {
         // As the Esc: everything off, with Desfazer on the console.
         run: async ({ d }) => {
-            const before = d.live();
-            await d.callOp("clear");
-            d.say("Celular: projeção encerrada.", { label: "Desfazer", undo: true, run: () => d.undoEnd(before) });
+            await d.end({ by: "Celular" });
             return { ok: true, message: "Projeção encerrada." };
         },
     },
@@ -112,7 +110,7 @@ async function reference(d, args) {
 //   lockedSay         what a locked refusal says
 //   service, items, airItemId, airNow, nextItem   the Setlist as the console sees it
 //   prefs, playerPick
-//   callOp, liveOp, clearText, say, undoEnd       the console's live operations
+//   callOp, liveOp, clearText, say, end           the console's live operations (end: Esc, with its Desfazer toast)
 //   sendStage(stage) → truthy when it went on air; buildStage(item, index)
 //   referenceVerses(ref) → { version, verses }; stageFromVerses(...)
 export function createRemoteRunner(deps) {

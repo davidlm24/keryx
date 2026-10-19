@@ -301,25 +301,32 @@ export function useConsole() {
     }, [prev, locked, live, callOp, say, stamp, setThemeId, pending]);
 
     // Desfazer (the toast after Esc / Encerrar): what the screens showed goes
-    // straight back (src/lib/console/restore.js). Not while locked: putting
+    // straight back, and the player's music at the second Esc stopped it
+    // (`endedAt`, src/lib/console/restore.js). Not while locked: putting
     // something on air is what the lock refuses.
-    const undoEnd = useCallback(async (before) => {
+    const undoEnd = useCallback(async (before, endedAt) => {
         if (locked) { say(LOCKED_SAY); return; }
         try {
-            for (const [op, args] of undoEndOps(before)) await liveOp(op, args);
-            say("Projeção de volta.");
+            for (const [op, args] of undoEndOps(before, endedAt)) await liveOp(op, args);
+            say(before?.audio ? "Projeção e música de volta." : "Projeção de volta.");
         } catch { /* liveOp said why */ }
     }, [locked, liveOp, say]);
 
     // Encerrar (Esc, at once; the button, after asking): everything on the
-    // main projector and the video screens goes; background, logo, overlays
-    // and the alert have their own controls. The toast offers Desfazer
-    // (owner's decision 2026-10-10).
-    const end = useCallback(async () => {
+    // main projector and the video screens goes, and the player's music
+    // (owner 2026-10-17, Rodada G3); background, logo, overlays and the alert
+    // have their own controls. The toast offers Desfazer (owner's decision
+    // 2026-10-10). `by`: who asked, when not this console ("Celular"); then a
+    // refusal is thrown back to it.
+    const end = useCallback(async ({ by } = {}) => {
         const before = live;
-        try { await callOp("clear"); } catch { return; }
-        if (undoEndOps(before).length) say("Projeção encerrada.", { label: "Desfazer", undo: true, run: () => undoEnd(before) });
-        else say("Projeção encerrada.");
+        let after;
+        try { after = await callOp("clear"); } catch (err) { if (by) throw err; return; }
+        const what = before?.audio ? "projeção encerrada e música parada." : "projeção encerrada.";
+        const message = by ? `${by}: ${what}` : what[0].toUpperCase() + what.slice(1);
+        const endedAt = after?.updatedAt;
+        if (undoEndOps(before, endedAt).length) say(message, { label: "Desfazer", undo: true, run: () => undoEnd(before, endedAt) });
+        else say(message);
     }, [live, callOp, say, undoEnd]);
 
     // Travar telas / Destravar (Saídas, the banner).

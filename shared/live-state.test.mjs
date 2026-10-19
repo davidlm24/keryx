@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked, followPosition, followIndex, slideAtTime, FOLLOW_SOURCES,
+    applyOp, emptyState, restoreState, mainLayer, livePosition, currentSlide, nextSlide, toolTime, playbackPlan, playbackGain, LiveError, OP_NAMES, WHILE_LOCKED, layerLocked, followPosition, followIndex, slideAtTime, FOLLOW_SOURCES,
     activitySteps, revealStep, revealOf,
 } from "./live-state.mjs";
 
@@ -421,16 +421,16 @@ test("idle screen: a wallpaper the operator chose, kept across Logo and Preto", 
     assert.equal(restoreState({ version: back.version, rev: 1, idle: "background" }, T0).idle, "logo");
 });
 
-test("audio channel: plays under the screens, survives Encerrar, has its own transport and list", () => {
+test("audio channel: plays under the screens, stops with Encerrar, has its own transport and list", () => {
     let s = run([["content.show", song], ["audio.show", { url: "keryx-media://ofertorio.mp3", title: "Ofertório" }, T0]]);
     assert.equal(s.audio.kind, "audio", "kind defaults to audio");
     assert.equal(mainLayer(s), "content", "audio is not a main layer");
     s = applyOp(s, "transport", { layer: "audio", action: "volume", volume: 0.4 }, T0 + 1000);
     assert.equal(s.audio.playback.volume, 0.4);
-    s = applyOp(s, "clear", {}, T0 + 2000);
-    assert.equal(s.content, null);
-    assert.ok(s.audio, "Encerrar leaves the music playing");
     assert.equal(applyOp(s, "audio.clear", {}, T0).audio, null);
+    const ended = applyOp(s, "clear", {}, T0 + 2000);
+    assert.equal(ended.content, null);
+    assert.equal(ended.audio, null, "Encerrar stops the music too (Rodada G3, owner 2026-10-17)");
     assert.throws(() => applyOp(s, "audio.show", { kind: "image", url: "x" }, T0), LiveError);
     assert.equal(applyOp(s, "audio.show", { kind: "video", url: "keryx-media://v.mp4" }, T0).audio.kind, "video", "a video file for its sound");
 
@@ -457,8 +457,8 @@ test("Tirar o vídeo · o som continua: the video leaves the projector, its soun
     assert.deepEqual(moved.audio.playback, { paused: false, position: 12, at: T0 + 12_000, volume: 0.6 }, "same second, same volume");
     assert.equal(moved.audio.shownAt, T0 + 12_000, "the player follows it");
     assert.equal(moved.history[0].layer, "media", "Voltar ao anterior can bring the video back");
-    assert.ok(applyOp(moved, "clear", {}, T0 + 13_000).audio, "Esc leaves the sound playing");
-    assert.ok(applyOp(moved, "content.show", song, T0 + 13_000).audio, "so does the next send");
+    assert.equal(applyOp(moved, "clear", {}, T0 + 13_000).audio, null, "Esc stops the sound, as all the player's music (Rodada G3)");
+    assert.ok(applyOp(moved, "content.show", song, T0 + 13_000).audio, "the next send leaves it playing");
 
     // Paused stays paused, where it was.
     const paused = applyOp(applyOp(s, "transport", { layer: "media", action: "pause" }, T0 + 5000), "media.toAudio", {}, T0 + 60_000);
@@ -897,20 +897,130 @@ test("one sound at a time: nothing is hushed by silence, by Tocar junto or by th
     assert.deepEqual(back.leaving, []);
 });
 
-test("one sound at a time: Esc never hushes the audio channel; leaving entries go once they are over", () => {
+test("one sound at a time: leaving entries go once they are over", () => {
     const s = run([["audio.show", MUSIC, T0], ["video.show", { ...CLIP, transition: FADE }, T0 + 100], ["media.show", { kind: "image", url: "i.jpg" }, T0 + 200]]);
     assert.equal(s.leaving.length, 1, "still fading");
     const later = applyOp(s, "content.show", song, T0 + 700);
     assert.deepEqual(later.leaving, [], "the next change drops what finished leaving");
     const music = run([["content.show", song], ["audio.show", MUSIC, T0]]);
-    const end = applyOp(music, "clear", { fade: 300 }, T0 + 1000);
-    assert.ok(end.audio, "Esc leaves the music playing");
-    assert.deepEqual(end.leaving, []);
     assert.throws(() => applyOp(music, "video.show", { ...CLIP, transition: { mode: "loud" } }, T0), LiveError);
     assert.throws(() => applyOp(music, "video.show", { ...CLIP, transition: "fade" }, T0), LiveError);
     assert.equal(applyOp(music, "video.show", { ...CLIP, transition: { mode: "fade", ms: 99_999 } }, T0).leaving[0].until, T0 + 5000, "the fade is clamped");
     // Nothing of it survives a restart.
     assert.deepEqual(restoreState(JSON.parse(JSON.stringify(s)), T0 + 9999).leaving, []);
+});
+
+// Rodada G3 (owner 2026-10-17): Esc and Parar stop the player's music too,
+// on the same fade as the screens; pausing and playing again fade (a ramp).
+test("Esc stops the music, paused or not, fading it out with the screens", () => {
+    const music = run([["content.show", song], ["audio.show", MUSIC, T0]]);
+    const end = applyOp(music, "clear", { fade: 300 }, T0 + 1000);
+    assert.equal(end.audio, null, "the music stops");
+    assert.deepEqual(end.fade, { ms: 300, at: T0 + 1000 }, "Esc needs nothing new: the music rides the screens' fade");
+    assert.deepEqual(end.leaving.map((e) => [e.layer, e.item.url, e.at, e.until, e.item.playback.paused]), [["audio", MUSIC.url, T0 + 1000, T0 + 1300, false]], "it fades out with the picture");
+    // A cut, music already paused, a silent track: it just goes.
+    assert.deepEqual(applyOp(music, "clear", {}, T0 + 1000).leaving, [], "Corte: no fade");
+    const paused = applyOp(music, "transport", { layer: "audio", action: "pause" }, T0 + 500);
+    const pausedEnd = applyOp(paused, "clear", { fade: 300 }, T0 + 1000);
+    assert.equal(pausedEnd.audio, null, "paused music stops too");
+    assert.deepEqual(pausedEnd.leaving, [], "nothing to hear, nothing leaves");
+    const silent = applyOp(music, "transport", { layer: "audio", action: "volume", volume: 0 }, T0 + 500);
+    assert.deepEqual(applyOp(silent, "clear", { fade: 300 }, T0 + 1000).leaving, []);
+    // Only music: Esc still ends it.
+    assert.equal(applyOp(run([["audio.show", MUSIC, T0]]), "clear", { fade: 300 }, T0 + 1).audio, null);
+    // A second Esc has no music to stop: the first one's fade goes on alone.
+    assert.equal(applyOp(end, "clear", { fade: 300 }, T0 + 1100).leaving.length, 1);
+});
+
+test("Parar: audio.clear, media.clear and video.clear take the exit fade", () => {
+    const music = run([["audio.show", MUSIC, T0]]);
+    const stop = applyOp(music, "audio.clear", { fade: 600 }, T0 + 1000);
+    assert.equal(stop.audio, null);
+    assert.deepEqual(stop.leaving.map((e) => [e.layer, e.until]), [["audio", T0 + 1600]]);
+    assert.equal(stop.fade, null, "the screens have nothing new to fade");
+    assert.deepEqual(applyOp(music, "audio.clear", {}, T0 + 1000).leaving, [], "a cut");
+    const media = run([["content.show", song], ["media.show", CLIP, T0]]);
+    const off = applyOp(media, "media.clear", { fade: 300 }, T0 + 50);
+    assert.deepEqual([off.media, off.fade], [null, { ms: 300, at: T0 + 50 }]);
+    assert.equal(off.history[0].layer, "media");
+    assert.equal(applyOp(media, "media.clear", {}, T0 + 50).fade, null);
+    const clip = run([["video.show", CLIP, T0]]);
+    assert.deepEqual(applyOp(clip, "video.clear", { fade: 99_999 }, T0 + 50).fade, { ms: 3000, at: T0 + 50 }, "clamped");
+    // They work locked, as anything that comes off the air.
+    assert.equal(applyOp(applyOp(music, "screens.lock", { locked: true }, T0), "audio.clear", { fade: 300 }, T0 + 1).audio, null);
+});
+
+test("Anterior / Próximo: with a fade the track that stops fades out, nothing else is hushed", () => {
+    const list = run([["video.show", CLIP, T0], ["audio.playlist", { items: [MUSIC, { url: "keryx-media://b.mp3" }] }, T0]]);
+    const next = applyOp(list, "playlist.goTo", { layer: "audio", index: 1, transition: FADE }, T0 + 1000);
+    assert.equal(next.audio.url, "keryx-media://b.mp3");
+    assert.deepEqual(next.leaving.map((e) => [e.layer, e.item.url, e.until]), [["audio", MUSIC.url, T0 + 1500]]);
+    assert.ok(next.video, "the clip on the video channel plays on");
+    assert.deepEqual(applyOp(list, "playlist.goTo", { layer: "audio", index: 1, transition: CUT }, T0 + 1000).leaving, []);
+    assert.deepEqual(applyOp(list, "playlist.goTo", { layer: "audio", index: 1 }, T0 + 1000).leaving, [], "no transition: a cut, as before");
+});
+
+test("transport: pausing and playing again fade (playback.ramp), from where the sound is", () => {
+    const s = run([["audio.show", MUSIC, T0]]);
+    const pause = applyOp(s, "transport", { layer: "audio", action: "pause", fade: 200 }, T0 + 10_000);
+    assert.deepEqual(pause.audio.playback, { paused: true, position: 10, at: T0 + 10_000, volume: 1, ramp: { at: T0 + 10_000, ms: 200, from: 1, to: 0 } });
+    assert.equal(playbackGain(pause.audio.playback, T0 + 10_100), 0.5, "halfway down");
+    assert.equal(playbackGain(pause.audio.playback, T0 + 10_400), 0, "silent once it is over");
+    // Played again inside the fade: it rises from the level it reached, and
+    // goes on from where the sound got to (it played on while fading).
+    const play = applyOp(pause, "transport", { layer: "audio", action: "play", fade: 200 }, T0 + 10_050);
+    assert.deepEqual(play.audio.playback, { paused: false, position: 10.05, at: T0 + 10_050, volume: 1, ramp: { at: T0 + 10_050, ms: 200, from: 0.75, to: 1 } });
+    assert.equal(playbackGain(play.audio.playback, T0 + 10_150), 0.875);
+    // A pause that finished fading: play rises from 0, past the tail.
+    const late = applyOp(pause, "transport", { layer: "audio", action: "play", fade: 200 }, T0 + 20_000);
+    assert.deepEqual([late.audio.playback.position, late.audio.playback.ramp.from], [10.2, 0]);
+    // Rapid toggle: each ramp starts where the last one was.
+    const again = applyOp(play, "transport", { layer: "audio", action: "pause", fade: 200 }, T0 + 10_100);
+    assert.equal(again.audio.playback.ramp.from, 0.8125);
+    // A volume change and a seek while playing keep the ramp; a paused seek drops it.
+    assert.deepEqual(applyOp(play, "transport", { layer: "audio", action: "volume", volume: 0.5 }, T0 + 10_060).audio.playback.ramp, play.audio.playback.ramp);
+    const seek = applyOp(play, "transport", { layer: "audio", action: "seek", time: 60 }, T0 + 10_060);
+    assert.deepEqual([seek.audio.playback.position, seek.audio.playback.ramp], [60, play.audio.playback.ramp]);
+    assert.equal(applyOp(pause, "transport", { layer: "audio", action: "seek", time: 30 }, T0 + 20_000).audio.playback.ramp, undefined);
+    // Corte: no ramp, and a cut drops one still running.
+    assert.equal(applyOp(s, "transport", { layer: "audio", action: "pause" }, T0 + 1).audio.playback.ramp, undefined);
+    assert.equal(applyOp(pause, "transport", { layer: "audio", action: "play" }, T0 + 10_050).audio.playback.ramp, undefined);
+    // Clamped like the exit fade; a restart, a new item and the eye drop it.
+    assert.equal(applyOp(s, "transport", { layer: "audio", action: "pause", fade: 99_999 }, T0 + 1).audio.playback.ramp.ms, 3000);
+    assert.equal(restoreState(JSON.parse(JSON.stringify(pause)), T0 + 99_999).audio.playback.ramp, undefined);
+    assert.equal(applyOp(pause, "audio.show", MUSIC, T0 + 11_000).audio.playback.ramp, undefined);
+    const video = run([["content.show", song], ["media.show", CLIP, T0]]);
+    assert.equal(applyOp(video, "transport", { layer: "media", action: "play", fade: 200 }, T0), video, "playing already: no change");
+    const v = applyOp(applyOp(video, "transport", { layer: "media", action: "pause", fade: 200 }, T0 + 1000), "media.toAudio", {}, T0 + 1100);
+    assert.equal(v.audio.playback.ramp, undefined, "the eye carries no ramp");
+});
+
+test("playbackPlan: the ramp scales the volume, and a pause waits for its fade", () => {
+    const el = (o) => ({ currentTime: 10, paused: false, ended: false, duration: 120, ...o });
+    const pb = { paused: true, position: 10, at: T0, volume: 0.8, ramp: { at: T0, ms: 200, from: 1, to: 0 } };
+    assert.deepEqual(playbackPlan(el({ currentTime: 10.1 }), pb, T0 + 100), { volume: 0.4 }, "still fading: no pause yet");
+    assert.deepEqual(playbackPlan(el({ currentTime: 10.2 }), pb, T0 + 200), { volume: 0, pause: true }, "the end of the fade pauses it");
+    assert.deepEqual(playbackPlan(el({ paused: true }), pb, T0 + 100), { volume: 0.4 }, "a window opened mid-fade does not start the tail");
+    const up = { paused: false, position: 10, at: T0, volume: 1, ramp: { at: T0, ms: 200, from: 0, to: 1 } };
+    assert.deepEqual(playbackPlan(el({ paused: true }), up, T0 + 50), { volume: 0.25, play: true });
+    assert.equal(playbackGain({ paused: false, position: 0, at: T0, volume: 1 }, T0), 1, "no ramp: full");
+});
+
+test("audio.show: where and how it starts (position, paused, a fade-in), and the same file stops leaving", () => {
+    const back = applyOp(emptyState(T0), "audio.show", { ...MUSIC, position: 72.5, fadeIn: 200, volume: 0.6 }, T0 + 1000);
+    assert.deepEqual(back.audio.playback, { paused: false, position: 72.5, at: T0 + 1000, volume: 0.6, ramp: { at: T0 + 1000, ms: 200, from: 0, to: 1 } });
+    const paused = applyOp(emptyState(T0), "audio.show", { ...MUSIC, position: 30, paused: true, fadeIn: 200 }, T0);
+    assert.deepEqual(paused.audio.playback, { paused: true, position: 30, at: T0, volume: 1 }, "paused stays paused, no ramp");
+    assert.deepEqual(applyOp(emptyState(T0), "audio.playlist", { items: [MUSIC], position: 5, fadeIn: 200 }, T0).audio.playback.ramp, { at: T0, ms: 200, from: 0, to: 1 });
+    assert.deepEqual(applyOp(emptyState(T0), "audio.show", MUSIC, T0).audio.playback, { paused: false, position: 0, at: T0, volume: 1 }, "nothing asked: from the top");
+    assert.equal(applyOp(emptyState(T0), "audio.show", { ...MUSIC, fadeIn: true }, T0).audio.playback.ramp, undefined, "fadeIn is ms (the console turns true into the pref)");
+    assert.throws(() => applyOp(emptyState(T0), "audio.show", { ...MUSIC, position: -1 }, T0), LiveError);
+    // Desfazer inside Esc's fade: the leaving copy goes, the music is back.
+    const ended = applyOp(run([["audio.show", MUSIC, T0]]), "clear", { fade: 600 }, T0 + 10_000);
+    assert.equal(ended.leaving.length, 1);
+    const undone = applyOp(ended, "audio.show", { ...MUSIC, position: 10, fadeIn: 200, transition: { mode: "mix" } }, T0 + 10_100);
+    assert.deepEqual(undone.leaving, [], "the same file stops leaving");
+    assert.equal(undone.audio.playback.position, 10);
 });
 
 test("the exit fade: Esc, Limpar, Tela preta and Logo carry how long what leaves fades out", () => {

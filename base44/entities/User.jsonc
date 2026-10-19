@@ -174,15 +174,19 @@
     "clear_transition": {
       "type": "string",
       "enum": ["cut", "fade"],
-      "description": "Transicoes, ao tirar da tela (Esc e Limpar): de corte (cut) ou suave (fade). Nulo = fade"
+      "description": "Transicoes, ao tirar do ar (Esc, Limpar e Parar; a imagem e o som saem juntos): de corte (cut) ou suave (fade). Nulo = fade"
     },
     "clear_transition_ms": {
       "type": "integer",
-      "description": "Transicoes, ao tirar da tela: a duracao do suave em ms (300, 600 ou 1000). Nulo = 300"
+      "description": "Transicoes, ao tirar do ar: a duracao do suave em ms (300, 600 ou 1000). Nulo = 300"
     },
     "screen_transition": {
       "type": "boolean",
-      "description": "Transicoes: Tela preta e Logo entram e saem com a transicao de Ao tirar da tela. Nulo = sim"
+      "description": "Transicoes: Tela preta e Logo entram e saem com a transicao de Ao tirar do ar. Nulo = sim"
+    },
+    "pause_fade_ms": {
+      "type": "integer",
+      "description": "Transicoes, ao pausar o som: Pausar e Tocar no player suavizam o volume nesta duracao em ms (0 = corte, 200 ou 400). Nulo = 200"
     },
     "standby_background": {
       "type": "string",

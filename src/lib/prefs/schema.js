@@ -41,12 +41,14 @@ export const PREF_FIELDS = {
     // Transições (Telas e saídas, Rodada F2; src/lib/console/transitions.js):
     // between audios and videos (cut, fade or mix = Tocar junto) and its
     // length; taking things off the screens (Esc, Limpar) and its length;
-    // whether Tela preta and Logo come and go with that fade.
+    // whether Tela preta and Logo come and go with that fade. Ao pausar o som
+    // (Rodada G3): Pausar and Tocar in the player fade over this many ms, 0 = a cut.
     media_transition: { default: "fade", normalize: oneOf(["cut", "fade", "mix"], "fade") },
     media_transition_ms: { default: 500, normalize: (v) => ([500, 1000, 2000].includes(Number(v)) ? Number(v) : 500) },
     clear_transition: { default: "fade", normalize: oneOf(["cut", "fade"], "fade") },
     clear_transition_ms: { default: 300, normalize: (v) => ([300, 600, 1000].includes(Number(v)) ? Number(v) : 300) },
     screen_transition: { default: true, normalize: (v) => v !== false },
+    pause_fade_ms: { default: 200, normalize: (v) => (v !== null && v !== "" && [0, 200, 400].includes(Number(v)) ? Number(v) : 200) },
     // The Bíblia's own theme: "" = the default theme (the songs'), "none"
     // = the factory look, else a ProjectionTheme id (themes.js themeForKind).
     bible_theme_id: { default: "", normalize: (v) => (typeof v === "string" && v.length <= 200 ? v.trim() : "") },
