@@ -9,7 +9,9 @@ const PAUSE_MS = 300;
 
 // How far each PDF's pages are (by Media id): { done, total } while they are
 // made, { error } when the file could not be read. The Mídia's rows read it
-// ("Preparando páginas 7/12"); this window only.
+// ("Preparando páginas 7/12"). The console makes the pages; a detached page
+// (/Janela) gets this map from it (`pages.progress`, janelaRelay.js:
+// setRelayedProgress) and the phone in its `state` (remote.js).
 const progress = new Map();
 const listeners = new Set();
 const setProgress = (id, value) => {
@@ -19,6 +21,18 @@ const setProgress = (id, value) => {
 const subscribe = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
 export const pagesProgressOf = (id) => (id ? progress.get(id) || null : null);
 export const usePagesProgress = (id) => useSyncExternalStore(subscribe, () => pagesProgressOf(id));
+// Every PDF's progress now, as a plain map (what the console relays).
+export const pagesProgressAll = () => Object.fromEntries(progress);
+export const subscribePagesProgress = subscribe;
+// A detached page: the console's map replaces this window's.
+export function setRelayedProgress(map) {
+    progress.clear();
+    for (const [id, value] of Object.entries(map || {})) progress.set(id, value);
+    for (const fn of listeners) fn();
+}
+// A detached page sends Tentar de novo to the console, which makes the pages.
+let retryVia = null;
+export function relayPagesRetry(fn) { retryVia = fn; }
 
 // Rows this window already tried (by id and file: "Localizar…" gives a row a
 // new file and a new chance), so a file that cannot be read is not retried
@@ -32,6 +46,7 @@ const subscribeWork = (fn) => { workListeners.add(fn); return () => workListener
 // returns only that row to the queue, preserving a useful failure state.
 export function retryPages(id) {
     if (!id) return;
+    if (retryVia) { retryVia(id); return; }
     for (const key of tried) if (key.startsWith(`${id}|`)) tried.delete(key);
     setProgress(id, null);
     wakeWork();

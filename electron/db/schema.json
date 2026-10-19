@@ -909,6 +909,9 @@
         "category": {
           "type": "text",
           "default": "other"
+        },
+        "font": {
+          "type": "json"
         }
       }
     },

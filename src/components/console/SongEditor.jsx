@@ -18,9 +18,9 @@ import { useContextMenu } from "./ContextMenu";
 import LinesPicker from "./LinesPicker";
 import { TEXT_SIZES, defaultTheme, followsTheme, themeStyle, themeName } from "@/lib/console/themes";
 import { useWinCol } from "./winLayout";
+import { FontSelect } from "../editor/FontPicker";
 
 const CATEGORIES = [["worship", "Adoração"], ["praise", "Louvor"], ["hymn", "Hino"], ["contemporary", "Contemporâneo"], ["other", "Outro"]];
-const FONTS = [["sans", "Sem serifa"], ["serif", "Serifa"], ["mono", "Mono"], ["cursive", "Cursiva"], ["arial", "Arial"], ["georgia", "Georgia"], ["times", "Times"], ["verdana", "Verdana"]];
 const SIZES = TEXT_SIZES;
 const EFFECTS = [["shadow", "Sombra"], ["double-shadow", "Sombra dupla"], ["glow", "Brilho"], ["outline", "Contorno"], ["3d", "3D"], ["neon", "Neon"], ["none", "Nenhum"]];
 const SWATCHES = [["#ffffff", "Branco"], ["#f3e6c9", "Creme"], ["#c9dcff", "Azul claro"], ["#ffe08a", "Amarelo"], ["#1a1a1a", "Preto"]];
@@ -443,7 +443,7 @@ export default function SongEditor({ c, songId, themes = [], onClose, onSaved, e
                     {!look.theme && <>
                     <div className="frm">
                         <span className="k">Fonte</span>
-                        <select className="cfg-select" value={shown.font_family || "sans"} onChange={(e) => setLook({ font_family: e.target.value })} aria-label="Fonte">{FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+                        <FontSelect className="cfg-select" value={shown.font_family || "sans"} onChange={(v) => setLook({ font_family: v })} />
                         <span className="k">Tamanho</span><Seg small label="Tamanho" value={shown.font_size || "large"} onChange={(v) => setLook({ font_size: v })} options={SIZES} />
                         <span className="k">Cor do texto</span>
                         <div className="swatches">

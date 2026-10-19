@@ -14,9 +14,10 @@
         "image",
         "pdf",
         "gif",
-        "audio"
+        "audio",
+        "font"
       ],
-      "description": "Tipo de m\u00eddia"
+      "description": "Tipo de m\u00eddia; font = uma face de fonte da igreja (Rodada HF1), fora de toda lista de m\u00eddia"
     },
     "file_url": {
       "type": "string",
@@ -63,10 +64,22 @@
         "announcement",
         "testimony",
         "other",
-        "background"
+        "background",
+        "font"
       ],
       "default": "other",
-      "description": "Categoria da m\u00eddia"
+      "description": "Categoria da m\u00eddia; background = a biblioteca de fundos, font = as fontes da igreja"
+    },
+    "font": {
+      "type": "object",
+      "properties": {
+        "family": { "type": "string", "description": "O nome da fam\u00edlia, como o tema a chama (ProjectionTheme.font_family)" },
+        "weight": { "type": "string", "description": "O peso desta face: 100 a 900, ou uma faixa (\"100 900\") numa fonte vari\u00e1vel" },
+        "style": { "type": "string", "enum": ["normal", "italic"], "description": "Normal ou it\u00e1lica" },
+        "face": { "type": "string", "description": "O nome da face no computador de onde veio (Regular, Bold Italic\u2026)" },
+        "origin": { "type": "string", "enum": ["pc", "file"], "description": "De onde veio: a lista de fontes do computador ou um arquivo escolhido" }
+      },
+      "description": "Uma face de fonte da igreja (type e category font): o arquivo \u00e9 file_url, copiado para a pasta de m\u00eddia, sincronizado e servido a toda tela (src/lib/fonts.js)"
     }
   },
   "required": [

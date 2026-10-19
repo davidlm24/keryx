@@ -166,6 +166,9 @@ export function timerInfo(live, now = Date.now()) {
 // its kind, time and length, and which one is on air, next, or was the last
 // sent (on air no more: after Esc, or something else went on).
 export const STATUS_TEXT = { missing: "Arquivo não encontrado", syncing: "Baixando…", blocked: "Preparando páginas" };
+// A presentation's state in the console's words when it sends them
+// ("Preparando páginas 3/12", or why the pages failed; Rodada H, HB).
+const statusText = (st, progress) => (st === "blocked" && typeof progress === "string" && progress ? progress : STATUS_TEXT[st] || "");
 const two = (n) => String(n).padStart(2, "0");
 const clockAt = (seconds) => {
     const s = Math.round(seconds) % 86400;
@@ -187,7 +190,7 @@ export function setlistRows(state, live = null) {
             sub,
             tag: it.id === air ? "air" : it.id === next ? "next" : !air && it.id === sent ? "last" : null,
             st,
-            stText: st ? STATUS_TEXT[st] || "" : "",
+            stText: st ? statusText(st, it.progress) : "",
         };
     });
 }
@@ -252,7 +255,7 @@ export function mediaRow(row) {
         sub: [row.sub, row.dur ? clock(row.dur) : ""].filter(Boolean).join(" · "),
         thumb: typeof row.thumb === "string" && row.thumb.startsWith("/media/") ? row.thumb : null,
         st,
-        stText: st ? STATUS_TEXT[st] || "" : "",
+        stText: st ? statusText(st, row.progress) : "",
     };
 }
 // What sendMedia gets for a row of a chip (a video: on the projector or the

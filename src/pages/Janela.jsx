@@ -41,6 +41,7 @@ import Toast from "@/components/console/Toast";
 import { useWinPageFocus } from "@/components/console/useDialogFocus";
 import { setEditorHost } from "@/lib/editorWindow";
 import { relaySend, relayListen } from "@/lib/janelaRelay";
+import { setRelayedProgress, relayPagesRetry } from "@/hooks/usePagesBackfill";
 import { PAGE_TITLES, openStack, push as winPush, pop as winPop, top as winTopOf, replaceTop as winReplaceTop, stackFromParams, detachSpec } from "@/lib/console/nav";
 import { resolveSection } from "@/lib/console/settings";
 import { liveAction, escapeTarget } from "@/lib/console/keys";
@@ -77,9 +78,15 @@ function useJanelaConsole() {
     const ops = useLiveOps(live, say, bgPrefs);
     const [prev, setPrevMirror] = useState(null);
     useEffect(() => {
-        const off = relayListen("janela", (m) => { if (m.type === "console.prev") setPrevMirror(m.stage); });
+        const off = relayListen("janela", (m) => {
+            if (m.type === "console.prev") setPrevMirror(m.stage);
+            // The PDFs' pages are the console's work: their progress comes from
+            // it, and Tentar de novo goes back to it (Rodada H, HB).
+            else if (m.type === "pages.progress") setRelayedProgress(m.pages);
+        });
+        relayPagesRetry((id) => relaySend("janela", "pages.retry", { id }));
         relaySend("janela", "console.hello");
-        return off;
+        return () => { off(); relayPagesRetry(null); };
     }, []);
     const setPrev = useCallback((stage) => {
         if (stage?.missing) say(`Arquivo não encontrado: ${stage.title}. Localize o arquivo antes de projetar.`);

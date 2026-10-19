@@ -107,3 +107,17 @@ export function withTransitions(op, args, prefs) {
         : EXIT_OPS.includes(op) || (op === "screen.set" && prefs.screen_transition) ? clearFade(prefs) : 0;
     return fade && a.fade === undefined ? { ...a, fade } : a;
 }
+
+// One line that says what Transições is set to while its group is closed
+// (Configurações › Telas e saídas, Rodada H0): "Tirar Suave 0,6 s · Entrar
+// Suave 0,5 s · Áudios Corte", each row's label as its Seg shows it.
+const labelOf = (list, value) => (list.find(([v]) => String(v) === String(value)) || [])[1] || "";
+export function transitionsSummary(prefs) {
+    if (!prefs) return "";
+    const ms = (list, value) => labelOf(list, value) || labelOf(list, list[0][0]);
+    const clear = prefs.clear_transition === "fade" ? `Suave ${ms(CLEAR_MS, prefs.clear_transition_ms)}` : "Corte";
+    const enter = prefs.enter_transition === "fade" ? `Suave ${ms(ENTER_MS, prefs.enter_transition_ms)}` : "Corte";
+    const kinds = Object.values(prefs.enter_transition_kinds || {}).filter((v) => v === "cut" || v === "fade").length;
+    const media = prefs.media_transition === "mix" ? "Tocar junto" : prefs.media_transition === "fade" ? `Suave ${ms(MEDIA_MS, prefs.media_transition_ms)}` : "Corte";
+    return [`Tirar ${clear}`, `Entrar ${enter}${kinds ? ` (${kinds} ${kinds === 1 ? "exceção" : "exceções"})` : ""}`, `Áudios ${media}`].join(" · ");
+}

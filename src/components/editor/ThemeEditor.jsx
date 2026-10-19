@@ -18,7 +18,9 @@ import { useLibraryPicker, ALL_KINDS } from "../console/library/libraryContext";
 import { applyOp, emptyState } from "@shared/live-state.mjs";
 import Icon from "../console/Icon";
 import { IconBtn } from "../console/kx";
-import { THEME_FONTS, TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName } from "@/lib/console/themes";
+import { TEXT_SIZES, themeStyle, themeBackgroundArgs, defaultTheme, defaultChanges, themeName } from "@/lib/console/themes";
+import FontPicker, { fontNote } from "./FontPicker";
+import { useChurchFonts } from "../console/useConsoleData";
 import { themeBoxRect, rectToTheme, MIN_WIDTH } from "@/lib/console/themeBox";
 import { TRANSITIONS, TRANSITION_MS, NATURAL_MS } from "@/lib/console/look";
 import { bgSpec, bgFields } from "@/lib/console/backgroundSpec";
@@ -79,6 +81,7 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
     // Both windows (the console's, a detached /Janela) provide the
     // one-question guard; a host without one (null) gets the two-step toast.
     const askCtx = useContext(ConfirmContext);
+    const churchFonts = useChurchFonts();
     const [busy, setBusy] = useState(false);
     const [dragging, setDragging] = useState(false);
     // Which sample the canvas dresses, and its slide.
@@ -277,13 +280,17 @@ export default function ThemeEditor({ say, themeId, onClose, onSaved, onSwitch, 
                                     ? <span className="kx-meta" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="star" size={12} />é o tema padrão da igreja</span>
                                     : <span className="nv-inline"><Btn small onClick={async () => { try { await keryx.entities.ProjectionTheme.bulkUpdate(defaultChanges(themes, savedId.current)); say(`${draft.name || "O tema"} é o tema padrão.`); } catch (err) { say(err?.message || "Não foi possível."); } }}><Icon name="star" />Tornar padrão</Btn></span>}
                             </>}
+                            {/* The font (Rodada HF1): KERYX's, the church's
+                                (copied into the library) or one brought
+                                from this PC or a file (FontPicker.jsx);
+                                the line under it says where it comes from. */}
                             <span className="k">Fonte</span>
                             <span className="nv-inline">
-                                <select className="pl-input" style={{ width: "auto" }} value={draft.font_family} onChange={(e) => set({ font_family: e.target.value })} aria-label="Fonte do tema">
-                                    {THEME_FONTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                                </select>
+                                <FontPicker value={draft.font_family} onChange={(v) => set({ font_family: v })} say={say} style={{ width: 150 }} />
                                 <Seg small label="Tamanho da fonte" value={draft.font_size} options={TEXT_SIZES} onChange={(v) => set({ font_size: v })} />
                             </span>
+                            <span className="k" />
+                            <span className="kx-meta le-font-note">{fontNote(draft.font_family, churchFonts.families)}</span>
                             <span className="k">Efeito e cor</span>
                             <span className="nv-inline">
                                 <select className="pl-input" style={{ width: "auto" }} value={draft.text_effect} onChange={(e) => set({ text_effect: e.target.value })} aria-label="Efeito do texto">

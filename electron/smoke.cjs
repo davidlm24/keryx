@@ -915,6 +915,23 @@ async function checkConsole(webContents, { live, outputs }) {
             const remote = performance.getEntriesByType("resource").some((e) => /googleapis|gstatic/.test(e.name));
             return faces.length > 0 && Boolean(text) && /^"?Geist/.test(getComputedStyle(text).fontFamily) && !remote;
         })()`).catch(() => false);
+        // A church font (Rodada HF1): a Media row of category font, made from
+        // the bundled Geist woff2 under the family "Geist Smoke", is declared
+        // by every window (src/hooks/useFonts.js) and loads in the console
+        // and on the projector; the PC's font list (queryLocalFonts) is
+        // offered to the console (electron/main.cjs grants it there).
+        result.localFontsApi = await js('typeof window.queryLocalFonts === "function"').catch(() => false);
+        const fontRow = (await js(`(async () => {
+            const url = (performance.getEntriesByType("resource").find((e) => /Geist-Variable[^/]*\\.woff2$/.test(new URL(e.name).pathname)) || {}).name;
+            if (!url) return null;
+            const buf = await (await fetch(url)).arrayBuffer();
+            const res = await window.keryxDesktop.media.importFile(new File([buf], "geist-smoke.woff2", { type: "font/woff2" }));
+            if (!res.data) return null;
+            return window.keryxDesktop.db.call("Media", "create", [{ title: "Geist Smoke", type: "font", category: "font", file_url: "keryx-media://" + res.data.fileName, duration: 0, font: { family: "Geist Smoke", weight: "100 900", style: "normal", face: "Regular", origin: "file" } }]);
+        })()`).catch(() => null))?.data;
+        const loadsChurchFont = (wc) => waitFor(() => wc.executeJavaScript(`document.fonts.load('12px "Geist Smoke"').then((f) => f.length > 0).catch(() => false)`).catch(() => false), 8000);
+        result.churchFont = Boolean(fontRow) && await loadsChurchFont(webContents);
+        result.churchFontOutput = Boolean(fontRow) && Boolean(main) && await loadsChurchFont(main.webContents);
         // Click a tab again, then the arrow: the slide moves on the projector.
         await click(".envtabs button", "KERYX");
         await press("ArrowRight");
@@ -2053,6 +2070,31 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg-results .kx-row'))"), 3000);
         await press("Enter");
         result.cfgSearchJump = await waitFor(() => js("(document.querySelector('.console .cfg .kx-panel-h .kx-section') || {}).textContent === 'Telas na rede' && Boolean(document.querySelector('.console .cfg [data-cfg-k=\"PIN\"].is-flash'))"), 5000);
+        // Grupos que abrem e fecham (Rodada H0): Transições starts closed in
+        // Telas e saídas; a jump to a row inside it opens the group (and its
+        // Por tipo de conteúdo disc), the row lit; what the operator opened
+        // stays open on this computer after Configurações closes and reopens.
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg .kx-panel-h .kx-section'))"), 3000);
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("/");
+        await type("cronometro");
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg-results .kx-row'))"), 3000);
+        await press("Enter");
+        result.cfgGroupJump = await waitFor(() => js("Boolean(document.querySelector('.console .cfg .cfg-group.is-open [data-cfg-k=\"Por tipo de conteúdo\"].is-flash'))"), 5000);
+        const groupOpen = () => js("(() => { const b = document.querySelector('.console .cfg button.cfg-group-t[data-cfg-k=\"Transições\"]'); return b ? b.getAttribute('aria-expanded') : null; })()");
+        result.cfgGroupOpened = (await groupOpen()) === "true";
+        await press("Escape");
+        await waitFor(() => js("!document.querySelector('.console .win-dialog')"), 4000);
+        await click(".topbar .markbtn", "");
+        await click(".kx-pop button", "Configurações");
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg'))"), 4000);
+        await click(".console .win-dialog .kx-row", "Telas e saídas");
+        result.cfgGroupKeeps = await waitFor(async () => (await groupOpen()) === "true", 5000);
+        // Back to its default (closed), by its header: the next checks see
+        // Telas e saídas as a fresh computer does.
+        await js("document.querySelector('.console .cfg button.cfg-group-t[data-cfg-k=\"Transições\"]').click(); true");
+        result.cfgGroupCloses = await waitFor(async () => (await groupOpen()) === "false", 3000);
+        if (!(result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses)) result.cfgGroupDiag = await js("JSON.stringify({ groups: localStorage.getItem('keryx.cfg.groups'), text: (document.querySelector('.console .win-dialog') || {}).innerText?.slice(0, 200) })");
         // Backup automático turns off and back on (settings.json, merged).
         await click(".console .win-dialog .kx-row", "Backup e atualizações");
         const autoBackup = async () => ((await js('window.keryxDesktop.system.call("info")')).data || {}).backup?.enabled;
@@ -2873,7 +2915,7 @@ async function checkConsole(webContents, { live, outputs }) {
     result.inconclusive = inconclusive;
     result.ok = Boolean(result.focusKept && result.opened && result.listed && result.fullConsole
         && result.prepared && result.airUntouched && result.clickLeftNoFocus && result.tabFocused && result.focusedEnterKeptAir
-        && result.sent && result.projected && result.projectorFont && result.prevTitle12 && result.progTitle13 && result.progOneTitle && result.progPill && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
+        && result.sent && result.projected && result.projectorFont && result.localFontsApi && result.churchFont && result.churchFontOutput && result.prevTitle12 && result.progTitle13 && result.progOneTitle && result.progPill && result.advanced && result.barFits && result.telasChip && result.splitterKeys && result.slidesMinW && result.targets24 && result.escEnded && result.escToast && result.escUndo
         && result.dblSent && result.autoOpened && result.autoFocusKept && result.projected2
         && result.closedBanner && result.closedCleared && result.onScreens
         && result.outsPopover && result.outsAnchored && result.verify && result.verifyProjector && result.verifyClosed && result.idleSet && result.idleBlack && result.idleWall && result.idleWallLoads && result.idleWallOff && result.slideAnimates && result.slideSettles && result.lookDefault && result.pillNoSince && result.titleHidden && result.bgPrefStamped && result.bgPrefDrawn && result.idlePrefStamped && result.idlePrefDrawn && result.idlePrefFollows && result.noticePrefStamped && result.noticePrefDrawn && result.chordStripped && result.chordProjector && result.chordStage && result.chordTranspose
@@ -2895,7 +2937,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edMenuOnScreen === true && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edSplitLive && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

@@ -27,6 +27,7 @@ import { keryx } from '@/api/keryxClient';
 import { useWindowTitle } from '@/hooks/useChurch';
 import { outputMeta } from '@/lib/outputPrefs';
 import { OUTPUT_NAMES } from '@/lib/network/views';
+import FontFaces from '@/hooks/useFonts';
 
 // Every page is a chunk of its own: an output window or a screen on the
 // church network loads the entry, its page and the renderer, never the
@@ -126,6 +127,10 @@ function App() {
         {import.meta.env.DEV && keryx.isPreview && <PreviewBanner />}
         <WindowTitle />
         <OutputDocument />
+        {/* The church's fonts (Media rows of category font), one @font-face
+            each, in every window: the console, a detached page, an output
+            window and a screen on the network (src/hooks/useFonts.js). */}
+        <FontFaces />
         <ErrorBoundary>
           {keryx.isNetworkScreen ? (
             <>

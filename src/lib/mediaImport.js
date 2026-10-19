@@ -1,5 +1,6 @@
 import { keryx } from "@/api/keryxClient";
 import { PPTX_HINT } from "@/lib/presentation";
+import { FONTS_IN_EDITOR_HINT, FONT_EXTENSIONS } from "@/lib/fonts";
 
 // The Media type of a picked file, by MIME type and extension.
 export function mediaTypeOf(file) {
@@ -11,6 +12,8 @@ export function mediaTypeOf(file) {
     if (type.startsWith("image/")) return "image";
     if (/\.pptx?$/i.test(name)) return "powerpoint";
     if (type === "application/pdf" || /\.pdf$/i.test(name)) return "pdf";
+    // A font file is not media: it enters through the Editor de temas (Rodada HF1).
+    if (type.startsWith("font/") || FONT_EXTENSIONS.some((ext) => name.toLowerCase().endsWith(ext))) return "font";
     return "other";
 }
 
@@ -70,6 +73,22 @@ if (typeof window !== "undefined") {
     });
 }
 
+// The files being copied right now (Rodada H, HB): the Biblioteca and the
+// Mídia list a row "Copiando o arquivo…" for each while UploadFile runs
+// (before, the row only appeared once the copy was done). Each entry is
+// { key, name, title, type, category, waiting, rowId }: waiting until its
+// turn comes, rowId once its Media row is made. The lists stop drawing an
+// entry as soon as that row is in them (copyingRows in libraryRows.js), so
+// the real row replaces it in place. This window only.
+const COPY_LINGER_MS = 4000;
+let copying = [];
+const copyingListeners = new Set();
+const setCopying = (next) => { copying = next; for (const fn of copyingListeners) fn(); };
+const dropCopying = (key) => setCopying(copying.filter((c) => c.key !== key));
+export const copyingNow = () => copying;
+export const subscribeCopying = (fn) => { copyingListeners.add(fn); return () => copyingListeners.delete(fn); };
+let batches = 0;
+
 // A PowerPoint file is not copied (Rodada F3, "Só PDF"): it comes back in
 // `refused`, and the caller says how to save it as PDF (PPTX_HINT). A PDF's
 // pages are made after, by the console (usePagesBackfill).
@@ -78,23 +97,37 @@ export async function importMediaFiles(files, { title = "", description = "", ca
     const created = [];
     const failed = [];
     const refused = [];
+    const batch = ++batches;
+    const keyOf = (i) => `${batch}:${i}`;
+    const titleOf = (file) => (title ? (list.length > 1 ? `${title} - ${file.name}` : title) : file.name.replace(/\.[^.]+$/, ""));
+    // Every file of the batch is listed at once; each one leaves the list
+    // when its row arrives (or when it fails).
+    setCopying([...copying, ...list.flatMap((file, i) => (mediaTypeOf(file) === "powerpoint" ? [] : [{ key: keyOf(i), name: file.name, title: titleOf(file), type: mediaTypeOf(file), category, waiting: i > 0, rowId: null }]))]);
     for (const [i, file] of list.entries()) {
         onProgress?.(i, list.length, file.name);
-        if (mediaTypeOf(file) === "powerpoint") { refused.push({ name: file.name, message: PPTX_HINT }); continue; }
+        const kind = mediaTypeOf(file);
+        if (kind === "powerpoint") { refused.push({ name: file.name, message: PPTX_HINT }); continue; }
+        if (kind === "font") { refused.push({ name: file.name, message: FONTS_IN_EDITOR_HINT }); continue; }
         try {
+            if (i > 0) setCopying(copying.map((c) => (c.key === keyOf(i) ? { ...c, waiting: false } : c)));
             const { file_url } = await keryx.integrations.Core.UploadFile({ file });
-            const baseName = file.name.replace(/\.[^.]+$/, "");
             const row = await keryx.entities.Media.create({
-                title: title ? (list.length > 1 ? `${title} - ${file.name}` : title) : baseName,
+                title: titleOf(file),
                 description,
-                type: mediaTypeOf(file),
+                type: kind,
                 file_url,
                 category,
                 duration: 0,
             });
             if (row?.id) rememberMadeHere(row.id);
             created.push(row);
+            // The real row replaces the entry as soon as the lists have it;
+            // this only clears an entry a list never shows (a filter).
+            const key = keyOf(i);
+            setCopying(copying.map((c) => (c.key === key ? { ...c, rowId: row?.id || null } : c)));
+            setTimeout(() => dropCopying(key), COPY_LINGER_MS);
         } catch (err) {
+            dropCopying(keyOf(i));
             failed.push({ name: file.name, message: err?.message || "falhou" });
         }
     }
@@ -110,13 +143,14 @@ export function failureReason(failed = []) {
 }
 
 // What the Mídia says after an import: how many came in, which failed (and
-// why, when it is one reason) and, for PowerPoint files, how to send them as PDF.
+// why, when it is one reason) and, for the files refused (PowerPoint, a
+// font file), what to do instead — each reason once.
 export function importSummary({ created = [], failed = [], refused = [] }, where = "") {
     const parts = [];
     if (created.length || !refused.length) parts.push(`${created.length} ${created.length === 1 ? "arquivo adicionado" : "arquivos adicionados"}${where}`);
     if (failed.length) parts.push(`falhou: ${failed.map((x) => x.name).join(", ")}`);
     const why = failureReason(failed);
     if (why) parts.push(why);
-    if (refused.length) parts.push(PPTX_HINT);
+    for (const hint of new Set(refused.map((x) => x.message || PPTX_HINT))) parts.push(hint);
     return parts.join(" · ").replace(/([^.])$/, "$1.");
 }

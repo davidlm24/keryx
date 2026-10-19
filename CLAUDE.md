@@ -98,6 +98,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   others, or while editing the arrangement, nothing folds. The body stays
   mounted, hidden. Don't confuse it with the dock frames' `collapsed`
   (joined as tabs) or No ar's `fold`/`gone` (no lyrics on air).
+  **Grupos que abrem e fecham** (owner 2026-10-19, Rodada H0; the owner's
+  "Nem tudo precisa colapsar"): the areas of Configurações and the editors
+  are `CfgGroup` (settings/parts.jsx: `{ id, k, title, summary, actions,
+  defaultOpen, fold }`), an h3 header whose button carries the chevron and
+  the title, a one-line `summary` of what is chosen while closed (pure,
+  tested, like `transitionsSummary` in transitions.js), the `actions` on
+  the right; a page's first area is `fold={false}` (the same heading, no
+  chevron, never folds), the rare ones start closed (`defaultOpen={false}`;
+  Transições is the pilot). The body stays mounted and inert when closed,
+  so the search still finds its rows: a jump into a closed group opens it
+  at once (`CfgFlash` carries `{ flash, pending }`; SettingsView's find
+  loop skips rows inside `.cfg-group:not(.is-open)`). What the operator
+  opened or closed is this computer's — localStorage `keryx.cfg.groups`,
+  only the deviations from each default (`src/lib/console/cfgGroups.js`,
+  tested; `useCfgGroup`, one store per window, a detached /Janela follows
+  through `storage`) — never `layout` (the editors have none, Restaurar
+  disposição must not reset it). H1, H2 and HF3 build on it: its API is the
+  contract.
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).
@@ -398,8 +416,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   too: Buscar… (the palette), Seção…, Texto…, Timer… (a ServiceItem under
   the item in the Prévia, else at the end) and Planejar o culto…; the
   Biblioteca's Letras + also takes "Uma pasta inteira…" (webkitdirectory);
-  the search row has a button beside the ☆, "Abrir a Biblioteca de
-  mídia" (the Mídia page, every tab), and no (+) holds the lines-per-slide
+  the search row is Buscar · ☆ · (+) Adicionar; **the Biblioteca's header
+  holds the doors** (owner's pick, Rodada H, H1): its title, "Abrir a
+  Biblioteca de mídia" (the Mídia page, every tab), the chooser of what
+  shows (the eye) and the fold chevron, 24 px, 8 px apart; no (+) holds the lines-per-slide
   chips any more ("Ao importar letras" lives in Configurações › Bíblia e
   músicas; Rodada G1). **Hover buttons are glyphs only** (owner, Rodada
   G1): the word stays inside the button as screen-reader text (`.kx-act-l`,
@@ -417,9 +437,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   `icons.test.mjs` fails on a name the code uses that is not mapped. **A row with hover buttons is one line** (Rodada G1, owner
   2026-10-19): in Confortável too, its title ends in "…" (the whole title
   is its tooltip) — the Biblioteca, the Setlist, the palette, the Mídia and
-  the planner (one rule, `.kx-row:has(> .kx-row-acts)` in console.css).
+  the planner, its item rows too (one rule, `.kx-row:has(> .kx-row-acts)`
+  and `.pl-item` in console.css).
   A song's row has no glyph (media and avisos keep theirs); under its
-  title the artist, the key and the length as the Biblioteca header (+)'s
+  title the artist, the key and the length as the Biblioteca header chooser's
   "Nas letras" checks say (Mostrar o artista / o tom / a duração:
   `layout.libShowArtist` off, `libShowKey`/`libShowLength` on, per
   computer); the artist is always in the tooltip; sincronizada, parece repetida
@@ -555,8 +576,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Saídas popover; Configurações, `settings/SettingsView`, is a window over
   whatever is on screen, its own `cfg` state, `?config=`; its sections are
   `src/lib/console/settings.js`, old ids resolve through `resolveSection`;
-  its search indexes every row in `settingsSearch.js` — a new `FormRow k`
-  goes in the index, or `npm test` fails). **Sobre** is the last section
+  its search indexes every row in `settingsSearch.js` — a new `FormRow k`,
+  `CfgKey k` or `CfgGroup k` goes in the index, or `npm test` fails). **Sobre** is the last section
   (owner 2026-10-14, `SobreSection.jsx`; also the KERYX menu's "Sobre o
   KERYX", `openSettings("sobre")`): version (the `info` call of Backup;
   "Prévia de desenvolvimento" without the desktop), Ver novidades (the
@@ -808,8 +829,10 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Mídia keep theirs). Camadas in the tray is a drawer opened from the
   Programa's pill (or its "…"). The old `order`/`stacks`/widths are only read to build the first
   dock (culto order lib, slides, live, side; stack side = camadas, roteiro). **The tabs panel and the Biblioteca have
-  their (+) in the panel's header**, at the level of the title like every
+  their chooser in the panel's header**, at the level of the title like every
   module's + (Rodada E1, `TabsPlus` in TabsPanel.jsx, `data-tabs-plus`;
+  its glyph is the eye, the sign of Ver — "Mostrar na Biblioteca…" /
+  "Mostrar neste painel…", owner's pick, Rodada H: a + adds content;
   the tabs panel got a thin header of its own, "Painel"; the tab rows
   carry only tabs) (the Biblioteca's also offers Áudios and
   Apresentações, off at first: shown, they take their files out of Vídeos
@@ -1027,6 +1050,39 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   the console, output windows and network screens break lines alike. Don't
   add a web-font `@import`; a new font needs its file and license (OFL in
   `public/fonts/`). `src/lib/fonts.test.mjs` checks this.
+  **The church's fonts** (owner 2026-10-19, Rodada HF1, mockup H3
+  `pc_arquivo`): a theme's `font_family` is a KERYX key (`FONT_MAP`: sans =
+  Geist, the other seven the device's fonts, "· do aparelho") or the
+  **family name of a font the church brought in** — from the PC's installed
+  fonts (Local Font Access, `window.queryLocalFonts`, the "Fontes do
+  computador" dialog, `editor/LocalFontsDialog.jsx`; it needs a click, so
+  the list is read as the dialog opens) or from a font file (.ttf/.otf/
+  .woff2/.woff). Either way the file is **copied into the media library**
+  (`UploadFile`, as bytes) as **Media rows of category `font`, one per
+  face** (Regular, Bold, Italic, Bold Italic at most; `Media.font = {
+  family, weight, style, face, origin }`, `title` = the family), so it syncs
+  between the church's computers like any media and `electron/server.cjs`
+  serves it to every output window and network screen; every window
+  declares them with one `@font-face` each (`<FontFaces/>` in App.jsx,
+  `src/hooks/useFonts.js`, `fontFaceCss`), and `fontStack(family)`
+  (`src/lib/fonts.js`, tested — the helpers, the magic-byte `fontKind`, the
+  faces' weights) is what every renderer and still draws (a copy not here
+  yet draws Geist). KERYX never downloads a font; the dialog's licence line
+  says the Windows and bought fonts have their own licence. Font rows are
+  out of every media list (`useLibrary().media`, the Mídia, the editors'
+  pickers; `isFontMedia`) and listed by `useChurchFonts()` — the picker's
+  "Da igreja" group (`editor/FontPicker.jsx`: KERYX / Da igreja / Trazer,
+  also `FontSelect` in the aviso and song editors) and Configurações ›
+  Temas e fundos › **Fontes da igreja** (Excluir… via useConfirm, refused
+  while a theme names the family). A font dropped in the Mídia is refused
+  (`mediaTypeOf` "font", `FONTS_IN_EDITOR_HINT`); a `.ttc` collection is
+  refused by the copy (`COLLECTION_HINT`), 20 MB is the cap. The
+  `local-fonts` permission is granted only to `/Console` and `/Janela`
+  from the app's origin (`setPermissionCheckHandler` /
+  `setPermissionRequestHandler` in main.cjs), never to an output. Verificar
+  says per church font whether it is copied, still coming (Baixando…) or
+  gone. `useFitWidth` re-measures on `document.fonts` `loadingdone`, so a
+  font that arrives late re-fits the line.
 - **`window.keryxDesktop.*` returns a fresh object on every access**
   (contextBridge). In a component, read it once into a ref; using it as an
   effect or callback dependency directly re-runs the effect on every render.
@@ -1119,7 +1175,15 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   ~1920 px wide, uploads each through `UploadFile` and saves
   `Media.pages` (`[{ url, w, h }]`, page 1 = `thumbnail_url`):
   `src/lib/pdfPagesCapture.js`, run by `usePagesBackfill` (old rows too; the
-  rows say "Preparando páginas 7/12", `PagesMeta`). On air a PDF is a
+  rows say "Preparando páginas 7/12", `PagesMeta`, with a thin bar along
+  the row's whole bottom edge, `PagesBar`). While a file is still being
+  copied its row is already listed, "Copiando o arquivo…" (`copyingNow` in
+  mediaImport.js, `copyingRows` in libraryRows.js, tested), and the real
+  row takes its place (Rodada H, HB). Only the console makes the pages: a
+  detached Mídia gets their progress from it (`pages.progress`, and
+  Tentar de novo goes back as `pages.retry`, janelaRelay.js) and the
+  phone in its rows' `progress` (remote.js `pagesField`). Putting a PDF
+  that cannot go yet in the Prévia makes no toast: the Prévia says it. On air a PDF is a
   content of kind **"presentation"** (`stageFromMedia` →
   `presentationStage`, `src/lib/presentation.js`, tested): one slide per
   page (`{ image_url, label: "Página n" }`, `ref.mediaId`), so ←/→,
