@@ -348,7 +348,8 @@ textarea.kx-input { height: auto; padding: 6px var(--space-2); line-height: 18px
   .kx-btn.is-on, .kx-tool.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
   .kx-seg { outline: 1px solid ButtonText; outline-offset: -1px; }
   .kx-seg > button.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
-  .kx-field, .kx-num { border: 1px solid FieldText; }
+  .kx-field { border: 1px solid FieldText; }
+  .kx-num { border: 1px solid FieldText; }
   .kx-tabs > button.is-on::after { height: 2px; background: Highlight; }
   :is(.kx-row, .kx-slide, .kx-verse):is(.is-air, .is-prev, .is-rh, .is-next)::before { background: none; }
   .kx-row.is-warn::before, .kx-alert::before { background: CanvasText; }

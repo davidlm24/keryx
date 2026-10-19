@@ -1083,6 +1083,35 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   says per church font whether it is copied, still coming (Baixando…) or
   gone. `useFitWidth` re-measures on `document.fonts` `loadingdone`, so a
   font that arrives late re-fits the line.
+  **A theme's size is a number** (owner 2026-10-19, Rodada HF2, mockup H3
+  `numero_atalhos`: "tamanho da fonte customizável, não predefinidos"):
+  `ProjectionTheme.font_size` is cqw, % of the screen's width, 1 to 12, one
+  decimal, stored as a string ("4.8": the column stays text, no migration);
+  the old names (xsmall…xxlarge = PP…GGG = 2.4/3/3.8/4.8/5.8/7) read as their
+  number forever and are what songs and avisos still choose. One module,
+  `src/lib/textSize.js` (tested): `sizeCqw` (number, "4,8", a name, "" →
+  4.8), `sizeValue`, `sizePreset`, `sizeLabel` ("G", else "4,5 %"),
+  `sameSize` (`isFactoryLook`/`sameLook` compare with it: "4.8" is the
+  factory "large"), `lineHeightOf`. The renderer sets `--ks-size:
+  <n>cqw` on `.ks-content` and `.ks-text` reads it (no `ks-<size>` class
+  any more); `lineLimit` (lyricFit.js) takes a size and `{ em, spacing }`,
+  `emPerChar(family, weight)` (`src/lib/console/fontMetrics.js`, a cached
+  canvas measure, 0.55 while the font has not loaded) feeding the song
+  editor's "fonte menor" badges from the look the song is sent with; the
+  screens' hidden probe stays the truth. **The theme's typography** (all ""
+  = as before, EXTRA_KEYS so it rides like the box): `font_weight`
+  normal|bold (400/700; "" = the CSS 600, 500 in a passage), `font_style`
+  italic, `line_height` a number 0.9–2 or the old tight|normal|loose (the
+  live state takes either), `letter_spacing` em −0.1…0.5, `text_outline_px`
+  0–8 (px of a 1920 screen, drawn behind the letters with `paint-order`,
+  so the stroke is twice that wide) + `text_outline_color` (#rrggbb, black
+  by default) — independent of `text_effect`, whose hollow `outline` is
+  "Vazado" now — and `note`, the Comentário (≤ 500, never on air: the
+  theme's tooltip in Temas, `themeNote`). `typography(style)` in
+  deviceStyles.js (tested) turns them into the text's inline style. The
+  Editor de temas edits them with `NumBox` (kx.jsx: `− [n] + unit`, 24 px,
+  ↑/↓ step, Shift ×10, typing commits on Enter or blur, clamped); its form
+  stays flat until HF3 groups it.
 - **`window.keryxDesktop.*` returns a fresh object on every access**
   (contextBridge). In a component, read it once into a ref; using it as an
   effect or callback dependency directly re-runs the effect on every render.
