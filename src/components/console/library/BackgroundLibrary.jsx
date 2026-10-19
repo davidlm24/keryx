@@ -166,12 +166,13 @@ export default function BackgroundLibrary({ c, request, onDone }) {
     // The sample: the choice as it goes on air (the picture's own dim and
     // blur from its settings; a theme's text look on a theme).
     const previewArgs = themeMode ? themeBackgroundArgs(selTheme) : sel ? { ...bgArgs(sel, ""), ...(entry && sel.dim === undefined && entry.dim !== null ? { dim: entry.dim } : {}), ...(entry && sel.blur === undefined && entry.blur !== null ? { blur: entry.blur } : {}) } : null;
-    const doc = useMemo(() => sampleDoc(c.now, previewArgs, themeMode && selTheme ? themeStyle(selTheme) : {}), [JSON.stringify(previewArgs), selTheme]); // eslint-disable-line react-hooks/exhaustive-deps
+    const doc = useMemo(() => sampleDoc(keryx.live.now(), previewArgs, themeMode && selTheme ? themeStyle(selTheme) : {}), [JSON.stringify(previewArgs), selTheme]); // eslint-disable-line react-hooks/exhaustive-deps
     // Gerados: the background alone, big and moving.
     const big = tab === "generator";
     const bigDoc = useMemo(() => {
         if (!big || !previewArgs) return null;
-        try { return applyOp(emptyState(c.now), "background.set", previewArgs, c.now); } catch { return null; }
+        const t = keryx.live.now();
+        try { return applyOp(emptyState(t), "background.set", previewArgs, t); } catch { return null; }
     }, [big, JSON.stringify(previewArgs)]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const title = request.title || (themeMode ? "Escolher tema" : "Escolher fundo");
@@ -208,7 +209,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                                             onContextMenu={(e) => menu(e, { title: themeName(t), items: [
                                                 { label: t.pinned ? "Tirar do console" : "Fixar no console", icon: "pin", onSelect: () => keryx.entities.ProjectionTheme.update(t.id, { pinned: !t.pinned }).catch(() => {}) },
                                             ] })}>
-                                            <span className="fg-img"><ThemeThumb theme={t} now={c.now} />{themeMode && <NoBgMark theme={t} label />}</span>
+                                            <span className="fg-img"><ThemeThumb theme={t} />{themeMode && <NoBgMark theme={t} label />}</span>
                                             {(t.is_default || t.pinned || themeName(t, "")) && <span className="fg-name">{t.is_default && <Icon name="star" size={12} />}{t.pinned && <Icon name="pin" size={12} />}{themeName(t, "")}</span>}
                                         </button>
                                     );
@@ -259,7 +260,7 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                         </>}
                         {tab === "generator" && (
                             <div className="lib-big">
-                                <div className="ap-sample lib-big-screen">{bigDoc ? <ScreenRenderer state={bigDoc} now={c.now} preview motion /> : <span className="kx-meta">Escolha um gerador abaixo.</span>}</div>
+                                <div className="ap-sample lib-big-screen">{bigDoc ? <ScreenRenderer state={bigDoc} preview motion /> : <span className="kx-meta">Escolha um gerador abaixo.</span>}</div>
                                 <span className="lib-big-cap"><span className="kx-meta">{sel?.kind === "generator" ? bgLabel(sel, GEN_NAMES) : "Nenhum gerador escolhido"}</span></span>
                             </div>
                         )}
@@ -286,9 +287,9 @@ export default function BackgroundLibrary({ c, request, onDone }) {
                         )}
                     </div>
                     {!big && <div className="lib-side">
-                        <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} now={c.now} preview motion />}</div>
+                        <div className="ap-sample lib-sample">{doc && <ScreenRenderer state={doc} preview motion />}</div>
                         <div className="lib-label"><span className="kx-meta">Escolhido</span><span className="t">{label}</span></div>
-                        {entry && <FundoDetail key={entry.source} b={entry} save={save} now={c.now} sample={false}
+                        {entry && <FundoDetail key={entry.source} b={entry} save={save} sample={false}
                             categories={managedCategories(storedCats, list)} onCategories={() => setView("categories")} onRestore={() => act.restore(entry)} />}
                     </div>}
                 </div>
@@ -331,14 +332,14 @@ export const themePending = (theme, pending) => pendingUrls(themeBackgroundArgs(
 // library's Temas tab and the console's Temas card).
 // The factory look (no theme): the example text as the renderer draws it
 // with nothing chosen, for the Temas padrão boxes (audit C-43).
-export function FactoryThumb({ now }) {
-    const doc = useMemo(() => sampleDoc(now), []); // eslint-disable-line react-hooks/exhaustive-deps
-    return doc ? <span className="lib-thumb"><ScreenRenderer state={doc} now={now} preview /></span> : null;
+export function FactoryThumb() {
+    const doc = useMemo(() => sampleDoc(keryx.live.now()), []);
+    return doc ? <span className="lib-thumb"><ScreenRenderer state={doc} preview /></span> : null;
 }
 
-export function ThemeThumb({ theme, now }) {
+export function ThemeThumb({ theme }) {
     const waiting = themePending(theme, usePendingMedia());
-    const doc = useMemo(() => (waiting ? null : sampleDoc(now, themeBackgroundArgs(theme), themeStyle(theme))), [theme, waiting]); // eslint-disable-line react-hooks/exhaustive-deps
+    const doc = useMemo(() => (waiting ? null : sampleDoc(keryx.live.now(), themeBackgroundArgs(theme), themeStyle(theme))), [theme, waiting]);
     if (waiting) return <span className="lib-thumb is-wait"><SyncWait /></span>;
-    return doc ? <span className="lib-thumb"><ScreenRenderer state={doc} now={now} preview /></span> : null;
+    return doc ? <span className="lib-thumb"><ScreenRenderer state={doc} preview /></span> : null;
 }

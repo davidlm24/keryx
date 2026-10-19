@@ -61,7 +61,7 @@ const seedFor = (path) => {
 // as its actions; ⧉ Destacar from the window, or onDetach) and no footer;
 // the middle column splits into Desenho | Ajustes. Both hosts — the
 // console's window and a detached /Janela — mount it hosted.
-export default function ScreenEditor({ say, live: liveState, now, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
+export default function ScreenEditor({ say, live: liveState, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colTelas = useWinCol("screen.telas", { name: "Telas", def: 190, min: 160, max: 360 });
     const colAjustes = useWinCol("screen.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
@@ -287,16 +287,16 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     // minutes into a service with a Setlist, nothing on air, a timer on air,
     // or what is on air when something is (else the sample song) — so every
     // element can be seen in the state its Aparece rule shows it.
-    const madeAt = useRef(now);
+    const madeAt = useRef(keryx.live.now());
     const sampleDoc = useMemo(() => {
         const session = { startedAt: madeAt.current - 42 * 60000 };
         return { sample: { ...sampleLive(madeAt.current), session }, idle: { ...emptyState(madeAt.current), session } };
     }, []);
     // The timer starts again each time "Timer" is picked, so it never sits
     // at 00:00:00 in an editor left open.
-    const [toolAt, setToolAt] = useState(now);
+    const [toolAt, setToolAt] = useState(() => keryx.live.now());
     const toolDoc = useMemo(() => ({ ...sampleTimer(toolAt), session: sampleDoc.idle.session }), [toolAt, sampleDoc]);
-    const pickSource = (v) => { if (v === "tool") setToolAt(Date.now()); setSource(v); };
+    const pickSource = (v) => { if (v === "tool") setToolAt(keryx.live.now()); setSource(v); };
     const liveOn = liveState && mainLayer(liveState) !== "none" ? liveState : null;
     const shown = source === "tool" ? toolDoc : source === "idle" ? sampleDoc.idle : source === "sample" || !liveOn ? sampleDoc.sample : { ...liveOn, session: liveOn.session || sampleDoc.sample.session };
     // A screen that shows only avisos (Comunicação) gets an example aviso
@@ -319,7 +319,8 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
     const canvasAlert = renderer ? screenState?.alert ?? null : path === "/StageView" ? (live.content ? alertOf(live, pref, path) : null) : undefined;
     // Why each element is drawn or faint in this state (elementState: the
     // eye, the Aparece rule, nothing to say), as the canvas computes it.
-    const elCtx = layoutContext({ live, now, upcoming: SAMPLE_ITEMS, hasService: true, church });
+    // The rules read no clock: the time now is enough (the canvas ticks its own).
+    const elCtx = layoutContext({ live, now: keryx.live.now(), upcoming: SAMPLE_ITEMS, hasService: true, church });
     const stateOf = (el) => elementState(el, elCtx, { logoUrl: church.logo });
     const selState = selected ? stateOf(selected) : "shown";
 
@@ -332,7 +333,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
 
     const type = selected ? typeOf(selected.type) : null;
     const num = (el, k, v, lo, hi) => { const n = Number(v); if (Number.isFinite(n)) setEl(el.id, { [k]: Math.min(hi, Math.max(lo, n)) }); };
-    const cLike = { say, now, live: liveState };
+    const cLike = { say, live: liveState };
 
     const screensMenu = (
         <div className="col" style={colTelas.style}>
@@ -568,7 +569,7 @@ export default function ScreenEditor({ say, live: liveState, now, screenPath, me
                         <div className="le-stage">
                             <div ref={screenRef} className="le-screen" onPointerDown={() => setSel(null)}>
                                 <div className={`le-fill ${renderer ? "kp-out" : ""}`} style={renderer ? prefVars(pref) || undefined : undefined}>
-                                    <LayoutRenderer layout={draft} live={live} screenState={screenState} alert={canvasAlert} nowMs={now} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} scale={!renderer ? pref.scale : undefined} embed ghost />
+                                    <LayoutRenderer layout={draft} live={live} screenState={screenState} alert={canvasAlert} logoUrl={church.logo} upcoming={SAMPLE_ITEMS} hasService church={church} scale={!renderer ? pref.scale : undefined} embed ghost />
                                 </div>
                                 <div className="le-over" onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}>
                                     {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}

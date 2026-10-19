@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ScreenRenderer from "./ScreenRenderer";
+import { useLiveNow } from "@/hooks/useLiveState";
 import AlertBar from "./AlertBar";
 import ChordedLines, { chordedOf, Transpose } from "@/components/network/ChordedLines";
 import { transposeChords } from "@/utils/chordTranspose";
@@ -27,7 +28,11 @@ const FONT = { ...FONT_MAP, mono: 'ui-monospace, "Cascadia Mono", Consolas, mono
 // `alert`: the Aviso rápido this screen draws (Rodada E3), over the whole
 // drawing in the screen's look, never inside the Projeção element; left
 // undefined (the Pastor), the element draws what its state has, as before.
-export default function LayoutRenderer({ layout, live, screenState, alert, nowMs, logoUrl = "", upcoming = [], hasService = false, church = null, scale = 1, embed = false, ghost = false, audio = false, children }) {
+// Without `nowMs` (the console's previews and the editor's canvas) it keeps
+// its own ticking clock, so its clocks and timers count by themselves.
+export default function LayoutRenderer({ layout, live, screenState, alert, nowMs: givenNow, logoUrl = "", upcoming = [], hasService = false, church = null, scale = 1, embed = false, ghost = false, audio = false, children }) {
+    const ownNow = useLiveNow(1000, givenNow === undefined);
+    const nowMs = givenNow ?? ownNow;
     const ctx = useMemo(() => layoutContext({ live, now: nowMs, upcoming, hasService, church }), [live, nowMs, upcoming, hasService, church]);
     const base = screenState === undefined ? live : screenState;
     const screen = useMemo(() => {

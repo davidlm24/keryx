@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keryx } from "@/api/keryxClient";
 import { projection } from "@/lib/projection";
-import { useLiveState, useLiveNow } from "@/hooks/useLiveState";
+import { useLiveState } from "@/hooks/useLiveState";
 import { stageOp } from "@/lib/console/stage";
 import { undoEndOps } from "@/lib/console/restore";
 import { emptyToasts, pushToast, nextToast } from "@/lib/console/toastQueue";
@@ -150,8 +150,11 @@ export function useLiveOps(live, say, bgPrefs) {
 }
 
 export function useConsole() {
+    // No ticking clock here: a `now` in `c` re-rendered the whole console
+    // every second of the service. What shows the time keeps its own
+    // (useLiveNow: the top bar's clocks, the timers, the player, the
+    // monitors' ScreenRenderer); a one-off read is keryx.live.now().
     const live = useLiveState();
-    const now = useLiveNow(1000);
     const [prev, setPrevState] = useState(null);
     // Media files the sync between the church's computers has not brought
     // yet: an item that needs one is not sent (src/lib/pendingMedia.js).
@@ -312,5 +315,5 @@ export function useConsole() {
             .catch(() => {});
     }, [liveOp, say]);
 
-    return { live, now, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say, holdToast };
+    return { live, cur: live, bgPrefs, themeId, setThemeId, locked, setLocked, prev, setPrev, send, moveSlide, goTo, toggleScreen, clearText, end, undoEnd, callOp, liveOp, stamp, toast, toastAction, say, holdToast };
 }

@@ -248,7 +248,7 @@ export default function NoticeEditor({ c, noticeId, logoUrl, media, onClose, onS
             <div className="col center">
                 <Panel title={<>Prévia do aviso <span className="kx-count">· ao vivo · 16:9</span></>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     <div className="nv-stage">
-                        <div className="nv-screen"><ScreenRenderer state={preview} now={c.now} logoUrl={logoUrl} preview motion audio={false} /></div>
+                        <div className="nv-screen"><ScreenRenderer state={preview} logoUrl={logoUrl} preview motion audio={false} /></div>
                     </div>
                     <div className="listhead nv-note">
                         <span className="kx-meta">Salvar não muda as telas: o aviso entra na Biblioteca e vai ao ar pelo console.</span>
