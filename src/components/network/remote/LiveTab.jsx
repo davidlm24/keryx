@@ -3,7 +3,7 @@ import Icon from "@/components/console/Icon";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { HOLD_MS } from "@/lib/console/remoteClient";
 import { ADJUST_STEPS, BUILTIN_MINUTES, minutesLabel } from "@/lib/console/timerPresets";
-import { canRun, followInfo, isV1, playerInfo, slideInfo, slideRows, timerInfo, volumeStep } from "@/lib/network/remoteView";
+import { allowed, canRun, followInfo, isV1, playerInfo, slideInfo, slideRows, timerInfo, volumeStep } from "@/lib/network/remoteView";
 import { Cmd, HoldButton, Sheet } from "./parts";
 
 // Ao vivo (the default tab): the slide on air and the next, the big arrows,
@@ -57,9 +57,9 @@ export default function LiveTab({ live, state, caps, c }) {
             </div>
             <div className="rm-col">
                 <div className="rm-trio is-sm">
-                    {can("goto") && <button type="button" className="rm-b is-sm" disabled={!s.has || s.count < 2} onClick={() => setSheet("slides")}><Icon name="list" size={18} />Slides</button>}
-                    {can("alert") && <button type="button" className="rm-b is-sm" onClick={() => setSheet("alert")}><Icon name="bell" size={18} />Aviso</button>}
-                    {can("tool") && <button type="button" className="rm-b is-sm" onClick={() => setSheet("timer")}><Icon name="clock" size={18} />Timer</button>}
+                    {can("goto") && <button type="button" className="rm-b is-sm" disabled={!s.has || s.count < 2 || !allowed("goto", {}, c.flags)} onClick={() => setSheet("slides")}><Icon name="list" size={18} />Slides</button>}
+                    {can("alert") && <button type="button" className="rm-b is-sm" disabled={!allowed("alert", {}, c.flags) && !live?.alert} onClick={() => setSheet("alert")}><Icon name="bell" size={18} />Aviso</button>}
+                    {can("tool") && <button type="button" className="rm-b is-sm" disabled={!allowed("tool", {}, c.flags)} onClick={() => setSheet("timer")}><Icon name="clock" size={18} />Timer</button>}
                 </div>
                 <PlayerCard live={live} state={state} caps={caps} c={c} />
                 <FollowCard content={content} caps={caps} c={c} />
