@@ -1,0 +1,213 @@
+/* ---- Controle remoto (/Remote): a phone in one hand (Rodada G6) ----
+   The page is src/pages/RemoteView.jsx (+ src/components/network/remote/).
+   The owner's picks (17/10): tabs at the bottom, in reach of the thumb; a
+   left rail and two columns in landscape and on a tablet; targets of at
+   least 48 px (Anterior / Próximo 96); the risky things held down. Sized in
+   px for a phone, the four safe areas kept, the scroll never pulling the
+   page. Tokens: docs/design-system/tokens.css. */
+
+.net.rm { container: rm / size; display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: contain; -webkit-tap-highlight-color: transparent; font-size: 14px; color: var(--fg-2); }
+.rm :focus-visible { outline: 2px solid var(--rh); outline-offset: 2px; }
+
+/* The header: what the screens show, its colour, one chip per layer. */
+.rm-head { flex: none; display: flex; flex-direction: column; gap: 6px; padding: calc(8px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); background: var(--bg-1); border-bottom: 1px solid var(--line); }
+.rm-air { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 28px; }
+.rm-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--air-fg); box-shadow: 0 0 0 4px color-mix(in srgb, var(--air) 22%, transparent); }
+.rm-head.is-amber .rm-dot { background: var(--warn-fg); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 22%, transparent); }
+.rm-head.is-grey .rm-dot { background: var(--fg-3); box-shadow: none; }
+.rm-air-t { flex: 1 1 auto; min-width: 0; color: var(--fg-1); font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-head.is-grey .rm-air-t { color: var(--fg-3); }
+.rm-air-pos { flex: none; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--fg-2); }
+.rm-air-since { flex: none; max-width: 40%; font-size: 11.5px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-chiprow { display: flex; flex-wrap: wrap; gap: 6px; }
+.rm-lchip { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 2px 0 12px; border-radius: 999px; background: var(--bg-3); color: var(--fg-1); font-size: 13px; }
+.rm-lchip.is-amber { box-shadow: inset 0 0 0 1px var(--warn); color: var(--warn-fg); }
+.rm-lchip.is-lock { gap: 6px; padding: 0 12px; color: var(--rh-fg); box-shadow: inset 0 0 0 1px var(--rh); }
+/* Tirar: a 32 px circle, a 48 px target. */
+.rm-b.rm-lchip-x { position: relative; flex: none; min-height: 0; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--fg-1) 9%, transparent); }
+.rm-b.rm-lchip-x::before { content: ""; position: absolute; inset: -8px; }
+
+/* One banner under the header: no link, an outcome unknown, locked. */
+.rm-ban { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left)); font-size: 13px; line-height: 1.35; border-bottom: 1px solid var(--line); }
+.rm-ban.is-amber { background: var(--warn-tint); color: var(--warn-fg); border-color: color-mix(in srgb, var(--warn) 28%, transparent); }
+.rm-ban.is-grey { background: var(--bg-2); color: var(--fg-2); }
+.rm-ban-b { font-family: inherit; flex: none; margin-left: auto; min-height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--bg-3); color: var(--fg-1); font-size: 13px; font-weight: 600; }
+
+/* The body: the tab on screen, then the tab bar (a rail in landscape). */
+.rm-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.rm-main { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; position: relative; display: flex; flex-direction: column; gap: 10px; padding: 12px max(12px, env(safe-area-inset-right)) 16px max(12px, env(safe-area-inset-left)); }
+.rm-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rm-tabs { flex: none; display: flex; padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--bg-1); border-top: 1px solid var(--line); }
+.rm-tab { position: relative; font-family: inherit; flex: 1 1 0; min-width: 0; min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; background: none; color: var(--fg-3); font-size: 11px; font-weight: 500; }
+.rm-tab[aria-selected="true"] { color: var(--fg-1); }
+.rm-tab[aria-selected="true"]::after { content: ""; position: absolute; top: 0; left: 24%; right: 24%; height: 2px; border-radius: 0 0 2px 2px; background: var(--brand); }
+
+/* Buttons. */
+.rm-b { position: relative; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 52px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--bg-2); color: var(--fg-1); font-size: 14px; font-weight: 600; line-height: 1.15; text-align: center; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.rm-b:active:not(:disabled) { background: var(--bg-3); }
+.rm-b:disabled { opacity: .38; }
+.rm-b.is-big { min-height: 96px; flex-direction: column; gap: 4px; font-size: 17px; }
+.rm-b.is-sm { min-height: 48px; border-radius: 12px; font-size: 13px; font-weight: 500; }
+.rm-b.is-go { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.rm-b.is-go:active:not(:disabled) { background: var(--brand-pressed); }
+.rm-b.is-on { background: color-mix(in srgb, var(--warn) 24%, var(--bg-2)); border-color: var(--warn); color: var(--warn-fg); }
+.rm-b.is-sound { background: color-mix(in srgb, var(--air) 26%, var(--bg-2)); border-color: var(--air); color: var(--air-fg); }
+.rm-b.is-wide { width: 100%; }
+.rm-b.is-two { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; text-align: left; padding: 6px 12px; }
+.rm-b.is-two small { font-size: 11px; font-weight: 500; opacity: .8; }
+.rm-b.is-two b { max-width: 100%; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-pair > .rm-b.is-narrow { flex: 0 0 34%; }
+/* Only the control pressed is busy (its answer on the way). */
+.rm-b.is-busy, .rm-tg.is-busy { opacity: .7; animation: rm-busy 1s ease-in-out infinite; }
+@keyframes rm-busy { 50% { opacity: .45; } }
+.rm-pair { display: flex; gap: 8px; }
+.rm-pair > * { flex: 1 1 0; }
+.rm-trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rm-trio > .rm-b:not(.is-sm) { flex-direction: column; gap: 4px; min-height: 64px; font-size: 13px; }
+.rm-row { display: flex; gap: 6px; }
+.rm-row > .rm-b { flex: 1 1 0; padding: 0 4px; }
+
+/* Held: a fill runs across while it is held. */
+.rm-hold { overflow: hidden; background: var(--bg-1); }
+.rm-hold-fill { position: absolute; inset: 0; transform: scaleX(0); transform-origin: left; background: color-mix(in srgb, var(--brand) 30%, transparent); }
+.rm-hold.is-holding .rm-hold-fill { transform: scaleX(1); transition: transform var(--rm-hold, 1.5s) linear; }
+.rm-hold > span { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+.rm-hold.is-end { color: var(--air-fg); border-color: color-mix(in srgb, var(--air) 45%, transparent); }
+.rm-hold.is-end .rm-hold-fill { background: color-mix(in srgb, var(--air) 34%, transparent); }
+.rm-mini { margin: -4px 0 0; font-size: 11px; color: var(--fg-3); text-align: center; }
+
+/* Cards: the slide now and next, the player, the timer. */
+.rm-card { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 14px; background: var(--bg-1); min-width: 0; }
+.rm-k { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--fg-3); }
+.rm-v { color: var(--fg-1); font-size: 15px; font-weight: 500; line-height: 1.35; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.rm-card.is-next .rm-v { color: var(--fg-2); font-weight: 400; font-size: 14px; -webkit-line-clamp: 3; }
+.rm-v.is-prose { white-space: pre-wrap; font-weight: 400; color: var(--fg-2); -webkit-line-clamp: 8; }
+.rm-player { gap: 8px; }
+.rm-what { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--fg-1); font-weight: 500; }
+.rm-what .kx-i { flex: none; color: var(--fg-2); }
+.rm-what-t { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-what em { flex: none; font-style: normal; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; color: var(--fg-3); }
+.rm-bar { height: 6px; border-radius: 3px; background: var(--bg-3); overflow: hidden; }
+.rm-bar i { display: block; height: 100%; background: var(--air); }
+.rm-vol { align-items: center; }
+.rm-vol > .rm-b { flex: 0 0 56px; }
+.rm-vol-n { flex: 1 1 auto; text-align: center; font-family: var(--font-mono, ui-monospace, monospace); font-weight: 600; font-size: 14px; color: var(--fg-1); }
+.rm-inline { flex-direction: row; align-items: center; gap: 10px; }
+.rm-inline-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rm-inline-t b { color: var(--fg-1); font-weight: 500; font-size: 14px; }
+.rm-inline > .rm-b { flex: 0 0 auto; min-width: 96px; }
+.rm-timer { flex-direction: row; align-items: center; gap: 6px; }
+.rm-timer-n { flex: 1 1 auto; font-family: var(--font-mono, ui-monospace, monospace); font-weight: 700; font-size: 28px; color: var(--fg-1); font-variant-numeric: tabular-nums; }
+.rm-timer > .rm-b { flex: 0 0 56px; }
+
+/* Lists: the Setlist, the slides sheet. */
+.rm-sec { margin: 0; padding: 10px 4px 2px; font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--fg-3); list-style: none; }
+.rm-sec.is-top { padding-top: 0; }
+.rm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.rm-item, .rm-b.rm-item { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 10px; min-height: 52px; padding: 6px 12px; border: 1px solid transparent; border-radius: 12px; background: var(--bg-1); color: var(--fg-2); font-weight: 400; text-align: left; content-visibility: auto; contain-intrinsic-size: auto 52px; }
+.rm-item > .kx-i { flex: none; color: var(--fg-3); }
+.rm-item-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rm-item-t b { color: var(--fg-1); font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-item-t small { font-size: 11px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-item.is-sel { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 14%, var(--bg-1)); }
+.rm-item:disabled { opacity: .45; }
+.rm-tag { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--bg-3); color: var(--fg-2); font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.rm-tag.is-air { background: color-mix(in srgb, var(--air) 28%, var(--bg-3)); color: var(--air-fg); }
+.rm-tag.is-next { background: color-mix(in srgb, var(--prev) 26%, var(--bg-3)); color: var(--prev-fg); }
+.rm-tag.is-last { color: var(--fg-3); }
+.rm-tag.is-warn { background: var(--warn-tint); color: var(--warn-fg); }
+/* The confirm that sends what was picked, stuck to the bottom of the tab. */
+.rm-sticky { position: sticky; bottom: -16px; z-index: 2; margin: auto calc(-1 * max(12px, env(safe-area-inset-right))) -16px calc(-1 * max(12px, env(safe-area-inset-left))); padding: 14px max(12px, env(safe-area-inset-right)) 12px max(12px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 6px; background: linear-gradient(180deg, transparent, var(--bg-0) 26%); }
+.rm-sticky .rm-b.is-go { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 52px; padding: 0 16px; }
+.rm-hint { margin: 0; font-size: 12px; color: var(--fg-3); text-align: center; }
+.rm-empty { margin: 24px 0; font-size: 14px; color: var(--fg-3); text-align: center; }
+
+/* Chips, fields. */
+.rm-chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
+.rm-chips::-webkit-scrollbar { display: none; }
+.rm-chips.is-wrap { flex-wrap: wrap; overflow: visible; }
+.rm-chip, .rm-b.rm-chip { font-family: inherit; flex: none; min-height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--bg-1); color: var(--fg-2); font-size: 13px; font-weight: 500; }
+.rm-chip[aria-pressed="true"] { background: var(--bg-3); color: var(--fg-1); border-color: var(--fg-3); }
+.rm-field { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg-2); color: var(--fg-1); }
+.rm-field:focus-within { border-color: var(--rh); }
+.rm-field .kx-i { flex: none; color: var(--fg-3); }
+/* 16 px: iOS zooms into a smaller field. */
+.rm-field input { flex: 1 1 auto; min-width: 0; height: 48px; border: 0; background: none; color: inherit; font: inherit; font-size: 16px; outline: 0; }
+.rm-refrow { display: flex; gap: 8px; }
+.rm-refrow .rm-field { flex: 1 1 auto; }
+.rm-refrow .rm-b { flex: none; min-height: 50px; }
+
+/* The Aviso rápido as the projector draws it (the amber band, ALERT_DEFAULTS). */
+.rm-alert-prev { position: relative; aspect-ratio: 16 / 9; border-radius: 8px; background: #000; overflow: hidden; container-type: inline-size; }
+.rm-alert-band { position: absolute; left: 0; right: 0; top: 0; padding: 1cqw 3cqw; min-height: 9cqw; display: flex; align-items: center; justify-content: center; text-align: center; background: #f5a524; color: #1a1300; font-weight: 600; font-size: 4.2cqw; line-height: 1.25; overflow-wrap: anywhere; }
+
+/* Sheets from the bottom (Slides, Aviso, Timer), and Travar toques. */
+.rm-scrim { position: fixed; inset: 0; z-index: 20; background: #000a; }
+.rm-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; display: flex; flex-direction: column; gap: 10px; max-height: 82%; overflow: auto; overscroll-behavior: contain; padding: 10px max(14px, env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); border-radius: 20px 20px 0 0; background: var(--bg-2); box-shadow: 0 -14px 40px #000c; outline: 0; }
+.rm-grab { flex: none; width: 38px; height: 4px; margin: 0 auto; border-radius: 2px; background: var(--line-strong); }
+.rm-sheet-h { margin: 0; font-size: 15px; font-weight: 600; color: var(--fg-1); }
+.rm-sheet .rm-item { background: var(--bg-1); }
+.rm-tlock { position: fixed; inset: 0; z-index: 30; background: #000c; touch-action: none; }
+
+/* What the last command said, over the tab bar. */
+.rm-toast { position: fixed; z-index: 15; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(68px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; min-height: 52px; border-radius: 12px; background: var(--bg-3); box-shadow: 0 0 0 1px var(--line-strong), 0 10px 28px #000a; color: var(--fg-1); font-size: 13.5px; line-height: 1.3; }
+.rm-toast.is-bad { color: var(--warn-fg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 50%, transparent), 0 10px 28px #000a; }
+.rm-toast > span { flex: 1 1 auto; min-width: 0; }
+.rm-toast-act { font-family: inherit; flex: none; min-height: 40px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--brand); color: var(--on-brand); font-weight: 600; }
+.rm-toast-x { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--fg-2); }
+
+/* Mais: rows with a switch. */
+.rm-row2 { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 4px 6px 12px; border-radius: 12px; background: var(--bg-1); }
+.rm-row2-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+.rm-row2-t b { color: var(--fg-1); font-weight: 500; font-size: 14px; }
+.rm-row2-t small { font-size: 11.5px; line-height: 1.4; color: var(--fg-3); }
+.rm-row2-t a { color: var(--brand); }
+.rm-row2 > .rm-b { flex: none; margin-right: 6px; }
+.rm-tg { position: relative; flex: none; width: 60px; height: 48px; border: 0; background: none; }
+.rm-tg::before { content: ""; position: absolute; left: 8px; top: 11px; width: 44px; height: 26px; border-radius: 999px; background: var(--bg-3); }
+.rm-tg::after { content: ""; position: absolute; left: 12px; top: 15px; width: 18px; height: 18px; border-radius: 50%; background: var(--fg-2); transition: left .12s; }
+.rm-tg[aria-checked="true"]::before { background: var(--brand); }
+.rm-tg[aria-checked="true"]::after { left: 30px; background: var(--on-brand); }
+.rm-tg:disabled { opacity: .38; }
+
+/* The remote turned off, or no console. */
+.rm-gate { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 34ch; padding: 24px max(24px, env(safe-area-inset-right)) 24px max(24px, env(safe-area-inset-left)); text-align: center; color: var(--fg-2); }
+.rm-gate b { color: var(--fg-1); font-size: 17px; }
+.rm-gate .kx-i { color: var(--fg-3); }
+.rm-gate .rm-b { margin-top: 6px; padding: 0 18px; }
+
+/* Manter a tela ligada: the video that keeps it on (never seen). */
+.rm-awake { position: fixed; right: 0; bottom: 0; width: 2px; height: 2px; opacity: .01; pointer-events: none; }
+
+/* Landscape and a tablet: the tabs as a rail on the left, Ao vivo in two
+   columns (the mockup's frame at 812 × 375). */
+@container rm (min-width: 600px) {
+    .rm-body { flex-direction: row; }
+    .rm-tabs { order: -1; flex-direction: column; width: calc(76px + env(safe-area-inset-left)); padding: 0 0 env(safe-area-inset-bottom) env(safe-area-inset-left); border-top: 0; border-right: 1px solid var(--line); }
+    .rm-tab { flex: 1 1 0; max-height: 84px; min-height: 52px; }
+    .rm-tab[aria-selected="true"]::after { top: 22%; bottom: 22%; left: 0; right: auto; width: 2px; height: auto; border-radius: 0 2px 2px 0; }
+    .rm-main { padding-left: 12px; }
+    .rm-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-content: start; }
+    .rm-sticky { margin-left: -12px; padding-left: 12px; }
+    .rm-sheet { left: 50%; right: auto; width: min(560px, 100%); transform: translateX(-50%); }
+    .rm-toast { left: calc(88px + env(safe-area-inset-left)); bottom: calc(12px + env(safe-area-inset-bottom)); max-width: 560px; }
+}
+/* A phone on its side: the header and the big arrows give room. */
+@container rm (min-width: 600px) and (max-height: 480px) {
+    .rm-head { flex-direction: row; align-items: center; gap: 10px; padding-top: calc(6px + env(safe-area-inset-top)); padding-bottom: 6px; }
+    .rm-air { flex: 1 1 auto; }
+    .rm-chiprow { flex: 0 1 auto; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .rm-lchip { flex: none; min-height: 34px; }
+    .rm-b.is-big { min-height: 80px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rm-hold.is-holding .rm-hold-fill { transition: none; transform: scaleX(1); opacity: .6; }
+    .rm-b.is-busy, .rm-tg.is-busy { animation: none; }
+    .rm-tg::after { transition: none; }
+}
+@media (forced-colors: active) {
+    .rm-tab[aria-selected="true"]::after, .rm-tg[aria-checked="true"]::before { background: Highlight; }
+    .rm-item.is-sel, .rm-b.is-on, .rm-b[aria-pressed="true"] { outline: 2px solid Highlight; }
+    .rm-dot { background: CanvasText; }
+}

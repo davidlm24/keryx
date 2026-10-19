@@ -8,6 +8,7 @@ import './App.css'
 // network); projected content uses only its own screen-* styles.
 import '@ds/tokens.css'
 import '@/components/network/net.css'
+import '@/components/network/remote.css'
 import '@ds/components/bundle.css'
 import '@/components/console/console.css'
 import '@/components/screen/screen.css'
@@ -70,7 +71,9 @@ const screens = (
 // Transmissão (OBS composes that page over the camera: nothing else on it).
 function NetworkStatus() {
   const { pathname } = useLocation();
-  return pathname === '/StreamView' ? null : <NetStatus />;
+  if (pathname === '/StreamView') return null;
+  // The phone has its own banner for a dead link (RemoteView): no chip over its header.
+  return <NetStatus chip={pathname !== '/Remote'} />;
 }
 
 // The window's (or the tab's) title carries the church: "Igreja X · KERYX"

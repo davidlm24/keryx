@@ -1,187 +1,123 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Icon from "@/components/console/Icon";
-import { useLiveState } from "@/hooks/useLiveState";
-import { captionParts } from "@/lib/console/caption";
-import { remoteCall, HOLD_MS } from "@/lib/console/remoteClient";
+import { useLiveNow, useLiveState } from "@/hooks/useLiveState";
 import { useChurch } from "@/hooks/useChurch";
-
-const upperFirst = (t) => (t ? t[0].toUpperCase() + t.slice(1) : t);
+import { UNLOCK_HOLD_MS } from "@/lib/console/remoteClient";
+import { airHeader, bannerOf, canRun, capsOf } from "@/lib/network/remoteView";
+import { useCommands, useKeepAwake, usePhoneState, useStale } from "@/components/network/remote/usePhone";
+import { Cmd, HoldButton, Toast } from "@/components/network/remote/parts";
+import LiveTab from "@/components/network/remote/LiveTab";
+import SetlistTab from "@/components/network/remote/SetlistTab";
+import MoreTab from "@/components/network/remote/MoreTab";
+import BibleTab from "@/components/network/remote/BibleTab";
 
 // Controle remoto (/Remote): a phone on the church Wi-Fi conducts the
 // service. Only on the network, only while the operator turned it on, only
 // with its code (electron/lan.cjs). Every button asks the console, which
-// runs it as its own key would (Console.jsx) and answers; the answer shows
-// at the bottom. What is on air comes from the live state, like the screens.
-// Encerrar tudo must be held down (HOLD_MS): a touch by accident never ends.
+// runs it as its own key would and answers (shared/remoteProtocol.json);
+// what is on air comes from the live state, like the screens. Tabs at the
+// bottom, in reach of the thumb (owner's pick); a left rail in landscape and
+// on a tablet (remote.css). Sections the console does not run (its `caps`)
+// are not shown.
+const TABS = [
+    ["live", "Ao vivo", "monitor", "live"],
+    ["setlist", "Setlist", "list", "setlist"],
+    ["bible", "Bíblia", "book", "bible"],
+    ["more", "Mais", "more", null],
+];
+
 export default function RemoteView() {
     const live = useLiveState();
     const church = useChurch();
-    const [busy, setBusy] = useState("");
-    const [note, setNote] = useState({ text: "", bad: false });
-    const [state, setState] = useState(null);
-    // Controles (default), Setlist, Bíblia.
-    const [tab, setTab] = useState("controles");
-    const noteTimer = useRef(null);
-
-    const say = useCallback((text, bad = false) => {
-        setNote({ text, bad });
-        clearTimeout(noteTimer.current);
-        noteTimer.current = setTimeout(() => setNote({ text: "", bad: false }), 4000);
-    }, []);
-    const send = useCallback(async (action, args) => {
-        setBusy(action);
-        const r = await remoteCall(action, args);
-        setBusy("");
-        if (r.signedOut) { window.location.href = "/lan/remote-code"; return r; }
-        // A read (the Setlist, a passage to check) says nothing unless it failed.
-        if ((action !== "state" && action !== "bibleFind") || !r.ok) say(r.ok ? upperFirst(r.message.replace(/^Celular: /, "")) || "Feito." : r.message, !r.ok);
-        if (navigator.vibrate) try { navigator.vibrate(r.ok ? 15 : [30, 40, 30]); } catch { /* no vibration */ }
-        return r;
-    }, [say]);
-
-    // The service as the console sees it (the next item, the Setlist):
-    // again whenever something new goes on air, and every few seconds.
-    const airKey = `${live?.content?.startedAt || ""}|${live?.session?.itemId || ""}|${live?.screen || ""}|${live?.locked ? 1 : 0}`;
-    useEffect(() => {
-        let alive = true;
-        const read = () => remoteCall("state").then((r) => { if (alive && r.ok) setState(r.result); if (r.signedOut) window.location.href = "/lan/remote-code"; });
-        read();
-        const id = setInterval(read, 10000);
-        return () => { alive = false; clearInterval(id); };
-    }, [airKey]);
-
-    const { title, pos } = captionParts(live);
-    const onAir = title && title !== "nada";
-    const screen = live?.screen || "show";
-    const next = state?.items?.find((i) => i.id === state?.nextItemId) || null;
+    const stale = useStale();
+    const { state, gate, setGate, refresh } = usePhoneState(live);
+    const cmd = useCommands({ setGate });
+    const awake = useKeepAwake();
+    const [tab, setTab] = useState("live");
+    const [touchLocked, setTouchLocked] = useState(false);
+    const caps = useMemo(() => capsOf(state), [state]);
     const locked = Boolean(live?.locked);
+    const c = { busy: cmd.busy, run: cmd.run, flags: { stale, locked } };
+    const tabs = TABS.filter(([, , , cap]) => !cap || !state || caps.has(cap));
+    const shown = tabs.some(([k]) => k === tab) ? tab : "live";
+    const banner = bannerOf({ stale, unknown: cmd.unknown, locked, canUnlock: caps.has("lock") });
+    const again = () => { cmd.clearUnknown(); setGate(null); refresh(); };
+
+    if (gate) {
+        return (
+            <div className="net rm">
+                <div className="rm-gate" role="alert">
+                    <Icon name={gate === "off" ? "wifi-off" : "monitor"} size={32} />
+                    <b>{gate === "off" ? "O controle remoto está desligado no computador" : "O console não está aberto no computador"}</b>
+                    <span>{gate === "off" ? "Ligue em Configurações › Telas na rede, no KERYX." : "Abra o KERYX no computador e tente de novo."}</span>
+                    <button type="button" className="rm-b is-sm" onClick={again}><Icon name="refresh" size={18} />Tentar de novo</button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="net rm">
-            <header className="rm-h">
-                <span className="net-section">{church.name || "KERYX"} · Controle remoto</span>
-                <div className={`rm-air ${onAir ? "is-air" : ""}`}>
-                    <span className="rm-air-k">{screen === "black" ? "Tela preta" : screen === "logo" ? "Logo" : onAir ? "No ar" : "Nada no ar"}</span>
-                    <b>{onAir ? title : "—"}</b>
-                    {pos && <span className="rm-pos">{pos}</span>}
+            <Header live={live} stale={stale} c={c} church={church.name} />
+            {banner && (
+                <div className={`rm-ban is-${banner.tone}`} role="status">
+                    <span>{banner.text}</span>
+                    {banner.refresh && <button type="button" className="rm-ban-b" onClick={() => (stale ? window.location.reload() : again())}>Atualizar</button>}
                 </div>
-                {locked && <div className="rm-locked"><Icon name="lock" />Telas travadas no computador: nada novo vai ao ar</div>}
-            </header>
-
-            <nav className="rm-tabs" role="tablist" aria-label="Seções do controle remoto">
-                {[["controles", "Controles"], ["setlist", "Setlist"], ["biblia", "Bíblia"]].map(([k, l]) => (
-                    <button type="button" key={k} role="tab" aria-selected={tab === k} className={`rm-tab ${tab === k ? "is-on" : ""}`} onClick={() => setTab(k)}>{l}</button>
-                ))}
-            </nav>
-
-            {tab === "setlist" && <SetlistTab state={state} busy={busy} locked={locked} send={send} />}
-            {tab === "biblia" && <BibleTab busy={busy} locked={locked} send={send} />}
-            {tab === "controles" && <main className="rm-b">
-                <div className="rm-nav">
-                    <button type="button" className="rm-btn rm-big" disabled={Boolean(busy)} onClick={() => send("prev")} aria-label="Slide anterior"><Icon name="chevron-left" size={28} /><span>Anterior</span></button>
-                    <button type="button" className="rm-btn rm-big" disabled={Boolean(busy)} onClick={() => send("next")} aria-label="Próximo slide"><span>Próximo</span><Icon name="chevron-right" size={28} /></button>
+            )}
+            <div className="rm-body">
+                {shown === "live" && <LiveTab live={live} state={state} caps={caps} c={c} />}
+                {shown === "setlist" && <SetlistTab live={live} state={state} c={c} />}
+                {shown === "bible" && <BibleTab c={c} />}
+                {shown === "more" && <MoreTab live={live} state={state} caps={caps} c={c} awake={awake} touchLock={{ on: touchLocked, lock: () => setTouchLocked(true) }} onRefresh={again} />}
+                <nav className="rm-tabs" role="tablist" aria-label="Seções do controle remoto">
+                    {tabs.map(([k, label, icon]) => (
+                        <button type="button" key={k} role="tab" aria-selected={shown === k} className="rm-tab" onClick={() => setTab(k)}>
+                            <Icon name={icon} size={22} />{label}
+                        </button>
+                    ))}
+                </nav>
+            </div>
+            <Toast toast={cmd.toast} onClose={cmd.closeToast} canUndo={canRun(caps, "undo")} onUndo={() => cmd.run("undo", "undo")} />
+            {touchLocked && (
+                <div className="rm-tlock">
+                    <div className="rm-sheet" role="dialog" aria-modal="true" aria-label="Toques travados">
+                        <span className="rm-grab" aria-hidden="true" />
+                        <h2 className="rm-sheet-h">Toques travados</h2>
+                        <p className="rm-hint">Os toques na tela estão desligados. Segure o botão para liberar.</p>
+                        <HoldButton ms={UNLOCK_HOLD_MS} label="Segure para liberar" icon="unlock" onDone={() => setTouchLocked(false)} />
+                    </div>
                 </div>
-                <button type="button" className="rm-btn rm-send" disabled={Boolean(busy) || !next || locked} onClick={() => send("sendNext")}>
-                    <Icon name="arrow-right" size={20} />
-                    <span className="rm-send-t"><small>Enviar o próximo da setlist</small><b>{next ? next.title : "Nada depois na setlist"}</b></span>
-                </button>
-                <div className="rm-grid">
-                    <button type="button" className={`rm-btn ${screen === "black" ? "is-on" : ""}`} aria-pressed={screen === "black"} disabled={Boolean(busy)} onClick={() => send("black")}><Icon name="black" size={20} />Tela preta</button>
-                    <button type="button" className={`rm-btn ${screen === "logo" ? "is-on" : ""}`} aria-pressed={screen === "logo"} disabled={Boolean(busy)} onClick={() => send("logo")}><Icon name="logo" size={20} />Logo</button>
-                    <button type="button" className="rm-btn" disabled={Boolean(busy)} onClick={() => send("clear")}><Icon name="eraser" size={20} />Limpar</button>
-                    <button type="button" className="rm-btn" disabled={Boolean(busy)} onClick={() => send("play")}><Icon name="play" size={20} />Tocar / pausar</button>
-                </div>
-                <HoldButton disabled={Boolean(busy)} onDone={() => send("end")} />
-            </main>}
-
-            <footer className={`rm-note ${note.bad ? "is-bad" : ""}`} role="status" aria-live="polite">{note.text}</footer>
+            )}
         </div>
     );
 }
 
-// The Setlist: tap an item to pick it (green), then Enviar ao ar — never
-// a send by a stray tap. The item on air is red; sections are headers.
-function SetlistTab({ state, busy, locked, send }) {
-    const [pick, setPick] = useState(null);
-    const items = state?.items || [];
-    const picked = items.find((i) => i.id === pick) || null;
-    if (!state) return <main className="rm-b"><p className="rm-empty">Lendo a setlist…</p></main>;
-    if (!items.length) return <main className="rm-b"><p className="rm-empty">{state.service ? `${state.service}: nenhum item na setlist.` : "Nenhum culto escolhido no console."}</p></main>;
+// What is on air, sticky on top: red on air, amber for Tela preta, Logo or
+// locked screens, grey with nothing (or no link); one chip per layer with
+// its Tirar.
+function Header({ live, stale, c, church }) {
+    const now = useLiveNow(1000, Boolean(live) && !stale);
+    const h = airHeader(live, { stale, now });
     return (
-        <main className="rm-b rm-list">
-            {state.service && <span className="net-section">{state.service}</span>}
-            <ul className="rm-items">
-                {items.map((it) => (it.section
-                    ? <li key={it.id} className="rm-sec">{it.title}</li>
-                    : (
-                        <li key={it.id}>
-                            <button type="button" className={`rm-item ${it.id === state.airItemId ? "is-air" : ""} ${it.id === pick ? "is-pick" : ""}`} aria-pressed={it.id === pick} onClick={() => setPick(it.id === pick ? null : it.id)}>
-                                <span className="rm-item-t">{it.title || "Sem título"}</span>
-                                <span className="rm-item-k">{it.id === state.airItemId ? "no ar" : it.id === state.nextItemId ? "próximo" : TYPE[it.type] || ""}</span>
-                            </button>
-                        </li>
-                    )))}
-            </ul>
-            <div className="rm-dock">
-                <button type="button" className="rm-btn rm-send" disabled={Boolean(busy) || !picked || locked} onClick={async () => { const r = await send("sendItem", { itemId: picked.id }); if (r.ok) setPick(null); }}>
-                    <Icon name="arrow-right" size={20} />
-                    <span className="rm-send-t"><small>Enviar ao ar</small><b>{picked ? picked.title : "Toque num item da setlist"}</b></span>
-                </button>
+        <header className={`rm-head is-${h.tone}`}>
+            <div className="rm-air">
+                <span className="rm-dot" aria-hidden="true" />
+                <span className="rm-air-t" aria-live="polite">{h.title}</span>
+                {h.pos && <span className="rm-air-pos">{h.pos}</span>}
+                {h.since ? <span className="rm-air-since">há {h.since}</span> : <span className="rm-air-since">{church || "KERYX"}</span>}
             </div>
-        </main>
-    );
-}
-const TYPE = { SONG: "música", BIBLE: "Bíblia", ANNOUNCEMENT: "aviso", VIDEO: "vídeo", IMAGE: "imagem", AUDIO: "áudio", TEXT: "texto", TIMER: "timer", MATERIAL: "escola", PDF: "apresentação", POWERPOINT: "apresentação" };
-
-// A Bíblia reference: type it (jo 3 16), Conferir shows the text the
-// console found (the version chosen on the computer), then Enviar ao ar.
-function BibleTab({ busy, locked, send }) {
-    const [ref, setRef] = useState("");
-    const [found, setFound] = useState(null);
-    const find = async () => {
-        if (!ref.trim()) return;
-        const r = await send("bibleFind", { ref });
-        setFound(r.ok ? { ...r.result, ref } : null);
-    };
-    return (
-        <main className="rm-b">
-            <form className="rm-ref" onSubmit={(e) => { e.preventDefault(); find(); }}>
-                <input value={ref} onChange={(e) => { setRef(e.target.value); setFound(null); }} placeholder="Referência (jo 3 16)" aria-label="Referência" autoCapitalize="none" autoCorrect="off" enterKeyHint="search" maxLength={40} />
-                <button type="submit" className="rm-btn" disabled={Boolean(busy) || !ref.trim()}>Conferir</button>
-            </form>
-            {found && (
-                <div className="rm-found">
-                    <b>{found.reference}</b>
-                    <p>{found.text}</p>
+            {(h.chips.length > 0 || h.locked) && (
+                <div className="rm-chiprow">
+                    {h.chips.map((ch) => (
+                        <span key={ch.key} className={`rm-lchip ${ch.amber ? "is-amber" : ""}`}>
+                            {ch.label}
+                            <Cmd c={c} k={`off-${ch.key}`} action={ch.action} args={ch.args} className="rm-lchip-x" label={`Tirar ${ch.label}`}><Icon name="x" size={14} /></Cmd>
+                        </span>
+                    ))}
+                    {h.locked && <span className="rm-lchip is-lock"><Icon name="lock" size={14} />Travado</span>}
                 </div>
             )}
-            <button type="button" className="rm-btn rm-send" disabled={Boolean(busy) || !found || locked} onClick={async () => { const r = await send("bibleSend", { ref: found.ref }); if (r.ok) { setFound(null); setRef(""); } }}>
-                <Icon name="book" size={20} />
-                <span className="rm-send-t"><small>Enviar ao ar</small><b>{found ? found.reference : "Confira a referência antes"}</b></span>
-            </button>
-            <p className="rm-empty">Um versículo vai com o capítulo inteiro (as setas seguem nele); um trecho (jo 3 16-18) vai como trecho.</p>
-        </main>
-    );
-}
-
-// Encerrar tudo: hold it down; a ring fills; letting go before stops it.
-function HoldButton({ disabled, onDone }) {
-    const [holding, setHolding] = useState(false);
-    const timer = useRef(null);
-    const start = (e) => {
-        if (disabled) return;
-        e.preventDefault();
-        setHolding(true);
-        timer.current = setTimeout(() => { setHolding(false); onDone(); }, HOLD_MS);
-    };
-    const stop = () => { clearTimeout(timer.current); setHolding(false); };
-    useEffect(() => () => clearTimeout(timer.current), []);
-    return (
-        <button type="button" className={`rm-btn rm-end ${holding ? "is-holding" : ""}`} disabled={disabled} style={{ "--rm-hold": `${HOLD_MS}ms` }}
-            onPointerDown={start} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onContextMenu={(e) => e.preventDefault()}
-            aria-label="Encerrar tudo: segure por um segundo e meio">
-            <i className="rm-end-fill" aria-hidden="true" />
-            <Icon name="power" size={20} /><span>{holding ? "Continue segurando…" : "Segure para encerrar tudo"}</span>
-        </button>
+        </header>
     );
 }

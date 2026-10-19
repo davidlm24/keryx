@@ -3069,6 +3069,17 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
             await phone.webContents.session.cookies.set({ url: base, name, value });
             await phone.loadURL(`${base}/Remote`);
             result.remote.page = await waitFor(phone, "Segure para encerrar tudo", 8000);
+            // The page itself (Rodada G6 PR3): its tab bar, and its Tela preta
+            // reaching the live state through the console.
+            const pageJs = (code) => phone.webContents.executeJavaScript(code).catch(() => null);
+            const tabs = (await pageJs(`[...document.querySelectorAll(".rm-tab")].map((b) => b.textContent.trim()).join("|")`)) || "";
+            result.remote.tabs = tabs.startsWith("Ao vivo") && tabs.includes("Setlist") && tabs.includes("Mais");
+            live.call("screen.set", { mode: "show" });
+            await pageJs(`[...document.querySelectorAll(".rm-trio .rm-b")].find((b) => b.textContent.includes("Tela preta"))?.click()`);
+            const blackUntil = Date.now() + 5000;
+            while (Date.now() < blackUntil && live.get().screen !== "black") await sleep(150);
+            result.remote.pageBlack = live.get().screen === "black";
+            live.call("screen.set", { mode: "show" });
             phone.close();
             await network.ops.setRemote(null, false);
             result.remote.offAgain = (await cmd("black")).status;
@@ -3102,7 +3113,7 @@ async function checkNetwork({ network, live, videoFile, webContents }) {
         && Boolean(l && l.events.includes("Texto ao vivo") && l.read === "Texto ao vivo" && l.media === "keryx-media://fundo.png" && l.writeStatus === 405)
         && result.operatorPageBlocked && result.pinForm && result.tabletErrors.length === 0
         && (!webContents || (result.dropBanner && result.dropStatus))
-        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem === true && result.remote.pdfNext === true && result.remote.locked === 423 && result.remote.page && result.remote.offAgain === 404));
+        && (!webContents || Boolean(result.remote && result.remote.off === 404 && result.remote.signedIn === 303 && result.remote.black === 200 && result.remote.screen === "black" && result.remote.state && result.remote.sendItem === true && result.remote.pdfNext === true && result.remote.locked === 423 && result.remote.page && result.remote.tabs && result.remote.pageBlack && result.remote.offAgain === 404));
     return result;
 }
 

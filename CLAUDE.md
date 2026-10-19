@@ -1043,7 +1043,17 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   unread; reads are never logged. Under `npm run dev` the `/Remote` tab
   works too: `scripts/preview/server.cjs` checks its commands the same
   way and hands them to the console tab that listened last
-  (`remote.onCommand` in preview.js). Each screen says which
+  (`remote.onCommand` in preview.js). **The phone's page** (Rodada G6
+  PR3, the owner's picks of 17/10) is `src/pages/RemoteView.jsx` +
+  `src/components/network/remote/` (styles `remote.css`; what it shows is
+  `src/lib/network/remoteView.js`, tested): tabs at the bottom (a left
+  rail at 600 px and up), a section only when `state.caps` has its cap
+  (a v1 console: `isV1`), only the control pressed busy, S actions off
+  while locked or stale (25 s without a frame), T always on; new items are
+  picked, then sent from the sticky "Enviar ao ar · título"; Encerrar and
+  Destravar are held. `remoteCall` sends `v: 2` once and never again (504
+  or a lost link = "Não sei se foi"). "Manter a tela ligada" loops
+  `public/nosleep.mp4` (made by `scripts/nosleep-mp4.mjs`). Each screen says which
   page it shows when it connects (`/api/events?screen=`); the console lists
   the screens connected right now from that (`useOutputs`). Links and QR
   codes meant for other devices come from the network info's `urls`
