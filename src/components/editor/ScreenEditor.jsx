@@ -5,15 +5,16 @@ import { Panel, Btn, IconBtn, Field, Seg, Row, Empty, WinBar } from "../console/
 import { Switch } from "../console/settings/parts";
 import LayoutRenderer from "@/components/screen/LayoutRenderer";
 import OutputPrefCard from "../console/settings/OutputPrefCard";
-import { mainLayer } from "@shared/live-state.mjs";
+import { mainLayer, emptyState } from "@shared/live-state.mjs";
 import {
     ELEMENT_TYPES, ELEMENT_GROUPS, LOOK_TYPES, WHEN, FONTS, ALIGNS, VALIGNS, SIZE_RANGE, MAX_ELEMENTS, typeOf,
     normalizeLayout, newLayout, newElement, duplicateLayout, findLayout, layoutFields, snapRect, resizeRect, moveRect, FACTORY_LAYOUTS, seedLayoutId,
+    layoutContext, elementState, whenLabel, ghostReason,
 } from "@/lib/layouts";
 import { useOutputPrefRows } from "@/hooks/useOutputPref";
 import { PREF_OUTPUTS, outputLook, normalizePref, designOf, prefState, prefVars, prefViewKey, alertOf } from "@/lib/outputPrefs";
 import { useChurch } from "@/hooks/useChurch";
-import { sampleLive, sampleNotice, sampleAlert, SAMPLE_ITEMS } from "../console/settings/sample";
+import { sampleLive, sampleNotice, sampleAlert, sampleTimer, SAMPLE_ITEMS } from "../console/settings/sample";
 import { ConfirmContext } from "../console/ConfirmDialog";
 import useSortable from "../console/useSortable";
 import { moveTo } from "@/lib/console/dropOrder";
@@ -25,6 +26,10 @@ import UndoRedo from "./UndoRedo";
 const HANDLES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 // Arrow presses this close together are one Desfazer step.
 const NUDGE_WINDOW = 1000;
+// "Mostrar com" (Rodada G2): the states the canvas can draw the screen in,
+// so an element shown only without anything on air or with a timer can be
+// seen where it appears. "No ar" is the real live state (else the example).
+const SOURCES = [["sample", "Exemplo (letra)"], ["idle", "Sem nada no ar"], ["tool", "Timer"], ["auto", "No ar"]];
 const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // The screens the Editor edits (every page with settings; Transmissão has
 // no canvas, only its settings). Each starts from its page's ready design
@@ -83,7 +88,7 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
     // one-question guard; a host without one (null) gets the two-step toast.
     const askCtx = useContext(ConfirmContext);
     const [busy, setBusy] = useState(false);
-    const [source, setSource] = useState("auto"); // "auto" | "sample"
+    const [source, setSource] = useState("auto"); // SOURCES: "sample" | "idle" | "tool" | "auto"
     const [guides, setGuides] = useState([]);
     const [pickImage, setPickImage] = useState(false);
     // The middle column's two halves (Rodada C, fase d2): the drawing, and
@@ -278,17 +283,27 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
         return () => window.removeEventListener("keydown", onKey, true);
     }, []);
 
-    // What the canvas shows: what is on air when something is, else a sample
-    // song 42 minutes into a service with a Setlist.
+    // What the canvas shows ("Mostrar com", Rodada G2): a sample song 42
+    // minutes into a service with a Setlist, nothing on air, a timer on air,
+    // or what is on air when something is (else the sample song) — so every
+    // element can be seen in the state its Aparece rule shows it.
     const madeAt = useRef(keryx.live.now());
-    const sampleDoc = useMemo(() => ({ ...sampleLive(madeAt.current), session: { startedAt: madeAt.current - 42 * 60000 } }), []);
+    const sampleDoc = useMemo(() => {
+        const session = { startedAt: madeAt.current - 42 * 60000 };
+        return { sample: { ...sampleLive(madeAt.current), session }, idle: { ...emptyState(madeAt.current), session } };
+    }, []);
+    // The timer starts again each time "Timer" is picked, so it never sits
+    // at 00:00:00 in an editor left open.
+    const [toolAt, setToolAt] = useState(() => keryx.live.now());
+    const toolDoc = useMemo(() => ({ ...sampleTimer(toolAt), session: sampleDoc.idle.session }), [toolAt, sampleDoc]);
+    const pickSource = (v) => { if (v === "tool") setToolAt(keryx.live.now()); setSource(v); };
     const liveOn = liveState && mainLayer(liveState) !== "none" ? liveState : null;
-    const shown = source === "sample" || !liveOn ? sampleDoc : { ...liveOn, session: liveOn.session || sampleDoc.session };
+    const shown = source === "tool" ? toolDoc : source === "idle" ? sampleDoc.idle : source === "sample" || !liveOn ? sampleDoc.sample : { ...liveOn, session: liveOn.session || sampleDoc.sample.session };
     // A screen that shows only avisos (Comunicação) gets an example aviso
     // when none is on air, as Telas e saídas' still does: a song would
-    // leave it on the idle look.
+    // leave it on the idle look. "Sem nada no ar" and "Timer" mean just that.
     const noticeDoc = useMemo(() => sampleNotice(madeAt.current), []);
-    const avisos = renderer && prefViewKey(path, pref) === "/CommunicationProjection" && !shown.communication ? { ...shown, communication: noticeDoc.communication } : shown;
+    const avisos = renderer && prefViewKey(path, pref) === "/CommunicationProjection" && !shown.communication && (source === "sample" || source === "auto") ? { ...shown, communication: noticeDoc.communication } : shown;
     // Ajustes › Aviso rápido › Ver exemplo (Rodada E3): an example bar on
     // the canvas while the settings half is open, unless one is on air.
     const [alertSample, setAlertSample] = useState(null);
@@ -302,6 +317,12 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
     // The Aviso rápido over the whole drawing, in this screen's look, as the
     // page draws it (OutputScreen, StageView); the Pastor's draws none.
     const canvasAlert = renderer ? screenState?.alert ?? null : path === "/StageView" ? (live.content ? alertOf(live, pref, path) : null) : undefined;
+    // Why each element is drawn or faint in this state (elementState: the
+    // eye, the Aparece rule, nothing to say), as the canvas computes it.
+    // The rules read no clock: the time now is enough (the canvas ticks its own).
+    const elCtx = layoutContext({ live, now: keryx.live.now(), upcoming: SAMPLE_ITEMS, hasService: true, church });
+    const stateOf = (el) => elementState(el, elCtx, { logoUrl: church.logo });
+    const selState = selected ? stateOf(selected) : "shown";
 
     const upload = async (file, apply) => {
         if (!file) return;
@@ -405,15 +426,20 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
                         <div className={`le-els ${elSort.sorting ? "is-sorting" : ""}`} role="list" aria-label="Elementos da tela" {...elSort.listProps}>
                         {draft.elements.slice().reverse().map((el, di) => {
                             const t = typeOf(el.type);
+                            // Its rule as a chip (none for Sempre); dimmed, with
+                            // a dashed eye, while it is not drawn in this state.
+                            const st = stateOf(el);
+                            const rule = whenLabel(el.when);
                             return (
                                 <Row key={el.id} single icon={t.icon} title={`${t.name}${el.label && el.label !== t.label ? ` · ${el.label}` : ""}`}
-                                    className={`${sel === el.id ? "is-selected" : ""} ${el.hidden ? "is-dim" : ""}`}
+                                    className={`${sel === el.id ? "is-selected" : ""} ${st !== "shown" ? "is-dim" : ""}`}
                                     onClick={() => setSel(el.id)}
                                     dragProps={{ ...elSort.rowProps(di, { label: t.name, icon: t.icon }), style: elSort.rowStyle(di) }}
                                     actions={<>
-                                        <IconBtn name={el.hidden ? "eye-off" : "eye"} small title={el.hidden ? "Mostrar o elemento" : "Esconder o elemento (ele fica no lugar)"} aria-label={`${el.hidden ? "Mostrar" : "Esconder"} ${t.name}`} onClick={(e) => { e.stopPropagation(); setEl(el.id, { hidden: !el.hidden }); }} />
+                                        <IconBtn name={el.hidden ? "eye-off" : "eye"} small className={st === "rule" || st === "empty" ? "le-eye-ghost" : ""} title={el.hidden ? "Mostrar o elemento" : st === "shown" ? "Esconder o elemento (ele fica no lugar)" : `${ghostReason(el, st)} O olho esconde o elemento.`} aria-label={`${el.hidden ? "Mostrar" : "Esconder"} ${t.name}`} onClick={(e) => { e.stopPropagation(); setEl(el.id, { hidden: !el.hidden }); }} />
                                         <IconBtn name="x" small title="Tirar da tela" aria-label={`Tirar ${t.name} da tela`} onClick={(e) => { e.stopPropagation(); remove(el.id); }} />
                                     </>}>
+                                    {rule && <span className={`le-rule ${st === "rule" ? "is-out" : ""}`} title={`Aparece: ${rule}`}>{rule}</span>}
                                     <span className="kx-glyph" title="Arraste para mudar quem desenha por cima"><Icon name="grip" /></span>
                                 </Row>
                             );
@@ -533,7 +559,7 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
             {colAjustes.split}
             <div className="col center">
                 <Panel title={<>Tela <span className="kx-count">· 16:9</span></>} actions={!hosted && <>
-                    <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />
+                    <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />
                 </>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
                     {isStream || !draft ? (
                         <Empty icon={isStream ? "text" : "monitor"} title={isStream ? "Sem canvas" : "Abrindo a tela…"}>
@@ -549,7 +575,7 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
                                     {guides.map((g, i) => <i key={i} className={`le-guide ${g.axis}`} style={g.axis === "x" ? { left: `${g.at}%` } : { top: `${g.at}%` }} />)}
                                     {draft.elements.map((el) => (
                                         <div key={el.id} className={`le-hit ${sel === el.id ? "is-sel" : ""}`} style={{ left: `${el.x}%`, top: `${el.y}%`, width: `${el.w}%`, height: `${el.h}%` }}
-                                            title={typeOf(el.type)?.name} onPointerDown={(e) => startDrag(e, el)} onDoubleClick={() => setSel(el.id)}>
+                                            title={[typeOf(el.type)?.name, ghostReason(el, stateOf(el))].filter(Boolean).join(" · ")} onPointerDown={(e) => startDrag(e, el)} onDoubleClick={() => setSel(el.id)}>
                                             {sel === el.id && HANDLES.map((h) => <i key={h} className={`le-h ${h}`} onPointerDown={(e) => startDrag(e, el, h)} />)}
                                         </div>
                                     ))}
@@ -559,7 +585,13 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
                     )}
                     {draft && !isStream && (
                         <div className="listhead nv-note">
-                            <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã, Delete tira o elemento, Ctrl+Z desfaz. Elementos escondidos agora aparecem esmaecidos.{path === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o desenho." : ""}</span>
+                            {/* The selected element's state in words (the G2 mockup's line). */}
+                            <span className="kx-meta le-why" aria-live="polite">
+                                {!selected ? "Clique num elemento da lista ou da tela." : selState !== "shown"
+                                    ? <><b>{typeOf(selected.type)?.name}</b> está {ghostReason(selected, selState).replace(/^E/, "e")}</>
+                                    : <><b>{typeOf(selected.type)?.name}</b> aparece agora ({(whenLabel(selected.when) || "Sempre").toLowerCase()}).</>}
+                            </span>
+                            <span className="kx-meta">Arraste para mover, alças para redimensionar, setas ajustam 1 % (Shift 5 %), Alt ignora o imã, Delete tira o elemento, Ctrl+Z desfaz. Esmaecido = não aparece neste estado: tracejado pela regra Aparece ou por falta do que mostrar, pontilhado pelo olho; Mostrar com troca o estado.{path === "/VideoProjection" ? " Com um vídeo tocando, a saída Vídeo mostra só o vídeo, sem o desenho." : ""}</span>
                         </div>
                     )}
                 </Panel>
@@ -571,7 +603,7 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
     return (
         <>
             <WinBar title="Editor da tela" sub={`${name}${dirty ? " · não salvo" : ""}`}
-                tools={!isStream && <Seg small label="Mostrar com" value={source} options={[["auto", "No ar"], ["sample", "Exemplo"]]} onChange={setSource} />}
+                tools={!isStream && <Seg small label="Mostrar com" value={source} options={SOURCES} onChange={pickSource} />}
                 actions={!isStream && <>
                     <UndoRedo history={history} />
                     <Btn small onClick={() => leave()}>Cancelar</Btn>

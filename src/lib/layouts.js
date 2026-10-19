@@ -324,6 +324,29 @@ export function elementHasContent(el, ctx, { logoUrl = "" } = {}) {
     }
 }
 
+// Why an element is (or is not) drawn now — the Editor de telas tells the
+// three ghosts apart (Rodada G2): "off" = its eye in the list hides it,
+// "rule" = its Aparece rule leaves it out in this state, "empty" = it has
+// nothing to say now (a Cifra on a song without chords), "shown" = drawn.
+export function elementState(el, ctx, extra) {
+    if (el.hidden) return "off";
+    if (!elementVisible(el, ctx)) return "rule";
+    if (!elementHasContent(el, ctx, extra)) return "empty";
+    return "shown";
+}
+// The rule as the editor's list says it, "" for Sempre (the Aparece select's words).
+export const whenLabel = (when) => (when && when !== "always" ? WHEN.find(([k]) => k === when)?.[1] || "" : "");
+// The editor's "Mostrar com" state where a rule shows its element.
+export const WHEN_STATE = { content: "Exemplo (letra)", tool: "Timer", idle: "Sem nada no ar" };
+// Why the editor draws an element faint, and what to do about it; "" when
+// it is drawn (the canvas's tooltip and the line under it).
+export function ghostReason(el, state) {
+    if (state === "off") return "Esmaecido: escondido pelo olho na lista. Ligue o olho para ele voltar.";
+    if (state === "rule") return `Esmaecido: aparece só ${(whenLabel(el.when) || "").toLowerCase()}. Veja em “${WHEN_STATE[el.when] || "No ar"}” ou troque Aparece para Sempre.`;
+    if (state === "empty") return "Esmaecido: nada para mostrar neste estado (uma Cifra numa música sem cifra, o Logo sem logo da igreja). Na tela ele só aparece quando tiver o que mostrar.";
+    return "";
+}
+
 // ---- The editor's geometry (in % of the canvas) ----
 export const clampRect = (r) => {
     const w = clamp(round1(num(r.w, MIN_SIDE)), MIN_SIDE, 100);

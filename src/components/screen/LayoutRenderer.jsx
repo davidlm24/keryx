@@ -6,7 +6,7 @@ import ChordedLines, { chordedOf, Transpose } from "@/components/network/Chorded
 import { transposeChords } from "@/utils/chordTranspose";
 import { typeLabel } from "@/lib/console/setlist";
 import { FONT_MAP } from "@/lib/deviceStyles";
-import { layoutContext, elementVisible, elementText, elementItems, elementHasContent, layoutHasTimer, slidePage, TEXT_TYPES, typeOf } from "@/lib/layouts";
+import { layoutContext, elementState, elementText, elementItems, elementHasContent, layoutHasTimer, slidePage, TEXT_TYPES, typeOf } from "@/lib/layouts";
 import "@/components/network/net.css";
 import "./layout.css";
 
@@ -16,8 +16,9 @@ const FONT = { ...FONT_MAP, mono: 'ui-monospace, "Cascadia Mono", Consolas, mono
 
 // A layout (src/lib/layouts.js) drawn on a screen: the Palco or Pastor
 // output, a network screen, the console's Prévia rail (`embed`) and the
-// editor's canvas (`ghost`: elements hidden by their rule are drawn faint,
-// so they can be picked). Sized in container units from its own box, so
+// editor's canvas (`ghost`: elements not drawn now are drawn faint, so
+// they can be picked, with their cause as a class — is-off (the eye),
+// is-rule (Aparece), is-empty (nothing to say); elementState, Rodada G2). Sized in container units from its own box, so
 // every surface shows the same picture in proportion; `scale` is the
 // output's Escala do texto. `children` go on top. A Projeção element draws
 // `screenState` (the output's view of the live state, src/lib/outputPrefs.js
@@ -52,11 +53,12 @@ export default function LayoutRenderer({ layout, live, screenState, alert, nowMs
         <div className={`kl ${embed ? "kl-box" : "kl-fill"} ${ghost ? "is-ghost" : ""}`} style={style}>
             {image && <div className="kl-bg" style={{ backgroundImage: `url(${image})`, "--kl-dim": bg.dim }} />}
             {layout.elements.map((el) => {
-                // A hidden element (its eye in the editor) is out of the
-                // drawing; the editor's ghost mode keeps it faint, pickable.
-                const shown = elementVisible(el, ctx) && !el.hidden;
-                if (!shown && !ghost) return null;
-                return <Element key={el.id} el={el} ctx={ctx} shown={shown} ghost={ghost} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
+                // An element hidden by its eye, left out by its rule or with
+                // nothing to say is out of the drawing; the editor's ghost
+                // mode keeps it faint, pickable.
+                const state = elementState(el, ctx, { logoUrl });
+                if (state !== "shown" && !ghost) return null;
+                return <Element key={el.id} el={el} ctx={ctx} state={state} ghost={ghost} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
             })}
             {alert && <AlertBar alert={alert} />}
             {children}
@@ -64,11 +66,10 @@ export default function LayoutRenderer({ layout, live, screenState, alert, nowMs
     );
 }
 
-function Element({ el, ctx, shown, ghost, logoUrl, embed, transpose, setTranspose, screen, audio }) {
-    // Nothing to say: nothing drawn (no empty box), unless the editor wants
-    // to see where the element is.
-    const has = elementHasContent(el, ctx, { logoUrl });
-    if (!has && !ghost) return null;
+function Element({ el, ctx, state, ghost, logoUrl, embed, transpose, setTranspose, screen, audio }) {
+    const shown = state !== "off" && state !== "rule";
+    // A ghost by its eye or its rule still draws what it would say, faint.
+    const has = state === "shown" || (state !== "empty" && elementHasContent(el, ctx, { logoUrl }));
     // A presentation's page in "Letra atual" / "Próximo slide" (Rodada F3): its picture.
     const page = el.type === "current" ? slidePage(ctx.current) : el.type === "next" ? slidePage(ctx.next) : "";
     const body = !has ? null : page ? <img className="kl-page" src={page} alt="" /> : TEXT_TYPES.has(el.type) ? <div className="kl-v">{elementText(el, ctx)}</div> : <Body el={el} ctx={ctx} logoUrl={logoUrl} embed={embed} transpose={transpose} setTranspose={setTranspose} screen={screen} audio={audio} />;
@@ -81,7 +82,7 @@ function Element({ el, ctx, shown, ghost, logoUrl, embed, transpose, setTranspos
         ...(shown && has && Number(el.opacity) < 1 ? { opacity: el.opacity } : {}),
     };
     return (
-        <div className={`kl-el kl-${el.type} kl-al-${el.align} kl-va-${el.valign} ${el.box ? "is-box" : ""} ${!shown || body === null ? "is-hidden" : ""}`} style={style} data-el={el.id}>
+        <div className={`kl-el kl-${el.type} kl-al-${el.align} kl-va-${el.valign} ${el.box ? "is-box" : ""} ${!shown || body === null ? `is-hidden is-${shown ? "empty" : state}` : ""}`} style={style} data-el={el.id}>
             {el.label && <small className="kl-lab">{el.label}</small>}
             {body ?? (ghost ? <div className="kl-v kl-ghost">{typeOf(el.type)?.name}</div> : null)}
         </div>

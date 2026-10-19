@@ -34,3 +34,9 @@ export function sampleNotice(now) {
         item: { id: "exemplo", title: "Avisos da semana", type: "announcement", text: "Culto de oração · quinta às 19h30", background_color: "#101a2e" },
     }, now);
 }
+
+// A timer on air, as tool.show leaves it (the Editor de telas' "Timer"
+// state, Rodada G2): ten minutes from `now`, nothing else on air.
+export function sampleTimer(now) {
+    return applyOp(emptyState(now), "tool.show", { mode: "timer", durationMs: 10 * 60000 }, now);
+}
