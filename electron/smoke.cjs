@@ -2053,6 +2053,31 @@ async function checkConsole(webContents, { live, outputs }) {
         await waitFor(() => js("Boolean(document.querySelector('.console .cfg-results .kx-row'))"), 3000);
         await press("Enter");
         result.cfgSearchJump = await waitFor(() => js("(document.querySelector('.console .cfg .kx-panel-h .kx-section') || {}).textContent === 'Telas na rede' && Boolean(document.querySelector('.console .cfg [data-cfg-k=\"PIN\"].is-flash'))"), 5000);
+        // Grupos que abrem e fecham (Rodada H0): Transições starts closed in
+        // Telas e saídas; a jump to a row inside it opens the group (and its
+        // Por tipo de conteúdo disc), the row lit; what the operator opened
+        // stays open on this computer after Configurações closes and reopens.
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg .kx-panel-h .kx-section'))"), 3000);
+        await js("document.activeElement && document.activeElement.blur(); true");
+        await press("/");
+        await type("cronometro");
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg-results .kx-row'))"), 3000);
+        await press("Enter");
+        result.cfgGroupJump = await waitFor(() => js("Boolean(document.querySelector('.console .cfg .cfg-group.is-open [data-cfg-k=\"Por tipo de conteúdo\"].is-flash'))"), 5000);
+        const groupOpen = () => js("(() => { const b = document.querySelector('.console .cfg button.cfg-group-t[data-cfg-k=\"Transições\"]'); return b ? b.getAttribute('aria-expanded') : null; })()");
+        result.cfgGroupOpened = (await groupOpen()) === "true";
+        await press("Escape");
+        await waitFor(() => js("!document.querySelector('.console .win-dialog')"), 4000);
+        await click(".topbar .markbtn", "");
+        await click(".kx-pop button", "Configurações");
+        await waitFor(() => js("Boolean(document.querySelector('.console .cfg'))"), 4000);
+        await click(".console .win-dialog .kx-row", "Telas e saídas");
+        result.cfgGroupKeeps = await waitFor(async () => (await groupOpen()) === "true", 5000);
+        // Back to its default (closed), by its header: the next checks see
+        // Telas e saídas as a fresh computer does.
+        await js("document.querySelector('.console .cfg button.cfg-group-t[data-cfg-k=\"Transições\"]').click(); true");
+        result.cfgGroupCloses = await waitFor(async () => (await groupOpen()) === "false", 3000);
+        if (!(result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses)) result.cfgGroupDiag = await js("JSON.stringify({ groups: localStorage.getItem('keryx.cfg.groups'), text: (document.querySelector('.console .win-dialog') || {}).innerText?.slice(0, 200) })");
         // Backup automático turns off and back on (settings.json, merged).
         await click(".console .win-dialog .kx-row", "Backup e atualizações");
         const autoBackup = async () => ((await js('window.keryxDesktop.system.call("info")')).data || {}).backup?.enabled;
@@ -2895,7 +2920,7 @@ async function checkConsole(webContents, { live, outputs }) {
         && result.autoSetlist && result.cultoDefaults && result.autoSetlistShown && result.layerDrag === true && result.layersMoved
         && result.outputKeysOk
         && result.prevShows && result.rowActsClear
-        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
+        && result.cfgOpen && result.cfgAll && result.cfgSearchFocus && result.cfgSearchHits && result.cfgSearchClear && result.cfgSearchJump && result.cfgGroupJump && result.cfgGroupOpened && result.cfgGroupKeeps && result.cfgGroupCloses && result.backupOff && result.backupOn && result.cfgOutputs && result.cfgOutGrid && result.outName && result.outNameBack && result.palcoPrev && result.palcoCifraOff && result.palcoRestored && result.pastorPrev && result.themeWindow && result.themeSample && result.editorLeaveAsks && result.themeNeedsBg && result.themeBgPicked && result.themeSaved && result.themeWindowClosed && result.screenEditor && result.screenStraight && result.screenCardStyled && result.screenMenu && result.screenSaved && result.fundosInTemas && result.fundosMoved && result.bgVideoSet && result.bgVideoDrawn && result.themeApplied && result.themeFundo && result.themeSticky && result.themeDefaultApplied && result.themeDefaultNoReskin && result.cfgIdle && result.cfgChurch && result.churchTitle && result.cfgEsc && result.cfgDialog && result.cfgX && result.ctxMenuOk
         && result.edMenuOnScreen === true && result.edOpen && result.edThumbs && result.edSaved && result.edClosed && result.edListed && result.edReopen && result.edFit && result.edSplitSaved && result.edSlideMenuOk && result.edSplitLive && result.edNoOverflowOk
         && result.plOpen && result.plRenamed && result.plEnds && result.plSection && result.plDrag === true && result.plMoved && result.plTeam && result.plTemplate && result.plClosed && result.plRundownSection
         && result.mvOpen && result.mvMissing && result.mvYouTube && result.mvTabs && result.mvSelected && result.mvSequence && result.mvDeleted && result.mvClosed

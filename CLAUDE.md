@@ -98,6 +98,24 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   others, or while editing the arrangement, nothing folds. The body stays
   mounted, hidden. Don't confuse it with the dock frames' `collapsed`
   (joined as tabs) or No ar's `fold`/`gone` (no lyrics on air).
+  **Grupos que abrem e fecham** (owner 2026-10-19, Rodada H0; the owner's
+  "Nem tudo precisa colapsar"): the areas of Configurações and the editors
+  are `CfgGroup` (settings/parts.jsx: `{ id, k, title, summary, actions,
+  defaultOpen, fold }`), an h3 header whose button carries the chevron and
+  the title, a one-line `summary` of what is chosen while closed (pure,
+  tested, like `transitionsSummary` in transitions.js), the `actions` on
+  the right; a page's first area is `fold={false}` (the same heading, no
+  chevron, never folds), the rare ones start closed (`defaultOpen={false}`;
+  Transições is the pilot). The body stays mounted and inert when closed,
+  so the search still finds its rows: a jump into a closed group opens it
+  at once (`CfgFlash` carries `{ flash, pending }`; SettingsView's find
+  loop skips rows inside `.cfg-group:not(.is-open)`). What the operator
+  opened or closed is this computer's — localStorage `keryx.cfg.groups`,
+  only the deviations from each default (`src/lib/console/cfgGroups.js`,
+  tested; `useCfgGroup`, one store per window, a detached /Janela follows
+  through `storage`) — never `layout` (the editors have none, Restaurar
+  disposição must not reset it). H1, H2 and HF3 build on it: its API is the
+  contract.
 - **Fields are defined in `base44/entities/*.jsonc`.** Adding or changing a
   field: edit the jsonc, run `npm run db:schema` (regenerates
   `electron/db/schema.json`; the local store adds new columns on next launch).
@@ -554,8 +572,8 @@ stack, how to run it, the backend wiring, the data model and the known gaps.
   Saídas popover; Configurações, `settings/SettingsView`, is a window over
   whatever is on screen, its own `cfg` state, `?config=`; its sections are
   `src/lib/console/settings.js`, old ids resolve through `resolveSection`;
-  its search indexes every row in `settingsSearch.js` — a new `FormRow k`
-  goes in the index, or `npm test` fails). **Sobre** is the last section
+  its search indexes every row in `settingsSearch.js` — a new `FormRow k`,
+  `CfgKey k` or `CfgGroup k` goes in the index, or `npm test` fails). **Sobre** is the last section
   (owner 2026-10-14, `SobreSection.jsx`; also the KERYX menu's "Sobre o
   KERYX", `openSettings("sobre")`): version (the `info` call of Backup;
   "Prévia de desenvolvimento" without the desktop), Ver novidades (the

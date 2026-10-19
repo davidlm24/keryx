@@ -352,6 +352,18 @@ open the Programa monitor draws one still frame (the air never pauses).
   restart; while editing the arrangement every panel is open. **A fold takes
   180 ms** (owner 2026-10-16), the same for No ar folding away; none with
   reduced motion.
+- **Grupos** (Rodada H0, owner 2026-10-19; `CfgGroup`, `.cfg-group`): the
+  areas of Configurações and the editors open and close. The header is an
+  h3 28 px tall whose button holds a 12 px chevron (down open, turned −90°
+  closed) and the 11 px `kx-section` title; while closed a one-line
+  `kx-meta` summary says what is chosen ("Tirar Suave 0,6 s · Entrar Suave
+  0,5 s · Áudios Corte"), gone when open; the group's actions sit at the
+  right. The body folds to nothing in 180 ms (`--fold-ms`, the panels'
+  ease), stays mounted and inert; none with reduced motion, none when a
+  search jump opens it. Groups are 12 px apart with a hairline; a page's
+  first area is the same heading without the chevron (static, the chevron's
+  slot kept so titles line up), and only the areas after it, or the rare
+  ones, fold. Hover `bg-3` on the header, the focus ring inside it.
 - **List rows are inset cards**: every `kx-row` and `kx-layer` in the
   console (Biblioteca, Setlist, the tabs panel, Camadas, Configurações' menu,
   the views) sits 4 px in from its column with `radius-control` and 2 px
