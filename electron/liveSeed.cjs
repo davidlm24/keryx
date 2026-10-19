@@ -1,6 +1,7 @@
 // A live state that starts empty (a new install, a lost live.json) takes the
 // church's own logo look and idle screen from the profile (Configurações ›
-// Igreja and Aparência), so the first screens already look like the church.
+// Igreja and Aparência) and the Tela ociosa's look (Editor de telas), so the
+// first screens already look like the church.
 // Pure: -> the [op, args] to apply, in order.
 
 const CORNERS = ["top-left", "top-right", "bottom-left", "bottom-right"];
@@ -18,6 +19,13 @@ function seedOps(user) {
     // A background idle screen needs its picture: the church's standby one.
     if (user?.idle_mode === "background" && user?.standby_background) ops.push(["idle.set", { mode: "background", url: user.standby_background }]);
     else if (IDLE.includes(user?.idle_mode) && user.idle_mode !== "logo") ops.push(["idle.set", { mode: user.idle_mode }]);
+    // The Tela ociosa's look (shared/idleLook.mjs), last: the live rules check
+    // it, and a broken saved look only loses itself. "Nome da igreja" takes
+    // the church's name, as the console writes it.
+    const look = user?.idle_look;
+    if (look && typeof look === "object" && !Array.isArray(look)) {
+        ops.push(["idle.look", { look: look.phrase === "church" ? { ...look, text: typeof user.church_name === "string" ? user.church_name : "" } : look }]);
+    }
     return ops;
 }
 

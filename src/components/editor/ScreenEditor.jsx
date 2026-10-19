@@ -22,6 +22,8 @@ import { useWinCol } from "@/components/console/winLayout";
 import useDraftHistory from "@/hooks/useDraftHistory";
 import { historyKey, hasOwnUndo } from "@/lib/editorHistory";
 import UndoRedo from "./UndoRedo";
+import ScreensMenu, { IDLE_SCREEN } from "./ScreensMenu";
+import IdleEditor from "./IdleEditor";
 
 const HANDLES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 // Arrow presses this close together are one Desfazer step.
@@ -61,7 +63,13 @@ const seedFor = (path) => {
 // as its actions; ⧉ Destacar from the window, or onDetach) and no footer;
 // the middle column splits into Desenho | Ajustes. Both hosts — the
 // console's window and a detached /Janela — mount it hosted.
-export default function ScreenEditor({ say, live: liveState, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
+// The Editor de telas: the Tela ociosa (IdleEditor, owner 2026-10-19) or an
+// output's drawing and settings; another component each, so switching remounts.
+export default function ScreenEditor(props) {
+    return props.screenPath === IDLE_SCREEN ? <IdleEditor {...props} screens={EDITOR_SCREENS} /> : <OutputScreenEditor {...props} />;
+}
+
+function OutputScreenEditor({ say, live: liveState, screenPath, media = [], themes = [], onClose, onSwitch, escRef = null, leaveRef = null, active = true, hosted = false, onDetach = null }) {
     // The columns a splitter resizes, kept per page on this computer (Rodada D3).
     const colTelas = useWinCol("screen.telas", { name: "Telas", def: 190, min: 160, max: 360 });
     const colAjustes = useWinCol("screen.ajustes", { name: "Ajustes", def: 400, min: 340, max: 720 });
@@ -335,17 +343,7 @@ export default function ScreenEditor({ say, live: liveState, screenPath, media =
     const num = (el, k, v, lo, hi) => { const n = Number(v); if (Number.isFinite(n)) setEl(el.id, { [k]: Math.min(hi, Math.max(lo, n)) }); };
     const cLike = { say, live: liveState };
 
-    const screensMenu = (
-        <div className="col" style={colTelas.style}>
-            <Panel title="Telas" bodyStyle={{ overflow: "auto" }}>
-                {EDITOR_SCREENS.map((p) => {
-                    const r = prefRows.find((x) => x.screen_path === p) || null;
-                    const look = outputLook(p, r);
-                    return <Row key={p} single icon={look.icon} title={look.name} className={p === path ? "is-selected" : ""} onClick={() => switchTo(p)} />;
-                })}
-            </Panel>
-        </div>
-    );
+    const screensMenu = <ScreensMenu path={path} screens={EDITOR_SCREENS} onPick={switchTo} style={colTelas.style} />;
 
     // A ready drawing in place of the current one: a factory model, or
     // another screen's own design (Rodada C, fase d2 — the catalog's one

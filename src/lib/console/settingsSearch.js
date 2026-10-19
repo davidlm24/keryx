@@ -20,6 +20,7 @@ export const SETTINGS_INDEX = [
     e("igreja", "Logo nas telas", "o canto, o tamanho e a opacidade do logo", ["canto", "tamanho", "opacidade", "transparente", "mostrar logo"]),
 
     e("telas", "Identificar telas", "os monitores ligados e o número de cada um", ["monitores", "monitor", "projetor", "tv", "número"]),
+    e("telas", "Tela ociosa", "o que todas as telas mostram sem nada no ar e sem papel de parede: logo ou preto, fundo, tamanho do logo, frase", ["ociosa", "logo", "preto", "nada no ar", "fundo", "degradê", "cor", "frase", "espera"]),
     e("telas", "Saídas", "em que tela abre cada saída, tela cheia ou janela", ["projeção", "letras", "vídeo", "comunicação", "palco", "pastor", "tela cheia", "janela", "trazer para a frente", "fechar", "abrir"]),
     e("telas", "Abrir ao iniciar", "a saída abre sozinha quando o KERYX abre", ["iniciar", "automático"], { target: "Saídas" }),
     e("telas", "Remover saída", "no clique direito da tela: tira a saída das listas; os ajustes continuam salvos", ["remover", "tirar", "esconder", "desativar", "excluir saída"], { target: "Saídas" }),
@@ -67,7 +68,7 @@ export const SETTINGS_INDEX = [
 
     e("culto", "Fora do ar", "o que as telas mostram sem nada no ar e depois do Esc", ["papel de parede", "fora do ar", "esc", "espera", "aparência"]),
     e("culto", "Qualquer outro culto", "o papel de parede dos cultos sem um próprio (era o Fundo padrão de Aparência)", ["papel de parede", "fundo padrão", "fundo de espera", "wallpaper", "imagem", "esc", "igreja", "aparência"]),
-    e("culto", "Tela ociosa", "logo ou preto quando nada está no ar e não há papel de parede", ["ociosa", "logo", "preto", "nada no ar"]),
+    e("culto", "Sem papel de parede", "as telas mostram a tela ociosa; leva ao Editor de telas", ["ociosa", "tela ociosa", "nada no ar"]),
     e("culto", "Dia do culto", "o dia da semana do Novo culto", ["domingo", "dia", "semana"]),
     e("culto", "Horário padrão", "o horário de sempre do culto", ["horário", "hora", "início", "19:00"]),
     e("culto", "Duração padrão", "quanto dura uma música, e qualquer outro item, na setlist", ["duração", "minutos", "música", "tempo"]),

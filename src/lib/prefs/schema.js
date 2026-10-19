@@ -8,6 +8,7 @@
 // must not load the console's dock with them.
 import { DENSITIES, MODULES } from "../console/layoutChoices.js";
 import { normalizeCategories } from "../console/backgroundPrefs.js";
+import { idleLookOf, isDefaultIdleLook } from "../../../shared/idleLook.mjs";
 
 const oneOf = (list, fallback) => (v) => (list.includes(v) ? v : fallback);
 const DENSITY_KEYS = DENSITIES.map(([k]) => k);
@@ -31,6 +32,8 @@ export const PREF_FIELDS = {
     logo_size: { default: "medium", normalize: oneOf(["small", "medium", "large"], "medium") },
     logo_opacity: { default: 1, normalize: (v) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) && n >= 0.2 && n <= 1 ? n : 1; } },
     idle_mode: { default: "logo", normalize: oneOf(["logo", "black", "background"], "logo") },
+    // The Tela ociosa's look (shared/idleLook.mjs); null = as it always was.
+    idle_look: { default: null, normalize: (v) => { const l = idleLookOf(v); return l && !isDefaultIdleLook(l) ? l : null; } },
     chime_on: { default: true, normalize: (v) => v !== false },
     chime_volume: { default: 35, normalize: (v) => { const n = Number(v); return v != null && v !== "" && Number.isFinite(n) ? Math.min(100, Math.max(5, Math.round(n))) : 35; } },
     show_item_title: { default: true, normalize: (v) => v !== false },

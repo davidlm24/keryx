@@ -17,6 +17,7 @@ import ActivityView from "./ActivityView";
 import { useExitGhost } from "@/hooks/useExitGhost";
 import { useLiveNow } from "@/hooks/useLiveState";
 import { screenExitMs } from "@/lib/exitFade";
+import { idleBackground, idleLookOf, idleText } from "@shared/idleLook.mjs";
 
 // The projected screen as a pure function of a live-state document (or a
 // console's local copy of one): the projector window renders it full-screen
@@ -99,7 +100,7 @@ function Screen({ state, now, logoUrl = "", preview = false, motion = false, aud
         <>
             {!sameFundo && <div className="ks-z" style={{ zIndex: z("background") }}><Background state={state} layer={layer} preview={preview} motion={motion} /></div>}
             <div className="ks-z" style={{ zIndex: z("content") }}>
-                {layer === "none" && !fundo && !sameFundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} />)}
+                {layer === "none" && !fundo && !sameFundo && (state.idle === "black" ? <div className="ks-black" /> : <Idle logoUrl={logoUrl} wallpaper={state.idle === "background" ? state.idleUrl : null} dim={state.idleDim} blur={state.idleBlur} look={state.idleLook} />)}
                 {layer === "content" && !layerHidden(state, "content") && (state.content.kind === "presentation"
                     ? <Presentation content={state.content} still={still} />
                     : currentSlide(state.content)?.activity
@@ -136,7 +137,7 @@ function bgKey(state, layer) {
     // A presentation draws on black, as a picture of the Mídia (Background).
     if (layer === "media" || isPresentation(state, layer)) return "black";
     const hidden = layerHidden(state, "background");
-    if (layer === "none") return state.background && !hidden ? `fundo:${JSON.stringify(state.background)}` : `idle:${state.idle}:${state.idleUrl}:${state.idleDim}:${state.idleBlur}`;
+    if (layer === "none") return state.background && !hidden ? `fundo:${JSON.stringify(state.background)}` : `idle:${state.idle}:${state.idleUrl}:${state.idleDim}:${state.idleBlur}:${JSON.stringify(state.idleLook ?? null)}`;
     if (hidden && layer === "content") return "black";
     const cs = layer === "content" ? slideStyle(state.content) : null;
     const own = layer === "content" ? (layerLocked(state, "background") ? null : cs.background_image || cs.background_color)
@@ -164,13 +165,28 @@ function logoLook(logo) {
     return out;
 }
 
-function Idle({ logoUrl, wallpaper, dim, blur }) {
+// The Tela ociosa (Editor de telas › Tela ociosa, shared/idleLook.mjs): its
+// fundo (the KERYX gradient unless a colour or a gradient of its own), the
+// logo at its size and the words under it. No look = as it always was.
+function Idle({ logoUrl, wallpaper, dim, blur, look }) {
     if (wallpaper) {
         // The wallpaper as it is, unless Aparência › Fundos gave it a dim or a blur.
         const look = bgLook({ kind: "image", dim: dim ?? 0, blur });
         return <><div className="ks-bg-img ks-idle-wall" style={{ backgroundImage: `url("${String(wallpaper).replace(/"/g, "%22")}")`, ...(blur ? { filter: look.image.filter, transform: look.image.transform } : {}) }} />{look.dim}</>;
     }
-    return <><div className="ks-bg-default" /><div className="ks-idle">{logoUrl && <img src={logoUrl} alt="" />}</div></>;
+    const l = idleLookOf(look);
+    const bg = idleBackground(l);
+    const size = l?.logo || "m";
+    const words = idleText(l);
+    return (
+        <>
+            {bg ? <div className="ks-bg-idle" style={{ background: bg }} /> : <div className="ks-bg-default" />}
+            <div className={`ks-idle is-${size}`}>
+                {logoUrl && size !== "none" && <img src={logoUrl} alt="" />}
+                {words && <p className="ks-idle-text" style={{ fontFamily: FONT_MAP.sans }}>{words}</p>}
+            </div>
+        </>
+    );
 }
 
 // Old rows saved Tailwind-style gradients ("to br"), which CSS ignores.

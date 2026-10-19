@@ -1864,6 +1864,9 @@
         "idle_mode": {
           "type": "text"
         },
+        "idle_look": {
+          "type": "json"
+        },
         "chime_on": {
           "type": "boolean"
         },

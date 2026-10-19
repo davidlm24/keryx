@@ -379,6 +379,24 @@ test("idle screen: logo or black, part of the document", () => {
     assert.equal(restoreState({ version: back.version, rev: 1 }, T0).idle, "logo");
 });
 
+test("idle screen: its look (fundo, logo, words) is part of the document (owner 2026-10-19)", () => {
+    let s = emptyState(T0);
+    assert.equal(s.idleLook, null, "the look the screens always had");
+    s = applyOp(s, "idle.look", { look: { bg: "color", color: "#112233", logo: "l", phrase: "own", text: "Bem-vindos" } }, T0);
+    assert.deepEqual([s.idleLook.bg, s.idleLook.color, s.idleLook.logo, s.idleLook.text], ["color", "#112233", "l", "Bem-vindos"]);
+    assert.equal(applyOp(s, "idle.look", { look: { ...s.idleLook } }, T0), s, "the same look: no change");
+    assert.throws(() => applyOp(s, "idle.look", { look: { logo: "xl" } }, T0), /logo/);
+    assert.throws(() => applyOp(s, "idle.look", { look: { color: "blue" } }, T0), LiveError);
+    // Locked screens still change it (nothing new goes on air).
+    const locked = applyOp(s, "screens.lock", { locked: true }, T0);
+    assert.equal(applyOp(locked, "idle.look", { look: null }, T0).idleLook, null);
+    // The default look is stored as null; a restart keeps the look; old saves have none.
+    assert.equal(applyOp(s, "idle.look", { look: { bg: "gradient", logo: "m" } }, T0).idleLook, null);
+    assert.equal(restoreState(JSON.parse(JSON.stringify(s)), T0 + 9).idleLook.color, "#112233");
+    assert.equal(restoreState({ version: s.version, rev: 1, idleLook: "junk" }, T0).idleLook, null);
+    assert.equal(restoreState({ version: s.version, rev: 1 }, T0).idleLook, null);
+});
+
 test("idle screen: a wallpaper the operator chose, kept across Logo and Preto", () => {
     const wall = "http://127.0.0.1:7700/media/bundled/backgrounds/1557672172-298e090bd0f1.webp";
     let s = emptyState(T0);
